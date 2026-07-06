@@ -13,6 +13,7 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 {
     private readonly ConcurrentQueue<byte[]> _packetQueue = new();
     private readonly ConcurrentDictionary<string, byte> _channels = new();
+    private readonly ConcurrentDictionary<int, PlayerSession> _spectators = new();
 
     public int Id { get; } = id;
     public string Name { get; } = name;
@@ -42,6 +43,19 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// different client session than the one currently logged in.
     /// </summary>
     public ClientDetails? Client { get; set; }
+
+    /// <summary>Ported from Player.spectating — the session this player is currently spectating, if any.</summary>
+    public PlayerSession? Spectating { get; set; }
+
+    /// <summary>Ported from Player.stealth — an admin spectating without the target being informed. Toggled by the (Phase 10) `!stealth` command; defaults off.</summary>
+    public bool Stealth { get; set; }
+
+    /// <summary>Ported from Player.spectators — the sessions currently spectating this player.</summary>
+    public IReadOnlyCollection<PlayerSession> Spectators => _spectators.Values.ToArray();
+
+    public void AddSpectator(PlayerSession spectator) => _spectators[spectator.Id] = spectator;
+
+    public void RemoveSpectator(PlayerSession spectator) => _spectators.TryRemove(spectator.Id, out _);
 
     public PlayerStatus Status { get; } = new();
 

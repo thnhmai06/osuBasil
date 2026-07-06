@@ -1,4 +1,5 @@
 using Bancho.Application.Abstractions;
+using Bancho.Application.Sessions;
 using Bancho.Infrastructure.Sessions;
 
 namespace Bancho.Infrastructure.Tests.Sessions;
@@ -54,5 +55,27 @@ public class InMemoryChannelRegistryTests
         ]);
 
         Assert.Equal(2, registry.All.Count);
+    }
+
+    [Fact]
+    public void Add_ThenGetByName_ReturnsInstanceChannel()
+    {
+        var registry = new InMemoryChannelRegistry();
+        var channel = new ChannelSession(0, "#spec_5", "topic", 0, 0, false, displayName: "#spectator", instance: true);
+
+        registry.Add(channel);
+
+        Assert.Same(channel, registry.GetByName("#spec_5"));
+    }
+
+    [Fact]
+    public void Remove_ThenGetByName_ReturnsNull()
+    {
+        var registry = new InMemoryChannelRegistry();
+        registry.Add(new ChannelSession(0, "#spec_5", "topic", 0, 0, false, instance: true));
+
+        registry.Remove("#spec_5");
+
+        Assert.Null(registry.GetByName("#spec_5"));
     }
 }

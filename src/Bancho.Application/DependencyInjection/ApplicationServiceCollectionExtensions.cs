@@ -5,6 +5,7 @@ using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Application.UseCases.Scores;
+using Bancho.Application.UseCases.Spectating;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -27,6 +28,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<DirectSearchService>();
         services.AddSingleton<ScoreSubmissionUseCase>();
         services.AddSingleton<ReplayService>();
+        services.AddSingleton<ChannelMembershipService>();
+        services.AddSingleton<SpectatorService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
@@ -44,6 +47,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, FriendAddHandler>();
         services.AddSingleton<IBanchoPacketHandler, FriendRemoveHandler>();
         services.AddSingleton<IBanchoPacketHandler, ToggleBlockNonFriendDmsHandler>();
+        services.AddSingleton<IBanchoPacketHandler, StartSpectatingHandler>();
+        services.AddSingleton<IBanchoPacketHandler, StopSpectatingHandler>();
+        services.AddSingleton<IBanchoPacketHandler, SpectateFramesHandler>();
+        services.AddSingleton<IBanchoPacketHandler, CantSpectateHandler>();
 
         services.AddSingleton<ICommand, HelpCommand>();
         services.AddSingleton<ICommand, RollCommand>();

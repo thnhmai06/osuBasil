@@ -52,4 +52,36 @@ public class ChannelSessionTests
         Assert.Equal(1, channel.PlayerCount);
         Assert.False(channel.Contains(1));
     }
+
+    [Fact]
+    public void DisplayName_DefaultsToName()
+    {
+        var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+
+        Assert.Equal("#osu", channel.DisplayName);
+    }
+
+    [Fact]
+    public void DisplayName_CanDifferFromRegistryName()
+    {
+        var channel = new ChannelSession(0, "#spec_5", "topic", 0, 0, false, displayName: "#spectator", instance: true);
+
+        Assert.Equal("#spec_5", channel.Name);
+        Assert.Equal("#spectator", channel.DisplayName);
+        Assert.True(channel.Instance);
+    }
+
+    [Fact]
+    public void MemberIds_ReflectsJoinsAndParts()
+    {
+        var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+        channel.Join(1);
+        channel.Join(2);
+
+        Assert.Equal(new[] { 1, 2 }, channel.MemberIds.OrderBy(id => id));
+
+        channel.Part(1);
+
+        Assert.Equal([2], channel.MemberIds);
+    }
 }

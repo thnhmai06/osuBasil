@@ -18,6 +18,10 @@ public sealed class InMemoryChannelRegistry : IChannelRegistry
         }
     }
 
+    public void Add(ChannelSession channel) => _byName[channel.Name] = channel;
+
+    public void Remove(string name) => _byName.TryRemove(name, out _);
+
     public ChannelSession? GetByName(string name) => _byName.GetValueOrDefault(name);
 
     public IReadOnlyList<ChannelSession> AutoJoinChannels =>

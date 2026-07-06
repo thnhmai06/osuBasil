@@ -1,4 +1,5 @@
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using NSubstitute;
 
@@ -14,8 +15,9 @@ public class PlayerLogoutServiceTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+    private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
 
-    private PlayerLogoutService MakeService() => new(_sessionRegistry, _channelRegistry);
+    private PlayerLogoutService MakeService() => new(_sessionRegistry, _channelRegistry, _spectatorService);
 
     [Fact]
     public void Logout_RemovesFromSessionRegistry()
@@ -64,5 +66,19 @@ public class PlayerLogoutServiceTests
         MakeService().Logout(player);
 
         Assert.Empty(other.Dequeue());
+    }
+
+    [Fact]
+    public void Logout_WhileSpectating_StopsSpectatingAndClearsHostSpectatorList()
+    {
+        var host = new PlayerSession(2, "host", "host-token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        host.AddSpectator(player);
+        player.Spectating = host;
+
+        MakeService().Logout(player);
+
+        Assert.Null(player.Spectating);
+        Assert.DoesNotContain(player, host.Spectators);
     }
 }

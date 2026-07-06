@@ -1,6 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using Bancho.Protocol;
 using NSubstitute;
@@ -18,7 +19,8 @@ public class LogoutHandlerTests
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
-    private LogoutHandler MakeHandler() => new(new PlayerLogoutService(_sessionRegistry, _channelRegistry), _clock);
+    private LogoutHandler MakeHandler() => new(new PlayerLogoutService(
+        _sessionRegistry, _channelRegistry, new SpectatorService(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))), _clock);
 
     [Fact]
     public async Task Handle_WithinOneSecondOfLogin_Ignored()

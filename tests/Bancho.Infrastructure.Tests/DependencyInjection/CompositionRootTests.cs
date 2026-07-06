@@ -4,6 +4,7 @@ using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Scores;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,7 +63,7 @@ public class CompositionRootTests : IAsyncLifetime
     public void ResolvesBanchoPacketDispatcherWithAllHandlers()
     {
         Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-        Assert.Equal(16, _provider.GetServices<IBanchoPacketHandler>().Count());
+        Assert.Equal(20, _provider.GetServices<IBanchoPacketHandler>().Count());
     }
 
     [Fact]
@@ -90,5 +91,12 @@ public class CompositionRootTests : IAsyncLifetime
     public void ResolvesScoreDecryptor()
     {
         Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
+    }
+
+    [Fact]
+    public void ResolvesSpectatorServiceAndChannelMembershipService()
+    {
+        Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
+        Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
     }
 }

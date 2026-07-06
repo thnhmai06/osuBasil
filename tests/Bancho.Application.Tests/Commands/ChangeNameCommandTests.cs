@@ -2,6 +2,7 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.Commands;
 using Bancho.Application.Configuration;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using Bancho.Protocol;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,10 @@ public class ChangeNameCommandTests
     });
 
     private ChangeNameCommand MakeCommand() =>
-        new(_users, new PlayerLogoutService(_sessionRegistry, _channelRegistry), _registrationOptions);
+        new(_users, new PlayerLogoutService(_sessionRegistry, _channelRegistry, MakeSpectatorService()), _registrationOptions);
+
+    private static SpectatorService MakeSpectatorService() =>
+        new(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
 
     private static CommandContext MakeContext(PlayerSession player, params string[] args) => new(player, args, null, null);
 

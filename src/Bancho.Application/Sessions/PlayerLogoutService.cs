@@ -1,3 +1,4 @@
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Protocol;
 
 namespace Bancho.Application.Sessions;
@@ -6,11 +7,18 @@ namespace Bancho.Application.Sessions;
 /// Ported from Player.logout, minus the LOGOUT packet's 1-second login-grace-period check (which
 /// stays in LogoutHandler since it's specific to that packet, not part of "logout" semantics).
 /// Shared with !reconnect, which forces the same cleanup on a session outside of that packet.
+/// Match cleanup (`if self.match: self.leave_match()`) lands with MatchSession in a later Phase 7
+/// commit — not yet present, so not ported here either.
 /// </summary>
-public sealed class PlayerLogoutService(IPlayerSessionRegistry sessionRegistry, IChannelRegistry channelRegistry)
+public sealed class PlayerLogoutService(IPlayerSessionRegistry sessionRegistry, IChannelRegistry channelRegistry, SpectatorService spectatorService)
 {
     public void Logout(PlayerSession player)
     {
+        if (player.Spectating is { } host)
+        {
+            spectatorService.RemoveSpectator(host, player);
+        }
+
         foreach (var channelName in player.Channels.ToArray())
         {
             var channel = channelRegistry.GetByName(channelName);
