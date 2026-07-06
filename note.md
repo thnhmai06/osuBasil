@@ -65,6 +65,24 @@ Sau khi ghi note trên, tôi tiếp tục làm luôn mục 1 (refactor `ChannelS
 
 **Đã commit riêng** (không gộp với phần MatchSession sau này — xem lịch sử git để biết hash chính xác).
 
-## Việc CÒN LẠI cho Phase 7 (chưa bắt đầu)
+## CẬP NHẬT (2026-07-07): fix transaction Phase 6 đã commit (`7b5a2f9`), đổi thiết kế đồng bộ Phase 7
 
-`MatchSession` core + race test → 22 match packet → `!mp`/`!pool` → HTML pages. Đây là phần rủi ro cao nhất, cần phiên làm việc riêng, tập trung — không nên vội. Khi bắt đầu, nhớ: viết race test cho cơ chế đồng bộ TRƯỚC, port packet handler SAU.
+Theo yêu cầu, đã bọc transaction thật cho score submission persistence (mục 3 ở trên, giờ đã ĐÃ FIX — xem dòng đó). Commit riêng, không gộp với Phase 7.
+
+**Hỏi lại advisor trước khi viết `MatchSession`**: advisor phản bác ý tưởng "actor-per-match" ghi trong plan file trước đó — cho rằng quá nặng máy (background Task/message type/result correlation) so với kiến trúc handler đồng bộ hiện có. Câu hỏi phân định: có handler nào cần giữ exclusivity qua một `await` không? KHÔNG — toàn bộ handler quản lý slot (create/join/part/change-slot/ready/lock/settings/mods/team/transfer/start/no-map/has-map/not-ready/failed/skip) là mutate đồng bộ + broadcast. Nên **đổi sang 1 `SemaphoreSlim(1,1)` per-match** (property `MatchSession.Lock`), giữ trong lock suốt "đọc state → mutate slot → serialize update_match → enqueue broadcast → release". Ngoại lệ duy nhất `await_submissions` (poll 10s) thuộc slice scoring sau, không giữ lock qua await đó — không ảnh hưởng slice hiện tại. Đã cập nhật plan file phản ánh đổi ý này (trước đó ghi actor-per-match).
+
+**Đã làm xong (commit 2/5 theo thứ tự advisor đề ra: race test → registry → state model)**:
+- `Bancho.Application.Sessions.MatchSlot` — port `Slot` (PlayerId/Status/Team/Mods/Loaded/Skipped + Empty/CopyFrom/Reset).
+- `Bancho.Application.Sessions.MatchSession` — port `Match` (không gồm scrim/tourney-scoring/timer fields — để dành slice sau khi cần), có sẵn `Lock` (SemaphoreSlim), `GetSlot`/`GetSlotId`/`GetFreeSlotId`/`GetHostSlot`/`UnreadyPlayers`/`ResetPlayersLoadedStatus`, referee set (`IsReferee` = host hoặc trong `_referees`, port `Match.refs`), tourney-client set. `SlotStatus`/`MatchTeams`/`MatchWinConditions`/`MatchTeamTypes` đã có sẵn trong Domain từ trước (scaffold đi trước nhu cầu, giống Protocol layer) — không cần tạo lại.
+- `IMatchRegistry`/`InMemoryMatchRegistry` — port `Matches` collection (bảng cố định 64 slot, `TryCreate` tìm slot trống + đăng ký atomic dưới 1 lock cấp registry — khác với lock cấp match của `MatchSession.Lock`, đây là 2 tầng lock riêng biệt: registry lock bảo vệ việc cấp phát id, match lock bảo vệ mutate slot của 1 match cụ thể).
+- **Race test** (`MatchSessionRaceTests.cs`) — 2 test chứng minh cả hai chiều: (1) `UnsynchronizedFreeSlotLookup_CanLoseAPlayerToADoubleAssignment` tái tạo đúng race `get_free()+occupy` không atomic bằng cách chèn `Task.Delay` giữa đọc và ghi KHÔNG qua lock, xác nhận race THẬT xảy ra (1 player bị ghi đè mất); (2) `ConcurrentJoins_UnderLock_*` 16-20 thread join đồng thời qua `match.Lock`, xác nhận không bao giờ trùng slot và đúng số lượng join thành công/từ chối. Chạy lại 3 lần liên tiếp không flaky.
+- DI: đăng ký `IMatchRegistry` singleton, thêm test `CompositionRootTests.ResolvesMatchRegistryAsASharedSingleton`.
+- Test: Application 291 (+16), Infrastructure +9 (registry) — toàn bộ xanh, `dotnet build` cả solution sạch, `ArchitectureTests` 9/9 xanh (không vi phạm ranh giới layer).
+
+**CHƯA COMMIT tại thời điểm ghi note này** — đang chờ full `Infrastructure.Tests` chạy nền (Testcontainers) làm baseline regression trước khi commit 2/5.
+
+## Việc CÒN LẠI cho Phase 7
+
+Sau khi commit `MatchSession` core, tiếp tục commit 3/5: port ~18 packet quản lý slot trước (CREATE_MATCH, JOIN_MATCH, PART_MATCH, MATCH_CHANGE_SLOT, MATCH_READY, MATCH_LOCK, MATCH_CHANGE_SETTINGS, MATCH_CHANGE_MODS, MATCH_CHANGE_TEAM, MATCH_TRANSFER_HOST, MATCH_START, MATCH_LOAD_COMPLETE, MATCH_NO_BEATMAP, MATCH_NOT_READY, MATCH_FAILED, MATCH_HAS_BEATMAP, MATCH_SKIP_REQUEST, MATCH_CHANGE_PASSWORD, MATCH_SCORE_UPDATE — cái cuối chỉ forward raw byte, không phụ thuộc scoring) trên nền `MatchSession.Lock`, kèm `#multi_{id}` instance channel (tái dùng `ChannelMembershipService`/`IChannelRegistry.Add` đã có từ spectator). Đã đọc toàn bộ handler body tương ứng trong `cho.py` (dòng 1358-2171) + `Player.join_match`/`leave_match` trong `player.py` (dòng 577-687) — đủ hiểu để port, không cần đọc lại.
+
+**Cố ý HOÃN sang commit sau** (không phải bỏ): MATCH_COMPLETE (cần tách phần slot-management ra khỏi phần `update_matchpoints`/scrim scoring), MATCH_INVITE, 3 packet tourney (`TOURNAMENT_MATCH_INFO_REQUEST`/`JOIN_MATCH_CHANNEL`/`LEAVE_MATCH_CHANNEL`), rồi `!mp`/`!pool` (25 lệnh), rồi HTML pages `/matches`/`/online`. `MatchSession` cố ý CHƯA có field scrim (`match_points`/`bans`/`winners`/`winning_pts`/`use_pp_scoring`) và timer (`starting`) — thêm khi tới slice cần.

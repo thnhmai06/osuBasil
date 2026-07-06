@@ -105,4 +105,12 @@ public class CompositionRootTests : IAsyncLifetime
         Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
         Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
     }
+
+    [Fact]
+    public void ResolvesMatchRegistryAsASharedSingleton()
+    {
+        var registry1 = _provider.GetRequiredService<IMatchRegistry>();
+        var registry2 = _provider.GetRequiredService<IMatchRegistry>();
+        Assert.Same(registry1, registry2);
+    }
 }

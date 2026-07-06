@@ -67,6 +67,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
         services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
+        services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 
         return services;
     }
