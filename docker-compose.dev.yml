@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_USER: bancho
+      MYSQL_PASSWORD: bancho
+      MYSQL_DATABASE: bancho
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+    ports:
+      - "3306:3306"
+    volumes:
+      - bancho-net-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: '/usr/bin/mysql --user=bancho --password=bancho --execute "SHOW DATABASES;"'
+      interval: 2s
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7.4
+    ports:
+      - "6379:6379"
+    volumes:
+      - bancho-net-redis-data:/data
+
+volumes:
+  bancho-net-mysql-data:
+  bancho-net-redis-data:

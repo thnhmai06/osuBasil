@@ -1,0 +1,25 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+
+## Rider / VS
+.vs/
+.idea/
+*.DotSettings.user
+
+## Test results
+TestResults/
+*.trx
+
+## Rust
+native/*/target/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Local env
+.env
+*.pfx

@@ -1,0 +1,22 @@
+using Bancho.Application.PacketHandlers;
+using Bancho.Application.Sessions;
+using Bancho.Domain;
+using Bancho.Protocol;
+
+namespace Bancho.Application.Tests.PacketHandlers;
+
+/// <summary>Ported from app/api/domains/cho.py's SetAwayMessage.</summary>
+public class SetAwayMessageHandlerTests
+{
+    [Fact]
+    public void Handle_SetsAwayMessageFromMessageText()
+    {
+        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var payload = ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)[7..]; // strip packet header, keep message payload
+        var reader = new BanchoPacketReader(payload);
+
+        new SetAwayMessageHandler().Handle(session, reader);
+
+        Assert.Equal("gone fishing", session.AwayMessage);
+    }
+}
