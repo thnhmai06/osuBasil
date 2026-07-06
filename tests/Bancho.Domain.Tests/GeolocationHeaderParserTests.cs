@@ -2,8 +2,8 @@ namespace Bancho.Domain.Tests;
 
 /// <summary>
 /// Ported from app/state/services.py's fetch_geoloc header path (Cloudflare headers, falling
-/// back to nginx headers). The ip-api HTTP fallback lives behind IGeolocationProvider
-/// (Bancho.Application) since it requires network I/O — this covers only the pure header parsing.
+/// back to nginx headers). bancho-net has no ip-api HTTP fallback (runs fully offline) — this
+/// covers only the pure header parsing.
 /// </summary>
 public class GeolocationHeaderParserTests
 {

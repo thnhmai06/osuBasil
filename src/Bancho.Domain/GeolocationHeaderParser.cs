@@ -4,8 +4,9 @@ namespace Bancho.Domain;
 
 /// <summary>
 /// Ported from app/state/services.py's _fetch_geoloc_from_headers (Cloudflare headers, falling
-/// back to nginx headers). The ip-api HTTP fallback lives behind IGeolocationProvider
-/// (Bancho.Application) since it requires network I/O.
+/// back to nginx headers). bancho.py falls back further to an ip-api.com HTTP lookup when neither
+/// header set is present; bancho-net runs fully offline, so OsuLoginUseCase instead falls back to
+/// the country already stored on the user's account.
 /// </summary>
 public static class GeolocationHeaderParser
 {

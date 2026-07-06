@@ -28,17 +28,14 @@ public class OsuLoginUseCaseTests
     private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
     private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
-    private readonly IGeolocationProvider _geolocationProvider = Substitute.For<IGeolocationProvider>();
     private readonly ILeaderboardStore _leaderboardStore = Substitute.For<ILeaderboardStore>();
-    private readonly IOsuVersionAllowlistProvider _versionAllowlist = Substitute.For<IOsuVersionAllowlistProvider>();
     private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
-    private OsuLoginUseCase MakeUseCase(bool disallowOldClients = false) => new(
+    private OsuLoginUseCase MakeUseCase() => new(
         _users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
-        _mail, _relationships, _passwordHasher, _geolocationProvider, _leaderboardStore,
-        _versionAllowlist, _tokenGenerator, _clock,
-        Options.Create(new RegistrationOptions { DisallowOldClients = disallowOldClients }),
+        _mail, _relationships, _passwordHasher, _leaderboardStore,
+        _tokenGenerator, _clock,
         Options.Create(new ServerBehaviorOptions
         {
             Domain = "test.local", CommandPrefix = "!", MenuIconUrl = "https://a/i.png", MenuOnclickUrl = "https://a",
@@ -72,39 +69,6 @@ public class OsuLoginUseCaseTests
             ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
             ServerPacketWriter.Notification("Please restart your osu! and try again."));
         Assert.Equal(expected, result.ResponseBody);
-    }
-
-    [Fact]
-    public async Task DisallowOldClients_VersionNotInAllowlist_ReturnsClientTooOld()
-    {
-        _versionAllowlist.GetAllowedVersionsAsync(OsuStream.Stable, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<DateOnly>?)new HashSet<DateOnly> { new(2024, 1, 1) });
-        var useCase = MakeUseCase(disallowOldClients: true);
-        var request = new OsuLoginRequest(LoginBody(osuVersion: "b20200101"), new Dictionary<string, string>(), IPAddress.Loopback);
-
-        var result = await useCase.ExecuteAsync(request);
-
-        Assert.Equal("client-too-old", result.OsuToken);
-        var expected = Concat(
-            ServerPacketWriter.VersionUpdate(),
-            ServerPacketWriter.LoginReply((int)LoginFailureReason.OldClient));
-        Assert.Equal(expected, result.ResponseBody);
-    }
-
-    [Fact]
-    public async Task DisallowOldClients_AllowlistFetchFails_AllowsConnectionThrough()
-    {
-        // osu!api unreachable -> null allowlist -> bancho.py allows the client through rather
-        // than blocking legitimate players due to an outage. Proven here by observing it does
-        // NOT stop at "client-too-old" — it proceeds to the next validation (adapters) instead.
-        _versionAllowlist.GetAllowedVersionsAsync(Arg.Any<OsuStream>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<DateOnly>?)null);
-        var useCase = MakeUseCase(disallowOldClients: true);
-        var request = new OsuLoginRequest(LoginBody(osuVersion: "b20200101", adapters: "no-trailing-dot"), new Dictionary<string, string>(), IPAddress.Loopback);
-
-        var result = await useCase.ExecuteAsync(request);
-
-        Assert.Equal("invalid-adapters", result.OsuToken);
     }
 
     [Fact]
@@ -221,24 +185,23 @@ public class OsuLoginUseCaseTests
     }
 
     [Fact]
-    public async Task GeolocationFails_ReturnsLoginFailed()
+    public async Task NoGeolocationHeaders_FallsBackToStoredCountry()
     {
-        var user = MakeUser(id: 10, priv: (int)Privileges.Unrestricted);
-        _users.FetchByNameAsync("cmyui").Returns(user);
-        _users.FetchPasswordHashAsync(10).Returns("stored-hash");
-        _passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
-        _geolocationProvider.FetchByIpAsync(Arg.Any<IPAddress>(), Arg.Any<CancellationToken>())
-            .Returns((Geolocation?)null);
+        // No CF-IPCountry/X-Country-Code headers and no network geolocation lookup (offline
+        // server) — the session's geoloc comes from the user's already-stored country instead.
+        SetUpHappyPath(out var user, priv: (int)(Privileges.Unrestricted | Privileges.Verified), country: "jp");
+
+        PlayerSession? captured = null;
+        _sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
+
         var useCase = MakeUseCase();
         var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+        await useCase.ExecuteAsync(request);
 
-        var result = await useCase.ExecuteAsync(request);
-
-        Assert.Equal("login-failed", result.OsuToken);
-        var expected = Concat(
-            ServerPacketWriter.Notification("test.local: Login failed. Please contact an admin."),
-            ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
-        Assert.Equal(expected, result.ResponseBody);
+        Assert.NotNull(captured);
+        Assert.Equal("jp", captured!.Geoloc.CountryAcronym);
+        Assert.Equal(0.0, captured.Geoloc.Latitude);
+        Assert.Equal(0.0, captured.Geoloc.Longitude);
     }
 
     [Fact]
@@ -369,12 +332,19 @@ public class OsuLoginUseCaseTests
     }
 
     [Fact]
-    public async Task DbCountryXx_TriggersCountryUpdate()
+    public async Task DbCountryXx_HeaderGeolocationDiffers_TriggersCountryUpdate()
     {
+        // Only a header-supplied geoloc (Cloudflare/nginx) can differ from the stored country now
+        // that there's no network geolocation fallback — the DB-fallback path (no headers) always
+        // resolves to the stored country itself, so it can never trigger this update.
         SetUpHappyPath(out var user, priv: (int)(Privileges.Unrestricted | Privileges.Verified), country: "xx");
+        var headers = new Dictionary<string, string>
+        {
+            ["CF-IPCountry"] = "US", ["CF-IPLatitude"] = "37.7749", ["CF-IPLongitude"] = "-122.4194",
+        };
 
         var useCase = MakeUseCase();
-        var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+        var request = new OsuLoginRequest(LoginBody(), headers, IPAddress.Loopback);
 
         await useCase.ExecuteAsync(request);
 
@@ -389,8 +359,6 @@ public class OsuLoginUseCaseTests
         _passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
         _clientHashes.FetchAnyHardwareMatchesForUserAsync(userId, false, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _geolocationProvider.FetchByIpAsync(Arg.Any<IPAddress>(), Arg.Any<CancellationToken>())
-            .Returns(new Geolocation(37.7749, -122.4194, "us", 225));
         _channelRegistry.AutoJoinChannels.Returns([]);
         _sessionRegistry.All.Returns([]);
         _stats.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);

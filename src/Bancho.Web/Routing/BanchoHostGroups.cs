@@ -1,10 +1,15 @@
+using System.Text;
 using Bancho.Application.Abstractions;
+using Bancho.Application.Configuration;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
+using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain;
 using Bancho.Protocol;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Bancho.Web.Routing;
 
@@ -104,8 +109,127 @@ public static class BanchoHostGroups
         });
     }
 
-    private static void MapOsuWebGroup(this RouteGroupBuilder group) =>
+    private static void MapOsuWebGroup(this RouteGroupBuilder group)
+    {
         group.MapGet("/", () => "osu");
+
+        // Ported from app/api/domains/osu.py's getScores. "s" (requesting_from_editor_song_select)
+        // is bound as int (client sends a plain 0/1 flag, not "true"/"false") to avoid ASP.NET
+        // Core's stricter bool query-string parsing. map_set_id/aqn_files_found are intentionally
+        // not bound — see BeatmapLeaderboardRequest's doc comment for why they're out of scope.
+        group.MapGet("/web/osu-osz2-getscores.php", async (
+            [FromQuery(Name = "us")] string username,
+            [FromQuery(Name = "ha")] string ha,
+            [FromQuery(Name = "s")] int s,
+            [FromQuery(Name = "v")] int v,
+            [FromQuery(Name = "c")] string c,
+            [FromQuery(Name = "f")] string f,
+            [FromQuery(Name = "m")] int m,
+            [FromQuery(Name = "mods")] int mods,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            var player = await authentication.AuthenticateOnlinePlayerAsync(username, ha, cancellationToken);
+            if (player is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var leaderboardService = context.RequestServices.GetRequiredService<BeatmapLeaderboardService>();
+            var request = new BeatmapLeaderboardRequest(s != 0, (LeaderboardType)v, c, f, m, mods);
+            var result = await leaderboardService.FetchLeaderboardAsync(player, request, cancellationToken);
+
+            var body = result.Code switch
+            {
+                BeatmapLeaderboardResultCode.NotSubmitted => GetScoresResponseFormatter.NotSubmitted,
+                BeatmapLeaderboardResultCode.NeedsUpdate => GetScoresResponseFormatter.NeedsUpdate,
+                BeatmapLeaderboardResultCode.NoLeaderboard => GetScoresResponseFormatter.NoLeaderboard(result.RankedStatus!.Value),
+                _ => GetScoresResponseFormatter.Found(result),
+            };
+
+            return Results.Text(body, "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's osuSearchHandler, replumbed to query the local
+        // maps table instead of proxying a mirror API — runs fully offline now.
+        group.MapGet("/web/osu-search.php", async (
+            [FromQuery(Name = "u")] string username,
+            [FromQuery(Name = "h")] string passwordMd5,
+            [FromQuery(Name = "r")] int rankedStatus,
+            [FromQuery(Name = "q")] string query,
+            [FromQuery(Name = "m")] int mode,
+            [FromQuery(Name = "p")] int pageNum,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            if (await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken) is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var searchService = context.RequestServices.GetRequiredService<DirectSearchService>();
+            var request = new DirectSearchRequest(query, mode, rankedStatus, pageNum);
+            var beatmapSets = await searchService.SearchAsync(request, cancellationToken);
+
+            return Results.Text(DirectSearchResponseFormatter.Format(beatmapSets), "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's osuSearchSetHandler. "s"/"b"/"c" are all optional —
+        // exactly one is expected per request, matching the Python source's if/elif/elif/else.
+        group.MapGet("/web/osu-search-set.php", async (
+            [FromQuery(Name = "u")] string username,
+            [FromQuery(Name = "h")] string passwordMd5,
+            [FromQuery(Name = "s")] int? mapSetId,
+            [FromQuery(Name = "b")] int? mapId,
+            [FromQuery(Name = "c")] string? checksum,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            if (await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken) is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            if (mapSetId is null && mapId is null && checksum is null)
+            {
+                return Results.Text("", "text/html", Encoding.UTF8);
+            }
+
+            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+            var bmapSet = await maps.FetchOneAsync(id: mapId, md5: checksum, setId: mapSetId, cancellationToken: cancellationToken);
+
+            return Results.Text(DirectSearchResponseFormatter.FormatSet(bmapSet), "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's get_osz. bancho.py always redirects to
+        // MIRROR_DOWNLOAD_ENDPOINT (a real internet host); this server has no local .osz storage
+        // and no internet default, so an unconfigured DownloadEndpoint reports the download as
+        // unavailable instead of reaching out anywhere.
+        group.MapGet("/d/{mapSetId}", (string mapSetId, HttpContext context) =>
+        {
+            var mirrorOptions = context.RequestServices.GetRequiredService<IOptions<MirrorOptions>>().Value;
+            if (string.IsNullOrEmpty(mirrorOptions.DownloadEndpoint))
+            {
+                return Results.Text("Beatmap downloads are not available on this server.", "text/html", Encoding.UTF8);
+            }
+
+            var noVideo = mapSetId.EndsWith('n');
+            var setId = noVideo ? mapSetId[..^1] : mapSetId;
+            var query = $"{setId}?n={(noVideo ? 0 : 1)}";
+
+            return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", permanent: true);
+        });
+
+        // Ported from app/api/domains/osu.py's get_updated_beatmap. bancho.py redirects to the
+        // real osu.ppy.sh in the non-devserver-host case; this server has no local .osu file
+        // storage and no internet default, so it always reports unavailability instead — even the
+        // real-osu.ppy.sh redirect fallback is dropped, not just the devserver-host special case.
+        group.MapGet("/web/maps/{mapFilename}", () =>
+            Results.Text("Beatmap file updates are not available on this server.", "text/html", Encoding.UTF8));
+    }
 
     private static void MapBeatmapAssetGroup(this RouteGroupBuilder group) =>
         group.MapGet("/", () => "map");

@@ -25,12 +25,9 @@ public sealed class OsuLoginUseCase(
     IMailRepository mail,
     IRelationshipRepository relationships,
     IPasswordHasher passwordHasher,
-    IGeolocationProvider geolocationProvider,
     ILeaderboardStore leaderboardStore,
-    IOsuVersionAllowlistProvider versionAllowlist,
     ITokenGenerator tokenGenerator,
     IClock clock,
-    IOptions<RegistrationOptions> registrationOptions,
     IOptions<ServerBehaviorOptions> serverOptions,
     IOptions<DiscordOptions> discordOptions)
 {
@@ -42,23 +39,11 @@ public sealed class OsuLoginUseCase(
     public async Task<OsuLoginResult> ExecuteAsync(OsuLoginRequest request, CancellationToken cancellationToken = default)
     {
         var loginData = LoginDataParser.Parse(request.Body);
-        var domain = serverOptions.Value.Domain;
 
         var osuVersion = OsuVersionParser.Parse(loginData.OsuVersion);
         if (osuVersion is null)
         {
             return InvalidRequestFailure();
-        }
-
-        if (registrationOptions.Value.DisallowOldClients)
-        {
-            var allowedVersions = await versionAllowlist.GetAllowedVersionsAsync(osuVersion.Stream, cancellationToken);
-            if (allowedVersions is not null && !allowedVersions.Contains(osuVersion.Date))
-            {
-                return new OsuLoginResult("client-too-old", Concat(
-                    ServerPacketWriter.VersionUpdate(),
-                    ServerPacketWriter.LoginReply((int)LoginFailureReason.OldClient)));
-            }
         }
 
         IReadOnlyList<string> adapters;
@@ -134,13 +119,7 @@ public sealed class OsuLoginUseCase(
 
         /* all checks passed, player is safe to login */
 
-        var geoloc = GeolocationHeaderParser.TryParse(request.Headers) ?? await geolocationProvider.FetchByIpAsync(request.Ip, cancellationToken);
-        if (geoloc is null)
-        {
-            return new OsuLoginResult("login-failed", Concat(
-                ServerPacketWriter.Notification($"{domain}: Login failed. Please contact an admin."),
-                ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
-        }
+        var geoloc = GeolocationHeaderParser.TryParse(request.Headers) ?? GeolocationFromCountry(user.Country);
 
         if (user.Country == "xx")
         {
@@ -281,6 +260,16 @@ public sealed class OsuLoginUseCase(
 
     private static bool HasPriv(int priv, Privileges required1, Privileges required2) =>
         (priv & (int)required1) != 0 && (priv & (int)required2) != 0;
+
+    // No network geolocation lookup — this server runs fully offline, so the fallback (when no
+    // Cloudflare/nginx headers are present) is the country already stored at registration, with
+    // lat/long left at 0.0 (matching Geolocation's own unresolved default).
+    private static Geolocation GeolocationFromCountry(string country)
+    {
+        var acronym = country.ToLowerInvariant();
+        var numeric = CountryCodes.ByAcronym.GetValueOrDefault(acronym, CountryCodes.ByAcronym["xx"]);
+        return new Geolocation(0.0, 0.0, acronym, numeric);
+    }
 
     private byte[] WelcomeNotification() =>
         ServerPacketWriter.Notification($"Welcome back to {serverOptions.Value.Domain}!\nRunning bancho-net.");

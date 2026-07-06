@@ -1,7 +1,6 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Configuration;
 using Bancho.Application.Sessions;
-using Bancho.Infrastructure.External;
 using Bancho.Infrastructure.Persistence;
 using Bancho.Infrastructure.Redis;
 using Bancho.Infrastructure.Security;
@@ -26,6 +25,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.SectionName));
         services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
+        services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
 
         static string BuildConnectionString(IServiceProvider sp) =>
             DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
@@ -50,6 +50,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IChannelRepository>(sp => new MySqlChannelRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMailRepository>(sp => new MySqlMailRepository(BuildConnectionString(sp)));
         services.AddSingleton<IRelationshipRepository>(sp => new MySqlRelationshipRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMapRepository>(sp => new MySqlMapRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IRatingRepository>(sp => new MySqlRatingRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IScoreRepository>(sp => new MySqlScoreRepository(BuildConnectionString(sp)));
 
         services.AddSingleton<ILeaderboardStore, RedisLeaderboardStore>();
         services.AddSingleton<IWebSessionStore, RedisWebSessionStore>();
@@ -57,9 +60,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
         services.AddSingleton<IClock, SystemClock>();
-
-        services.AddHttpClient<IGeolocationProvider, IpApiGeolocationProvider>();
-        services.AddHttpClient<IOsuVersionAllowlistProvider, OsuApiChangelogProvider>();
 
         services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
         services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();

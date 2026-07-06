@@ -96,16 +96,22 @@ public class OptionsBindingTests
     }
 
     [Fact]
-    public void MirrorOptions_Binds_Endpoints()
+    public void MirrorOptions_Binds_DownloadEndpoint()
     {
         var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new()
         {
-            [$"{MirrorOptions.SectionName}:SearchEndpoint"] = "https://catboy.best/api/search",
             [$"{MirrorOptions.SectionName}:DownloadEndpoint"] = "https://catboy.best/d",
         });
 
-        Assert.Equal("https://catboy.best/api/search", options.SearchEndpoint);
         Assert.Equal("https://catboy.best/d", options.DownloadEndpoint);
+    }
+
+    [Fact]
+    public void MirrorOptions_DownloadEndpoint_IsNullByDefault()
+    {
+        var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new());
+
+        Assert.Null(options.DownloadEndpoint);
     }
 
     [Fact]
@@ -185,13 +191,11 @@ public class OptionsBindingTests
             [$"{RegistrationOptions.SectionName}:DisallowedNames:0"] = "admin",
             [$"{RegistrationOptions.SectionName}:DisallowedNames:1"] = "peppy",
             [$"{RegistrationOptions.SectionName}:DisallowedPasswords:0"] = "password",
-            [$"{RegistrationOptions.SectionName}:DisallowOldClients"] = "true",
             [$"{RegistrationOptions.SectionName}:DisallowIngameRegistration"] = "false",
         });
 
         Assert.Equal(["admin", "peppy"], options.DisallowedNames);
         Assert.Equal(["password"], options.DisallowedPasswords);
-        Assert.True(options.DisallowOldClients);
         Assert.False(options.DisallowIngameRegistration);
     }
 

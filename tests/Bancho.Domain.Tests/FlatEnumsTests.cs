@@ -100,4 +100,22 @@ public class FlatEnumsTests
         Assert.Equal(2, (int)MatchTeamTypes.TeamVs);
         Assert.Equal(3, (int)MatchTeamTypes.TagTeamVs);
     }
+
+    [Fact]
+    public void SubmissionStatus_MatchesPythonValues()
+    {
+        Assert.Equal(0, (int)SubmissionStatus.Failed);
+        Assert.Equal(1, (int)SubmissionStatus.Submitted);
+        Assert.Equal(2, (int)SubmissionStatus.Best);
+    }
+
+    [Fact]
+    public void LeaderboardType_MatchesPythonValues()
+    {
+        Assert.Equal(0, (int)LeaderboardType.Local);
+        Assert.Equal(1, (int)LeaderboardType.Top);
+        Assert.Equal(2, (int)LeaderboardType.Mods);
+        Assert.Equal(3, (int)LeaderboardType.Friends);
+        Assert.Equal(4, (int)LeaderboardType.Country);
+    }
 }
