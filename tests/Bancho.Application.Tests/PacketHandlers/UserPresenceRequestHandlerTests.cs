@@ -12,26 +12,26 @@ public class UserPresenceRequestHandlerTests
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     [Fact]
-    public void Handle_KnownTarget_EnqueuesTheirPresence()
+    public async Task Handle_KnownTarget_EnqueuesTheirPresence()
     {
         var self = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var target = new PlayerSession(2, "target", "target-token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.GetById(2).Returns(target);
         var reader = new BanchoPacketReader(PacketWriter.WriteI32List([2]));
 
-        new UserPresenceRequestHandler(_sessionRegistry).Handle(self, reader);
+        await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
         Assert.Equal(ServerPacketWriter.UserPresence(2, "target", 0, 0, (int)ClientPrivileges.Player, 0, 0.0, 0.0, 0), self.Dequeue());
     }
 
     [Fact]
-    public void Handle_UnknownTarget_NothingEnqueued()
+    public async Task Handle_UnknownTarget_NothingEnqueued()
     {
         var self = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.GetById(2).Returns((PlayerSession?)null);
         var reader = new BanchoPacketReader(PacketWriter.WriteI32List([2]));
 
-        new UserPresenceRequestHandler(_sessionRegistry).Handle(self, reader);
+        await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
         Assert.Empty(self.Dequeue());
     }

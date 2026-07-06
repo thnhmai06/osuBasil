@@ -4,17 +4,14 @@ using Bancho.Protocol;
 
 namespace Bancho.Application.PacketHandlers;
 
-/// <summary>
-/// Ported from app/api/domains/cho.py's Logout + Player.logout, scoped to what Phase 3 needs
-/// (match/spectator/channel membership cleanup is added once those subsystems exist).
-/// </summary>
-public sealed class LogoutHandler(IPlayerSessionRegistry sessionRegistry, IClock clock) : IBanchoPacketHandler
+/// <summary>Ported from app/api/domains/cho.py's Logout — the 1-second login-grace-period check plus the shared PlayerLogoutService cleanup.</summary>
+public sealed class LogoutHandler(PlayerLogoutService logoutService, IClock clock) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.Logout;
 
     public bool AllowedWhenRestricted => true;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         reader.ReadI32(); // reserved
 
@@ -22,17 +19,11 @@ public sealed class LogoutHandler(IPlayerSessionRegistry sessionRegistry, IClock
         // block any logout request within 1 second from login.
         if (clock.UtcNow.ToUnixTimeSeconds() - player.LoginTime < 1)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        sessionRegistry.Remove(player);
+        logoutService.Logout(player);
 
-        if (!player.Restricted)
-        {
-            foreach (var other in sessionRegistry.All)
-            {
-                other.Enqueue(ServerPacketWriter.Logout(player.Id));
-            }
-        }
+        return Task.CompletedTask;
     }
 }

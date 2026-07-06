@@ -12,7 +12,7 @@ public class UserPresenceRequestAllHandlerTests
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     [Fact]
-    public void Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
+    public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
     {
         var self = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var unrestrictedOther = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
@@ -20,7 +20,7 @@ public class UserPresenceRequestAllHandlerTests
         _sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
         var reader = new BanchoPacketReader(PacketWriter.WriteInt32(0));
 
-        new UserPresenceRequestAllHandler(_sessionRegistry).Handle(self, reader);
+        await new UserPresenceRequestAllHandler(_sessionRegistry).HandleAsync(self, reader);
 
         var expected = ServerPacketWriter.UserPresence(1, "cmyui", 0, 0, (int)ClientPrivileges.Player, 0, 0.0, 0.0, 0)
             .Concat(ServerPacketWriter.UserPresence(2, "other", 0, 0, (int)ClientPrivileges.Player, 0, 0.0, 0.0, 0))

@@ -14,24 +14,24 @@ public class ReceiveUpdatesHandlerTests
     [InlineData(0, PresenceFilter.Nil)]
     [InlineData(1, PresenceFilter.All)]
     [InlineData(2, PresenceFilter.Friends)]
-    public void Handle_ValidValue_UpdatesPresenceFilter(int value, PresenceFilter expected)
+    public async Task Handle_ValidValue_UpdatesPresenceFilter(int value, PresenceFilter expected)
     {
         var session = MakeSession();
         var reader = new BanchoPacketReader(PacketWriter.WriteInt32(value));
 
-        new ReceiveUpdatesHandler().Handle(session, reader);
+        await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 
         Assert.Equal(expected, session.PresenceFilter);
     }
 
     [Fact]
-    public void Handle_OutOfRangeValue_IgnoredKeepingPreviousFilter()
+    public async Task Handle_OutOfRangeValue_IgnoredKeepingPreviousFilter()
     {
         var session = MakeSession();
         session.PresenceFilter = PresenceFilter.Friends;
         var reader = new BanchoPacketReader(PacketWriter.WriteInt32(99));
 
-        new ReceiveUpdatesHandler().Handle(session, reader);
+        await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 
         Assert.Equal(PresenceFilter.Friends, session.PresenceFilter);
     }

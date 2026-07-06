@@ -42,5 +42,9 @@ public interface IUserRepository
 
     Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default);
 
+    Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
+
+    Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default);
+
     Task<User> CreateAsync(string name, string email, string pwBcrypt, string country, CancellationToken cancellationToken = default);
 }

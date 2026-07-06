@@ -9,9 +9,10 @@ namespace Bancho.Application.Sessions;
 /// spectating, clan, friends/blocks as loaded sets) is added when the phase that consumes it
 /// lands, matching the fields' actual introduction order in bancho.py's own history.
 /// </summary>
-public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime)
+public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime, bool isBotClient = false)
 {
     private readonly ConcurrentQueue<byte[]> _packetQueue = new();
+    private readonly ConcurrentDictionary<string, byte> _channels = new();
 
     public int Id { get; } = id;
     public string Name { get; } = name;
@@ -20,8 +21,13 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     public double LoginTime { get; } = loginTime;
     public double LastRecvTime { get; set; } = loginTime;
 
+    /// <summary>Ported from Player.is_bot_client — a bot session never accumulates outgoing packets.</summary>
+    public bool IsBotClient { get; } = isBotClient;
+
     public int UtcOffset { get; init; }
-    public bool PmPrivate { get; init; }
+
+    /// <summary>Set at login from the client's login body, but mutable at runtime via TOGGLE_BLOCK_NON_FRIEND_DMS.</summary>
+    public bool PmPrivate { get; set; }
     public long SilenceEnd { get; set; }
     public long DonorEnd { get; set; }
     public string? AwayMessage { get; set; }
@@ -84,7 +90,22 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 
     public bool Silenced => RemainingSilence != 0;
 
-    public void Enqueue(byte[] data) => _packetQueue.Enqueue(data);
+    public void Enqueue(byte[] data)
+    {
+        if (!IsBotClient)
+        {
+            _packetQueue.Enqueue(data);
+        }
+    }
+
+    /// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
+    public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
+
+    public void JoinChannel(string name) => _channels[name] = 0;
+
+    public void LeaveChannel(string name) => _channels.TryRemove(name, out _);
+
+    public bool InChannel(string name) => _channels.ContainsKey(name);
 
     /// <summary>Drains and concatenates all queued outgoing packet bytes, clearing the queue.</summary>
     public byte[] Dequeue()

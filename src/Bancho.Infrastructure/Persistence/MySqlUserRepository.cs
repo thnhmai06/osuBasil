@@ -38,12 +38,16 @@ public sealed class MySqlUserRepository(string connectionString) : IUserReposito
             CustomBadgeIcon, UserpageContent, ApiKey);
     }
 
+    // api_key is char(36) — MySqlConnector infers fixed-length char(36) columns as Guid, which
+    // Dapper then fails to convert into the string-typed UserRow.ApiKey property. Cast explicitly
+    // to force the driver to report it as a string.
     private const string SelectColumns = """
         id, name, safe_name AS SafeName, email, priv, country, silence_end AS SilenceEnd,
         donor_end AS DonorEnd, creation_time AS CreationTime, latest_activity AS LatestActivity,
         clan_id AS ClanId, clan_priv AS ClanPriv, preferred_mode AS PreferredMode,
         play_style AS PlayStyle, custom_badge_name AS CustomBadgeName,
-        custom_badge_icon AS CustomBadgeIcon, userpage_content AS UserpageContent, api_key AS ApiKey
+        custom_badge_icon AS CustomBadgeIcon, userpage_content AS UserpageContent,
+        CAST(api_key AS CHAR(36)) AS ApiKey
         """;
 
     // bancho.py's schema uses tinyint(1) for clan_priv (0-3, not a boolean) — MySqlConnector's
@@ -92,6 +96,22 @@ public sealed class MySqlUserRepository(string connectionString) : IUserReposito
         await connection.ExecuteAsync(
             "UPDATE users SET priv = @Priv WHERE id = @Id",
             new { Id = id, Priv = priv });
+    }
+
+    public async Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            "UPDATE users SET name = @Name, safe_name = @SafeName WHERE id = @Id",
+            new { Id = id, Name = name, SafeName = safeName });
+    }
+
+    public async Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            "UPDATE users SET api_key = @ApiKey WHERE id = @Id",
+            new { Id = id, ApiKey = apiKey });
     }
 
     public async Task<User> CreateAsync(string name, string email, string pwBcrypt, string country, CancellationToken cancellationToken = default)

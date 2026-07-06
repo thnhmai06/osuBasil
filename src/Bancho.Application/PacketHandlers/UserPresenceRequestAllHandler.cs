@@ -13,7 +13,7 @@ public sealed class UserPresenceRequestAllHandler(IPlayerSessionRegistry session
 
     public bool AllowedWhenRestricted => false;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         reader.ReadI32(); // ingame_time, unused
 
@@ -24,5 +24,6 @@ public sealed class UserPresenceRequestAllHandler(IPlayerSessionRegistry session
         }
 
         player.Enqueue([.. buffer]);
+        return Task.CompletedTask;
     }
 }

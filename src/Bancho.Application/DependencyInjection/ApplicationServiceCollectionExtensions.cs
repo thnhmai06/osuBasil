@@ -1,5 +1,7 @@
 using Bancho.Application.BackgroundServices;
+using Bancho.Application.Commands;
 using Bancho.Application.PacketHandlers;
+using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +18,7 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddBanchoApplication(this IServiceCollection services)
     {
         services.AddSingleton<OsuLoginUseCase>();
+        services.AddSingleton<PlayerLogoutService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
@@ -26,6 +29,23 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, UserPresenceRequestAllHandler>();
         services.AddSingleton<IBanchoPacketHandler, ReceiveUpdatesHandler>();
         services.AddSingleton<IBanchoPacketHandler, SetAwayMessageHandler>();
+        services.AddSingleton<IBanchoPacketHandler, ChannelJoinHandler>();
+        services.AddSingleton<IBanchoPacketHandler, ChannelPartHandler>();
+        services.AddSingleton<IBanchoPacketHandler, SendPublicMessageHandler>();
+        services.AddSingleton<IBanchoPacketHandler, SendPrivateMessageHandler>();
+        services.AddSingleton<IBanchoPacketHandler, FriendAddHandler>();
+        services.AddSingleton<IBanchoPacketHandler, FriendRemoveHandler>();
+        services.AddSingleton<IBanchoPacketHandler, ToggleBlockNonFriendDmsHandler>();
+
+        services.AddSingleton<ICommand, HelpCommand>();
+        services.AddSingleton<ICommand, RollCommand>();
+        services.AddSingleton<ICommand, BlockCommand>();
+        services.AddSingleton<ICommand, UnblockCommand>();
+        services.AddSingleton<ICommand, ReconnectCommand>();
+        services.AddSingleton<ICommand, ChangeNameCommand>();
+        services.AddSingleton<ICommand, ApiKeyCommand>();
+
+        services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 
         services.AddSingleton<BanchoPacketDispatcher>();
 

@@ -100,4 +100,28 @@ public class MySqlUserRepositoryTests : IClassFixture<MySqlFixture>
         var fetched = await _repository.FetchByNameAsync("fresh player");
         Assert.Equal(created.Id, fetched!.Id);
     }
+
+    [Fact]
+    public async Task UpdateName_PersistsNameAndSafeName()
+    {
+        var created = await _repository.CreateAsync("rename me", "rename-test@example.test", "hash", "xx");
+
+        await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
+
+        var updated = await _repository.FetchByIdAsync(created.Id);
+        Assert.Equal("renamed", updated!.Name);
+        Assert.Equal("renamed", updated.SafeName);
+    }
+
+    [Fact]
+    public async Task UpdateApiKey_PersistsChange()
+    {
+        var created = await _repository.CreateAsync("apikey test user", "apikey-test@example.test", "hash", "xx");
+        var apiKey = Guid.NewGuid().ToString();
+
+        await _repository.UpdateApiKeyAsync(created.Id, apiKey);
+
+        var updated = await _repository.FetchByIdAsync(created.Id);
+        Assert.Equal(apiKey, updated!.ApiKey);
+    }
 }

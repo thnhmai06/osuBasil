@@ -22,12 +22,12 @@ public class ChangeActionHandlerTests
     ];
 
     [Fact]
-    public void Handle_UpdatesStatusFields()
+    public async Task Handle_UpdatesStatusFields()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Payload((int)Domain.Action.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Equal(Domain.Action.Playing, session.Status.Action);
         Assert.Equal("playing a map", session.Status.InfoText);
@@ -38,74 +38,74 @@ public class ChangeActionHandlerTests
     }
 
     [Fact]
-    public void Handle_RelaxMod_ShiftsModeToRelaxVariant()
+    public async Task Handle_RelaxMod_ShiftsModeToRelaxVariant()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, mode: 0, mapId: 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Equal(GameMode.RelaxOsu, session.Status.Mode);
         Assert.Equal(Mods.Relax, session.Status.Mods);
     }
 
     [Fact]
-    public void Handle_RelaxModOnMania_StripsRelaxSinceRxManiaDoesNotExist()
+    public async Task Handle_RelaxModOnMania_StripsRelaxSinceRxManiaDoesNotExist()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, mode: 3, mapId: 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Equal(GameMode.VanillaMania, session.Status.Mode);
         Assert.Equal(Mods.NoMod, session.Status.Mods);
     }
 
     [Fact]
-    public void Handle_AutopilotMod_ShiftsModeToAutopilotVariant()
+    public async Task Handle_AutopilotMod_ShiftsModeToAutopilotVariant()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, mode: 0, mapId: 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Equal(GameMode.AutopilotOsu, session.Status.Mode);
     }
 
     [Fact]
-    public void Handle_AutopilotModOnNonOsuMode_StripsAutopilot()
+    public async Task Handle_AutopilotModOnNonOsuMode_StripsAutopilot()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, mode: 1, mapId: 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Equal(GameMode.VanillaTaiko, session.Status.Mode);
         Assert.Equal(Mods.NoMod, session.Status.Mods);
     }
 
     [Fact]
-    public void Handle_Unrestricted_BroadcastsUpdatedStatsToAllOnlinePlayers()
+    public async Task Handle_Unrestricted_BroadcastsUpdatedStatsToAllOnlinePlayers()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var other = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.All.Returns([session, other]);
         var reader = new BanchoPacketReader(Payload((int)Domain.Action.Idle, "", "", 0, 0, 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.NotEmpty(other.Dequeue());
     }
 
     [Fact]
-    public void Handle_Restricted_DoesNotBroadcast()
+    public async Task Handle_Restricted_DoesNotBroadcast()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Verified, 0.0); // restricted
         var other = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.All.Returns([session, other]);
         var reader = new BanchoPacketReader(Payload(0, "", "", 0, 0, 0));
 
-        new ChangeActionHandler(_sessionRegistry).Handle(session, reader);
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
         Assert.Empty(other.Dequeue());
     }

@@ -105,4 +105,45 @@ public class PlayerSessionTests
         var result = session.Dequeue();
         Assert.Equal(writersCount, result.Length);
     }
+
+    [Fact]
+    public void Enqueue_IsBotClient_IsNoOp()
+    {
+        var bot = new PlayerSession(1, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0, isBotClient: true);
+
+        bot.Enqueue([1, 2, 3]);
+
+        Assert.Empty(bot.Dequeue());
+    }
+
+    [Fact]
+    public void IsBotClient_DefaultsToFalse()
+    {
+        var session = MakeSession(Privileges.Unrestricted);
+
+        Assert.False(session.IsBotClient);
+    }
+
+    [Fact]
+    public void JoinChannel_TracksMembership()
+    {
+        var session = MakeSession(Privileges.Unrestricted);
+
+        session.JoinChannel("#osu");
+
+        Assert.True(session.InChannel("#osu"));
+        Assert.Contains("#osu", session.Channels);
+    }
+
+    [Fact]
+    public void LeaveChannel_RemovesMembership()
+    {
+        var session = MakeSession(Privileges.Unrestricted);
+        session.JoinChannel("#osu");
+
+        session.LeaveChannel("#osu");
+
+        Assert.False(session.InChannel("#osu"));
+        Assert.DoesNotContain("#osu", session.Channels);
+    }
 }

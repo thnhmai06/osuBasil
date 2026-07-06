@@ -10,9 +10,10 @@ public sealed class SetAwayMessageHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => false;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var message = reader.ReadMessage();
         player.AwayMessage = message.Text;
+        return Task.CompletedTask;
     }
 }

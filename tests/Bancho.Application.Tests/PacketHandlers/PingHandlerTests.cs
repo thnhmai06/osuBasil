@@ -15,12 +15,12 @@ public class PingHandlerTests
     public void AllowedWhenRestricted_IsTrue() => Assert.True(new PingHandler().AllowedWhenRestricted);
 
     [Fact]
-    public void Handle_DoesNothing()
+    public async Task Handle_DoesNothing()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var reader = new BanchoPacketReader(Array.Empty<byte>());
 
-        new PingHandler().Handle(session, reader);
+        await new PingHandler().HandleAsync(session, reader);
 
         Assert.Empty(session.Dequeue());
     }

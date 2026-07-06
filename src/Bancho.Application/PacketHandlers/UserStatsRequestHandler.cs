@@ -10,7 +10,7 @@ public sealed class UserStatsRequestHandler(IPlayerSessionRegistry sessionRegist
 
     public bool AllowedWhenRestricted => true;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var requestedIds = reader.ReadI32ListI16L();
         var unrestrictedIds = sessionRegistry.All.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();
@@ -28,5 +28,7 @@ public sealed class UserStatsRequestHandler(IPlayerSessionRegistry sessionRegist
                 player.Enqueue(PacketBuilders.BuildUserStats(target));
             }
         }
+
+        return Task.CompletedTask;
     }
 }

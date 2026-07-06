@@ -10,7 +10,7 @@ public sealed class UserPresenceRequestHandler(IPlayerSessionRegistry sessionReg
 
     public bool AllowedWhenRestricted => false;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         foreach (var id in reader.ReadI32ListI16L())
         {
@@ -20,5 +20,7 @@ public sealed class UserPresenceRequestHandler(IPlayerSessionRegistry sessionReg
                 player.Enqueue(PacketBuilders.BuildUserPresence(target));
             }
         }
+
+        return Task.CompletedTask;
     }
 }

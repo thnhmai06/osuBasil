@@ -20,7 +20,7 @@ public sealed class BanchoPacketDispatcher
         _restrictedAllowed = handlerList.Where(h => h.AllowedWhenRestricted).ToDictionary(h => h.PacketId);
     }
 
-    public void Dispatch(PlayerSession player, byte[] body)
+    public async Task DispatchAsync(PlayerSession player, byte[] body)
     {
         var reader = new BanchoPacketReader(body);
         var handlerMap = player.Restricted ? _restrictedAllowed : _all;
@@ -31,7 +31,7 @@ public sealed class BanchoPacketDispatcher
 
             if (handlerMap.TryGetValue(type, out var handler))
             {
-                handler.Handle(player, reader);
+                await handler.HandleAsync(player, reader);
             }
             else
             {

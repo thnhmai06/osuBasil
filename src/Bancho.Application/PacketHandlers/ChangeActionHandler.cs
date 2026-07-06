@@ -11,7 +11,7 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
 
     public bool AllowedWhenRestricted => true;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var action = reader.ReadU8();
         var infoText = reader.ReadString();
@@ -60,5 +60,7 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
                 other.Enqueue(statsPacket);
             }
         }
+
+        return Task.CompletedTask;
     }
 }

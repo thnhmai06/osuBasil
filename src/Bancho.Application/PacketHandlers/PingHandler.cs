@@ -10,7 +10,5 @@ public sealed class PingHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => true;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
-    {
-    }
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader) => Task.CompletedTask;
 }

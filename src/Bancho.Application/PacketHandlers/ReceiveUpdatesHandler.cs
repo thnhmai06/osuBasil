@@ -11,14 +11,15 @@ public sealed class ReceiveUpdatesHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => true;
 
-    public void Handle(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var value = reader.ReadI32();
         if (value is < 0 or >= 3)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         player.PresenceFilter = (PresenceFilter)value;
+        return Task.CompletedTask;
     }
 }

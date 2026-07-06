@@ -9,13 +9,13 @@ namespace Bancho.Application.Tests.PacketHandlers;
 public class SetAwayMessageHandlerTests
 {
     [Fact]
-    public void Handle_SetsAwayMessageFromMessageText()
+    public async Task Handle_SetsAwayMessageFromMessageText()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var payload = ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)[7..]; // strip packet header, keep message payload
         var reader = new BanchoPacketReader(payload);
 
-        new SetAwayMessageHandler().Handle(session, reader);
+        await new SetAwayMessageHandler().HandleAsync(session, reader);
 
         Assert.Equal("gone fishing", session.AwayMessage);
     }

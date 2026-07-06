@@ -93,7 +93,7 @@ public static class BanchoHostGroups
                 {
                     var dispatcher = context.RequestServices.GetRequiredService<BanchoPacketDispatcher>();
                     var clock = context.RequestServices.GetRequiredService<IClock>();
-                    dispatcher.Dispatch(session, body);
+                    await dispatcher.DispatchAsync(session, body);
                     session.LastRecvTime = clock.UtcNow.ToUnixTimeSeconds();
                     responseBody = session.Dequeue();
                 }
