@@ -81,6 +81,12 @@ public class CompositionRootTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ResolvesScoreSubmissionPersistence()
+    {
+        Assert.NotNull(_provider.GetRequiredService<IScoreSubmissionPersistence>());
+    }
+
+    [Fact]
     public void ResolvesReplayServiceAndItsStorage()
     {
         Assert.NotNull(_provider.GetRequiredService<ReplayService>());

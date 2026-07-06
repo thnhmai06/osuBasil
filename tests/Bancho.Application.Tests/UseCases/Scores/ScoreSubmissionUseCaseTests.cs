@@ -11,7 +11,7 @@ public class ScoreSubmissionUseCaseTests
 {
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
     private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-    private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
+    private readonly IScoreSubmissionPersistence _persistence = Substitute.For<IScoreSubmissionPersistence>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
@@ -20,7 +20,7 @@ public class ScoreSubmissionUseCaseTests
     private readonly IClock _clock = Substitute.For<IClock>();
 
     private ScoreSubmissionUseCase MakeUseCase() => new(
-        _maps, _scores, _stats,
+        _maps, _scores, _persistence,
         new BanchoAuthenticationService(_sessionRegistry, _users, _passwordHasher),
         _replayStorage, _leaderboardStore, _clock);
 
@@ -63,6 +63,12 @@ public class ScoreSubmissionUseCaseTests
         FailTime: 30_000,
         ReplayData: replayData);
 
+    private void StubPersistence(long scoreId = 1L) =>
+        _persistence.PersistScoreSubmissionAsync(
+                Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
+                Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>())
+            .Returns(scoreId);
+
     [Fact]
     public async Task BeatmapNotFound_ReturnsBeatmapNotFound()
     {
@@ -91,7 +97,8 @@ public class ScoreSubmissionUseCaseTests
     {
         var bmap = MakeBeatmap();
         _maps.FetchOneAsync(id: null, md5: bmap.Md5, filename: null, setId: null, Arg.Any<CancellationToken>()).Returns(bmap);
-        var player = MakePlayer(name: "cookiezi");
+        MakePlayer(name: "cookiezi");
+        StubPersistence();
 
         await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
@@ -109,7 +116,9 @@ public class ScoreSubmissionUseCaseTests
         var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
         Assert.Equal(ScoreSubmissionResultCode.DuplicateSubmission, result.Code);
-        await _scores.DidNotReceive().CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
+        await _persistence.DidNotReceive().PersistScoreSubmissionAsync(
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
+            Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -123,7 +132,7 @@ public class ScoreSubmissionUseCaseTests
         _scores.FetchPersonalBestLeaderboardScoreAsync(bmap.Md5, GameMode.VanillaOsu, player.Id, Arg.Any<CancellationToken>())
             .Returns((PersonalBestLeaderboardScoreRow?)null);
         _scores.FetchPersonalBestLeaderboardRankAsync(bmap.Md5, GameMode.VanillaOsu, 500_000, Arg.Any<CancellationToken>()).Returns(1);
-        _scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(999L);
+        StubPersistence(999L);
         _leaderboardStore.FetchGlobalRankAsync(player.Id, (int)GameMode.VanillaOsu, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000, grade: "S")));
@@ -133,10 +142,14 @@ public class ScoreSubmissionUseCaseTests
         Assert.Equal(SubmissionStatus.Best, result.Result.Score.Status);
         Assert.Equal(1, result.Result.Score.Rank);
 
-        await _scores.Received(1).MarkPreviousBestScoresSubmittedAsync(bmap.Md5, player.Id, GameMode.VanillaOsu, Arg.Any<CancellationToken>());
-        await _stats.Received(1).UpdateAfterScoreAsync(
-            player.Id, (int)GameMode.VanillaOsu, 1000 + 500_000, 500 + 500_000, 2, 100 + 60, Arg.Any<double>(), 500, 300 + 315,
-            0, 0, 0, 1, 0, Arg.Any<CancellationToken>());
+        await _persistence.Received(1).PersistScoreSubmissionAsync(
+            markPreviousBestSubmitted: true, mapMd5: bmap.Md5, userId: player.Id, mode: GameMode.VanillaOsu,
+            scoreRow: Arg.Any<ScoreInsertRow>(),
+            statsUpdate: Arg.Is<StatsUpdateRow>(s =>
+                s.Tscore == 1000 + 500_000 && s.Rscore == 500 + 500_000 && s.Plays == 2 && s.Playtime == 100 + 60
+                && s.MaxCombo == 500 && s.TotalHits == 300 + 315 && s.SCount == 1
+                && s.XhCount == 0 && s.XCount == 0 && s.ShCount == 0 && s.ACount == 0),
+            cancellationToken: Arg.Any<CancellationToken>());
         await _leaderboardStore.Received(1).AddToGlobalLeaderboardAsync(player.Id, (int)GameMode.VanillaOsu, 500 + 500_000, Arg.Any<CancellationToken>());
         await _maps.Received(1).IncrementPlayCountsAsync(bmap.Id, true, Arg.Any<CancellationToken>());
         Assert.Equal(500 + 500_000, player.ModeStats[(int)GameMode.VanillaOsu].Rscore);
@@ -147,9 +160,9 @@ public class ScoreSubmissionUseCaseTests
     {
         var bmap = MakeBeatmap();
         _maps.FetchOneAsync(id: null, md5: bmap.Md5, filename: null, setId: null, Arg.Any<CancellationToken>()).Returns(bmap);
-        var player = MakePlayer();
+        MakePlayer();
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
-        _scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(1L);
+        StubPersistence();
 
         var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(passed: false)));
 
@@ -167,7 +180,7 @@ public class ScoreSubmissionUseCaseTests
         _maps.FetchOneAsync(id: null, md5: bmap.Md5, filename: null, setId: null, Arg.Any<CancellationToken>()).Returns(bmap);
         MakePlayer();
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
-        _scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(1L);
+        StubPersistence();
 
         var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), replayData: [1, 2, 3]));
 
@@ -182,7 +195,7 @@ public class ScoreSubmissionUseCaseTests
         _maps.FetchOneAsync(id: null, md5: bmap.Md5, filename: null, setId: null, Arg.Any<CancellationToken>()).Returns(bmap);
         MakePlayer();
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
-        _scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(555L);
+        StubPersistence(555L);
         var replayBytes = new byte[30];
 
         await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), replayData: replayBytes));
@@ -199,13 +212,14 @@ public class ScoreSubmissionUseCaseTests
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
         _scores.FetchPersonalBestLeaderboardScoreAsync(bmap.Md5, GameMode.VanillaOsu, player.Id, Arg.Any<CancellationToken>())
             .Returns(new PersonalBestLeaderboardScoreRow(1, 900_000, 500, 5, 10, 300, 0, 0, 0, false, 0, 123, "S"));
-        _scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(2L);
+        StubPersistence(2L);
 
         var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
 
         Assert.Equal(SubmissionStatus.Submitted, result.Result!.Score.Status);
-        await _scores.DidNotReceive().MarkPreviousBestScoresSubmittedAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(), Arg.Any<CancellationToken>());
+        await _persistence.Received(1).PersistScoreSubmissionAsync(
+            markPreviousBestSubmitted: false, mapMd5: Arg.Any<string>(), userId: Arg.Any<int>(), mode: Arg.Any<GameMode>(),
+            scoreRow: Arg.Any<ScoreInsertRow>(), statsUpdate: Arg.Any<StatsUpdateRow>(), cancellationToken: Arg.Any<CancellationToken>());
         await _leaderboardStore.DidNotReceive().AddToGlobalLeaderboardAsync(
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
     }

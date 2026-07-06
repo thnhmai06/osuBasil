@@ -51,7 +51,7 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 public sealed class ScoreSubmissionUseCase(
     IMapRepository maps,
     IScoreRepository scores,
-    IStatsRepository stats,
+    IScoreSubmissionPersistence scoreSubmissionPersistence,
     BanchoAuthenticationService authentication,
     IReplayStorage replayStorage,
     ILeaderboardStore leaderboardStore,
@@ -129,19 +129,21 @@ public sealed class ScoreSubmissionUseCase(
             var updatedStats = ScoreStatsCalculator.ApplyScoreStats(score, previousStats);
             var shouldUpdateRank = score.Passed && score.Bmap.AwardsRankedScore && score.Status == SubmissionStatus.Best;
 
-            if (score.Status == SubmissionStatus.Best)
-            {
-                await scores.MarkPreviousBestScoresSubmittedAsync(score.Bmap.Md5, player.Id, score.Mode, cancellationToken);
-            }
-
-            var scoreId = await scores.CreateAsync(BuildInsertRow(score), cancellationToken);
+            // Ported from bancho.py's `async with self.database.transaction():` — the previous-best
+            // demotion, score insert, and stats update commit atomically (see IScoreSubmissionPersistence's
+            // doc comment for the bug this fixes over the original Phase 6 port).
+            var scoreId = await scoreSubmissionPersistence.PersistScoreSubmissionAsync(
+                markPreviousBestSubmitted: score.Status == SubmissionStatus.Best,
+                mapMd5: score.Bmap.Md5,
+                userId: player.Id,
+                mode: score.Mode,
+                scoreRow: BuildInsertRow(score),
+                statsUpdate: new StatsUpdateRow(
+                    updatedStats.Tscore, updatedStats.Rscore, updatedStats.Plays, updatedStats.Playtime,
+                    updatedStats.Acc, updatedStats.MaxCombo, updatedStats.TotalHits, updatedStats.XhCount,
+                    updatedStats.XCount, updatedStats.ShCount, updatedStats.SCount, updatedStats.ACount),
+                cancellationToken: cancellationToken);
             score.Id = scoreId;
-
-            await stats.UpdateAfterScoreAsync(
-                player.Id, (int)score.Mode, updatedStats.Tscore, updatedStats.Rscore, updatedStats.Plays,
-                updatedStats.Playtime, updatedStats.Acc, updatedStats.MaxCombo, updatedStats.TotalHits,
-                updatedStats.XhCount, updatedStats.XCount, updatedStats.ShCount, updatedStats.SCount, updatedStats.ACount,
-                cancellationToken);
 
             if (!player.Restricted)
             {
