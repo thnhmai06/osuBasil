@@ -47,6 +47,9 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Ported from Player.spectating — the session this player is currently spectating, if any.</summary>
     public PlayerSession? Spectating { get; set; }
 
+    /// <summary>Ported from Player.match — the multiplayer match this player is currently in, if any.</summary>
+    public MatchSession? Match { get; set; }
+
     /// <summary>Ported from Player.stealth — an admin spectating without the target being informed. Toggled by the (Phase 10) `!stealth` command; defaults off.</summary>
     public bool Stealth { get; set; }
 

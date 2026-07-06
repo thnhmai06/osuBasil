@@ -79,10 +79,30 @@ Theo yêu cầu, đã bọc transaction thật cho score submission persistence 
 - DI: đăng ký `IMatchRegistry` singleton, thêm test `CompositionRootTests.ResolvesMatchRegistryAsASharedSingleton`.
 - Test: Application 291 (+16), Infrastructure +9 (registry) — toàn bộ xanh, `dotnet build` cả solution sạch, `ArchitectureTests` 9/9 xanh (không vi phạm ranh giới layer).
 
-**CHƯA COMMIT tại thời điểm ghi note này** — đang chờ full `Infrastructure.Tests` chạy nền (Testcontainers) làm baseline regression trước khi commit 2/5.
+Đã commit 2/5 (`4131fce`) — 116/116 test Infrastructure xanh trước khi commit, không regression.
+
+## CẬP NHẬT: commit 3/5 (18 packet quản lý slot) đã XONG
+
+Port toàn bộ 18 packet quản lý slot lên nền `MatchSession.Lock` (không đụng scoring): CREATE_MATCH, JOIN_MATCH, PART_MATCH, MATCH_CHANGE_SLOT, MATCH_READY, MATCH_LOCK, MATCH_CHANGE_SETTINGS, MATCH_START, MATCH_CHANGE_MODS, MATCH_LOAD_COMPLETE, MATCH_NO_BEATMAP, MATCH_NOT_READY, MATCH_FAILED, MATCH_HAS_BEATMAP, MATCH_SKIP_REQUEST, MATCH_TRANSFER_HOST, MATCH_CHANGE_TEAM, MATCH_CHANGE_PASSWORD, MATCH_SCORE_UPDATE (19 packet thật ra, đếm lại — MATCH_SCORE_UPDATE chỉ forward raw byte, không phụ thuộc scoring nên gộp vào đây luôn).
+
+**Kiến trúc mới**:
+- `MatchMembershipService` (Application.UseCases.Multiplayer) — port `Player.join_match`/`leave_match` + `Match.enqueue`/`enqueue_state`. Mọi method đọc-rồi-sửa slot/settings giả định caller ĐÃ giữ `match.Lock` (handler sở hữu vòng đời lock, vì lock phải bao trùm luôn bước broadcast — đúng theo lời dặn advisor). `Create` tự cấp phát id qua `IMatchRegistry.TryCreate` + tạo kênh `#multi_{id}` (tái dùng `ChannelSession`/`ChannelMembershipService`/`IChannelRegistry.Add` đã có từ spectator) + join host vào slot 0.
+- `ChannelMembershipService` thêm `BroadcastToMembers` (port `Channel.enqueue` — gửi packet thô cho member hiện tại của kênh, có immune list) — dùng chung cho match, không chỉ riêng ChannelInfo như trước.
+- `MatchPacketDataMapper` — map `MatchSession` sang `MatchPacketData` (Protocol DTO) cho `ServerPacketWriter.UpdateMatch`/`MatchJoinSuccess`/`MatchStart`.
+- `PlayerSession` thêm field `Match` (port `Player.match`).
+- `Mods.cs` thêm `ModsExtensions.SpeedChangingMods` (DT|NC|HT, port `SPEED_CHANGING_MODS`).
+- `MatchMembershipService.ValidateMatchData` (static, port `validate_match_data`) dùng chung cho CreateMatch/MatchChangeSettings/MatchChangePassword — 3 chỗ Python gọi cùng 1 hàm.
+
+**Quyết định/đánh đổi tự đưa ra**:
+1. `MatchChangeSettingsHandler` (async, cần `IMapRepository.FetchOneAsync` để tra map theo md5) giữ `match.Lock` xuyên qua await đó — khác nguyên tắc chung "không giữ lock qua await" mà advisor dặn, NHƯNG advisor chỉ áp dụng ngoại lệ đó cho `await_submissions` (poll 10s), còn đây là 1 lượt tra DB thường (repository call, không phải poll dài) — đã cân nhắc kỹ, chấp nhận được vì tránh phải làm release-fetch-reacquire-recheck phức tạp cho thao tác hiếm gặp (đổi map) và không rủi ro deadlock (SemaphoreSlim hỗ trợ đầy đủ async wait/release). Nếu về sau đo được nghẽn thật ở đây thì mới nên tách.
+2. `Player.update_latest_activity_soon()` — KHÔNG port (chưa có cơ chế debounced-DB-write nào trong bancho-net); bỏ hẳn khỏi mọi handler match vì đây là optimization ghi DB không ảnh hưởng hành vi client thấy được.
+3. Nhánh `is_scrimming` trong MATCH_CHANGE_SETTINGS (gửi tin nhắn bot thay vì đổi team type khi đang scrim) KHÔNG viết — vì `MatchSession.IsScrimming` luôn `false` ở slice này (field scrim chưa port), nên nhánh đó không bao giờ chạy được; code chỉ viết nhánh else (luôn đúng cho mọi match hiện tại). Sẽ bổ sung khi tới slice scrim.
+4. `MATCH_LOCK`/`MATCH_TRANSFER_HOST` chỉ kiểm tra "player is match host" (đúng Python — không dùng `IsReferee`/`Match.refs` như tôi tưởng ban đầu khi đọc code; refs chỉ dùng cho `!mp` commands sau này).
+
+**Test**: `MatchMembershipServiceTests` (13 test, thư mục `UseCases/Multiplayer`) + 1 file test/handler (19 file, `PacketHandlers/`, dùng chung fixture `MultiplayerTestSupport.cs` để tránh lặp fake registry ở mọi file) — tổng 56 test mới, toàn bộ xanh lần chạy đầu. Application.Tests 347 tổng, ArchitectureTests 9/9, `CompositionRootTests` cập nhật số handler kỳ vọng 20→39, xanh với DI thật.
+
+**CHƯA COMMIT tại thời điểm ghi note này** — đang chờ full `Infrastructure.Tests` chạy nền lần 2 làm baseline trước khi commit 3/5.
 
 ## Việc CÒN LẠI cho Phase 7
 
-Sau khi commit `MatchSession` core, tiếp tục commit 3/5: port ~18 packet quản lý slot trước (CREATE_MATCH, JOIN_MATCH, PART_MATCH, MATCH_CHANGE_SLOT, MATCH_READY, MATCH_LOCK, MATCH_CHANGE_SETTINGS, MATCH_CHANGE_MODS, MATCH_CHANGE_TEAM, MATCH_TRANSFER_HOST, MATCH_START, MATCH_LOAD_COMPLETE, MATCH_NO_BEATMAP, MATCH_NOT_READY, MATCH_FAILED, MATCH_HAS_BEATMAP, MATCH_SKIP_REQUEST, MATCH_CHANGE_PASSWORD, MATCH_SCORE_UPDATE — cái cuối chỉ forward raw byte, không phụ thuộc scoring) trên nền `MatchSession.Lock`, kèm `#multi_{id}` instance channel (tái dùng `ChannelMembershipService`/`IChannelRegistry.Add` đã có từ spectator). Đã đọc toàn bộ handler body tương ứng trong `cho.py` (dòng 1358-2171) + `Player.join_match`/`leave_match` trong `player.py` (dòng 577-687) — đủ hiểu để port, không cần đọc lại.
-
-**Cố ý HOÃN sang commit sau** (không phải bỏ): MATCH_COMPLETE (cần tách phần slot-management ra khỏi phần `update_matchpoints`/scrim scoring), MATCH_INVITE, 3 packet tourney (`TOURNAMENT_MATCH_INFO_REQUEST`/`JOIN_MATCH_CHANNEL`/`LEAVE_MATCH_CHANNEL`), rồi `!mp`/`!pool` (25 lệnh), rồi HTML pages `/matches`/`/online`. `MatchSession` cố ý CHƯA có field scrim (`match_points`/`bans`/`winners`/`winning_pts`/`use_pp_scoring`) và timer (`starting`) — thêm khi tới slice cần.
+Sau commit 3/5: **cố ý HOÃN sang commit sau** (không phải bỏ) — MATCH_COMPLETE (cần tách phần slot-management ra khỏi phần `update_matchpoints`/scrim scoring + field `recent_score` trên PlayerSession cho `await_submissions`), MATCH_INVITE, 3 packet tourney (`TOURNAMENT_MATCH_INFO_REQUEST`/`JOIN_MATCH_CHANNEL`/`LEAVE_MATCH_CHANNEL`), rồi `!mp`/`!pool` (25 lệnh), rồi HTML pages `/matches`/`/online`. `MatchSession` cố ý CHƯA có field scrim (`match_points`/`bans`/`winners`/`winning_pts`/`use_pp_scoring`) và timer (`starting`) — thêm khi tới slice cần.

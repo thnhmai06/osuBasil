@@ -44,6 +44,9 @@ public enum Mods
 /// </summary>
 public static class ModsExtensions
 {
+    /// <summary>Ported from app/constants/mods.py's SPEED_CHANGING_MODS — used by multiplayer's freemods split between match-wide and per-slot mods.</summary>
+    public const Mods SpeedChangingMods = Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime;
+
     private const Mods KeyMods = Mods.Key1 | Mods.Key2 | Mods.Key3 | Mods.Key4 | Mods.Key5
         | Mods.Key6 | Mods.Key7 | Mods.Key8 | Mods.Key9;
 

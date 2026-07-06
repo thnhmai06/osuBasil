@@ -4,6 +4,7 @@ using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Application.UseCases.Spectating;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ReplayService>();
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
+        services.AddSingleton<MatchMembershipService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
@@ -51,6 +53,25 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, StopSpectatingHandler>();
         services.AddSingleton<IBanchoPacketHandler, SpectateFramesHandler>();
         services.AddSingleton<IBanchoPacketHandler, CantSpectateHandler>();
+        services.AddSingleton<IBanchoPacketHandler, CreateMatchHandler>();
+        services.AddSingleton<IBanchoPacketHandler, JoinMatchHandler>();
+        services.AddSingleton<IBanchoPacketHandler, PartMatchHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchChangeSlotHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchReadyHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchLockHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchChangeSettingsHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchStartHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchChangeModsHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchLoadCompleteHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchNoBeatmapHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchNotReadyHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchFailedHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchHasBeatmapHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchSkipRequestHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchTransferHostHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchChangeTeamHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchChangePasswordHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchScoreUpdateHandler>();
 
         services.AddSingleton<ICommand, HelpCommand>();
         services.AddSingleton<ICommand, RollCommand>();

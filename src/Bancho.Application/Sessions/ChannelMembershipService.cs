@@ -44,6 +44,25 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
         BroadcastChannelInfo(channel);
     }
 
+    /// <summary>
+    /// Ported from Channel.enqueue — sends raw packet bytes to every session currently in the
+    /// channel (not everyone who merely *can read* it), optionally skipping an immune set. Used
+    /// by multiplayer's match.enqueue/enqueue_state, which routes through the match's chat
+    /// channel exactly like the Python source.
+    /// </summary>
+    public void BroadcastToMembers(ChannelSession channel, byte[] packet, IReadOnlyCollection<int>? immune = null)
+    {
+        foreach (var memberId in channel.MemberIds)
+        {
+            if (immune is not null && immune.Contains(memberId))
+            {
+                continue;
+            }
+
+            sessionRegistry.GetById(memberId)?.Enqueue(packet);
+        }
+    }
+
     private void BroadcastChannelInfo(ChannelSession channel)
     {
         var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
