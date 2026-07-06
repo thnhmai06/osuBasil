@@ -63,6 +63,12 @@ public sealed class MatchSession(
 
     public bool IsScrimming { get; set; }
 
+    /// <summary>Ported from Match.url — the match's invitation url.</summary>
+    public string Url => $"osump://{Id}/{Password}";
+
+    /// <summary>Ported from Match.embed — an osu! chat embed for this match.</summary>
+    public string Embed => $"[{Url} {Name}]";
+
     public IReadOnlyList<MatchSlot> Slots { get; } = [.. Enumerable.Range(0, 16).Select(_ => new MatchSlot())];
 
     public IReadOnlyCollection<int> Referees => _referees;

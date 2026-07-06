@@ -1,6 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using Bancho.Protocol;
@@ -10,7 +11,7 @@ namespace Bancho.Application.Tests.PacketHandlers;
 
 /// <summary>
 /// Ported from app/api/domains/cho.py's Logout — the 1-second login-grace-period check. The
-/// actual cleanup (channel-leaving, registry removal, broadcast) is delegated to
+/// actual cleanup (match/channel-leaving, registry removal, broadcast) is delegated to
 /// PlayerLogoutService and covered by PlayerLogoutServiceTests.
 /// </summary>
 public class LogoutHandlerTests
@@ -20,7 +21,10 @@ public class LogoutHandlerTests
     private readonly IClock _clock = Substitute.For<IClock>();
 
     private LogoutHandler MakeHandler() => new(new PlayerLogoutService(
-        _sessionRegistry, _channelRegistry, new SpectatorService(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))), _clock);
+        _sessionRegistry, _channelRegistry,
+        new SpectatorService(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>())),
+        new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
+            Substitute.For<IPlayerSessionRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))), _clock);
 
     [Fact]
     public async Task Handle_WithinOneSecondOfLogin_Ignored()

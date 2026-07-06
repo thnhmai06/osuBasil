@@ -1,4 +1,5 @@
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using NSubstitute;
@@ -6,18 +7,21 @@ using NSubstitute;
 namespace Bancho.Application.Tests.Sessions;
 
 /// <summary>
-/// Ported from Player.logout's channel-leaving + playerlist-removal + broadcast, extracted out
-/// of LogoutHandler so !reconnect can force the same cleanup on a session without going through
-/// the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not part of
-/// "logout" semantics).
+/// Ported from Player.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
+/// out of LogoutHandler so !reconnect can force the same cleanup on a session without going
+/// through the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not
+/// part of "logout" semantics).
 /// </summary>
 public class PlayerLogoutServiceTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
     private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+    private readonly MatchMembershipService _matchMembership = new(
+        Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
+        Substitute.For<IPlayerSessionRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
 
-    private PlayerLogoutService MakeService() => new(_sessionRegistry, _channelRegistry, _spectatorService);
+    private PlayerLogoutService MakeService() => new(_sessionRegistry, _channelRegistry, _spectatorService, _matchMembership);
 
     [Fact]
     public void Logout_RemovesFromSessionRegistry()
@@ -80,5 +84,24 @@ public class PlayerLogoutServiceTests
 
         Assert.Null(player.Spectating);
         Assert.DoesNotContain(player, host.Spectators);
+    }
+
+    [Fact]
+    public void Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
+    {
+        var channelRegistry = new PacketHandlers.MultiplayerTestSupport.FakeChannelRegistry();
+        var matchRegistry = new PacketHandlers.MultiplayerTestSupport.FakeMatchRegistry();
+        var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+        var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry, new ChannelMembershipService(sessionRegistry));
+        var host = new PlayerSession(1, "host", "token", Privileges.Unrestricted, 0.0);
+        sessionRegistry.All.Returns([host]);
+        sessionRegistry.GetById(1).Returns(host);
+        var match = matchMembership.Create(host, PacketHandlers.MultiplayerTestSupport.MakeMatchData(host.Id))!;
+        var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
+
+        service.Logout(host);
+
+        Assert.Null(host.Match);
+        Assert.Null(matchRegistry.GetById(match.Id)); // last player left -> match disposed, not a ghost slot
     }
 }

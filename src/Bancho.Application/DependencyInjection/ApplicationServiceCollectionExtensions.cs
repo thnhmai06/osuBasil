@@ -72,6 +72,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, MatchChangeTeamHandler>();
         services.AddSingleton<IBanchoPacketHandler, MatchChangePasswordHandler>();
         services.AddSingleton<IBanchoPacketHandler, MatchScoreUpdateHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchCompleteHandler>();
+        services.AddSingleton<IBanchoPacketHandler, MatchInviteHandler>();
+        services.AddSingleton<IBanchoPacketHandler, TourneyMatchInfoRequestHandler>();
+        services.AddSingleton<IBanchoPacketHandler, TourneyMatchJoinChannelHandler>();
+        services.AddSingleton<IBanchoPacketHandler, TourneyMatchLeaveChannelHandler>();
 
         services.AddSingleton<ICommand, HelpCommand>();
         services.AddSingleton<ICommand, RollCommand>();

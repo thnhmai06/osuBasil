@@ -1,5 +1,6 @@
 using Bancho.Application.Commands;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using NSubstitute;
@@ -13,7 +14,10 @@ public class ReconnectCommandTests
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 
     private ReconnectCommand MakeCommand() => new(_sessionRegistry, new PlayerLogoutService(
-        _sessionRegistry, _channelRegistry, new SpectatorService(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))));
+        _sessionRegistry, _channelRegistry,
+        new SpectatorService(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>())),
+        new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
+            Substitute.For<IPlayerSessionRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))));
 
     private static CommandContext MakeContext(PlayerSession player, params string[] args) =>
         new(player, args, null, null);

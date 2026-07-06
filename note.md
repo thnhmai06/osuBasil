@@ -103,6 +103,19 @@ Port toàn bộ 18 packet quản lý slot lên nền `MatchSession.Lock` (không
 
 **CHƯA COMMIT tại thời điểm ghi note này** — đang chờ full `Infrastructure.Tests` chạy nền lần 2 làm baseline trước khi commit 3/5.
 
+## CẬP NHẬT: commit 4/5 (MATCH_COMPLETE + MATCH_INVITE + 3 packet tourney + fix logout) đã XONG
+
+Hỏi lại advisor sau commit 3/5 trước khi tiếp tục — 2 phát hiện quan trọng đã sửa ngay trong commit này:
+
+1. **MATCH_COMPLETE KHÔNG phụ thuộc scoring như tôi tưởng ban đầu** — soi lại control flow: nhánh gọi `update_matchpoints`/`await_submissions` chỉ chạy `if self.match.is_scrimming`, mà `IsScrimming` luôn `false` ở slice này (scrim chưa port) → nhánh đó chết, phần còn lại (đánh dấu slot Complete, kiểm tra còn ai đang Playing không, `unready_players`/`reset_players_loaded_status`, `in_progress=false`, broadcast `match_complete` immune not-playing + `enqueue_state`) chỉ dùng method `MatchSession` đã có sẵn — port luôn, không hoãn nữa. `MatchCompleteHandler` mới.
+2. **Lỗ hổng thật đã sửa**: `PlayerLogoutService` trước đó có comment "match cleanup lands later" — nghĩa là user thật disconnect giữa trận sẽ để lại slot chiếm chỗ MÃI MÃI (match không bao giờ rỗng → không bao giờ bị dispose, nếu là host thì phòng kẹt luôn không ai điều khiển được). Test unit không thấy được lỗi này (logout là service riêng, không liên quan slot-management), nhưng sẽ lộ ngay khi test với client thật ở cổng phase. Đã thêm: nếu `player.Match` khác null, giữ `match.Lock`, gọi `MatchMembershipService.Leave`, release — thêm 1 test `Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot` xác nhận match bị dispose đúng khi người cuối cùng logout.
+
+**Cũng port**: `MatchInviteHandler` (thêm `MatchSession.Url`/`Embed` port `Match.url`/`Match.embed`, xử lý riêng case target là bot → gửi tin nhắn "I'm too busy!" thay vì mời), 3 packet tourney (`TourneyMatchInfoRequestHandler`/`TourneyMatchJoinChannelHandler`/`TourneyMatchLeaveChannelHandler` — donator-only, join/leave kênh chat của match mà KHÔNG chiếm slot, dùng trực tiếp `ChannelMembershipService.Join`/`Part` trên kênh `#multi_{id}`, không qua `MatchMembershipService.Join` vì đó là dành cho người chơi thật).
+
+**Test**: 30 test mới (`MatchCompleteHandlerTests`, `MatchInviteHandlerTests`, 3 file tourney, `PlayerLogoutServiceTests` +1) — xanh lần chạy đầu. Application.Tests 359 tổng, Infrastructure 116, Architecture 9/9, CompositionRoot cập nhật 39→44 handler.
+
+**⚠️ CẦN BẠN QUYẾT ĐỊNH (advisor chủ động flag, không tự quyết luôn)**: **Scrim (`!mp scrim`, match points, xác định người thắng qua `update_matchpoints`/`await_submissions`, ban mod) là tính năng khá lớn, CHỈ dùng cho giải đấu (tourney).** `MatchSession` hiện CHƯA có field nào cho scrim (`match_points`/`bans`/`winners`/`winning_pts`/`use_pp_scoring`) — tôi đang mặc định HOÃN (không xoá hẳn, có thể thêm sau) theo đúng tinh thần các quyết định thu hẹp phạm vi trước đó của bạn (bỏ pp, bỏ achievements). Nếu bạn CẦN scrim cho server của mình (vd sẽ tổ chức giải đấu), báo lại để tôi làm slice riêng; nếu không cần, tôi sẽ chính thức đánh dấu "bỏ" trong plan file thay vì "hoãn".
+
 ## Việc CÒN LẠI cho Phase 7
 
-Sau commit 3/5: **cố ý HOÃN sang commit sau** (không phải bỏ) — MATCH_COMPLETE (cần tách phần slot-management ra khỏi phần `update_matchpoints`/scrim scoring + field `recent_score` trên PlayerSession cho `await_submissions`), MATCH_INVITE, 3 packet tourney (`TOURNAMENT_MATCH_INFO_REQUEST`/`JOIN_MATCH_CHANNEL`/`LEAVE_MATCH_CHANNEL`), rồi `!mp`/`!pool` (25 lệnh), rồi HTML pages `/matches`/`/online`. `MatchSession` cố ý CHƯA có field scrim (`match_points`/`bans`/`winners`/`winning_pts`/`use_pp_scoring`) và timer (`starting`) — thêm khi tới slice cần.
+Sau commit 4/5: `!mp`/`!pool` (25 lệnh admin qua chat command, KHÔNG phải packet — dùng `ICommandDispatcher`/`ICommand` đã có sẵn từ Phase 3/4), rồi HTML pages `/matches`/`/online`. Tourney packets/scrim/timer (`!mp start <seconds>`) vẫn hoãn — xem mục scrim ở trên.
