@@ -41,5 +41,17 @@ public interface IStatsRepository
         double acc,
         int maxCombo,
         int totalHits,
+        int xhCount,
+        int xCount,
+        int shCount,
+        int sCount,
+        int aCount,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ported from Score.increment_replay_views — a plain delta update, kept separate from
+    /// UpdateAfterScoreAsync because it targets the replay's owner, not necessarily the score
+    /// submitter (see ReplayService.fetch_replay_file's viewer_id != score.player.id check).
+    /// </summary>
+    Task IncrementReplayViewsAsync(int userId, int mode, CancellationToken cancellationToken = default);
 }

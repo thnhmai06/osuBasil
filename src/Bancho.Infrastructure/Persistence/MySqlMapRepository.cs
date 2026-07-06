@@ -187,4 +187,12 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
 
         return setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id]).ToList();
     }
+
+    public async Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            $"UPDATE maps SET plays = plays + 1{(passed ? ", passes = passes + 1" : "")} WHERE id = @MapId",
+            new { MapId = mapId });
+    }
 }

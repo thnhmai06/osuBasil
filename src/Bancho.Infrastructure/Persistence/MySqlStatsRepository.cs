@@ -72,6 +72,11 @@ public sealed class MySqlStatsRepository(string connectionString) : IStatsReposi
         double acc,
         int maxCombo,
         int totalHits,
+        int xhCount,
+        int xCount,
+        int shCount,
+        int sCount,
+        int aCount,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -79,13 +84,23 @@ public sealed class MySqlStatsRepository(string connectionString) : IStatsReposi
             """
             UPDATE stats
             SET tscore = @Tscore, rscore = @Rscore, plays = @Plays, playtime = @Playtime,
-                acc = @Acc, max_combo = @MaxCombo, total_hits = @TotalHits
+                acc = @Acc, max_combo = @MaxCombo, total_hits = @TotalHits,
+                xh_count = @XhCount, x_count = @XCount, sh_count = @ShCount, s_count = @SCount, a_count = @ACount
             WHERE id = @UserId AND mode = @Mode
             """,
             new
             {
                 UserId = userId, Mode = mode, Tscore = tscore, Rscore = rscore, Plays = plays,
                 Playtime = playtime, Acc = acc, MaxCombo = maxCombo, TotalHits = totalHits,
+                XhCount = xhCount, XCount = xCount, ShCount = shCount, SCount = sCount, ACount = aCount,
             });
+    }
+
+    public async Task IncrementReplayViewsAsync(int userId, int mode, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            "UPDATE stats SET replay_views = replay_views + 1 WHERE id = @UserId AND mode = @Mode",
+            new { UserId = userId, Mode = mode });
     }
 }

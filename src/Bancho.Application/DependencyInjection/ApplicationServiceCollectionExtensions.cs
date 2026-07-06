@@ -4,6 +4,7 @@ using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Application.UseCases.Scores;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -24,6 +25,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<EnsureBeatmapUseCase>();
         services.AddSingleton<BeatmapLeaderboardService>();
         services.AddSingleton<DirectSearchService>();
+        services.AddSingleton<ScoreSubmissionUseCase>();
+        services.AddSingleton<ReplayService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

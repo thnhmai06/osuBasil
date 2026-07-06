@@ -48,9 +48,11 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         public int Perfect { get; set; }
         public int Mods { get; set; }
         public long Time { get; set; }
+        public string Grade { get; set; } = "N";
+        public double Acc { get; set; }
 
         public PersonalBestLeaderboardScoreRow ToRow() => new(
-            Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time);
+            Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time, Grade, Acc);
     }
 
     private MySqlConnection Connect() => new(_connectionString);
@@ -125,7 +127,7 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             """
             SELECT id, score AS Score, max_combo AS MaxCombo, n50 AS N50, n100 AS N100,
                    n300 AS N300, nmiss AS NMiss, nkatu AS NKatu, ngeki AS NGeki,
-                   perfect AS Perfect, mods AS Mods, UNIX_TIMESTAMP(play_time) AS Time
+                   perfect AS Perfect, mods AS Mods, UNIX_TIMESTAMP(play_time) AS Time, grade AS Grade, acc AS Acc
             FROM scores
             WHERE map_md5 = @MapMd5 AND mode = @Mode AND userid = @UserId AND status = @Best
             ORDER BY score DESC
@@ -153,5 +155,81 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
                 Unrestricted = (int)Privileges.Unrestricted, Score = score,
             });
         return higherScores + 1;
+    }
+
+    private sealed class ScoreOwnerRowDto
+    {
+        public int UserId { get; set; }
+        public int Mode { get; set; }
+
+        public ScoreOwnerRow ToRow() => new(UserId, (GameMode)Mode);
+    }
+
+    public async Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var row = await connection.QuerySingleOrDefaultAsync<ScoreOwnerRowDto>(
+            "SELECT userid AS UserId, mode AS Mode FROM scores WHERE id = @ScoreId",
+            new { ScoreId = scoreId });
+        return row?.ToRow();
+    }
+
+    public async Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.QuerySingleAsync<long>(
+            """
+            INSERT INTO scores
+                (map_md5, score, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu,
+                 grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum)
+            VALUES
+                (@MapMd5, @Score, 0, @Acc, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
+                 @Grade, @Status, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum);
+            SELECT LAST_INSERT_ID();
+            """,
+            row);
+    }
+
+    public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.ExecuteScalarAsync<bool>(
+            "SELECT EXISTS(SELECT 1 FROM scores WHERE online_checksum = @OnlineChecksum)",
+            new { OnlineChecksum = onlineChecksum });
+    }
+
+    public async Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            """
+            UPDATE scores SET status = @Submitted
+            WHERE status = @Best AND map_md5 = @MapMd5 AND userid = @UserId AND mode = @Mode
+            """,
+            new
+            {
+                Submitted = (int)SubmissionStatus.Submitted, Best = (int)SubmissionStatus.Best,
+                MapMd5 = mapMd5, UserId = userId, Mode = (int)mode,
+            });
+    }
+
+    public async Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.QuerySingleOrDefaultAsync<FirstPlaceScoreRow>(
+            """
+            SELECT u.id AS Id, u.name AS Name
+            FROM users u
+            JOIN scores s ON u.id = s.userid
+            WHERE s.map_md5 = @MapMd5 AND s.mode = @Mode AND s.status = @Best
+              AND (u.priv & @Unrestricted) != 0
+            ORDER BY s.score DESC
+            LIMIT 1
+            """,
+            new
+            {
+                MapMd5 = mapMd5, Mode = (int)mode, Best = (int)SubmissionStatus.Best,
+                Unrestricted = (int)Privileges.Unrestricted,
+            });
     }
 }

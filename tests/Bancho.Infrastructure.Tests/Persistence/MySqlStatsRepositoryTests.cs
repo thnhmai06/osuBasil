@@ -59,7 +59,12 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
             playtime: 300,
             acc: 98.5,
             maxCombo: 500,
-            totalHits: 800);
+            totalHits: 800,
+            xhCount: 1,
+            xCount: 2,
+            shCount: 3,
+            sCount: 4,
+            aCount: 5);
 
         var stat = await _repository.FetchOneAsync(1, mode: 1);
 
@@ -71,5 +76,23 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
         Assert.Equal(98.5, stat.Acc, precision: 2);
         Assert.Equal(500, stat.MaxCombo);
         Assert.Equal(800, stat.TotalHits);
+        Assert.Equal(1, stat.XhCount);
+        Assert.Equal(2, stat.XCount);
+        Assert.Equal(3, stat.ShCount);
+        Assert.Equal(4, stat.SCount);
+        Assert.Equal(5, stat.ACount);
+    }
+
+    [Fact]
+    public async Task IncrementReplayViews_AddsOneEachCall()
+    {
+        // mode 2 (catch), same isolation rationale as UpdateAfterScore_PersistsNewTotals above.
+        await _repository.IncrementReplayViewsAsync(1, mode: 2);
+        await _repository.IncrementReplayViewsAsync(1, mode: 2);
+
+        var stat = await _repository.FetchOneAsync(1, mode: 2);
+
+        Assert.NotNull(stat);
+        Assert.Equal(2, stat!.ReplayViews);
     }
 }

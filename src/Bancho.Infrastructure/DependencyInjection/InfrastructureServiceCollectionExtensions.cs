@@ -26,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.SectionName));
         services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
 
         static string BuildConnectionString(IServiceProvider sp) =>
             DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
@@ -58,6 +59,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IWebSessionStore, RedisWebSessionStore>();
 
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
+        services.AddSingleton<IReplayStorage, Storage.FileSystemReplayStorage>();
         services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
         services.AddSingleton<IClock, SystemClock>();
 

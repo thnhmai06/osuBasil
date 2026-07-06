@@ -1,7 +1,9 @@
+using Bancho.Application.Abstractions;
 using Bancho.Application.DependencyInjection;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
+using Bancho.Application.UseCases.Scores;
 using Bancho.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,5 +71,24 @@ public class CompositionRootTests : IAsyncLifetime
         var registry1 = _provider.GetRequiredService<IPlayerSessionRegistry>();
         var registry2 = _provider.GetRequiredService<IPlayerSessionRegistry>();
         Assert.Same(registry1, registry2);
+    }
+
+    [Fact]
+    public void ResolvesScoreSubmissionUseCase()
+    {
+        Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionUseCase>());
+    }
+
+    [Fact]
+    public void ResolvesReplayServiceAndItsStorage()
+    {
+        Assert.NotNull(_provider.GetRequiredService<ReplayService>());
+        Assert.NotNull(_provider.GetRequiredService<IReplayStorage>());
+    }
+
+    [Fact]
+    public void ResolvesScoreDecryptor()
+    {
+        Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
     }
 }

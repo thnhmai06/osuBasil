@@ -33,4 +33,12 @@ public interface IMapRepository
     Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
         string? query, GameMode? mode, RankedStatus? status, int offset, int amount,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ported from apply_beatmap_play_stats. A delta update rather than Python's read-modify-write
+    /// (Python mutates the in-memory cached Beatmap.plays/.passes then writes the result back;
+    /// bancho-net resolves a fresh Beatmap per-request instead of caching one, so a delta avoids a
+    /// lost-update race between concurrent submissions on the same map).
+    /// </summary>
+    Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default);
 }

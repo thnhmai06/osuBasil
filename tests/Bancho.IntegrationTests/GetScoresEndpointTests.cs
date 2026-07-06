@@ -57,6 +57,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
             string? query, GameMode? mode, RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class StubScoreRepository : IScoreRepository
@@ -73,6 +75,21 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         public Task<int> FetchPersonalBestLeaderboardRankAsync(
             string mapMd5, GameMode mode, long score, CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
+
+        public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default) =>
+            Task.FromResult(0L);
+
+        public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<FirstPlaceScoreRow?>(null);
+
+        public Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ScoreOwnerRow?>(null);
     }
 
     private sealed class StubRatingRepository : IRatingRepository

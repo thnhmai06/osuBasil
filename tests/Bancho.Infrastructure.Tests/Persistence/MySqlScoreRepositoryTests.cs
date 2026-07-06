@@ -1,3 +1,4 @@
+using Bancho.Application.Abstractions;
 using Bancho.Domain;
 using Bancho.Infrastructure.Persistence;
 using Dapper;
@@ -172,6 +173,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
 
         Assert.NotNull(best);
         Assert.Equal(900_000, best!.Score);
+        Assert.Equal("S", best.Grade);
     }
 
     [Fact]
@@ -195,5 +197,104 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         var rank = await _repository.FetchPersonalBestLeaderboardRankAsync(mapMd5, GameMode.VanillaOsu, 800_000);
 
         Assert.Equal(3, rank); // laura + mallory above, +1
+    }
+
+    private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum) => new(
+        MapMd5: mapMd5, Score: score, Acc: 98.5, MaxCombo: 500, Mods: 0,
+        N300: 300, N100: 10, N50: 5, NMiss: 0, NGeki: 0, NKatu: 0,
+        Grade: "S", Status: (int)SubmissionStatus.Best, Mode: (int)GameMode.VanillaOsu,
+        PlayTime: DateTime.UtcNow, TimeElapsed: 120000, ClientFlags: 0, UserId: userId,
+        Perfect: false, OnlineChecksum: checksum);
+
+    [Fact]
+    public async Task Create_InsertsRowAndReturnsGeneratedId()
+    {
+        var mapMd5 = new string('b', 32);
+        await InsertUserAsync(316, "nina");
+
+        var id = await _repository.CreateAsync(MakeInsertRow(mapMd5, 316, 750_000, Guid.NewGuid().ToString("N")));
+
+        Assert.True(id > 0);
+        Assert.True(await _repository.ExistsByOnlineChecksumAsync((await FetchChecksumAsync(id))!));
+    }
+
+    private async Task<string?> FetchChecksumAsync(long scoreId)
+    {
+        await using var connection = new MySqlConnection(_fixture.ConnectionString);
+        return await connection.ExecuteScalarAsync<string>("SELECT online_checksum FROM scores WHERE id = @Id", new { Id = scoreId });
+    }
+
+    [Fact]
+    public async Task ExistsByOnlineChecksum_NotFound_ReturnsFalse()
+    {
+        Assert.False(await _repository.ExistsByOnlineChecksumAsync(Guid.NewGuid().ToString("N")));
+    }
+
+    [Fact]
+    public async Task ExistsByOnlineChecksum_Found_ReturnsTrue()
+    {
+        var mapMd5 = new string('c', 32);
+        await InsertUserAsync(317, "olivia");
+        var checksum = Guid.NewGuid().ToString("N");
+        await InsertScoreAsync(mapMd5, 317, 500_000);
+        await _repository.CreateAsync(MakeInsertRow(mapMd5, 317, 500_000, checksum));
+
+        Assert.True(await _repository.ExistsByOnlineChecksumAsync(checksum));
+    }
+
+    [Fact]
+    public async Task MarkPreviousBestScoresSubmitted_DemotesOnlyMatchingBestRow()
+    {
+        var mapMd5 = new string('d', 32);
+        await InsertUserAsync(318, "peter");
+        var scoreId = await InsertScoreAsync(mapMd5, 318, 500_000, status: SubmissionStatus.Best);
+
+        await _repository.MarkPreviousBestScoresSubmittedAsync(mapMd5, 318, GameMode.VanillaOsu);
+
+        await using var connection = new MySqlConnection(_fixture.ConnectionString);
+        var status = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = scoreId });
+        Assert.Equal((int)SubmissionStatus.Submitted, status);
+    }
+
+    [Fact]
+    public async Task FetchFirstPlaceScore_ReturnsTopUnrestrictedScore()
+    {
+        var mapMd5 = new string('e', 32);
+        await InsertUserAsync(319, "quinn");
+        await InsertUserAsync(320, "restricted-rick", restricted: true);
+        await InsertScoreAsync(mapMd5, 319, 700_000);
+        await InsertScoreAsync(mapMd5, 320, 999_999);
+
+        var firstPlace = await _repository.FetchFirstPlaceScoreAsync(mapMd5, GameMode.VanillaOsu);
+
+        Assert.NotNull(firstPlace);
+        Assert.Equal("quinn", firstPlace!.Name);
+    }
+
+    [Fact]
+    public async Task FetchFirstPlaceScore_NoScores_ReturnsNull()
+    {
+        var mapMd5 = new string('f', 32);
+        Assert.Null(await _repository.FetchFirstPlaceScoreAsync(mapMd5, GameMode.VanillaOsu));
+    }
+
+    [Fact]
+    public async Task FetchOwner_ReturnsUserIdAndMode()
+    {
+        var mapMd5 = new string('g', 32);
+        await InsertUserAsync(321, "sybil");
+        var scoreId = await InsertScoreAsync(mapMd5, 321, 500_000, mode: GameMode.VanillaTaiko);
+
+        var owner = await _repository.FetchOwnerAsync(scoreId);
+
+        Assert.NotNull(owner);
+        Assert.Equal(321, owner!.UserId);
+        Assert.Equal(GameMode.VanillaTaiko, owner.Mode);
+    }
+
+    [Fact]
+    public async Task FetchOwner_NotFound_ReturnsNull()
+    {
+        Assert.Null(await _repository.FetchOwnerAsync(999_999));
     }
 }

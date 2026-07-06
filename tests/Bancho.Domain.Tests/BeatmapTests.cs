@@ -54,4 +54,34 @@ public class BeatmapTests
 
         Assert.Equal(expected, bmap.HasLeaderboard);
     }
+
+    [Theory]
+    [InlineData(RankedStatus.NotSubmitted, false)]
+    [InlineData(RankedStatus.Pending, false)]
+    [InlineData(RankedStatus.UpdateAvailable, false)]
+    [InlineData(RankedStatus.Ranked, true)]
+    [InlineData(RankedStatus.Approved, true)]
+    [InlineData(RankedStatus.Qualified, false)]
+    [InlineData(RankedStatus.Loved, true)]
+    public void HasLeaderboardStrict_MatchesHasLeaderboardProperty_ExcludesQualified(RankedStatus status, bool expected)
+    {
+        var bmap = MakeBeatmap(status);
+
+        Assert.Equal(expected, bmap.HasLeaderboardStrict);
+    }
+
+    [Theory]
+    [InlineData(RankedStatus.NotSubmitted, false)]
+    [InlineData(RankedStatus.Pending, false)]
+    [InlineData(RankedStatus.UpdateAvailable, false)]
+    [InlineData(RankedStatus.Ranked, true)]
+    [InlineData(RankedStatus.Approved, true)]
+    [InlineData(RankedStatus.Qualified, false)]
+    [InlineData(RankedStatus.Loved, false)]
+    public void AwardsRankedScore_MatchesAwardsRankedPp_ExcludesLovedAndQualified(RankedStatus status, bool expected)
+    {
+        var bmap = MakeBeatmap(status);
+
+        Assert.Equal(expected, bmap.AwardsRankedScore);
+    }
 }

@@ -5,6 +5,7 @@ using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Application.UseCases.Scores;
 using Bancho.Domain;
 using Bancho.Protocol;
 using Microsoft.AspNetCore.Mvc;
@@ -229,6 +230,87 @@ public static class BanchoHostGroups
         // real-osu.ppy.sh redirect fallback is dropped, not just the devserver-host special case.
         group.MapGet("/web/maps/{mapFilename}", () =>
             Results.Text("Beatmap file updates are not available on this server.", "text/html", Encoding.UTF8));
+
+        // Ported from app/api/domains/osu.py's osuSubmitModularSelector. The "score" field name is
+        // reused by the client for both the base64 score-data string and the replay file upload —
+        // ASP.NET Core's multipart parser already separates text parts from file parts by name, so
+        // (unlike Starlette/FastAPI) no manual form-field workaround is needed here. Unused fields
+        // the Python source reads but never forwards into submission (fs/x/i) are not bound at all.
+        group.MapPost("/web/osu-submit-modular-selector.php", async (HttpContext context, CancellationToken cancellationToken) =>
+        {
+            if (!context.Request.HasFormContentType)
+            {
+                return Results.Text("", "text/html", Encoding.UTF8);
+            }
+
+            var form = await context.Request.ReadFormAsync(cancellationToken);
+            var scoreDataB64 = form["score"].FirstOrDefault();
+            if (scoreDataB64 is null)
+            {
+                return Results.Text("", "text/html", Encoding.UTF8);
+            }
+
+            byte[]? replayData = null;
+            var replayFile = form.Files.GetFile("score");
+            if (replayFile is not null)
+            {
+                using var replayStream = new MemoryStream();
+                await replayFile.CopyToAsync(replayStream, cancellationToken);
+                replayData = replayStream.ToArray();
+            }
+
+            var osuVersion = form["osuver"].FirstOrDefault() ?? "";
+            var decryptor = context.RequestServices.GetRequiredService<IScoreDecryptor>();
+            var (scoreDataFields, clientHash) = decryptor.Decrypt(
+                scoreDataB64, form["s"].FirstOrDefault() ?? "", form["iv"].FirstOrDefault() ?? "", osuVersion);
+
+            var useCase = context.RequestServices.GetRequiredService<ScoreSubmissionUseCase>();
+            var outcome = await useCase.SubmitAsync(
+                new ScoreSubmissionRequest(
+                    ScoreDataFields: scoreDataFields,
+                    PasswordMd5: form["pass"].FirstOrDefault() ?? "",
+                    OsuVersion: osuVersion,
+                    ClientHash: clientHash,
+                    UniqueIds: form["c1"].FirstOrDefault() ?? "",
+                    StoryboardMd5: form["sbk"].FirstOrDefault(),
+                    UpdatedBeatmapHash: form["bmk"].FirstOrDefault() ?? "",
+                    ScoreTime: int.Parse(form["st"].FirstOrDefault() ?? "0"),
+                    FailTime: int.Parse(form["ft"].FirstOrDefault() ?? "0"),
+                    ReplayData: replayData),
+                cancellationToken);
+
+            var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
+            var body = outcome.Code == ScoreSubmissionResultCode.Success
+                ? ScoreSubmissionResponseBuilder.BuildSuccess(outcome.Result!, domain)
+                : ScoreSubmissionResponseBuilder.BuildError(outcome.Code);
+
+            return Results.Text(body, "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's getReplay. `mode` is accepted by the client but
+        // never actually used in the Python source's fetch_replay_file call, so it's not bound
+        // here either.
+        group.MapGet("/web/osu-getreplay.php", async (
+            [FromQuery(Name = "u")] string username,
+            [FromQuery(Name = "h")] string passwordMd5,
+            [FromQuery(Name = "c")] long scoreId,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
+            if (player is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var replayService = context.RequestServices.GetRequiredService<ReplayService>();
+            var result = await replayService.FetchReplayFileAsync(scoreId, player.Id, cancellationToken);
+
+            return result.Code == ReplayFetchResultCode.NotFound
+                ? Results.NotFound()
+                : Results.Bytes(result.Data!, "application/octet-stream");
+        });
     }
 
     private static void MapBeatmapAssetGroup(this RouteGroupBuilder group) =>

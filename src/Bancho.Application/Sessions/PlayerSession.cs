@@ -36,6 +36,13 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Ported from Player.geoloc — defaults to "xx"/0/0 when unavailable, matching Player.__init__.</summary>
     public Geolocation Geoloc { get; set; } = new(0.0, 0.0, "xx", 0);
 
+    /// <summary>
+    /// Ported from Player.client_details — the hardware/version fingerprint captured at login,
+    /// re-checked against score submission's own client_hash to catch a submission from a
+    /// different client session than the one currently logged in.
+    /// </summary>
+    public ClientDetails? Client { get; set; }
+
     public PlayerStatus Status { get; } = new();
 
     /// <summary>
@@ -143,4 +150,17 @@ public sealed class PlayerStatus
 }
 
 /// <summary>Ported from app/objects/player.py's ModeData — a player's cached stats in a single gamemode.</summary>
-public sealed record CachedPlayerStats(long Tscore, long Rscore, double Acc, int Plays, int Playtime, int MaxCombo, int TotalHits, int Rank);
+public sealed record CachedPlayerStats(
+    long Tscore,
+    long Rscore,
+    double Acc,
+    int Plays,
+    int Playtime,
+    int MaxCombo,
+    int TotalHits,
+    int Rank,
+    int XhCount = 0,
+    int XCount = 0,
+    int ShCount = 0,
+    int SCount = 0,
+    int ACount = 0);

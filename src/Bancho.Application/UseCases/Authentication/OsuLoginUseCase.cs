@@ -132,6 +132,8 @@ public sealed class OsuLoginUseCase(
             PmPrivate = loginData.PmPrivate,
             SilenceEnd = user.SilenceEnd,
             DonorEnd = user.DonorEnd,
+            Client = new ClientDetails(
+                osuVersion.Date, loginData.OsuPathMd5, loginData.AdaptersMd5, loginData.UninstallMd5, loginData.DiskSignatureMd5, adapters),
         };
 
         var data = new List<byte[]>

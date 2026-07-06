@@ -58,6 +58,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
             string? query, GameMode? mode, RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default) =>
             Task.FromResult(SearchResult);
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private readonly WebApplicationFactory<Program> _factory;

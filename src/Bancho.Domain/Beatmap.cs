@@ -39,4 +39,17 @@ public sealed record Beatmap(
     /// Beatmap.has_leaderboard's (Ranked, Approved, Loved) property, which excludes Qualified.
     /// </summary>
     public bool HasLeaderboard => Status >= RankedStatus.Ranked;
+
+    /// <summary>
+    /// Ported from Beatmap.has_leaderboard (the property, not the getscores gate above) — used by
+    /// score submission's max-combo stat gate. Deliberately excludes Qualified, unlike
+    /// <see cref="HasLeaderboard"/>.
+    /// </summary>
+    public bool HasLeaderboardStrict => Status is RankedStatus.Ranked or RankedStatus.Approved or RankedStatus.Loved;
+
+    /// <summary>
+    /// Ported from Beatmap.awards_ranked_pp — used by score submission to gate ranked-score,
+    /// grade-count, and leaderboard-rank updates. Excludes Loved as well as Qualified.
+    /// </summary>
+    public bool AwardsRankedScore => Status is RankedStatus.Ranked or RankedStatus.Approved;
 }

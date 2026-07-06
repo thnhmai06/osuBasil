@@ -24,7 +24,12 @@ public sealed record BeatmapLeaderboardScoreRow(
     int UserId,
     string Name);
 
-/// <summary>Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow.</summary>
+/// <summary>
+/// Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow. `Grade` was added on
+/// top of the Python source's field set (which selects it separately, via `Score.from_sql`, only
+/// when score submission's calculate_status needs it for grade_count_deltas) — defaulted so the
+/// getscores read path's existing call sites are unaffected.
+/// </summary>
 public sealed record PersonalBestLeaderboardScoreRow(
     long Id,
     long Score,
@@ -37,7 +42,42 @@ public sealed record PersonalBestLeaderboardScoreRow(
     int NGeki,
     bool Perfect,
     int Mods,
-    long Time);
+    long Time,
+    string Grade = "N",
+    double Acc = 0.0);
+
+/// <summary>Ported from app/repositories/scores.py's FirstPlaceScore.</summary>
+public sealed record FirstPlaceScoreRow(int Id, string Name);
+
+/// <summary>The subset of a score row ReplayService.fetch_replay_file actually reads off `score.player`/`score.mode`.</summary>
+public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
+
+/// <summary>
+/// Ported from the parameters of ScoresRepository.create — `pp` is deliberately absent, the
+/// insert always writes 0 for it (no-pp scope), matching the plan's decision for the now-inert
+/// scores.pp column.
+/// </summary>
+public sealed record ScoreInsertRow(
+    string MapMd5,
+    long Score,
+    double Acc,
+    int MaxCombo,
+    int Mods,
+    int N300,
+    int N100,
+    int N50,
+    int NMiss,
+    int NGeki,
+    int NKatu,
+    string Grade,
+    int Status,
+    int Mode,
+    DateTime PlayTime,
+    int TimeElapsed,
+    int ClientFlags,
+    int UserId,
+    bool Perfect,
+    string OnlineChecksum);
 
 /// <summary>
 /// Ported from app/repositories/scores.py's ScoresRepository, scoped to the three leaderboard
@@ -72,4 +112,25 @@ public interface IScoreRepository
         GameMode mode,
         long score,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Ported from ScoresRepository.create. Returns the new row's auto-increment id.</summary>
+    Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ported from score_submission_is_duplicate's use of fetch_one_by_online_checksum — only the
+    /// existence check is used, so this skips deserializing a full row.
+    /// </summary>
+    Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default);
+
+    /// <summary>Ported from ScoresRepository.mark_previous_best_scores_submitted.</summary>
+    Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ported from ScoresRepository.fetch_first_place_score, scoring_metric dropped (always score,
+    /// per bancho-net's no-pp scope).
+    /// </summary>
+    Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode, CancellationToken cancellationToken = default);
+
+    /// <summary>Ported from the `score.player`/`score.mode` reads in ReplayService.fetch_replay_file.</summary>
+    Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
 }

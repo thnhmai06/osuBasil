@@ -115,6 +115,25 @@ public class OptionsBindingTests
     }
 
     [Fact]
+    public void StorageOptions_ReplaysPath_DefaultsToDotDataOsr()
+    {
+        var options = BindOptions<StorageOptions>(StorageOptions.SectionName, new());
+
+        Assert.Equal(Path.Combine(".data", "osr"), options.ReplaysPath);
+    }
+
+    [Fact]
+    public void StorageOptions_Binds_ReplaysPath()
+    {
+        var options = BindOptions<StorageOptions>(StorageOptions.SectionName, new()
+        {
+            [$"{StorageOptions.SectionName}:ReplaysPath"] = "/srv/replays",
+        });
+
+        Assert.Equal("/srv/replays", options.ReplaysPath);
+    }
+
+    [Fact]
     public void ServerBehaviorOptions_Binds_AllFields()
     {
         var options = BindOptions<ServerBehaviorOptions>(ServerBehaviorOptions.SectionName, new()
