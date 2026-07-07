@@ -19,20 +19,20 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
         var infoText = reader.ReadString();
         var mapMd5 = reader.ReadString();
 
-        var mods = reader.ReadU32();
+        var mods = (Mods)reader.ReadU32();
         var mode = reader.ReadU8();
 
-        if ((mods & (uint)Mods.Relax) != 0)
+        if ((mods & Mods.Relax) != Mods.NoMod)
         {
             if (mode == 3) // rx!mania doesn't exist
-                mods &= ~(uint)Mods.Relax;
+                mods &= ~Mods.Relax;
             else
                 mode += 4;
         }
-        else if ((mods & (uint)Mods.Autopilot) != 0)
+        else if ((mods & Mods.Autopilot) != Mods.NoMod)
         {
             if (mode is 1 or 2 or 3) // ap!catch, taiko and mania don't exist
-                mods &= ~(uint)Mods.Autopilot;
+                mods &= ~Mods.Autopilot;
             else
                 mode += 8;
         }
@@ -42,7 +42,7 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
         player.Status.Action = (Action)action;
         player.Status.InfoText = infoText;
         player.Status.MapMd5 = mapMd5;
-        player.Status.Mods = (Mods)mods;
+        player.Status.Mods = mods;
         player.Status.Mode = (GameMode)mode;
         player.Status.MapId = mapId;
 

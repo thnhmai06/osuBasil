@@ -153,24 +153,24 @@ public sealed class BeatmapLeaderboardService(
     private static (GameMode Mode, Mods Mods) ResolveModeAndMods(int modeArg, int modsArg)
     {
         var mode = modeArg;
-        var mods = modsArg;
+        var mods = (Mods)modsArg;
 
-        if ((mods & (int)Mods.Relax) != 0)
+        if ((mods & Mods.Relax) != Mods.NoMod)
         {
             if (mode == 3) // rx!mania doesn't exist
-                mods &= ~(int)Mods.Relax;
+                mods &= ~Mods.Relax;
             else
                 mode += 4;
         }
-        else if ((mods & (int)Mods.Autopilot) != 0)
+        else if ((mods & Mods.Autopilot) != Mods.NoMod)
         {
             if (mode is 1 or 2 or 3) // ap!catch, taiko and mania don't exist
-                mods &= ~(int)Mods.Autopilot;
+                mods &= ~Mods.Autopilot;
             else
                 mode += 8;
         }
 
-        return ((GameMode)mode, (Mods)mods);
+        return ((GameMode)mode, mods);
     }
 
     /// <summary>Ported from BeatmapLeaderboardService._update_player_status_if_needed.</summary>

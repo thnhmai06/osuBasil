@@ -92,6 +92,25 @@ public class ChangeActionHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AutopilotModOnMania_DivergesFromGameModeExtensionsFromParams()
+    {
+        // Regression test for the deliberate Relax-before-Autopilot check order documented on
+        // BeatmapLeaderboardService.ResolveModeAndMods: this handler and that service both check
+        // Relax first, unlike GameModeExtensions.FromParams (Autopilot first, matching Python's
+        // GameMode.from_params). For mods=Autopilot, mode=mania, FromParams would produce
+        // AutopilotMania (11, an "unused" combo); this handler strips Autopilot instead, since mania
+        // has no ap! variant, and keeps VanillaMania — the two must keep disagreeing here.
+        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 3, 0));
+
+        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+
+        Assert.Equal(GameMode.VanillaMania, session.Status.Mode);
+        Assert.Equal(Mods.NoMod, session.Status.Mods);
+        Assert.NotEqual(GameModeExtensions.FromParams(3, Mods.Autopilot), session.Status.Mode);
+    }
+
+    [Fact]
     public async Task Handle_Unrestricted_BroadcastsUpdatedStatsToAllOnlinePlayers()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
