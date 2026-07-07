@@ -12,6 +12,7 @@ using OpenOsuTournament.Bancho.Application.UseCases.Anticheat;
 using OpenOsuTournament.Bancho.Application.UseCases.Authentication;
 using OpenOsuTournament.Bancho.Application.UseCases.Beatmaps;
 using OpenOsuTournament.Bancho.Application.UseCases.Mail;
+using OpenOsuTournament.Bancho.Application.UseCases.Multiplayer;
 using OpenOsuTournament.Bancho.Application.UseCases.Scores;
 using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Login;
@@ -225,29 +226,10 @@ public static class BanchoHostGroups
             if (int.TryParse(rawSetId, out var setId))
             {
                 var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-                var beatmaps = await maps.FetchAllBySetIdAsync(setId, cancellationToken);
-                if (beatmaps.Count > 0)
-                {
-                    var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-                    using var zipStream = new MemoryStream();
-                    using (var archive = new System.IO.Compression.ZipArchive(zipStream,
-                               System.IO.Compression.ZipArchiveMode.Create, true))
-                    {
-                        foreach (var beatmap in beatmaps)
-                        {
-                            var osuPath = Path.Combine(storage.MapsetsPath, $"{beatmap.Id}.osu");
-                            if (!File.Exists(osuPath)) continue;
-
-                            var entry = archive.CreateEntry(beatmap.Filename);
-                            await using var entryStream = entry.Open();
-                            await using var fileStream = File.OpenRead(osuPath);
-                            await fileStream.CopyToAsync(entryStream, cancellationToken);
-                        }
-                    }
-
-                    return Results.File(zipStream.ToArray(), "application/x-osu-beatmap-archive",
-                        $"{setId}.osz");
-                }
+                var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+                var osz = await BuildOszArchiveAsync(maps, storage, setId, cancellationToken);
+                if (osz is not null)
+                    return Results.File(osz, "application/x-osu-beatmap-archive", $"{setId}.osz");
             }
 
             var mirrorOptions = context.RequestServices.GetRequiredService<IOptions<MirrorOptions>>().Value;
@@ -530,6 +512,38 @@ public static class BanchoHostGroups
         });
     }
 
+    /// <summary>
+    ///     Packages every locally-ingested beatmap sharing <paramref name="setId" /> into a fresh
+    ///     .osz on the fly (shared by /d/{setId} and the api. host's /beatmapsets/{setId}). Returns
+    ///     null when no beatmap in the set has a local .osu file.
+    /// </summary>
+    private static async Task<byte[]?> BuildOszArchiveAsync(IMapRepository maps, StorageOptions storage, int setId,
+        CancellationToken cancellationToken)
+    {
+        var beatmaps = await maps.FetchAllBySetIdAsync(setId, cancellationToken);
+        if (beatmaps.Count == 0) return null;
+
+        using var zipStream = new MemoryStream();
+        var wroteAny = false;
+        using (var archive = new System.IO.Compression.ZipArchive(zipStream,
+                   System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            foreach (var beatmap in beatmaps)
+            {
+                var osuPath = Path.Combine(storage.MapsetsPath, $"{beatmap.Id}.osu");
+                if (!File.Exists(osuPath)) continue;
+
+                var entry = archive.CreateEntry(beatmap.Filename);
+                await using var entryStream = entry.Open();
+                await using var fileStream = File.OpenRead(osuPath);
+                await fileStream.CopyToAsync(entryStream, cancellationToken);
+                wroteAny = true;
+            }
+        }
+
+        return wroteAny ? zipStream.ToArray() : null;
+    }
+
     private static void MapBeatmapAssetGroup(this RouteGroupBuilder group)
     {
         // Ported from app/api/domains/map.py's everything — every request under the b.{domain}
@@ -562,9 +576,53 @@ public static class BanchoHostGroups
         });
     }
 
+    // New for this server's api. host — was a placeholder ("real API deferred") until now. Read-only
+    // for now: the TRT snapshot and file downloads. Live WS endpoints and admin-key-gated management
+    // CRUD land in a later slice of this same phase.
     private static void MapApiGroup(this RouteGroupBuilder group)
     {
         group.MapGet("/", () => "api");
+
+        group.MapGet("/multi/{id:int}", async (int id, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            var reportService = context.RequestServices.GetRequiredService<MatchReportService>();
+            var report = await reportService.BuildAsync(id, cancellationToken);
+            return report is null ? Results.NotFound() : Results.Json(report);
+        });
+
+        group.MapGet("/replays/{scoreId:long}", async (long scoreId, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var replayService = context.RequestServices.GetRequiredService<ReplayService>();
+            // No authenticated viewer on this public host — 0 is never a real Users.Id (seeding
+            // starts at 1), so ReplayService's "skip the view-count bump for the owner" check never
+            // spuriously fires here.
+            var result = await replayService.FetchReplayFileAsync(scoreId, 0, cancellationToken);
+            return result.Code == ReplayFetchResultCode.NotFound
+                ? Results.NotFound()
+                : Results.Bytes(result.Data!, "application/octet-stream");
+        });
+
+        group.MapGet("/beatmaps/{beatmapId:int}", async (int beatmapId, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+            var bmap = await maps.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
+            if (bmap is null) return Results.NotFound();
+
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var osuPath = Path.Combine(storage.MapsetsPath, $"{bmap.Id}.osu");
+            return File.Exists(osuPath) ? Results.File(osuPath, "text/plain") : Results.NotFound();
+        });
+
+        group.MapGet("/beatmapsets/{setId:int}", async (int setId, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var osz = await BuildOszArchiveAsync(maps, storage, setId, cancellationToken);
+            return osz is null ? Results.NotFound() : Results.File(osz, "application/x-osu-beatmap-archive", $"{setId}.osz");
+        });
     }
 }
 

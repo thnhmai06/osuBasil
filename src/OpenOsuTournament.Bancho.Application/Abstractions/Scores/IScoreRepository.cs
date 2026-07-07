@@ -52,6 +52,25 @@ public sealed record FirstPlaceScoreRow(int Id, string Name);
 /// <summary>The subset of a score row ReplayService.fetch_replay_file actually reads off `score.player`/`score.mode`.</summary>
 public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
 
+/// <summary>New for MatchReportService (the TRT builder) — every score submitted within one Round.</summary>
+public sealed record RoundScoreRow(
+    long Id,
+    int UserId,
+    string UserName,
+    int? Team,
+    int Mods,
+    long Score,
+    double Acc,
+    int MaxCombo,
+    int N300,
+    int N100,
+    int N50,
+    int NMiss,
+    int NGeki,
+    int NKatu,
+    string Grade,
+    bool Perfect);
+
 /// <summary>
 ///     Ported from the parameters of ScoresRepository.create — `pp` is deliberately absent, the
 ///     insert always writes 0 for it (no-pp scope), matching the plan's decision for the now-inert
@@ -137,4 +156,7 @@ public interface IScoreRepository
 
     /// <summary>Ported from the `score.player`/`score.mode` reads in ReplayService.fetch_replay_file.</summary>
     Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
+
+    /// <summary>New for MatchReportService (the TRT builder) — every score linked to one Round.</summary>
+    Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
 }

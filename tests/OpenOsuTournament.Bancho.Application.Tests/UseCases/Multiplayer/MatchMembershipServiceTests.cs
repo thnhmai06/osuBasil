@@ -331,6 +331,11 @@ public class MatchMembershipServiceTests
             return _byId.GetValueOrDefault(id);
         }
 
+        public MatchSession? GetByDbId(int dbId)
+        {
+            return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
+        }
+
         public MatchSession? TryCreate(Func<int, MatchSession> factory)
         {
             if (_nextId >= 64) return null;
@@ -372,6 +377,26 @@ public class MatchMembershipServiceTests
         }
 
         public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<MatchRow?>(null);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
+
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

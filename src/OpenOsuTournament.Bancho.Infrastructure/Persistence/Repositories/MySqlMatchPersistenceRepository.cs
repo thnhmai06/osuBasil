@@ -51,6 +51,41 @@ public sealed class MySqlMatchPersistenceRepository(string connectionString) : I
             new { RoundId = roundId, EndedAt = endedAt });
     }
 
+    public async Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.QuerySingleOrDefaultAsync<MatchRow>(
+            "SELECT * FROM Matches WHERE Id = @MatchId", new { MatchId = matchId });
+    }
+
+    public async Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<RoundRow>(
+            "SELECT * FROM Rounds WHERE MatchId = @MatchId ORDER BY RoundIndex ASC", new { MatchId = matchId });
+        return rows.ToList();
+    }
+
+    public async Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<MatchRow>("SELECT * FROM Matches ORDER BY Id DESC");
+        return rows.ToList();
+    }
+
+    public async Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await connection.ExecuteAsync(
+            "DELETE FROM Scores WHERE RoundId IN (SELECT Id FROM Rounds WHERE MatchId = @MatchId)",
+            new { MatchId = matchId }, transaction);
+        await connection.ExecuteAsync("DELETE FROM Rounds WHERE MatchId = @MatchId", new { MatchId = matchId }, transaction);
+        await connection.ExecuteAsync("DELETE FROM Matches WHERE Id = @MatchId", new { MatchId = matchId }, transaction);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private MySqlConnection Connect()
     {
         return new MySqlConnection(connectionString);

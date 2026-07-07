@@ -38,24 +38,27 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
 
     private async Task<long> InsertScoreAsync(
         string mapMd5, int userId, long score, int mods = 0, SubmissionStatus status = SubmissionStatus.Best,
-        GameMode mode = GameMode.VanillaOsu, bool perfect = false)
+        GameMode mode = GameMode.VanillaOsu, bool perfect = false, int? roundId = null, int? team = null)
     {
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         return await connection.ExecuteScalarAsync<long>(
             """
             INSERT INTO Scores (
                 MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum
+                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
+                RoundId, Team
             ) VALUES (
                 @MapMd5, @Score, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
-                'S', @Status, @Mode, NOW(), 120000, 0, @UserId, @Perfect, @Checksum
+                'S', @Status, @Mode, NOW(), 120000, 0, @UserId, @Perfect, @Checksum,
+                @RoundId, @Team
             );
             SELECT LAST_INSERT_ID();
             """,
             new
             {
                 MapMd5 = mapMd5, Score = score, Mods = mods, Status = (int)status, Mode = (int)mode,
-                UserId = userId, Perfect = perfect, Checksum = Guid.NewGuid().ToString("N")
+                UserId = userId, Perfect = perfect, Checksum = Guid.NewGuid().ToString("N"),
+                RoundId = roundId, Team = team
             });
     }
 
@@ -303,5 +306,44 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
     public async Task FetchOwner_NotFound_ReturnsNull()
     {
         Assert.Null(await _repository.FetchOwnerAsync(999_999));
+    }
+
+    [Fact]
+    public async Task FetchByRoundId_ReturnsScoresOrderedByScoreDescending_WithUserNameJoined()
+    {
+        await InsertUserAsync(401, "roundwinner");
+        await InsertUserAsync(402, "roundloser");
+        var roundId = await InsertRoundAsync();
+        var mapMd5 = new string('h', 32);
+        await InsertScoreAsync(mapMd5, 401, 900_000, roundId: roundId, team: 1);
+        await InsertScoreAsync(mapMd5, 402, 300_000, roundId: roundId, team: 2);
+        // Not linked to the round — must not show up.
+        await InsertScoreAsync(mapMd5, 402, 999_999);
+
+        var rows = await _repository.FetchByRoundIdAsync(roundId);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("roundwinner", rows[0].UserName);
+        Assert.Equal(900_000, rows[0].Score);
+        Assert.Equal(1, rows[0].Team);
+        Assert.Equal("roundloser", rows[1].UserName);
+    }
+
+    private async Task<int> InsertRoundAsync()
+    {
+        await using var connection = new MySqlConnection(_fixture.ConnectionString);
+        var matchId = await connection.ExecuteScalarAsync<int>(
+            """
+            INSERT INTO Matches (Name, Mode, WinCondition, TeamType, HostId, CreatedAt)
+            VALUES ('test match', 0, 0, 0, 1, NOW());
+            SELECT LAST_INSERT_ID();
+            """);
+        return await connection.ExecuteScalarAsync<int>(
+            """
+            INSERT INTO Rounds (MatchId, RoundIndex, BeatmapId, MapMd5, Mods, StartedAt)
+            VALUES (@MatchId, 1, 1, REPEAT('a', 32), 0, NOW());
+            SELECT LAST_INSERT_ID();
+            """,
+            new { MatchId = matchId });
     }
 }

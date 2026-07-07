@@ -20,6 +20,14 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
         }
     }
 
+    public MatchSession? GetByDbId(int dbId)
+    {
+        lock (_registryLock)
+        {
+            return _slots.FirstOrDefault(m => m is not null && m.DbId == dbId);
+        }
+    }
+
     public MatchSession? TryCreate(Func<int, MatchSession> factory)
     {
         lock (_registryLock)

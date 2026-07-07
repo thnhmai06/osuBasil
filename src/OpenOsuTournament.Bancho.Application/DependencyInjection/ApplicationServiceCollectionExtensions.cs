@@ -36,6 +36,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
         services.AddSingleton<MatchMembershipService>();
+        services.AddSingleton<MatchReportService>();
         services.AddSingleton<BeatmapInfoService>();
         services.AddSingleton<ClientIntegrityService>();
         services.AddSingleton<MailReadService>();

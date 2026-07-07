@@ -181,9 +181,52 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             });
     }
 
+    public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<RoundScoreRowDto>(
+            """
+            SELECT s.Id, s.UserId, u.Name AS UserName, s.Team, s.Mods, s.Score, s.Acc, s.MaxCombo,
+                   s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu, s.Grade, s.Perfect
+            FROM Scores s
+            JOIN Users u ON u.Id = s.UserId
+            WHERE s.RoundId = @RoundId
+            ORDER BY s.Score DESC
+            """,
+            new { RoundId = roundId });
+        return rows.Select(r => r.ToRow()).ToList();
+    }
+
     private MySqlConnection Connect()
     {
         return new MySqlConnection(connectionString);
+    }
+
+    private sealed class RoundScoreRowDto
+    {
+        public long Id { get; set; }
+        public int UserId { get; set; }
+        public string UserName { get; set; } = "";
+        public int? Team { get; set; }
+        public int Mods { get; set; }
+        public long Score { get; set; }
+        public double Acc { get; set; }
+        public int MaxCombo { get; set; }
+        public int N300 { get; set; }
+        public int N100 { get; set; }
+        public int N50 { get; set; }
+        public int NMiss { get; set; }
+        public int NGeki { get; set; }
+        public int NKatu { get; set; }
+        public string Grade { get; set; } = "N";
+        public bool Perfect { get; set; }
+
+        public RoundScoreRow ToRow()
+        {
+            return new RoundScoreRow(
+                Id, UserId, UserName, Team, Mods, Score, Acc, MaxCombo, N300, N100, N50, NMiss, NGeki, NKatu,
+                Grade, Perfect);
+        }
     }
 
     private sealed class BeatmapLeaderboardScoreRowDto

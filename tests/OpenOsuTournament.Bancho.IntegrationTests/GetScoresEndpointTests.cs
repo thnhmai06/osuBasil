@@ -301,6 +301,11 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         {
             return Task.FromResult<ScoreOwnerRow?>(null);
         }
+
+        public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
+        }
     }
 
     private sealed class StubRatingRepository : IRatingRepository

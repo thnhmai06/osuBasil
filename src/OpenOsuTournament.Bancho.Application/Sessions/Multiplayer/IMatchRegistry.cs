@@ -11,6 +11,12 @@ public interface IMatchRegistry
     MatchSession? GetById(int id);
 
     /// <summary>
+    ///     New for the api. host's /multi/{id} routes, which key by the persistent Matches.Id
+    ///     (<see cref="MatchSession.DbId" />) rather than the 0-63 wire-protocol slot <see cref="GetById" /> uses.
+    /// </summary>
+    MatchSession? GetByDbId(int dbId);
+
+    /// <summary>
     ///     Atomically finds the first free slot (0..63) and registers the session <paramref name="factory" />
     ///     builds for that id, mirroring Matches.get_free immediately followed by assignment in
     ///     MatchCreate.handle — those two steps must not be separated by another thread's create.
