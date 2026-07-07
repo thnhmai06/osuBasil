@@ -74,6 +74,7 @@ internal static class MultiplayerTestSupport
             foreach (var session in sessions)
             {
                 SessionRegistry.GetById(session.Id).Returns(session);
+                SessionRegistry.GetByName(session.Name).Returns(session);
             }
         }
 

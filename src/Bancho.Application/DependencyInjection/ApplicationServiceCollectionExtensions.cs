@@ -89,6 +89,22 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ICommand, MpCommandDispatcher>();
 
         services.AddSingleton<IMpSubCommand, MpHelpCommand>();
+        services.AddSingleton<IMpSubCommand, MpStartCommand>();
+        services.AddSingleton<IMpSubCommand, MpAbortCommand>();
+        services.AddSingleton<IMpSubCommand, MpMapCommand>();
+        services.AddSingleton<IMpSubCommand, MpModsCommand>();
+        services.AddSingleton<IMpSubCommand, MpFreemodsCommand>();
+        services.AddSingleton<IMpSubCommand, MpHostCommand>();
+        services.AddSingleton<IMpSubCommand, MpRandpwCommand>();
+        services.AddSingleton<IMpSubCommand, MpInviteCommand>();
+        services.AddSingleton<IMpSubCommand, MpAddRefCommand>();
+        services.AddSingleton<IMpSubCommand, MpRmRefCommand>();
+        services.AddSingleton<IMpSubCommand, MpListRefCommand>();
+        services.AddSingleton<IMpSubCommand, MpLockCommand>();
+        services.AddSingleton<IMpSubCommand, MpUnlockCommand>();
+        services.AddSingleton<IMpSubCommand, MpTeamsCommand>();
+        services.AddSingleton<IMpSubCommand, MpConditionCommand>();
+        services.AddSingleton<IMpSubCommand, MpForceCommand>();
 
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 

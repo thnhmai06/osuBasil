@@ -206,6 +206,33 @@ public sealed class MatchMembershipService(
         player.Match = null;
     }
 
+    /// <summary>
+    /// Ported from Match.start. Caller must already hold <paramref name="match"/>'s Lock — shared
+    /// by MATCH_START and !mp start/!mp force-start, matching how both call the same Python method.
+    /// </summary>
+    public void Start(MatchSession match)
+    {
+        var noMap = new List<int>();
+        foreach (var slot in match.Slots)
+        {
+            if (slot.PlayerId is not null)
+            {
+                if (slot.Status != SlotStatus.NoMap)
+                {
+                    slot.Status = SlotStatus.Playing;
+                }
+                else
+                {
+                    noMap.Add(slot.PlayerId.Value);
+                }
+            }
+        }
+
+        match.InProgress = true;
+        Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), lobby: false, immune: noMap);
+        EnqueueState(match);
+    }
+
     /// <summary>Ported from Match.enqueue.</summary>
     public void Enqueue(MatchSession match, byte[] data, bool lobby = true, IReadOnlyCollection<int>? immune = null)
     {
