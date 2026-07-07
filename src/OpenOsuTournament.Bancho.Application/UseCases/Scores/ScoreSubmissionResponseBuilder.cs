@@ -6,7 +6,7 @@ public static class ScoreSubmissionResponseBuilder
     public static string BuildSuccess(SubmittedScoreResult result, string domain)
     {
         return result.Score.Passed
-            ? ScoreSubmissionChartsFormatter.Format(result.Score, result.PreviousStats, result.CurrentStats, domain)
+            ? ScoreSubmissionChartsFormatter.Format(result.Score, domain)
             : "error: no";
     }
 

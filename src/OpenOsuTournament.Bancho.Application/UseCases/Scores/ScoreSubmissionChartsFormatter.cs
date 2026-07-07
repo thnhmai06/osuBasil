@@ -1,5 +1,4 @@
 using System.Globalization;
-using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Domain.Scores;
 
 namespace OpenOsuTournament.Bancho.Application.UseCases.Scores;
@@ -9,12 +8,14 @@ namespace OpenOsuTournament.Bancho.Application.UseCases.Scores;
 ///     dropped entirely (per scope) — the achievements-new field is always empty. `pp` chart entries
 ///     are always passed 0 (no-pp scope); chart_entry's own "0 or ''" falsy formatting empties them
 ///     automatically, so the field is kept (preserving the protocol's key/value shape for the osu!
-///     client's result-screen parser) without any pp-specific special-casing.
+///     client's result-screen parser) without any pp-specific special-casing. The "overall" (profile
+///     stats) section has no before/after delta to show — stats are fixed, not updated on submission
+///     (see docs/scope-decisions.md) — so every overall entry is emitted empty rather than fetching
+///     stats that would never have actually changed.
 /// </summary>
 public static class ScoreSubmissionChartsFormatter
 {
-    public static string Format(ScoreSubmission score, CachedPlayerStats previousStats, CachedPlayerStats currentStats,
-        string domain)
+    public static string Format(ScoreSubmission score, string domain)
     {
         var beatmapEntries = score.PrevBest is { } prevBest
             ? new[]
@@ -38,11 +39,11 @@ public static class ScoreSubmissionChartsFormatter
 
         var overallEntries = new[]
         {
-            ChartEntry("rank", previousStats.Rank, currentStats.Rank),
-            ChartEntry("rankedScore", previousStats.Rscore, currentStats.Rscore),
-            ChartEntry("totalScore", previousStats.Tscore, currentStats.Tscore),
-            ChartEntry("maxCombo", previousStats.MaxCombo, currentStats.MaxCombo),
-            ChartEntry("accuracy", Math.Round(previousStats.Acc, 2), Math.Round(currentStats.Acc, 2)),
+            ChartEntry("rank", null, null),
+            ChartEntry("rankedScore", null, null),
+            ChartEntry("totalScore", null, null),
+            ChartEntry("maxCombo", null, null),
+            ChartEntry("accuracy", null, null),
             ChartEntry("pp", 0, 0)
         };
 

@@ -1,3 +1,5 @@
+using OpenOsuTournament.Bancho.Application.Abstractions;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
@@ -20,7 +22,9 @@ public sealed class MatchMembershipService(
     IMatchRegistry matchRegistry,
     IChannelRegistry channelRegistry,
     IPlayerSessionRegistry sessionRegistry,
-    ChannelMembershipService channelMembership)
+    ChannelMembershipService channelMembership,
+    IMatchPersistenceRepository matchPersistence,
+    IClock clock)
 {
     private const string PrivateSuffix = "//private";
     private const int MaxMatchNameLength = 50; // matches MAX_MATCH_NAME_LENGTH in app/objects/match.py
@@ -69,9 +73,12 @@ public sealed class MatchMembershipService(
     /// <summary>
     ///     Ported from the MatchCreate handler: atomically allocates a registry slot, builds the
     ///     match + its channel, and joins the host into slot 0. Returns null if the 64-slot table is
-    ///     full (caller sends match_join_fail, matching MatchCreate.handle).
+    ///     full (caller sends match_join_fail, matching MatchCreate.handle). Also persists a Matches
+    ///     row — <see cref="MatchSession.DbId" /> is the stable id external consumers (TRT/WS) use,
+    ///     distinct from the 0-63 in-memory <see cref="MatchSession.Id" /> the wire protocol uses.
     /// </summary>
-    public MatchSession? Create(PlayerSession host, ReadMatchResult data)
+    public async Task<MatchSession?> CreateAsync(PlayerSession host, ReadMatchResult data,
+        CancellationToken cancellationToken = default)
     {
         var match = matchRegistry.TryCreate(id =>
         {
@@ -81,6 +88,10 @@ public sealed class MatchMembershipService(
         });
 
         if (match is null) return null;
+
+        match.DbId = await matchPersistence.CreateMatchAsync(
+            match.Name, (int)match.Mode, (int)match.WinCondition, (int)match.TeamType, match.HostId,
+            match.HasPublicHistory, clock.UtcNow.UtcDateTime, cancellationToken);
 
         match.Lock.Wait();
         try
@@ -199,8 +210,11 @@ public sealed class MatchMembershipService(
     /// <summary>
     ///     Ported from Match.start. Caller must already hold <paramref name="match" />'s Lock — shared
     ///     by MATCH_START and !mp start/!mp force-start, matching how both call the same Python method.
+    ///     Also opens a new Round row for the beatmap about to be played — see
+    ///     <see cref="MatchSession.CurrentRoundId" />'s doc comment for why score submission links to
+    ///     it directly instead of MatchComplete gathering scores after the fact.
     /// </summary>
-    public void Start(MatchSession match)
+    public async Task StartAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var noMap = new List<int>();
         foreach (var slot in match.Slots)
@@ -213,6 +227,11 @@ public sealed class MatchMembershipService(
             }
 
         match.InProgress = true;
+
+        match.CurrentRoundId = await matchPersistence.CreateRoundAsync(
+            match.DbId, match.NextRoundIndex++, match.MapId, match.MapMd5, (int)match.Mods,
+            clock.UtcNow.UtcDateTime, cancellationToken);
+
         Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
         EnqueueState(match);
     }

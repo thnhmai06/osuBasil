@@ -52,7 +52,8 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.Create(host, MakeMatchData(host.Id, password: "pw"))!;
+        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
+            .GetAwaiter().GetResult()!;
 
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);

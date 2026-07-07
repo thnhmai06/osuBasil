@@ -12,7 +12,7 @@ public sealed class MySqlLogRepository(string connectionString) : ILogRepository
     {
         await using var connection = new MySqlConnection(connectionString);
         await connection.ExecuteAsync(
-            "INSERT INTO logs (`from`, `to`, `action`, msg, time) VALUES (@FromId, @ToId, @Action, @Message, UTC_TIMESTAMP())",
+            "INSERT INTO Logs (`From`, `To`, `Action`, Msg, Time) VALUES (@FromId, @ToId, @Action, @Message, UTC_TIMESTAMP())",
             new { FromId = fromId, ToId = toId, Action = action, Message = message });
     }
 }

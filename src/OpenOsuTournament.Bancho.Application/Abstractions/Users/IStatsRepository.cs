@@ -1,8 +1,9 @@
 namespace OpenOsuTournament.Bancho.Application.Abstractions.Users;
 
 /// <summary>
-///     Ported from app/repositories/stats.py's Stats dataclass (OpenOsuTournament.Bancho: no `pp` column usage —
-///     see docs/csharp-migration-plan.md §0).
+///     Fixed gameplay stats — seeded once, never updated after score submission (server does not
+///     track singleplayer ranking/progression). Ported from app/repositories/stats.py's Stats
+///     dataclass (OpenOsuTournament.Bancho: no `pp` column usage).
 /// </summary>
 public sealed record Stats(
     int Id,
@@ -22,8 +23,8 @@ public sealed record Stats(
     int ACount);
 
 /// <summary>
-///     Ported from app/repositories/stats.py's StatsRepository, scoped to what login and score
-///     submission need.
+///     Ported from app/repositories/stats.py's StatsRepository, scoped to what login and replay
+///     viewing need — no score-submission update path (stats are fixed).
 /// </summary>
 public interface IStatsRepository
 {
@@ -31,26 +32,9 @@ public interface IStatsRepository
 
     Task<Stats?> FetchOneAsync(int userId, int mode, CancellationToken cancellationToken = default);
 
-    Task UpdateAfterScoreAsync(
-        int userId,
-        int mode,
-        long tscore,
-        long rscore,
-        int plays,
-        int playtime,
-        double acc,
-        int maxCombo,
-        int totalHits,
-        int xhCount,
-        int xCount,
-        int shCount,
-        int sCount,
-        int aCount,
-        CancellationToken cancellationToken = default);
-
     /// <summary>
-    ///     Ported from Score.increment_replay_views — a plain delta update, kept separate from
-    ///     UpdateAfterScoreAsync because it targets the replay's owner, not necessarily the score
+    ///     Ported from Score.increment_replay_views — a plain delta update, kept separate from any
+    ///     stats-update path because it targets the replay's owner, not necessarily the score
     ///     submitter (see ReplayService.fetch_replay_file's viewer_id != score.player.id check).
     /// </summary>
     Task IncrementReplayViewsAsync(int userId, int mode, CancellationToken cancellationToken = default);

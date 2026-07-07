@@ -1,5 +1,6 @@
 using NSubstitute;
 using OpenOsuTournament.Bancho.Application.Abstractions;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
@@ -30,7 +31,8 @@ public class LogoutHandlerTests
                 new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>())),
             new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
                 Substitute.For<IPlayerSessionRegistry>(),
-                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()))), _clock);
+                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()),
+                Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IClock>())), _clock);
     }
 
     [Fact]

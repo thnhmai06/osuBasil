@@ -5,6 +5,7 @@ using OpenOsuTournament.Bancho.Application.Abstractions.Scores;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.UseCases.Authentication;
 using OpenOsuTournament.Bancho.Domain.Beatmaps;
+using OpenOsuTournament.Bancho.Domain.Multiplayer;
 using OpenOsuTournament.Bancho.Domain.Scores;
 
 namespace OpenOsuTournament.Bancho.Application.UseCases.Scores;
@@ -35,24 +36,20 @@ public sealed record ScoreSubmissionRequest(
     int FailTime,
     byte[]? ReplayData);
 
-public sealed record SubmittedScoreResult(
-    ScoreSubmission Score,
-    long ScoreId,
-    CachedPlayerStats PreviousStats,
-    CachedPlayerStats CurrentStats);
+public sealed record SubmittedScoreResult(ScoreSubmission Score, long ScoreId);
 
 public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, SubmittedScoreResult? Result = null);
 
 /// <summary>
 ///     Ported from app/services/score_submission.py's ScoreSubmissionService.submit_score, collapsed
 ///     to OpenOsuTournament.Bancho's no-pp scope (every `pp`-vs-`score` branch in the Python source always takes the
-///     score branch here) and its 100%-offline scope (no `.osu` file fetch — see
-///     docs/csharp-migration-plan.md Phase 6 notes: calculate_status/calculate_placement are pure DB
-///     queries that were only ever gated behind the file-availability check for pp/sr's sake).
-///     Deferred to later phases (none sit on the submitting client's response path — see note.md for
-///     the full rationale): publish_user_stats broadcast, personal-best/first-place chat
-///     announcements, and the actual privilege-mutation half of restrict-on-invalid-replay (no
-///     restriction/moderation system exists yet). Achievements are dropped entirely, per scope.
+///     score branch here), its 100%-offline scope (no `.osu` file fetch), and its fixed-stats scope
+///     (no per-user stats/rank update on submission — see docs/scope-decisions.md). If the submitting
+///     player is currently in a multiplayer match, the score is linked to the match's current Round
+///     (<see cref="MatchSession.CurrentRoundId" />) with the player's slot team — this is what lets
+///     the TRT and Scores read paths reconstruct a match's results, without any gather/wait step:
+///     submission and MatchComplete arrive on separate connections with no ordering guarantee, so the
+///     link is written at submission time rather than collected later.
 /// </summary>
 public sealed class ScoreSubmissionUseCase(
     IMapRepository maps,
@@ -60,7 +57,6 @@ public sealed class ScoreSubmissionUseCase(
     IScoreSubmissionPersistence scoreSubmissionPersistence,
     BanchoAuthenticationService authentication,
     IReplayStorage replayStorage,
-    ILeaderboardStore leaderboardStore,
     IClock clock)
 {
     private const int MinReplaySize = 24;
@@ -99,13 +95,18 @@ public sealed class ScoreSubmissionUseCase(
             // restriction branch is commented out pending a trial period) — ported as-is.
         }
 
-        // Ported from update_submitter_status_mode's state mutation. The publish_user_stats
-        // broadcast half is deferred — no consumer reads it before the presence-broadcast phase.
         if (score.Mode != player.Status.Mode)
         {
             player.Status.Mods = score.Mods;
             player.Status.Mode = score.Mode;
         }
+
+        // Ported from Player.match — captured before the checksum lock so a slot/team change
+        // racing with this submission can't matter (the round the player was actually playing is
+        // whatever their match/slot said at the moment gameplay ended).
+        var match = player.Match;
+        var roundId = match?.CurrentRoundId;
+        var team = match?.GetSlot(player.Id)?.Team is { } slotTeam and not MatchTeams.Neutral ? (int)slotTeam : (int?)null;
 
         var checksumLock = ChecksumLocks.GetOrAdd(score.ClientChecksum, static _ => new SemaphoreSlim(1, 1));
         await checksumLock.WaitAsync(cancellationToken);
@@ -119,52 +120,26 @@ public sealed class ScoreSubmissionUseCase(
             var replayData = score.Passed ? request.ReplayData : null;
             if (replayData is not null && replayData.Length < MinReplaySize)
                 // TODO(restriction-phase): bancho.py restricts + logs out the player here. No
-                // restriction/moderation system exists yet in OpenOsuTournament.Bancho — only the replay is
-                // discarded for now; the score itself still counts. See note.md.
+                // restriction/moderation system exists yet — only the replay is discarded for now;
+                // the score itself still counts.
                 replayData = null;
 
-            var previousStats = player.ModeStats.GetValueOrDefault(score.Mode) ??
-                                new CachedPlayerStats(0, 0, 0, 0, 0, 0, 0, 0);
-            var updatedStats = ScoreStatsCalculator.ApplyScoreStats(score, previousStats);
-            var shouldUpdateRank =
-                score.Passed && score.Bmap.AwardsRankedScore && score.Status == SubmissionStatus.Best;
-
-            // Ported from bancho.py's `async with self.database.transaction():` — the previous-best
-            // demotion, score insert, and stats update commit atomically (see IScoreSubmissionPersistence's
-            // doc comment for the bug this fixes over the original Phase 6 port).
             var scoreId = await scoreSubmissionPersistence.PersistScoreSubmissionAsync(
                 score.Status == SubmissionStatus.Best,
                 score.Bmap.Md5,
                 player.Id,
                 score.Mode,
-                BuildInsertRow(score),
-                new StatsUpdateRow(
-                    updatedStats.Tscore, updatedStats.Rscore, updatedStats.Plays, updatedStats.Playtime,
-                    updatedStats.Acc, updatedStats.MaxCombo, updatedStats.TotalHits, updatedStats.XhCount,
-                    updatedStats.XCount, updatedStats.ShCount, updatedStats.SCount, updatedStats.ACount),
+                BuildInsertRow(score, roundId, team),
                 cancellationToken);
             score.Id = scoreId;
 
             if (!player.Restricted) await maps.IncrementPlayCountsAsync(score.Bmap.Id, score.Passed, cancellationToken);
 
-            if (shouldUpdateRank)
-            {
-                await leaderboardStore.AddToGlobalLeaderboardAsync(player.Id, score.Mode, updatedStats.Rscore,
-                    cancellationToken);
-                await leaderboardStore.AddToCountryLeaderboardAsync(
-                    player.Id, score.Mode, player.Geoloc.CountryAcronym, updatedStats.Rscore, cancellationToken);
-                var newRank =
-                    await leaderboardStore.FetchGlobalRankAsync(player.Id, score.Mode, cancellationToken);
-                if (newRank is not null) updatedStats = updatedStats with { Rank = newRank.Value };
-            }
-
-            player.ModeStats[score.Mode] = updatedStats;
-
             if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
 
             return new ScoreSubmissionOutcome(
                 ScoreSubmissionResultCode.Success,
-                new SubmittedScoreResult(score, scoreId, previousStats, updatedStats));
+                new SubmittedScoreResult(score, scoreId));
         }
         finally
         {
@@ -223,7 +198,7 @@ public sealed class ScoreSubmissionUseCase(
         score.Status = score.Score > prevBestRow.Score ? SubmissionStatus.Best : SubmissionStatus.Submitted;
     }
 
-    private static ScoreInsertRow BuildInsertRow(ScoreSubmission score)
+    private static ScoreInsertRow BuildInsertRow(ScoreSubmission score, int? roundId, int? team)
     {
         return new ScoreInsertRow(
             score.Bmap!.Md5,
@@ -245,7 +220,9 @@ public sealed class ScoreSubmissionUseCase(
             (int)score.ClientFlags,
             score.PlayerId,
             score.Perfect,
-            score.ClientChecksum);
+            score.ClientChecksum,
+            roundId,
+            team);
     }
 
     /// <summary>

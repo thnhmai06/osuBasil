@@ -23,7 +23,7 @@ public sealed class MatchStartHandler(MatchMembershipService matchMembership) : 
         await match.Lock.WaitAsync();
         try
         {
-            matchMembership.Start(match);
+            await matchMembership.StartAsync(match);
         }
         finally
         {

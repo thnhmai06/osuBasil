@@ -11,7 +11,7 @@ public sealed class MySqlRatingRepository(string connectionString) : IRatingRepo
     {
         await using var connection = new MySqlConnection(connectionString);
         var average = await connection.QuerySingleOrDefaultAsync<double?>(
-            "SELECT AVG(rating) FROM ratings WHERE map_md5 = @MapMd5",
+            "SELECT AVG(Rating) FROM Ratings WHERE MapMd5 = @MapMd5",
             new { MapMd5 = mapMd5 });
         return average ?? 0.0;
     }

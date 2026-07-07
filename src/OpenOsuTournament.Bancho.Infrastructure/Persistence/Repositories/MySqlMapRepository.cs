@@ -8,15 +8,6 @@ namespace OpenOsuTournament.Bancho.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IMapRepository" />
 public sealed class MySqlMapRepository(string connectionString) : IMapRepository
 {
-    private const string SelectColumns = """
-                                         md5, id, set_id AS SetId, artist, title, version, creator,
-                                         last_update AS LastUpdate, total_length AS TotalLength, max_combo AS MaxCombo,
-                                         status, frozen, plays, passes, mode, bpm, cs, od, ar, hp, diff, filename
-                                         """;
-
-    // mode is tinyint(1) but not a boolean (0-11) — disable MySqlConnector's default coercion.
-    private readonly string _connectionString = connectionString + ";TreatTinyAsBoolean=false";
-
     public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
         int? setId = null, CancellationToken cancellationToken = default)
     {
@@ -28,25 +19,25 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
 
         if (id is not null)
         {
-            conditions.Add("id = @Id");
+            conditions.Add("Id = @Id");
             parameters.Add("Id", id);
         }
 
         if (md5 is not null)
         {
-            conditions.Add("md5 = @Md5");
+            conditions.Add("Md5 = @Md5");
             parameters.Add("Md5", md5);
         }
 
         if (filename is not null)
         {
-            conditions.Add("filename = @Filename");
+            conditions.Add("Filename = @Filename");
             parameters.Add("Filename", filename);
         }
 
         if (setId is not null)
         {
-            conditions.Add("set_id = @SetId");
+            conditions.Add("SetId = @SetId");
             parameters.Add("SetId", setId);
         }
 
@@ -54,7 +45,7 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
         // QueryFirstOrDefault, not QuerySingle: id/md5/filename each match at most one row (unique
         // constraints), but setId can match several maps within the same set — any one will do.
         var row = await connection.QueryFirstOrDefaultAsync<MapRow>(
-            $"SELECT {SelectColumns} FROM maps WHERE {string.Join(" AND ", conditions)}",
+            $"SELECT * FROM Beatmaps WHERE {string.Join(" AND ", conditions)}",
             parameters);
         return row?.ToBeatmap();
     }
@@ -64,11 +55,11 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
         await using var connection = Connect();
         await connection.ExecuteAsync(
             """
-            REPLACE INTO maps (
-                md5, id, server, set_id, artist, title, version, creator, filename, last_update,
-                total_length, max_combo, status, frozen, plays, passes, mode, bpm, cs, od, ar, hp, diff
+            REPLACE INTO Beatmaps (
+                Md5, Id, SetId, Artist, Title, Version, Creator, Filename, LastUpdate,
+                TotalLength, MaxCombo, Status, Frozen, Plays, Passes, Mode, Bpm, Cs, Od, Ar, Hp, Diff
             ) VALUES (
-                @Md5, @Id, 'osu!', @SetId, @Artist, @Title, @Version, @Creator, @Filename, @LastUpdate,
+                @Md5, @Id, @SetId, @Artist, @Title, @Version, @Creator, @Filename, @LastUpdate,
                 @TotalLength, @MaxCombo, @Status, @Frozen, @Plays, @Passes, @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Diff
             )
             """,
@@ -102,7 +93,7 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
     public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        await connection.ExecuteAsync("DELETE FROM maps WHERE md5 = @Md5", new { Md5 = md5 });
+        await connection.ExecuteAsync("DELETE FROM Beatmaps WHERE Md5 = @Md5", new { Md5 = md5 });
     }
 
     public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
@@ -114,19 +105,19 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
 
         if (query is not null)
         {
-            conditions.Add("(artist LIKE @Query OR title LIKE @Query OR creator LIKE @Query)");
+            conditions.Add("(Artist LIKE @Query OR Title LIKE @Query OR Creator LIKE @Query)");
             parameters.Add("Query", $"%{query}%");
         }
 
         if (mode is not null)
         {
-            conditions.Add("mode = @Mode");
+            conditions.Add("Mode = @Mode");
             parameters.Add("Mode", (int)mode);
         }
 
         if (status is not null)
         {
-            conditions.Add("status = @Status");
+            conditions.Add("Status = @Status");
             parameters.Add("Status", (int)status);
         }
 
@@ -136,13 +127,13 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
 
         await using var connection = Connect();
         var setIds = (await connection.QueryAsync<int>(
-            $"SELECT DISTINCT set_id FROM maps {whereClause} ORDER BY set_id DESC LIMIT @Amount OFFSET @Offset",
+            $"SELECT DISTINCT SetId FROM Beatmaps {whereClause} ORDER BY SetId DESC LIMIT @Amount OFFSET @Offset",
             parameters)).ToList();
 
         if (setIds.Count == 0) return [];
 
         var rows = await connection.QueryAsync<MapRow>(
-            $"SELECT {SelectColumns} FROM maps WHERE set_id IN @SetIds ORDER BY diff ASC",
+            "SELECT * FROM Beatmaps WHERE SetId IN @SetIds ORDER BY Diff ASC",
             new { SetIds = setIds });
 
         var mapsBySet = rows.Select(r => r.ToBeatmap()).GroupBy(b => b.SetId)
@@ -155,17 +146,16 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
-            $"UPDATE maps SET plays = plays + 1{(passed ? ", passes = passes + 1" : "")} WHERE id = @MapId",
+            $"UPDATE Beatmaps SET Plays = Plays + 1{(passed ? ", Passes = Passes + 1" : "")} WHERE Id = @MapId",
             new { MapId = mapId });
     }
 
     private MySqlConnection Connect()
     {
-        return new MySqlConnection(_connectionString);
+        return new MySqlConnection(connectionString);
     }
 
-    // Mutable DTO so Dapper maps by property name instead of strict positional-constructor-type
-    // matching, same pattern as MySqlUserRepository (mode is tinyint(1) but not boolean).
+    // Mutable DTO so Dapper maps by property name instead of strict positional-constructor-type matching.
     private sealed class MapRow
     {
         public string Md5 { get; set; } = "";

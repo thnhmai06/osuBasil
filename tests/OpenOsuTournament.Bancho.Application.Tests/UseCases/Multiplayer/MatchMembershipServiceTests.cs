@@ -1,5 +1,7 @@
 using NSubstitute;
+using OpenOsuTournament.Bancho.Application.Abstractions;
 using OpenOsuTournament.Bancho.Application.Abstractions.Channels;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
@@ -16,12 +18,22 @@ public class MatchMembershipServiceTests
 {
     private readonly FakeChannelRegistry _channelRegistry = new();
     private readonly FakeMatchRegistry _matchRegistry = new();
+    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private MatchMembershipService MakeService()
     {
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-            new ChannelMembershipService(_sessionRegistry));
+            new ChannelMembershipService(_sessionRegistry), _matchPersistence, clock);
+    }
+
+    /// <summary>The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous shape.</summary>
+    private static MatchSession? Create(MatchMembershipService service, PlayerSession host, ReadMatchResult data)
+    {
+        return service.CreateAsync(host, data).GetAwaiter().GetResult();
     }
 
     private static PlayerSession MakePlayer(int id, string name)
@@ -51,7 +63,7 @@ public class MatchMembershipServiceTests
         var host = MakePlayer(1, "host");
         RegisterAll(host);
 
-        var match = MakeService().Create(host, MakeMatchData(host.Id));
+        var match = Create(MakeService(), host, MakeMatchData(host.Id));
 
         Assert.NotNull(match);
         Assert.Same(match, host.Match);
@@ -65,7 +77,7 @@ public class MatchMembershipServiceTests
         var host = MakePlayer(1, "host");
         RegisterAll(host);
 
-        var match = MakeService().Create(host, MakeMatchData(host.Id, password: "secret//private"));
+        var match = Create(MakeService(), host, MakeMatchData(host.Id, password: "secret//private"));
 
         Assert.Equal("secret", match!.Password);
         Assert.False(match.HasPublicHistory);
@@ -79,13 +91,13 @@ public class MatchMembershipServiceTests
         {
             var host = MakePlayer(i + 1, $"host{i}");
             RegisterAll(host);
-            Assert.NotNull(service.Create(host, MakeMatchData(host.Id)));
+            Assert.NotNull(Create(service, host, MakeMatchData(host.Id)));
         }
 
         var overflowHost = MakePlayer(1000, "overflow");
         RegisterAll(overflowHost);
 
-        Assert.Null(service.Create(overflowHost, MakeMatchData(overflowHost.Id)));
+        Assert.Null(Create(service, overflowHost, MakeMatchData(overflowHost.Id)));
     }
 
     [Fact]
@@ -95,7 +107,7 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id, password: "pw"))!;
+        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
         host.Dequeue();
 
         var joined = service.Join(guest, match, "pw");
@@ -114,7 +126,7 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id, password: "pw"))!;
+        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
         var joined = service.Join(guest, match, "wrong");
 
@@ -131,7 +143,7 @@ public class MatchMembershipServiceTests
         staff.Priv = Privileges.Unrestricted | Privileges.Moderator;
         RegisterAll(host, staff);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id, password: "pw"))!;
+        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
         Assert.True(service.Join(staff, match, "wrong"));
     }
@@ -143,10 +155,10 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var matchA = service.Create(host, MakeMatchData(host.Id))!;
+        var matchA = Create(service, host, MakeMatchData(host.Id))!;
         var otherHost = MakePlayer(3, "other");
         RegisterAll(host, guest, otherHost);
-        var matchB = service.Create(otherHost, MakeMatchData(otherHost.Id))!;
+        var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
         service.Join(guest, matchA, "");
 
         Assert.False(service.Join(guest, matchB, ""));
@@ -158,7 +170,7 @@ public class MatchMembershipServiceTests
         var host = MakePlayer(1, "host");
         RegisterAll(host);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         for (var i = 1; i < 16; i++)
         {
             match.Slots[i].Status = SlotStatus.NotReady;
@@ -179,7 +191,7 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         match.TeamType = MatchTeamTypes.TeamVs;
 
         service.Join(guest, match, "");
@@ -195,7 +207,7 @@ public class MatchMembershipServiceTests
         RegisterAll(host, lobbyMember);
         _channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         var lobby = _channelRegistry.GetByName("#lobby")!;
         var membership = new ChannelMembershipService(_sessionRegistry);
         membership.Join(lobbyMember, lobby);
@@ -216,7 +228,7 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         service.Join(guest, match, "");
         guest.Dequeue();
 
@@ -233,7 +245,7 @@ public class MatchMembershipServiceTests
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         service.Join(guest, match, "");
         match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
 
@@ -251,7 +263,7 @@ public class MatchMembershipServiceTests
         RegisterAll(host, lobbyMember);
         _channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
         var service = MakeService();
-        var match = service.Create(host, MakeMatchData(host.Id))!;
+        var match = Create(service, host, MakeMatchData(host.Id))!;
         host.Dequeue();
 
         service.EnqueueState(match);
@@ -335,5 +347,33 @@ public class MatchMembershipServiceTests
         }
 
         public IReadOnlyList<MatchSession> All => _byId.Values.ToList();
+    }
+
+    private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+    {
+        private int _nextMatchId = 1;
+        private int _nextRoundId = 1;
+
+        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
+            bool hasPublicHistory, DateTime createdAt, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_nextMatchId++);
+        }
+
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
+            DateTime startedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_nextRoundId++);
+        }
+
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

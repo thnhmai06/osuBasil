@@ -12,11 +12,11 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
 
     public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var matchData = reader.ReadMatch();
 
-        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id)) return Task.CompletedTask;
+        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id)) return;
 
         if (player.Restricted)
         {
@@ -24,7 +24,7 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
                 .. ServerPacketWriter.MatchJoinFail(),
                 .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
             ]);
-            return Task.CompletedTask;
+            return;
         }
 
         if (player.Silenced)
@@ -33,12 +33,10 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
                 .. ServerPacketWriter.MatchJoinFail(),
                 .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
             ]);
-            return Task.CompletedTask;
+            return;
         }
 
-        var match = matchMembership.Create(player, matchData);
+        var match = await matchMembership.CreateAsync(player, matchData);
         if (match is null) player.Enqueue(ServerPacketWriter.MatchJoinFail());
-
-        return Task.CompletedTask;
     }
 }

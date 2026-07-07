@@ -10,11 +10,6 @@ namespace OpenOsuTournament.Bancho.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IScoreRepository" />
 public sealed class MySqlScoreRepository(string connectionString) : IScoreRepository
 {
-    // mode/status are declared without the (1) width in scores' schema, but disable the
-    // TreatTinyAsBoolean heuristic anyway for consistency with every other repo touching
-    // tinyint-typed mode/status columns (see MySqlUserRepository's note on this class of bug).
-    private readonly string _connectionString = connectionString + ";TreatTinyAsBoolean=false";
-
     public async Task<IReadOnlyList<BeatmapLeaderboardScoreRow>> FetchBeatmapLeaderboardScoresAsync(
         string mapMd5,
         GameMode mode,
@@ -27,10 +22,10 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
     {
         var conditions = new List<string>
         {
-            "s.map_md5 = @MapMd5",
-            "s.status = @Best",
-            "((u.priv & @Unrestricted) != 0 OR u.id = @UserId)",
-            "s.mode = @Mode"
+            "s.MapMd5 = @MapMd5",
+            "s.Status = @Best",
+            "((u.Priv & @Unrestricted) != 0 OR u.Id = @UserId)",
+            "s.Mode = @Mode"
         };
         var parameters = new DynamicParameters();
         parameters.Add("MapMd5", mapMd5);
@@ -41,19 +36,19 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
 
         if (mods is not null)
         {
-            conditions.Add("s.mods = @Mods");
+            conditions.Add("s.Mods = @Mods");
             parameters.Add("Mods", mods);
         }
 
         if (friendIds is not null)
         {
-            conditions.Add("s.userid IN @FriendIds");
+            conditions.Add("s.UserId IN @FriendIds");
             parameters.Add("FriendIds", friendIds);
         }
 
         if (country is not null)
         {
-            conditions.Add("u.country = @Country");
+            conditions.Add("u.Country = @Country");
             parameters.Add("Country", country);
         }
 
@@ -62,14 +57,14 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         var rows = await connection.QueryAsync<BeatmapLeaderboardScoreRowDto>(
             $"""
-             SELECT s.id, s.score AS Score, s.max_combo AS MaxCombo, s.n50 AS N50, s.n100 AS N100,
-                    s.n300 AS N300, s.nmiss AS NMiss, s.nkatu AS NKatu, s.ngeki AS NGeki,
-                    s.perfect AS Perfect, s.mods AS Mods, UNIX_TIMESTAMP(s.play_time) AS Time,
-                    u.id AS UserId, u.name AS Name
-             FROM scores s
-             JOIN users u ON u.id = s.userid
+             SELECT s.Id, s.Score AS Score, s.MaxCombo AS MaxCombo, s.N50 AS N50, s.N100 AS N100,
+                    s.N300 AS N300, s.NMiss AS NMiss, s.NKatu AS NKatu, s.NGeki AS NGeki,
+                    s.Perfect AS Perfect, s.Mods AS Mods, UNIX_TIMESTAMP(s.PlayTime) AS Time,
+                    u.Id AS UserId, u.Name AS Name
+             FROM Scores s
+             JOIN Users u ON u.Id = s.UserId
              WHERE {string.Join(" AND ", conditions)}
-             ORDER BY s.score DESC
+             ORDER BY s.Score DESC
              LIMIT @Limit
              """,
             parameters);
@@ -83,12 +78,12 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         var row = await connection.QuerySingleOrDefaultAsync<PersonalBestLeaderboardScoreRowDto>(
             """
-            SELECT id, score AS Score, max_combo AS MaxCombo, n50 AS N50, n100 AS N100,
-                   n300 AS N300, nmiss AS NMiss, nkatu AS NKatu, ngeki AS NGeki,
-                   perfect AS Perfect, mods AS Mods, UNIX_TIMESTAMP(play_time) AS Time, grade AS Grade, acc AS Acc
-            FROM scores
-            WHERE map_md5 = @MapMd5 AND mode = @Mode AND userid = @UserId AND status = @Best
-            ORDER BY score DESC
+            SELECT Id, Score AS Score, MaxCombo AS MaxCombo, N50 AS N50, N100 AS N100,
+                   N300 AS N300, NMiss AS NMiss, NKatu AS NKatu, NGeki AS NGeki,
+                   Perfect AS Perfect, Mods AS Mods, UNIX_TIMESTAMP(PlayTime) AS Time, Grade AS Grade, Acc AS Acc
+            FROM Scores
+            WHERE MapMd5 = @MapMd5 AND Mode = @Mode AND UserId = @UserId AND Status = @Best
+            ORDER BY Score DESC
             LIMIT 1
             """,
             new { MapMd5 = mapMd5, Mode = (int)mode, UserId = userId, Best = (int)SubmissionStatus.Best });
@@ -102,10 +97,10 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         var higherScores = await connection.QuerySingleAsync<int>(
             """
             SELECT COUNT(*)
-            FROM scores s
-            JOIN users u ON u.id = s.userid
-            WHERE s.map_md5 = @MapMd5 AND s.mode = @Mode AND s.status = @Best
-              AND (u.priv & @Unrestricted) != 0 AND s.score > @Score
+            FROM Scores s
+            JOIN Users u ON u.Id = s.UserId
+            WHERE s.MapMd5 = @MapMd5 AND s.Mode = @Mode AND s.Status = @Best
+              AND (u.Priv & @Unrestricted) != 0 AND s.Score > @Score
             """,
             new
             {
@@ -119,7 +114,7 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
     {
         await using var connection = Connect();
         var row = await connection.QuerySingleOrDefaultAsync<ScoreOwnerRowDto>(
-            "SELECT userid AS UserId, mode AS Mode FROM scores WHERE id = @ScoreId",
+            "SELECT UserId AS UserId, Mode AS Mode FROM Scores WHERE Id = @ScoreId",
             new { ScoreId = scoreId });
         return row?.ToRow();
     }
@@ -129,12 +124,12 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         return await connection.QuerySingleAsync<long>(
             """
-            INSERT INTO scores
-                (map_md5, score, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu,
-                 grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum)
+            INSERT INTO Scores
+                (MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+                 Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, RoundId, Team)
             VALUES
-                (@MapMd5, @Score, 0, @Acc, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
-                 @Grade, @Status, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum);
+                (@MapMd5, @Score, @Acc, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
+                 @Grade, @Status, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum, @RoundId, @Team);
             SELECT LAST_INSERT_ID();
             """,
             row);
@@ -145,7 +140,7 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
     {
         await using var connection = Connect();
         return await connection.ExecuteScalarAsync<bool>(
-            "SELECT EXISTS(SELECT 1 FROM scores WHERE online_checksum = @OnlineChecksum)",
+            "SELECT EXISTS(SELECT 1 FROM Scores WHERE OnlineChecksum = @OnlineChecksum)",
             new { OnlineChecksum = onlineChecksum });
     }
 
@@ -155,8 +150,8 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         await connection.ExecuteAsync(
             """
-            UPDATE scores SET status = @Submitted
-            WHERE status = @Best AND map_md5 = @MapMd5 AND userid = @UserId AND mode = @Mode
+            UPDATE Scores SET Status = @Submitted
+            WHERE Status = @Best AND MapMd5 = @MapMd5 AND UserId = @UserId AND Mode = @Mode
             """,
             new
             {
@@ -171,12 +166,12 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         return await connection.QuerySingleOrDefaultAsync<FirstPlaceScoreRow>(
             """
-            SELECT u.id AS Id, u.name AS Name
-            FROM users u
-            JOIN scores s ON u.id = s.userid
-            WHERE s.map_md5 = @MapMd5 AND s.mode = @Mode AND s.status = @Best
-              AND (u.priv & @Unrestricted) != 0
-            ORDER BY s.score DESC
+            SELECT u.Id AS Id, u.Name AS Name
+            FROM Users u
+            JOIN Scores s ON u.Id = s.UserId
+            WHERE s.MapMd5 = @MapMd5 AND s.Mode = @Mode AND s.Status = @Best
+              AND (u.Priv & @Unrestricted) != 0
+            ORDER BY s.Score DESC
             LIMIT 1
             """,
             new
@@ -188,7 +183,7 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
 
     private MySqlConnection Connect()
     {
-        return new MySqlConnection(_connectionString);
+        return new MySqlConnection(connectionString);
     }
 
     private sealed class BeatmapLeaderboardScoreRowDto

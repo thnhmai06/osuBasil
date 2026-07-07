@@ -1,4 +1,3 @@
-using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.UseCases.Scores;
 using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Scores;
@@ -23,10 +22,8 @@ public class ScoreSubmissionChartsFormatterTests
         {
             Id = 42, Bmap = MakeBeatmap(), PlayerId = 7, Score = 500_000, MaxCombo = 500, Acc = 98.1234, Rank = 3
         };
-        var previousStats = new CachedPlayerStats(0, 0, 0, 0, 0, 0, 0, 0);
-        var currentStats = new CachedPlayerStats(500_000, 500_000, 0, 1, 60, 500, 315, 3);
 
-        var result = ScoreSubmissionChartsFormatter.Format(score, previousStats, currentStats, "test.local");
+        var result = ScoreSubmissionChartsFormatter.Format(score, "test.local");
 
         Assert.Contains(
             "beatmapId:100|beatmapSetId:50|beatmapPlaycount:10|beatmapPasscount:5|approvedDate:2021-05-20 10:00:00",
@@ -38,7 +35,6 @@ public class ScoreSubmissionChartsFormatterTests
         Assert.Contains("ppBefore:|ppAfter:", result);
         Assert.Contains("onlineScoreId:42", result);
         Assert.Contains("chartId:overall|chartUrl:https://test.local/u/7|chartName:Overall Ranking", result);
-        Assert.Contains("rankedScoreBefore:|rankedScoreAfter:500000", result);
         Assert.EndsWith("achievements-new:", result);
     }
 
@@ -56,14 +52,25 @@ public class ScoreSubmissionChartsFormatterTests
             Rank = 1,
             PrevBest = new ScoreSubmission { Score = 500_000, MaxCombo = 400, Acc = 95.0, Rank = 2 }
         };
-        var previousStats = new CachedPlayerStats(500_000, 500_000, 95.0, 1, 60, 400, 300, 2);
-        var currentStats = new CachedPlayerStats(1_100_000, 600_000, 99.0, 2, 120, 500, 615, 1);
 
-        var result = ScoreSubmissionChartsFormatter.Format(score, previousStats, currentStats, "test.local");
+        var result = ScoreSubmissionChartsFormatter.Format(score, "test.local");
 
         Assert.Contains("rankBefore:2|rankAfter:1", result);
         Assert.Contains("rankedScoreBefore:500000|rankedScoreAfter:600000", result);
         Assert.Contains("maxComboBefore:400|maxComboAfter:500", result);
         Assert.Contains("accuracyBefore:95|accuracyAfter:99", result);
+    }
+
+    [Fact]
+    public void Format_OverallSection_HasNoStatsDeltaSinceStatsAreFixed()
+    {
+        var score = new ScoreSubmission { Id = 1, Bmap = MakeBeatmap(), PlayerId = 7, Score = 1, Rank = 1 };
+
+        var result = ScoreSubmissionChartsFormatter.Format(score, "test.local");
+
+        Assert.Contains("chartId:overall", result);
+        var overallSection = result[result.IndexOf("chartId:overall", StringComparison.Ordinal)..];
+        Assert.Contains("rankedScoreBefore:|rankedScoreAfter:", overallSection);
+        Assert.Contains("totalScoreBefore:|totalScoreAfter:", overallSection);
     }
 }

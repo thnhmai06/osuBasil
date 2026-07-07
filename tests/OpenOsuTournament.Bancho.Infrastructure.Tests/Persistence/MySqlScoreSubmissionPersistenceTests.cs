@@ -10,8 +10,9 @@ namespace OpenOsuTournament.Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
 ///     Ported from bancho.py's `async with self.database.transaction():` wrapping the previous-best
-///     demotion, score insert, and stats update in ScoreSubmissionService — all three commit (or fail)
-///     together, unlike calling the three repositories separately over independent connections.
+///     demotion and score insert in ScoreSubmissionService — both commit (or fail) together, unlike
+///     calling repositories separately over independent connections. Unlike bancho.py, there is no
+///     stats update in the same transaction — stats are fixed (see docs/scope-decisions.md).
 /// </summary>
 public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
 {
@@ -24,19 +25,15 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
         _persistence = new MySqlScoreSubmissionPersistence(fixture.ConnectionString);
     }
 
-    private async Task InsertUserAndStatsAsync(int id, string name)
+    private async Task InsertUserAsync(int id, string name)
     {
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO users (id, name, safe_name, email, pw_bcrypt, priv, country, creation_time, latest_activity)
+            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
             VALUES (@Id, @Name, @Name, @Email, 'unused', @Priv, 'xx', UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
             """,
             new { Id = id, Name = name, Email = $"{name}@test.local", Priv = (int)Privileges.Unrestricted });
-
-        await connection.ExecuteAsync(
-            "INSERT INTO stats (id, mode) VALUES (@Id, @Mode)",
-            new { Id = id, Mode = (int)GameMode.VanillaOsu });
     }
 
     private async Task<long> InsertScoreAsync(string mapMd5, int userId, long score, SubmissionStatus status)
@@ -44,11 +41,11 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         return await connection.ExecuteScalarAsync<long>(
             """
-            INSERT INTO scores (
-                map_md5, score, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu,
-                grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum
+            INSERT INTO Scores (
+                MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum
             ) VALUES (
-                @MapMd5, @Score, 0, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
+                @MapMd5, @Score, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
                 'S', @Status, @Mode, NOW(), 120000, 0, @UserId, 0, @Checksum
             );
             SELECT LAST_INSERT_ID();
@@ -70,70 +67,57 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
             false, checksum);
     }
 
-    private static StatsUpdateRow MakeStatsUpdate()
-    {
-        return new StatsUpdateRow(
-            500_000, 500_000, 1, 60, 0, 500, 315,
-            0, 0, 1, 0, 0);
-    }
-
     [Fact]
-    public async Task PersistScoreSubmission_InsertsScoreAndUpdatesStatsAtomically()
+    public async Task PersistScoreSubmission_InsertsScore()
     {
         var mapMd5 = new string('1', 32);
-        await InsertUserAndStatsAsync(401, "alice");
+        await InsertUserAsync(401, "alice");
         var checksum = Guid.NewGuid().ToString("N");
 
         var scoreId = await _persistence.PersistScoreSubmissionAsync(
-            false, mapMd5, 401, GameMode.VanillaOsu,
-            MakeInsertRow(mapMd5, 401, 500_000, checksum), MakeStatsUpdate());
+            false, mapMd5, 401, GameMode.VanillaOsu, MakeInsertRow(mapMd5, 401, 500_000, checksum));
 
         Assert.True(scoreId > 0);
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         var storedScore =
-            await connection.ExecuteScalarAsync<long>("SELECT score FROM scores WHERE id = @Id", new { Id = scoreId });
-        var storedRscore =
-            await connection.ExecuteScalarAsync<long>("SELECT rscore FROM stats WHERE id = @Id AND mode = 0",
-                new { Id = 401 });
+            await connection.ExecuteScalarAsync<long>("SELECT Score FROM Scores WHERE Id = @Id", new { Id = scoreId });
         Assert.Equal(500_000, storedScore);
-        Assert.Equal(500_000, storedRscore);
     }
 
     [Fact]
     public async Task PersistScoreSubmission_MarksPreviousBestSubmitted()
     {
         var mapMd5 = new string('2', 32);
-        await InsertUserAndStatsAsync(402, "bob");
+        await InsertUserAsync(402, "bob");
         var previousScoreId = await InsertScoreAsync(mapMd5, 402, 400_000, SubmissionStatus.Best);
         var checksum = Guid.NewGuid().ToString("N");
 
         await _persistence.PersistScoreSubmissionAsync(
-            true, mapMd5, 402, GameMode.VanillaOsu,
-            MakeInsertRow(mapMd5, 402, 500_000, checksum), MakeStatsUpdate());
+            true, mapMd5, 402, GameMode.VanillaOsu, MakeInsertRow(mapMd5, 402, 500_000, checksum));
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id",
+        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT Status FROM Scores WHERE Id = @Id",
             new { Id = previousScoreId });
         Assert.Equal((int)SubmissionStatus.Submitted, previousStatus);
     }
 
     [Fact]
-    public async Task PersistScoreSubmission_FailureOnLaterStatement_RollsBackEarlierWritesInTheSameTransaction()
+    public async Task PersistScoreSubmission_FailureOnInsert_RollsBackTheDemotionInTheSameTransaction()
     {
         var mapMd5 = new string('3', 32);
-        await InsertUserAndStatsAsync(403, "carol");
+        await InsertUserAsync(403, "carol");
         var previousScoreId = await InsertScoreAsync(mapMd5, 403, 400_000, SubmissionStatus.Best);
-        // grade is varchar(2) — this violates the column and throws under MySQL's default
+        // Grade is varchar(2) — this violates the column and throws under MySQL's default
         // STRICT_TRANS_TABLES sql_mode, forcing a failure on the score-insert statement (which
         // runs after the previous-best demotion in the same transaction).
         var invalidRow = MakeInsertRow(mapMd5, 403, 500_000, Guid.NewGuid().ToString("N")) with { Grade = "TOOLONG" };
 
         await Assert.ThrowsAsync<MySqlException>(() => _persistence.PersistScoreSubmissionAsync(
-            true, mapMd5, 403, GameMode.VanillaOsu, invalidRow, MakeStatsUpdate()));
+            true, mapMd5, 403, GameMode.VanillaOsu, invalidRow));
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id",
+        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT Status FROM Scores WHERE Id = @Id",
             new { Id = previousScoreId });
         Assert.Equal((int)SubmissionStatus.Best, previousStatus); // demotion rolled back, not left as Submitted
     }

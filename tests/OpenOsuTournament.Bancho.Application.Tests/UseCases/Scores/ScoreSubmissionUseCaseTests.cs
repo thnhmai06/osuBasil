@@ -15,7 +15,6 @@ namespace OpenOsuTournament.Bancho.Application.Tests.UseCases.Scores;
 public class ScoreSubmissionUseCaseTests
 {
     private readonly IClock _clock = Substitute.For<IClock>();
-    private readonly ILeaderboardStore _leaderboardStore = Substitute.For<ILeaderboardStore>();
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IScoreSubmissionPersistence _persistence = Substitute.For<IScoreSubmissionPersistence>();
@@ -29,7 +28,7 @@ public class ScoreSubmissionUseCaseTests
         return new ScoreSubmissionUseCase(
             _maps, _scores, _persistence,
             new BanchoAuthenticationService(_sessionRegistry, _users, _passwordHasher),
-            _replayStorage, _leaderboardStore, _clock);
+            _replayStorage, _clock);
     }
 
     private static Beatmap MakeBeatmap(RankedStatus status = RankedStatus.Ranked)
@@ -87,7 +86,7 @@ public class ScoreSubmissionUseCaseTests
     {
         _persistence.PersistScoreSubmissionAsync(
                 Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
-                Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>())
+                Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>())
             .Returns(scoreId);
     }
 
@@ -140,16 +139,15 @@ public class ScoreSubmissionUseCaseTests
         Assert.Equal(ScoreSubmissionResultCode.DuplicateSubmission, result.Code);
         await _persistence.DidNotReceive().PersistScoreSubmissionAsync(
             Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
-            Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>());
+            Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task FirstScoreOnMap_PassedRankedBest_PersistsAndUpdatesRankAndStats()
+    public async Task FirstScoreOnMap_PassedRankedBest_Persists()
     {
         var bmap = MakeBeatmap();
         _maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<CancellationToken>()).Returns(bmap);
         var player = MakePlayer();
-        player.ModeStats[GameMode.VanillaOsu] = new CachedPlayerStats(1000, 500, 0, 1, 100, 200, 300, 0);
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
         _scores.FetchPersonalBestLeaderboardScoreAsync(bmap.Md5, GameMode.VanillaOsu, player.Id,
                 Arg.Any<CancellationToken>())
@@ -157,8 +155,6 @@ public class ScoreSubmissionUseCaseTests
         _scores.FetchPersonalBestLeaderboardRankAsync(bmap.Md5, GameMode.VanillaOsu, 500_000,
             Arg.Any<CancellationToken>()).Returns(1);
         StubPersistence(999L);
-        _leaderboardStore.FetchGlobalRankAsync(player.Id, GameMode.VanillaOsu, Arg.Any<CancellationToken>())
-            .Returns(1);
 
         var result = await MakeUseCase()
             .SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000, grade: "S")));
@@ -170,16 +166,8 @@ public class ScoreSubmissionUseCaseTests
 
         await _persistence.Received(1).PersistScoreSubmissionAsync(
             true, bmap.Md5, player.Id, GameMode.VanillaOsu,
-            Arg.Any<ScoreInsertRow>(),
-            Arg.Is<StatsUpdateRow>(s =>
-                s.Tscore == 1000 + 500_000 && s.Rscore == 500 + 500_000 && s.Plays == 2 && s.Playtime == 100 + 60
-                && s.MaxCombo == 500 && s.TotalHits == 300 + 315 && s.SCount == 1
-                && s.XhCount == 0 && s.XCount == 0 && s.ShCount == 0 && s.ACount == 0),
-            Arg.Any<CancellationToken>());
-        await _leaderboardStore.Received(1).AddToGlobalLeaderboardAsync(player.Id, GameMode.VanillaOsu,
-            500 + 500_000, Arg.Any<CancellationToken>());
+            Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
         await _maps.Received(1).IncrementPlayCountsAsync(bmap.Id, true, Arg.Any<CancellationToken>());
-        Assert.Equal(500 + 500_000, player.ModeStats[GameMode.VanillaOsu].Rscore);
     }
 
     [Fact]
@@ -233,7 +221,7 @@ public class ScoreSubmissionUseCaseTests
     }
 
     [Fact]
-    public async Task SubmittedNotBest_DoesNotMarkPreviousOrUpdateRank()
+    public async Task SubmittedNotBest_DoesNotMarkPrevious()
     {
         var bmap = MakeBeatmap();
         _maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<CancellationToken>()).Returns(bmap);
@@ -250,8 +238,6 @@ public class ScoreSubmissionUseCaseTests
         Assert.Equal(SubmissionStatus.Submitted, result.Result!.Score.Status);
         await _persistence.Received(1).PersistScoreSubmissionAsync(
             false, Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
-            Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>());
-        await _leaderboardStore.DidNotReceive().AddToGlobalLeaderboardAsync(
-            Arg.Any<int>(), Arg.Any<GameMode>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
+            Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
     }
 }

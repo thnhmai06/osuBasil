@@ -1,5 +1,7 @@
 using NSubstitute;
+using OpenOsuTournament.Bancho.Application.Abstractions;
 using OpenOsuTournament.Bancho.Application.Abstractions.Channels;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
@@ -139,17 +141,50 @@ internal static class MultiplayerTestSupport
         public IReadOnlyList<MatchSession> All => _byId.Values.ToList();
     }
 
+    /// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
+    public sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+    {
+        private int _nextMatchId = 1;
+        private int _nextRoundId = 1;
+
+        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
+            bool hasPublicHistory, DateTime createdAt, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_nextMatchId++);
+        }
+
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
+            DateTime startedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_nextRoundId++);
+        }
+
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     /// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
     public sealed class Fixture
     {
         public Fixture()
         {
+            var clock = Substitute.For<IClock>();
+            clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry));
+                new ChannelMembershipService(SessionRegistry), MatchPersistence, clock);
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();
         public FakeMatchRegistry MatchRegistry { get; } = new();
+        public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
         public MatchMembershipService MatchMembership { get; }
 
@@ -165,11 +200,13 @@ internal static class MultiplayerTestSupport
 
         /// <summary>
         ///     Creates a match with `host` in slot 0, registered in <see cref="MatchRegistry" /> and its channel in
-        ///     <see cref="ChannelRegistry" />.
+        ///     <see cref="ChannelRegistry" />. The fake persistence repo completes synchronously, so blocking on the
+        ///     task here is safe and keeps every existing synchronous test call site unchanged.
         /// </summary>
         public MatchSession CreateMatch(PlayerSession host, MatchTeamTypes teamType = MatchTeamTypes.HeadToHead)
         {
-            return MatchMembership.Create(host, MakeMatchData(host.Id, teamType: teamType))!;
+            return MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
+                .GetAwaiter().GetResult()!;
         }
     }
 }

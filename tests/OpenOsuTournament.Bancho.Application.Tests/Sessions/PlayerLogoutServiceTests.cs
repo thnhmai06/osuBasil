@@ -1,4 +1,6 @@
 using NSubstitute;
+using OpenOsuTournament.Bancho.Application.Abstractions;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
@@ -23,7 +25,8 @@ public class PlayerLogoutServiceTests
     private readonly MatchMembershipService _matchMembership = new(
         Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
         Substitute.For<IPlayerSessionRegistry>(),
-        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()),
+        Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IClock>());
 
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
@@ -104,12 +107,16 @@ public class PlayerLogoutServiceTests
         var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
         var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry();
         var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
         var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
-            new ChannelMembershipService(sessionRegistry));
+            new ChannelMembershipService(sessionRegistry), new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
+            clock);
         var host = new PlayerSession(1, "host", "token", Privileges.Unrestricted, 0.0);
         sessionRegistry.All.Returns([host]);
         sessionRegistry.GetById(1).Returns(host);
-        var match = matchMembership.Create(host, MultiplayerTestSupport.MakeMatchData(host.Id))!;
+        var match = matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id))
+            .GetAwaiter().GetResult()!;
         var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
 
         service.Logout(host);

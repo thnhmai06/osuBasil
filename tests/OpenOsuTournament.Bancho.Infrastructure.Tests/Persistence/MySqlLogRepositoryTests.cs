@@ -23,7 +23,7 @@ public class MySqlLogRepositoryTests : IClassFixture<MySqlFixture>
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         var row = await connection.QuerySingleAsync<(int From, int To, string Action, string Msg)>(
-            "SELECT `from` AS `From`, `to` AS `To`, `action` AS `Action`, msg AS Msg FROM logs WHERE `to` = 42 AND `action` = 'lastfm_flag'");
+            "SELECT `From`, `To`, `Action`, Msg FROM Logs WHERE `To` = 42 AND `Action` = 'lastfm_flag'");
 
         Assert.Equal(0, row.From);
         Assert.Equal(42, row.To);

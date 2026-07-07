@@ -13,9 +13,9 @@ public sealed class MySqlClientHashRepository(string connectionString) : IClient
         await using var connection = Connect();
         await connection.ExecuteAsync(
             """
-            INSERT INTO client_hashes (userid, osupath, adapters, uninstall_id, disk_serial, latest_time, occurrences)
+            INSERT INTO ClientHashes (UserId, OsuPath, Adapters, UninstallId, DiskSerial, LatestTime, Occurrences)
             VALUES (@UserId, @OsuPath, @Adapters, @UninstallId, @DiskSerial, NOW(), 1)
-            ON DUPLICATE KEY UPDATE latest_time = NOW(), occurrences = occurrences + 1
+            ON DUPLICATE KEY UPDATE LatestTime = NOW(), Occurrences = Occurrences + 1
             """,
             new
             {
@@ -25,11 +25,9 @@ public sealed class MySqlClientHashRepository(string connectionString) : IClient
 
         var row = await connection.QuerySingleAsync<ClientHashRow>(
             """
-            SELECT userid AS UserId, osupath AS OsuPath, adapters, uninstall_id AS UninstallId,
-                   disk_serial AS DiskSerial, latest_time AS LatestTime, occurrences
-            FROM client_hashes
-            WHERE userid = @UserId AND osupath = @OsuPath AND adapters = @Adapters
-              AND uninstall_id = @UninstallId AND disk_serial = @DiskSerial
+            SELECT * FROM ClientHashes
+            WHERE UserId = @UserId AND OsuPath = @OsuPath AND Adapters = @Adapters
+              AND UninstallId = @UninstallId AND DiskSerial = @DiskSerial
             """,
             new
             {
@@ -51,22 +49,22 @@ public sealed class MySqlClientHashRepository(string connectionString) : IClient
         await using var connection = Connect();
 
         var sql = """
-                  SELECT ch.userid AS UserId, ch.osupath AS OsuPath, ch.adapters, ch.uninstall_id AS UninstallId,
-                         ch.disk_serial AS DiskSerial, ch.latest_time AS LatestTime, ch.occurrences,
-                         u.name, u.priv
-                  FROM client_hashes ch
-                  JOIN users u ON ch.userid = u.id
-                  WHERE ch.userid != @UserId
+                  SELECT ch.UserId, ch.OsuPath, ch.Adapters, ch.UninstallId,
+                         ch.DiskSerial, ch.LatestTime, ch.Occurrences,
+                         u.Name, u.Priv
+                  FROM ClientHashes ch
+                  JOIN Users u ON ch.UserId = u.Id
+                  WHERE ch.UserId != @UserId
                   """;
 
         if (runningUnderWine)
         {
-            sql += " AND ch.uninstall_id = @UninstallId";
+            sql += " AND ch.UninstallId = @UninstallId";
         }
         else
         {
-            var oneOf = new List<string> { "ch.adapters = @Adapters", "ch.uninstall_id = @UninstallId" };
-            if (diskSerial is not null) oneOf.Add("ch.disk_serial = @DiskSerial");
+            var oneOf = new List<string> { "ch.Adapters = @Adapters", "ch.UninstallId = @UninstallId" };
+            if (diskSerial is not null) oneOf.Add("ch.DiskSerial = @DiskSerial");
 
             sql += $" AND ({string.Join(" OR ", oneOf)})";
         }

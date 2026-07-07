@@ -7,14 +7,11 @@ namespace OpenOsuTournament.Bancho.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IChannelRepository" />
 public sealed class MySqlChannelRepository(string connectionString) : IChannelRepository
 {
-    private const string SelectColumns =
-        "id, name, topic, read_priv AS ReadPriv, write_priv AS WritePriv, auto_join AS AutoJoin";
-
     public async Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var rows = await connection.QueryAsync<ChannelRow>(
-            $"SELECT {SelectColumns} FROM channels WHERE auto_join = @AutoJoin", new { AutoJoin = true });
+            "SELECT * FROM Channels WHERE AutoJoin = @AutoJoin", new { AutoJoin = true });
         return rows.Select(r => r.ToChannel()).ToList();
     }
 
@@ -22,7 +19,7 @@ public sealed class MySqlChannelRepository(string connectionString) : IChannelRe
     {
         await using var connection = Connect();
         var row = await connection.QuerySingleOrDefaultAsync<ChannelRow>(
-            $"SELECT {SelectColumns} FROM channels WHERE name = @Name",
+            "SELECT * FROM Channels WHERE Name = @Name",
             new { Name = name });
         return row?.ToChannel();
     }

@@ -1,3 +1,5 @@
+using OpenOsuTournament.Bancho.Application.Abstractions;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.UseCases.Multiplayer;
@@ -9,9 +11,13 @@ namespace OpenOsuTournament.Bancho.Application.PacketHandlers.Multiplayer;
 /// <summary>
 ///     Ported from app/api/domains/cho.py's MatchComplete. The `is_scrimming` branch
 ///     (asyncio.create_task(update_matchpoints(was_playing))) is dropped along with the rest of the
-///     scrim engine — see note.md.
+///     scrim engine — see note.md. Closes the round's EndedAt; does NOT gather/wait for score
+///     submissions (see ScoreSubmissionUseCase's doc comment for why that isn't needed here).
 /// </summary>
-public sealed class MatchCompleteHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
+public sealed class MatchCompleteHandler(
+    MatchMembershipService matchMembership,
+    IMatchPersistenceRepository matchPersistence,
+    IClock clock) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchComplete;
 
@@ -40,6 +46,12 @@ public sealed class MatchCompleteHandler(MatchMembershipService matchMembership)
             match.UnreadyPlayers(SlotStatus.Complete);
             match.ResetPlayersLoadedStatus();
             match.InProgress = false;
+
+            if (match.CurrentRoundId is { } roundId)
+            {
+                await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime);
+                match.CurrentRoundId = null;
+            }
 
             matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
             matchMembership.EnqueueState(match);

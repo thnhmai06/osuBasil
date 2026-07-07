@@ -12,7 +12,7 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
-            "INSERT INTO relationships (user1, user2, type) VALUES (@User1, @User2, @Type)",
+            "INSERT INTO Relationships (User1, User2, Type) VALUES (@User1, @User2, @Type)",
             new { User1 = user1, User2 = user2, Type = TypeColumn(type) });
 
         return (await FetchOneAsync(user1, user2, cancellationToken))!;
@@ -22,8 +22,8 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var sql = "SELECT user1, user2, type FROM relationships WHERE user1 = @User1";
-        if (type is not null) sql += " AND type = @Type";
+        var sql = "SELECT User1, User2, Type FROM Relationships WHERE User1 = @User1";
+        if (type is not null) sql += " AND Type = @Type";
 
         var rows = await connection.QueryAsync<RelationshipRow>(
             sql,
@@ -35,7 +35,7 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
     {
         await using var connection = Connect();
         var row = await connection.QuerySingleOrDefaultAsync<RelationshipRow>(
-            "SELECT user1, user2, type FROM relationships WHERE user1 = @User1 AND user2 = @User2",
+            "SELECT User1, User2, Type FROM Relationships WHERE User1 = @User1 AND User2 = @User2",
             new { User1 = user1, User2 = user2 });
         return row?.ToRelationship();
     }
@@ -44,7 +44,7 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
-            "DELETE FROM relationships WHERE user1 = @User1 AND user2 = @User2",
+            "DELETE FROM Relationships WHERE User1 = @User1 AND User2 = @User2",
             new { User1 = user1, User2 = user2 });
     }
 

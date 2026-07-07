@@ -30,7 +30,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO users (id, name, safe_name, email, pw_bcrypt, priv, country, creation_time, latest_activity)
+            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
             VALUES (@Id, @Name, @Name, @Email, 'unused', @Priv, @Country, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
             """,
             new { Id = id, Name = name, Email = $"{name}@test.local", Priv = priv, Country = country });
@@ -43,11 +43,11 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         return await connection.ExecuteScalarAsync<long>(
             """
-            INSERT INTO scores (
-                map_md5, score, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu,
-                grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum
+            INSERT INTO Scores (
+                MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum
             ) VALUES (
-                @MapMd5, @Score, 0, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
+                @MapMd5, @Score, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
                 'S', @Status, @Mode, NOW(), 120000, 0, @UserId, @Perfect, @Checksum
             );
             SELECT LAST_INSERT_ID();
@@ -226,7 +226,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
     private async Task<string?> FetchChecksumAsync(long scoreId)
     {
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        return await connection.ExecuteScalarAsync<string>("SELECT online_checksum FROM scores WHERE id = @Id",
+        return await connection.ExecuteScalarAsync<string>("SELECT OnlineChecksum FROM Scores WHERE Id = @Id",
             new { Id = scoreId });
     }
 
@@ -259,7 +259,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         var status =
-            await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = scoreId });
+            await connection.ExecuteScalarAsync<int>("SELECT Status FROM Scores WHERE Id = @Id", new { Id = scoreId });
         Assert.Equal((int)SubmissionStatus.Submitted, status);
     }
 

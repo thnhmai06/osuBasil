@@ -21,7 +21,7 @@ public class MySqlRatingRepositoryTests : IClassFixture<MySqlFixture>
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO users (id, name, safe_name, email, pw_bcrypt, priv, country, creation_time, latest_activity)
+            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
             VALUES (@Id, @Name, @Name, @Email, 'unused', 3, 'xx', UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
             """,
             new { Id = id, Name = name, Email = $"{name}@test.local" });
@@ -31,7 +31,7 @@ public class MySqlRatingRepositoryTests : IClassFixture<MySqlFixture>
     {
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
         await connection.ExecuteAsync(
-            "INSERT INTO ratings (userid, map_md5, rating) VALUES (@UserId, @MapMd5, @Rating)",
+            "INSERT INTO Ratings (UserId, MapMd5, Rating) VALUES (@UserId, @MapMd5, @Rating)",
             new { UserId = userId, MapMd5 = mapMd5, Rating = rating });
     }
 

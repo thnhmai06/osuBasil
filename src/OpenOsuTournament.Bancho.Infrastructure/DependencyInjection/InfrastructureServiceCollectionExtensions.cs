@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using OpenOsuTournament.Bancho.Application.Abstractions;
 using OpenOsuTournament.Bancho.Application.Abstractions.Beatmaps;
 using OpenOsuTournament.Bancho.Application.Abstractions.Channels;
+using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Abstractions.Scores;
 using OpenOsuTournament.Bancho.Application.Abstractions.Social;
 using OpenOsuTournament.Bancho.Application.Abstractions.Users;
@@ -23,8 +24,7 @@ namespace OpenOsuTournament.Bancho.Infrastructure.DependencyInjection;
 
 /// <summary>
 ///     Composition root helper for the Infrastructure layer: binds Options, builds the MySQL
-///     connection string and Redis multiplexer, and registers every port implementation. Repos
-///     only need the connection string (each appends its own TreatTinyAsBoolean flag where needed).
+///     connection string and Redis multiplexer, and registers every port implementation.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
@@ -70,6 +70,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IScoreSubmissionPersistence>(sp =>
             new MySqlScoreSubmissionPersistence(BuildConnectionString(sp)));
         services.AddSingleton<ILogRepository>(sp => new MySqlLogRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMatchPersistenceRepository>(sp =>
+            new MySqlMatchPersistenceRepository(BuildConnectionString(sp)));
 
         services.AddSingleton<ILeaderboardStore, RedisLeaderboardStore>();
         services.AddSingleton<IWebSessionStore, RedisWebSessionStore>();

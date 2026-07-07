@@ -1,3 +1,4 @@
+using NSubstitute;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Multiplayer;
 using OpenOsuTournament.Bancho.Domain.Multiplayer;
 using OpenOsuTournament.Bancho.Protocol.Packets;
@@ -25,7 +26,9 @@ public class MatchCompleteHandlerTests
         match.InProgress = true;
         host.Dequeue();
         guest.Dequeue();
-        var handler = new MatchCompleteHandler(fixture.MatchMembership);
+        var clock = Substitute.For<OpenOsuTournament.Bancho.Application.Abstractions.IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence, clock);
 
         await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -53,7 +56,9 @@ public class MatchCompleteHandlerTests
         host.Dequeue();
         guest.Dequeue();
         spectatorish.Dequeue();
-        var handler = new MatchCompleteHandler(fixture.MatchMembership);
+        var clock = Substitute.For<OpenOsuTournament.Bancho.Application.Abstractions.IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence, clock);
 
         await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
         await handler.HandleAsync(guest, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));

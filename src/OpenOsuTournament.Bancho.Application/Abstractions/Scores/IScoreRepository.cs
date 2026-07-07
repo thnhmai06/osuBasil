@@ -77,7 +77,9 @@ public sealed record ScoreInsertRow(
     int ClientFlags,
     int UserId,
     bool Perfect,
-    string OnlineChecksum);
+    string OnlineChecksum,
+    int? RoundId = null,
+    int? Team = null);
 
 /// <summary>
 ///     Ported from app/repositories/scores.py's ScoresRepository, scoped to the three leaderboard

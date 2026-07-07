@@ -12,13 +12,13 @@ public sealed class MySqlMailRepository(string connectionString) : IMailReposito
         await using var connection = Connect();
         var id = await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO mail (from_id, to_id, msg, time) VALUES (@FromId, @ToId, @Msg, UNIX_TIMESTAMP());
+            INSERT INTO Mail (FromId, ToId, Msg, Time) VALUES (@FromId, @ToId, @Msg, UNIX_TIMESTAMP());
             SELECT LAST_INSERT_ID();
             """,
             new { FromId = fromId, ToId = toId, Msg = msg });
 
         var row = await connection.QuerySingleAsync<MailRow>(
-            "SELECT id, from_id AS FromId, to_id AS ToId, msg, time, `read` FROM mail WHERE id = @Id",
+            "SELECT Id, FromId, ToId, Msg, Time, `Read` FROM Mail WHERE Id = @Id",
             new { Id = id });
 
         return row.ToMail();
@@ -30,12 +30,12 @@ public sealed class MySqlMailRepository(string connectionString) : IMailReposito
         await using var connection = Connect();
         var rows = await connection.QueryAsync<MailWithUsernamesRow>(
             """
-            SELECT m.id, m.from_id AS FromId, m.to_id AS ToId, m.msg, m.time, m.`read`,
-                   fu.name AS FromName, tu.name AS ToName
-            FROM mail m
-            JOIN users fu ON fu.id = m.from_id
-            JOIN users tu ON tu.id = m.to_id
-            WHERE m.to_id = @UserId AND m.`read` = 0
+            SELECT m.Id, m.FromId, m.ToId, m.Msg, m.Time, m.`Read`,
+                   fu.Name AS FromName, tu.Name AS ToName
+            FROM Mail m
+            JOIN Users fu ON fu.Id = m.FromId
+            JOIN Users tu ON tu.Id = m.ToId
+            WHERE m.ToId = @UserId AND m.`Read` = 0
             """,
             new { UserId = userId });
 
@@ -47,13 +47,13 @@ public sealed class MySqlMailRepository(string connectionString) : IMailReposito
     {
         await using var connection = Connect();
         var rows = (await connection.QueryAsync<MailRow>(
-            "SELECT id, from_id AS FromId, to_id AS ToId, msg, time, `read` FROM mail WHERE to_id = @ToId AND from_id = @FromId AND `read` = 0",
+            "SELECT Id, FromId, ToId, Msg, Time, `Read` FROM Mail WHERE ToId = @ToId AND FromId = @FromId AND `Read` = 0",
             new { ToId = toId, FromId = fromId })).ToList();
 
         if (rows.Count == 0) return [];
 
         await connection.ExecuteAsync(
-            "UPDATE mail SET `read` = 1 WHERE to_id = @ToId AND from_id = @FromId AND `read` = 0",
+            "UPDATE Mail SET `Read` = 1 WHERE ToId = @ToId AND FromId = @FromId AND `Read` = 0",
             new { ToId = toId, FromId = fromId });
 
         return rows.Select(r => r.ToMail()).ToList();

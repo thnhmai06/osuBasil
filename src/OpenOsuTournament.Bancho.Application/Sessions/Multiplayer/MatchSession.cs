@@ -60,6 +60,24 @@ public sealed class MatchSession(
     public bool InProgress { get; set; }
     public int Seed { get; } = seed;
 
+    /// <summary>
+    ///     The persistent database Matches.Id for this room, distinct from <see cref="Id" /> (the
+    ///     0-63 in-memory registry slot, which is what the bancho wire protocol actually uses as a
+    ///     match id). Set once, right after the room is created, by MatchMembershipService.CreateAsync.
+    /// </summary>
+    public int DbId { get; set; }
+
+    /// <summary>
+    ///     The Rounds.Id of the beatmap currently being played, or null when no round is in progress.
+    ///     Set at match start (a new Round row is created per beatmap played) and cleared at
+    ///     MatchComplete. Score submissions link to this so score-to-round linking doesn't depend on
+    ///     any gather/wait step at MatchComplete — see ScoreSubmissionUseCase's doc comment.
+    /// </summary>
+    public int? CurrentRoundId { get; set; }
+
+    /// <summary>1-based index of the next Round to be created for this match (incremented at match start).</summary>
+    public int NextRoundIndex { get; set; } = 1;
+
     /// <summary>Ported from Match.url — the match's invitation url.</summary>
     public string Url => $"osump://{Id}/{Password}";
 

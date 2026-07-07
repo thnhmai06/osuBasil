@@ -47,45 +47,6 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
     }
 
     [Fact]
-    public async Task UpdateAfterScore_PersistsNewTotals()
-    {
-        // uses mode 1 (taiko), not mode 0, so it doesn't collide with the other tests in this
-        // class asserting on mode 0's still-default seeded values (fixture/container is shared
-        // per IClassFixture, and xUnit does not guarantee test method execution order).
-        await _repository.UpdateAfterScoreAsync(
-            1,
-            1,
-            1_000_000,
-            900_000,
-            5,
-            300,
-            98.5,
-            500,
-            800,
-            1,
-            2,
-            3,
-            4,
-            5);
-
-        var stat = await _repository.FetchOneAsync(1, 1);
-
-        Assert.NotNull(stat);
-        Assert.Equal(1_000_000, stat!.Tscore);
-        Assert.Equal(900_000, stat.Rscore);
-        Assert.Equal(5, stat.Plays);
-        Assert.Equal(300, stat.Playtime);
-        Assert.Equal(98.5, stat.Acc, 2);
-        Assert.Equal(500, stat.MaxCombo);
-        Assert.Equal(800, stat.TotalHits);
-        Assert.Equal(1, stat.XhCount);
-        Assert.Equal(2, stat.XCount);
-        Assert.Equal(3, stat.ShCount);
-        Assert.Equal(4, stat.SCount);
-        Assert.Equal(5, stat.ACount);
-    }
-
-    [Fact]
     public async Task IncrementReplayViews_AddsOneEachCall()
     {
         // mode 2 (catch), same isolation rationale as UpdateAfterScore_PersistsNewTotals above.

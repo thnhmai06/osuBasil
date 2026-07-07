@@ -1,4 +1,3 @@
-using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.UseCases.Scores;
 using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Scores;
@@ -11,8 +10,7 @@ public class ScoreSubmissionResponseBuilderTests
     public void BuildSuccess_FailedScore_ReturnsErrorNo()
     {
         var score = new ScoreSubmission { Passed = false };
-        var stats = new CachedPlayerStats(0, 0, 0, 0, 0, 0, 0, 0);
-        var result = new SubmittedScoreResult(score, 1, stats, stats);
+        var result = new SubmittedScoreResult(score, 1);
 
         Assert.Equal("error: no", ScoreSubmissionResponseBuilder.BuildSuccess(result, "test.local"));
     }
@@ -21,8 +19,7 @@ public class ScoreSubmissionResponseBuilderTests
     public void BuildSuccess_PassedScore_ReturnsCharts()
     {
         var score = new ScoreSubmission { Passed = true, Bmap = MakeBeatmap(), Id = 1, PlayerId = 1 };
-        var stats = new CachedPlayerStats(0, 0, 0, 0, 0, 0, 0, 0);
-        var result = new SubmittedScoreResult(score, 1, stats, stats);
+        var result = new SubmittedScoreResult(score, 1);
 
         var body = ScoreSubmissionResponseBuilder.BuildSuccess(result, "test.local");
 

@@ -4,13 +4,7 @@ using Testcontainers.MySql;
 
 namespace OpenOsuTournament.Bancho.Infrastructure.Tests.Persistence;
 
-/// <summary>
-///     Verifies the migration runner applies migrations/base.sql (copied verbatim from bancho.py —
-///     see Persistence/Migrations/001_base.sql) against a real MySQL instance. bancho.py's own
-///     docker-compose mounts base.sql as the MySQL container's init script for fresh installs
-///     (migrations.sql is only replayed against existing, upgrading databases) — so a single script
-///     run is the correct fresh-install behavior, not a simplification.
-/// </summary>
+/// <summary>Verifies the migration runner applies Persistence/Migrations/001_base.sql against a real MySQL instance.</summary>
 public class SqlMigrationRunnerTests : IAsyncLifetime
 {
     private readonly MySqlContainer _mysql = new MySqlBuilder("mysql:8.0").Build();
@@ -36,7 +30,7 @@ public class SqlMigrationRunnerTests : IAsyncLifetime
         await connection.OpenAsync();
 
         foreach (var table in new[]
-                     { "users", "stats", "scores", "channels", "client_hashes", "ingame_logins", "mail" })
+                     { "Users", "UserStats", "Scores", "Channels", "ClientHashes", "IngameLogins", "Mail", "Matches", "Rounds", "Beatmaps", "Mapsets" })
         {
             await using var command = connection.CreateCommand();
             command.CommandText =
@@ -59,12 +53,12 @@ public class SqlMigrationRunnerTests : IAsyncLifetime
         await connection.OpenAsync();
 
         await using var userCommand = connection.CreateCommand();
-        userCommand.CommandText = "SELECT name FROM users WHERE id = 1";
+        userCommand.CommandText = "SELECT Name FROM Users WHERE Id = 1";
         var botName = (string?)await userCommand.ExecuteScalarAsync();
         Assert.Equal("BanchoBot", botName);
 
         await using var channelCommand = connection.CreateCommand();
-        channelCommand.CommandText = "SELECT COUNT(*) FROM channels WHERE name = '#osu'";
+        channelCommand.CommandText = "SELECT COUNT(*) FROM Channels WHERE Name = '#osu'";
         var channelCount = Convert.ToInt32(await channelCommand.ExecuteScalarAsync());
         Assert.Equal(1, channelCount);
     }
