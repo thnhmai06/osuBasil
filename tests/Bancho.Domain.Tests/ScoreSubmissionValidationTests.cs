@@ -1,5 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Login;
+using Bancho.Domain.Scores;
 
 namespace Bancho.Domain.Tests;
 

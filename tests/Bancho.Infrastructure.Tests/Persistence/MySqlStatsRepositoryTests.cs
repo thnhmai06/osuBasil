@@ -1,3 +1,4 @@
+using Bancho.Infrastructure.Persistence.Repositories;
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
@@ -7,11 +8,11 @@ namespace Bancho.Infrastructure.Tests.Persistence;
 /// </summary>
 public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.MySqlStatsRepository _repository;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlStatsRepository _repository;
 
     public MySqlStatsRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.MySqlStatsRepository(fixture.ConnectionString);
+        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlStatsRepository(fixture.ConnectionString);
     }
 
     [Fact]

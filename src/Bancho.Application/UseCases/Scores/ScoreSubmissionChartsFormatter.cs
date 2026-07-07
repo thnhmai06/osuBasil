@@ -1,6 +1,8 @@
 using System.Globalization;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Scores;
 
 namespace Bancho.Application.UseCases.Scores;
 

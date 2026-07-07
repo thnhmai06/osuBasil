@@ -1,4 +1,5 @@
 using Bancho.Application.Sessions;
+using Bancho.Application.Sessions.Multiplayer;
 
 namespace Bancho.Infrastructure.Sessions;
 

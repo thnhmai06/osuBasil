@@ -1,5 +1,7 @@
 using Bancho.Domain;
 using Bancho.Infrastructure.Persistence;
+using Bancho.Domain.Beatmaps;
+using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 

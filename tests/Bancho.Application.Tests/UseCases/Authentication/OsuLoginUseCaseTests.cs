@@ -8,6 +8,12 @@ using Bancho.Domain;
 using Bancho.Protocol;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.UseCases.Authentication;
 
@@ -126,7 +132,7 @@ public class OsuLoginUseCaseTests
         };
         _sessionRegistry.GetByName("cmyui").Returns(existing);
         _clock.UtcNow.Returns(DateTimeOffset.FromUnixTimeSeconds(1000));
-        _users.FetchByNameAsync("cmyui").Returns((Application.Abstractions.User?)null);
+        _users.FetchByNameAsync("cmyui").Returns((User?)null);
         var useCase = MakeUseCase();
         var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
 
@@ -139,7 +145,7 @@ public class OsuLoginUseCaseTests
     [Fact]
     public async Task UnknownUsername_ReturnsIncorrectCredentials()
     {
-        _users.FetchByNameAsync("cmyui").Returns((Application.Abstractions.User?)null);
+        _users.FetchByNameAsync("cmyui").Returns((User?)null);
         var useCase = MakeUseCase();
         var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
 
@@ -350,7 +356,7 @@ public class OsuLoginUseCaseTests
         await _users.Received(1).UpdateCountryAsync(user.Id, "us", Arg.Any<CancellationToken>());
     }
 
-    private void SetUpHappyPath(out Application.Abstractions.User user, int priv, int userId = 10, string country = "us")
+    private void SetUpHappyPath(out User user, int priv, int userId = 10, string country = "us")
     {
         user = MakeUser(id: userId, priv: priv, country: country);
         _users.FetchByNameAsync("cmyui").Returns(user);
@@ -365,10 +371,10 @@ public class OsuLoginUseCaseTests
         _leaderboardStore.FetchGlobalRankAsync(userId, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((int?)null);
         _mail.FetchUnreadMailToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         _tokenGenerator.GenerateToken().Returns("generated-token");
-        _stats.FetchOneAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((Application.Abstractions.Stats?)null);
+        _stats.FetchOneAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((Bancho.Application.Abstractions.Users.Stats?)null);
     }
 
-    private static Application.Abstractions.User MakeUser(int id, int priv, string country = "us", int clanId = 0) => new(
+    private static User MakeUser(int id, int priv, string country = "us", int clanId = 0) => new(
         Id: id, Name: "cmyui", SafeName: "cmyui", Email: "cmyui@example.test", Priv: priv, Country: country,
         SilenceEnd: 0, DonorEnd: 0, CreationTime: 0, LatestActivity: 0, ClanId: clanId, ClanPriv: 0,
         PreferredMode: 0, PlayStyle: 0, CustomBadgeName: null, CustomBadgeIcon: null, UserpageContent: null, ApiKey: null);

@@ -1,3 +1,4 @@
+using Bancho.Domain.Users;
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/utils.py's make_safe_name — lowercases and replaces spaces with underscores.</summary>

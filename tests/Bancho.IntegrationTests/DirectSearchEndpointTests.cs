@@ -4,6 +4,11 @@ using Bancho.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Users;
 
 namespace Bancho.IntegrationTests;
 

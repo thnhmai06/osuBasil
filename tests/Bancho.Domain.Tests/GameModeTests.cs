@@ -1,3 +1,4 @@
+using Bancho.Domain.Beatmaps;
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/constants/gamemodes.py's GameMode.from_params / as_vanilla / valid_gamemodes.</summary>

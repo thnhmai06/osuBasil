@@ -1,17 +1,19 @@
 using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/relationships.py — friends/blocks between users.</summary>
 public class MySqlRelationshipRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.MySqlRelationshipRepository _repository;
-    private readonly Bancho.Infrastructure.Persistence.MySqlUserRepository _users;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlRelationshipRepository _repository;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository _users;
 
     public MySqlRelationshipRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.MySqlRelationshipRepository(fixture.ConnectionString);
-        _users = new Bancho.Infrastructure.Persistence.MySqlUserRepository(fixture.ConnectionString);
+        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlRelationshipRepository(fixture.ConnectionString);
+        _users = new Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository(fixture.ConnectionString);
     }
 
     [Fact]

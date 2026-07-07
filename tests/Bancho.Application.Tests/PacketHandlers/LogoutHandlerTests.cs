@@ -6,6 +6,11 @@ using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using Bancho.Protocol;
 using NSubstitute;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 

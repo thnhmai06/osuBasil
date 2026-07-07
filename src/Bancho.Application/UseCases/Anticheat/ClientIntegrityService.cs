@@ -1,6 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Application.Abstractions.Social;
 
 namespace Bancho.Application.UseCases.Anticheat;
 

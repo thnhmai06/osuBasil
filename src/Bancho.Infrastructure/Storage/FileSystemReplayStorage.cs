@@ -1,6 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Configuration;
 using Microsoft.Extensions.Options;
+using Bancho.Application.Abstractions.Scores;
 
 namespace Bancho.Infrastructure.Storage;
 

@@ -1,5 +1,8 @@
 using Bancho.Application.Sessions;
 using Bancho.Protocol;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Protocol.Multiplayer;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.UseCases.Multiplayer;
 

@@ -1,3 +1,4 @@
+using Bancho.Domain.Users;
 namespace Bancho.Application.Sessions;
 
 /// <summary>

@@ -3,6 +3,8 @@ using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Anticheat;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.UseCases.Anticheat;
 

@@ -1,6 +1,14 @@
 using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Multiplayer;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Multiplayer;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.UseCases.Multiplayer;
 

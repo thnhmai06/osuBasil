@@ -1,5 +1,9 @@
 using System.Collections.Concurrent;
 using Bancho.Domain;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Login;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Sessions;
 
@@ -68,7 +72,7 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Ported from Player.gm_stats — the cached stats for the player's currently selected mode.</summary>
     public CachedPlayerStats? CurrentStats => ModeStats.GetValueOrDefault((int)Status.Mode);
 
-    public string SafeName => Domain.SafeName.Make(Name);
+    public string SafeName => Bancho.Domain.Users.SafeName.Make(Name);
 
     public bool Restricted => (Priv & Privileges.Unrestricted) == 0;
 

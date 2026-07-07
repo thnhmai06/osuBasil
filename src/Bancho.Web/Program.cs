@@ -6,6 +6,8 @@ using Bancho.Infrastructure.DependencyInjection;
 using Bancho.Infrastructure.Persistence;
 using Bancho.Web.Routing;
 using Microsoft.Extensions.Options;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
 

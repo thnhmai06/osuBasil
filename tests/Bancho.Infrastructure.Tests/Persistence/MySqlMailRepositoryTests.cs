@@ -1,15 +1,16 @@
+using Bancho.Infrastructure.Persistence.Repositories;
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/mail.py, scoped to what login needs: unread mail delivery.</summary>
 public class MySqlMailRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.MySqlMailRepository _repository;
-    private readonly Bancho.Infrastructure.Persistence.MySqlUserRepository _users;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlMailRepository _repository;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository _users;
 
     public MySqlMailRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.MySqlMailRepository(fixture.ConnectionString);
-        _users = new Bancho.Infrastructure.Persistence.MySqlUserRepository(fixture.ConnectionString);
+        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlMailRepository(fixture.ConnectionString);
+        _users = new Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository(fixture.ConnectionString);
     }
 
     [Fact]

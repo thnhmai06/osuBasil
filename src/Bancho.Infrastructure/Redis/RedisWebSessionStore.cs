@@ -1,5 +1,6 @@
 using Bancho.Application.Abstractions;
 using StackExchange.Redis;
+using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Infrastructure.Redis;
 

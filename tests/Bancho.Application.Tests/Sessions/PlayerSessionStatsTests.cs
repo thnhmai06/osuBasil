@@ -1,5 +1,7 @@
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.Sessions;
 

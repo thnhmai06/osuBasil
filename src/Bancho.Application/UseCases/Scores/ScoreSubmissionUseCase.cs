@@ -3,6 +3,11 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Domain;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Login;
+using Bancho.Domain.Scores;
 
 namespace Bancho.Application.UseCases.Scores;
 

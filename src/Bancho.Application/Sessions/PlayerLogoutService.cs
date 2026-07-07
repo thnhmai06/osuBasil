@@ -1,6 +1,9 @@
 using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Spectating;
 using Bancho.Protocol;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Sessions;
 

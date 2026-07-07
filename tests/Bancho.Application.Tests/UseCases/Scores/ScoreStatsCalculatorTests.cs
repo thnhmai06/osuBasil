@@ -1,6 +1,8 @@
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Domain;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Scores;
 
 namespace Bancho.Application.Tests.UseCases.Scores;
 

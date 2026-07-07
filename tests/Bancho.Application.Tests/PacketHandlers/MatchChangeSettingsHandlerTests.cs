@@ -2,6 +2,10 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.PacketHandlers;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.PacketHandlers.Multiplayer;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Multiplayer;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;

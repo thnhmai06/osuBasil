@@ -4,6 +4,8 @@ using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
 using NSubstitute;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.BackgroundServices;
 
@@ -74,7 +76,7 @@ public class GhostDisconnectServiceTests
         public void Remove(PlayerSession session) => _byToken.Remove(session.Token);
         public PlayerSession? GetByToken(string token) => _byToken.GetValueOrDefault(token);
         public PlayerSession? GetById(int id) => _byToken.Values.FirstOrDefault(s => s.Id == id);
-        public PlayerSession? GetByName(string name) => _byToken.Values.FirstOrDefault(s => s.SafeName == Domain.SafeName.Make(name));
+        public PlayerSession? GetByName(string name) => _byToken.Values.FirstOrDefault(s => s.SafeName == Bancho.Domain.Users.SafeName.Make(name));
         public IReadOnlyList<PlayerSession> All => _byToken.Values.ToList();
     }
 }

@@ -2,6 +2,8 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 

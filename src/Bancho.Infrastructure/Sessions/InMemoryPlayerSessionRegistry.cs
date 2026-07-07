@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Domain.Users;
 
 namespace Bancho.Infrastructure.Sessions;
 

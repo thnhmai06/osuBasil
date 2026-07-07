@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Users;
 using BC = BCrypt.Net.BCrypt;
 
 namespace Bancho.Infrastructure.Security;

@@ -1,4 +1,6 @@
 using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Application.UseCases.Scores;
 

@@ -1,3 +1,4 @@
+using Bancho.Domain.Login;
 namespace Bancho.Domain.Tests;
 
 /// <summary>

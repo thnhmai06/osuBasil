@@ -1,4 +1,5 @@
 using Bancho.Application.Configuration;
+using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Infrastructure.Persistence;
 

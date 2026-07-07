@@ -1,4 +1,5 @@
 using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Beatmaps;
 
 namespace Bancho.Infrastructure.Performance;
 

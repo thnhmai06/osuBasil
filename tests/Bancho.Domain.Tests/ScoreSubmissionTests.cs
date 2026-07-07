@@ -1,3 +1,5 @@
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Scores;
 namespace Bancho.Domain.Tests;
 
 /// <summary>

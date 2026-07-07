@@ -1,3 +1,4 @@
+using Bancho.Infrastructure.Persistence.Repositories;
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
@@ -7,11 +8,11 @@ namespace Bancho.Infrastructure.Tests.Persistence;
 /// </summary>
 public class MySqlChannelRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.MySqlChannelRepository _repository;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlChannelRepository _repository;
 
     public MySqlChannelRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.MySqlChannelRepository(fixture.ConnectionString);
+        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlChannelRepository(fixture.ConnectionString);
     }
 
     [Fact]

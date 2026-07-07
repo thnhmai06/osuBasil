@@ -5,6 +5,9 @@ using Bancho.Protocol;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.IntegrationTests;
 

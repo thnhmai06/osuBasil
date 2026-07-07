@@ -1,4 +1,5 @@
 using Bancho.Domain;
+using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.UseCases.Beatmaps;
 

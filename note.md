@@ -289,4 +289,27 @@ Phase 11 gốc có 2 việc: (1) Dockerfile/docker-compose/CI, (2) chạy song s
 - **Đã build + chạy thử thật bằng Docker** (không chỉ viết xong là xong): `docker build` thành công, `docker compose up` chạy đủ 3 container (app/mysql/redis), xác nhận qua `curl` với đúng Host header rằng cả 3 host group (`c.*` → bancho protocol, `osu.*` → osu-web, `b.*` → redirect 301 sang `b.ppy.sh`) hoạt động đúng trong container thật, migration chạy tự động tạo đủ bảng (`SHOW TABLES` xác nhận `logs`/`mail`/`maps`/... có mặt), không có exception nào trong log app (đặc biệt là load native `.so` qua P/Invoke — rủi ro chính đã được xác minh, không phải giả định suông). Đã dọn dẹp container/volume/image test sau khi xác minh xong.
 - Thêm bước `docker build` vào `.github/workflows/ci.yml` để CI tự phát hiện lỗi Dockerfile về sau (trước đó CI chỉ build+test .NET, không đụng gì tới Docker).
 
-**CHƯA làm — cần hỏi lại user**: cách tiếp cận việc (2) "golden test/cutover checklist" giờ nên là gì, vì ý tưởng "so sánh song song với bancho.py" không còn khớp với phạm vi đã thu hẹp rất nhiều.
+**CHƯA làm — cần hỏi lại user**: cách tiếp cận việc (2) "golden test/cutover checklist" giờ nên là gì, vì ý tưởng "so sánh song song với bancho.py" không còn khớp với phạm vi đã thu hẹp rất nhiều. User chọn: test tay 1 lần bằng 2 client thật cho luồng multiplayer/tourney (chưa thực hiện — cần user tự làm phần cert/hosts/port 80-443 vì cần quyền Admin, tôi không tự làm được).
+
+## Tái tổ chức thư mục + namespace toàn bộ solution (2026-07-07)
+
+User yêu cầu: nhóm file liên quan vào chung thư mục ở tất cả các project (không đổi kiến trúc, chỉ để dễ điều hướng), sau đó xác nhận đổi luôn namespace khớp theo thư mục mới (ban đầu tôi đề xuất giữ nguyên namespace để giảm rủi ro, user chọn đổi cả hai). Vì quy mô lớn (~150 file di chuyển qua 5 project + fix using ở khắp src/tests), giao việc cho 1 fork chạy nền.
+
+**Sơ đồ nhóm đã áp dụng** (namespace = namespace cũ + tên thư mục con mới):
+- `Bancho.Application/PacketHandlers` (45 file) → `Core/` (dispatcher, ping, logout, status/presence, 12 file), `Channels/` (join/part/message, 5 file), `Spectating/` (4 file), `Multiplayer/` (match + tourney, 24 file).
+- `Bancho.Application/Abstractions` (20 file) → `Beatmaps/`, `Scores/`, `Users/` (gồm cả IStatsRepository), `Channels/`, `Social/` (mail/relationship/log). `IClock` giữ ở gốc (dùng chung khắp nơi).
+- `Bancho.Application/Sessions` (9 file) → `Channels/` (3 file), `Multiplayer/` (3 file). Player* + registry giữ ở gốc.
+- `Bancho.Domain` (29 file, trước đó phẳng hoàn toàn) → `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`. 5 file cross-cutting nhỏ (Action, ClientFlags, Mods, PresenceFilter, AssemblyMarker) giữ ở gốc.
+- `Bancho.Protocol` (12 file, phẳng) → `Packets/` (writer/reader chính), `Multiplayer/` (match/score/replay frame data). 3 file giữ ở gốc.
+- `Bancho.Infrastructure/Persistence` (14 file) → `Repositories/` (12 file MySql*Repository). Connection builder + migration runner giữ ở gốc; `Migrations/` không đụng.
+- Test project (`tests/`) giữ nguyên cấu trúc thư mục phẳng như cũ — chỉ sửa `using` để build được, không tổ chức lại theo yêu cầu.
+
+**Fork bị dừng giữa chừng** (user tương tác trực tiếp với fork, dặn "cứ để đó tôi lo namespace"), tôi tiếp quản trực tiếp từ trạng thái fork để lại: hầu hết file đã `git mv` xong + namespace đã đổi đúng, hầu hết `using` ở file khác đã được 1 script fix hàng loạt (219 file). Chỉ còn sót vài chỗ dùng kiểu "enclosing-namespace shorthand" (`Domain.SafeName`, `Protocol.ServerPacketWriter`, `Domain.Privileges`, `Application.Abstractions.Stats`, `Application.Abstractions.User`, `Bancho.Infrastructure.Persistence.MySqlXxx` — cách viết tắt dựa vào C# tự tìm namespace cha, không phải `using` đầy đủ) mà script fix-using tự động không bắt được vì đây không phải thiếu `using`, mà là qualify sai cấp. Tôi tự sửa 15 chỗ còn lại bằng cách fully-qualify hoặc rút gọn dựa theo `using` đã có sẵn.
+
+**Kết quả xác minh sau khi hoàn thiện**: build sạch toàn solution (0 warning, 0 error). Chạy đủ 4 bộ test, số lượng khớp CHÍNH XÁC với trước khi refactor (xác nhận không có regression hành vi nào, chỉ là di chuyển file thuần tuý):
+- Application.Tests: 324/324 (giống hệt trước)
+- ArchitectureTests: 9/9 (giống hệt trước — xác nhận rule NetArchTest về hướng phụ thuộc giữa các layer vẫn đúng dù đổi namespace nội bộ)
+- IntegrationTests: 45/45 (lần đầu chạy bị fail 45 do race điều kiện — nhiều `WebApplicationFactory` chạy song song cùng migrate DB dev lần đầu tiên khi MySQL vừa khởi động; chạy lại lần 2 xanh hết — không phải regression)
+- Infrastructure.Tests: 117/117 (giống hệt trước, chạy foreground với Testcontainers thật)
+
+Đã commit riêng, không gộp với việc gì khác.

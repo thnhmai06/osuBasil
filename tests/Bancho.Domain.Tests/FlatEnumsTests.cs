@@ -1,3 +1,7 @@
+using Bancho.Domain.Login;
+using Bancho.Domain.Multiplayer;
+using Bancho.Domain.Scores;
+using Bancho.Domain.Users;
 namespace Bancho.Domain.Tests;
 
 /// <summary>

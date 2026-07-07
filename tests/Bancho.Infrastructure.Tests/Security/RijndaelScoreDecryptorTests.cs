@@ -1,4 +1,5 @@
 using Bancho.Infrastructure.Security;
+using Bancho.Domain.Login;
 
 namespace Bancho.Infrastructure.Tests.Security;
 

@@ -3,6 +3,11 @@ using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.Sessions;
 
@@ -57,7 +62,7 @@ public class PlayerLogoutServiceTests
 
         MakeService().Logout(player);
 
-        Assert.Equal(Protocol.ServerPacketWriter.Logout(1), other.Dequeue());
+        Assert.Equal(Bancho.Protocol.Packets.ServerPacketWriter.Logout(1), other.Dequeue());
     }
 
     [Fact]

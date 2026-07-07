@@ -2,6 +2,9 @@ using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
+using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 

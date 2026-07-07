@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions.Channels;
 
 namespace Bancho.Infrastructure.Sessions;
 

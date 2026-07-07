@@ -1,5 +1,8 @@
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Multiplayer;
 
 namespace Bancho.Application.Tests.Sessions;
 

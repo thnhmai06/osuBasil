@@ -2,6 +2,9 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.Tests.UseCases.Scores;
 

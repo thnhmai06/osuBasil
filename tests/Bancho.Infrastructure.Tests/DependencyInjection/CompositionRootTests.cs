@@ -9,6 +9,11 @@ using Bancho.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.Redis;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
 
 namespace Bancho.Infrastructure.Tests.DependencyInjection;
 

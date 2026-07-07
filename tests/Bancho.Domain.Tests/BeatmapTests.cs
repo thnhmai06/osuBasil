@@ -1,3 +1,4 @@
+using Bancho.Domain.Beatmaps;
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/objects/beatmap.py's Beatmap fields + the properties Phase 5 actually consumes.</summary>

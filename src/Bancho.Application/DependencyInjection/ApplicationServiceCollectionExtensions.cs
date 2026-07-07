@@ -9,6 +9,12 @@ using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Application.UseCases.Spectating;
 using Microsoft.Extensions.DependencyInjection;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.PacketHandlers.Multiplayer;
+using Bancho.Application.PacketHandlers.Spectating;
+using Bancho.Application.Sessions.Channels;
 
 namespace Bancho.Application.DependencyInjection;
 

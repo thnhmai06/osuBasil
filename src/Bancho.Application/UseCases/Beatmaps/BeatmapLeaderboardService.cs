@@ -2,6 +2,12 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.PacketHandlers.Core;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Scores;
 
 namespace Bancho.Application.UseCases.Beatmaps;
 
@@ -90,16 +96,16 @@ public sealed class BeatmapLeaderboardService(
 
         if (!request.RequestingFromEditorSongSelect)
         {
-            int? modsFilter = request.LeaderboardType == Domain.LeaderboardType.Mods ? (int)mods : null;
+            int? modsFilter = request.LeaderboardType == LeaderboardType.Mods ? (int)mods : null;
 
             IReadOnlySet<int>? friendIds = null;
-            if (request.LeaderboardType == Domain.LeaderboardType.Friends)
+            if (request.LeaderboardType == LeaderboardType.Friends)
             {
                 var relations = await relationships.FetchAllAsync(player.Id, RelationshipType.Friend, cancellationToken);
                 friendIds = relations.Select(r => r.User2).Append(player.Id).ToHashSet();
             }
 
-            var country = request.LeaderboardType == Domain.LeaderboardType.Country ? player.Geoloc.CountryAcronym : null;
+            var country = request.LeaderboardType == LeaderboardType.Country ? player.Geoloc.CountryAcronym : null;
 
             scoreRows = await scores.FetchBeatmapLeaderboardScoresAsync(
                 bmap.Md5, mode, player.Id, modsFilter, friendIds, country, cancellationToken: cancellationToken);

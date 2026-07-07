@@ -1,3 +1,5 @@
+using Bancho.Protocol.Multiplayer;
+using Bancho.Protocol.Packets;
 namespace Bancho.Protocol.Tests;
 
 /// <summary>

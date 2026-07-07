@@ -2,6 +2,7 @@ using Bancho.Application.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Application.Tests.Configuration;
 

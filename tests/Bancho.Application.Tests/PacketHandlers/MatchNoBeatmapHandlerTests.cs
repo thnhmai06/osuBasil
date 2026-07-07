@@ -1,6 +1,9 @@
 using Bancho.Application.PacketHandlers;
 using Bancho.Domain;
 using Bancho.Protocol;
+using Bancho.Application.PacketHandlers.Multiplayer;
+using Bancho.Domain.Multiplayer;
+using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;

@@ -3,6 +3,9 @@ using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Mail;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.UseCases.Mail;
 

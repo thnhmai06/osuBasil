@@ -1,4 +1,5 @@
 using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Multiplayer;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;

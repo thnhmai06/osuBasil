@@ -1,5 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Domain;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.UseCases.Beatmaps;
 

@@ -1,3 +1,4 @@
+using Bancho.Infrastructure.Persistence.Repositories;
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
@@ -6,13 +7,13 @@ namespace Bancho.Infrastructure.Tests.Persistence;
 /// </summary>
 public class MySqlClientHashRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.MySqlClientHashRepository _repository;
-    private readonly Bancho.Infrastructure.Persistence.MySqlUserRepository _users;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlClientHashRepository _repository;
+    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository _users;
 
     public MySqlClientHashRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.MySqlClientHashRepository(fixture.ConnectionString);
-        _users = new Bancho.Infrastructure.Persistence.MySqlUserRepository(fixture.ConnectionString);
+        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlClientHashRepository(fixture.ConnectionString);
+        _users = new Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository(fixture.ConnectionString);
     }
 
     [Fact]

@@ -1,4 +1,6 @@
 using Bancho.Infrastructure.Persistence;
+using Bancho.Domain.Users;
+using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 

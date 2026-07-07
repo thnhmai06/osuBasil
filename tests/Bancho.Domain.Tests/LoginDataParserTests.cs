@@ -1,4 +1,5 @@
 using System.Text;
+using Bancho.Domain.Login;
 
 namespace Bancho.Domain.Tests;
 

@@ -9,6 +9,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.Abstractions.Users;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.DependencyInjection;
 

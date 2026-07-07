@@ -1,5 +1,8 @@
 using Bancho.Application.PacketHandlers;
 using Bancho.Protocol;
+using Bancho.Application.PacketHandlers.Multiplayer;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;
@@ -28,7 +31,7 @@ public class CreateMatchHandlerTests
     {
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
-        host.Priv = (Domain.Privileges)0;
+        host.Priv = (Bancho.Domain.Users.Privileges)0;
         fixture.RegisterAll(host);
         var handler = new CreateMatchHandler(fixture.MatchMembership);
 

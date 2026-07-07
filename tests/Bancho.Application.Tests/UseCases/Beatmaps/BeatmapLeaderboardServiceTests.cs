@@ -3,6 +3,13 @@ using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain;
 using NSubstitute;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Login;
+using Bancho.Domain.Scores;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 

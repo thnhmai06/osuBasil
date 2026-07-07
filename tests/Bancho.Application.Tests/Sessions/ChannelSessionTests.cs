@@ -1,5 +1,8 @@
 using Bancho.Application.Sessions;
 using Bancho.Domain;
+using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.Sessions;
 

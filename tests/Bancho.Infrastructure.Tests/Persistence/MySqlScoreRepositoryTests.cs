@@ -3,6 +3,11 @@ using Bancho.Domain;
 using Bancho.Infrastructure.Persistence;
 using Dapper;
 using MySqlConnector;
+using Bancho.Application.Abstractions.Scores;
+using Bancho.Domain.Beatmaps;
+using Bancho.Domain.Scores;
+using Bancho.Domain.Users;
+using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 

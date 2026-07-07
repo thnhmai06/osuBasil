@@ -1,3 +1,4 @@
+using Bancho.Protocol.Packets;
 namespace Bancho.Protocol.Tests;
 
 /// <summary>

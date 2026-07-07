@@ -2,6 +2,7 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
 using Bancho.Protocol;
 using Microsoft.Extensions.Hosting;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.BackgroundServices;
 

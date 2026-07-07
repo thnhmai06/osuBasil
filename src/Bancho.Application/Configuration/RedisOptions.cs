@@ -1,3 +1,4 @@
+using Bancho.Application.Abstractions.Users;
 namespace Bancho.Application.Configuration;
 
 /// <summary>

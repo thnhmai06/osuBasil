@@ -3,6 +3,10 @@ using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
 using NSubstitute;
+using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 

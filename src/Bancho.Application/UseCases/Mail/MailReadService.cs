@@ -1,5 +1,7 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
+using Bancho.Application.Abstractions.Social;
+using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Application.UseCases.Mail;
 

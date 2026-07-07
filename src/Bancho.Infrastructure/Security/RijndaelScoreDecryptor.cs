@@ -4,6 +4,7 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
+using Bancho.Application.Abstractions.Scores;
 
 namespace Bancho.Infrastructure.Security;
 
