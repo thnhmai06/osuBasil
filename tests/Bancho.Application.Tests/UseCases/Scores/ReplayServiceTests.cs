@@ -1,19 +1,17 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.UseCases.Scores;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Application.Abstractions.Users;
+using Bancho.Application.UseCases.Scores;
 using Bancho.Domain.Beatmaps;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Scores;
 
 public class ReplayServiceTests
 {
-    private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
-    private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
+    private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly ReplayService _service;
+    private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
 
     public ReplayServiceTests()
     {
@@ -25,7 +23,7 @@ public class ReplayServiceTests
     {
         _scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns((ScoreOwnerRow?)null);
 
-        var result = await _service.FetchReplayFileAsync(1, viewerId: 5);
+        var result = await _service.FetchReplayFileAsync(1, 5);
 
         Assert.Equal(ReplayFetchResultCode.NotFound, result.Code);
     }
@@ -36,7 +34,7 @@ public class ReplayServiceTests
         _scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwnerRow(10, GameMode.VanillaOsu));
         _replayStorage.ReadAsync(1, Arg.Any<CancellationToken>()).Returns((byte[]?)null);
 
-        var result = await _service.FetchReplayFileAsync(1, viewerId: 5);
+        var result = await _service.FetchReplayFileAsync(1, 5);
 
         Assert.Equal(ReplayFetchResultCode.NotFound, result.Code);
     }
@@ -47,11 +45,12 @@ public class ReplayServiceTests
         _scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwnerRow(10, GameMode.VanillaOsu));
         _replayStorage.ReadAsync(1, Arg.Any<CancellationToken>()).Returns([1, 2, 3]);
 
-        var result = await _service.FetchReplayFileAsync(1, viewerId: 10);
+        var result = await _service.FetchReplayFileAsync(1, 10);
 
         Assert.Equal(ReplayFetchResultCode.Found, result.Code);
         Assert.Equal(new byte[] { 1, 2, 3 }, result.Data);
-        await _stats.DidNotReceive().IncrementReplayViewsAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _stats.DidNotReceive()
+            .IncrementReplayViewsAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -60,8 +59,9 @@ public class ReplayServiceTests
         _scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwnerRow(10, GameMode.VanillaTaiko));
         _replayStorage.ReadAsync(1, Arg.Any<CancellationToken>()).Returns([9]);
 
-        await _service.FetchReplayFileAsync(1, viewerId: 999);
+        await _service.FetchReplayFileAsync(1, 999);
 
-        await _stats.Received(1).IncrementReplayViewsAsync(10, (int)GameMode.VanillaTaiko, Arg.Any<CancellationToken>());
+        await _stats.Received(1)
+            .IncrementReplayViewsAsync(10, (int)GameMode.VanillaTaiko, Arg.Any<CancellationToken>());
     }
 }

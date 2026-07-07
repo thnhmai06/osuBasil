@@ -2,14 +2,15 @@ using Bancho.Domain.Login;
 using Bancho.Domain.Multiplayer;
 using Bancho.Domain.Scores;
 using Bancho.Domain.Users;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>
-/// Spot-checks for the flat constant enums ported from app/constants/privileges.py,
-/// app/objects/player.py (Action), and app/objects/match.py (SlotStatus, MatchTeams,
-/// MatchWinConditions, MatchTeamTypes) — these carry no logic, just bit/value constants,
-/// so a representative sample (rather than exhaustive per-value tests) guards against
-/// transcription errors.
+///     Spot-checks for the flat constant enums ported from app/constants/privileges.py,
+///     app/objects/player.py (Action), and app/objects/match.py (SlotStatus, MatchTeams,
+///     MatchWinConditions, MatchTeamTypes) — these carry no logic, just bit/value constants,
+///     so a representative sample (rather than exhaustive per-value tests) guards against
+///     transcription errors.
 /// </summary>
 public class FlatEnumsTests
 {
@@ -75,7 +76,7 @@ public class FlatEnumsTests
 
         // matches the 0b01111100 magic number used directly in app/packets.py's write_match/read_match
         var hasPlayerMask = SlotStatus.NotReady | SlotStatus.Ready | SlotStatus.NoMap
-            | SlotStatus.Playing | SlotStatus.Complete;
+                            | SlotStatus.Playing | SlotStatus.Complete;
         Assert.Equal(0b0111_1100, (int)hasPlayerMask);
     }
 

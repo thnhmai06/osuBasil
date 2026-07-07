@@ -1,5 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -9,7 +7,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchTransferHost.</summary>
 public class MatchTransferHostHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int slotId) => new(PacketWriter.WriteInt32(slotId));
+    private static BanchoPacketReader ReaderFor(int slotId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
+    }
 
     [Fact]
     public async Task Handle_NonHost_NoOp()

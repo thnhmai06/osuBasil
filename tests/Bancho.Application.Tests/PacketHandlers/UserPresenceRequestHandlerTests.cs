@@ -1,11 +1,8 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
@@ -24,7 +21,8 @@ public class UserPresenceRequestHandlerTests
 
         await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
-        Assert.Equal(ServerPacketWriter.UserPresence(2, "target", 0, 0, (int)ClientPrivileges.Player, 0, 0.0, 0.0, 0), self.Dequeue());
+        Assert.Equal(ServerPacketWriter.UserPresence(2, "target", 0, 0, (int)ClientPrivileges.Player, 0, 0.0, 0.0, 0),
+            self.Dequeue());
     }
 
     [Fact]

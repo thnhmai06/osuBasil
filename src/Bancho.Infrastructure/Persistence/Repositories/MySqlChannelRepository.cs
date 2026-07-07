@@ -1,28 +1,14 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Channels;
 using Dapper;
 using MySqlConnector;
-using Bancho.Application.Abstractions.Channels;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IChannelRepository" />
 public sealed class MySqlChannelRepository(string connectionString) : IChannelRepository
 {
-    private sealed class ChannelRow
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-        public string Topic { get; set; } = "";
-        public int ReadPriv { get; set; }
-        public int WritePriv { get; set; }
-        public bool AutoJoin { get; set; }
-
-        public Channel ToChannel() => new(Id, Name, Topic, ReadPriv, WritePriv, AutoJoin);
-    }
-
-    private const string SelectColumns = "id, name, topic, read_priv AS ReadPriv, write_priv AS WritePriv, auto_join AS AutoJoin";
-
-    private MySqlConnection Connect() => new(connectionString);
+    private const string SelectColumns =
+        "id, name, topic, read_priv AS ReadPriv, write_priv AS WritePriv, auto_join AS AutoJoin";
 
     public async Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
     {
@@ -38,5 +24,25 @@ public sealed class MySqlChannelRepository(string connectionString) : IChannelRe
             $"SELECT {SelectColumns} FROM channels WHERE name = @Name",
             new { Name = name });
         return row?.ToChannel();
+    }
+
+    private MySqlConnection Connect()
+    {
+        return new MySqlConnection(connectionString);
+    }
+
+    private sealed class ChannelRow
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Topic { get; set; } = "";
+        public int ReadPriv { get; set; }
+        public int WritePriv { get; set; }
+        public bool AutoJoin { get; set; }
+
+        public Channel ToChannel()
+        {
+            return new Channel(Id, Name, Topic, ReadPriv, WritePriv, AutoJoin);
+        }
     }
 }

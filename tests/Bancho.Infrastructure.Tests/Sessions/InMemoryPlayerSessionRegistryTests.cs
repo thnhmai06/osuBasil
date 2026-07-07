@@ -1,18 +1,19 @@
 using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Infrastructure.Sessions;
 using Bancho.Domain.Users;
+using Bancho.Infrastructure.Sessions;
 
 namespace Bancho.Infrastructure.Tests.Sessions;
 
 /// <summary>
-/// Ported from app/state/sessions.py's Players collection (get by token/id/name, append/remove),
-/// scoped to what login + basic packet dispatch need.
+///     Ported from app/state/sessions.py's Players collection (get by token/id/name, append/remove),
+///     scoped to what login + basic packet dispatch need.
 /// </summary>
 public class InMemoryPlayerSessionRegistryTests
 {
-    private static PlayerSession MakeSession(int id, string name, string token) =>
-        new(id, name, token, Privileges.Unrestricted, loginTime: 0.0);
+    private static PlayerSession MakeSession(int id, string name, string token)
+    {
+        return new PlayerSession(id, name, token, Privileges.Unrestricted, 0.0);
+    }
 
     [Fact]
     public void GetByToken_AfterAdd_ReturnsSession()

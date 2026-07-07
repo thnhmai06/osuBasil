@@ -1,9 +1,10 @@
 using Bancho.Domain.Login;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>
-/// Ported from app/constants/regexes.py's OSU_VERSION + app/api/domains/cho.py's
-/// parse_osu_version_string. Reference behavior verified by running the actual Python regex.
+///     Ported from app/constants/regexes.py's OSU_VERSION + app/api/domains/cho.py's
+///     parse_osu_version_string. Reference behavior verified by running the actual Python regex.
 /// </summary>
 public class OsuVersionParserTests
 {

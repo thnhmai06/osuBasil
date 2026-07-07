@@ -1,8 +1,8 @@
 namespace Bancho.Application.Abstractions.Users;
 
 /// <summary>
-/// Ported from app/repositories/stats.py's Stats dataclass (bancho-net: no `pp` column usage —
-/// see docs/csharp-migration-plan.md §0).
+///     Ported from app/repositories/stats.py's Stats dataclass (bancho-net: no `pp` column usage —
+///     see docs/csharp-migration-plan.md §0).
 /// </summary>
 public sealed record Stats(
     int Id,
@@ -22,8 +22,8 @@ public sealed record Stats(
     int ACount);
 
 /// <summary>
-/// Ported from app/repositories/stats.py's StatsRepository, scoped to what login and score
-/// submission need.
+///     Ported from app/repositories/stats.py's StatsRepository, scoped to what login and score
+///     submission need.
 /// </summary>
 public interface IStatsRepository
 {
@@ -49,9 +49,9 @@ public interface IStatsRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ported from Score.increment_replay_views — a plain delta update, kept separate from
-    /// UpdateAfterScoreAsync because it targets the replay's owner, not necessarily the score
-    /// submitter (see ReplayService.fetch_replay_file's viewer_id != score.player.id check).
+    ///     Ported from Score.increment_replay_views — a plain delta update, kept separate from
+    ///     UpdateAfterScoreAsync because it targets the replay's owner, not necessarily the score
+    ///     submitter (see ReplayService.fetch_replay_file's viewer_id != score.player.id check).
     /// </summary>
     Task IncrementReplayViewsAsync(int userId, int mode, CancellationToken cancellationToken = default);
 }

@@ -1,7 +1,9 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Scores;
 using Bancho.Application.DependencyInjection;
-using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
+using Bancho.Application.Sessions.Channels;
+using Bancho.Application.Sessions.Multiplayer;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Application.UseCases.Spectating;
@@ -9,20 +11,15 @@ using Bancho.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.Redis;
-using Bancho.Application.Abstractions.Scores;
-using Bancho.Application.Abstractions.Users;
-using Bancho.Application.PacketHandlers.Core;
-using Bancho.Application.Sessions.Channels;
-using Bancho.Application.Sessions.Multiplayer;
 
 namespace Bancho.Infrastructure.Tests.DependencyInjection;
 
 /// <summary>
-/// Resolves the full Web-endpoint dependency graph (OsuLoginUseCase's 17 constructor deps,
-/// BanchoPacketDispatcher's 9 handlers, session registries) from the real DI container. A
-/// deep constructor graph like this is exactly what silently breaks at runtime without a test
-/// like this one — unit tests on the individual pieces can't see a missing/misconfigured
-/// registration in the composition root itself.
+///     Resolves the full Web-endpoint dependency graph (OsuLoginUseCase's 17 constructor deps,
+///     BanchoPacketDispatcher's 9 handlers, session registries) from the real DI container. A
+///     deep constructor graph like this is exactly what silently breaks at runtime without a test
+///     like this one — unit tests on the individual pieces can't see a missing/misconfigured
+///     registration in the composition root itself.
 /// </summary>
 public class CompositionRootTests : IAsyncLifetime
 {
@@ -46,7 +43,7 @@ public class CompositionRootTests : IAsyncLifetime
                 ["ServerBehavior:Domain"] = "test.local",
                 ["ServerBehavior:CommandPrefix"] = "!",
                 ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
             })
             .Build();
 
@@ -56,7 +53,10 @@ public class CompositionRootTests : IAsyncLifetime
         _provider = services.BuildServiceProvider();
     }
 
-    public Task DisposeAsync() => _redis.DisposeAsync().AsTask();
+    public Task DisposeAsync()
+    {
+        return _redis.DisposeAsync().AsTask();
+    }
 
     [Fact]
     public void ResolvesOsuLoginUseCase()

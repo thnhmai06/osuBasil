@@ -25,16 +25,16 @@ public static class LoginDataParser
         var hashParts = clientHashes[..^1].Split(':', 5);
 
         return new LoginData(
-            Username: username,
-            PasswordMd5: Encoding.UTF8.GetBytes(passwordMd5),
-            OsuVersion: osuVersion,
-            UtcOffset: utcOffset,
-            DisplayCity: displayCity,
-            PmPrivate: pmPrivate,
-            OsuPathMd5: hashParts[0],
-            AdaptersString: hashParts[1],
-            AdaptersMd5: hashParts[2],
-            UninstallMd5: hashParts[3],
-            DiskSignatureMd5: hashParts[4]);
+            username,
+            Encoding.UTF8.GetBytes(passwordMd5),
+            osuVersion,
+            utcOffset,
+            displayCity,
+            pmPrivate,
+            hashParts[0],
+            hashParts[1],
+            hashParts[2],
+            hashParts[3],
+            hashParts[4]);
     }
 }

@@ -1,19 +1,20 @@
 using Bancho.Infrastructure.Persistence.Repositories;
+
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from app/repositories/client_hashes.py, scoped to what login needs: recording a hash
-/// entry (upsert, bumping occurrences on repeat) and the hardware-ban lookup.
+///     Ported from app/repositories/client_hashes.py, scoped to what login needs: recording a hash
+///     entry (upsert, bumping occurrences on repeat) and the hardware-ban lookup.
 /// </summary>
 public class MySqlClientHashRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlClientHashRepository _repository;
-    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository _users;
+    private readonly MySqlClientHashRepository _repository;
+    private readonly MySqlUserRepository _users;
 
     public MySqlClientHashRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlClientHashRepository(fixture.ConnectionString);
-        _users = new Bancho.Infrastructure.Persistence.Repositories.MySqlUserRepository(fixture.ConnectionString);
+        _repository = new MySqlClientHashRepository(fixture.ConnectionString);
+        _users = new MySqlUserRepository(fixture.ConnectionString);
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public class MySqlClientHashRepositoryTests : IClassFixture<MySqlFixture>
         await _repository.CreateAsync(other.Id, "osupath-shared", "adapters-shared", "uninstall-other", "disk-other");
 
         var matches = await _repository.FetchAnyHardwareMatchesForUserAsync(
-            owner.Id, runningUnderWine: false, adapters: "adapters-shared", uninstallId: "uninstall-owner", diskSerial: "disk-owner");
+            owner.Id, false, "adapters-shared", "uninstall-owner", "disk-owner");
 
         Assert.Single(matches);
         Assert.Equal("ch other", matches[0].Name);
@@ -57,7 +58,7 @@ public class MySqlClientHashRepositoryTests : IClassFixture<MySqlFixture>
         var owner = await _users.CreateAsync("ch owner 2", "ch-owner2@example.test", "hash", "xx");
 
         var matches = await _repository.FetchAnyHardwareMatchesForUserAsync(
-            owner.Id, runningUnderWine: false, adapters: "no-match", uninstallId: "no-match", diskSerial: "no-match");
+            owner.Id, false, "no-match", "no-match", "no-match");
 
         Assert.Empty(matches);
     }

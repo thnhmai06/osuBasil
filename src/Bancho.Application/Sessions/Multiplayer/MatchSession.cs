@@ -5,14 +5,13 @@ using Bancho.Domain.Multiplayer;
 namespace Bancho.Application.Sessions.Multiplayer;
 
 /// <summary>
-/// An osu! multiplayer match. Ported from app/objects/match.py's Match.
-///
-/// Unlike bancho.py, which relies on asyncio's single-threaded event loop to make slot mutations
-/// atomic between `await` points, ASP.NET Core dispatches packet handlers on the real thread
-/// pool — there is nothing to "port" for synchronization, since the Python source has no lock of
-/// any kind. <see cref="Lock"/> is this port's from-scratch answer: callers that read-then-mutate
-/// slot state (join, change-slot, part, ...) must hold it for the whole read-mutate-broadcast
-/// sequence, exactly mirroring the atomicity asyncio gave Python for free.
+///     An osu! multiplayer match. Ported from app/objects/match.py's Match.
+///     Unlike bancho.py, which relies on asyncio's single-threaded event loop to make slot mutations
+///     atomic between `await` points, ASP.NET Core dispatches packet handlers on the real thread
+///     pool — there is nothing to "port" for synchronization, since the Python source has no lock of
+///     any kind. <see cref="Lock" /> is this port's from-scratch answer: callers that read-then-mutate
+///     slot state (join, change-slot, part, ...) must hold it for the whole read-mutate-broadcast
+///     sequence, exactly mirroring the atomicity asyncio gave Python for free.
 /// </summary>
 public sealed class MatchSession(
     int id,
@@ -71,66 +70,75 @@ public sealed class MatchSession(
 
     public IReadOnlyCollection<int> Referees => _referees;
 
-    public void AddReferee(int playerId) => _referees.Add(playerId);
-
-    public void RemoveReferee(int playerId) => _referees.Remove(playerId);
-
-    /// <summary>Ported from Match.refs — referees plus the current host.</summary>
-    public bool IsReferee(int playerId) => playerId == HostId || _referees.Contains(playerId);
-
     public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
 
-    public void AddTourneyClient(int playerId) => _tourneyClients.Add(playerId);
+    public void AddReferee(int playerId)
+    {
+        _referees.Add(playerId);
+    }
 
-    public void RemoveTourneyClient(int playerId) => _tourneyClients.Remove(playerId);
+    public void RemoveReferee(int playerId)
+    {
+        _referees.Remove(playerId);
+    }
+
+    /// <summary>Ported from Match.refs — referees plus the current host.</summary>
+    public bool IsReferee(int playerId)
+    {
+        return playerId == HostId || _referees.Contains(playerId);
+    }
+
+    public void AddTourneyClient(int playerId)
+    {
+        _tourneyClients.Add(playerId);
+    }
+
+    public void RemoveTourneyClient(int playerId)
+    {
+        _tourneyClients.Remove(playerId);
+    }
 
     /// <summary>Ported from Match.get_slot.</summary>
-    public MatchSlot? GetSlot(int playerId) => Slots.FirstOrDefault(s => s.PlayerId == playerId);
+    public MatchSlot? GetSlot(int playerId)
+    {
+        return Slots.FirstOrDefault(s => s.PlayerId == playerId);
+    }
 
     /// <summary>Ported from Match.get_slot_id.</summary>
     public int? GetSlotId(int playerId)
     {
         for (var i = 0; i < Slots.Count; i++)
-        {
             if (Slots[i].PlayerId == playerId)
-            {
                 return i;
-            }
-        }
 
         return null;
     }
 
     /// <summary>
-    /// Ported from Match.get_free. THE race: reading this and then occupying the returned slot
-    /// is not atomic — callers MUST hold <see cref="Lock"/> across both steps.
+    ///     Ported from Match.get_free. THE race: reading this and then occupying the returned slot
+    ///     is not atomic — callers MUST hold <see cref="Lock" /> across both steps.
     /// </summary>
     public int? GetFreeSlotId()
     {
         for (var i = 0; i < Slots.Count; i++)
-        {
             if (Slots[i].Status == SlotStatus.Open)
-            {
                 return i;
-            }
-        }
 
         return null;
     }
 
     /// <summary>Ported from Match.get_host_slot.</summary>
-    public MatchSlot? GetHostSlot() => GetSlot(HostId);
+    public MatchSlot? GetHostSlot()
+    {
+        return GetSlot(HostId);
+    }
 
     /// <summary>Ported from Match.unready_players.</summary>
     public void UnreadyPlayers(SlotStatus expected = SlotStatus.Ready)
     {
         foreach (var slot in Slots)
-        {
             if (slot.Status == expected)
-            {
                 slot.Status = SlotStatus.NotReady;
-            }
-        }
     }
 
     /// <summary>Ported from Match.reset_players_loaded_status.</summary>

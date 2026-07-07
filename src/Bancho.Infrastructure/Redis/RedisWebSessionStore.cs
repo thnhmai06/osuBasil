@@ -1,6 +1,5 @@
-using Bancho.Application.Abstractions;
-using StackExchange.Redis;
 using Bancho.Application.Abstractions.Users;
+using StackExchange.Redis;
 
 namespace Bancho.Infrastructure.Redis;
 
@@ -9,10 +8,10 @@ public sealed class RedisWebSessionStore(IConnectionMultiplexer connection) : IW
 {
     private IDatabase Db => connection.GetDatabase();
 
-    private static string Key(string token) => $"bancho:web_sessions:{token}";
-
-    public Task CreateAsync(string token, int userId, TimeSpan expiry, CancellationToken cancellationToken = default) =>
-        Db.StringSetAsync(Key(token), userId.ToString(), expiry);
+    public Task CreateAsync(string token, int userId, TimeSpan expiry, CancellationToken cancellationToken = default)
+    {
+        return Db.StringSetAsync(Key(token), userId.ToString(), expiry);
+    }
 
     public async Task<int?> FetchUserIdAsync(string token, CancellationToken cancellationToken = default)
     {
@@ -20,6 +19,13 @@ public sealed class RedisWebSessionStore(IConnectionMultiplexer connection) : IW
         return value.HasValue ? (int)value : null;
     }
 
-    public Task DeleteAsync(string token, CancellationToken cancellationToken = default) =>
-        Db.KeyDeleteAsync(Key(token));
+    public Task DeleteAsync(string token, CancellationToken cancellationToken = default)
+    {
+        return Db.KeyDeleteAsync(Key(token));
+    }
+
+    private static string Key(string token)
+    {
+        return $"bancho:web_sessions:{token}";
+    }
 }

@@ -1,9 +1,7 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.UseCases.Beatmaps;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain.Beatmaps;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 
@@ -17,7 +15,7 @@ public class DirectSearchServiceTests
     {
         _maps.SearchAsync(null, null, null, 0, 100).Returns([]);
 
-        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", Mode: -1, RankedStatusArg: 4, PageNum: 0));
+        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", -1, 4, 0));
 
         await _maps.Received(1).SearchAsync(null, null, null, 0, 100, Arg.Any<CancellationToken>());
     }
@@ -27,7 +25,7 @@ public class DirectSearchServiceTests
     {
         _maps.SearchAsync("camellia", null, null, 0, 100).Returns([]);
 
-        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("camellia", Mode: -1, RankedStatusArg: 4, PageNum: 0));
+        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("camellia", -1, 4, 0));
 
         await _maps.Received(1).SearchAsync("camellia", null, null, 0, 100, Arg.Any<CancellationToken>());
     }
@@ -37,7 +35,7 @@ public class DirectSearchServiceTests
     {
         _maps.SearchAsync(null, GameMode.VanillaTaiko, null, 0, 100).Returns([]);
 
-        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", Mode: 1, RankedStatusArg: 4, PageNum: 0));
+        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", 1, 4, 0));
 
         await _maps.Received(1).SearchAsync(null, GameMode.VanillaTaiko, null, 0, 100, Arg.Any<CancellationToken>());
     }
@@ -48,7 +46,7 @@ public class DirectSearchServiceTests
         _maps.SearchAsync(null, null, RankedStatus.Ranked, 0, 100).Returns([]);
 
         // osudirect status 0 -> RankedStatus.Ranked (per RankedStatusExtensions.FromOsuDirect)
-        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", Mode: -1, RankedStatusArg: 0, PageNum: 0));
+        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", -1, 0, 0));
 
         await _maps.Received(1).SearchAsync(null, null, RankedStatus.Ranked, 0, 100, Arg.Any<CancellationToken>());
     }
@@ -58,7 +56,7 @@ public class DirectSearchServiceTests
     {
         _maps.SearchAsync(null, null, null, 200, 100).Returns([]);
 
-        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", Mode: -1, RankedStatusArg: 4, PageNum: 2));
+        await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", -1, 4, 2));
 
         await _maps.Received(1).SearchAsync(null, null, null, 200, 100, Arg.Any<CancellationToken>());
     }

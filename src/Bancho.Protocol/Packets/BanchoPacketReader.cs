@@ -5,10 +5,10 @@ using Bancho.Protocol.Multiplayer;
 namespace Bancho.Protocol.Packets;
 
 /// <summary>
-/// Reads Bancho packet primitives from a client request body. Ported from
-/// app/packets.py's BanchoPacketReader (read-side only; the packet_map-driven
-/// iteration/dispatch loop is wired up in Bancho.Web during Phase 3, once handlers exist).
-/// All multi-byte integers are little-endian, per the osu! protocol.
+///     Reads Bancho packet primitives from a client request body. Ported from
+///     app/packets.py's BanchoPacketReader (read-side only; the packet_map-driven
+///     iteration/dispatch loop is wired up in Bancho.Web during Phase 3, once handlers exist).
+///     All multi-byte integers are little-endian, per the osu! protocol.
 /// </summary>
 public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 {
@@ -24,7 +24,10 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
     }
 
     /// <summary>Advances past `length` bytes without allocating/copying — for skipping unhandled packet payloads.</summary>
-    public void SkipRaw(int length) => _buffer = _buffer[length..];
+    public void SkipRaw(int length)
+    {
+        _buffer = _buffer[length..];
+    }
 
     /// <summary>Reads the 7-byte Bancho packet header (id: u16, padding: u8, length: u32). Ported from _read_header.</summary>
     public (ClientPackets Type, int Length) ReadHeader()
@@ -116,10 +119,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
     {
         var length = ReadU16();
         var values = new int[length];
-        for (var i = 0; i < length; i++)
-        {
-            values[i] = ReadI32();
-        }
+        for (var i = 0; i < length; i++) values[i] = ReadI32();
 
         return values;
     }
@@ -128,10 +128,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
     {
         var length = (int)ReadU32();
         var values = new int[length];
-        for (var i = 0; i < length; i++)
-        {
-            values[i] = ReadI32();
-        }
+        for (var i = 0; i < length; i++) values[i] = ReadI32();
 
         return values;
     }
@@ -141,10 +138,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
         var exists = _buffer.Span[0] == 0x0B;
         _buffer = _buffer[1..];
 
-        if (!exists)
-        {
-            return "";
-        }
+        if (!exists) return "";
 
         var length = 0;
         var shift = 0;
@@ -155,10 +149,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
             _buffer = _buffer[1..];
 
             length |= (b & 0x7F) << shift;
-            if ((b & 0x80) == 0)
-            {
-                break;
-            }
+            if ((b & 0x80) == 0) break;
 
             shift += 7;
         }
@@ -170,12 +161,14 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 
     // custom osu! types
 
-    public BanchoMessage ReadMessage() =>
-        new(
-            Sender: ReadString(),
-            Text: ReadString(),
-            Recipient: ReadString(),
-            SenderId: ReadI32());
+    public BanchoMessage ReadMessage()
+    {
+        return new BanchoMessage(
+            ReadString(),
+            ReadString(),
+            ReadString(),
+            ReadI32());
+    }
 
     public ReadMatchResult ReadMatch()
     {
@@ -190,25 +183,15 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
         var mapMd5 = ReadString();
 
         var slotStatuses = new int[16];
-        for (var i = 0; i < 16; i++)
-        {
-            slotStatuses[i] = ReadI8();
-        }
+        for (var i = 0; i < 16; i++) slotStatuses[i] = ReadI8();
 
         var slotTeams = new int[16];
-        for (var i = 0; i < 16; i++)
-        {
-            slotTeams[i] = ReadI8();
-        }
+        for (var i = 0; i < 16; i++) slotTeams[i] = ReadI8();
 
         var slotIds = new List<int>();
         foreach (var status in slotStatuses)
-        {
             if ((status & 0b0111_1100) != 0)
-            {
                 slotIds.Add(ReadI32());
-            }
-        }
 
         var hostId = ReadI32();
         var mode = ReadI8();
@@ -220,10 +203,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
         if (freeMods)
         {
             slotMods = new int[16];
-            for (var i = 0; i < 16; i++)
-            {
-                slotMods[i] = ReadI32();
-            }
+            for (var i = 0; i < 16; i++) slotMods[i] = ReadI32();
         }
 
         var seed = ReadI32();
@@ -270,11 +250,13 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
             currentCombo, perfect, currentHp, tagByte, scoreV2, comboPortion, bonusPortion);
     }
 
-    public ReplayFrameData ReadReplayFrame() =>
-        new(
-            ButtonState: ReadU8(),
-            TaikoByte: ReadU8(),
-            X: ReadF32(),
-            Y: ReadF32(),
-            Time: ReadI32());
+    public ReplayFrameData ReadReplayFrame()
+    {
+        return new ReplayFrameData(
+            ReadU8(),
+            ReadU8(),
+            ReadF32(),
+            ReadF32(),
+            ReadI32());
+    }
 }

@@ -4,18 +4,15 @@ using System.Text;
 namespace Bancho.Protocol.Packets;
 
 /// <summary>
-/// Low-level binary primitives for the Bancho protocol. Ported from the write-side helpers in
-/// app/packets.py (write_uleb128, write_string, write_i32_list, and the packet header assembled
-/// in write()). All multi-byte integers are little-endian, per the osu! protocol.
+///     Low-level binary primitives for the Bancho protocol. Ported from the write-side helpers in
+///     app/packets.py (write_uleb128, write_string, write_i32_list, and the packet header assembled
+///     in write()). All multi-byte integers are little-endian, per the osu! protocol.
 /// </summary>
 public static class PacketWriter
 {
     public static byte[] WriteUleb128(int value)
     {
-        if (value == 0)
-        {
-            return [0x00];
-        }
+        if (value == 0) return [0x00];
 
         var bytes = new List<byte>();
         var remaining = (uint)value;
@@ -24,10 +21,7 @@ public static class PacketWriter
         {
             var b = (byte)(remaining & 0x7F);
             remaining >>= 7;
-            if (remaining != 0)
-            {
-                b |= 0x80;
-            }
+            if (remaining != 0) b |= 0x80;
 
             bytes.Add(b);
         }
@@ -37,10 +31,7 @@ public static class PacketWriter
 
     public static byte[] WriteString(string value)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            return [0x00];
-        }
+        if (string.IsNullOrEmpty(value)) return [0x00];
 
         var encoded = Encoding.UTF8.GetBytes(value);
         var length = WriteUleb128(encoded.Length);
@@ -54,13 +45,11 @@ public static class PacketWriter
 
     public static byte[] WriteI32List(IReadOnlyList<int> values)
     {
-        var result = new byte[2 + (values.Count * 4)];
+        var result = new byte[2 + values.Count * 4];
         BinaryPrimitives.WriteUInt16LittleEndian(result, (ushort)values.Count);
 
         for (var i = 0; i < values.Count; i++)
-        {
-            BinaryPrimitives.WriteInt32LittleEndian(result.AsSpan(2 + (i * 4)), values[i]);
-        }
+            BinaryPrimitives.WriteInt32LittleEndian(result.AsSpan(2 + i * 4), values[i]);
 
         return result;
     }

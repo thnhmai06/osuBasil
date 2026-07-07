@@ -1,8 +1,7 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -19,35 +18,23 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
         var mods = (Mods)reader.ReadI32();
 
         var match = player.Match;
-        if (match is null)
-        {
-            return;
-        }
+        if (match is null) return;
 
         await match.Lock.WaitAsync();
         try
         {
             if (match.Freemods)
             {
-                if (player.Id == match.HostId)
-                {
-                    match.Mods = mods & ModsExtensions.SpeedChangingMods;
-                }
+                if (player.Id == match.HostId) match.Mods = mods & ModsExtensions.SpeedChangingMods;
 
                 var slot = match.GetSlot(player.Id);
-                if (slot is null)
-                {
-                    return;
-                }
+                if (slot is null) return;
 
                 slot.Mods = mods & ~ModsExtensions.SpeedChangingMods;
             }
             else
             {
-                if (player.Id != match.HostId)
-                {
-                    return;
-                }
+                if (player.Id != match.HostId) return;
 
                 match.Mods = mods;
             }

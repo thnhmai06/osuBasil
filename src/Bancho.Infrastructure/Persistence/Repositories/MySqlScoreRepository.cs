@@ -1,11 +1,9 @@
-using Bancho.Application.Abstractions;
-using Bancho.Domain;
-using Dapper;
-using MySqlConnector;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 using Bancho.Domain.Users;
+using Dapper;
+using MySqlConnector;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
@@ -16,50 +14,6 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
     // TreatTinyAsBoolean heuristic anyway for consistency with every other repo touching
     // tinyint-typed mode/status columns (see MySqlUserRepository's note on this class of bug).
     private readonly string _connectionString = connectionString + ";TreatTinyAsBoolean=false";
-
-    private sealed class BeatmapLeaderboardScoreRowDto
-    {
-        public long Id { get; set; }
-        public long Score { get; set; }
-        public int MaxCombo { get; set; }
-        public int N50 { get; set; }
-        public int N100 { get; set; }
-        public int N300 { get; set; }
-        public int NMiss { get; set; }
-        public int NKatu { get; set; }
-        public int NGeki { get; set; }
-        public int Perfect { get; set; }
-        public int Mods { get; set; }
-        public long Time { get; set; }
-        public int UserId { get; set; }
-        public string Name { get; set; } = "";
-
-        public BeatmapLeaderboardScoreRow ToRow() => new(
-            Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time, UserId, Name);
-    }
-
-    private sealed class PersonalBestLeaderboardScoreRowDto
-    {
-        public long Id { get; set; }
-        public long Score { get; set; }
-        public int MaxCombo { get; set; }
-        public int N50 { get; set; }
-        public int N100 { get; set; }
-        public int N300 { get; set; }
-        public int NMiss { get; set; }
-        public int NKatu { get; set; }
-        public int NGeki { get; set; }
-        public int Perfect { get; set; }
-        public int Mods { get; set; }
-        public long Time { get; set; }
-        public string Grade { get; set; } = "N";
-        public double Acc { get; set; }
-
-        public PersonalBestLeaderboardScoreRow ToRow() => new(
-            Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time, Grade, Acc);
-    }
-
-    private MySqlConnection Connect() => new(_connectionString);
 
     public async Task<IReadOnlyList<BeatmapLeaderboardScoreRow>> FetchBeatmapLeaderboardScoresAsync(
         string mapMd5,
@@ -76,7 +30,7 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             "s.map_md5 = @MapMd5",
             "s.status = @Best",
             "((u.priv & @Unrestricted) != 0 OR u.id = @UserId)",
-            "s.mode = @Mode",
+            "s.mode = @Mode"
         };
         var parameters = new DynamicParameters();
         parameters.Add("MapMd5", mapMd5);
@@ -108,16 +62,16 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
         await using var connection = Connect();
         var rows = await connection.QueryAsync<BeatmapLeaderboardScoreRowDto>(
             $"""
-            SELECT s.id, s.score AS Score, s.max_combo AS MaxCombo, s.n50 AS N50, s.n100 AS N100,
-                   s.n300 AS N300, s.nmiss AS NMiss, s.nkatu AS NKatu, s.ngeki AS NGeki,
-                   s.perfect AS Perfect, s.mods AS Mods, UNIX_TIMESTAMP(s.play_time) AS Time,
-                   u.id AS UserId, u.name AS Name
-            FROM scores s
-            JOIN users u ON u.id = s.userid
-            WHERE {string.Join(" AND ", conditions)}
-            ORDER BY s.score DESC
-            LIMIT @Limit
-            """,
+             SELECT s.id, s.score AS Score, s.max_combo AS MaxCombo, s.n50 AS N50, s.n100 AS N100,
+                    s.n300 AS N300, s.nmiss AS NMiss, s.nkatu AS NKatu, s.ngeki AS NGeki,
+                    s.perfect AS Perfect, s.mods AS Mods, UNIX_TIMESTAMP(s.play_time) AS Time,
+                    u.id AS UserId, u.name AS Name
+             FROM scores s
+             JOIN users u ON u.id = s.userid
+             WHERE {string.Join(" AND ", conditions)}
+             ORDER BY s.score DESC
+             LIMIT @Limit
+             """,
             parameters);
 
         return rows.Select(r => r.ToRow()).ToList();
@@ -156,17 +110,9 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             new
             {
                 MapMd5 = mapMd5, Mode = (int)mode, Best = (int)SubmissionStatus.Best,
-                Unrestricted = (int)Privileges.Unrestricted, Score = score,
+                Unrestricted = (int)Privileges.Unrestricted, Score = score
             });
         return higherScores + 1;
-    }
-
-    private sealed class ScoreOwnerRowDto
-    {
-        public int UserId { get; set; }
-        public int Mode { get; set; }
-
-        public ScoreOwnerRow ToRow() => new(UserId, (GameMode)Mode);
     }
 
     public async Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
@@ -194,7 +140,8 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             row);
     }
 
-    public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         return await connection.ExecuteScalarAsync<bool>(
@@ -202,7 +149,8 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             new { OnlineChecksum = onlineChecksum });
     }
 
-    public async Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode, CancellationToken cancellationToken = default)
+    public async Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
@@ -213,11 +161,12 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             new
             {
                 Submitted = (int)SubmissionStatus.Submitted, Best = (int)SubmissionStatus.Best,
-                MapMd5 = mapMd5, UserId = userId, Mode = (int)mode,
+                MapMd5 = mapMd5, UserId = userId, Mode = (int)mode
             });
     }
 
-    public async Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode, CancellationToken cancellationToken = default)
+    public async Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         return await connection.QuerySingleOrDefaultAsync<FirstPlaceScoreRow>(
@@ -233,7 +182,71 @@ public sealed class MySqlScoreRepository(string connectionString) : IScoreReposi
             new
             {
                 MapMd5 = mapMd5, Mode = (int)mode, Best = (int)SubmissionStatus.Best,
-                Unrestricted = (int)Privileges.Unrestricted,
+                Unrestricted = (int)Privileges.Unrestricted
             });
+    }
+
+    private MySqlConnection Connect()
+    {
+        return new MySqlConnection(_connectionString);
+    }
+
+    private sealed class BeatmapLeaderboardScoreRowDto
+    {
+        public long Id { get; set; }
+        public long Score { get; set; }
+        public int MaxCombo { get; set; }
+        public int N50 { get; set; }
+        public int N100 { get; set; }
+        public int N300 { get; set; }
+        public int NMiss { get; set; }
+        public int NKatu { get; set; }
+        public int NGeki { get; set; }
+        public int Perfect { get; set; }
+        public int Mods { get; set; }
+        public long Time { get; set; }
+        public int UserId { get; set; }
+        public string Name { get; set; } = "";
+
+        public BeatmapLeaderboardScoreRow ToRow()
+        {
+            return new BeatmapLeaderboardScoreRow(
+                Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time, UserId, Name);
+        }
+    }
+
+    private sealed class PersonalBestLeaderboardScoreRowDto
+    {
+        public long Id { get; set; }
+        public long Score { get; set; }
+        public int MaxCombo { get; set; }
+        public int N50 { get; set; }
+        public int N100 { get; set; }
+        public int N300 { get; set; }
+        public int NMiss { get; set; }
+        public int NKatu { get; set; }
+        public int NGeki { get; set; }
+        public int Perfect { get; set; }
+        public int Mods { get; set; }
+        public long Time { get; set; }
+        public string Grade { get; set; } = "N";
+        public double Acc { get; set; }
+
+        public PersonalBestLeaderboardScoreRow ToRow()
+        {
+            return new PersonalBestLeaderboardScoreRow(
+                Id, Score, MaxCombo, N50, N100, N300, NMiss, NKatu, NGeki, Perfect != 0, Mods, Time, Grade, Acc);
+        }
+    }
+
+    private sealed class ScoreOwnerRowDto
+    {
+        public int UserId { get; set; }
+        public int Mode { get; set; }
+
+        public ScoreOwnerRow ToRow()
+        {
+            return new ScoreOwnerRow(UserId, (GameMode)Mode);
+        }
     }
 }

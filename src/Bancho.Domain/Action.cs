@@ -16,5 +16,5 @@ public enum Action
     Paused = 10,
     Lobby = 11,
     Multiplaying = 12,
-    OsuDirect = 13,
+    OsuDirect = 13
 }

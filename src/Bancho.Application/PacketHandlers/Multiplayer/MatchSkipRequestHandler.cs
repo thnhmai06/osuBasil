@@ -1,8 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
 
@@ -18,28 +16,19 @@ public sealed class MatchSkipRequestHandler(MatchMembershipService matchMembersh
     public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var match = player.Match;
-        if (match is null)
-        {
-            return;
-        }
+        if (match is null) return;
 
         await match.Lock.WaitAsync();
         try
         {
             var slot = match.GetSlot(player.Id);
-            if (slot is null)
-            {
-                return;
-            }
+            if (slot is null) return;
 
             slot.Skipped = true;
             matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(player.Id));
 
             var everyoneSkipped = match.Slots.All(s => s.Status != SlotStatus.Playing || s.Skipped);
-            if (everyoneSkipped)
-            {
-                matchMembership.Enqueue(match, ServerPacketWriter.MatchSkip(), lobby: false);
-            }
+            if (everyoneSkipped) matchMembership.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
         }
         finally
         {

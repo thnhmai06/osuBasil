@@ -1,8 +1,5 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Spectating;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -11,7 +8,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's SpectateFrames — forwards raw bytes unparsed.</summary>
 public class SpectateFramesHandlerTests
 {
-    private static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakePlayer(int id, string name)
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+    }
 
     [Fact]
     public async Task Handle_ForwardsRawBytesToAllSpectators()

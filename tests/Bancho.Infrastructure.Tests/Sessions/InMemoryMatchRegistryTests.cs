@@ -1,20 +1,22 @@
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Infrastructure.Sessions;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Multiplayer;
+using Bancho.Infrastructure.Sessions;
 
 namespace Bancho.Infrastructure.Tests.Sessions;
 
 /// <summary>Ported from app/objects/collections.py's Matches — a fixed 64-slot table, not an unbounded list.</summary>
 public class InMemoryMatchRegistryTests
 {
-    private static MatchSession MakeMatch(int id) => new(
-        id: id, name: "test", password: "", hasPublicHistory: true,
-        mapName: "", mapId: 0, mapMd5: new string('a', 32), hostId: 1,
-        mode: GameMode.VanillaOsu, mods: Mods.NoMod, winCondition: MatchWinConditions.Score,
-        teamType: MatchTeamTypes.HeadToHead, freemods: false, seed: 0, chatChannelName: $"#multi_{id}");
+    private static MatchSession MakeMatch(int id)
+    {
+        return new MatchSession(
+            id, "test", "", true,
+            "", 0, new string('a', 32), 1,
+            GameMode.VanillaOsu, Mods.NoMod, MatchWinConditions.Score,
+            MatchTeamTypes.HeadToHead, false, 0, $"#multi_{id}");
+    }
 
     [Fact]
     public void TryCreate_AssignsTheFirstFreeId()
@@ -42,10 +44,7 @@ public class InMemoryMatchRegistryTests
     public void TryCreate_ReturnsNullWhenAllSixtyFourSlotsAreTaken()
     {
         var registry = new InMemoryMatchRegistry();
-        for (var i = 0; i < 64; i++)
-        {
-            Assert.NotNull(registry.TryCreate(id => MakeMatch(id)));
-        }
+        for (var i = 0; i < 64; i++) Assert.NotNull(registry.TryCreate(id => MakeMatch(id)));
 
         var overflow = registry.TryCreate(id => MakeMatch(id));
 

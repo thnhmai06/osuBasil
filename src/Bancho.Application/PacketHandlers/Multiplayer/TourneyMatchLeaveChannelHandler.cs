@@ -1,7 +1,5 @@
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Application.Sessions.Multiplayer;
 using Bancho.Domain.Users;
@@ -23,22 +21,13 @@ public sealed class TourneyMatchLeaveChannelHandler(
     {
         var matchId = reader.ReadI32();
 
-        if (matchId is < 0 or >= 64 || (player.Priv & Privileges.Donator) == 0)
-        {
-            return Task.CompletedTask;
-        }
+        if (matchId is < 0 or >= 64 || (player.Priv & Privileges.Donator) == 0) return Task.CompletedTask;
 
         var match = matchRegistry.GetById(matchId);
-        if (match is null || !match.TourneyClients.Contains(player.Id))
-        {
-            return Task.CompletedTask;
-        }
+        if (match is null || !match.TourneyClients.Contains(player.Id)) return Task.CompletedTask;
 
         var channel = channelRegistry.GetByName(match.ChatChannelName);
-        if (channel is not null)
-        {
-            channelMembership.Part(player, channel);
-        }
+        if (channel is not null) channelMembership.Part(player, channel);
 
         match.RemoveTourneyClient(player.Id);
         return Task.CompletedTask;

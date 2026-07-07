@@ -1,72 +1,25 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using System.Net;
+using System.Text;
 using Bancho.Application.Abstractions.Beatmaps;
 using Bancho.Application.Abstractions.Channels;
 using Bancho.Application.Abstractions.Users;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Users;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bancho.IntegrationTests;
 
 /// <summary>
-/// Ported from app/api/domains/osu.py's osuSearchHandler/osuSearchSetHandler, replumbed to query
-/// the local maps table instead of a mirror. Only wiring (auth gate, query binding, dispatch to
-/// the right formatter) is covered here — DirectSearchService/DirectSearchResponseFormatter have
-/// their own unit tests.
+///     Ported from app/api/domains/osu.py's osuSearchHandler/osuSearchSetHandler, replumbed to query
+///     the local maps table instead of a mirror. Only wiring (auth gate, query binding, dispatch to
+///     the right formatter) is covered here — DirectSearchService/DirectSearchResponseFormatter have
+///     their own unit tests.
 /// </summary>
 public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private sealed class NullChannelRepository : IChannelRepository
-    {
-        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Channel>>([]);
-
-        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Channel?>(null);
-    }
-
-    private sealed class StubUserRepository : IUserRepository
-    {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) => Task.FromResult<string?>("stored-hash");
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-    }
-
-    private sealed class StubPasswordHasher : IPasswordHasher
-    {
-        public string Hash(byte[] passwordMd5) => throw new NotSupportedException();
-        public bool Verify(byte[] untrustedPasswordMd5, string trustedBcryptHash) =>
-            System.Text.Encoding.UTF8.GetString(untrustedPasswordMd5) == "correct-md5";
-    }
-
-    private sealed class StubMapRepository : IMapRepository
-    {
-        public IReadOnlyList<IReadOnlyList<Beatmap>> SearchResult { get; set; } = [];
-        public Beatmap? SetInfo { get; set; }
-
-        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null, int? setId = null, CancellationToken cancellationToken = default) =>
-            Task.FromResult(SetInfo);
-
-        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-            string? query, GameMode? mode, RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default) =>
-            Task.FromResult(SearchResult);
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    }
-
     private readonly WebApplicationFactory<Program> _factory;
     private readonly StubMapRepository _maps = new();
 
@@ -81,7 +34,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
@@ -94,12 +47,18 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         });
     }
 
-    private static Beatmap MakeBeatmap(int id, int setId) => new(
-        new string('0', 32), id, setId, "Artist", "Title", "Version", "cmyui", DateTime.UtcNow, 100, 500,
-        RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180, 4, 8, 9, 5, 6.5, "file.osu");
+    private static Beatmap MakeBeatmap(int id, int setId)
+    {
+        return new Beatmap(
+            new string('0', 32), id, setId, "Artist", "Title", "Version", "cmyui", DateTime.UtcNow, 100, 500,
+            RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180, 4, 8, 9, 5, 6.5, "file.osu");
+    }
 
-    private static HttpRequestMessage MakeRequest(string path, string queryString) =>
-        new(HttpMethod.Get, $"{path}?{queryString}") { Headers = { Host = "osu.test.local" } };
+    private static HttpRequestMessage MakeRequest(string path, string queryString)
+    {
+        return new HttpRequestMessage(HttpMethod.Get, $"{path}?{queryString}")
+            { Headers = { Host = "osu.test.local" } };
+    }
 
     [Fact]
     public async Task Search_PlayerNotOnline_ReturnsUnauthorized()
@@ -108,7 +67,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -132,7 +91,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -161,5 +120,109 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.StartsWith("100.osz|Artist|Title|cmyui|", body);
+    }
+
+    private sealed class NullChannelRepository : IChannelRepository
+    {
+        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Channel>>([]);
+        }
+
+        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Channel?>(null);
+        }
+    }
+
+    private sealed class StubUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>("stored-hash");
+        }
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class StubPasswordHasher : IPasswordHasher
+    {
+        public string Hash(byte[] passwordMd5)
+        {
+            throw new NotSupportedException();
+        }
+
+        public bool Verify(byte[] untrustedPasswordMd5, string trustedBcryptHash)
+        {
+            return Encoding.UTF8.GetString(untrustedPasswordMd5) == "correct-md5";
+        }
+    }
+
+    private sealed class StubMapRepository : IMapRepository
+    {
+        public IReadOnlyList<IReadOnlyList<Beatmap>> SearchResult { get; set; } = [];
+        public Beatmap? SetInfo { get; set; }
+
+        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+            int? setId = null, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(SetInfo);
+        }
+
+        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
+            string? query, GameMode? mode, RankedStatus? status, int offset, int amount,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(SearchResult);
+        }
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

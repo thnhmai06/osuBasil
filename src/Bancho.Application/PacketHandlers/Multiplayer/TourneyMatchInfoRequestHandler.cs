@@ -1,9 +1,7 @@
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -20,18 +18,12 @@ public sealed class TourneyMatchInfoRequestHandler(IMatchRegistry matchRegistry)
     {
         var matchId = reader.ReadI32();
 
-        if (matchId is < 0 or >= 64 || (player.Priv & Privileges.Donator) == 0)
-        {
-            return Task.CompletedTask;
-        }
+        if (matchId is < 0 or >= 64 || (player.Priv & Privileges.Donator) == 0) return Task.CompletedTask;
 
         var match = matchRegistry.GetById(matchId);
-        if (match is null)
-        {
-            return Task.CompletedTask;
-        }
+        if (match is null) return Task.CompletedTask;
 
-        player.Enqueue(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), sendPassword: false));
+        player.Enqueue(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false));
         return Task.CompletedTask;
     }
 }

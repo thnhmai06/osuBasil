@@ -1,36 +1,38 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.Abstractions.Social;
 using Bancho.Application.Abstractions.Users;
 using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
+using Action = Bancho.Domain.Action;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's SendMessage (private). Bot commands aren't wired up yet,
-/// so a PM to the bot session is simply dropped.
+///     Ported from app/api/domains/cho.py's SendMessage (private). Bot commands aren't wired up yet,
+///     so a PM to the bot session is simply dropped.
 /// </summary>
 public class SendPrivateMessageHandlerTests
 {
+    private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
+    private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-    private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
-    private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
 
-    private SendPrivateMessageHandler MakeHandler() => new(_sessionRegistry, _users, _relationships, _mail);
+    private SendPrivateMessageHandler MakeHandler()
+    {
+        return new SendPrivateMessageHandler(_sessionRegistry, _users, _relationships, _mail);
+    }
 
-    private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId) =>
-        new(PacketWriter.WriteString(sender)
+    private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteString(sender)
             .Concat(PacketWriter.WriteString(text))
             .Concat(PacketWriter.WriteString(recipient))
             .Concat(PacketWriter.WriteInt32(senderId))
             .ToArray());
+    }
 
     [Fact]
     public async Task Handle_SenderSilenced_NoOp()
@@ -101,8 +103,9 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetAway_SendsAwayMessageAutoReply()
     {
         var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var target = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0) { AwayMessage = "gone fishing" };
-        target.Status.Action = Domain.Action.Afk;
+        var target = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0)
+            { AwayMessage = "gone fishing" };
+        target.Status.Action = Action.Afk;
         _sessionRegistry.GetByName("other").Returns(target);
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));

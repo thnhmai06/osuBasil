@@ -4,10 +4,10 @@ using Bancho.Domain.Beatmaps;
 namespace Bancho.Domain.Scores;
 
 /// <summary>
-/// Ported from app/objects/score.py's Score. bancho-net's no-pp scope means `pp`/`sr` fields are
-/// dropped entirely — every mode ranks by <see cref="Score"/> (the raw score value) instead.
-/// PlayerId/PlayerName are plain fields rather than a live session/player reference, since Domain
-/// cannot depend on Bancho.Application's PlayerSession; the orchestrating use case supplies them.
+///     Ported from app/objects/score.py's Score. bancho-net's no-pp scope means `pp`/`sr` fields are
+///     dropped entirely — every mode ranks by <see cref="Score" /> (the raw score value) instead.
+///     PlayerId/PlayerName are plain fields rather than a live session/player reference, since Domain
+///     cannot depend on Bancho.Application's PlayerSession; the orchestrating use case supplies them.
 /// </summary>
 public sealed class ScoreSubmission
 {
@@ -47,9 +47,9 @@ public sealed class ScoreSubmission
     public ScoreSubmission? PrevBest { get; set; }
 
     /// <summary>
-    /// Ported from Score.from_submission. `fields` is the decrypted colon-delimited submission
-    /// string with the leading beatmap_md5/username entries already stripped by the caller (they
-    /// aren't score fields — see score_submission_beatmap_md5/score_submission_username).
+    ///     Ported from Score.from_submission. `fields` is the decrypted colon-delimited submission
+    ///     string with the leading beatmap_md5/username entries already stripped by the caller (they
+    ///     aren't score fields — see score_submission_beatmap_md5/score_submission_username).
     /// </summary>
     public static ScoreSubmission FromSubmission(IReadOnlyList<string> fields)
     {
@@ -73,21 +73,21 @@ public sealed class ScoreSubmission
             Mode = GameModeExtensions.FromParams(int.Parse(fields[13], CultureInfo.InvariantCulture), mods),
             ClientTime = DateTime.ParseExact(fields[14], "yyMMddHHmmss", CultureInfo.InvariantCulture),
             ClientFlags = (ClientFlags)(fields[15].Count(c => c == ' ') & ~4),
-            ServerTime = DateTime.UtcNow,
+            ServerTime = DateTime.UtcNow
         };
     }
 
     /// <summary>Ported from Score.calculate_accuracy, applied to and stored on this instance.</summary>
-    public double CalculateAccuracy() =>
-        ScoreAccuracyCalculator.Calculate(Mode.AsVanilla(), N300, N100, N50, NGeki, NKatu, NMiss, Mods);
+    public double CalculateAccuracy()
+    {
+        return ScoreAccuracyCalculator.Calculate(Mode.AsVanilla(), N300, N100, N50, NGeki, NKatu, NMiss, Mods);
+    }
 
     /// <summary>Ported from Score.compute_online_checksum.</summary>
     public string ComputeOnlineChecksum(string osuVersion, string osuClientHash, string storyboardChecksum)
     {
         if (Bmap is null)
-        {
             throw new InvalidOperationException("Cannot compute an online checksum without a resolved beatmap.");
-        }
 
         return ScoreChecksum.Compute(
             N100, N300, N50, NGeki, NKatu, NMiss, Bmap.Md5, MaxCombo, Perfect, PlayerName, Score,

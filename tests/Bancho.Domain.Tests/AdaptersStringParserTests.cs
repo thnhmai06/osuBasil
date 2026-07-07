@@ -1,4 +1,5 @@
 using Bancho.Domain.Login;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/api/domains/cho.py's parse_adapters_string.</summary>

@@ -1,7 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -16,21 +15,15 @@ public sealed class MatchFailedHandler(MatchMembershipService matchMembership) :
     public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var match = player.Match;
-        if (match is null)
-        {
-            return;
-        }
+        if (match is null) return;
 
         await match.Lock.WaitAsync();
         try
         {
             var slotId = match.GetSlotId(player.Id);
-            if (slotId is null)
-            {
-                return;
-            }
+            if (slotId is null) return;
 
-            matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), lobby: false);
+            matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
         }
         finally
         {

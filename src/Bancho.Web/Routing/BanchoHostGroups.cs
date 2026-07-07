@@ -1,33 +1,30 @@
+using System.Net;
 using System.Text;
 using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.Abstractions.Scores;
 using Bancho.Application.Configuration;
-using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Anticheat;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Application.UseCases.Mail;
 using Bancho.Application.UseCases.Scores;
-using Bancho.Domain;
-using Bancho.Protocol;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Bancho.Application.Abstractions.Beatmaps;
-using Bancho.Application.Abstractions.Scores;
-using Bancho.Application.Abstractions.Social;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Login;
 using Bancho.Domain.Scores;
 using Bancho.Protocol.Packets;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Bancho.Web.Routing;
 
 /// <summary>
-/// Ports bancho.py's app/api/init_api.py:init_routes — routes are selected by hostname, not
-/// path prefix. For every domain in ("ppy.sh", configured DOMAIN): c./ce./c4./c5./c6.{domain}
-/// serve the bancho realtime protocol, osu.{domain} serves the osu! web endpoints, b.{domain}
-/// serves beatmap assets, and api.{domain} serves the developer-facing API.
+///     Ports bancho.py's app/api/init_api.py:init_routes — routes are selected by hostname, not
+///     path prefix. For every domain in ("ppy.sh", configured DOMAIN): c./ce./c4./c5./c6.{domain}
+///     serve the bancho realtime protocol, osu.{domain} serves the osu! web endpoints, b.{domain}
+///     serves beatmap assets, and api.{domain} serves the developer-facing API.
 /// </summary>
 public static class BanchoHostGroups
 {
@@ -84,13 +81,15 @@ public static class BanchoHostGroups
                     // ClientIpResolver falls back to X-Real-IP whenever X-Forwarded-For has a
                     // single entry (matching bancho.py's own assumption about nginx's config) —
                     // both need synthesizing together, not just one.
-                    var remoteIp = (context.Connection.RemoteIpAddress ?? System.Net.IPAddress.Loopback).ToString();
+                    var remoteIp = (context.Connection.RemoteIpAddress ?? IPAddress.Loopback).ToString();
                     headers["X-Forwarded-For"] = remoteIp;
                     headers["X-Real-IP"] = remoteIp;
                 }
+
                 var ip = ClientIpResolver.Resolve(headers);
                 var loginUseCase = context.RequestServices.GetRequiredService<OsuLoginUseCase>();
-                var loginResult = await loginUseCase.ExecuteAsync(new OsuLoginRequest(body, headers, ip), cancellationToken);
+                var loginResult =
+                    await loginUseCase.ExecuteAsync(new OsuLoginRequest(body, headers, ip), cancellationToken);
                 response.Headers["cho-token"] = loginResult.OsuToken;
                 responseBody = loginResult.ResponseBody;
             }
@@ -141,10 +140,7 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, ha, cancellationToken);
-            if (player is null)
-            {
-                return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
+            if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
             var leaderboardService = context.RequestServices.GetRequiredService<BeatmapLeaderboardService>();
             var request = new BeatmapLeaderboardRequest(s != 0, (LeaderboardType)v, c, f, m, mods);
@@ -154,8 +150,9 @@ public static class BanchoHostGroups
             {
                 BeatmapLeaderboardResultCode.NotSubmitted => GetScoresResponseFormatter.NotSubmitted,
                 BeatmapLeaderboardResultCode.NeedsUpdate => GetScoresResponseFormatter.NeedsUpdate,
-                BeatmapLeaderboardResultCode.NoLeaderboard => GetScoresResponseFormatter.NoLeaderboard(result.RankedStatus!.Value),
-                _ => GetScoresResponseFormatter.Found(result),
+                BeatmapLeaderboardResultCode.NoLeaderboard => GetScoresResponseFormatter.NoLeaderboard(
+                    result.RankedStatus!.Value),
+                _ => GetScoresResponseFormatter.Found(result)
             };
 
             return Results.Text(body, "text/html", Encoding.UTF8);
@@ -175,9 +172,7 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             if (await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken) is null)
-            {
                 return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
 
             var searchService = context.RequestServices.GetRequiredService<DirectSearchService>();
             var request = new DirectSearchRequest(query, mode, rankedStatus, pageNum);
@@ -199,17 +194,14 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             if (await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken) is null)
-            {
                 return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
 
             if (mapSetId is null && mapId is null && checksum is null)
-            {
                 return Results.Text("", "text/html", Encoding.UTF8);
-            }
 
             var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-            var bmapSet = await maps.FetchOneAsync(id: mapId, md5: checksum, setId: mapSetId, cancellationToken: cancellationToken);
+            var bmapSet =
+                await maps.FetchOneAsync(mapId, checksum, setId: mapSetId, cancellationToken: cancellationToken);
 
             return Results.Text(DirectSearchResponseFormatter.FormatSet(bmapSet), "text/html", Encoding.UTF8);
         });
@@ -222,15 +214,13 @@ public static class BanchoHostGroups
         {
             var mirrorOptions = context.RequestServices.GetRequiredService<IOptions<MirrorOptions>>().Value;
             if (string.IsNullOrEmpty(mirrorOptions.DownloadEndpoint))
-            {
                 return Results.Text("Beatmap downloads are not available on this server.", "text/html", Encoding.UTF8);
-            }
 
             var noVideo = mapSetId.EndsWith('n');
             var setId = noVideo ? mapSetId[..^1] : mapSetId;
             var query = $"{setId}?n={(noVideo ? 0 : 1)}";
 
-            return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", permanent: true);
+            return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", true);
         });
 
         // Ported from app/api/domains/osu.py's get_updated_beatmap. bancho.py redirects to the
@@ -245,56 +235,51 @@ public static class BanchoHostGroups
         // ASP.NET Core's multipart parser already separates text parts from file parts by name, so
         // (unlike Starlette/FastAPI) no manual form-field workaround is needed here. Unused fields
         // the Python source reads but never forwards into submission (fs/x/i) are not bound at all.
-        group.MapPost("/web/osu-submit-modular-selector.php", async (HttpContext context, CancellationToken cancellationToken) =>
-        {
-            if (!context.Request.HasFormContentType)
+        group.MapPost("/web/osu-submit-modular-selector.php",
+            async (HttpContext context, CancellationToken cancellationToken) =>
             {
-                return Results.Text("", "text/html", Encoding.UTF8);
-            }
+                if (!context.Request.HasFormContentType) return Results.Text("", "text/html", Encoding.UTF8);
 
-            var form = await context.Request.ReadFormAsync(cancellationToken);
-            var scoreDataB64 = form["score"].FirstOrDefault();
-            if (scoreDataB64 is null)
-            {
-                return Results.Text("", "text/html", Encoding.UTF8);
-            }
+                var form = await context.Request.ReadFormAsync(cancellationToken);
+                var scoreDataB64 = form["score"].FirstOrDefault();
+                if (scoreDataB64 is null) return Results.Text("", "text/html", Encoding.UTF8);
 
-            byte[]? replayData = null;
-            var replayFile = form.Files.GetFile("score");
-            if (replayFile is not null)
-            {
-                using var replayStream = new MemoryStream();
-                await replayFile.CopyToAsync(replayStream, cancellationToken);
-                replayData = replayStream.ToArray();
-            }
+                byte[]? replayData = null;
+                var replayFile = form.Files.GetFile("score");
+                if (replayFile is not null)
+                {
+                    using var replayStream = new MemoryStream();
+                    await replayFile.CopyToAsync(replayStream, cancellationToken);
+                    replayData = replayStream.ToArray();
+                }
 
-            var osuVersion = form["osuver"].FirstOrDefault() ?? "";
-            var decryptor = context.RequestServices.GetRequiredService<IScoreDecryptor>();
-            var (scoreDataFields, clientHash) = decryptor.Decrypt(
-                scoreDataB64, form["s"].FirstOrDefault() ?? "", form["iv"].FirstOrDefault() ?? "", osuVersion);
+                var osuVersion = form["osuver"].FirstOrDefault() ?? "";
+                var decryptor = context.RequestServices.GetRequiredService<IScoreDecryptor>();
+                var (scoreDataFields, clientHash) = decryptor.Decrypt(
+                    scoreDataB64, form["s"].FirstOrDefault() ?? "", form["iv"].FirstOrDefault() ?? "", osuVersion);
 
-            var useCase = context.RequestServices.GetRequiredService<ScoreSubmissionUseCase>();
-            var outcome = await useCase.SubmitAsync(
-                new ScoreSubmissionRequest(
-                    ScoreDataFields: scoreDataFields,
-                    PasswordMd5: form["pass"].FirstOrDefault() ?? "",
-                    OsuVersion: osuVersion,
-                    ClientHash: clientHash,
-                    UniqueIds: form["c1"].FirstOrDefault() ?? "",
-                    StoryboardMd5: form["sbk"].FirstOrDefault(),
-                    UpdatedBeatmapHash: form["bmk"].FirstOrDefault() ?? "",
-                    ScoreTime: int.Parse(form["st"].FirstOrDefault() ?? "0"),
-                    FailTime: int.Parse(form["ft"].FirstOrDefault() ?? "0"),
-                    ReplayData: replayData),
-                cancellationToken);
+                var useCase = context.RequestServices.GetRequiredService<ScoreSubmissionUseCase>();
+                var outcome = await useCase.SubmitAsync(
+                    new ScoreSubmissionRequest(
+                        scoreDataFields,
+                        form["pass"].FirstOrDefault() ?? "",
+                        osuVersion,
+                        clientHash,
+                        form["c1"].FirstOrDefault() ?? "",
+                        form["sbk"].FirstOrDefault(),
+                        form["bmk"].FirstOrDefault() ?? "",
+                        int.Parse(form["st"].FirstOrDefault() ?? "0"),
+                        int.Parse(form["ft"].FirstOrDefault() ?? "0"),
+                        replayData),
+                    cancellationToken);
 
-            var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
-            var body = outcome.Code == ScoreSubmissionResultCode.Success
-                ? ScoreSubmissionResponseBuilder.BuildSuccess(outcome.Result!, domain)
-                : ScoreSubmissionResponseBuilder.BuildError(outcome.Code);
+                var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
+                var body = outcome.Code == ScoreSubmissionResultCode.Success
+                    ? ScoreSubmissionResponseBuilder.BuildSuccess(outcome.Result!, domain)
+                    : ScoreSubmissionResponseBuilder.BuildError(outcome.Code);
 
-            return Results.Text(body, "text/html", Encoding.UTF8);
-        });
+                return Results.Text(body, "text/html", Encoding.UTF8);
+            });
 
         // Ported from app/api/domains/osu.py's getReplay. `mode` is accepted by the client but
         // never actually used in the Python source's fetch_replay_file call, so it's not bound
@@ -308,10 +293,7 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
-            if (player is null)
-            {
-                return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
+            if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
             var replayService = context.RequestServices.GetRequiredService<ReplayService>();
             var result = await replayService.FetchReplayFileAsync(scoreId, player.Id, cancellationToken);
@@ -333,16 +315,15 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
-            if (player is null)
-            {
-                return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
+            if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
             var beatmapInfoService = context.RequestServices.GetRequiredService<BeatmapInfoService>();
             var vanillaMode = (GameMode)player.Status.Mode.AsVanilla();
-            var rows = await beatmapInfoService.FetchBeatmapInfoAsync(body.Filenames, player.Id, vanillaMode, cancellationToken);
+            var rows = await beatmapInfoService.FetchBeatmapInfoAsync(body.Filenames, player.Id, vanillaMode,
+                cancellationToken);
 
-            var lines = rows.Select(row => $"{row.Index}|{row.Id}|{row.SetId}|{row.Md5}|{row.Status}|{string.Join('|', row.Grades)}");
+            var lines = rows.Select(row =>
+                $"{row.Index}|{row.Id}|{row.SetId}|{row.Md5}|{row.Status}|{string.Join('|', row.Grades)}");
             return Results.Text(string.Join('\n', lines), "text/html", Encoding.UTF8);
         });
 
@@ -358,10 +339,7 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
-            if (player is null)
-            {
-                return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
+            if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
             var clientIntegrity = context.RequestServices.GetRequiredService<ClientIntegrityService>();
             var result = await clientIntegrity.HandleLastFmFlagsAsync(player, beatmapIdOrHiddenFlag, cancellationToken);
@@ -381,10 +359,7 @@ public static class BanchoHostGroups
         {
             var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
-            if (player is null)
-            {
-                return Results.StatusCode(StatusCodes.Status401Unauthorized);
-            }
+            if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
             var mailReadService = context.RequestServices.GetRequiredService<MailReadService>();
             await mailReadService.MarkChannelAsReadAsync(player, channel, cancellationToken);
@@ -409,7 +384,8 @@ public static class BanchoHostGroups
         // treat a 404 as a connectivity failure, matching the "not available on this server"
         // messaging style already used by the map-download/beatmap-file-update stubs above.
         group.MapPost("/web/osu-screenshot.php", () =>
-            Results.Text("Screenshots are not available on this server.", "text/html", Encoding.UTF8, StatusCodes.Status400BadRequest));
+            Results.Text("Screenshots are not available on this server.", "text/html", Encoding.UTF8,
+                StatusCodes.Status400BadRequest));
 
         group.MapGet("/web/osu-getfavourites.php", () => Results.Text("", "text/html", Encoding.UTF8));
 
@@ -430,26 +406,30 @@ public static class BanchoHostGroups
                 {
                     user = new
                     {
-                        password = new[] { "In-game registration is disabled. Please register on the website." },
-                    },
-                },
+                        password = new[] { "In-game registration is disabled. Please register on the website." }
+                    }
+                }
             },
             statusCode: StatusCodes.Status400BadRequest));
 
         // Ported from app/api/domains/osu.py's difficultyRatingHandler — unconditional redirect in
         // the Python source too, not a divergence introduced here.
         group.MapPost("/difficulty-rating", (HttpContext context) =>
-            Results.Redirect($"https://osu.ppy.sh{context.Request.Path}", permanent: false, preserveMethod: true));
+            Results.Redirect($"https://osu.ppy.sh{context.Request.Path}", false, true));
     }
 
-    private static void MapBeatmapAssetGroup(this RouteGroupBuilder group) =>
+    private static void MapBeatmapAssetGroup(this RouteGroupBuilder group)
+    {
         // Ported from app/api/domains/map.py's everything — every request under the b.{domain}
         // host forwards straight through to osu!'s real static-asset CDN (thumbnails, previews).
         group.MapGet("/{**path}", (HttpContext context) =>
-            Results.Redirect($"https://b.ppy.sh{context.Request.Path}", permanent: true));
+            Results.Redirect($"https://b.ppy.sh{context.Request.Path}", true));
+    }
 
-    private static void MapApiGroup(this RouteGroupBuilder group) =>
+    private static void MapApiGroup(this RouteGroupBuilder group)
+    {
         group.MapGet("/", () => "api");
+    }
 }
 
 /// <summary>Ported from app/objects/models.py's OsuBeatmapRequestForm — osu-getbeatmapinfo.php's JSON request body.</summary>

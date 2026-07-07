@@ -1,7 +1,6 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Beatmaps;
 using Dapper;
 using MySqlConnector;
-using Bancho.Application.Abstractions.Beatmaps;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 

@@ -1,13 +1,12 @@
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;
 
 /// <summary>
-/// Ported from app/state/__init__.py's packet_map ("all"/"restricted" split) + the dispatch loop
-/// in app/api/domains/cho.py's bancho_handler. A single request body may contain multiple
-/// packets; unhandled packet types are skipped via their declared length rather than erroring.
+///     Ported from app/state/__init__.py's packet_map ("all"/"restricted" split) + the dispatch loop
+///     in app/api/domains/cho.py's bancho_handler. A single request body may contain multiple
+///     packets; unhandled packet types are skipped via their declared length rather than erroring.
 /// </summary>
 public sealed class BanchoPacketDispatcher
 {
@@ -31,13 +30,9 @@ public sealed class BanchoPacketDispatcher
             var (type, length) = reader.ReadHeader();
 
             if (handlerMap.TryGetValue(type, out var handler))
-            {
                 await handler.HandleAsync(player, reader);
-            }
             else
-            {
                 reader.SkipRaw(length);
-            }
         }
     }
 }

@@ -1,4 +1,3 @@
-using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Multiplayer;
 
 namespace Bancho.Infrastructure.Sessions;
@@ -7,16 +6,13 @@ namespace Bancho.Infrastructure.Sessions;
 public sealed class InMemoryMatchRegistry : IMatchRegistry
 {
     private const int MaxMatches = 64;
+    private readonly object _registryLock = new();
 
     private readonly MatchSession?[] _slots = new MatchSession?[MaxMatches];
-    private readonly object _registryLock = new();
 
     public MatchSession? GetById(int id)
     {
-        if (id < 0 || id >= MaxMatches)
-        {
-            return null;
-        }
+        if (id < 0 || id >= MaxMatches) return null;
 
         lock (_registryLock)
         {
@@ -29,14 +25,12 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
         lock (_registryLock)
         {
             for (var i = 0; i < MaxMatches; i++)
-            {
                 if (_slots[i] is null)
                 {
                     var match = factory(i);
                     _slots[i] = match;
                     return match;
                 }
-            }
 
             return null;
         }
@@ -44,10 +38,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 
     public void Remove(int id)
     {
-        if (id < 0 || id >= MaxMatches)
-        {
-            return;
-        }
+        if (id < 0 || id >= MaxMatches) return;
 
         lock (_registryLock)
         {

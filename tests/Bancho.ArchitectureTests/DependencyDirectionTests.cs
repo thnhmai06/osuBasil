@@ -1,19 +1,20 @@
 using System.Reflection;
+using Bancho.Domain;
 using NetArchTest.Rules;
 
 namespace Bancho.ArchitectureTests;
 
 /// <summary>
-/// Enforces Clean Architecture dependency direction: Domain and Application must never
-/// depend on Infrastructure, Web, or framework/ORM/web assemblies (dep-inward-only,
-/// frame-domain-purity).
+///     Enforces Clean Architecture dependency direction: Domain and Application must never
+///     depend on Infrastructure, Web, or framework/ORM/web assemblies (dep-inward-only,
+///     frame-domain-purity).
 /// </summary>
 public class DependencyDirectionTests
 {
-    private static readonly Assembly DomainAssembly = typeof(Bancho.Domain.AssemblyMarker).Assembly;
-    private static readonly Assembly ApplicationAssembly = typeof(Bancho.Application.AssemblyMarker).Assembly;
-    private static readonly Assembly InfrastructureAssembly = typeof(Bancho.Infrastructure.AssemblyMarker).Assembly;
-    private static readonly Assembly ProtocolAssembly = typeof(Bancho.Protocol.AssemblyMarker).Assembly;
+    private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
+    private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
+    private static readonly Assembly ProtocolAssembly = typeof(Protocol.AssemblyMarker).Assembly;
 
     [Fact]
     public void Domain_Should_Not_HaveDependencyOn_Infrastructure()
@@ -130,10 +131,7 @@ public class DependencyDirectionTests
 
     private static string FailureMessage(TestResult result)
     {
-        if (result.IsSuccessful)
-        {
-            return string.Empty;
-        }
+        if (result.IsSuccessful) return string.Empty;
 
         var offenders = result.FailingTypes is null
             ? "unknown"

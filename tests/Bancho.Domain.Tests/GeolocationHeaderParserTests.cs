@@ -1,15 +1,18 @@
 using Bancho.Domain.Login;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>
-/// Ported from app/state/services.py's fetch_geoloc header path (Cloudflare headers, falling
-/// back to nginx headers). bancho-net has no ip-api HTTP fallback (runs fully offline) — this
-/// covers only the pure header parsing.
+///     Ported from app/state/services.py's fetch_geoloc header path (Cloudflare headers, falling
+///     back to nginx headers). bancho-net has no ip-api HTTP fallback (runs fully offline) — this
+///     covers only the pure header parsing.
 /// </summary>
 public class GeolocationHeaderParserTests
 {
-    private static IReadOnlyDictionary<string, string> Headers(params (string Key, string Value)[] pairs) =>
-        pairs.ToDictionary(p => p.Key, p => p.Value);
+    private static IReadOnlyDictionary<string, string> Headers(params (string Key, string Value)[] pairs)
+    {
+        return pairs.ToDictionary(p => p.Key, p => p.Value);
+    }
 
     [Fact]
     public void TryParse_CloudflareHeaders_ReturnsGeolocation()
@@ -21,8 +24,8 @@ public class GeolocationHeaderParserTests
         Assert.NotNull(geoloc);
         Assert.Equal("us", geoloc!.CountryAcronym);
         Assert.Equal(225, geoloc.CountryNumeric);
-        Assert.Equal(37.7749, geoloc.Latitude, precision: 4);
-        Assert.Equal(-122.4194, geoloc.Longitude, precision: 4);
+        Assert.Equal(37.7749, geoloc.Latitude, 4);
+        Assert.Equal(-122.4194, geoloc.Longitude, 4);
     }
 
     [Fact]

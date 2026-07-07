@@ -1,18 +1,19 @@
 using Bancho.Infrastructure.Persistence.Repositories;
+
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from app/repositories/stats.py, scoped to what login (Player.stats_from_sql_full)
-/// needs: fetch all per-mode stat rows for a user. migrations/base.sql seeds 8 mode rows for the
-/// BanchoBot user (id=1).
+///     Ported from app/repositories/stats.py, scoped to what login (Player.stats_from_sql_full)
+///     needs: fetch all per-mode stat rows for a user. migrations/base.sql seeds 8 mode rows for the
+///     BanchoBot user (id=1).
 /// </summary>
 public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlStatsRepository _repository;
+    private readonly MySqlStatsRepository _repository;
 
     public MySqlStatsRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlStatsRepository(fixture.ConnectionString);
+        _repository = new MySqlStatsRepository(fixture.ConnectionString);
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
     [Fact]
     public async Task FetchOne_ReturnsSingleModeRow()
     {
-        var stat = await _repository.FetchOneAsync(1, mode: 0);
+        var stat = await _repository.FetchOneAsync(1, 0);
 
         Assert.NotNull(stat);
         Assert.Equal(0, stat!.Mode);
@@ -52,29 +53,29 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
         // class asserting on mode 0's still-default seeded values (fixture/container is shared
         // per IClassFixture, and xUnit does not guarantee test method execution order).
         await _repository.UpdateAfterScoreAsync(
-            userId: 1,
-            mode: 1,
-            tscore: 1_000_000,
-            rscore: 900_000,
-            plays: 5,
-            playtime: 300,
-            acc: 98.5,
-            maxCombo: 500,
-            totalHits: 800,
-            xhCount: 1,
-            xCount: 2,
-            shCount: 3,
-            sCount: 4,
-            aCount: 5);
+            1,
+            1,
+            1_000_000,
+            900_000,
+            5,
+            300,
+            98.5,
+            500,
+            800,
+            1,
+            2,
+            3,
+            4,
+            5);
 
-        var stat = await _repository.FetchOneAsync(1, mode: 1);
+        var stat = await _repository.FetchOneAsync(1, 1);
 
         Assert.NotNull(stat);
         Assert.Equal(1_000_000, stat!.Tscore);
         Assert.Equal(900_000, stat.Rscore);
         Assert.Equal(5, stat.Plays);
         Assert.Equal(300, stat.Playtime);
-        Assert.Equal(98.5, stat.Acc, precision: 2);
+        Assert.Equal(98.5, stat.Acc, 2);
         Assert.Equal(500, stat.MaxCombo);
         Assert.Equal(800, stat.TotalHits);
         Assert.Equal(1, stat.XhCount);
@@ -88,10 +89,10 @@ public class MySqlStatsRepositoryTests : IClassFixture<MySqlFixture>
     public async Task IncrementReplayViews_AddsOneEachCall()
     {
         // mode 2 (catch), same isolation rationale as UpdateAfterScore_PersistsNewTotals above.
-        await _repository.IncrementReplayViewsAsync(1, mode: 2);
-        await _repository.IncrementReplayViewsAsync(1, mode: 2);
+        await _repository.IncrementReplayViewsAsync(1, 2);
+        await _repository.IncrementReplayViewsAsync(1, 2);
 
-        var stat = await _repository.FetchOneAsync(1, mode: 2);
+        var stat = await _repository.FetchOneAsync(1, 2);
 
         Assert.NotNull(stat);
         Assert.Equal(2, stat!.ReplayViews);

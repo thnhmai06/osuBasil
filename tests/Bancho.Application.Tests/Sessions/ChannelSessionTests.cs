@@ -1,6 +1,3 @@
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Application.Abstractions.Channels;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Domain.Users;
 
@@ -12,15 +9,15 @@ public class ChannelSessionTests
     [Fact]
     public void CanRead_ZeroReadPriv_AlwaysTrue()
     {
-        var channel = new ChannelSession(1, "#osu", "topic", readPriv: 0, writePriv: 2, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "topic", 0, 2, true);
 
-        Assert.True(channel.CanRead((Privileges)0));
+        Assert.True(channel.CanRead(0));
     }
 
     [Fact]
     public void CanRead_OverlappingBit_IsTrue()
     {
-        var channel = new ChannelSession(1, "#staff", "topic", readPriv: (int)Privileges.Staff, writePriv: (int)Privileges.Staff, autoJoin: true);
+        var channel = new ChannelSession(1, "#staff", "topic", (int)Privileges.Staff, (int)Privileges.Staff, true);
 
         Assert.True(channel.CanRead(Privileges.Moderator));
     }
@@ -28,7 +25,7 @@ public class ChannelSessionTests
     [Fact]
     public void CanRead_NoOverlappingBit_IsFalse()
     {
-        var channel = new ChannelSession(1, "#staff", "topic", readPriv: (int)Privileges.Staff, writePriv: (int)Privileges.Staff, autoJoin: true);
+        var channel = new ChannelSession(1, "#staff", "topic", (int)Privileges.Staff, (int)Privileges.Staff, true);
 
         Assert.False(channel.CanRead(Privileges.Unrestricted | Privileges.Verified));
     }
@@ -36,15 +33,15 @@ public class ChannelSessionTests
     [Fact]
     public void CanWrite_ZeroWritePriv_AlwaysTrue()
     {
-        var channel = new ChannelSession(1, "#osu", "topic", readPriv: 1, writePriv: 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "topic", 1, 0, true);
 
-        Assert.True(channel.CanWrite((Privileges)0));
+        Assert.True(channel.CanWrite(0));
     }
 
     [Fact]
     public void JoinThenPart_UpdatesPlayerCount()
     {
-        var channel = new ChannelSession(1, "#osu", "topic", readPriv: 0, writePriv: 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
 
         channel.Join(1);
         channel.Join(2);
@@ -67,7 +64,7 @@ public class ChannelSessionTests
     [Fact]
     public void DisplayName_CanDifferFromRegistryName()
     {
-        var channel = new ChannelSession(0, "#spec_5", "topic", 0, 0, false, displayName: "#spectator", instance: true);
+        var channel = new ChannelSession(0, "#spec_5", "topic", 0, 0, false, "#spectator", true);
 
         Assert.Equal("#spec_5", channel.Name);
         Assert.Equal("#spectator", channel.DisplayName);

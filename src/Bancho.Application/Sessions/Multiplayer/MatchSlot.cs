@@ -4,9 +4,9 @@ using Bancho.Domain.Multiplayer;
 namespace Bancho.Application.Sessions.Multiplayer;
 
 /// <summary>
-/// One of a match's 16 slots. Ported from app/objects/match.py's Slot — a plain mutable holder,
-/// synchronization is the owning <see cref="MatchSession"/>'s responsibility (its <c>Lock</c>),
-/// not this type's.
+///     One of a match's 16 slots. Ported from app/objects/match.py's Slot — a plain mutable holder,
+///     synchronization is the owning <see cref="MatchSession" />'s responsibility (its <c>Lock</c>),
+///     not this type's.
 /// </summary>
 public sealed class MatchSlot
 {

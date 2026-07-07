@@ -1,8 +1,5 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -15,7 +12,9 @@ public class SetAwayMessageHandlerTests
     public async Task Handle_SetsAwayMessageFromMessageText()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var payload = ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)[7..]; // strip packet header, keep message payload
+        var payload =
+            ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)
+                [7..]; // strip packet header, keep message payload
         var reader = new BanchoPacketReader(payload);
 
         await new SetAwayMessageHandler().HandleAsync(session, reader);

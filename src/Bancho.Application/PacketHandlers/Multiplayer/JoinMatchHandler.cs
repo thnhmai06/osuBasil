@@ -1,14 +1,14 @@
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
 
 /// <summary>Ported from app/api/domains/cho.py's MatchJoin.</summary>
-public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembershipService matchMembership) : IBanchoPacketHandler
+public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembershipService matchMembership)
+    : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.JoinMatch;
 
@@ -28,13 +28,19 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 
         if (player.Restricted)
         {
-            player.Enqueue([.. ServerPacketWriter.MatchJoinFail(), .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")]);
+            player.Enqueue([
+                .. ServerPacketWriter.MatchJoinFail(),
+                .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
+            ]);
             return;
         }
 
         if (player.Silenced)
         {
-            player.Enqueue([.. ServerPacketWriter.MatchJoinFail(), .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")]);
+            player.Enqueue([
+                .. ServerPacketWriter.MatchJoinFail(),
+                .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
+            ]);
             return;
         }
 

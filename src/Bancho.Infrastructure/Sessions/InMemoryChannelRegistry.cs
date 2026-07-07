@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
 using Bancho.Application.Abstractions.Channels;
 using Bancho.Application.Sessions.Channels;
 
@@ -14,17 +12,24 @@ public sealed class InMemoryChannelRegistry : IChannelRegistry
     public void Seed(IReadOnlyList<Channel> channels)
     {
         foreach (var channel in channels)
-        {
             _byName[channel.Name] = new ChannelSession(
                 channel.Id, channel.Name, channel.Topic, channel.ReadPriv, channel.WritePriv, channel.AutoJoin);
-        }
     }
 
-    public void Add(ChannelSession channel) => _byName[channel.Name] = channel;
+    public void Add(ChannelSession channel)
+    {
+        _byName[channel.Name] = channel;
+    }
 
-    public void Remove(string name) => _byName.TryRemove(name, out _);
+    public void Remove(string name)
+    {
+        _byName.TryRemove(name, out _);
+    }
 
-    public ChannelSession? GetByName(string name) => _byName.GetValueOrDefault(name);
+    public ChannelSession? GetByName(string name)
+    {
+        return _byName.GetValueOrDefault(name);
+    }
 
     public IReadOnlyList<ChannelSession> AutoJoinChannels =>
         _byName.Values.Where(c => c.AutoJoin).ToList();

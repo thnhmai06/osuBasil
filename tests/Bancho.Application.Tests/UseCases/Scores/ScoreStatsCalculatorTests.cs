@@ -1,6 +1,5 @@
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Scores;
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 
@@ -9,29 +8,36 @@ namespace Bancho.Application.Tests.UseCases.Scores;
 public class ScoreStatsCalculatorTests
 {
     private static readonly CachedPlayerStats BaseStats = new(
-        Tscore: 1_000_000, Rscore: 500_000, Acc: 0, Plays: 10, Playtime: 3600, MaxCombo: 300, TotalHits: 1000, Rank: 5,
-        XhCount: 1, XCount: 2, ShCount: 3, SCount: 4, ACount: 5);
+        1_000_000, 500_000, 0, 10, 3600, 300, 1000, 5,
+        1, 2, 3, 4, 5);
 
-    private static Beatmap MakeBeatmap(RankedStatus status) => new(
-        Md5: "abc", Id: 1, SetId: 1, Artist: "a", Title: "b", Version: "c", Creator: "d",
-        LastUpdate: DateTime.UtcNow, TotalLength: 1, MaxCombo: 999, Status: status, Frozen: false,
-        Plays: 0, Passes: 0, Mode: GameMode.VanillaOsu, Bpm: 1, Cs: 1, Od: 1, Ar: 1, Hp: 1, Diff: 1, Filename: "f.osu");
+    private static Beatmap MakeBeatmap(RankedStatus status)
+    {
+        return new Beatmap(
+            "abc", 1, 1, "a", "b", "c", "d",
+            DateTime.UtcNow, 1, 999, status, false,
+            0, 0, GameMode.VanillaOsu, 1, 1, 1, 1, 1, 1, "f.osu");
+    }
 
     private static ScoreSubmission MakeScore(
         GameMode mode = GameMode.VanillaOsu, long score = 100_000, int n300 = 300, int n100 = 10, int n50 = 5,
         int ngeki = 0, int nkatu = 0, int timeElapsed = 120_000, bool passed = true,
         Grade grade = Grade.S, SubmissionStatus status = SubmissionStatus.Best,
-        ScoreSubmission? prevBest = null, Beatmap? bmap = null, int maxCombo = 300) => new()
+        ScoreSubmission? prevBest = null, Beatmap? bmap = null, int maxCombo = 300)
     {
-        Mode = mode, Score = score, N300 = n300, N100 = n100, N50 = n50, NGeki = ngeki, NKatu = nkatu,
-        TimeElapsed = timeElapsed, Passed = passed, Grade = grade, Status = status, PrevBest = prevBest,
-        Bmap = bmap ?? MakeBeatmap(RankedStatus.Ranked), MaxCombo = maxCombo,
-    };
+        return new ScoreSubmission
+        {
+            Mode = mode, Score = score, N300 = n300, N100 = n100, N50 = n50, NGeki = ngeki, NKatu = nkatu,
+            TimeElapsed = timeElapsed, Passed = passed, Grade = grade, Status = status, PrevBest = prevBest,
+            Bmap = bmap ?? MakeBeatmap(RankedStatus.Ranked), MaxCombo = maxCombo
+        };
+    }
 
     [Fact]
     public void ApplyScoreBaseStats_Osu_ExcludesGekiKatuFromTotalHits()
     {
-        var score = MakeScore(mode: GameMode.VanillaOsu, n300: 300, n100: 10, n50: 5, ngeki: 999, nkatu: 999, timeElapsed: 5000);
+        var score = MakeScore(GameMode.VanillaOsu, n300: 300, n100: 10, n50: 5, ngeki: 999, nkatu: 999,
+            timeElapsed: 5000);
 
         var updated = ScoreStatsCalculator.ApplyScoreBaseStats(score, BaseStats);
 
@@ -46,7 +52,7 @@ public class ScoreStatsCalculatorTests
     [InlineData(GameMode.VanillaMania)]
     public void ApplyScoreBaseStats_TaikoOrMania_IncludesGekiKatuInTotalHits(GameMode mode)
     {
-        var score = MakeScore(mode: mode, n300: 100, n100: 10, n50: 0, ngeki: 5, nkatu: 3);
+        var score = MakeScore(mode, n300: 100, n100: 10, n50: 0, ngeki: 5, nkatu: 3);
 
         var updated = ScoreStatsCalculator.ApplyScoreBaseStats(score, BaseStats);
 
@@ -188,7 +194,8 @@ public class ScoreStatsCalculatorTests
     [Fact]
     public void ApplyScoreStats_RankedMapSubmittedNotBest_SkipsRankedUpdatesButKeepsMaxCombo()
     {
-        var score = MakeScore(bmap: MakeBeatmap(RankedStatus.Ranked), maxCombo: 9999, status: SubmissionStatus.Submitted);
+        var score = MakeScore(bmap: MakeBeatmap(RankedStatus.Ranked), maxCombo: 9999,
+            status: SubmissionStatus.Submitted);
 
         var updated = ScoreStatsCalculator.ApplyScoreStats(score, BaseStats);
 

@@ -1,20 +1,17 @@
-using Bancho.Application.Abstractions;
-using Bancho.Domain;
-using Bancho.Infrastructure.Persistence;
-using Dapper;
-using MySqlConnector;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 using Bancho.Domain.Users;
 using Bancho.Infrastructure.Persistence.Repositories;
+using Dapper;
+using MySqlConnector;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from app/repositories/scores.py's fetch_beatmap_leaderboard_scores/
-/// fetch_personal_best_leaderboard_score/fetch_personal_best_leaderboard_rank, collapsed to
-/// unconditional score-based ranking (no pp branch) per the no-pp scope decision.
+///     Ported from app/repositories/scores.py's fetch_beatmap_leaderboard_scores/
+///     fetch_personal_best_leaderboard_score/fetch_personal_best_leaderboard_rank, collapsed to
+///     unconditional score-based ranking (no pp branch) per the no-pp scope decision.
 /// </summary>
 public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
 {
@@ -58,7 +55,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
             new
             {
                 MapMd5 = mapMd5, Score = score, Mods = mods, Status = (int)status, Mode = (int)mode,
-                UserId = userId, Perfect = perfect, Checksum = Guid.NewGuid().ToString("N"),
+                UserId = userId, Perfect = perfect, Checksum = Guid.NewGuid().ToString("N")
             });
     }
 
@@ -73,7 +70,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await InsertScoreAsync(mapMd5, 302, 900_000);
         await InsertScoreAsync(mapMd5, 303, 999_999);
 
-        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, userId: 999);
+        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, 999);
 
         Assert.Equal(2, rows.Count);
         Assert.Equal("bob", rows[0].Name);
@@ -88,7 +85,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await InsertUserAsync(304, "restricted-self", restricted: true);
         await InsertScoreAsync(mapMd5, 304, 100_000);
 
-        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, userId: 304);
+        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, 304);
 
         Assert.Single(rows);
         Assert.Equal("restricted-self", rows[0].Name);
@@ -102,7 +99,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await InsertScoreAsync(mapMd5, 305, 500_000, mode: GameMode.VanillaOsu);
         await InsertScoreAsync(mapMd5, 305, 600_000, mode: GameMode.VanillaTaiko);
 
-        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaTaiko, userId: 305);
+        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaTaiko, 305);
 
         Assert.Single(rows);
         Assert.Equal(600_000, rows[0].Score);
@@ -115,7 +112,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await InsertUserAsync(306, "erin");
         await InsertScoreAsync(mapMd5, 306, 700_000, status: SubmissionStatus.Submitted);
 
-        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, userId: 306);
+        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, 306);
 
         Assert.Empty(rows);
     }
@@ -125,10 +122,10 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
     {
         var mapMd5 = new string('5', 32);
         await InsertUserAsync(307, "frank");
-        await InsertScoreAsync(mapMd5, 307, 500_000, mods: 8); // HD
-        await InsertScoreAsync(mapMd5, 307, 600_000, mods: 64); // DT
+        await InsertScoreAsync(mapMd5, 307, 500_000, 8); // HD
+        await InsertScoreAsync(mapMd5, 307, 600_000, 64); // DT
 
-        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, userId: 307, mods: 8);
+        var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(mapMd5, GameMode.VanillaOsu, 307, 8);
 
         Assert.Single(rows);
         Assert.Equal(500_000, rows[0].Score);
@@ -144,7 +141,7 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await InsertScoreAsync(mapMd5, 309, 600_000);
 
         var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(
-            mapMd5, GameMode.VanillaOsu, userId: 308, friendIds: new HashSet<int> { 308 });
+            mapMd5, GameMode.VanillaOsu, 308, friendIds: new HashSet<int> { 308 });
 
         Assert.Single(rows);
         Assert.Equal("grace", rows[0].Name);
@@ -154,13 +151,13 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
     public async Task FetchBeatmapLeaderboardScores_CountryFilter_OnlyMatchingCountry()
     {
         var mapMd5 = new string('7', 32);
-        await InsertUserAsync(310, "ivan", country: "jp");
-        await InsertUserAsync(311, "judy", country: "us");
+        await InsertUserAsync(310, "ivan", "jp");
+        await InsertUserAsync(311, "judy", "us");
         await InsertScoreAsync(mapMd5, 310, 500_000);
         await InsertScoreAsync(mapMd5, 311, 600_000);
 
         var rows = await _repository.FetchBeatmapLeaderboardScoresAsync(
-            mapMd5, GameMode.VanillaOsu, userId: 310, country: "jp");
+            mapMd5, GameMode.VanillaOsu, 310, country: "jp");
 
         Assert.Single(rows);
         Assert.Equal("ivan", rows[0].Name);
@@ -204,12 +201,15 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         Assert.Equal(3, rank); // laura + mallory above, +1
     }
 
-    private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum) => new(
-        MapMd5: mapMd5, Score: score, Acc: 98.5, MaxCombo: 500, Mods: 0,
-        N300: 300, N100: 10, N50: 5, NMiss: 0, NGeki: 0, NKatu: 0,
-        Grade: "S", Status: (int)SubmissionStatus.Best, Mode: (int)GameMode.VanillaOsu,
-        PlayTime: DateTime.UtcNow, TimeElapsed: 120000, ClientFlags: 0, UserId: userId,
-        Perfect: false, OnlineChecksum: checksum);
+    private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum)
+    {
+        return new ScoreInsertRow(
+            mapMd5, score, 98.5, 500, 0,
+            300, 10, 5, 0, 0, 0,
+            "S", (int)SubmissionStatus.Best, (int)GameMode.VanillaOsu,
+            DateTime.UtcNow, 120000, 0, userId,
+            false, checksum);
+    }
 
     [Fact]
     public async Task Create_InsertsRowAndReturnsGeneratedId()
@@ -226,7 +226,8 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
     private async Task<string?> FetchChecksumAsync(long scoreId)
     {
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        return await connection.ExecuteScalarAsync<string>("SELECT online_checksum FROM scores WHERE id = @Id", new { Id = scoreId });
+        return await connection.ExecuteScalarAsync<string>("SELECT online_checksum FROM scores WHERE id = @Id",
+            new { Id = scoreId });
     }
 
     [Fact]
@@ -257,7 +258,8 @@ public class MySqlScoreRepositoryTests : IClassFixture<MySqlFixture>
         await _repository.MarkPreviousBestScoresSubmittedAsync(mapMd5, 318, GameMode.VanillaOsu);
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var status = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = scoreId });
+        var status =
+            await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = scoreId });
         Assert.Equal((int)SubmissionStatus.Submitted, status);
     }
 

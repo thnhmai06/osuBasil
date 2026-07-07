@@ -1,7 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Domain.Users;
@@ -13,7 +9,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchLeaveChannel.</summary>
 public class TourneyMatchLeaveChannelHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int matchId) => new(PacketWriter.WriteInt32(matchId));
+    private static BanchoPacketReader ReaderFor(int matchId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(matchId));
+    }
 
     [Fact]
     public async Task Handle_NotATourneyClient_NoOp()
@@ -24,7 +23,8 @@ public class TourneyMatchLeaveChannelHandlerTests
         observer.Priv = Privileges.Unrestricted | Privileges.Supporter;
         fixture.RegisterAll(host, observer);
         var match = fixture.CreateMatch(host);
-        var handler = new TourneyMatchLeaveChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry, new ChannelMembershipService(fixture.SessionRegistry));
+        var handler = new TourneyMatchLeaveChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
+            new ChannelMembershipService(fixture.SessionRegistry));
 
         await handler.HandleAsync(observer, ReaderFor(match.Id));
 
@@ -41,7 +41,8 @@ public class TourneyMatchLeaveChannelHandlerTests
         fixture.RegisterAll(host, observer);
         var match = fixture.CreateMatch(host);
         var membership = new ChannelMembershipService(fixture.SessionRegistry);
-        var joinHandler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry, membership);
+        var joinHandler =
+            new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry, membership);
         await joinHandler.HandleAsync(observer, ReaderFor(match.Id));
         var handler = new TourneyMatchLeaveChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry, membership);
 

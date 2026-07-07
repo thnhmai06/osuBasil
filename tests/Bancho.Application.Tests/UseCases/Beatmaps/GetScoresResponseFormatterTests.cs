@@ -1,15 +1,13 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.UseCases.Beatmaps;
-using Bancho.Domain;
 using Bancho.Application.Abstractions.Scores;
+using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 
 /// <summary>
-/// Ported from app/api/domains/osu.py's format_scores_response/SCORE_LISTING_FMTSTR. No golden
-/// fixture exists in bancho.py for this response — expected strings are hand-built from the
-/// documented format, unverified against a real client (see GetScoresResponseFormatter's doc).
+///     Ported from app/api/domains/osu.py's format_scores_response/SCORE_LISTING_FMTSTR. No golden
+///     fixture exists in bancho.py for this response — expected strings are hand-built from the
+///     documented format, unverified against a real client (see GetScoresResponseFormatter's doc).
 /// </summary>
 public class GetScoresResponseFormatterTests
 {
@@ -37,8 +35,8 @@ public class GetScoresResponseFormatterTests
     {
         var result = new BeatmapLeaderboardResult(
             BeatmapLeaderboardResultCode.Found,
-            RankedStatus: RankedStatus.Ranked, BeatmapId: 321, BeatmapSetId: 100,
-            BeatmapName: "Artist - Title [Version]", BeatmapRating: 0.0, ScoreRows: []);
+            RankedStatus.Ranked, 321, 100,
+            "Artist - Title [Version]", 0.0, []);
 
         var response = GetScoresResponseFormatter.Found(result);
 
@@ -51,13 +49,13 @@ public class GetScoresResponseFormatterTests
         var row = new BeatmapLeaderboardScoreRow(5, 900_000, 500, 5, 10, 300, 0, 1, 2, true, 8, 1700000000, 42, "bob");
         var result = new BeatmapLeaderboardResult(
             BeatmapLeaderboardResultCode.Found,
-            RankedStatus: RankedStatus.Ranked, BeatmapId: 321, BeatmapSetId: 100,
-            BeatmapName: "Artist - Title [Version]", BeatmapRating: 7.5, ScoreRows: [row]);
+            RankedStatus.Ranked, 321, 100,
+            "Artist - Title [Version]", 7.5, [row]);
 
         var response = GetScoresResponseFormatter.Found(result);
 
         var expected = "2|false|321|100|1|0|\n0\nArtist - Title [Version]\n7.5\n\n"
-            + "5|bob|900000|500|5|10|300|0|1|2|1|8|42|1|1700000000|1";
+                       + "5|bob|900000|500|5|10|300|0|1|2|1|8|42|1|1700000000|1";
         Assert.Equal(expected, response);
     }
 
@@ -66,18 +64,18 @@ public class GetScoresResponseFormatterTests
     {
         var row = new BeatmapLeaderboardScoreRow(5, 900_000, 500, 5, 10, 300, 0, 1, 2, true, 8, 1700000000, 1, "cmyui");
         var personalBest = new PersonalBestLeaderboardScoreListing(
-            5, 900_000, 500, 5, 10, 300, 0, 1, 2, true, 8, 1700000000, Rank: 1, UserId: 1, Name: "cmyui");
+            5, 900_000, 500, 5, 10, 300, 0, 1, 2, true, 8, 1700000000, 1, 1, "cmyui");
         var result = new BeatmapLeaderboardResult(
             BeatmapLeaderboardResultCode.Found,
-            RankedStatus: RankedStatus.Ranked, BeatmapId: 321, BeatmapSetId: 100,
-            BeatmapName: "Artist - Title [Version]", BeatmapRating: 7.5, ScoreRows: [row], PersonalBest: personalBest);
+            RankedStatus.Ranked, 321, 100,
+            "Artist - Title [Version]", 7.5, [row], personalBest);
 
         var response = GetScoresResponseFormatter.Found(result);
 
         var expectedPersonalBestLine = "5|cmyui|900000|500|5|10|300|0|1|2|1|8|1|1|1700000000|1";
         var expectedScoreLine = "5|cmyui|900000|500|5|10|300|0|1|2|1|8|1|1|1700000000|1";
         var expected = "2|false|321|100|1|0|\n0\nArtist - Title [Version]\n7.5\n"
-            + expectedPersonalBestLine + "\n" + expectedScoreLine;
+                       + expectedPersonalBestLine + "\n" + expectedScoreLine;
         Assert.Equal(expected, response);
     }
 
@@ -87,12 +85,12 @@ public class GetScoresResponseFormatterTests
         var rows = new[]
         {
             new BeatmapLeaderboardScoreRow(1, 900_000, 500, 0, 0, 300, 0, 0, 0, false, 0, 1, 10, "alice"),
-            new BeatmapLeaderboardScoreRow(2, 800_000, 500, 0, 0, 300, 0, 0, 0, false, 0, 2, 11, "bob"),
+            new BeatmapLeaderboardScoreRow(2, 800_000, 500, 0, 0, 300, 0, 0, 0, false, 0, 2, 11, "bob")
         };
         var result = new BeatmapLeaderboardResult(
             BeatmapLeaderboardResultCode.Found,
-            RankedStatus: RankedStatus.Ranked, BeatmapId: 321, BeatmapSetId: 100,
-            BeatmapName: "Artist - Title [Version]", BeatmapRating: 0.0, ScoreRows: rows);
+            RankedStatus.Ranked, 321, 100,
+            "Artist - Title [Version]", 0.0, rows);
 
         var response = GetScoresResponseFormatter.Found(result);
         var lines = response.Split('\n');

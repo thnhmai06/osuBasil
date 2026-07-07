@@ -9,5 +9,5 @@ public enum LoginFailureReason
     ErrorOccurred = -5,
     NeedsSupporter = -6,
     PasswordReset = -7,
-    RequiresVerification = -8,
+    RequiresVerification = -8
 }

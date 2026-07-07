@@ -1,9 +1,9 @@
 namespace Bancho.Application.Configuration;
 
 /// <summary>
-/// Ports bancho.py's app/settings_utils.py value parsing exactly, so environment-derived
-/// configuration behaves identically to the Python server (including surprising cases like
-/// treating "yes" as true and keeping trailing empty entries from a trailing comma).
+///     Ports bancho.py's app/settings_utils.py value parsing exactly, so environment-derived
+///     configuration behaves identically to the Python server (including surprising cases like
+///     treating "yes" as true and keeping trailing empty entries from a trailing comma).
 /// </summary>
 public static class EnvValueParser
 {

@@ -1,15 +1,12 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Scores;
 using Bancho.Application.Configuration;
 using Microsoft.Extensions.Options;
-using Bancho.Application.Abstractions.Scores;
 
 namespace Bancho.Infrastructure.Storage;
 
 /// <inheritdoc cref="IReplayStorage" />
 public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : IReplayStorage
 {
-    private string PathFor(long scoreId) => Path.Combine(options.Value.ReplaysPath, $"{scoreId}.osr");
-
     public async Task WriteAsync(long scoreId, byte[] data, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(options.Value.ReplaysPath);
@@ -20,5 +17,10 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
     {
         var path = PathFor(scoreId);
         return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
+    }
+
+    private string PathFor(long scoreId)
+    {
+        return Path.Combine(options.Value.ReplaysPath, $"{scoreId}.osr");
     }
 }

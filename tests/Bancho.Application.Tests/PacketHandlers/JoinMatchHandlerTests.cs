@@ -1,8 +1,4 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
-using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -40,7 +36,7 @@ public class JoinMatchHandlerTests
         host.Dequeue();
 
         var guest = MakePlayer(2, "guest");
-        guest.Priv = (Privileges)0;
+        guest.Priv = 0;
         fixture.RegisterAll(host, guest);
         var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 

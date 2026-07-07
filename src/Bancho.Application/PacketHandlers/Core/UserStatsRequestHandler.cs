@@ -1,5 +1,4 @@
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;
@@ -18,16 +17,10 @@ public sealed class UserStatsRequestHandler(IPlayerSessionRegistry sessionRegist
 
         foreach (var id in requestedIds)
         {
-            if (id == player.Id || !unrestrictedIds.Contains(id))
-            {
-                continue;
-            }
+            if (id == player.Id || !unrestrictedIds.Contains(id)) continue;
 
             var target = sessionRegistry.GetById(id);
-            if (target is not null)
-            {
-                player.Enqueue(PacketBuilders.BuildUserStats(target));
-            }
+            if (target is not null) player.Enqueue(PacketBuilders.BuildUserStats(target));
         }
 
         return Task.CompletedTask;

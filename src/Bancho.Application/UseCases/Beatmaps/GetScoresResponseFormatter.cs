@@ -1,15 +1,14 @@
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.UseCases.Beatmaps;
 
 /// <summary>
-/// Ported from app/api/domains/osu.py's format_scores_response/format_score_listing
-/// (SCORE_LISTING_FMTSTR) for the GET /web/osu-osz2-getscores.php response body. No golden
-/// fixture exists in the Python repo for this endpoint (0 hits in tests/unit or
-/// tests/integration) — every expected string here is hand-built from the documented format
-/// string, not captured from a running bancho.py. Byte-exactness against a real osu! client is
-/// still unverified, same caveat as Phase 3/4's untested wire-format assumptions.
+///     Ported from app/api/domains/osu.py's format_scores_response/format_score_listing
+///     (SCORE_LISTING_FMTSTR) for the GET /web/osu-osz2-getscores.php response body. No golden
+///     fixture exists in the Python repo for this endpoint (0 hits in tests/unit or
+///     tests/integration) — every expected string here is hand-built from the documented format
+///     string, not captured from a running bancho.py. Byte-exactness against a real osu! client is
+///     still unverified, same caveat as Phase 3/4's untested wire-format assumptions.
 /// </summary>
 public static class GetScoresResponseFormatter
 {
@@ -17,7 +16,10 @@ public static class GetScoresResponseFormatter
 
     public const string NeedsUpdate = "1|false";
 
-    public static string NoLeaderboard(RankedStatus status) => $"{(int)status}|false";
+    public static string NoLeaderboard(RankedStatus status)
+    {
+        return $"{(int)status}|false";
+    }
 
     public static string Found(BeatmapLeaderboardResult result)
     {
@@ -25,7 +27,7 @@ public static class GetScoresResponseFormatter
         var lines = new List<string>
         {
             $"{(int)result.RankedStatus!.Value}|false|{result.BeatmapId}|{result.BeatmapSetId}|{scoreRows.Count}|0|",
-            $"0\n{result.BeatmapName}\n{result.BeatmapRating}",
+            $"0\n{result.BeatmapName}\n{result.BeatmapRating}"
         };
 
         if (scoreRows.Count == 0)
@@ -52,6 +54,9 @@ public static class GetScoresResponseFormatter
 
     private static string FormatLine(
         long id, string name, long score, int maxCombo, int n50, int n100, int n300,
-        int nMiss, int nKatu, int nGeki, bool perfect, int mods, int userId, int rank, long time) =>
-        $"{id}|{name}|{score}|{maxCombo}|{n50}|{n100}|{n300}|{nMiss}|{nKatu}|{nGeki}|{(perfect ? 1 : 0)}|{mods}|{userId}|{rank}|{time}|1";
+        int nMiss, int nKatu, int nGeki, bool perfect, int mods, int userId, int rank, long time)
+    {
+        return
+            $"{id}|{name}|{score}|{maxCombo}|{n50}|{n100}|{n300}|{nMiss}|{nKatu}|{nGeki}|{(perfect ? 1 : 0)}|{mods}|{userId}|{rank}|{time}|1";
+    }
 }

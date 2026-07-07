@@ -1,8 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
 
@@ -18,27 +16,18 @@ public sealed class MatchLoadCompleteHandler(MatchMembershipService matchMembers
     public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var match = player.Match;
-        if (match is null)
-        {
-            return;
-        }
+        if (match is null) return;
 
         await match.Lock.WaitAsync();
         try
         {
             var slot = match.GetSlot(player.Id);
-            if (slot is null)
-            {
-                return;
-            }
+            if (slot is null) return;
 
             slot.Loaded = true;
 
             var stillWaiting = match.Slots.Any(s => s.Status == SlotStatus.Playing && !s.Loaded);
-            if (!stillWaiting)
-            {
-                matchMembership.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), lobby: false);
-            }
+            if (!stillWaiting) matchMembership.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
         }
         finally
         {

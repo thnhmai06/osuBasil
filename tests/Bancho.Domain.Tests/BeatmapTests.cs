@@ -1,32 +1,36 @@
 using Bancho.Domain.Beatmaps;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/objects/beatmap.py's Beatmap fields + the properties Phase 5 actually consumes.</summary>
 public class BeatmapTests
 {
-    private static Beatmap MakeBeatmap(RankedStatus status) => new(
-        Md5: "d41d8cd98f00b204e9800998ecf8427e",
-        Id: 321,
-        SetId: 100,
-        Artist: "Camellia",
-        Title: "Exit This Earth's Atomosphere",
-        Version: "Hyper",
-        Creator: "cmyui",
-        LastUpdate: new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        TotalLength: 120,
-        MaxCombo: 500,
-        Status: status,
-        Frozen: false,
-        Plays: 0,
-        Passes: 0,
-        Mode: GameMode.VanillaOsu,
-        Bpm: 180.0,
-        Cs: 4.0,
-        Od: 8.0,
-        Ar: 9.0,
-        Hp: 5.0,
-        Diff: 6.5,
-        Filename: "Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu");
+    private static Beatmap MakeBeatmap(RankedStatus status)
+    {
+        return new Beatmap(
+            "d41d8cd98f00b204e9800998ecf8427e",
+            321,
+            100,
+            "Camellia",
+            "Exit This Earth's Atomosphere",
+            "Hyper",
+            "cmyui",
+            new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            120,
+            500,
+            status,
+            false,
+            0,
+            0,
+            GameMode.VanillaOsu,
+            180.0,
+            4.0,
+            8.0,
+            9.0,
+            5.0,
+            6.5,
+            "Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu");
+    }
 
     [Fact]
     public void FullName_FormatsArtistTitleVersion()

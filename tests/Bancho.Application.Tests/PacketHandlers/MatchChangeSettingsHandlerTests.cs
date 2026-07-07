@@ -1,11 +1,8 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.PacketHandlers;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Beatmaps;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Multiplayer;
+using NSubstitute;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;
@@ -26,7 +23,8 @@ public class MatchChangeSettingsHandlerTests
         fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
-        await handler.HandleAsync(guest, MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), guest.Id, teamType: 0));
+        await handler.HandleAsync(guest,
+            MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), guest.Id, teamType: 0));
 
         Assert.Equal("test match", match.Name);
     }
@@ -40,7 +38,8 @@ public class MatchChangeSettingsHandlerTests
         var match = fixture.CreateMatch(host);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
-        await handler.HandleAsync(host, MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), host.Id));
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), host.Id));
 
         Assert.Equal("renamed", match.Name);
     }
@@ -72,10 +71,10 @@ public class MatchChangeSettingsHandlerTests
         match.MapId = -1;
         var newMd5 = new string('b', 32);
         var bmap = new Beatmap(
-            Md5: newMd5, Id: 500, SetId: 1, Artist: "A", Title: "T", Version: "V", Creator: "C",
-            LastUpdate: DateTime.UtcNow, TotalLength: 60, MaxCombo: 100, Status: RankedStatus.Ranked,
-            Frozen: false, Plays: 0, Passes: 0, Mode: GameMode.VanillaOsu, Bpm: 120, Cs: 4, Od: 8, Ar: 9,
-            Hp: 5, Diff: 5.0, Filename: "map.osu");
+            newMd5, 500, 1, "A", "T", "V", "C",
+            DateTime.UtcNow, 60, 100, RankedStatus.Ranked,
+            false, 0, 0, GameMode.VanillaOsu, 120, 4, 8, 9,
+            5, 5.0, "map.osu");
         _mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 

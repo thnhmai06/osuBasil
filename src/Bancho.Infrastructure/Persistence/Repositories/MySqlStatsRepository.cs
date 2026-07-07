@@ -1,51 +1,24 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Users;
 using Dapper;
 using MySqlConnector;
-using Bancho.Application.Abstractions.Users;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IStatsRepository" />
 public sealed class MySqlStatsRepository(string connectionString) : IStatsRepository
 {
-    // Mutable DTO — see MySqlUserRepository for why (Dapper record-constructor type strictness
-    // vs MySqlConnector's driver-level type inference on tinyint/unsigned columns).
-    private sealed class StatsRow
-    {
-        public int Id { get; set; }
-        public int Mode { get; set; }
-        public long Tscore { get; set; }
-        public long Rscore { get; set; }
-        public int Plays { get; set; }
-        public int Playtime { get; set; }
-        public double Acc { get; set; }
-        public int MaxCombo { get; set; }
-        public int TotalHits { get; set; }
-        public int ReplayViews { get; set; }
-        public int XhCount { get; set; }
-        public int XCount { get; set; }
-        public int ShCount { get; set; }
-        public int SCount { get; set; }
-        public int ACount { get; set; }
-
-        public Stats ToStats() => new(
-            Id, Mode, Tscore, Rscore, Plays, Playtime, Acc, MaxCombo, TotalHits, ReplayViews,
-            XhCount, XCount, ShCount, SCount, ACount);
-    }
-
     private const string SelectColumns = """
-        id, mode, tscore, rscore, plays, playtime, acc, max_combo AS MaxCombo,
-        total_hits AS TotalHits, replay_views AS ReplayViews, xh_count AS XhCount,
-        x_count AS XCount, sh_count AS ShCount, s_count AS SCount, a_count AS ACount
-        """;
+                                         id, mode, tscore, rscore, plays, playtime, acc, max_combo AS MaxCombo,
+                                         total_hits AS TotalHits, replay_views AS ReplayViews, xh_count AS XhCount,
+                                         x_count AS XCount, sh_count AS ShCount, s_count AS SCount, a_count AS ACount
+                                         """;
 
     // bancho.py's schema uses tinyint(1) for `mode` (0-8, not a boolean) — MySqlConnector's
     // default TreatTinyAsBoolean=true would coerce any nonzero mode value to 1. Disable it.
     private readonly string _connectionString = connectionString + ";TreatTinyAsBoolean=false";
 
-    private MySqlConnection Connect() => new(_connectionString);
-
-    public async Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var rows = await connection.QueryAsync<StatsRow>(
@@ -93,7 +66,7 @@ public sealed class MySqlStatsRepository(string connectionString) : IStatsReposi
             {
                 UserId = userId, Mode = mode, Tscore = tscore, Rscore = rscore, Plays = plays,
                 Playtime = playtime, Acc = acc, MaxCombo = maxCombo, TotalHits = totalHits,
-                XhCount = xhCount, XCount = xCount, ShCount = shCount, SCount = sCount, ACount = aCount,
+                XhCount = xhCount, XCount = xCount, ShCount = shCount, SCount = sCount, ACount = aCount
             });
     }
 
@@ -103,5 +76,38 @@ public sealed class MySqlStatsRepository(string connectionString) : IStatsReposi
         await connection.ExecuteAsync(
             "UPDATE stats SET replay_views = replay_views + 1 WHERE id = @UserId AND mode = @Mode",
             new { UserId = userId, Mode = mode });
+    }
+
+    private MySqlConnection Connect()
+    {
+        return new MySqlConnection(_connectionString);
+    }
+
+    // Mutable DTO — see MySqlUserRepository for why (Dapper record-constructor type strictness
+    // vs MySqlConnector's driver-level type inference on tinyint/unsigned columns).
+    private sealed class StatsRow
+    {
+        public int Id { get; set; }
+        public int Mode { get; set; }
+        public long Tscore { get; set; }
+        public long Rscore { get; set; }
+        public int Plays { get; set; }
+        public int Playtime { get; set; }
+        public double Acc { get; set; }
+        public int MaxCombo { get; set; }
+        public int TotalHits { get; set; }
+        public int ReplayViews { get; set; }
+        public int XhCount { get; set; }
+        public int XCount { get; set; }
+        public int ShCount { get; set; }
+        public int SCount { get; set; }
+        public int ACount { get; set; }
+
+        public Stats ToStats()
+        {
+            return new Stats(
+                Id, Mode, Tscore, Rscore, Plays, Playtime, Acc, MaxCombo, TotalHits, ReplayViews,
+                XhCount, XCount, ShCount, SCount, ACount);
+        }
     }
 }

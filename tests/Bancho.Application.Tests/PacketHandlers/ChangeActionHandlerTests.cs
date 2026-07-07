@@ -1,12 +1,11 @@
-using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
+using Action = Bancho.Domain.Action;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
@@ -15,25 +14,29 @@ public class ChangeActionHandlerTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private static byte[] Payload(int action, string infoText, string mapMd5, uint mods, byte mode, int mapId) =>
-    [
-        .. new byte[] { (byte)action },
-        .. PacketWriter.WriteString(infoText),
-        .. PacketWriter.WriteString(mapMd5),
-        .. PacketWriter.WriteUInt32(mods),
-        mode,
-        .. PacketWriter.WriteInt32(mapId),
-    ];
+    private static byte[] Payload(int action, string infoText, string mapMd5, uint mods, byte mode, int mapId)
+    {
+        return
+        [
+            (byte)action,
+            .. PacketWriter.WriteString(infoText),
+            .. PacketWriter.WriteString(mapMd5),
+            .. PacketWriter.WriteUInt32(mods),
+            mode,
+            .. PacketWriter.WriteInt32(mapId)
+        ];
+    }
 
     [Fact]
     public async Task Handle_UpdatesStatusFields()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload((int)Domain.Action.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
+        var reader =
+            new BanchoPacketReader(Payload((int)Action.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
-        Assert.Equal(Domain.Action.Playing, session.Status.Action);
+        Assert.Equal(Action.Playing, session.Status.Action);
         Assert.Equal("playing a map", session.Status.InfoText);
         Assert.Equal("abc123", session.Status.MapMd5);
         Assert.Equal(Mods.Hidden, session.Status.Mods);
@@ -45,7 +48,7 @@ public class ChangeActionHandlerTests
     public async Task Handle_RelaxMod_ShiftsModeToRelaxVariant()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, mode: 0, mapId: 0));
+        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, 0, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -57,7 +60,7 @@ public class ChangeActionHandlerTests
     public async Task Handle_RelaxModOnMania_StripsRelaxSinceRxManiaDoesNotExist()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, mode: 3, mapId: 0));
+        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, 3, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -69,7 +72,7 @@ public class ChangeActionHandlerTests
     public async Task Handle_AutopilotMod_ShiftsModeToAutopilotVariant()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, mode: 0, mapId: 0));
+        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 0, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -80,7 +83,7 @@ public class ChangeActionHandlerTests
     public async Task Handle_AutopilotModOnNonOsuMode_StripsAutopilot()
     {
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, mode: 1, mapId: 0));
+        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 1, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -94,7 +97,7 @@ public class ChangeActionHandlerTests
         var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var other = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.All.Returns([session, other]);
-        var reader = new BanchoPacketReader(Payload((int)Domain.Action.Idle, "", "", 0, 0, 0));
+        var reader = new BanchoPacketReader(Payload((int)Action.Idle, "", "", 0, 0, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 

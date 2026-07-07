@@ -61,5 +61,5 @@ public enum ServerPackets
     AccountRestricted = 104,
     Rtx = 105, // unused
     MatchAbort = 106,
-    SwitchTournamentServer = 107,
+    SwitchTournamentServer = 107
 }

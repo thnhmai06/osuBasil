@@ -1,10 +1,8 @@
-using Bancho.Application.Abstractions;
-using Bancho.Domain;
-using Dapper;
-using MySqlConnector;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
+using Dapper;
+using MySqlConnector;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
@@ -27,7 +25,6 @@ public sealed class MySqlScoreSubmissionPersistence(string connectionString) : I
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         if (markPreviousBestSubmitted)
-        {
             await connection.ExecuteAsync(
                 """
                 UPDATE scores SET status = @Submitted
@@ -36,10 +33,9 @@ public sealed class MySqlScoreSubmissionPersistence(string connectionString) : I
                 new
                 {
                     Submitted = (int)SubmissionStatus.Submitted, Best = (int)SubmissionStatus.Best,
-                    MapMd5 = mapMd5, UserId = userId, Mode = (int)mode,
+                    MapMd5 = mapMd5, UserId = userId, Mode = (int)mode
                 },
                 transaction);
-        }
 
         var scoreId = await connection.QuerySingleAsync<long>(
             """
@@ -77,7 +73,7 @@ public sealed class MySqlScoreSubmissionPersistence(string connectionString) : I
                 statsUpdate.XCount,
                 statsUpdate.ShCount,
                 statsUpdate.SCount,
-                statsUpdate.ACount,
+                statsUpdate.ACount
             },
             transaction);
 

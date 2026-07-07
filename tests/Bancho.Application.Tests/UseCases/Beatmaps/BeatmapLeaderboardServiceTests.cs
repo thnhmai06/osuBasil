@@ -1,45 +1,55 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Beatmaps;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Beatmaps;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Application.Abstractions.Social;
+using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Login;
 using Bancho.Domain.Scores;
 using Bancho.Domain.Users;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 
 /// <summary>
-/// Ported from app/services/beatmap_leaderboards.py's BeatmapLeaderboardService, merged with
-/// score_leaderboards.py's ScoreLeaderboardsService. scoring_metric is dropped entirely — every
-/// leaderboard is ranked by raw score (no-pp scope decision).
+///     Ported from app/services/beatmap_leaderboards.py's BeatmapLeaderboardService, merged with
+///     score_leaderboards.py's ScoreLeaderboardsService. scoring_metric is dropped entirely — every
+///     leaderboard is ranked by raw score (no-pp scope decision).
 /// </summary>
 public class BeatmapLeaderboardServiceTests
 {
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
-    private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly IRatingRepository _ratings = Substitute.For<IRatingRepository>();
     private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
+    private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private BeatmapLeaderboardService MakeService() =>
-        new(new EnsureBeatmapUseCase(_maps), _scores, _ratings, _relationships, _sessionRegistry);
+    private BeatmapLeaderboardService MakeService()
+    {
+        return new BeatmapLeaderboardService(new EnsureBeatmapUseCase(_maps), _scores, _ratings, _relationships,
+            _sessionRegistry);
+    }
 
-    private static PlayerSession MakePlayer(int id = 1, string name = "cmyui", string country = "us") =>
-        new(id, name, "token", Privileges.Unrestricted, 0.0) { Geoloc = new Geolocation(0, 0, country, 0) };
+    private static PlayerSession MakePlayer(int id = 1, string name = "cmyui", string country = "us")
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0)
+            { Geoloc = new Geolocation(0, 0, country, 0) };
+    }
 
-    private static Beatmap MakeBeatmap(string md5, RankedStatus status = RankedStatus.Ranked) => new(
-        md5, 321, 100, "Artist", "Title", "Version", "Creator", DateTime.UtcNow, 100, 500,
-        status, false, 0, 0, GameMode.VanillaOsu, 180.0, 4, 8, 9, 5, 6.5, "file.osu");
+    private static Beatmap MakeBeatmap(string md5, RankedStatus status = RankedStatus.Ranked)
+    {
+        return new Beatmap(
+            md5, 321, 100, "Artist", "Title", "Version", "Creator", DateTime.UtcNow, 100, 500,
+            status, false, 0, 0, GameMode.VanillaOsu, 180.0, 4, 8, 9, 5, 6.5, "file.osu");
+    }
 
     private static BeatmapLeaderboardRequest MakeRequest(
         string mapMd5, string mapFilename = "file.osu", LeaderboardType leaderboardType = LeaderboardType.Top,
-        int modeArg = 0, int modsArg = 0, bool editorSongSelect = false) =>
-        new(editorSongSelect, leaderboardType, mapMd5, mapFilename, modeArg, modsArg);
+        int modeArg = 0, int modsArg = 0, bool editorSongSelect = false)
+    {
+        return new BeatmapLeaderboardRequest(editorSongSelect, leaderboardType, mapMd5, mapFilename, modeArg, modsArg);
+    }
 
     [Fact]
     public async Task UnknownBeatmap_UnknownFilename_ReturnsNotSubmitted()
@@ -87,7 +97,8 @@ public class BeatmapLeaderboardServiceTests
         _maps.FetchOneAsync(md5: md5).Returns(bmap);
         var row = new BeatmapLeaderboardScoreRow(1, 900_000, 500, 5, 10, 300, 0, 0, 0, false, 0, 123, 2, "bob");
         _scores.FetchBeatmapLeaderboardScoresAsync(md5, GameMode.VanillaOsu, 1).Returns([row]);
-        _scores.FetchPersonalBestLeaderboardScoreAsync(md5, GameMode.VanillaOsu, 1).Returns((PersonalBestLeaderboardScoreRow?)null);
+        _scores.FetchPersonalBestLeaderboardScoreAsync(md5, GameMode.VanillaOsu, 1)
+            .Returns((PersonalBestLeaderboardScoreRow?)null);
         _ratings.FetchAverageRatingAsync(md5).Returns(7.5);
 
         var result = await MakeService().FetchLeaderboardAsync(MakePlayer(), MakeRequest(md5));
@@ -112,7 +123,7 @@ public class BeatmapLeaderboardServiceTests
         _scores.FetchPersonalBestLeaderboardScoreAsync(md5, GameMode.VanillaOsu, 1).Returns(best);
         _scores.FetchPersonalBestLeaderboardRankAsync(md5, GameMode.VanillaOsu, 900_000).Returns(1);
 
-        var result = await MakeService().FetchLeaderboardAsync(MakePlayer(id: 1, name: "cmyui"), MakeRequest(md5));
+        var result = await MakeService().FetchLeaderboardAsync(MakePlayer(1, "cmyui"), MakeRequest(md5));
 
         Assert.NotNull(result.PersonalBest);
         Assert.Equal(1, result.PersonalBest!.Rank);
@@ -144,7 +155,8 @@ public class BeatmapLeaderboardServiceTests
         Assert.Equal(BeatmapLeaderboardResultCode.Found, result.Code);
         Assert.Empty(result.ScoreRows!);
         await _scores.DidNotReceive().FetchBeatmapLeaderboardScoresAsync(
-            Arg.Any<string>(), Arg.Any<GameMode>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<IReadOnlySet<int>?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<GameMode>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<IReadOnlySet<int>?>(),
+            Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -154,10 +166,12 @@ public class BeatmapLeaderboardServiceTests
         _maps.FetchOneAsync(md5: md5).Returns(MakeBeatmap(md5));
         _scores.FetchBeatmapLeaderboardScoresAsync(md5, GameMode.VanillaOsu, 1, 8).Returns([]);
 
-        await MakeService().FetchLeaderboardAsync(MakePlayer(), MakeRequest(md5, leaderboardType: LeaderboardType.Mods, modsArg: 8));
+        await MakeService().FetchLeaderboardAsync(MakePlayer(),
+            MakeRequest(md5, leaderboardType: LeaderboardType.Mods, modsArg: 8));
 
         await _scores.Received(1).FetchBeatmapLeaderboardScoresAsync(
-            md5, GameMode.VanillaOsu, 1, 8, Arg.Any<IReadOnlySet<int>?>(), null, Arg.Any<int>(), Arg.Any<CancellationToken>());
+            md5, GameMode.VanillaOsu, 1, 8, Arg.Any<IReadOnlySet<int>?>(), null, Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -167,13 +181,16 @@ public class BeatmapLeaderboardServiceTests
         _maps.FetchOneAsync(md5: md5).Returns(MakeBeatmap(md5));
         _relationships.FetchAllAsync(1, RelationshipType.Friend, Arg.Any<CancellationToken>())
             .Returns([new Relationship(1, 42, RelationshipType.Friend)]);
-        _scores.FetchBeatmapLeaderboardScoresAsync(md5, GameMode.VanillaOsu, 1, null, Arg.Any<IReadOnlySet<int>>()).Returns([]);
+        _scores.FetchBeatmapLeaderboardScoresAsync(md5, GameMode.VanillaOsu, 1, null, Arg.Any<IReadOnlySet<int>>())
+            .Returns([]);
 
-        await MakeService().FetchLeaderboardAsync(MakePlayer(id: 1), MakeRequest(md5, leaderboardType: LeaderboardType.Friends));
+        await MakeService()
+            .FetchLeaderboardAsync(MakePlayer(1), MakeRequest(md5, leaderboardType: LeaderboardType.Friends));
 
         await _scores.Received(1).FetchBeatmapLeaderboardScoresAsync(
             md5, GameMode.VanillaOsu, 1, null,
-            Arg.Is<IReadOnlySet<int>>(s => s.SetEquals(new[] { 1, 42 })), null, Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Is<IReadOnlySet<int>>(s => s.SetEquals(new[] { 1, 42 })), null, Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -183,7 +200,8 @@ public class BeatmapLeaderboardServiceTests
         _maps.FetchOneAsync(md5: md5).Returns(MakeBeatmap(md5));
         _scores.FetchBeatmapLeaderboardScoresAsync(md5, GameMode.VanillaOsu, 1, null, null, "jp").Returns([]);
 
-        await MakeService().FetchLeaderboardAsync(MakePlayer(country: "jp"), MakeRequest(md5, leaderboardType: LeaderboardType.Country));
+        await MakeService().FetchLeaderboardAsync(MakePlayer(country: "jp"),
+            MakeRequest(md5, leaderboardType: LeaderboardType.Country));
 
         await _scores.Received(1).FetchBeatmapLeaderboardScoresAsync(
             md5, GameMode.VanillaOsu, 1, null, null, "jp", Arg.Any<int>(), Arg.Any<CancellationToken>());

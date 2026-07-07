@@ -1,12 +1,11 @@
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's UserPresenceRequestAll — only sent by the client when
-/// more than 256 players are visible.
+///     Ported from app/api/domains/cho.py's UserPresenceRequestAll — only sent by the client when
+///     more than 256 players are visible.
 /// </summary>
 public sealed class UserPresenceRequestAllHandler(IPlayerSessionRegistry sessionRegistry) : IBanchoPacketHandler
 {
@@ -20,9 +19,7 @@ public sealed class UserPresenceRequestAllHandler(IPlayerSessionRegistry session
 
         var buffer = new List<byte>();
         foreach (var other in sessionRegistry.All.Where(s => !s.Restricted))
-        {
             buffer.AddRange(PacketBuilders.BuildUserPresence(other));
-        }
 
         player.Enqueue([.. buffer]);
         return Task.CompletedTask;

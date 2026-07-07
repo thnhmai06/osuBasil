@@ -1,9 +1,9 @@
 namespace Bancho.Domain.Login;
 
 /// <summary>
-/// Ported from app/objects/player.py's ClientDetails, scoped to what score submission's
-/// validate_client_details needs. Captured once at login (see PlayerSession.Client) and
-/// re-checked against every score submission from that session.
+///     Ported from app/objects/player.py's ClientDetails, scoped to what score submission's
+///     validate_client_details needs. Captured once at login (see PlayerSession.Client) and
+///     re-checked against every score submission from that session.
 /// </summary>
 public sealed class ClientDetails(
     DateOnly osuVersionDate,
@@ -26,10 +26,7 @@ public sealed class ClientDetails(
         get
         {
             var adaptersString = string.Join('.', Adapters);
-            if (adaptersString != AdaptersStringParser.WineAdapterSentinel)
-            {
-                adaptersString += ".";
-            }
+            if (adaptersString != AdaptersStringParser.WineAdapterSentinel) adaptersString += ".";
 
             return $"{OsuPathMd5}:{adaptersString}:{AdaptersMd5}:{UninstallMd5}:{DiskSignatureMd5}:";
         }

@@ -7,7 +7,7 @@ public enum OsuStream
     Beta,
     CuttingEdge,
     Tourney,
-    Dev,
+    Dev
 }
 
 /// <summary>Ported from app/objects/player.py's OsuVersion. e.g. b20200201.2cuttingedge.</summary>

@@ -1,5 +1,4 @@
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;

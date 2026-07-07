@@ -1,6 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
@@ -8,7 +5,10 @@ using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchComplete. The is_scrimming scoring branch is dropped along with the rest of the scrim engine.</summary>
+/// <summary>
+///     Ported from app/api/domains/cho.py's MatchComplete. The is_scrimming scoring branch is dropped along with the
+///     rest of the scrim engine.
+/// </summary>
 public class MatchCompleteHandlerTests
 {
     [Fact]

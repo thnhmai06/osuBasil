@@ -1,5 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;

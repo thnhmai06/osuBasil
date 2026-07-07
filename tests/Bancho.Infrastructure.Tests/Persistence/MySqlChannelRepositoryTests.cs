@@ -1,18 +1,19 @@
 using Bancho.Infrastructure.Persistence.Repositories;
+
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from app/repositories/channels.py, scoped to what login needs: the auto-join channel
-/// list. migrations/base.sql seeds 7 channels (#osu, #announce, #lobby, #supporter, #staff,
-/// #admin, #dev), 5 of which have auto_join=true (#lobby and #supporter do not).
+///     Ported from app/repositories/channels.py, scoped to what login needs: the auto-join channel
+///     list. migrations/base.sql seeds 7 channels (#osu, #announce, #lobby, #supporter, #staff,
+///     #admin, #dev), 5 of which have auto_join=true (#lobby and #supporter do not).
 /// </summary>
 public class MySqlChannelRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlChannelRepository _repository;
+    private readonly MySqlChannelRepository _repository;
 
     public MySqlChannelRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlChannelRepository(fixture.ConnectionString);
+        _repository = new MySqlChannelRepository(fixture.ConnectionString);
     }
 
     [Fact]

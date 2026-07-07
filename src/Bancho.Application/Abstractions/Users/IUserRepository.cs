@@ -1,4 +1,3 @@
-using Bancho.Domain.Users;
 namespace Bancho.Application.Abstractions.Users;
 
 /// <summary>Ported from app/repositories/users.py's User dataclass.</summary>
@@ -23,8 +22,8 @@ public sealed record User(
     string? ApiKey);
 
 /// <summary>
-/// Ported from app/repositories/users.py's UsersRepository — scoped to what login (Phase 3)
-/// needs. Broader filter/paging methods get added when a use case actually needs them.
+///     Ported from app/repositories/users.py's UsersRepository — scoped to what login (Phase 3)
+///     needs. Broader filter/paging methods get added when a use case actually needs them.
 /// </summary>
 public interface IUserRepository
 {
@@ -34,8 +33,8 @@ public interface IUserRepository
     Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Fetches a user's bcrypt password hash. Intentionally separate from <see cref="User"/> so
-    /// the hash never rides along into general-purpose flows.
+    ///     Fetches a user's bcrypt password hash. Intentionally separate from <see cref="User" /> so
+    ///     the hash never rides along into general-purpose flows.
     /// </summary>
     Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default);
 
@@ -47,5 +46,6 @@ public interface IUserRepository
 
     Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default);
 
-    Task<User> CreateAsync(string name, string email, string pwBcrypt, string country, CancellationToken cancellationToken = default);
+    Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+        CancellationToken cancellationToken = default);
 }

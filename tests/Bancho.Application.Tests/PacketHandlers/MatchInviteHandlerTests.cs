@@ -1,5 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -9,7 +7,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchInvite.</summary>
 public class MatchInviteHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int userId) => new(PacketWriter.WriteInt32(userId));
+    private static BanchoPacketReader ReaderFor(int userId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(userId));
+    }
 
     [Fact]
     public async Task Handle_NotInAMatch_NoOp()
@@ -37,6 +38,7 @@ public class MatchInviteHandlerTests
 
         await handler.HandleAsync(host, ReaderFor(2));
 
-        Assert.Contains(ServerPacketWriter.MatchInvite(host.Id, host.Name, match.Embed, target.Name), Chunk(target.Dequeue()));
+        Assert.Contains(ServerPacketWriter.MatchInvite(host.Id, host.Name, match.Embed, target.Name),
+            Chunk(target.Dequeue()));
     }
 }

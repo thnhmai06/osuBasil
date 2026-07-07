@@ -1,9 +1,9 @@
 namespace Bancho.Application.Configuration;
 
 /// <summary>
-/// Ports DATADOG_API_KEY / DATADOG_APP_KEY from app/settings.py. bancho.py treats Datadog as
-/// enabled only when both keys are non-empty strings (see app/state/services.py) — <see cref="IsEnabled"/>
-/// preserves that exact behavior.
+///     Ports DATADOG_API_KEY / DATADOG_APP_KEY from app/settings.py. bancho.py treats Datadog as
+///     enabled only when both keys are non-empty strings (see app/state/services.py) — <see cref="IsEnabled" />
+///     preserves that exact behavior.
 /// </summary>
 public sealed class DatadogOptions
 {

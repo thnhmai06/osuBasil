@@ -1,6 +1,3 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
@@ -11,7 +8,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchChangeSlot.</summary>
 public class MatchChangeSlotHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int slotId) => new(PacketWriter.WriteInt32(slotId));
+    private static BanchoPacketReader ReaderFor(int slotId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
+    }
 
     [Fact]
     public async Task Handle_TargetSlotNotOpen_NoOp()

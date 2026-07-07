@@ -1,20 +1,30 @@
+using System.Net;
+using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
 namespace Bancho.IntegrationTests;
 
 /// <summary>
-/// Ported from the remaining app/api/domains/osu.py endpoints kept for the multiplayer/tourney-
-/// only scope (getbeatmapinfo, lastfm, markasread, seasonal, bancho_connect, check-updates,
-/// b.* redirect) plus the endpoints deliberately stubbed out (screenshot, favourites, rate,
-/// comment, in-game registration, difficulty-rating) — see note.md for the scope decision.
-/// Authenticated routes only need "player not online" coverage here (no DB access happens before
-/// that check — see BanchoAuthenticationService); their real logic is unit-tested separately.
+///     Ported from the remaining app/api/domains/osu.py endpoints kept for the multiplayer/tourney-
+///     only scope (getbeatmapinfo, lastfm, markasread, seasonal, bancho_connect, check-updates,
+///     b.* redirect) plus the endpoints deliberately stubbed out (screenshot, favourites, rate,
+///     comment, in-game registration, difficulty-rating) — see note.md for the scope decision.
+///     Authenticated routes only need "player not online" coverage here (no DB access happens before
+///     that check — see BanchoAuthenticationService); their real logic is unit-tested separately.
 /// </summary>
 public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory) =>
-        factory.WithWebHostBuilder(builder =>
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public Phase8EndpointTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = Configure(factory);
+    }
+
+    private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory)
+    {
+        return factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -23,20 +33,16 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
                 });
             });
         });
-
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public Phase8EndpointTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = Configure(factory);
     }
 
-    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "osu.test.local") =>
-        new(method, path) { Headers = { Host = host } };
+    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "osu.test.local")
+    {
+        return new HttpRequestMessage(method, path) { Headers = { Host = host } };
+    }
 
     [Fact]
     public async Task GetBeatmapInfo_PlayerNotOnline_ReturnsUnauthorized()
@@ -47,7 +53,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.SendAsync(request);
 
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -57,7 +63,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/lastfm.php?b=a0&us=nobody&ha=x"));
 
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -65,9 +71,10 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x&channel=other"));
+        var response =
+            await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x&channel=other"));
 
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -78,7 +85,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getseasonal.php"));
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("[]", body);
     }
 
@@ -89,7 +96,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/bancho_connect.php?v=b20231231"));
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -97,9 +104,10 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/check-updates.php?action=check&stream=stable"));
+        var response =
+            await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/check-updates.php?action=check&stream=stable"));
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -110,7 +118,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-screenshot.php"));
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("not available", body);
     }
 
@@ -122,8 +130,8 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getfavourites.php"));
         var addResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-addfavourite.php"));
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, getResponse.StatusCode);
-        Assert.Equal(System.Net.HttpStatusCode.OK, addResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, addResponse.StatusCode);
     }
 
     [Fact]
@@ -144,7 +152,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-comment.php"));
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -155,7 +163,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users"));
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("In-game registration is disabled", body);
     }
 
@@ -166,7 +174,7 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating"));
 
-        Assert.Equal(System.Net.HttpStatusCode.TemporaryRedirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
         Assert.Equal("https://osu.ppy.sh/difficulty-rating", response.Headers.Location!.ToString());
     }
 
@@ -175,12 +183,14 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/thumb/12345l.jpg", host: "b.test.local"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/thumb/12345l.jpg", "b.test.local"));
 
-        Assert.Equal(System.Net.HttpStatusCode.MovedPermanently, response.StatusCode);
+        Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
         Assert.Equal("https://b.ppy.sh/thumb/12345l.jpg", response.Headers.Location!.ToString());
     }
 
-    private static HttpContent JsonContent(string json) =>
-        new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+    private static HttpContent JsonContent(string json)
+    {
+        return new StringContent(json, Encoding.UTF8, "application/json");
+    }
 }

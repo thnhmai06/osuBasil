@@ -1,22 +1,22 @@
-using Bancho.Domain.Login;
 using Bancho.Infrastructure.Persistence.Repositories;
+
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/ingame_logins.py, scoped to what login needs: recording a login entry.</summary>
 public class MySqlIngameLoginRepositoryTests : IClassFixture<MySqlFixture>
 {
-    private readonly Bancho.Infrastructure.Persistence.Repositories.MySqlIngameLoginRepository _repository;
+    private readonly MySqlIngameLoginRepository _repository;
 
     public MySqlIngameLoginRepositoryTests(MySqlFixture fixture)
     {
-        _repository = new Bancho.Infrastructure.Persistence.Repositories.MySqlIngameLoginRepository(fixture.ConnectionString);
+        _repository = new MySqlIngameLoginRepository(fixture.ConnectionString);
     }
 
     [Fact]
     public async Task Create_ReturnsPersistedEntryWithGeneratedId()
     {
         var login = await _repository.CreateAsync(
-            userId: 1, ip: "127.0.0.1", osuVer: new DateOnly(2025, 1, 1), osuStream: "stable");
+            1, "127.0.0.1", new DateOnly(2025, 1, 1), "stable");
 
         Assert.True(login.Id > 0);
         Assert.Equal(1, login.UserId);

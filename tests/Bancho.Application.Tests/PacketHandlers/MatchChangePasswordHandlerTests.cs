@@ -1,4 +1,3 @@
-using Bancho.Application.PacketHandlers;
 using Bancho.Application.PacketHandlers.Multiplayer;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -18,7 +17,8 @@ public class MatchChangePasswordHandlerTests
         fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchChangePasswordHandler(fixture.MatchMembership);
 
-        await handler.HandleAsync(guest, MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), guest.Id));
+        await handler.HandleAsync(guest,
+            MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), guest.Id));
 
         Assert.Equal("", match.Password);
     }
@@ -32,7 +32,8 @@ public class MatchChangePasswordHandlerTests
         var match = fixture.CreateMatch(host);
         var handler = new MatchChangePasswordHandler(fixture.MatchMembership);
 
-        await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), host.Id));
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), host.Id));
 
         Assert.Equal("newpw", match.Password);
     }

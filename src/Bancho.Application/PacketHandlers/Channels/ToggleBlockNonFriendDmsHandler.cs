@@ -1,6 +1,5 @@
-using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Channels;

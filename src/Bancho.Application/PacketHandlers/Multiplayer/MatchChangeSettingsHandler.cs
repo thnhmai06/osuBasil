@@ -1,11 +1,8 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.Abstractions.Beatmaps;
-using Bancho.Application.PacketHandlers.Core;
-using Bancho.Application.Sessions.Multiplayer;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
@@ -13,10 +10,10 @@ using Bancho.Protocol.Packets;
 namespace Bancho.Application.PacketHandlers.Multiplayer;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's MatchChangeSettings. The `is_scrimming` branch (send a
-/// bot message instead of changing team type) is skipped — scrim state isn't ported to
-/// MatchSession in this slice, so `IsScrimming` is always false and the else-branch always runs,
-/// exactly matching the Python source's behavior for every match today.
+///     Ported from app/api/domains/cho.py's MatchChangeSettings. The `is_scrimming` branch (send a
+///     bot message instead of changing team type) is skipped — scrim state isn't ported to
+///     MatchSession in this slice, so `IsScrimming` is always false and the else-branch always runs,
+///     exactly matching the Python source's behavior for every match today.
 /// </summary>
 public sealed class MatchChangeSettingsHandler(
     IMapRepository mapRepository,
@@ -32,10 +29,8 @@ public sealed class MatchChangeSettingsHandler(
         var matchData = reader.ReadMatch();
 
         var match = player.Match;
-        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id) || match is null || player.Id != match.HostId)
-        {
-            return;
-        }
+        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id) || match is null ||
+            player.Id != match.HostId) return;
 
         await match.Lock.WaitAsync();
         try
@@ -47,12 +42,8 @@ public sealed class MatchChangeSettingsHandler(
                 if (freemods)
                 {
                     foreach (var slot in match.Slots)
-                    {
                         if (slot.PlayerId is not null)
-                        {
                             slot.Mods = match.Mods & ~ModsExtensions.SpeedChangingMods;
-                        }
-                    }
 
                     match.Mods &= ModsExtensions.SpeedChangingMods;
                 }
@@ -60,18 +51,11 @@ public sealed class MatchChangeSettingsHandler(
                 {
                     var hostSlot = match.GetHostSlot();
                     match.Mods &= ModsExtensions.SpeedChangingMods;
-                    if (hostSlot is not null)
-                    {
-                        match.Mods |= hostSlot.Mods;
-                    }
+                    if (hostSlot is not null) match.Mods |= hostSlot.Mods;
 
                     foreach (var slot in match.Slots)
-                    {
                         if (slot.PlayerId is not null)
-                        {
                             slot.Mods = Mods.NoMod;
-                        }
-                    }
                 }
             }
 
@@ -93,10 +77,7 @@ public sealed class MatchChangeSettingsHandler(
                     match.MapName = bmap.FullName;
 
                     var host = sessionRegistry.GetById(match.HostId);
-                    if (host is not null)
-                    {
-                        match.Mode = (GameMode)host.Status.Mode.AsVanilla();
-                    }
+                    if (host is not null) match.Mode = (GameMode)host.Status.Mode.AsVanilla();
                 }
                 else
                 {
@@ -115,21 +96,14 @@ public sealed class MatchChangeSettingsHandler(
                     : MatchTeams.Red;
 
                 foreach (var slot in match.Slots)
-                {
                     if (slot.PlayerId is not null)
-                    {
                         slot.Team = newTeam;
-                    }
-                }
 
                 match.TeamType = newTeamType;
             }
 
             var newWinCondition = (MatchWinConditions)matchData.WinCondition;
-            if (match.WinCondition != newWinCondition)
-            {
-                match.WinCondition = newWinCondition;
-            }
+            if (match.WinCondition != newWinCondition) match.WinCondition = newWinCondition;
 
             match.Name = matchData.Name;
             matchMembership.EnqueueState(match);

@@ -1,5 +1,4 @@
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;
@@ -16,10 +15,7 @@ public sealed class UserPresenceRequestHandler(IPlayerSessionRegistry sessionReg
         foreach (var id in reader.ReadI32ListI16L())
         {
             var target = sessionRegistry.GetById(id);
-            if (target is not null)
-            {
-                player.Enqueue(PacketBuilders.BuildUserPresence(target));
-            }
+            if (target is not null) player.Enqueue(PacketBuilders.BuildUserPresence(target));
         }
 
         return Task.CompletedTask;

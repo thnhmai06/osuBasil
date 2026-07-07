@@ -1,7 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -16,10 +15,7 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
     public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var match = player.Match;
-        if (match is null)
-        {
-            return;
-        }
+        if (match is null) return;
 
         await match.Lock.WaitAsync();
         try

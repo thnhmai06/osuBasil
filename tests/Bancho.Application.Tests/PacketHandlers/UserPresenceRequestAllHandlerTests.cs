@@ -1,15 +1,15 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
-/// <summary>Ported from app/api/domains/cho.py's UserPresenceRequestAll (@register(ClientPackets.USER_PRESENCE_REQUEST_ALL)).</summary>
+/// <summary>
+///     Ported from app/api/domains/cho.py's UserPresenceRequestAll
+///     (@register(ClientPackets.USER_PRESENCE_REQUEST_ALL)).
+/// </summary>
 public class UserPresenceRequestAllHandlerTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();

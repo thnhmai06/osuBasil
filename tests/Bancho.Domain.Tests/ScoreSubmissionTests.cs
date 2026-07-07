@@ -1,17 +1,18 @@
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>
-/// Fixture fields reused from the Rijndael decryptor oracle fixture (same 16-field submission
-/// shape) — see Bancho.Infrastructure.Tests' RijndaelScoreDecryptorTests.
+///     Fixture fields reused from the Rijndael decryptor oracle fixture (same 16-field submission
+///     shape) — see Bancho.Infrastructure.Tests' RijndaelScoreDecryptorTests.
 /// </summary>
 public class ScoreSubmissionTests
 {
     private static readonly string[] Fields =
     [
         "abc123checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "72", "True", "0",
-        "210520235959", "20210520 ",
+        "210520235959", "20210520 "
     ];
 
     [Fact]

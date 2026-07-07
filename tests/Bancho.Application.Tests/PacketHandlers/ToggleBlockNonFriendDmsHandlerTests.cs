@@ -1,8 +1,5 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -11,7 +8,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's ToggleBlockingDMs.</summary>
 public class ToggleBlockNonFriendDmsHandlerTests
 {
-    private static BanchoPacketReader ValueReader(int value) => new(PacketWriter.WriteInt32(value));
+    private static BanchoPacketReader ValueReader(int value)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(value));
+    }
 
     [Fact]
     public async Task HandleAsync_ValueOne_SetsPmPrivateTrue()

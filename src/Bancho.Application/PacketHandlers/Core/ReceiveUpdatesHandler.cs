@@ -1,6 +1,5 @@
 using Bancho.Application.Sessions;
 using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Core;
@@ -15,10 +14,7 @@ public sealed class ReceiveUpdatesHandler : IBanchoPacketHandler
     public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         var value = reader.ReadI32();
-        if (value is < 0 or >= 3)
-        {
-            return Task.CompletedTask;
-        }
+        if (value is < 0 or >= 3) return Task.CompletedTask;
 
         player.PresenceFilter = (PresenceFilter)value;
         return Task.CompletedTask;

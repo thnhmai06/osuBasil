@@ -1,13 +1,13 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Spectating;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Spectating;
 
 /// <summary>Ported from app/api/domains/cho.py's StartSpectating.</summary>
-public sealed class StartSpectatingHandler(IPlayerSessionRegistry sessionRegistry, SpectatorService spectatorService) : IBanchoPacketHandler
+public sealed class StartSpectatingHandler(IPlayerSessionRegistry sessionRegistry, SpectatorService spectatorService)
+    : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.StartSpectating;
 
@@ -17,10 +17,7 @@ public sealed class StartSpectatingHandler(IPlayerSessionRegistry sessionRegistr
     {
         var targetId = reader.ReadI32();
         var newHost = sessionRegistry.GetById(targetId);
-        if (newHost is null)
-        {
-            return Task.CompletedTask;
-        }
+        if (newHost is null) return Task.CompletedTask;
 
         var currentHost = player.Spectating;
         if (currentHost is not null)
@@ -35,12 +32,8 @@ public sealed class StartSpectatingHandler(IPlayerSessionRegistry sessionRegistr
 
                     var joined = ServerPacketWriter.FellowSpectatorJoined(player.Id);
                     foreach (var spec in newHost.Spectators)
-                    {
                         if (spec.Id != player.Id)
-                        {
                             spec.Enqueue(joined);
-                        }
-                    }
                 }
 
                 return Task.CompletedTask;

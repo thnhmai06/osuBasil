@@ -1,8 +1,8 @@
 namespace Bancho.Domain;
 
 /// <summary>
-/// Ported from app/constants/clientflags.py's ClientFlags. osu!'s anticheat flags (&lt;= 2016) sent
-/// alongside a score submission — informational only, many are outdated/known to false-positive.
+///     Ported from app/constants/clientflags.py's ClientFlags. osu!'s anticheat flags (&lt;= 2016) sent
+///     alongside a score submission — informational only, many are outdated/known to false-positive.
 /// </summary>
 [Flags]
 public enum ClientFlags
@@ -20,13 +20,13 @@ public enum ClientFlags
     TransparentWindow = 1 << 10,
     FastPress = 1 << 11,
     RawMouseDiscrepancy = 1 << 12,
-    RawKeyboardDiscrepancy = 1 << 13,
+    RawKeyboardDiscrepancy = 1 << 13
 }
 
 /// <summary>
-/// Ported from app/constants/clientflags.py's LastFMFlags (osu! anticheat 2019), read by
-/// /web/lastfm.php via ClientIntegrityService — despite the similar name, this is a distinct bit
-/// range from <see cref="ClientFlags"/>, sent on a separate endpoint outside score submission.
+///     Ported from app/constants/clientflags.py's LastFMFlags (osu! anticheat 2019), read by
+///     /web/lastfm.php via ClientIntegrityService — despite the similar name, this is a distinct bit
+///     range from <see cref="ClientFlags" />, sent on a separate endpoint outside score submission.
 /// </summary>
 [Flags]
 public enum LastFMFlags
@@ -39,5 +39,5 @@ public enum LastFMFlags
     RegistryEdits = 1 << 19,
     Sdl2Library = 1 << 20,
     OpenSslLibrary = 1 << 21,
-    AqnMenuSample = 1 << 22,
+    AqnMenuSample = 1 << 22
 }

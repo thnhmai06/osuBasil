@@ -1,87 +1,49 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Domain.Multiplayer;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Multiplayer;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Multiplayer;
 
 /// <summary>Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
 public class MatchMembershipServiceTests
 {
-    private sealed class FakeChannelRegistry : IChannelRegistry
-    {
-        private readonly Dictionary<string, ChannelSession> _byName = new();
-
-        public void Seed(IReadOnlyList<Channel> channels) => throw new NotSupportedException();
-
-        public void Add(ChannelSession channel) => _byName[channel.Name] = channel;
-
-        public void Remove(string name) => _byName.Remove(name);
-
-        public ChannelSession? GetByName(string name) => _byName.GetValueOrDefault(name);
-
-        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
-
-        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
-    }
-
-    private sealed class FakeMatchRegistry : IMatchRegistry
-    {
-        private readonly Dictionary<int, MatchSession> _byId = new();
-        private int _nextId;
-
-        public MatchSession? GetById(int id) => _byId.GetValueOrDefault(id);
-
-        public MatchSession? TryCreate(Func<int, MatchSession> factory)
-        {
-            if (_nextId >= 64)
-            {
-                return null;
-            }
-
-            var match = factory(_nextId);
-            _byId[_nextId] = match;
-            _nextId++;
-            return match;
-        }
-
-        public void Remove(int id) => _byId.Remove(id);
-
-        public IReadOnlyList<MatchSession> All => _byId.Values.ToList();
-    }
-
     private readonly FakeChannelRegistry _channelRegistry = new();
     private readonly FakeMatchRegistry _matchRegistry = new();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private MatchMembershipService MakeService() =>
-        new(_matchRegistry, _channelRegistry, _sessionRegistry, new ChannelMembershipService(_sessionRegistry));
+    private MatchMembershipService MakeService()
+    {
+        return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
+            new ChannelMembershipService(_sessionRegistry));
+    }
 
-    private static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakePlayer(int id, string name)
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+    }
 
     private void RegisterAll(params PlayerSession[] sessions)
     {
         _sessionRegistry.All.Returns(sessions);
-        foreach (var session in sessions)
-        {
-            _sessionRegistry.GetById(session.Id).Returns(session);
-        }
+        foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
     }
 
-    private static ReadMatchResult MakeMatchData(int hostId, string name = "test match", string password = "", bool freeMods = false) => new(
-        Id: 0, InProgress: false, Powerplay: 0, Mods: 0, Name: name, Password: password,
-        MapName: "Some Map", MapId: 100, MapMd5: new string('a', 32),
-        SlotStatuses: [], SlotTeams: [], SlotIds: [], HostId: hostId, Mode: 0,
-        WinCondition: 0, TeamType: 0, FreeMods: freeMods, SlotMods: [], Seed: 0);
+    private static ReadMatchResult MakeMatchData(int hostId, string name = "test match", string password = "",
+        bool freeMods = false)
+    {
+        return new ReadMatchResult(
+            0, false, 0, 0, name, password,
+            "Some Map", 100, new string('a', 32),
+            [], [], [], hostId, 0,
+            0, 0, freeMods, [], 0);
+    }
 
     [Fact]
     public void Create_RegistersMatchAndJoinsHostIntoSlotZero()
@@ -141,7 +103,8 @@ public class MatchMembershipServiceTests
         Assert.True(joined);
         Assert.Same(match, guest.Match);
         Assert.Equal(1, match.GetSlotId(guest.Id));
-        Assert.Contains(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)), Chunk(guest.Dequeue()));
+        Assert.Contains(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)),
+            Chunk(guest.Dequeue()));
     }
 
     [Fact]
@@ -315,5 +278,62 @@ public class MatchMembershipServiceTests
         }
 
         return chunks;
+    }
+
+    private sealed class FakeChannelRegistry : IChannelRegistry
+    {
+        private readonly Dictionary<string, ChannelSession> _byName = new();
+
+        public void Seed(IReadOnlyList<Channel> channels)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Add(ChannelSession channel)
+        {
+            _byName[channel.Name] = channel;
+        }
+
+        public void Remove(string name)
+        {
+            _byName.Remove(name);
+        }
+
+        public ChannelSession? GetByName(string name)
+        {
+            return _byName.GetValueOrDefault(name);
+        }
+
+        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
+
+        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
+    }
+
+    private sealed class FakeMatchRegistry : IMatchRegistry
+    {
+        private readonly Dictionary<int, MatchSession> _byId = new();
+        private int _nextId;
+
+        public MatchSession? GetById(int id)
+        {
+            return _byId.GetValueOrDefault(id);
+        }
+
+        public MatchSession? TryCreate(Func<int, MatchSession> factory)
+        {
+            if (_nextId >= 64) return null;
+
+            var match = factory(_nextId);
+            _byId[_nextId] = match;
+            _nextId++;
+            return match;
+        }
+
+        public void Remove(int id)
+        {
+            _byId.Remove(id);
+        }
+
+        public IReadOnlyList<MatchSession> All => _byId.Values.ToList();
     }
 }

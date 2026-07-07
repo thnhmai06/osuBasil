@@ -17,13 +17,16 @@ public class ScoreSubmissionValidationTests
         Assert.Equal(Md5("uid2value"), hashes.UniqueId2Md5);
     }
 
-    private static ClientDetails MakeClient(DateOnly? version = null) => new(
-        osuVersionDate: version ?? new DateOnly(2021, 5, 20),
-        osuPathMd5: "pathmd5",
-        adaptersMd5: "adaptersmd5",
-        uninstallMd5: Md5("uid1value"),
-        diskSignatureMd5: Md5("uid2value"),
-        adapters: ["eth0"]);
+    private static ClientDetails MakeClient(DateOnly? version = null)
+    {
+        return new ClientDetails(
+            version ?? new DateOnly(2021, 5, 20),
+            "pathmd5",
+            "adaptersmd5",
+            Md5("uid1value"),
+            Md5("uid2value"),
+            ["eth0"]);
+    }
 
     [Fact]
     public void ValidateClientDetails_AllMatching_DoesNotThrow()
@@ -71,8 +74,10 @@ public class ScoreSubmissionValidationTests
     }
 
     [Fact]
-    public void ValidateBeatmapHash_Match_DoesNotThrow() =>
+    public void ValidateBeatmapHash_Match_DoesNotThrow()
+    {
         ScoreSubmissionValidation.ValidateBeatmapHash("same", "same");
+    }
 
     [Fact]
     public void ValidateScoreChecksum_Mismatch_Throws()
@@ -80,7 +85,7 @@ public class ScoreSubmissionValidationTests
         var bmap = MakeBeatmap();
         var score = ScoreSubmission.FromSubmission([
             "wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
-            "210520235959", "20210520 ",
+            "210520235959", "20210520 "
         ]);
         score.Bmap = bmap;
         score.PlayerName = "cookiezi";
@@ -95,7 +100,7 @@ public class ScoreSubmissionValidationTests
         var bmap = MakeBeatmap();
         var score = ScoreSubmission.FromSubmission([
             "placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
-            "210520235959", "20210520 ",
+            "210520235959", "20210520 "
         ]);
         score.Bmap = bmap;
         score.PlayerName = "cookiezi";
@@ -104,29 +109,35 @@ public class ScoreSubmissionValidationTests
         ScoreSubmissionValidation.ValidateScoreChecksum(score, "20210520", "clienthash", null);
     }
 
-    private static Beatmap MakeBeatmap() => new(
-        Md5: "beatmap_md5_hash_1234567890abcd",
-        Id: 1,
-        SetId: 1,
-        Artist: "a",
-        Title: "b",
-        Version: "c",
-        Creator: "d",
-        LastUpdate: DateTime.UtcNow,
-        TotalLength: 1,
-        MaxCombo: 500,
-        Status: RankedStatus.Ranked,
-        Frozen: false,
-        Plays: 0,
-        Passes: 0,
-        Mode: GameMode.VanillaOsu,
-        Bpm: 1,
-        Cs: 1,
-        Od: 1,
-        Ar: 1,
-        Hp: 1,
-        Diff: 1,
-        Filename: "f.osu");
+    private static Beatmap MakeBeatmap()
+    {
+        return new Beatmap(
+            "beatmap_md5_hash_1234567890abcd",
+            1,
+            1,
+            "a",
+            "b",
+            "c",
+            "d",
+            DateTime.UtcNow,
+            1,
+            500,
+            RankedStatus.Ranked,
+            false,
+            0,
+            0,
+            GameMode.VanillaOsu,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            "f.osu");
+    }
 
-    private static string Md5(string value) => Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(value)));
+    private static string Md5(string value)
+    {
+        return Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(value)));
+    }
 }

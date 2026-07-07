@@ -1,10 +1,9 @@
-using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using Action = Bancho.Domain.Action;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
@@ -21,7 +20,7 @@ public class RequestStatusUpdateHandlerTests
         await new RequestStatusUpdateHandler().HandleAsync(session, reader);
 
         var expected = ServerPacketWriter.UserStats(
-            42, (int)Domain.Action.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 95.0, 10, 1000, 3, 0);
+            42, (int)Action.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 95.0, 10, 1000, 3, 0);
         Assert.Equal(expected, session.Dequeue());
     }
 }

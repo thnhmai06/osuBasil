@@ -6,7 +6,10 @@ namespace Bancho.Domain.Tests;
 /// <summary>Ported from app/api/domains/cho.py's parse_login_data.</summary>
 public class LoginDataParserTests
 {
-    private static byte[] Body(string s) => Encoding.UTF8.GetBytes(s);
+    private static byte[] Body(string s)
+    {
+        return Encoding.UTF8.GetBytes(s);
+    }
 
     [Fact]
     public void Parse_TypicalLoginBody_ParsesAllFields()

@@ -1,13 +1,17 @@
 using Bancho.Protocol.Packets;
+
 namespace Bancho.Protocol.Tests;
 
 /// <summary>
-/// Ported from app/packets.py's BanchoPacketReader._read_header + the packet_map-driven skip
-/// behavior in __next__ ("packet type not handled, remove from internal buffer and continue").
+///     Ported from app/packets.py's BanchoPacketReader._read_header + the packet_map-driven skip
+///     behavior in __next__ ("packet type not handled, remove from internal buffer and continue").
 /// </summary>
 public class BanchoPacketReaderHeaderTests
 {
-    private static BanchoPacketReader Reader(string hex) => new(Convert.FromHexString(hex));
+    private static BanchoPacketReader Reader(string hex)
+    {
+        return new BanchoPacketReader(Convert.FromHexString(hex));
+    }
 
     [Fact]
     public void ReadHeader_PingWithNoPayload_ReturnsTypeAndZeroLength()

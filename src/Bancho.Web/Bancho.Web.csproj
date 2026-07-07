@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Bancho.Application\Bancho.Application.csproj" />
-    <ProjectReference Include="..\Bancho.Infrastructure\Bancho.Infrastructure.csproj" />
-    <ProjectReference Include="..\Bancho.Protocol\Bancho.Protocol.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Bancho.Application\Bancho.Application.csproj"/>
+        <ProjectReference Include="..\Bancho.Infrastructure\Bancho.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Bancho.Protocol\Bancho.Protocol.csproj"/>
+    </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
 
 </Project>

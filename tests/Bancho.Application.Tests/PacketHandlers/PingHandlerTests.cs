@@ -1,8 +1,5 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -12,10 +9,16 @@ namespace Bancho.Application.Tests.PacketHandlers;
 public class PingHandlerTests
 {
     [Fact]
-    public void PacketId_IsPing() => Assert.Equal(ClientPackets.Ping, new PingHandler().PacketId);
+    public void PacketId_IsPing()
+    {
+        Assert.Equal(ClientPackets.Ping, new PingHandler().PacketId);
+    }
 
     [Fact]
-    public void AllowedWhenRestricted_IsTrue() => Assert.True(new PingHandler().AllowedWhenRestricted);
+    public void AllowedWhenRestricted_IsTrue()
+    {
+        Assert.True(new PingHandler().AllowedWhenRestricted);
+    }
 
     [Fact]
     public async Task Handle_DoesNothing()

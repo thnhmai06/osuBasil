@@ -1,9 +1,8 @@
-using Bancho.Application.Abstractions.Users;
 namespace Bancho.Application.Configuration;
 
 /// <summary>
-/// Ports REDIS_HOST/REDIS_PORT/REDIS_USER/REDIS_PASS/REDIS_DB from app/settings.py.
-/// Building the actual StackExchange.Redis ConfigurationOptions belongs in Infrastructure.
+///     Ports REDIS_HOST/REDIS_PORT/REDIS_USER/REDIS_PASS/REDIS_DB from app/settings.py.
+///     Building the actual StackExchange.Redis ConfigurationOptions belongs in Infrastructure.
 /// </summary>
 public sealed class RedisOptions
 {

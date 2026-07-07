@@ -1,41 +1,12 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Social;
 using Dapper;
 using MySqlConnector;
-using Bancho.Application.Abstractions.Social;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMailRepository" />
 public sealed class MySqlMailRepository(string connectionString) : IMailRepository
 {
-    private sealed class MailRow
-    {
-        public int Id { get; set; }
-        public int FromId { get; set; }
-        public int ToId { get; set; }
-        public string Msg { get; set; } = "";
-        public int? Time { get; set; }
-        public bool Read { get; set; }
-
-        public Mail ToMail() => new(Id, FromId, ToId, Msg, Time, Read);
-    }
-
-    private sealed class MailWithUsernamesRow
-    {
-        public int Id { get; set; }
-        public int FromId { get; set; }
-        public int ToId { get; set; }
-        public string Msg { get; set; } = "";
-        public int? Time { get; set; }
-        public bool Read { get; set; }
-        public string FromName { get; set; } = "";
-        public string ToName { get; set; } = "";
-
-        public MailWithUsernames ToMailWithUsernames() => new(Id, FromId, ToId, Msg, Time, Read, FromName, ToName);
-    }
-
-    private MySqlConnection Connect() => new(connectionString);
-
     public async Task<Mail> CreateAsync(int fromId, int toId, string msg, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -53,7 +24,8 @@ public sealed class MySqlMailRepository(string connectionString) : IMailReposito
         return row.ToMail();
     }
 
-    public async Task<IReadOnlyList<MailWithUsernames>> FetchUnreadMailToUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<MailWithUsernames>> FetchUnreadMailToUserAsync(int userId,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var rows = await connection.QueryAsync<MailWithUsernamesRow>(
@@ -70,22 +42,57 @@ public sealed class MySqlMailRepository(string connectionString) : IMailReposito
         return rows.Select(r => r.ToMailWithUsernames()).ToList();
     }
 
-    public async Task<IReadOnlyList<Mail>> MarkConversationAsReadAsync(int toId, int fromId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Mail>> MarkConversationAsReadAsync(int toId, int fromId,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var rows = (await connection.QueryAsync<MailRow>(
             "SELECT id, from_id AS FromId, to_id AS ToId, msg, time, `read` FROM mail WHERE to_id = @ToId AND from_id = @FromId AND `read` = 0",
             new { ToId = toId, FromId = fromId })).ToList();
 
-        if (rows.Count == 0)
-        {
-            return [];
-        }
+        if (rows.Count == 0) return [];
 
         await connection.ExecuteAsync(
             "UPDATE mail SET `read` = 1 WHERE to_id = @ToId AND from_id = @FromId AND `read` = 0",
             new { ToId = toId, FromId = fromId });
 
         return rows.Select(r => r.ToMail()).ToList();
+    }
+
+    private MySqlConnection Connect()
+    {
+        return new MySqlConnection(connectionString);
+    }
+
+    private sealed class MailRow
+    {
+        public int Id { get; set; }
+        public int FromId { get; set; }
+        public int ToId { get; set; }
+        public string Msg { get; set; } = "";
+        public int? Time { get; set; }
+        public bool Read { get; set; }
+
+        public Mail ToMail()
+        {
+            return new Mail(Id, FromId, ToId, Msg, Time, Read);
+        }
+    }
+
+    private sealed class MailWithUsernamesRow
+    {
+        public int Id { get; set; }
+        public int FromId { get; set; }
+        public int ToId { get; set; }
+        public string Msg { get; set; } = "";
+        public int? Time { get; set; }
+        public bool Read { get; set; }
+        public string FromName { get; set; } = "";
+        public string ToName { get; set; } = "";
+
+        public MailWithUsernames ToMailWithUsernames()
+        {
+            return new MailWithUsernames(Id, FromId, ToId, Msg, Time, Read, FromName, ToName);
+        }
     }
 }

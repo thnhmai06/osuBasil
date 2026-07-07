@@ -1,14 +1,13 @@
 using Bancho.Application.Sessions;
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.Sessions;
 
 /// <summary>
-/// Ported from app/objects/player.py's Player.stats (dict[GameMode, ModeData], populated once at
-/// login via stats_from_sql_full — never re-queried per packet) + the gm_stats property
-/// (`self.stats[self.status.mode]`).
+///     Ported from app/objects/player.py's Player.stats (dict[GameMode, ModeData], populated once at
+///     login via stats_from_sql_full — never re-queried per packet) + the gm_stats property
+///     (`self.stats[self.status.mode]`).
 /// </summary>
 public class PlayerSessionStatsTests
 {

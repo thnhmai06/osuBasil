@@ -4,19 +4,16 @@ using Bancho.Protocol.Multiplayer;
 namespace Bancho.Protocol.Packets;
 
 /// <summary>
-/// Server-to-client Bancho packet builders. Ported function-for-function from app/packets.py.
-/// Every payload is assembled from <see cref="PacketWriter"/> primitives, then wrapped with the
-/// 7-byte packet header via <see cref="PacketWriter.Wrap"/>.
+///     Server-to-client Bancho packet builders. Ported function-for-function from app/packets.py.
+///     Every payload is assembled from <see cref="PacketWriter" /> primitives, then wrapped with the
+///     7-byte packet header via <see cref="PacketWriter.Wrap" />.
 /// </summary>
 public static class ServerPacketWriter
 {
     private static byte[] Concat(params ReadOnlySpan<byte[]> parts)
     {
         var length = 0;
-        foreach (var part in parts)
-        {
-            length += part.Length;
-        }
+        foreach (var part in parts) length += part.Length;
 
         var result = new byte[length];
         var offset = 0;
@@ -29,12 +26,14 @@ public static class ServerPacketWriter
         return result;
     }
 
-    private static byte[] WriteMessagePayload(string sender, string text, string recipient, int senderId) =>
-        Concat(
+    private static byte[] WriteMessagePayload(string sender, string text, string recipient, int senderId)
+    {
+        return Concat(
             PacketWriter.WriteString(sender),
             PacketWriter.WriteString(text),
             PacketWriter.WriteString(recipient),
             PacketWriter.WriteInt32(senderId));
+    }
 
     private static byte[] WriteChannelPayload(string name, string topic, int playerCount)
     {
@@ -43,7 +42,8 @@ public static class ServerPacketWriter
         var topicBytes = PacketWriter.WriteString(topic);
         nameBytes.CopyTo(result, 0);
         topicBytes.CopyTo(result, nameBytes.Length);
-        BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(nameBytes.Length + topicBytes.Length), (ushort)playerCount);
+        BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(nameBytes.Length + topicBytes.Length),
+            (ushort)playerCount);
         return result;
     }
 
@@ -61,13 +61,9 @@ public static class ServerPacketWriter
         parts.Add(PacketWriter.WriteString(match.Name));
 
         if (!string.IsNullOrEmpty(match.Password))
-        {
             parts.Add(sendPassword ? PacketWriter.WriteString(match.Password) : [0x0B, 0x00]);
-        }
         else
-        {
             parts.Add([0x00]);
-        }
 
         parts.Add(PacketWriter.WriteString(match.MapName));
         parts.Add(PacketWriter.WriteInt32(match.MapId));
@@ -77,23 +73,15 @@ public static class ServerPacketWriter
         parts.Add([.. match.Slots.Select(s => (byte)s.Team)]);
 
         foreach (var slot in match.Slots)
-        {
             if (slot.HasPlayer)
-            {
                 parts.Add(PacketWriter.WriteUInt32((uint)slot.PlayerId!.Value));
-            }
-        }
 
         parts.Add(PacketWriter.WriteUInt32((uint)match.HostId));
         parts.Add([(byte)match.Mode, (byte)match.WinCondition, (byte)match.TeamType, (byte)(match.FreeMods ? 1 : 0)]);
 
         if (match.FreeMods)
-        {
             foreach (var slot in match.Slots)
-            {
                 parts.Add(PacketWriter.WriteUInt32((uint)slot.Mods));
-            }
-        }
 
         parts.Add(PacketWriter.WriteUInt32((uint)match.Seed));
 
@@ -121,10 +109,7 @@ public static class ServerPacketWriter
         span[27] = (byte)frame.TagByte;
         span[28] = (byte)(frame.ScoreV2 ? 1 : 0);
 
-        if (!frame.ScoreV2)
-        {
-            return result;
-        }
+        if (!frame.ScoreV2) return result;
 
         var comboPortion = new byte[8];
         var bonusPortion = new byte[8];
@@ -134,19 +119,29 @@ public static class ServerPacketWriter
     }
 
     // packet id: 5
-    public static byte[] LoginReply(int userId) =>
-        PacketWriter.Wrap(ServerPackets.UserId, PacketWriter.WriteInt32(userId));
+    public static byte[] LoginReply(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserId, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 7
-    public static byte[] SendMessage(string sender, string msg, string recipient, int senderId) =>
-        PacketWriter.Wrap(ServerPackets.SendMessage, WriteMessagePayload(sender, msg, recipient, senderId));
+    public static byte[] SendMessage(string sender, string msg, string recipient, int senderId)
+    {
+        return PacketWriter.Wrap(ServerPackets.SendMessage, WriteMessagePayload(sender, msg, recipient, senderId));
+    }
 
     // packet id: 8
-    public static byte[] Pong() => PacketWriter.Wrap(ServerPackets.Pong, []);
+    public static byte[] Pong()
+    {
+        return PacketWriter.Wrap(ServerPackets.Pong, []);
+    }
 
     // packet id: 9 (deprecated)
-    public static byte[] ChangeUsername(string oldName, string newName) =>
-        PacketWriter.Wrap(ServerPackets.HandleIrcChangeUsername, PacketWriter.WriteString($"{oldName}>>>>{newName}"));
+    public static byte[] ChangeUsername(string oldName, string newName)
+    {
+        return PacketWriter.Wrap(ServerPackets.HandleIrcChangeUsername,
+            PacketWriter.WriteString($"{oldName}>>>>{newName}"));
+    }
 
     // packet id: 11
     public static byte[] UserStats(
@@ -190,128 +185,202 @@ public static class ServerPacketWriter
     }
 
     // packet id: 12
-    public static byte[] Logout(int userId) =>
-        PacketWriter.Wrap(ServerPackets.UserLogout, Concat(PacketWriter.WriteInt32(userId), [0]));
+    public static byte[] Logout(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserLogout, Concat(PacketWriter.WriteInt32(userId), [0]));
+    }
 
     // packet id: 13
-    public static byte[] SpectatorJoined(int userId) =>
-        PacketWriter.Wrap(ServerPackets.SpectatorJoined, PacketWriter.WriteInt32(userId));
+    public static byte[] SpectatorJoined(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.SpectatorJoined, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 14
-    public static byte[] SpectatorLeft(int userId) =>
-        PacketWriter.Wrap(ServerPackets.SpectatorLeft, PacketWriter.WriteInt32(userId));
+    public static byte[] SpectatorLeft(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.SpectatorLeft, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 15
-    public static byte[] SpectateFrames(byte[] rawData) =>
-        PacketWriter.Wrap(ServerPackets.SpectateFrames, rawData);
+    public static byte[] SpectateFrames(byte[] rawData)
+    {
+        return PacketWriter.Wrap(ServerPackets.SpectateFrames, rawData);
+    }
 
     // packet id: 19
-    public static byte[] VersionUpdate() => PacketWriter.Wrap(ServerPackets.VersionUpdate, []);
+    public static byte[] VersionUpdate()
+    {
+        return PacketWriter.Wrap(ServerPackets.VersionUpdate, []);
+    }
 
     // packet id: 22
-    public static byte[] SpectatorCantSpectate(int userId) =>
-        PacketWriter.Wrap(ServerPackets.SpectatorCantSpectate, PacketWriter.WriteInt32(userId));
+    public static byte[] SpectatorCantSpectate(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.SpectatorCantSpectate, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 23
-    public static byte[] GetAttention() => PacketWriter.Wrap(ServerPackets.GetAttention, []);
+    public static byte[] GetAttention()
+    {
+        return PacketWriter.Wrap(ServerPackets.GetAttention, []);
+    }
 
     // packet id: 24
-    public static byte[] Notification(string msg) =>
-        PacketWriter.Wrap(ServerPackets.Notification, PacketWriter.WriteString(msg));
+    public static byte[] Notification(string msg)
+    {
+        return PacketWriter.Wrap(ServerPackets.Notification, PacketWriter.WriteString(msg));
+    }
 
     // packet id: 26
-    public static byte[] UpdateMatch(MatchPacketData match, bool sendPassword = true) =>
-        PacketWriter.Wrap(ServerPackets.UpdateMatch, WriteMatch(match, sendPassword));
+    public static byte[] UpdateMatch(MatchPacketData match, bool sendPassword = true)
+    {
+        return PacketWriter.Wrap(ServerPackets.UpdateMatch, WriteMatch(match, sendPassword));
+    }
 
     // packet id: 27
-    public static byte[] NewMatch(MatchPacketData match) =>
-        PacketWriter.Wrap(ServerPackets.NewMatch, WriteMatch(match, sendPassword: true));
+    public static byte[] NewMatch(MatchPacketData match)
+    {
+        return PacketWriter.Wrap(ServerPackets.NewMatch, WriteMatch(match, true));
+    }
 
     // packet id: 28
-    public static byte[] DisposeMatch(int matchId) =>
-        PacketWriter.Wrap(ServerPackets.DisposeMatch, PacketWriter.WriteInt32(matchId));
+    public static byte[] DisposeMatch(int matchId)
+    {
+        return PacketWriter.Wrap(ServerPackets.DisposeMatch, PacketWriter.WriteInt32(matchId));
+    }
 
     // packet id: 34
-    public static byte[] ToggleBlockNonFriendDm() =>
-        PacketWriter.Wrap(ServerPackets.ToggleBlockNonFriendDms, []);
+    public static byte[] ToggleBlockNonFriendDm()
+    {
+        return PacketWriter.Wrap(ServerPackets.ToggleBlockNonFriendDms, []);
+    }
 
     // packet id: 36
-    public static byte[] MatchJoinSuccess(MatchPacketData match) =>
-        PacketWriter.Wrap(ServerPackets.MatchJoinSuccess, WriteMatch(match, sendPassword: true));
+    public static byte[] MatchJoinSuccess(MatchPacketData match)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchJoinSuccess, WriteMatch(match, true));
+    }
 
     // packet id: 37
-    public static byte[] MatchJoinFail() => PacketWriter.Wrap(ServerPackets.MatchJoinFail, []);
+    public static byte[] MatchJoinFail()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchJoinFail, []);
+    }
 
     // packet id: 42
-    public static byte[] FellowSpectatorJoined(int userId) =>
-        PacketWriter.Wrap(ServerPackets.FellowSpectatorJoined, PacketWriter.WriteInt32(userId));
+    public static byte[] FellowSpectatorJoined(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.FellowSpectatorJoined, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 43
-    public static byte[] FellowSpectatorLeft(int userId) =>
-        PacketWriter.Wrap(ServerPackets.FellowSpectatorLeft, PacketWriter.WriteInt32(userId));
+    public static byte[] FellowSpectatorLeft(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.FellowSpectatorLeft, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 46
-    public static byte[] MatchStart(MatchPacketData match) =>
-        PacketWriter.Wrap(ServerPackets.MatchStart, WriteMatch(match, sendPassword: true));
+    public static byte[] MatchStart(MatchPacketData match)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchStart, WriteMatch(match, true));
+    }
 
     // packet id: 48
-    public static byte[] MatchScoreUpdate(ScoreFrameData frame) =>
-        PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, WriteScoreFrame(frame));
+    public static byte[] MatchScoreUpdate(ScoreFrameData frame)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, WriteScoreFrame(frame));
+    }
 
     // packet id: 50
-    public static byte[] MatchTransferHost() => PacketWriter.Wrap(ServerPackets.MatchTransferHost, []);
+    public static byte[] MatchTransferHost()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchTransferHost, []);
+    }
 
     // packet id: 53
-    public static byte[] MatchAllPlayersLoaded() => PacketWriter.Wrap(ServerPackets.MatchAllPlayersLoaded, []);
+    public static byte[] MatchAllPlayersLoaded()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchAllPlayersLoaded, []);
+    }
 
     // packet id: 57
-    public static byte[] MatchPlayerFailed(int slotId) =>
-        PacketWriter.Wrap(ServerPackets.MatchPlayerFailed, PacketWriter.WriteInt32(slotId));
+    public static byte[] MatchPlayerFailed(int slotId)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchPlayerFailed, PacketWriter.WriteInt32(slotId));
+    }
 
     // packet id: 58
-    public static byte[] MatchComplete() => PacketWriter.Wrap(ServerPackets.MatchComplete, []);
+    public static byte[] MatchComplete()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchComplete, []);
+    }
 
     // packet id: 61
-    public static byte[] MatchSkip() => PacketWriter.Wrap(ServerPackets.MatchSkip, []);
+    public static byte[] MatchSkip()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchSkip, []);
+    }
 
     // packet id: 64
-    public static byte[] ChannelJoin(string name) =>
-        PacketWriter.Wrap(ServerPackets.ChannelJoinSuccess, PacketWriter.WriteString(name));
+    public static byte[] ChannelJoin(string name)
+    {
+        return PacketWriter.Wrap(ServerPackets.ChannelJoinSuccess, PacketWriter.WriteString(name));
+    }
 
     // packet id: 65
-    public static byte[] ChannelInfo(string name, string topic, int playerCount) =>
-        PacketWriter.Wrap(ServerPackets.ChannelInfo, WriteChannelPayload(name, topic, playerCount));
+    public static byte[] ChannelInfo(string name, string topic, int playerCount)
+    {
+        return PacketWriter.Wrap(ServerPackets.ChannelInfo, WriteChannelPayload(name, topic, playerCount));
+    }
 
     // packet id: 66
-    public static byte[] ChannelKick(string name) =>
-        PacketWriter.Wrap(ServerPackets.ChannelKick, PacketWriter.WriteString(name));
+    public static byte[] ChannelKick(string name)
+    {
+        return PacketWriter.Wrap(ServerPackets.ChannelKick, PacketWriter.WriteString(name));
+    }
 
     // packet id: 67
-    public static byte[] ChannelAutoJoin(string name, string topic, int playerCount) =>
-        PacketWriter.Wrap(ServerPackets.ChannelAutoJoin, WriteChannelPayload(name, topic, playerCount));
+    public static byte[] ChannelAutoJoin(string name, string topic, int playerCount)
+    {
+        return PacketWriter.Wrap(ServerPackets.ChannelAutoJoin, WriteChannelPayload(name, topic, playerCount));
+    }
 
     // packet id: 71
-    public static byte[] BanchoPrivileges(int priv) =>
-        PacketWriter.Wrap(ServerPackets.Privileges, PacketWriter.WriteInt32(priv));
+    public static byte[] BanchoPrivileges(int priv)
+    {
+        return PacketWriter.Wrap(ServerPackets.Privileges, PacketWriter.WriteInt32(priv));
+    }
 
     // packet id: 72
-    public static byte[] FriendsList(IReadOnlyList<int> friends) =>
-        PacketWriter.Wrap(ServerPackets.FriendsList, PacketWriter.WriteI32List(friends));
+    public static byte[] FriendsList(IReadOnlyList<int> friends)
+    {
+        return PacketWriter.Wrap(ServerPackets.FriendsList, PacketWriter.WriteI32List(friends));
+    }
 
     // packet id: 75
-    public static byte[] ProtocolVersion(int version) =>
-        PacketWriter.Wrap(ServerPackets.ProtocolVersion, PacketWriter.WriteInt32(version));
+    public static byte[] ProtocolVersion(int version)
+    {
+        return PacketWriter.Wrap(ServerPackets.ProtocolVersion, PacketWriter.WriteInt32(version));
+    }
 
     // packet id: 76
-    public static byte[] MainMenuIcon(string iconUrl, string onclickUrl) =>
-        PacketWriter.Wrap(ServerPackets.MainMenuIcon, PacketWriter.WriteString($"{iconUrl}|{onclickUrl}"));
+    public static byte[] MainMenuIcon(string iconUrl, string onclickUrl)
+    {
+        return PacketWriter.Wrap(ServerPackets.MainMenuIcon, PacketWriter.WriteString($"{iconUrl}|{onclickUrl}"));
+    }
 
     // packet id: 80 (deprecated)
-    public static byte[] Monitor() => PacketWriter.Wrap(ServerPackets.Monitor, []);
+    public static byte[] Monitor()
+    {
+        return PacketWriter.Wrap(ServerPackets.Monitor, []);
+    }
 
     // packet id: 81
-    public static byte[] MatchPlayerSkipped(int userId) =>
-        PacketWriter.Wrap(ServerPackets.MatchPlayerSkipped, PacketWriter.WriteInt32(userId));
+    public static byte[] MatchPlayerSkipped(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchPlayerSkipped, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 83
     public static byte[] UserPresence(
@@ -339,8 +408,10 @@ public static class ServerPacketWriter
     }
 
     // packet id: 86
-    public static byte[] RestartServer(int ms) =>
-        PacketWriter.Wrap(ServerPackets.Restart, PacketWriter.WriteInt32(ms));
+    public static byte[] RestartServer(int ms)
+    {
+        return PacketWriter.Wrap(ServerPackets.Restart, PacketWriter.WriteInt32(ms));
+    }
 
     // packet id: 88
     public static byte[] MatchInvite(int playerId, string playerName, string matchEmbed, string targetName)
@@ -350,55 +421,88 @@ public static class ServerPacketWriter
     }
 
     // packet id: 89
-    public static byte[] ChannelInfoEnd() => PacketWriter.Wrap(ServerPackets.ChannelInfoEnd, []);
+    public static byte[] ChannelInfoEnd()
+    {
+        return PacketWriter.Wrap(ServerPackets.ChannelInfoEnd, []);
+    }
 
     // packet id: 91
-    public static byte[] MatchChangePassword(string newPassword) =>
-        PacketWriter.Wrap(ServerPackets.MatchChangePassword, PacketWriter.WriteString(newPassword));
+    public static byte[] MatchChangePassword(string newPassword)
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchChangePassword, PacketWriter.WriteString(newPassword));
+    }
 
     // packet id: 92
-    public static byte[] SilenceEnd(int delta) =>
-        PacketWriter.Wrap(ServerPackets.SilenceEnd, PacketWriter.WriteInt32(delta));
+    public static byte[] SilenceEnd(int delta)
+    {
+        return PacketWriter.Wrap(ServerPackets.SilenceEnd, PacketWriter.WriteInt32(delta));
+    }
 
     // packet id: 94
-    public static byte[] UserSilenced(int userId) =>
-        PacketWriter.Wrap(ServerPackets.UserSilenced, PacketWriter.WriteInt32(userId));
+    public static byte[] UserSilenced(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserSilenced, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 95 (unused by bancho.py, kept for parity)
-    public static byte[] UserPresenceSingle(int userId) =>
-        PacketWriter.Wrap(ServerPackets.UserPresenceSingle, PacketWriter.WriteInt32(userId));
+    public static byte[] UserPresenceSingle(int userId)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserPresenceSingle, PacketWriter.WriteInt32(userId));
+    }
 
     // packet id: 96 (unused by bancho.py, kept for parity)
-    public static byte[] UserPresenceBundle(IReadOnlyList<int> userIds) =>
-        PacketWriter.Wrap(ServerPackets.UserPresenceBundle, PacketWriter.WriteI32List(userIds));
+    public static byte[] UserPresenceBundle(IReadOnlyList<int> userIds)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserPresenceBundle, PacketWriter.WriteI32List(userIds));
+    }
 
     // packet id: 100
-    public static byte[] UserDmBlocked(string target) =>
-        PacketWriter.Wrap(ServerPackets.UserDmBlocked, WriteMessagePayload("", "", target, 0));
+    public static byte[] UserDmBlocked(string target)
+    {
+        return PacketWriter.Wrap(ServerPackets.UserDmBlocked, WriteMessagePayload("", "", target, 0));
+    }
 
     // packet id: 101
-    public static byte[] TargetSilenced(string target) =>
-        PacketWriter.Wrap(ServerPackets.TargetIsSilenced, WriteMessagePayload("", "", target, 0));
+    public static byte[] TargetSilenced(string target)
+    {
+        return PacketWriter.Wrap(ServerPackets.TargetIsSilenced, WriteMessagePayload("", "", target, 0));
+    }
 
     // packet id: 102
-    public static byte[] VersionUpdateForced() => PacketWriter.Wrap(ServerPackets.VersionUpdateForced, []);
+    public static byte[] VersionUpdateForced()
+    {
+        return PacketWriter.Wrap(ServerPackets.VersionUpdateForced, []);
+    }
 
     // packet id: 103
-    public static byte[] SwitchServer(int t) =>
-        PacketWriter.Wrap(ServerPackets.SwitchServer, PacketWriter.WriteInt32(t));
+    public static byte[] SwitchServer(int t)
+    {
+        return PacketWriter.Wrap(ServerPackets.SwitchServer, PacketWriter.WriteInt32(t));
+    }
 
     // packet id: 104
-    public static byte[] AccountRestricted() => PacketWriter.Wrap(ServerPackets.AccountRestricted, []);
+    public static byte[] AccountRestricted()
+    {
+        return PacketWriter.Wrap(ServerPackets.AccountRestricted, []);
+    }
 
     // packet id: 105 (deprecated)
-    public static byte[] Rtx(string msg) => PacketWriter.Wrap(ServerPackets.Rtx, PacketWriter.WriteString(msg));
+    public static byte[] Rtx(string msg)
+    {
+        return PacketWriter.Wrap(ServerPackets.Rtx, PacketWriter.WriteString(msg));
+    }
 
     // packet id: 106
-    public static byte[] MatchAbort() => PacketWriter.Wrap(ServerPackets.MatchAbort, []);
+    public static byte[] MatchAbort()
+    {
+        return PacketWriter.Wrap(ServerPackets.MatchAbort, []);
+    }
 
     // packet id: 107
-    public static byte[] SwitchTournamentServer(string ip) =>
-        PacketWriter.Wrap(ServerPackets.SwitchTournamentServer, PacketWriter.WriteString(ip));
+    public static byte[] SwitchTournamentServer(string ip)
+    {
+        return PacketWriter.Wrap(ServerPackets.SwitchTournamentServer, PacketWriter.WriteString(ip));
+    }
 
     private static byte[] WriteInt64(long value)
     {

@@ -1,12 +1,9 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.PacketHandlers.Channels;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
@@ -16,14 +13,20 @@ public class ChannelJoinHandlerTests
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private ChannelJoinHandler MakeHandler() => new(_channelRegistry, _sessionRegistry);
+    private ChannelJoinHandler MakeHandler()
+    {
+        return new ChannelJoinHandler(_channelRegistry, _sessionRegistry);
+    }
 
-    private static BanchoPacketReader ChannelNameReader(string name) => new(PacketWriter.WriteString(name));
+    private static BanchoPacketReader ChannelNameReader(string name)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteString(name));
+    }
 
     [Fact]
     public async Task Handle_ExistingReadableChannel_JoinsBothSidesAndSendsJoinSuccess()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.GetByName("#osu").Returns(channel);
         var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.All.Returns([player]);
@@ -52,7 +55,7 @@ public class ChannelJoinHandlerTests
     [Fact]
     public async Task Handle_NoReadPrivilege_NoOp()
     {
-        var channel = new ChannelSession(1, "#staff", "Staff", (int)Privileges.Staff, (int)Privileges.Staff, autoJoin: true);
+        var channel = new ChannelSession(1, "#staff", "Staff", (int)Privileges.Staff, (int)Privileges.Staff, true);
         _channelRegistry.GetByName("#staff").Returns(channel);
         var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
 
@@ -65,7 +68,7 @@ public class ChannelJoinHandlerTests
     [Fact]
     public async Task Handle_AlreadyJoined_NoOp()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.GetByName("#osu").Returns(channel);
         var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         player.JoinChannel("#osu");

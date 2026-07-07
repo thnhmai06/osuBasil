@@ -1,8 +1,5 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
+using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -12,7 +9,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchInfoRequest.</summary>
 public class TourneyMatchInfoRequestHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int matchId) => new(PacketWriter.WriteInt32(matchId));
+    private static BanchoPacketReader ReaderFor(int matchId)
+    {
+        return new BanchoPacketReader(PacketWriter.WriteInt32(matchId));
+    }
 
     [Fact]
     public async Task Handle_NonDonator_NoOp()
@@ -42,6 +42,7 @@ public class TourneyMatchInfoRequestHandlerTests
 
         await handler.HandleAsync(requester, ReaderFor(match.Id));
 
-        Assert.Contains(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), sendPassword: false), Chunk(requester.Dequeue()));
+        Assert.Contains(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false),
+            Chunk(requester.Dequeue()));
     }
 }

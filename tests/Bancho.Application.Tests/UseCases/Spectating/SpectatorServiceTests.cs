@@ -1,50 +1,33 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Spectating;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.Abstractions.Channels;
+using Bancho.Application.Sessions;
 using Bancho.Application.Sessions.Channels;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Spectating;
 
 /// <summary>Ported from Player.add_spectator/remove_spectator.</summary>
 public class SpectatorServiceTests
 {
-    private sealed class FakeChannelRegistry : IChannelRegistry
-    {
-        private readonly Dictionary<string, ChannelSession> _byName = new();
-
-        public void Seed(IReadOnlyList<Channel> channels) => throw new NotSupportedException();
-
-        public void Add(ChannelSession channel) => _byName[channel.Name] = channel;
-
-        public void Remove(string name) => _byName.Remove(name);
-
-        public ChannelSession? GetByName(string name) => _byName.GetValueOrDefault(name);
-
-        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
-
-        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
-    }
-
     private readonly FakeChannelRegistry _channelRegistry = new();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private SpectatorService MakeService() => new(_channelRegistry, new ChannelMembershipService(_sessionRegistry));
+    private SpectatorService MakeService()
+    {
+        return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry));
+    }
 
-    private static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakePlayer(int id, string name)
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+    }
 
     private void RegisterAll(params PlayerSession[] sessions)
     {
         _sessionRegistry.All.Returns(sessions);
-        foreach (var session in sessions)
-        {
-            _sessionRegistry.GetById(session.Id).Returns(session);
-        }
+        foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
     }
 
     [Fact]
@@ -147,5 +130,34 @@ public class SpectatorServiceTests
         }
 
         return chunks;
+    }
+
+    private sealed class FakeChannelRegistry : IChannelRegistry
+    {
+        private readonly Dictionary<string, ChannelSession> _byName = new();
+
+        public void Seed(IReadOnlyList<Channel> channels)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Add(ChannelSession channel)
+        {
+            _byName[channel.Name] = channel;
+        }
+
+        public void Remove(string name)
+        {
+            _byName.Remove(name);
+        }
+
+        public ChannelSession? GetByName(string name)
+        {
+            return _byName.GetValueOrDefault(name);
+        }
+
+        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
+
+        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
     }
 }

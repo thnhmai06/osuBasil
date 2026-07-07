@@ -16,13 +16,13 @@ public class ModsTests
     [InlineData(Mods.Perfect | Mods.SuddenDeath, Mods.Perfect)] // PFSD -> drop SD
     public void FilterInvalidCombos_ModeInspecificConflicts_ResolvesToExpected(Mods input, Mods expected)
     {
-        Assert.Equal(expected, input.FilterInvalidCombos(modeVn: 0));
+        Assert.Equal(expected, input.FilterInvalidCombos(0));
     }
 
     [Fact]
     public void FilterInvalidCombos_NonOsuMode_RemovesOsuSpecificMods()
     {
-        var result = (Mods.Autopilot | Mods.SpunOut | Mods.Target | Mods.Hidden).FilterInvalidCombos(modeVn: 1);
+        var result = (Mods.Autopilot | Mods.SpunOut | Mods.Target | Mods.Hidden).FilterInvalidCombos(1);
 
         Assert.Equal(Mods.Hidden, result);
     }
@@ -30,7 +30,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_NonManiaMode_RemovesManiaSpecificMods()
     {
-        var result = (Mods.Mirror | Mods.Random | Mods.FadeIn | Mods.Key4 | Mods.Hidden).FilterInvalidCombos(modeVn: 0);
+        var result = (Mods.Mirror | Mods.Random | Mods.FadeIn | Mods.Key4 | Mods.Hidden).FilterInvalidCombos(0);
 
         Assert.Equal(Mods.Hidden, result);
     }
@@ -38,7 +38,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_Osu_AutopilotWithSpunOut_RemovesAutopilot()
     {
-        var result = (Mods.Autopilot | Mods.SpunOut).FilterInvalidCombos(modeVn: 0);
+        var result = (Mods.Autopilot | Mods.SpunOut).FilterInvalidCombos(0);
 
         Assert.Equal(Mods.SpunOut, result);
     }
@@ -46,7 +46,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_Osu_AutopilotWithRelax_RemovesAutopilot()
     {
-        var result = (Mods.Autopilot | Mods.Relax).FilterInvalidCombos(modeVn: 0);
+        var result = (Mods.Autopilot | Mods.Relax).FilterInvalidCombos(0);
 
         Assert.Equal(Mods.Relax, result);
     }
@@ -54,7 +54,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_Mania_RemovesRelax()
     {
-        var result = Mods.Relax.FilterInvalidCombos(modeVn: 3);
+        var result = Mods.Relax.FilterInvalidCombos(3);
 
         Assert.Equal(Mods.NoMod, result);
     }
@@ -62,7 +62,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_Mania_HiddenWithFadeIn_RemovesFadeIn()
     {
-        var result = (Mods.Hidden | Mods.FadeIn).FilterInvalidCombos(modeVn: 3);
+        var result = (Mods.Hidden | Mods.FadeIn).FilterInvalidCombos(3);
 
         Assert.Equal(Mods.Hidden, result);
     }
@@ -70,7 +70,7 @@ public class ModsTests
     [Fact]
     public void FilterInvalidCombos_MultipleKeymods_KeepsOnlyFirst()
     {
-        var result = (Mods.Key1 | Mods.Key2 | Mods.Key4).FilterInvalidCombos(modeVn: 3);
+        var result = (Mods.Key1 | Mods.Key2 | Mods.Key4).FilterInvalidCombos(3);
 
         Assert.Equal(Mods.Key1, result);
     }
@@ -90,7 +90,7 @@ public class ModsTests
     {
         // "+Hidden" and "+DoubleTime" are valid together; input includes an invalid
         // combo (NoFail conflicting with nothing here, just verifying parse + filter runs).
-        var result = ModsExtensions.FromNowPlayingString("+Hidden +DoubleTime", modeVn: 0);
+        var result = ModsExtensions.FromNowPlayingString("+Hidden +DoubleTime", 0);
 
         Assert.Equal(Mods.Hidden | Mods.DoubleTime, result);
     }
@@ -98,7 +98,7 @@ public class ModsTests
     [Fact]
     public void FromNowPlayingString_UnknownToken_Ignored()
     {
-        var result = ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", modeVn: 0);
+        var result = ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", 0);
 
         Assert.Equal(Mods.Hidden, result);
     }

@@ -1,33 +1,21 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Channels;
 using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
+using Bancho.Domain.Users;
+using Bancho.Protocol.Packets;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Bancho.Application.Abstractions.Channels;
-using Bancho.Domain.Users;
-using Bancho.Protocol.Packets;
 
 namespace Bancho.IntegrationTests;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's bancho_handler: dispatches by presence of the osu-token
-/// header. Only the token-present branches are covered here — they touch only the in-memory
-/// session registry and dispatcher, no DB/Redis. The no-token (login) branch is fully covered by
-/// OsuLoginUseCase's own 19 unit tests and is not re-tested through HTTP here.
+///     Ported from app/api/domains/cho.py's bancho_handler: dispatches by presence of the osu-token
+///     header. Only the token-present branches are covered here — they touch only the in-memory
+///     session registry and dispatcher, no DB/Redis. The no-token (login) branch is fully covered by
+///     OsuLoginUseCase's own 19 unit tests and is not re-tested through HTTP here.
 /// </summary>
 public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private sealed class NullChannelRepository : IChannelRepository
-    {
-        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Channel>>([]);
-
-        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Channel?>(null);
-    }
-
     private readonly WebApplicationFactory<Program> _factory;
 
     public BanchoProtocolEndpointTests(WebApplicationFactory<Program> factory)
@@ -41,7 +29,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
@@ -83,5 +71,18 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
         var body = await response.Content.ReadAsByteArrayAsync();
 
         Assert.Equal(ServerPacketWriter.Notification("hello"), body);
+    }
+
+    private sealed class NullChannelRepository : IChannelRepository
+    {
+        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Channel>>([]);
+        }
+
+        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Channel?>(null);
+        }
     }
 }

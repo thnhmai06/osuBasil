@@ -1,14 +1,17 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Application.Abstractions.Social;
 using Bancho.Application.Abstractions.Users;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
+using Bancho.Protocol;
 using Bancho.Protocol.Packets;
+using Action = Bancho.Domain.Action;
 
 namespace Bancho.Application.PacketHandlers.Channels;
 
-/// <summary>Ported from app/api/domains/cho.py's SendMessage (private). BanchoBot's special-cased routing is dropped along with the bot itself.</summary>
+/// <summary>
+///     Ported from app/api/domains/cho.py's SendMessage (private). BanchoBot's special-cased routing is dropped along
+///     with the bot itself.
+/// </summary>
 public sealed class SendPrivateMessageHandler(
     IPlayerSessionRegistry sessionRegistry,
     IUserRepository users,
@@ -23,10 +26,7 @@ public sealed class SendPrivateMessageHandler(
     {
         var message = reader.ReadMessage();
 
-        if (player.Silenced)
-        {
-            return;
-        }
+        if (player.Silenced) return;
 
         var target = sessionRegistry.GetByName(message.Recipient);
 
@@ -43,10 +43,7 @@ public sealed class SendPrivateMessageHandler(
         else
         {
             var targetUser = await users.FetchByNameAsync(message.Recipient);
-            if (targetUser is null)
-            {
-                return;
-            }
+            if (targetUser is null) return;
 
             targetId = targetUser.Id;
         }
@@ -74,10 +71,8 @@ public sealed class SendPrivateMessageHandler(
 
             target.Enqueue(ServerPacketWriter.SendMessage(player.Name, message.Text, message.Recipient, player.Id));
 
-            if (target.Status.Action == Domain.Action.Afk && target.AwayMessage is { } awayMessage)
-            {
+            if (target.Status.Action == Action.Afk && target.AwayMessage is { } awayMessage)
                 player.Enqueue(ServerPacketWriter.SendMessage(target.Name, awayMessage, player.Name, target.Id));
-            }
         }
 
         await mail.CreateAsync(player.Id, targetId, message.Text);

@@ -1,4 +1,5 @@
 using Bancho.Domain.Beatmaps;
+
 namespace Bancho.Domain.Tests;
 
 /// <summary>Ported from app/constants/beatmap_statuses.py's RankedStatus.</summary>

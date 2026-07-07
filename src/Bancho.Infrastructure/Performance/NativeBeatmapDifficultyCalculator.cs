@@ -1,4 +1,3 @@
-using Bancho.Application.Abstractions;
 using Bancho.Application.Abstractions.Beatmaps;
 
 namespace Bancho.Infrastructure.Performance;
@@ -14,10 +13,8 @@ public sealed class NativeBeatmapDifficultyCalculator : IBeatmapDifficultyCalcul
             out var stars);
 
         if (resultCode != 0)
-        {
             throw new InvalidOperationException(
                 $"bancho_pp_calculate_difficulty failed with code {resultCode} for beatmap '{beatmapFilePath}'.");
-        }
 
         return stars;
     }

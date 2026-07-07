@@ -1,13 +1,11 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Channels;
 using Bancho.Application.Configuration;
 using Bancho.Application.DependencyInjection;
-using Bancho.Application.Sessions;
+using Bancho.Application.Sessions.Channels;
 using Bancho.Infrastructure.DependencyInjection;
 using Bancho.Infrastructure.Persistence;
 using Bancho.Web.Routing;
 using Microsoft.Extensions.Options;
-using Bancho.Application.Abstractions.Channels;
-using Bancho.Application.Sessions.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,9 +27,7 @@ using (var scope = app.Services.CreateScope())
     // there and there's nothing to migrate against — skip rather than fail startup.
     var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
     if (!string.IsNullOrEmpty(dbOptions.Host))
-    {
         SqlMigrationRunner.RunMigrations(DatabaseConnectionStringBuilder.Build(dbOptions));
-    }
 
     var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
     var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();

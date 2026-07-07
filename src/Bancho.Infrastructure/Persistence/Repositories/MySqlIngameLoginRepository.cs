@@ -1,29 +1,14 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Users;
 using Dapper;
 using MySqlConnector;
-using Bancho.Application.Abstractions.Users;
-using Bancho.Domain.Login;
 
 namespace Bancho.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IIngameLoginRepository" />
 public sealed class MySqlIngameLoginRepository(string connectionString) : IIngameLoginRepository
 {
-    private sealed class IngameLoginRow
-    {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public string Ip { get; set; } = "";
-        public DateTime OsuVer { get; set; }
-        public string OsuStream { get; set; } = "";
-        public DateTime Datetime { get; set; }
-
-        public IngameLogin ToIngameLogin() => new(Id, UserId, Ip, DateOnly.FromDateTime(OsuVer), OsuStream, Datetime);
-    }
-
-    private MySqlConnection Connect() => new(connectionString);
-
-    public async Task<IngameLogin> CreateAsync(int userId, string ip, DateOnly osuVer, string osuStream, CancellationToken cancellationToken = default)
+    public async Task<IngameLogin> CreateAsync(int userId, string ip, DateOnly osuVer, string osuStream,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var id = await connection.ExecuteScalarAsync<int>(
@@ -42,5 +27,25 @@ public sealed class MySqlIngameLoginRepository(string connectionString) : IIngam
             new { Id = id });
 
         return row.ToIngameLogin();
+    }
+
+    private MySqlConnection Connect()
+    {
+        return new MySqlConnection(connectionString);
+    }
+
+    private sealed class IngameLoginRow
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public string Ip { get; set; } = "";
+        public DateTime OsuVer { get; set; }
+        public string OsuStream { get; set; } = "";
+        public DateTime Datetime { get; set; }
+
+        public IngameLogin ToIngameLogin()
+        {
+            return new IngameLogin(Id, UserId, Ip, DateOnly.FromDateTime(OsuVer), OsuStream, Datetime);
+        }
     }
 }

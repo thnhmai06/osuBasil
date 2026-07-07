@@ -4,10 +4,10 @@ using System.Text;
 namespace Bancho.Domain.Scores;
 
 /// <summary>
-/// Ported from app/objects/score.py's Score.compute_online_checksum. The exact format string
-/// (and field order, which does not match the format-arg index order — {15} is placed before
-/// {14} in the source template) must be preserved byte-for-byte since it's an interop checksum
-/// verified against the osu! client's own computation.
+///     Ported from app/objects/score.py's Score.compute_online_checksum. The exact format string
+///     (and field order, which does not match the format-arg index order — {15} is placed before
+///     {14} in the source template) must be preserved byte-for-byte since it's an interop checksum
+///     verified against the osu! client's own computation.
 /// </summary>
 public static class ScoreChecksum
 {
@@ -41,5 +41,8 @@ public static class ScoreChecksum
         return Convert.ToHexStringLower(hash);
     }
 
-    private static string PyBool(bool value) => value ? "True" : "False";
+    private static string PyBool(bool value)
+    {
+        return value ? "True" : "False";
+    }
 }

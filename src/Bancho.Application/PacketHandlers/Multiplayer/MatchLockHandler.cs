@@ -1,8 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
 
@@ -20,10 +18,7 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
         var slotId = reader.ReadI32();
 
         var match = player.Match;
-        if (match is null || player.Id != match.HostId || slotId is < 0 or >= 16)
-        {
-            return;
-        }
+        if (match is null || player.Id != match.HostId || slotId is < 0 or >= 16) return;
 
         await match.Lock.WaitAsync();
         try
@@ -37,10 +32,8 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
             else
             {
                 if (slot.PlayerId == player.Id)
-                {
                     // don't allow the host to kick themselves by clicking their own crown.
                     return;
-                }
 
                 slot.Status = SlotStatus.Locked;
             }

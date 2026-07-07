@@ -1,7 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -17,28 +16,28 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
     {
         var matchData = reader.ReadMatch();
 
-        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id))
-        {
-            return Task.CompletedTask;
-        }
+        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id)) return Task.CompletedTask;
 
         if (player.Restricted)
         {
-            player.Enqueue([.. ServerPacketWriter.MatchJoinFail(), .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")]);
+            player.Enqueue([
+                .. ServerPacketWriter.MatchJoinFail(),
+                .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
+            ]);
             return Task.CompletedTask;
         }
 
         if (player.Silenced)
         {
-            player.Enqueue([.. ServerPacketWriter.MatchJoinFail(), .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")]);
+            player.Enqueue([
+                .. ServerPacketWriter.MatchJoinFail(),
+                .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
+            ]);
             return Task.CompletedTask;
         }
 
         var match = matchMembership.Create(player, matchData);
-        if (match is null)
-        {
-            player.Enqueue(ServerPacketWriter.MatchJoinFail());
-        }
+        if (match is null) player.Enqueue(ServerPacketWriter.MatchJoinFail());
 
         return Task.CompletedTask;
     }

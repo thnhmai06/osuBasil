@@ -17,7 +17,7 @@ public enum Privileges
     Developer = 1 << 14,
 
     Donator = Supporter | Premium,
-    Staff = Moderator | Administrator | Developer,
+    Staff = Moderator | Administrator | Developer
 }
 
 /// <summary>Ported from app/constants/privileges.py's ClientPrivileges (IntFlag) — client-side user privileges.</summary>
@@ -29,7 +29,7 @@ public enum ClientPrivileges
     Supporter = 1 << 2,
     Owner = 1 << 3,
     Developer = 1 << 4,
-    Tournament = 1 << 5, // NOTE: not used in communications with osu! client
+    Tournament = 1 << 5 // NOTE: not used in communications with osu! client
 }
 
 /// <summary>Ported from app/constants/privileges.py's ClanPrivileges (IntEnum).</summary>
@@ -37,5 +37,5 @@ public enum ClanPrivileges
 {
     Member = 1,
     Officer = 2,
-    Owner = 3,
+    Owner = 3
 }

@@ -35,20 +35,23 @@ public enum Mods
     Key3 = 1 << 27,
     Key2 = 1 << 28,
     ScoreV2 = 1 << 29,
-    Mirror = 1 << 30,
+    Mirror = 1 << 30
 }
 
 /// <summary>
-/// Ported from app/constants/mods.py's Mods methods (filter_invalid_combos, from_modstr, from_np)
-/// — real mod-combination business rules, not just constant values.
+///     Ported from app/constants/mods.py's Mods methods (filter_invalid_combos, from_modstr, from_np)
+///     — real mod-combination business rules, not just constant values.
 /// </summary>
 public static class ModsExtensions
 {
-    /// <summary>Ported from app/constants/mods.py's SPEED_CHANGING_MODS — used by multiplayer's freemods split between match-wide and per-slot mods.</summary>
+    /// <summary>
+    ///     Ported from app/constants/mods.py's SPEED_CHANGING_MODS — used by multiplayer's freemods split between
+    ///     match-wide and per-slot mods.
+    /// </summary>
     public const Mods SpeedChangingMods = Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime;
 
     private const Mods KeyMods = Mods.Key1 | Mods.Key2 | Mods.Key3 | Mods.Key4 | Mods.Key5
-        | Mods.Key6 | Mods.Key7 | Mods.Key8 | Mods.Key9;
+                                 | Mods.Key6 | Mods.Key7 | Mods.Key8 | Mods.Key9;
 
     private const Mods OsuSpecificMods = Mods.Autopilot | Mods.SpunOut | Mods.Target;
     private const Mods ManiaSpecificMods = Mods.Mirror | Mods.Random | Mods.FadeIn | KeyMods;
@@ -85,7 +88,7 @@ public static class ModsExtensions
         ["7K"] = Mods.Key7,
         ["8K"] = Mods.Key8,
         ["9K"] = Mods.Key9,
-        ["CO"] = Mods.KeyCoop,
+        ["CO"] = Mods.KeyCoop
     };
 
     private static readonly Dictionary<string, Mods> NpStrToMod = new()
@@ -119,7 +122,7 @@ public static class ModsExtensions
         ["|12K|"] = Mods.Key6 | Mods.KeyCoop,
         ["|14K|"] = Mods.Key7 | Mods.KeyCoop,
         ["|16K|"] = Mods.Key8 | Mods.KeyCoop,
-        ["|18K|"] = Mods.Key9 | Mods.KeyCoop,
+        ["|18K|"] = Mods.Key9 | Mods.KeyCoop
     };
 
     /// <summary>Removes invalid mod combinations, mirroring app/constants/mods.py's filter_invalid_combos.</summary>
@@ -130,69 +133,44 @@ public static class ModsExtensions
         // 1. mode-inspecific mod conflictions
         var dtNc = result & (Mods.DoubleTime | Mods.Nightcore);
         if (dtNc == (Mods.DoubleTime | Mods.Nightcore))
-        {
             result &= ~Mods.DoubleTime; // DTNC
-        }
-        else if (dtNc != Mods.NoMod && (result & Mods.HalfTime) != Mods.NoMod)
-        {
-            result &= ~Mods.HalfTime; // (DT|NC)HT
-        }
+        else if (dtNc != Mods.NoMod && (result & Mods.HalfTime) != Mods.NoMod) result &= ~Mods.HalfTime; // (DT|NC)HT
 
-        if ((result & Mods.Easy) != Mods.NoMod && (result & Mods.HardRock) != Mods.NoMod)
-        {
-            result &= ~Mods.HardRock; // EZHR
-        }
+        if ((result & Mods.Easy) != Mods.NoMod &&
+            (result & Mods.HardRock) != Mods.NoMod) result &= ~Mods.HardRock; // EZHR
 
         if ((result & (Mods.NoFail | Mods.Relax | Mods.Autopilot)) != Mods.NoMod)
         {
-            if ((result & Mods.SuddenDeath) != Mods.NoMod)
-            {
-                result &= ~Mods.SuddenDeath; // (NF|RX|AP)SD
-            }
+            if ((result & Mods.SuddenDeath) != Mods.NoMod) result &= ~Mods.SuddenDeath; // (NF|RX|AP)SD
 
-            if ((result & Mods.Perfect) != Mods.NoMod)
-            {
-                result &= ~Mods.Perfect; // (NF|RX|AP)PF
-            }
+            if ((result & Mods.Perfect) != Mods.NoMod) result &= ~Mods.Perfect; // (NF|RX|AP)PF
         }
 
         if ((result & (Mods.Relax | Mods.Autopilot)) != Mods.NoMod && (result & Mods.NoFail) != Mods.NoMod)
-        {
             result &= ~Mods.NoFail; // (RX|AP)NF
-        }
 
         if ((result & Mods.Perfect) != Mods.NoMod && (result & Mods.SuddenDeath) != Mods.NoMod)
-        {
             result &= ~Mods.SuddenDeath; // PFSD
-        }
 
         // 2. remove mode-unique mods from incorrect gamemodes
         if (modeVn != 0) // osu! specific
-        {
             result &= ~OsuSpecificMods;
-        }
 
         // ctb & taiko have no unique mods
 
         if (modeVn != 3) // mania specific
-        {
             result &= ~ManiaSpecificMods;
-        }
 
         // 3. mode-specific mod conflictions
         if (modeVn == 0 && (result & Mods.Autopilot) != Mods.NoMod
-            && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod)
-        {
+                        && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod)
             result &= ~Mods.Autopilot; // (SO|RX)AP
-        }
 
         if (modeVn == 3)
         {
             result &= ~Mods.Relax; // rx is std/taiko/ctb common
-            if ((result & Mods.Hidden) != Mods.NoMod && (result & Mods.FadeIn) != Mods.NoMod)
-            {
-                result &= ~Mods.FadeIn; // HDFI
-            }
+            if ((result & Mods.Hidden) != Mods.NoMod &&
+                (result & Mods.FadeIn) != Mods.NoMod) result &= ~Mods.FadeIn; // HDFI
         }
 
         // 4. remove multiple keymods, keeping only the first
@@ -203,15 +181,13 @@ public static class ModsExtensions
             foreach (var candidate in new[]
                      {
                          Mods.Key1, Mods.Key2, Mods.Key3, Mods.Key4, Mods.Key5,
-                         Mods.Key6, Mods.Key7, Mods.Key8, Mods.Key9,
+                         Mods.Key6, Mods.Key7, Mods.Key8, Mods.Key9
                      })
-            {
                 if ((keymodsUsed & candidate) != Mods.NoMod)
                 {
                     firstKeymod = candidate;
                     break;
                 }
-            }
 
             result &= ~(keymodsUsed & ~firstKeymod);
         }
@@ -227,10 +203,7 @@ public static class ModsExtensions
         for (var i = 0; i < s.Length; i += 2)
         {
             var chunk = s.Substring(i, Math.Min(2, s.Length - i)).ToUpperInvariant();
-            if (ModStrToMod.TryGetValue(chunk, out var mod))
-            {
-                mods |= mod;
-            }
+            if (ModStrToMod.TryGetValue(chunk, out var mod)) mods |= mod;
         }
 
         return mods;
@@ -242,12 +215,8 @@ public static class ModsExtensions
         var mods = Mods.NoMod;
 
         foreach (var token in s.Split(' '))
-        {
             if (NpStrToMod.TryGetValue(token, out var mod))
-            {
                 mods |= mod;
-            }
-        }
 
         return mods.FilterInvalidCombos(modeVn);
     }

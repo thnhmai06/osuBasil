@@ -1,7 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -18,10 +17,8 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
         var matchData = reader.ReadMatch();
 
         var match = player.Match;
-        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id) || match is null || player.Id != match.HostId)
-        {
-            return;
-        }
+        if (!MatchMembershipService.ValidateMatchData(matchData, player.Id) || match is null ||
+            player.Id != match.HostId) return;
 
         await match.Lock.WaitAsync();
         try

@@ -1,14 +1,12 @@
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
-using Bancho.Domain.Scores;
 
 namespace Bancho.Application.Abstractions.Scores;
 
 /// <summary>
-/// Ported from app/repositories/scores.py's BeatmapLeaderboardScoreRow. The Python dataclass calls
-/// this field `leaderboard_value` because it's pp for rx/ap and score for vanilla — bancho-net's
-/// no-pp scope decision means it is unconditionally the `score` column, so it's named plainly.
-/// Clan tag prefixing (`[tag] name`) is deferred until clans exist; Name is the plain player name.
+///     Ported from app/repositories/scores.py's BeatmapLeaderboardScoreRow. The Python dataclass calls
+///     this field `leaderboard_value` because it's pp for rx/ap and score for vanilla — bancho-net's
+///     no-pp scope decision means it is unconditionally the `score` column, so it's named plainly.
+///     Clan tag prefixing (`[tag] name`) is deferred until clans exist; Name is the plain player name.
 /// </summary>
 public sealed record BeatmapLeaderboardScoreRow(
     long Id,
@@ -27,10 +25,10 @@ public sealed record BeatmapLeaderboardScoreRow(
     string Name);
 
 /// <summary>
-/// Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow. `Grade` was added on
-/// top of the Python source's field set (which selects it separately, via `Score.from_sql`, only
-/// when score submission's calculate_status needs it for grade_count_deltas) — defaulted so the
-/// getscores read path's existing call sites are unaffected.
+///     Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow. `Grade` was added on
+///     top of the Python source's field set (which selects it separately, via `Score.from_sql`, only
+///     when score submission's calculate_status needs it for grade_count_deltas) — defaulted so the
+///     getscores read path's existing call sites are unaffected.
 /// </summary>
 public sealed record PersonalBestLeaderboardScoreRow(
     long Id,
@@ -55,9 +53,9 @@ public sealed record FirstPlaceScoreRow(int Id, string Name);
 public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
 
 /// <summary>
-/// Ported from the parameters of ScoresRepository.create — `pp` is deliberately absent, the
-/// insert always writes 0 for it (no-pp scope), matching the plan's decision for the now-inert
-/// scores.pp column.
+///     Ported from the parameters of ScoresRepository.create — `pp` is deliberately absent, the
+///     insert always writes 0 for it (no-pp scope), matching the plan's decision for the now-inert
+///     scores.pp column.
 /// </summary>
 public sealed record ScoreInsertRow(
     string MapMd5,
@@ -82,15 +80,15 @@ public sealed record ScoreInsertRow(
     string OnlineChecksum);
 
 /// <summary>
-/// Ported from app/repositories/scores.py's ScoresRepository, scoped to the three leaderboard
-/// reads the getscores endpoint needs. `scoring_metric` is dropped entirely from every method's
-/// signature (compared to the Python source) — bancho-net always ranks by raw score, never pp.
+///     Ported from app/repositories/scores.py's ScoresRepository, scoped to the three leaderboard
+///     reads the getscores endpoint needs. `scoring_metric` is dropped entirely from every method's
+///     signature (compared to the Python source) — bancho-net always ranks by raw score, never pp.
 /// </summary>
 public interface IScoreRepository
 {
     /// <summary>
-    /// Ported from fetch_beatmap_leaderboard_scores. Only unrestricted players' scores are
-    /// visible, except the requesting player's own row is always included.
+    ///     Ported from fetch_beatmap_leaderboard_scores. Only unrestricted players' scores are
+    ///     visible, except the requesting player's own row is always included.
     /// </summary>
     Task<IReadOnlyList<BeatmapLeaderboardScoreRow>> FetchBeatmapLeaderboardScoresAsync(
         string mapMd5,
@@ -119,19 +117,21 @@ public interface IScoreRepository
     Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ported from score_submission_is_duplicate's use of fetch_one_by_online_checksum — only the
-    /// existence check is used, so this skips deserializing a full row.
+    ///     Ported from score_submission_is_duplicate's use of fetch_one_by_online_checksum — only the
+    ///     existence check is used, so this skips deserializing a full row.
     /// </summary>
     Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default);
 
     /// <summary>Ported from ScoresRepository.mark_previous_best_scores_submitted.</summary>
-    Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode, CancellationToken cancellationToken = default);
+    Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ported from ScoresRepository.fetch_first_place_score, scoring_metric dropped (always score,
-    /// per bancho-net's no-pp scope).
+    ///     Ported from ScoresRepository.fetch_first_place_score, scoring_metric dropped (always score,
+    ///     per bancho-net's no-pp scope).
     /// </summary>
-    Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode, CancellationToken cancellationToken = default);
+    Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Ported from the `score.player`/`score.mode` reads in ReplayService.fetch_replay_file.</summary>
     Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);

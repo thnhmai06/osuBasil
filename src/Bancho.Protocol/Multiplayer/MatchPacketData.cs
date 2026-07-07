@@ -1,11 +1,12 @@
 using Bancho.Protocol.Packets;
+
 namespace Bancho.Protocol.Multiplayer;
 
 /// <summary>
-/// Wire-shape for a multiplayer match, as needed by <see cref="ServerPacketWriter"/>. This is a
-/// pure Protocol-layer DTO (no dependency on the richer Domain match entity) — a mapper in a
-/// later phase translates the real match aggregate into this shape before writing.
-/// Ported from write_match in app/packets.py.
+///     Wire-shape for a multiplayer match, as needed by <see cref="ServerPacketWriter" />. This is a
+///     pure Protocol-layer DTO (no dependency on the richer Domain match entity) — a mapper in a
+///     later phase translates the real match aggregate into this shape before writing.
+///     Ported from write_match in app/packets.py.
 /// </summary>
 public sealed record MatchPacketData(
     int Id,

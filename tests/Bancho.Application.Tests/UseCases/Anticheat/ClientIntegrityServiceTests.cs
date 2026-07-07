@@ -1,23 +1,26 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Social;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Anticheat;
 using Bancho.Domain;
-using NSubstitute;
-using Bancho.Application.Abstractions.Social;
 using Bancho.Domain.Users;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Anticheat;
 
 /// <summary>
-/// Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
-/// Per explicit user decision, restrict/force-logout/random-ban-roll/Discord-webhook side effects
-/// are dropped entirely — detected flags are only logged for manual review (no restrict machinery
-/// exists yet in bancho-net; that's Phase 10, deferred with the rest of the chat command system).
+///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
+///     Per explicit user decision, restrict/force-logout/random-ban-roll/Discord-webhook side effects
+///     are dropped entirely — detected flags are only logged for manual review (no restrict machinery
+///     exists yet in bancho-net; that's Phase 10, deferred with the rest of the chat command system).
 /// </summary>
 public class ClientIntegrityServiceTests
 {
     private readonly ILogRepository _logs = Substitute.For<ILogRepository>();
-    private static PlayerSession MakePlayer() => new(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+
+    private static PlayerSession MakePlayer()
+    {
+        return new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+    }
 
     [Fact]
     public async Task HandleLastFmFlagsAsync_NotAnticheatFlag_ReturnsStopSendingWithoutLogging()

@@ -1,15 +1,14 @@
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 
 namespace Bancho.Application.Abstractions.Scores;
 
 /// <summary>
-/// Ported from bancho.py's `async with self.database.transaction():` wrapping
-/// persist_submitted_score + persist_score_submission_stats in ScoreSubmissionService — the
-/// previous-best demotion, score insert, and stats update commit atomically. Without this, a
-/// mid-write failure (e.g. the stats update throwing after the score insert already committed on
-/// a separate connection) leaves the previous best demoted and the new score persisted as BEST
-/// with stats never updated — a real gap the initial Phase 6 port had (see note.md).
+///     Ported from bancho.py's `async with self.database.transaction():` wrapping
+///     persist_submitted_score + persist_score_submission_stats in ScoreSubmissionService — the
+///     previous-best demotion, score insert, and stats update commit atomically. Without this, a
+///     mid-write failure (e.g. the stats update throwing after the score insert already committed on
+///     a separate connection) leaves the previous best demoted and the new score persisted as BEST
+///     with stats never updated — a real gap the initial Phase 6 port had (see note.md).
 /// </summary>
 public interface IScoreSubmissionPersistence
 {

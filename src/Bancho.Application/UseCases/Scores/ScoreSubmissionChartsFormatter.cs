@@ -1,21 +1,20 @@
 using System.Globalization;
 using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 
 namespace Bancho.Application.UseCases.Scores;
 
 /// <summary>
-/// Ported from app/api/domains/osu.py's chart_entry/build_submission_charts. Achievements are
-/// dropped entirely (per scope) — the achievements-new field is always empty. `pp` chart entries
-/// are always passed 0 (no-pp scope); chart_entry's own "0 or ''" falsy formatting empties them
-/// automatically, so the field is kept (preserving the protocol's key/value shape for the osu!
-/// client's result-screen parser) without any pp-specific special-casing.
+///     Ported from app/api/domains/osu.py's chart_entry/build_submission_charts. Achievements are
+///     dropped entirely (per scope) — the achievements-new field is always empty. `pp` chart entries
+///     are always passed 0 (no-pp scope); chart_entry's own "0 or ''" falsy formatting empties them
+///     automatically, so the field is kept (preserving the protocol's key/value shape for the osu!
+///     client's result-screen parser) without any pp-specific special-casing.
 /// </summary>
 public static class ScoreSubmissionChartsFormatter
 {
-    public static string Format(ScoreSubmission score, CachedPlayerStats previousStats, CachedPlayerStats currentStats, string domain)
+    public static string Format(ScoreSubmission score, CachedPlayerStats previousStats, CachedPlayerStats currentStats,
+        string domain)
     {
         var beatmapEntries = score.PrevBest is { } prevBest
             ? new[]
@@ -25,7 +24,7 @@ public static class ScoreSubmissionChartsFormatter
                 ChartEntry("totalScore", prevBest.Score, score.Score),
                 ChartEntry("maxCombo", prevBest.MaxCombo, score.MaxCombo),
                 ChartEntry("accuracy", Math.Round(prevBest.Acc, 2), Math.Round(score.Acc, 2)),
-                ChartEntry("pp", 0, 0),
+                ChartEntry("pp", 0, 0)
             }
             : new[]
             {
@@ -34,7 +33,7 @@ public static class ScoreSubmissionChartsFormatter
                 ChartEntry("totalScore", null, score.Score),
                 ChartEntry("maxCombo", null, score.MaxCombo),
                 ChartEntry("accuracy", null, Math.Round(score.Acc, 2)),
-                ChartEntry("pp", null, 0),
+                ChartEntry("pp", null, 0)
             };
 
         var overallEntries = new[]
@@ -44,7 +43,7 @@ public static class ScoreSubmissionChartsFormatter
             ChartEntry("totalScore", previousStats.Tscore, currentStats.Tscore),
             ChartEntry("maxCombo", previousStats.MaxCombo, currentStats.MaxCombo),
             ChartEntry("accuracy", Math.Round(previousStats.Acc, 2), Math.Round(currentStats.Acc, 2)),
-            ChartEntry("pp", 0, 0),
+            ChartEntry("pp", 0, 0)
         };
 
         var bmap = score.Bmap!;
@@ -58,7 +57,7 @@ public static class ScoreSubmissionChartsFormatter
             "\n",
             "chartId:beatmap",
             $"chartUrl:https://osu.{domain}/s/{bmap.SetId}",
-            "chartName:Beatmap Ranking",
+            "chartName:Beatmap Ranking"
         };
         parts.AddRange(beatmapEntries);
         parts.Add($"onlineScoreId:{score.Id}");
@@ -72,16 +71,21 @@ public static class ScoreSubmissionChartsFormatter
         return string.Join('|', parts);
     }
 
-    private static string ChartEntry(string name, object? before, object? after) =>
-        $"{name}Before:{FormatValue(before)}|{name}After:{FormatValue(after)}";
-
-    private static string FormatValue(object? value) => value switch
+    private static string ChartEntry(string name, object? before, object? after)
     {
-        null => "",
-        int i when i == 0 => "",
-        long l when l == 0 => "",
-        double d when d == 0.0 => "",
-        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-        _ => value.ToString() ?? "",
-    };
+        return $"{name}Before:{FormatValue(before)}|{name}After:{FormatValue(after)}";
+    }
+
+    private static string FormatValue(object? value)
+    {
+        return value switch
+        {
+            null => "",
+            int i when i == 0 => "",
+            long l when l == 0 => "",
+            double d when d == 0.0 => "",
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? ""
+        };
+    }
 }

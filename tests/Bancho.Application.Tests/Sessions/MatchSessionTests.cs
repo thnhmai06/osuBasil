@@ -1,6 +1,5 @@
-using Bancho.Application.Sessions;
-using Bancho.Domain;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Multiplayer;
 
@@ -9,11 +8,14 @@ namespace Bancho.Application.Tests.Sessions;
 /// <summary>Ported from app/objects/match.py's Match — slot lookup/state helpers, no networking.</summary>
 public class MatchSessionTests
 {
-    private static MatchSession MakeMatch(int hostId = 1) => new(
-        id: 0, name: "test match", password: "pw", hasPublicHistory: true,
-        mapName: "Some Map", mapId: 100, mapMd5: new string('a', 32), hostId: hostId,
-        mode: GameMode.VanillaOsu, mods: Mods.NoMod, winCondition: MatchWinConditions.Score,
-        teamType: MatchTeamTypes.HeadToHead, freemods: false, seed: 0, chatChannelName: "#multi_0");
+    private static MatchSession MakeMatch(int hostId = 1)
+    {
+        return new MatchSession(
+            0, "test match", "pw", true,
+            "Some Map", 100, new string('a', 32), hostId,
+            GameMode.VanillaOsu, Mods.NoMod, MatchWinConditions.Score,
+            MatchTeamTypes.HeadToHead, false, 0, "#multi_0");
+    }
 
     [Fact]
     public void NewMatch_HasSixteenOpenSlots()
@@ -39,10 +41,7 @@ public class MatchSessionTests
     public void GetFreeSlotId_ReturnsNullWhenFull()
     {
         var match = MakeMatch();
-        foreach (var slot in match.Slots)
-        {
-            slot.Status = SlotStatus.NotReady;
-        }
+        foreach (var slot in match.Slots) slot.Status = SlotStatus.NotReady;
 
         Assert.Null(match.GetFreeSlotId());
     }
@@ -70,7 +69,7 @@ public class MatchSessionTests
     [Fact]
     public void GetHostSlot_FindsSlotOccupiedByHost()
     {
-        var match = MakeMatch(hostId: 9);
+        var match = MakeMatch(9);
         match.Slots[2].PlayerId = 9;
 
         Assert.Same(match.Slots[2], match.GetHostSlot());
@@ -79,7 +78,7 @@ public class MatchSessionTests
     [Fact]
     public void IsReferee_TrueForHostAndAddedReferees()
     {
-        var match = MakeMatch(hostId: 1);
+        var match = MakeMatch(1);
         match.AddReferee(2);
 
         Assert.True(match.IsReferee(1));
@@ -127,7 +126,11 @@ public class MatchSessionTests
     [Fact]
     public void MatchSlot_CopyFrom_CopiesPlayerStatusTeamAndMods_ButNotLoadedOrSkipped()
     {
-        var source = new MatchSlot { PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true, Skipped = true };
+        var source = new MatchSlot
+        {
+            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true,
+            Skipped = true
+        };
         var target = new MatchSlot();
 
         target.CopyFrom(source);
@@ -143,7 +146,11 @@ public class MatchSessionTests
     [Fact]
     public void MatchSlot_Reset_ClearsEverythingBackToOpen()
     {
-        var slot = new MatchSlot { PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true, Skipped = true };
+        var slot = new MatchSlot
+        {
+            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true,
+            Skipped = true
+        };
 
         slot.Reset();
 
@@ -164,5 +171,4 @@ public class MatchSessionTests
 
         Assert.Equal(SlotStatus.Locked, slot.Status);
     }
-
 }

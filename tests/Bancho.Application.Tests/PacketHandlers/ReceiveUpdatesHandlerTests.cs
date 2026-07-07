@@ -1,8 +1,6 @@
-using Bancho.Application.PacketHandlers;
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 
@@ -11,7 +9,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's ReceiveUpdates.</summary>
 public class ReceiveUpdatesHandlerTests
 {
-    private static PlayerSession MakeSession() => new(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakeSession()
+    {
+        return new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+    }
 
     [Theory]
     [InlineData(0, PresenceFilter.Nil)]

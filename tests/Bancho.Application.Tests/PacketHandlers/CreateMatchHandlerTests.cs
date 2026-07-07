@@ -1,7 +1,4 @@
-using Bancho.Application.PacketHandlers;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Multiplayer;
-using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -10,8 +7,10 @@ namespace Bancho.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchCreate.</summary>
 public class CreateMatchHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int hostId, string name = "test match") =>
-        MatchRequestReader(0, name, "", "Some Map", 100, new string('a', 32), hostId);
+    private static BanchoPacketReader ReaderFor(int hostId, string name = "test match")
+    {
+        return MatchRequestReader(0, name, "", "Some Map", 100, new string('a', 32), hostId);
+    }
 
     [Fact]
     public async Task Handle_HostIdMismatch_NoOp()
@@ -21,7 +20,7 @@ public class CreateMatchHandlerTests
         fixture.RegisterAll(host);
         var handler = new CreateMatchHandler(fixture.MatchMembership);
 
-        await handler.HandleAsync(host, ReaderFor(hostId: 999));
+        await handler.HandleAsync(host, ReaderFor(999));
 
         Assert.Null(host.Match);
     }
@@ -31,11 +30,11 @@ public class CreateMatchHandlerTests
     {
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
-        host.Priv = (Bancho.Domain.Users.Privileges)0;
+        host.Priv = 0;
         fixture.RegisterAll(host);
         var handler = new CreateMatchHandler(fixture.MatchMembership);
 
-        await handler.HandleAsync(host, ReaderFor(hostId: 1));
+        await handler.HandleAsync(host, ReaderFor(1));
 
         Assert.Null(host.Match);
         Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(host.Dequeue()));
@@ -49,7 +48,7 @@ public class CreateMatchHandlerTests
         fixture.RegisterAll(host);
         var handler = new CreateMatchHandler(fixture.MatchMembership);
 
-        await handler.HandleAsync(host, ReaderFor(hostId: 1, name: "my room"));
+        await handler.HandleAsync(host, ReaderFor(1, "my room"));
 
         Assert.NotNull(host.Match);
         Assert.Equal("my room", host.Match!.Name);
@@ -65,13 +64,13 @@ public class CreateMatchHandlerTests
         {
             var filler = MakePlayer(i + 1, $"p{i}");
             fixture.RegisterAll(filler);
-            await handler.HandleAsync(filler, ReaderFor(hostId: filler.Id));
+            await handler.HandleAsync(filler, ReaderFor(filler.Id));
         }
 
         var overflow = MakePlayer(1000, "overflow");
         fixture.RegisterAll(overflow);
 
-        await handler.HandleAsync(overflow, ReaderFor(hostId: overflow.Id));
+        await handler.HandleAsync(overflow, ReaderFor(overflow.Id));
 
         Assert.Null(overflow.Match);
         Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));

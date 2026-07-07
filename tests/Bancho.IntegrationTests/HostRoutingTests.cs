@@ -1,31 +1,21 @@
-using Bancho.Application.Abstractions;
+using System.Net;
+using Bancho.Application.Abstractions.Channels;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Bancho.Application.Abstractions.Channels;
 
 namespace Bancho.IntegrationTests;
 
 /// <summary>
-/// bancho.py routes by hostname (app/api/init_api.py:init_routes) rather than by path prefix:
-/// c./ce./c4./c5./c6.{domain} -> bancho realtime, osu.{domain} -> osu! web endpoints,
-/// b.{domain} -> beatmap assets, api.{domain} -> developer API. Both the configured DOMAIN and
-/// the hardcoded ppy.sh are registered for every group. This test locks in that routing shape
-/// before any real endpoint logic exists.
+///     bancho.py routes by hostname (app/api/init_api.py:init_routes) rather than by path prefix:
+///     c./ce./c4./c5./c6.{domain} -> bancho realtime, osu.{domain} -> osu! web endpoints,
+///     b.{domain} -> beatmap assets, api.{domain} -> developer API. Both the configured DOMAIN and
+///     the hardcoded ppy.sh are registered for every group. This test locks in that routing shape
+///     before any real endpoint logic exists.
 /// </summary>
 public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-
-    /// <summary>Avoids the real MySQL repo so Program.cs's startup channel-seeding doesn't need a live DB.</summary>
-    private sealed class NullChannelRepository : IChannelRepository
-    {
-        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Channel>>([]);
-
-        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Channel?>(null);
-    }
 
     public HostRoutingTests(WebApplicationFactory<Program> factory)
     {
@@ -38,7 +28,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
@@ -86,7 +76,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var response = await SendWithHost(client, host);
 
-        Assert.Equal(System.Net.HttpStatusCode.MovedPermanently, response.StatusCode);
+        Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
         Assert.Equal("https://b.ppy.sh/", response.Headers.Location!.ToString());
     }
 
@@ -108,7 +98,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient();
         var response = await SendWithHost(client, "unknown.test.local");
 
-        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private static async Task<HttpResponseMessage> SendWithHost(HttpClient client, string host)
@@ -116,5 +106,19 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
         var request = new HttpRequestMessage(HttpMethod.Get, "/");
         request.Headers.Host = host;
         return await client.SendAsync(request);
+    }
+
+    /// <summary>Avoids the real MySQL repo so Program.cs's startup channel-seeding doesn't need a live DB.</summary>
+    private sealed class NullChannelRepository : IChannelRepository
+    {
+        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Channel>>([]);
+        }
+
+        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Channel?>(null);
+        }
     }
 }

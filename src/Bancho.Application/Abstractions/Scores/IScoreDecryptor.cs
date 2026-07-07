@@ -4,9 +4,9 @@ namespace Bancho.Application.Abstractions.Scores;
 public interface IScoreDecryptor
 {
     /// <summary>
-    /// Decrypts the osu! client's Rijndael-256-CBC-encrypted submission payload. Returns the
-    /// colon-delimited score-data fields (split by the caller, matching Python's own
-    /// `.split(":")`) alongside the decrypted client hash string.
+    ///     Decrypts the osu! client's Rijndael-256-CBC-encrypted submission payload. Returns the
+    ///     colon-delimited score-data fields (split by the caller, matching Python's own
+    ///     `.split(":")`) alongside the decrypted client hash string.
     /// </summary>
     (string[] ScoreDataFields, string ClientHash) Decrypt(
         string scoreDataBase64,

@@ -1,9 +1,9 @@
 namespace Bancho.Application.Configuration;
 
 /// <summary>
-/// Ports DOMAIN, COMMAND_PREFIX, SEASONAL_BGS, MENU_ICON_URL, MENU_ONCLICK_URL, DEBUG,
-/// REDIRECT_OSU_URLS, DEVELOPER_MODE, LOG_WITH_COLORS, AUTOMATICALLY_REPORT_PROBLEMS
-/// from app/settings.py.
+///     Ports DOMAIN, COMMAND_PREFIX, SEASONAL_BGS, MENU_ICON_URL, MENU_ONCLICK_URL, DEBUG,
+///     REDIRECT_OSU_URLS, DEVELOPER_MODE, LOG_WITH_COLORS, AUTOMATICALLY_REPORT_PROBLEMS
+///     from app/settings.py.
 /// </summary>
 public sealed class ServerBehaviorOptions
 {

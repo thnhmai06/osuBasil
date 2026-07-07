@@ -16,5 +16,8 @@ public sealed class MySqlFixture : IAsyncLifetime
         SqlMigrationRunner.RunMigrations(ConnectionString);
     }
 
-    public Task DisposeAsync() => _mysql.DisposeAsync().AsTask();
+    public Task DisposeAsync()
+    {
+        return _mysql.DisposeAsync().AsTask();
+    }
 }

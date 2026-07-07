@@ -1,21 +1,22 @@
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Users;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
-using Bancho.Domain;
-using NSubstitute;
-using Bancho.Application.Abstractions.Users;
 using Bancho.Domain.Users;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Authentication;
 
 /// <summary>Ported from app/services/bancho.py's BanchoAuthenticationService.authenticate_online_player.</summary>
 public class BanchoAuthenticationServiceTests
 {
+    private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-    private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 
-    private BanchoAuthenticationService MakeService() => new(_sessionRegistry, _users, _passwordHasher);
+    private BanchoAuthenticationService MakeService()
+    {
+        return new BanchoAuthenticationService(_sessionRegistry, _users, _passwordHasher);
+    }
 
     [Fact]
     public async Task PlayerNotOnline_ReturnsNull()

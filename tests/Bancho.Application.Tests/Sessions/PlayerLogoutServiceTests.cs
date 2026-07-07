@@ -1,32 +1,39 @@
 using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Application.UseCases.Spectating;
-using Bancho.Domain;
-using NSubstitute;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Application.Sessions.Multiplayer;
+using Bancho.Application.Tests.PacketHandlers;
+using Bancho.Application.UseCases.Multiplayer;
+using Bancho.Application.UseCases.Spectating;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.Sessions;
 
 /// <summary>
-/// Ported from Player.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
-/// out of LogoutHandler so !reconnect can force the same cleanup on a session without going
-/// through the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not
-/// part of "logout" semantics).
+///     Ported from Player.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
+///     out of LogoutHandler so !reconnect can force the same cleanup on a session without going
+///     through the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not
+///     part of "logout" semantics).
 /// </summary>
 public class PlayerLogoutServiceTests
 {
-    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-    private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+
     private readonly MatchMembershipService _matchMembership = new(
         Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-        Substitute.For<IPlayerSessionRegistry>(), new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+        Substitute.For<IPlayerSessionRegistry>(),
+        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
 
-    private PlayerLogoutService MakeService() => new(_sessionRegistry, _channelRegistry, _spectatorService, _matchMembership);
+    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+
+    private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
+        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+
+    private PlayerLogoutService MakeService()
+    {
+        return new PlayerLogoutService(_sessionRegistry, _channelRegistry, _spectatorService, _matchMembership);
+    }
 
     [Fact]
     public void Logout_RemovesFromSessionRegistry()
@@ -41,7 +48,7 @@ public class PlayerLogoutServiceTests
     [Fact]
     public void Logout_LeavesAllJoinedChannels()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         channel.Join(player.Id);
         player.JoinChannel("#osu");
@@ -62,7 +69,7 @@ public class PlayerLogoutServiceTests
 
         MakeService().Logout(player);
 
-        Assert.Equal(Bancho.Protocol.Packets.ServerPacketWriter.Logout(1), other.Dequeue());
+        Assert.Equal(ServerPacketWriter.Logout(1), other.Dequeue());
     }
 
     [Fact]
@@ -94,14 +101,15 @@ public class PlayerLogoutServiceTests
     [Fact]
     public void Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
     {
-        var channelRegistry = new PacketHandlers.MultiplayerTestSupport.FakeChannelRegistry();
-        var matchRegistry = new PacketHandlers.MultiplayerTestSupport.FakeMatchRegistry();
+        var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
+        var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry();
         var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
-        var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry, new ChannelMembershipService(sessionRegistry));
+        var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
+            new ChannelMembershipService(sessionRegistry));
         var host = new PlayerSession(1, "host", "token", Privileges.Unrestricted, 0.0);
         sessionRegistry.All.Returns([host]);
         sessionRegistry.GetById(1).Returns(host);
-        var match = matchMembership.Create(host, PacketHandlers.MultiplayerTestSupport.MakeMatchData(host.Id))!;
+        var match = matchMembership.Create(host, MultiplayerTestSupport.MakeMatchData(host.Id))!;
         var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
 
         service.Logout(host);

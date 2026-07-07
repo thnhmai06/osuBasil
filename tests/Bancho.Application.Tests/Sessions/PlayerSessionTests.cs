@@ -1,5 +1,4 @@
 using Bancho.Application.Sessions;
-using Bancho.Domain;
 using Bancho.Domain.Users;
 
 namespace Bancho.Application.Tests.Sessions;
@@ -7,8 +6,10 @@ namespace Bancho.Application.Tests.Sessions;
 /// <summary>Ported from app/objects/player.py's Player — scoped to Phase 3 (login + basic packet handlers).</summary>
 public class PlayerSessionTests
 {
-    private static PlayerSession MakeSession(Privileges priv) =>
-        new(id: 1000, name: "cmyui", token: "some-token", priv: priv, loginTime: 1000.0);
+    private static PlayerSession MakeSession(Privileges priv)
+    {
+        return new PlayerSession(1000, "cmyui", "some-token", priv, 1000.0);
+    }
 
     [Fact]
     public void BanchoPriv_Unrestricted_MapsToPlayer()
@@ -26,14 +27,14 @@ public class PlayerSessionTests
             | Privileges.Administrator | Privileges.Developer);
 
         var expected = ClientPrivileges.Player | ClientPrivileges.Supporter | ClientPrivileges.Moderator
-            | ClientPrivileges.Developer | ClientPrivileges.Owner;
+                       | ClientPrivileges.Developer | ClientPrivileges.Owner;
         Assert.Equal(expected, session.BanchoPriv);
     }
 
     [Fact]
     public void BanchoPriv_NoPrivileges_IsZero()
     {
-        var session = MakeSession((Privileges)0);
+        var session = MakeSession(0);
 
         Assert.Equal((ClientPrivileges)0, session.BanchoPriv);
     }

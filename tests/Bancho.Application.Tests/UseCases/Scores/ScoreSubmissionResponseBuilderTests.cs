@@ -1,6 +1,5 @@
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Scores;
-using Bancho.Domain;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 
@@ -39,7 +38,10 @@ public class ScoreSubmissionResponseBuilderTests
         Assert.Equal(expected, ScoreSubmissionResponseBuilder.BuildError(code));
     }
 
-    private static Beatmap MakeBeatmap() => new(
-        "md5", 1, 1, "a", "b", "c", "d", DateTime.UtcNow, 1, 500, RankedStatus.Ranked, false, 0, 0,
-        GameMode.VanillaOsu, 1, 1, 1, 1, 1, 1, "f.osu");
+    private static Beatmap MakeBeatmap()
+    {
+        return new Beatmap(
+            "md5", 1, 1, "a", "b", "c", "d", DateTime.UtcNow, 1, 500, RankedStatus.Ranked, false, 0, 0,
+            GameMode.VanillaOsu, 1, 1, 1, 1, 1, 1, "f.osu");
+    }
 }

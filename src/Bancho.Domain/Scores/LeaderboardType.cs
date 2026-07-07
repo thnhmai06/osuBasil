@@ -7,5 +7,5 @@ public enum LeaderboardType
     Top = 1,
     Mods = 2,
     Friends = 3,
-    Country = 4,
+    Country = 4
 }

@@ -3,8 +3,8 @@ using Bancho.Application.Configuration;
 namespace Bancho.Application.Tests.Configuration;
 
 /// <summary>
-/// Ports the exact parsing behavior of bancho.py's app/settings_utils.py
-/// (read_bool, read_list) so env-derived config parses identically.
+///     Ports the exact parsing behavior of bancho.py's app/settings_utils.py
+///     (read_bool, read_list) so env-derived config parses identically.
 /// </summary>
 public class EnvValueParserTests
 {

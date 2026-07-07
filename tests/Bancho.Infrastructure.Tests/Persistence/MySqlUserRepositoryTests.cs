@@ -1,14 +1,12 @@
-using Bancho.Infrastructure.Persistence;
-using Bancho.Domain.Users;
 using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from app/repositories/users.py — scoped to what the Phase 3 login flow needs
-/// (fetch by id/name, password hash, country fix, privilege grant). Broader filter/paging/create
-/// methods are added when a use case actually needs them (Phase 4+), not speculatively now.
-/// migrations/base.sql seeds a BanchoBot user (id=1), which these tests read back.
+///     Ported from app/repositories/users.py — scoped to what the Phase 3 login flow needs
+///     (fetch by id/name, password hash, country fix, privilege grant). Broader filter/paging/create
+///     methods are added when a use case actually needs them (Phase 4+), not speculatively now.
+///     migrations/base.sql seeds a BanchoBot user (id=1), which these tests read back.
 /// </summary>
 public class MySqlUserRepositoryTests : IClassFixture<MySqlFixture>
 {

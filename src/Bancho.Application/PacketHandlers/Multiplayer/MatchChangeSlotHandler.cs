@@ -1,8 +1,6 @@
+using Bancho.Application.PacketHandlers.Core;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Multiplayer;
-using Bancho.Domain;
-using Bancho.Protocol;
-using Bancho.Application.PacketHandlers.Core;
 using Bancho.Domain.Multiplayer;
 using Bancho.Protocol.Packets;
 
@@ -20,24 +18,15 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
         var slotId = reader.ReadI32();
 
         var match = player.Match;
-        if (match is null || slotId is < 0 or >= 16)
-        {
-            return;
-        }
+        if (match is null || slotId is < 0 or >= 16) return;
 
         await match.Lock.WaitAsync();
         try
         {
-            if (match.Slots[slotId].Status != SlotStatus.Open)
-            {
-                return;
-            }
+            if (match.Slots[slotId].Status != SlotStatus.Open) return;
 
             var slot = match.GetSlot(player.Id);
-            if (slot is null)
-            {
-                return;
-            }
+            if (slot is null) return;
 
             match.Slots[slotId].CopyFrom(slot);
             slot.Reset();

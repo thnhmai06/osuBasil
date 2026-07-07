@@ -1,16 +1,15 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
-using Bancho.Protocol;
-using Microsoft.Extensions.Hosting;
 using Bancho.Protocol.Packets;
+using Microsoft.Extensions.Hosting;
 
 namespace Bancho.Application.BackgroundServices;
 
 /// <summary>
-/// Ported from app/bg_loops.py's _disconnect_ghosts: every OSU_CLIENT_MIN_PING_INTERVAL/3
-/// seconds, force-logs-out any player whose last recv time exceeds
-/// OSU_CLIENT_MIN_PING_INTERVAL — mirrors the (osu!-defined) client ping interval, not a value
-/// bancho.py invented.
+///     Ported from app/bg_loops.py's _disconnect_ghosts: every OSU_CLIENT_MIN_PING_INTERVAL/3
+///     seconds, force-logs-out any player whose last recv time exceeds
+///     OSU_CLIENT_MIN_PING_INTERVAL — mirrors the (osu!-defined) client ping interval, not a value
+///     bancho.py invented.
 /// </summary>
 public sealed class GhostDisconnectService(IPlayerSessionRegistry sessionRegistry, IClock clock) : BackgroundService
 {
@@ -22,20 +21,14 @@ public sealed class GhostDisconnectService(IPlayerSessionRegistry sessionRegistr
         var currentTime = clock.UtcNow.ToUnixTimeSeconds();
 
         foreach (var player in sessionRegistry.All)
-        {
             if (currentTime - player.LastRecvTime > OsuClientMinPingIntervalSeconds)
             {
                 sessionRegistry.Remove(player);
 
                 if (!player.Restricted)
-                {
                     foreach (var other in sessionRegistry.All)
-                    {
                         other.Enqueue(ServerPacketWriter.Logout(player.Id));
-                    }
-                }
             }
-        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

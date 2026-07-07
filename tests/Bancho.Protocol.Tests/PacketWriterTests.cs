@@ -1,9 +1,10 @@
 using Bancho.Protocol.Packets;
+
 namespace Bancho.Protocol.Tests;
 
 /// <summary>
-/// Ported from the write-side helpers exercised inline in bancho.py's tests/unit/packets_test.py
-/// (write_string, write_i32_list are used there to build expected payloads for composite packets).
+///     Ported from the write-side helpers exercised inline in bancho.py's tests/unit/packets_test.py
+///     (write_string, write_i32_list are used there to build expected payloads for composite packets).
 /// </summary>
 public class PacketWriterTests
 {

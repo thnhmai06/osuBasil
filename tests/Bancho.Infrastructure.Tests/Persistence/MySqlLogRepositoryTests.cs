@@ -1,7 +1,6 @@
-using Bancho.Infrastructure.Persistence;
+using Bancho.Infrastructure.Persistence.Repositories;
 using Dapper;
 using MySqlConnector;
-using Bancho.Infrastructure.Persistence.Repositories;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 

@@ -1,6 +1,5 @@
-using Bancho.Application.Sessions;
-using Bancho.Protocol;
 using Bancho.Application.PacketHandlers.Core;
+using Bancho.Application.Sessions;
 using Bancho.Protocol.Packets;
 
 namespace Bancho.Application.PacketHandlers.Multiplayer;
@@ -17,16 +16,10 @@ public sealed class MatchInviteHandler(IPlayerSessionRegistry sessionRegistry) :
         var userId = reader.ReadI32();
 
         var match = player.Match;
-        if (match is null)
-        {
-            return Task.CompletedTask;
-        }
+        if (match is null) return Task.CompletedTask;
 
         var target = sessionRegistry.GetById(userId);
-        if (target is null)
-        {
-            return Task.CompletedTask;
-        }
+        if (target is null) return Task.CompletedTask;
 
         target.Enqueue(ServerPacketWriter.MatchInvite(player.Id, player.Name, match.Embed, target.Name));
         return Task.CompletedTask;

@@ -1,20 +1,17 @@
-using Bancho.Application.Abstractions;
-using Bancho.Domain;
-using Bancho.Infrastructure.Persistence;
-using Dapper;
-using MySqlConnector;
 using Bancho.Application.Abstractions.Scores;
 using Bancho.Domain.Beatmaps;
 using Bancho.Domain.Scores;
 using Bancho.Domain.Users;
 using Bancho.Infrastructure.Persistence.Repositories;
+using Dapper;
+using MySqlConnector;
 
 namespace Bancho.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Ported from bancho.py's `async with self.database.transaction():` wrapping the previous-best
-/// demotion, score insert, and stats update in ScoreSubmissionService — all three commit (or fail)
-/// together, unlike calling the three repositories separately over independent connections.
+///     Ported from bancho.py's `async with self.database.transaction():` wrapping the previous-best
+///     demotion, score insert, and stats update in ScoreSubmissionService — all three commit (or fail)
+///     together, unlike calling the three repositories separately over independent connections.
 /// </summary>
 public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
 {
@@ -56,19 +53,29 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
             );
             SELECT LAST_INSERT_ID();
             """,
-            new { MapMd5 = mapMd5, Score = score, Status = (int)status, Mode = (int)GameMode.VanillaOsu, UserId = userId, Checksum = Guid.NewGuid().ToString("N") });
+            new
+            {
+                MapMd5 = mapMd5, Score = score, Status = (int)status, Mode = (int)GameMode.VanillaOsu, UserId = userId,
+                Checksum = Guid.NewGuid().ToString("N")
+            });
     }
 
-    private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum) => new(
-        MapMd5: mapMd5, Score: score, Acc: 98.5, MaxCombo: 500, Mods: 0,
-        N300: 300, N100: 10, N50: 5, NMiss: 0, NGeki: 0, NKatu: 0,
-        Grade: "S", Status: (int)SubmissionStatus.Best, Mode: (int)GameMode.VanillaOsu,
-        PlayTime: DateTime.UtcNow, TimeElapsed: 120000, ClientFlags: 0, UserId: userId,
-        Perfect: false, OnlineChecksum: checksum);
+    private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum)
+    {
+        return new ScoreInsertRow(
+            mapMd5, score, 98.5, 500, 0,
+            300, 10, 5, 0, 0, 0,
+            "S", (int)SubmissionStatus.Best, (int)GameMode.VanillaOsu,
+            DateTime.UtcNow, 120000, 0, userId,
+            false, checksum);
+    }
 
-    private static StatsUpdateRow MakeStatsUpdate() => new(
-        Tscore: 500_000, Rscore: 500_000, Plays: 1, Playtime: 60, Acc: 0, MaxCombo: 500, TotalHits: 315,
-        XhCount: 0, XCount: 0, ShCount: 1, SCount: 0, ACount: 0);
+    private static StatsUpdateRow MakeStatsUpdate()
+    {
+        return new StatsUpdateRow(
+            500_000, 500_000, 1, 60, 0, 500, 315,
+            0, 0, 1, 0, 0);
+    }
 
     [Fact]
     public async Task PersistScoreSubmission_InsertsScoreAndUpdatesStatsAtomically()
@@ -78,14 +85,17 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
         var checksum = Guid.NewGuid().ToString("N");
 
         var scoreId = await _persistence.PersistScoreSubmissionAsync(
-            markPreviousBestSubmitted: false, mapMd5, 401, GameMode.VanillaOsu,
+            false, mapMd5, 401, GameMode.VanillaOsu,
             MakeInsertRow(mapMd5, 401, 500_000, checksum), MakeStatsUpdate());
 
         Assert.True(scoreId > 0);
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var storedScore = await connection.ExecuteScalarAsync<long>("SELECT score FROM scores WHERE id = @Id", new { Id = scoreId });
-        var storedRscore = await connection.ExecuteScalarAsync<long>("SELECT rscore FROM stats WHERE id = @Id AND mode = 0", new { Id = 401 });
+        var storedScore =
+            await connection.ExecuteScalarAsync<long>("SELECT score FROM scores WHERE id = @Id", new { Id = scoreId });
+        var storedRscore =
+            await connection.ExecuteScalarAsync<long>("SELECT rscore FROM stats WHERE id = @Id AND mode = 0",
+                new { Id = 401 });
         Assert.Equal(500_000, storedScore);
         Assert.Equal(500_000, storedRscore);
     }
@@ -99,11 +109,12 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
         var checksum = Guid.NewGuid().ToString("N");
 
         await _persistence.PersistScoreSubmissionAsync(
-            markPreviousBestSubmitted: true, mapMd5, 402, GameMode.VanillaOsu,
+            true, mapMd5, 402, GameMode.VanillaOsu,
             MakeInsertRow(mapMd5, 402, 500_000, checksum), MakeStatsUpdate());
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = previousScoreId });
+        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id",
+            new { Id = previousScoreId });
         Assert.Equal((int)SubmissionStatus.Submitted, previousStatus);
     }
 
@@ -119,10 +130,11 @@ public class MySqlScoreSubmissionPersistenceTests : IClassFixture<MySqlFixture>
         var invalidRow = MakeInsertRow(mapMd5, 403, 500_000, Guid.NewGuid().ToString("N")) with { Grade = "TOOLONG" };
 
         await Assert.ThrowsAsync<MySqlException>(() => _persistence.PersistScoreSubmissionAsync(
-            markPreviousBestSubmitted: true, mapMd5, 403, GameMode.VanillaOsu, invalidRow, MakeStatsUpdate()));
+            true, mapMd5, 403, GameMode.VanillaOsu, invalidRow, MakeStatsUpdate()));
 
         await using var connection = new MySqlConnection(_fixture.ConnectionString);
-        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id", new { Id = previousScoreId });
+        var previousStatus = await connection.ExecuteScalarAsync<int>("SELECT status FROM scores WHERE id = @Id",
+            new { Id = previousScoreId });
         Assert.Equal((int)SubmissionStatus.Best, previousStatus); // demotion rolled back, not left as Submitted
     }
 }

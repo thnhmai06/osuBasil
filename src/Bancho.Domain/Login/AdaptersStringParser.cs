@@ -7,15 +7,9 @@ public static class AdaptersStringParser
 
     public static (IReadOnlyList<string> Adapters, bool RunningUnderWine) Parse(string adaptersString)
     {
-        if (adaptersString == WineAdapterSentinel)
-        {
-            return ([WineAdapterSentinel], true);
-        }
+        if (adaptersString == WineAdapterSentinel) return ([WineAdapterSentinel], true);
 
-        if (!adaptersString.EndsWith('.'))
-        {
-            throw new FormatException("adapter list is missing trailing delimiter");
-        }
+        if (!adaptersString.EndsWith('.')) throw new FormatException("adapter list is missing trailing delimiter");
 
         return (adaptersString[..^1].Split('.'), false);
     }

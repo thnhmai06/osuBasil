@@ -11,10 +11,7 @@ public static partial class OsuVersionParser
     public static OsuVersion? Parse(string osuVersionString)
     {
         var match = VersionRegex().Match(osuVersionString);
-        if (!match.Success)
-        {
-            return null;
-        }
+        if (!match.Success) return null;
 
         var dateText = match.Groups["date"].Value;
         var date = new DateOnly(
@@ -31,12 +28,16 @@ public static partial class OsuVersionParser
         return new OsuVersion(date, revision, stream);
     }
 
-    private static OsuStream ParseStream(string value) => value switch
+    private static OsuStream ParseStream(string value)
     {
-        "beta" => OsuStream.Beta,
-        "cuttingedge" => OsuStream.CuttingEdge,
-        "dev" => OsuStream.Dev,
-        "tourney" => OsuStream.Tourney,
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "unreachable: constrained by regex alternation"),
-    };
+        return value switch
+        {
+            "beta" => OsuStream.Beta,
+            "cuttingedge" => OsuStream.CuttingEdge,
+            "dev" => OsuStream.Dev,
+            "tourney" => OsuStream.Tourney,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value,
+                "unreachable: constrained by regex alternation")
+        };
+    }
 }

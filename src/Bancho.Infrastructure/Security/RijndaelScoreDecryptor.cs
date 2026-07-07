@@ -1,18 +1,17 @@
 using System.Text;
-using Bancho.Application.Abstractions;
+using Bancho.Application.Abstractions.Scores;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
-using Bancho.Application.Abstractions.Scores;
 
 namespace Bancho.Infrastructure.Security;
 
 /// <summary>
-/// Ported from app/encryption.py's decrypt_score_aes_data. This is genuinely Rijndael, not AES:
-/// the osu! client uses a 256-bit block size (block_size=32 in the Python py3rijndael call),
-/// which .NET's built-in Aes class cannot do — it's hardcoded to 128-bit blocks. BouncyCastle's
-/// RijndaelEngine supports the configurable block size the protocol actually needs.
+///     Ported from app/encryption.py's decrypt_score_aes_data. This is genuinely Rijndael, not AES:
+///     the osu! client uses a 256-bit block size (block_size=32 in the Python py3rijndael call),
+///     which .NET's built-in Aes class cannot do — it's hardcoded to 128-bit blocks. BouncyCastle's
+///     RijndaelEngine supports the configurable block size the protocol actually needs.
 /// </summary>
 public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 {
@@ -38,7 +37,7 @@ public sealed class RijndaelScoreDecryptor : IScoreDecryptor
         var cipher = new PaddedBufferedBlockCipher(
             new CbcBlockCipher(new RijndaelEngine(BlockSizeBits)),
             new Pkcs7Padding());
-        cipher.Init(forEncryption: false, new ParametersWithIV(new KeyParameter(key), iv));
+        cipher.Init(false, new ParametersWithIV(new KeyParameter(key), iv));
 
         var output = new byte[cipher.GetOutputSize(ciphertext.Length)];
         var length = cipher.ProcessBytes(ciphertext, 0, ciphertext.Length, output, 0);

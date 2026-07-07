@@ -1,23 +1,24 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.UseCases.Beatmaps;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Beatmaps;
+using Bancho.Application.UseCases.Beatmaps;
 using Bancho.Domain.Beatmaps;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Beatmaps;
 
 /// <summary>
-/// Ported from Beatmap.from_md5 + BeatmapLeaderboardService._classify_missing_beatmap, collapsed
-/// to DB-only resolution (no osu!api fallback — this server runs fully offline).
+///     Ported from Beatmap.from_md5 + BeatmapLeaderboardService._classify_missing_beatmap, collapsed
+///     to DB-only resolution (no osu!api fallback — this server runs fully offline).
 /// </summary>
 public class EnsureBeatmapUseCaseTests
 {
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
 
-    private static Beatmap MakeBeatmap(string md5) => new(
-        md5, 1, 100, "Artist", "Title", "Version", "Creator", DateTime.UtcNow, 100, 500,
-        RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180.0, 4, 8, 9, 5, 6.5, "file.osu");
+    private static Beatmap MakeBeatmap(string md5)
+    {
+        return new Beatmap(
+            md5, 1, 100, "Artist", "Title", "Version", "Creator", DateTime.UtcNow, 100, 500,
+            RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180.0, 4, 8, 9, 5, 6.5, "file.osu");
+    }
 
     [Fact]
     public async Task Md5FoundInDb_ReturnsFound()

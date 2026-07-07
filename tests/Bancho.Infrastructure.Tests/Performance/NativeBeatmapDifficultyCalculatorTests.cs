@@ -3,11 +3,11 @@ using Bancho.Infrastructure.Performance;
 namespace Bancho.Infrastructure.Tests.Performance;
 
 /// <summary>
-/// Verifies the P/Invoke binding into the native akatsuki-pp-rs difficulty engine (see
-/// native/bancho-pp-ffi) produces star ratings that are bit-for-bit identical to
-/// akatsuki-pp-py==1.0.5 (the dependency bancho.py itself uses), for the same beatmap +
-/// mod combinations. Reference values were generated directly from akatsuki-pp-py against
-/// testing/sample_data/vivid_osu_file.osu in the bancho.py repo.
+///     Verifies the P/Invoke binding into the native akatsuki-pp-rs difficulty engine (see
+///     native/bancho-pp-ffi) produces star ratings that are bit-for-bit identical to
+///     akatsuki-pp-py==1.0.5 (the dependency bancho.py itself uses), for the same beatmap +
+///     mod combinations. Reference values were generated directly from akatsuki-pp-py against
+///     testing/sample_data/vivid_osu_file.osu in the bancho.py repo.
 /// </summary>
 public class NativeBeatmapDifficultyCalculatorTests
 {
@@ -25,7 +25,7 @@ public class NativeBeatmapDifficultyCalculatorTests
 
         var stars = calculator.CalculateStarRating(FixturePath, mods);
 
-        Assert.Equal(expectedStars, stars, precision: 10);
+        Assert.Equal(expectedStars, stars, 10);
     }
 
     [Fact]
@@ -33,7 +33,8 @@ public class NativeBeatmapDifficultyCalculatorTests
     {
         var calculator = new NativeBeatmapDifficultyCalculator();
 
-        Assert.Throws<InvalidOperationException>(
-            () => calculator.CalculateStarRating(Path.Combine(AppContext.BaseDirectory, "Fixtures", "does-not-exist.osu"), 0));
+        Assert.Throws<InvalidOperationException>(() =>
+            calculator.CalculateStarRating(Path.Combine(AppContext.BaseDirectory, "Fixtures", "does-not-exist.osu"),
+                0));
     }
 }

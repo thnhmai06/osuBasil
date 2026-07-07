@@ -33,7 +33,7 @@ public class RedisWebSessionStoreTests : IAsyncLifetime
     [Fact]
     public async Task CreateAndFetch_ReturnsUserId()
     {
-        await _store.CreateAsync("token-abc", userId: 42, expiry: TimeSpan.FromDays(30));
+        await _store.CreateAsync("token-abc", 42, TimeSpan.FromDays(30));
 
         Assert.Equal(42, await _store.FetchUserIdAsync("token-abc"));
     }
@@ -41,7 +41,7 @@ public class RedisWebSessionStoreTests : IAsyncLifetime
     [Fact]
     public async Task Delete_TokenNoLongerResolves()
     {
-        await _store.CreateAsync("token-abc", userId: 42, expiry: TimeSpan.FromDays(30));
+        await _store.CreateAsync("token-abc", 42, TimeSpan.FromDays(30));
 
         await _store.DeleteAsync("token-abc");
 
@@ -51,7 +51,7 @@ public class RedisWebSessionStoreTests : IAsyncLifetime
     [Fact]
     public async Task Create_UsesBanchoKeyNamespace()
     {
-        await _store.CreateAsync("token-abc", userId: 42, expiry: TimeSpan.FromDays(30));
+        await _store.CreateAsync("token-abc", 42, TimeSpan.FromDays(30));
 
         var db = _connection.GetDatabase();
         Assert.True(await db.KeyExistsAsync("bancho:web_sessions:token-abc"));

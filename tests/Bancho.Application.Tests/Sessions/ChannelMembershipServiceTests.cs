@@ -1,26 +1,33 @@
 using Bancho.Application.Sessions;
-using Bancho.Domain;
-using Bancho.Protocol;
-using NSubstitute;
 using Bancho.Application.Sessions.Channels;
 using Bancho.Domain.Users;
 using Bancho.Protocol.Packets;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.Sessions;
 
-/// <summary>Ported from Player.join_channel/leave_channel, shared between client-initiated packets and server-initiated instance membership (spectator, mp).</summary>
+/// <summary>
+///     Ported from Player.join_channel/leave_channel, shared between client-initiated packets and server-initiated
+///     instance membership (spectator, mp).
+/// </summary>
 public class ChannelMembershipServiceTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private ChannelMembershipService MakeService() => new(_sessionRegistry);
+    private ChannelMembershipService MakeService()
+    {
+        return new ChannelMembershipService(_sessionRegistry);
+    }
 
-    private static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakePlayer(int id, string name)
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+    }
 
     [Fact]
     public void Join_OrdinaryChannel_BroadcastsToEverySessionThatCanRead()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = MakePlayer(1, "alice");
         var other = MakePlayer(2, "bob");
         _sessionRegistry.All.Returns([player, other]);
@@ -36,7 +43,7 @@ public class ChannelMembershipServiceTests
     [Fact]
     public void Join_InstanceChannel_OnlyBroadcastsToChannelMembers()
     {
-        var channel = new ChannelSession(0, "#spec_9", "topic", 0, 0, false, displayName: "#spectator", instance: true);
+        var channel = new ChannelSession(0, "#spec_9", "topic", 0, 0, false, "#spectator", true);
         var host = MakePlayer(9, "host");
         var joiner = MakePlayer(1, "alice");
         var bystander = MakePlayer(2, "bob");
@@ -54,7 +61,7 @@ public class ChannelMembershipServiceTests
     [Fact]
     public void Join_AlreadyInChannel_ReturnsFalseAndNoBroadcast()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = MakePlayer(1, "alice");
         player.JoinChannel("#osu");
         channel.Join(1);
@@ -68,7 +75,7 @@ public class ChannelMembershipServiceTests
     [Fact]
     public void Part_SendsKickAndBroadcastsUpdatedCount()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = MakePlayer(1, "alice");
         var other = MakePlayer(2, "bob");
         player.JoinChannel("#osu");
@@ -87,13 +94,13 @@ public class ChannelMembershipServiceTests
     [Fact]
     public void Part_WithoutKick_SkipsKickPacket()
     {
-        var channel = new ChannelSession(1, "#osu", "General", 0, 0, autoJoin: true);
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = MakePlayer(1, "alice");
         player.JoinChannel("#osu");
         channel.Join(1);
         _sessionRegistry.All.Returns([player]);
 
-        MakeService().Part(player, channel, kick: false);
+        MakeService().Part(player, channel, false);
 
         var dequeued = player.Dequeue();
         Assert.DoesNotContain(ServerPacketWriter.ChannelKick("#osu"), Chunk(dequeued));

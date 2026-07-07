@@ -1,25 +1,26 @@
-using Bancho.Application.Abstractions;
-using Bancho.Application.Sessions;
-using Bancho.Application.UseCases.Mail;
-using Bancho.Domain;
-using NSubstitute;
 using Bancho.Application.Abstractions.Social;
 using Bancho.Application.Abstractions.Users;
+using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Mail;
 using Bancho.Domain.Users;
+using NSubstitute;
 
 namespace Bancho.Application.Tests.UseCases.Mail;
 
 /// <summary>
-/// Ported from app/services/mail.py's MailReadService.mark_channel_as_read. "channel" is the mail
-/// sender's player name (a naming quirk from the Python source), resolved online-first then via DB.
+///     Ported from app/services/mail.py's MailReadService.mark_channel_as_read. "channel" is the mail
+///     sender's player name (a naming quirk from the Python source), resolved online-first then via DB.
 /// </summary>
 public class MailReadServiceTests
 {
+    private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-    private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
 
-    private static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);
+    private static PlayerSession MakePlayer(int id, string name)
+    {
+        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+    }
 
     [Fact]
     public async Task MarkChannelAsReadAsync_EmptyChannel_NoOp()
@@ -28,7 +29,7 @@ public class MailReadServiceTests
 
         await service.MarkChannelAsReadAsync(MakePlayer(1, "cmyui"), "");
 
-        await _mail.DidNotReceiveWithAnyArgs().MarkConversationAsReadAsync(default, default, default);
+        await _mail.DidNotReceiveWithAnyArgs().MarkConversationAsReadAsync(default, default);
     }
 
     [Fact]
@@ -68,6 +69,6 @@ public class MailReadServiceTests
 
         await service.MarkChannelAsReadAsync(player, "nobody");
 
-        await _mail.DidNotReceiveWithAnyArgs().MarkConversationAsReadAsync(default, default, default);
+        await _mail.DidNotReceiveWithAnyArgs().MarkConversationAsReadAsync(default, default);
     }
 }

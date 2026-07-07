@@ -51,5 +51,5 @@ public enum ClientPackets
     UserPresenceRequestAll = 98,
     ToggleBlockNonFriendDms = 99,
     TournamentJoinMatchChannel = 108,
-    TournamentLeaveMatchChannel = 109,
+    TournamentLeaveMatchChannel = 109
 }
