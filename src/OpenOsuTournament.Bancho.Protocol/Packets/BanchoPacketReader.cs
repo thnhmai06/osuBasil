@@ -190,7 +190,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 
         var slotIds = new List<int>();
         foreach (var status in slotStatuses)
-            if ((status & 0b0111_1100) != 0)
+            if (MatchSlotStatusMask.HasPlayer(status))
                 slotIds.Add(ReadI32());
 
         var hostId = ReadI32();
@@ -253,7 +253,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
     public ReplayFrameData ReadReplayFrame()
     {
         return new ReplayFrameData(
-            ReadU8(),
+            (Keys)ReadU8(),
             ReadU8(),
             ReadF32(),
             ReadF32(),

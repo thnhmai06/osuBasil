@@ -191,7 +191,7 @@ public class BanchoPacketReaderTests
     {
         var frame = Reader("050000004841000060c064000000").ReadReplayFrame();
 
-        Assert.Equal(new ReplayFrameData(5, 0, 12.5f, -3.5f, 100), frame);
+        Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, 0, 12.5f, -3.5f, 100), frame);
     }
 
     [Fact]

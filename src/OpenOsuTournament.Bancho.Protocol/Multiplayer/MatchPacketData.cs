@@ -25,8 +25,20 @@ public sealed record MatchPacketData(
     bool FreeMods,
     int Seed);
 
-/// <summary>One of a match's 16 slots. <c>HasPlayer</c> mirrors bancho.py's `status &amp; 0b01111100 != 0` check.</summary>
+/// <summary>One of a match's 16 slots.</summary>
 public sealed record MatchSlotData(int Status, int Team, int Mods, int? PlayerId)
 {
-    public bool HasPlayer => (Status & 0b0111_1100) != 0;
+    public bool HasPlayer => MatchSlotStatusMask.HasPlayer(Status);
+}
+
+/// <summary>
+///     The slot-status bitmask bancho.py uses (`status &amp; 0b01111100 != 0`, app/packets.py) to decide
+///     whether a slot has an occupying player — shared here so <see cref="MatchSlotData.HasPlayer" />
+///     and <see cref="Packets.BanchoPacketReader.ReadMatch" /> don't each reimplement the magic number.
+/// </summary>
+internal static class MatchSlotStatusMask
+{
+    private const int HasPlayerMask = 0b0111_1100;
+
+    public static bool HasPlayer(int status) => (status & HasPlayerMask) != 0;
 }
