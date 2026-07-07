@@ -63,7 +63,7 @@ public class CompositionRootTests : IAsyncLifetime
     public void ResolvesBanchoPacketDispatcherWithAllHandlers()
     {
         Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-        Assert.Equal(44, _provider.GetServices<IBanchoPacketHandler>().Count());
+        Assert.Equal(42, _provider.GetServices<IBanchoPacketHandler>().Count());
     }
 
     [Fact]
