@@ -16,7 +16,7 @@ public sealed class FriendRemoveHandler(IPlayerSessionRegistry sessionRegistry, 
         var userId = reader.ReadI32();
 
         var target = sessionRegistry.GetById(userId);
-        if (target is null || target.IsBotClient)
+        if (target is null)
         {
             return;
         }

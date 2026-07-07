@@ -9,7 +9,7 @@ namespace Bancho.Application.Sessions;
 /// spectating, clan, friends/blocks as loaded sets) is added when the phase that consumes it
 /// lands, matching the fields' actual introduction order in bancho.py's own history.
 /// </summary>
-public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime, bool isBotClient = false)
+public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime)
 {
     private readonly ConcurrentQueue<byte[]> _packetQueue = new();
     private readonly ConcurrentDictionary<string, byte> _channels = new();
@@ -21,9 +21,6 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     public Privileges Priv { get; set; } = priv;
     public double LoginTime { get; } = loginTime;
     public double LastRecvTime { get; set; } = loginTime;
-
-    /// <summary>Ported from Player.is_bot_client — a bot session never accumulates outgoing packets.</summary>
-    public bool IsBotClient { get; } = isBotClient;
 
     public int UtcOffset { get; init; }
 
@@ -49,14 +46,6 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 
     /// <summary>Ported from Player.match — the multiplayer match this player is currently in, if any.</summary>
     public MatchSession? Match { get; set; }
-
-    /// <summary>
-    /// Ported from Player.recent_score, simplified from a per-mode dict to a single
-    /// most-recently-submitted snapshot (bancho.py's version picks the max by server_time across
-    /// modes anyway) — set unconditionally at the end of every successful score submission,
-    /// consumed by scrim's await_submissions poll.
-    /// </summary>
-    public RecentScoreSnapshot? RecentScore { get; set; }
 
     /// <summary>Ported from Player.stealth — an admin spectating without the target being informed. Toggled by the (Phase 10) `!stealth` command; defaults off.</summary>
     public bool Stealth { get; set; }
@@ -122,13 +111,7 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 
     public bool Silenced => RemainingSilence != 0;
 
-    public void Enqueue(byte[] data)
-    {
-        if (!IsBotClient)
-        {
-            _packetQueue.Enqueue(data);
-        }
-    }
+    public void Enqueue(byte[] data) => _packetQueue.Enqueue(data);
 
     /// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
     public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
@@ -189,9 +172,3 @@ public sealed record CachedPlayerStats(
     int ShCount = 0,
     int SCount = 0,
     int ACount = 0);
-
-/// <summary>
-/// Ported from the fields of Player.recent_score that scrim's await_submissions actually reads
-/// (bmap.md5, server_time, score/acc/max_combo — never pp, per the no-pp scope decision).
-/// </summary>
-public sealed record RecentScoreSnapshot(string BeatmapMd5, DateTime ServerTime, long Score, double Acc, int MaxCombo);

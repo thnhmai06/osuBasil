@@ -1,18 +1,15 @@
 using Bancho.Application.Abstractions;
-using Bancho.Application.Commands;
-using Bancho.Application.Configuration;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Bancho.Application.Tests.PacketHandlers;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's SendMessage (private). A PM to the bot session routes
-/// through the same command dispatcher as public messages instead of mail/away-message handling.
+/// Ported from app/api/domains/cho.py's SendMessage (private). Bot commands aren't wired up yet,
+/// so a PM to the bot session is simply dropped.
 /// </summary>
 public class SendPrivateMessageHandlerTests
 {
@@ -20,14 +17,8 @@ public class SendPrivateMessageHandlerTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
     private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
-    private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
-    private readonly IOptions<ServerBehaviorOptions> _serverOptions = Options.Create(new ServerBehaviorOptions
-    {
-        Domain = "test.local", CommandPrefix = "!", MenuIconUrl = "https://x", MenuOnclickUrl = "https://x",
-    });
 
-    private SendPrivateMessageHandler MakeHandler() =>
-        new(_sessionRegistry, _users, _relationships, _mail, _commandDispatcher, _serverOptions);
+    private SendPrivateMessageHandler MakeHandler() => new(_sessionRegistry, _users, _relationships, _mail);
 
     private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId) =>
         new(PacketWriter.WriteString(sender)
@@ -138,35 +129,6 @@ public class SendPrivateMessageHandlerTests
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "nobody", 1));
 
-        _ = _mail.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default!);
-        Assert.Empty(sender.Dequeue());
-    }
-
-    [Fact]
-    public async Task Handle_PmToBot_CommandPrefix_DispatchesAndRepliesToSender()
-    {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var bot = new PlayerSession(2, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0, isBotClient: true);
-        _sessionRegistry.GetByName("BanchoBot").Returns(bot);
-        _commandDispatcher.DispatchAsync(sender, "help", null, bot).Returns(new CommandDispatchResult("here's help", Hidden: false));
-
-        await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!help", "BanchoBot", 1));
-
-        var expected = ServerPacketWriter.SendMessage("BanchoBot", "here's help", "cmyui", 2);
-        Assert.Equal(expected, sender.Dequeue());
-        _ = _mail.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default!);
-    }
-
-    [Fact]
-    public async Task Handle_PmToBot_NotACommand_NoOp()
-    {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var bot = new PlayerSession(2, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0, isBotClient: true);
-        _sessionRegistry.GetByName("BanchoBot").Returns(bot);
-
-        await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "just chatting", "BanchoBot", 1));
-
-        _ = _commandDispatcher.DidNotReceiveWithAnyArgs().DispatchAsync(default!, default!, default, default);
         _ = _mail.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default!);
         Assert.Empty(sender.Dequeue());
     }

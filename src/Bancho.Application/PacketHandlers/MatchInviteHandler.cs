@@ -3,11 +3,9 @@ using Bancho.Protocol;
 
 namespace Bancho.Application.PacketHandlers;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchInvite.</summary>
+/// <summary>Ported from app/api/domains/cho.py's MatchInvite. The bot-target special case is dropped along with BanchoBot.</summary>
 public sealed class MatchInviteHandler(IPlayerSessionRegistry sessionRegistry) : IBanchoPacketHandler
 {
-    private const string BotName = "BanchoBot";
-
     public ClientPackets PacketId => ClientPackets.MatchInvite;
 
     public bool AllowedWhenRestricted => false;
@@ -25,12 +23,6 @@ public sealed class MatchInviteHandler(IPlayerSessionRegistry sessionRegistry) :
         var target = sessionRegistry.GetById(userId);
         if (target is null)
         {
-            return Task.CompletedTask;
-        }
-
-        if (target.IsBotClient)
-        {
-            player.Enqueue(ServerPacketWriter.SendMessage(BotName, "I'm too busy!", player.Name, target.Id));
             return Task.CompletedTask;
         }
 

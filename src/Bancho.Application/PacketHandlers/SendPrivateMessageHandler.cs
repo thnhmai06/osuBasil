@@ -1,29 +1,17 @@
 using Bancho.Application.Abstractions;
-using Bancho.Application.Commands;
-using Bancho.Application.Configuration;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
-using Microsoft.Extensions.Options;
 
 namespace Bancho.Application.PacketHandlers;
 
-/// <summary>
-/// Ported from app/api/domains/cho.py's SendMessage (private). A PM to the bot session routes
-/// through the same command dispatcher as public messages (only when command-prefixed — plain
-/// chat to the bot and /np previews are not replied to, matching the no-pp scope decision) instead
-/// of the mail/away-message path used for real targets.
-/// </summary>
+/// <summary>Ported from app/api/domains/cho.py's SendMessage (private). BanchoBot's special-cased routing is dropped along with the bot itself.</summary>
 public sealed class SendPrivateMessageHandler(
     IPlayerSessionRegistry sessionRegistry,
     IUserRepository users,
     IRelationshipRepository relationships,
-    IMailRepository mail,
-    ICommandDispatcher commandDispatcher,
-    IOptions<ServerBehaviorOptions> serverOptions) : IBanchoPacketHandler
+    IMailRepository mail) : IBanchoPacketHandler
 {
-    private const string BotName = "BanchoBot";
-
     public ClientPackets PacketId => ClientPackets.SendPrivateMessage;
 
     public bool AllowedWhenRestricted => true;
@@ -38,23 +26,6 @@ public sealed class SendPrivateMessageHandler(
         }
 
         var target = sessionRegistry.GetByName(message.Recipient);
-
-        if (target is not null && target.IsBotClient)
-        {
-            var prefix = serverOptions.Value.CommandPrefix;
-            if (!message.Text.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            var result = await commandDispatcher.DispatchAsync(player, message.Text[prefix.Length..], null, target);
-            if (result?.Response is { } response)
-            {
-                player.Enqueue(ServerPacketWriter.SendMessage(BotName, response, player.Name, target.Id));
-            }
-
-            return;
-        }
 
         await DeliverToRealTargetAsync(player, message, target);
     }

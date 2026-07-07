@@ -1,4 +1,3 @@
-using Bancho.Application.Commands;
 using Bancho.Application.Sessions;
 using Bancho.Domain;
 using Bancho.Protocol;
@@ -255,22 +254,6 @@ public sealed class MatchMembershipService(
         }
 
         BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), sendPassword: false), lobby);
-    }
-
-    /// <summary>
-    /// Ported from Channel.send_bot, called via match.chat.send_bot — unlike <see cref="Enqueue"/>,
-    /// this never mirrors to `#lobby`; it's a message in the match's own chat channel only.
-    /// </summary>
-    public void SendBot(MatchSession match, string message)
-    {
-        var channel = channelRegistry.GetByName(match.ChatChannelName);
-        if (channel is null)
-        {
-            return;
-        }
-
-        const string botName = "BanchoBot";
-        channelMembership.BroadcastToMembers(channel, ServerPacketWriter.SendMessage(botName, message, channel.DisplayName, CommandTargetResolver.BotId));
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)

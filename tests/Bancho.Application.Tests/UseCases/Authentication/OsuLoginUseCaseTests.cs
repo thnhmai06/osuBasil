@@ -39,8 +39,7 @@ public class OsuLoginUseCaseTests
         Options.Create(new ServerBehaviorOptions
         {
             Domain = "test.local", CommandPrefix = "!", MenuIconUrl = "https://a/i.png", MenuOnclickUrl = "https://a",
-        }),
-        Options.Create(new DiscordOptions { AuditLogWebhookUrl = "", InviteUrl = "https://discord.gg/x" }));
+        }));
 
     private static byte[] LoginBody(
         string username = "cmyui",

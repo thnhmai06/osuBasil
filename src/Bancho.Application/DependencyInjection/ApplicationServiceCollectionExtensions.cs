@@ -1,5 +1,4 @@
 using Bancho.Application.BackgroundServices;
-using Bancho.Application.Commands;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
 using Bancho.Application.UseCases.Authentication;
@@ -32,7 +31,6 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
         services.AddSingleton<MatchMembershipService>();
-        services.AddSingleton<MatchScoringService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
@@ -78,38 +76,6 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, TourneyMatchInfoRequestHandler>();
         services.AddSingleton<IBanchoPacketHandler, TourneyMatchJoinChannelHandler>();
         services.AddSingleton<IBanchoPacketHandler, TourneyMatchLeaveChannelHandler>();
-
-        services.AddSingleton<ICommand, HelpCommand>();
-        services.AddSingleton<ICommand, RollCommand>();
-        services.AddSingleton<ICommand, BlockCommand>();
-        services.AddSingleton<ICommand, UnblockCommand>();
-        services.AddSingleton<ICommand, ReconnectCommand>();
-        services.AddSingleton<ICommand, ChangeNameCommand>();
-        services.AddSingleton<ICommand, ApiKeyCommand>();
-        services.AddSingleton<ICommand, MpCommandDispatcher>();
-
-        services.AddSingleton<IMpSubCommand, MpHelpCommand>();
-        services.AddSingleton<IMpSubCommand, MpStartCommand>();
-        services.AddSingleton<IMpSubCommand, MpAbortCommand>();
-        services.AddSingleton<IMpSubCommand, MpMapCommand>();
-        services.AddSingleton<IMpSubCommand, MpModsCommand>();
-        services.AddSingleton<IMpSubCommand, MpFreemodsCommand>();
-        services.AddSingleton<IMpSubCommand, MpHostCommand>();
-        services.AddSingleton<IMpSubCommand, MpRandpwCommand>();
-        services.AddSingleton<IMpSubCommand, MpInviteCommand>();
-        services.AddSingleton<IMpSubCommand, MpAddRefCommand>();
-        services.AddSingleton<IMpSubCommand, MpRmRefCommand>();
-        services.AddSingleton<IMpSubCommand, MpListRefCommand>();
-        services.AddSingleton<IMpSubCommand, MpLockCommand>();
-        services.AddSingleton<IMpSubCommand, MpUnlockCommand>();
-        services.AddSingleton<IMpSubCommand, MpTeamsCommand>();
-        services.AddSingleton<IMpSubCommand, MpConditionCommand>();
-        services.AddSingleton<IMpSubCommand, MpForceCommand>();
-        services.AddSingleton<IMpSubCommand, MpScrimCommand>();
-        services.AddSingleton<IMpSubCommand, MpEndScrimCommand>();
-        services.AddSingleton<IMpSubCommand, MpRematchCommand>();
-
-        services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 
         services.AddSingleton<BanchoPacketDispatcher>();
 

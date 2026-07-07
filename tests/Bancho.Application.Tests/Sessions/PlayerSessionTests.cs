@@ -107,24 +107,6 @@ public class PlayerSessionTests
     }
 
     [Fact]
-    public void Enqueue_IsBotClient_IsNoOp()
-    {
-        var bot = new PlayerSession(1, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0, isBotClient: true);
-
-        bot.Enqueue([1, 2, 3]);
-
-        Assert.Empty(bot.Dequeue());
-    }
-
-    [Fact]
-    public void IsBotClient_DefaultsToFalse()
-    {
-        var session = MakeSession(Privileges.Unrestricted);
-
-        Assert.False(session.IsBotClient);
-    }
-
-    [Fact]
     public void JoinChannel_TracksMembership()
     {
         var session = MakeSession(Privileges.Unrestricted);

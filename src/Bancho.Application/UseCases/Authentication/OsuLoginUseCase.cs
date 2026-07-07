@@ -28,8 +28,7 @@ public sealed class OsuLoginUseCase(
     ILeaderboardStore leaderboardStore,
     ITokenGenerator tokenGenerator,
     IClock clock,
-    IOptions<ServerBehaviorOptions> serverOptions,
-    IOptions<DiscordOptions> discordOptions)
+    IOptions<ServerBehaviorOptions> serverOptions)
 {
     private const int FirstUserId = 3; // userid 2 is reserved for peppy/ppy, per bancho.py's base.sql auto_increment=3
 
@@ -228,8 +227,6 @@ public sealed class OsuLoginUseCase(
 
                 await users.UpdatePrivilegesAsync(user.Id, (int)newPriv, cancellationToken);
                 session.Priv = newPriv;
-
-                data.Add(ServerPacketWriter.SendMessage("BanchoBot", WelcomeMessage(), session.Name, 1));
             }
         }
         else
@@ -241,8 +238,6 @@ public sealed class OsuLoginUseCase(
             }
 
             data.Add(ServerPacketWriter.AccountRestricted());
-            data.Add(ServerPacketWriter.SendMessage(
-                "BanchoBot", RestrictedMessage, session.Name, 1));
         }
 
         sessionRegistry.Add(session);
@@ -275,19 +270,6 @@ public sealed class OsuLoginUseCase(
 
     private byte[] WelcomeNotification() =>
         ServerPacketWriter.Notification($"Welcome back to {serverOptions.Value.Domain}!\nRunning bancho-net.");
-
-    private string WelcomeMessage() => string.Join('\n',
-    [
-        $"Welcome to {serverOptions.Value.Domain}.",
-        "To see a list of commands, use !help.",
-        $"We have a public (Discord)[{discordOptions.Value.InviteUrl}]!",
-        "Enjoy the server!",
-    ]);
-
-    private const string RestrictedMessage =
-        "Your account is currently in restricted mode. " +
-        "If you believe this is a mistake, or have waited a period " +
-        "greater than 3 months, you may appeal via the form on the site.";
 
     private OsuLoginResult InvalidRequestFailure(string tokenOverride = "invalid-request") =>
         new(tokenOverride, Concat(

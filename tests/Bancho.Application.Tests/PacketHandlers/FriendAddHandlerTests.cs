@@ -29,18 +29,6 @@ public class FriendAddHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TargetIsBot_NoOp()
-    {
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var bot = new PlayerSession(2, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0, isBotClient: true);
-        _sessionRegistry.GetById(2).Returns(bot);
-
-        await MakeHandler().HandleAsync(player, UserIdReader(2));
-
-        await _relationships.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default);
-    }
-
-    [Fact]
     public async Task HandleAsync_TargetOnline_CreatesFriendRelationship()
     {
         var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);

@@ -26,21 +26,6 @@ public class MatchInviteHandlerTests
     }
 
     [Fact]
-    public async Task Handle_TargetIsBot_SendsBusyMessageInstead()
-    {
-        var fixture = new Fixture();
-        var host = MakePlayer(1, "host");
-        var bot = new PlayerSession(3, "BanchoBot", "token", Privileges.Unrestricted, 0.0, isBotClient: true);
-        fixture.RegisterAll(host, bot);
-        fixture.CreateMatch(host);
-        var handler = new MatchInviteHandler(fixture.SessionRegistry);
-
-        await handler.HandleAsync(host, ReaderFor(3));
-
-        Assert.Contains(ServerPacketWriter.SendMessage("BanchoBot", "I'm too busy!", host.Name, bot.Id), Chunk(host.Dequeue()));
-    }
-
-    [Fact]
     public async Task Handle_ValidTarget_SendsMatchInvite()
     {
         var fixture = new Fixture();

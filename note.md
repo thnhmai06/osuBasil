@@ -194,6 +194,46 @@ Trước khi viết code, hỏi advisor để chốt 2 việc: (1) `!mp start <s
 
 **Test**: 3 file test mới, 15 test. Application.Tests 445/445, ArchitectureTests 9/9, Infrastructure.Tests 116/116 (20 `IMpSubCommand` đăng ký, không đổi số packet handler).
 
-## Còn lại cho Phase 7
+## Còn lại cho Phase 7 (đã lỗi thời — xem đảo ngược lớn ngay dưới đây)
 
-Tổng cộng đã port 20/25 lệnh `!mp` (thiếu `loadpool`, `unloadpool`, `ban`, `unban`, `pick` — 5 lệnh còn lại đều cần mappool) + 0/7 lệnh `!pool`. **Điểm rẽ đã tới**: cần hỏi user có muốn xây tầng Mappool (Domain + Infrastructure repository `tourney_pools`/`tourney_pool_maps` hoàn toàn mới, xác nhận qua grep không tồn tại ở đâu trong bancho-net) hay bỏ qua 12 lệnh còn lại của `!mp`/`!pool`. Sau đó tới HTML pages `/matches`/`/online` theo đúng thứ tự đã ghi.
+Tổng cộng đã port 20/25 lệnh `!mp` (thiếu `loadpool`, `unloadpool`, `ban`, `unban`, `pick` — 5 lệnh còn lại đều cần mappool) + 0/7 lệnh `!pool`. Đã hỏi user tại điểm rẽ mappool, user chọn "Cần ngay bây giờ" — nhưng NGAY SAU ĐÓ user đổi ý hoàn toàn, xem bên dưới.
+
+## QUYẾT ĐỊNH LỚN CỦA USER: bỏ toàn bộ bot commands + BanchoBot (đảo ngược phần lớn Phase 7 vừa xây)
+
+Ngay khi tôi vừa bắt đầu đọc Python source cho tầng Mappool (`app/repositories/tourney_pools.py`, `tourney_pool_maps.py`, `pool_*` command bodies), user gửi 2 tin nhắn liên tiếp, KHÔNG liên quan gì đến câu hỏi mappool vừa hỏi:
+
+1. *"tôi muốn trước mắt hãy loại bỏ bot commands đi, tôi sẽ implement sau - chỉ giữ chức năng server chứ chưa implement bot commands"*
+2. *"loại bỏ banchoBot luôn"*
+
+Đã hỏi lại 2 lần qua AskUserQuestion để xác định đúng phạm vi (không đoán mò vì đây là việc xoá code đã test/commit, không phải thêm mới):
+- Câu 1: "bot commands" là TOÀN BỘ hệ thống lệnh chat (kể cả `!help`/`!roll`/`!block`/`!unblock`/`!reconnect`/`!changename`/`!apikey` từ Phase 4, KHÔNG chỉ `!mp`/`!pool` tôi mới xây session này) hay chỉ phần mới? → User chọn **"Toàn bộ hệ thống lệnh chat"**.
+- Câu 2 (sau khi thấy BanchoBot cũng gắn với scrim engine): scrim engine (`MatchScoringService`, xây trước đó, dùng `SendBot` để thông báo — giờ không còn BanchoBot để gửi) nên xoá luôn hay chỉ bỏ phần thông báo? → User chọn **"Xóa luôn scrim engine"**.
+
+**Lý do quyết định này hợp lý, không phải tuỳ hứng**: đọc lại `Program.cs`'s comment cũ tự nó đã nói rõ — "BanchoBot gets a real, permanent session ... so command responses and PM auto-replies have somewhere to originate from" — nghĩa là TOÀN BỘ lý do BanchoBot tồn tại là để phục vụ bot commands. Bỏ bot commands mà giữ BanchoBot thì BanchoBot vô dụng. Và scrim engine chỉ có 1 điểm vào (`!mp scrim`) và 1 cách thông báo (`SendBot`) — cả hai đều mất, engine trở thành code chết hoàn toàn, không có ích gì để giữ lại (implement lại cùng lúc với bot commands sau này).
+
+### Phạm vi đã xoá (commit tiếp theo)
+
+**Xoá hoàn toàn**:
+- `src/Bancho.Application/Commands/` (31 file: `ICommand`, `ICommandDispatcher`, `CommandDispatcher`, `CommandTargetResolver`, `HelpCommand`, `RollCommand`, `BlockCommand`, `UnblockCommand`, `ReconnectCommand`, `ChangeNameCommand`, `ApiKeyCommand` — TẤT CẢ từ Phase 4, cộng toàn bộ 20 `Mp*Command` + `MpCommandDispatcher` + `IMpSubCommand` xây trong session này) + `tests/Bancho.Application.Tests/Commands/` (29 file test tương ứng).
+- Scrim engine: `MatchScoringService.cs`, `ScrimParticipant.cs`, `MatchRoundSnapshot.cs`, field/method scrim trong `MatchSession` (`IsScrimming`, `WinningPoints`, `MatchPoints`/`GetMatchPoints`/`AddMatchPoint`/`DecrementMatchPoint`, `Bans`/`AddBan`/`RemoveBan`, `Winners`/`RecordWinner`/`PopLastWinner`, `ResetScrim`), `PlayerSession.RecentScore`/`RecentScoreSnapshot`, dòng gán `RecentScore` trong `ScoreSubmissionUseCase`, nhánh `is_scrimming` trong `MatchCompleteHandler`.
+- BanchoBot: bootstrap session trong `Program.cs` (block "BanchoBot gets a real, permanent session..."), `PlayerSession.IsBotClient` (field + constructor param + check trong `Enqueue`), `MatchMembershipService.SendBot`, lời chào/thông báo restricted "từ BanchoBot" trong `OsuLoginUseCase` (+ `WelcomeMessage()`/`RestrictedMessage` không còn dùng, kéo theo `discordOptions` param không còn dùng — XOÁ, nhưng **KHÔNG xoá `DiscordOptions.cs`** vì nó còn field `AuditLogWebhookUrl` không liên quan BanchoBot, là config scaffolding chờ tính năng audit-log riêng).
+
+**Sửa (bỏ nhánh bot, giữ lại phần còn lại)**:
+- `SendPublicMessageHandler`/`SendPrivateMessageHandler`: bỏ hẳn việc gọi `ICommandDispatcher` — tin nhắn bắt đầu bằng `!` giờ chỉ là chat thường, broadcast như mọi tin nhắn khác. PM tới bot (không còn tồn tại) không còn là trường hợp đặc biệt nữa — mọi PM đều đi qua `DeliverToRealTargetAsync` bình thường.
+- `MatchInviteHandler`/`FriendAddHandler`/`FriendRemoveHandler`: bỏ check `target.IsBotClient` (field không còn tồn tại).
+- `CreateMatchHandler`: bỏ dòng `SendBot(match, "Match created by X.")`.
+- `MatchCompleteHandler`: bỏ tham số `MatchScoringService`, bỏ đoạn build `MatchRoundSnapshot`/tính `wasPlaying` (giữ nguyên `notPlaying` vì dùng cho `immune:` — KHÔNG phải riêng scrim).
+
+**Việc CHƯA xoá, cân nhắc rồi giữ lại vì KHÔNG phải bot commands**:
+- `MatchSession.Referees`/`IsReferee`/`AddReferee`/`RemoveReferee`/`TourneyClients` — vẫn dùng bởi `MatchMembershipService.Leave` (dọn referee khi rời trận) và `TourneyMatchJoinChannelHandler`/`TourneyMatchLeaveChannelHandler` (packet thật, không phải lệnh chat).
+- `MatchSession.Url`/`Embed` — dùng bởi `MatchInviteHandler` (packet MATCH_INVITE thật, không phải `!mp invite`).
+- Seed data "BanchoBot" (user id=1) trong `001_base.sql` và test `SqlMigrationRunnerTests` xác nhận migration đúng — giữ nguyên, chỉ là dữ liệu DB không hại gì, có thể tái dùng nếu bot quay lại sau này.
+- `DiscordOptions.cs`/DI registration/config-binding test — giữ nguyên, không liên quan BanchoBot.
+
+**Bug nhỏ gặp phải khi sửa `Program.cs`**: xoá bootstrap bot làm `IUserRepository`/`ITokenGenerator`/`Bancho.Domain` (using) không còn dùng trong file — dọn theo, build lại xác nhận 0 warning.
+
+**Kết quả sau khi sửa xong**: build sạch toàn solution (Application/Infrastructure/Web/tất cả test project), Application.Tests 316/316 (giảm từ 445, đúng theo số lượng ~130 test bị xoá cùng code), ArchitectureTests 9/9, Infrastructure.Tests 116/116 (composition root không còn `ICommand`/`IMpSubCommand`/`MatchScoringService` nào, chỉ còn packet handler + use case thật).
+
+## Còn lại cho Phase 7 (sau đảo ngược)
+
+Chat command layer (bao gồm cả `!mp`/`!pool`/scrim) và BanchoBot đều bị hoãn — user sẽ tự implement lại sau, không nằm trong phạm vi các phase tiếp theo trừ khi user yêu cầu lại. Server multiplayer packet-level protocol (CREATE_MATCH, JOIN_MATCH, MATCH_* packets, referee/tourney-client tracking) vẫn nguyên vẹn, hoạt động độc lập với lớp lệnh chat đã bỏ. Tiếp theo: HTML pages `/matches`/`/online` theo đúng thứ tự đã ghi trước đó — KHÔNG còn phụ thuộc gì vào bot commands hay mappool.
