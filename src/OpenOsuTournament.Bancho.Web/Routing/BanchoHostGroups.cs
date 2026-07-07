@@ -142,6 +142,8 @@ public static class BanchoHostGroups
             var player = await authentication.AuthenticateOnlinePlayerAsync(username, ha, cancellationToken);
             if (player is null) return Results.StatusCode(StatusCodes.Status401Unauthorized);
 
+            if (!Enum.IsDefined(typeof(LeaderboardType), v)) return Results.StatusCode(StatusCodes.Status400BadRequest);
+
             var leaderboardService = context.RequestServices.GetRequiredService<BeatmapLeaderboardService>();
             var request = new BeatmapLeaderboardRequest(s != 0, (LeaderboardType)v, c, f, m, mods);
             var result = await leaderboardService.FetchLeaderboardAsync(player, request, cancellationToken);
@@ -216,9 +218,13 @@ public static class BanchoHostGroups
             if (string.IsNullOrEmpty(mirrorOptions.DownloadEndpoint))
                 return Results.Text("Beatmap downloads are not available on this server.", "text/html", Encoding.UTF8);
 
-            var noVideo = mapSetId.EndsWith('n');
+            const char noVideoSuffix = 'n';
+            const int noVideoQueryValue = 0;
+            const int withVideoQueryValue = 1;
+
+            var noVideo = mapSetId.EndsWith(noVideoSuffix);
             var setId = noVideo ? mapSetId[..^1] : mapSetId;
-            var query = $"{setId}?n={(noVideo ? 0 : 1)}";
+            var query = $"{setId}?n={(noVideo ? noVideoQueryValue : withVideoQueryValue)}";
 
             return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", true);
         });

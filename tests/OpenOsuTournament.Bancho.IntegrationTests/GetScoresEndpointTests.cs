@@ -106,6 +106,20 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
+    public async Task OutOfRangeLeaderboardType_ReturnsBadRequest()
+    {
+        var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
+        sessionRegistry.Add(new PlayerSession(53, "cmyui-badtype", "tok4", Privileges.Unrestricted, 0.0));
+        var request =
+            MakeRequest(
+                $"us=cmyui-badtype&ha=correct-md5&s=0&vv=4&v=99&c={new string('5', 32)}&f=file.osu&m=0&i=-1&mods=0&h=x&a=0");
+
+        var response = await _factory.CreateClient().SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task RankedBeatmap_NoScores_ReturnsFoundWithHeaderLine()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
