@@ -123,7 +123,7 @@ public sealed class ScoreSubmissionUseCase(
                 // discarded for now; the score itself still counts. See note.md.
                 replayData = null;
 
-            var previousStats = player.ModeStats.GetValueOrDefault((int)score.Mode) ??
+            var previousStats = player.ModeStats.GetValueOrDefault(score.Mode) ??
                                 new CachedPlayerStats(0, 0, 0, 0, 0, 0, 0, 0);
             var updatedStats = ScoreStatsCalculator.ApplyScoreStats(score, previousStats);
             var shouldUpdateRank =
@@ -149,16 +149,16 @@ public sealed class ScoreSubmissionUseCase(
 
             if (shouldUpdateRank)
             {
-                await leaderboardStore.AddToGlobalLeaderboardAsync(player.Id, (int)score.Mode, updatedStats.Rscore,
+                await leaderboardStore.AddToGlobalLeaderboardAsync(player.Id, score.Mode, updatedStats.Rscore,
                     cancellationToken);
                 await leaderboardStore.AddToCountryLeaderboardAsync(
-                    player.Id, (int)score.Mode, player.Geoloc.CountryAcronym, updatedStats.Rscore, cancellationToken);
+                    player.Id, score.Mode, player.Geoloc.CountryAcronym, updatedStats.Rscore, cancellationToken);
                 var newRank =
-                    await leaderboardStore.FetchGlobalRankAsync(player.Id, (int)score.Mode, cancellationToken);
+                    await leaderboardStore.FetchGlobalRankAsync(player.Id, score.Mode, cancellationToken);
                 if (newRank is not null) updatedStats = updatedStats with { Rank = newRank.Value };
             }
 
-            player.ModeStats[(int)score.Mode] = updatedStats;
+            player.ModeStats[score.Mode] = updatedStats;
 
             if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
 

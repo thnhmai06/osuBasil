@@ -149,7 +149,7 @@ public class ScoreSubmissionUseCaseTests
         var bmap = MakeBeatmap();
         _maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<CancellationToken>()).Returns(bmap);
         var player = MakePlayer();
-        player.ModeStats[(int)GameMode.VanillaOsu] = new CachedPlayerStats(1000, 500, 0, 1, 100, 200, 300, 0);
+        player.ModeStats[GameMode.VanillaOsu] = new CachedPlayerStats(1000, 500, 0, 1, 100, 200, 300, 0);
         _scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
         _scores.FetchPersonalBestLeaderboardScoreAsync(bmap.Md5, GameMode.VanillaOsu, player.Id,
                 Arg.Any<CancellationToken>())
@@ -157,7 +157,7 @@ public class ScoreSubmissionUseCaseTests
         _scores.FetchPersonalBestLeaderboardRankAsync(bmap.Md5, GameMode.VanillaOsu, 500_000,
             Arg.Any<CancellationToken>()).Returns(1);
         StubPersistence(999L);
-        _leaderboardStore.FetchGlobalRankAsync(player.Id, (int)GameMode.VanillaOsu, Arg.Any<CancellationToken>())
+        _leaderboardStore.FetchGlobalRankAsync(player.Id, GameMode.VanillaOsu, Arg.Any<CancellationToken>())
             .Returns(1);
 
         var result = await MakeUseCase()
@@ -176,10 +176,10 @@ public class ScoreSubmissionUseCaseTests
                 && s.MaxCombo == 500 && s.TotalHits == 300 + 315 && s.SCount == 1
                 && s.XhCount == 0 && s.XCount == 0 && s.ShCount == 0 && s.ACount == 0),
             Arg.Any<CancellationToken>());
-        await _leaderboardStore.Received(1).AddToGlobalLeaderboardAsync(player.Id, (int)GameMode.VanillaOsu,
+        await _leaderboardStore.Received(1).AddToGlobalLeaderboardAsync(player.Id, GameMode.VanillaOsu,
             500 + 500_000, Arg.Any<CancellationToken>());
         await _maps.Received(1).IncrementPlayCountsAsync(bmap.Id, true, Arg.Any<CancellationToken>());
-        Assert.Equal(500 + 500_000, player.ModeStats[(int)GameMode.VanillaOsu].Rscore);
+        Assert.Equal(500 + 500_000, player.ModeStats[GameMode.VanillaOsu].Rscore);
     }
 
     [Fact]
@@ -252,6 +252,6 @@ public class ScoreSubmissionUseCaseTests
             false, Arg.Any<string>(), Arg.Any<int>(), Arg.Any<GameMode>(),
             Arg.Any<ScoreInsertRow>(), Arg.Any<StatsUpdateRow>(), Arg.Any<CancellationToken>());
         await _leaderboardStore.DidNotReceive().AddToGlobalLeaderboardAsync(
-            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
+            Arg.Any<int>(), Arg.Any<GameMode>(), Arg.Any<double>(), Arg.Any<CancellationToken>());
     }
 }

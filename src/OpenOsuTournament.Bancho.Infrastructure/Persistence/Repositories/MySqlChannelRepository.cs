@@ -13,7 +13,8 @@ public sealed class MySqlChannelRepository(string connectionString) : IChannelRe
     public async Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var rows = await connection.QueryAsync<ChannelRow>($"SELECT {SelectColumns} FROM channels WHERE auto_join = 1");
+        var rows = await connection.QueryAsync<ChannelRow>(
+            $"SELECT {SelectColumns} FROM channels WHERE auto_join = @AutoJoin", new { AutoJoin = true });
         return rows.Select(r => r.ToChannel()).ToList();
     }
 

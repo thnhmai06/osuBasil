@@ -1,4 +1,5 @@
 using OpenOsuTournament.Bancho.Application.Abstractions.Scores;
+using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using StackExchange.Redis;
 
 namespace OpenOsuTournament.Bancho.Infrastructure.Redis;
@@ -8,49 +9,51 @@ public sealed class RedisLeaderboardStore(IConnectionMultiplexer connection) : I
 {
     private IDatabase Db => connection.GetDatabase();
 
-    public async Task<int?> FetchGlobalRankAsync(int playerId, int mode, CancellationToken cancellationToken = default)
+    public async Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode,
+        CancellationToken cancellationToken = default)
     {
         var rank = await Db.SortedSetRankAsync(GlobalKey(mode), playerId.ToString(), Order.Descending);
         return rank.HasValue ? (int)rank.Value + 1 : null;
     }
 
-    public async Task<int?> FetchCountryRankAsync(int playerId, int mode, string country,
+    public async Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,
         CancellationToken cancellationToken = default)
     {
         var rank = await Db.SortedSetRankAsync(CountryKey(mode, country), playerId.ToString(), Order.Descending);
         return rank.HasValue ? (int)rank.Value + 1 : null;
     }
 
-    public Task AddToGlobalLeaderboardAsync(int playerId, int mode, double score,
+    public Task AddToGlobalLeaderboardAsync(int playerId, GameMode mode, double score,
         CancellationToken cancellationToken = default)
     {
         return Db.SortedSetAddAsync(GlobalKey(mode), playerId.ToString(), score);
     }
 
-    public Task RemoveFromGlobalLeaderboardAsync(int playerId, int mode, CancellationToken cancellationToken = default)
+    public Task RemoveFromGlobalLeaderboardAsync(int playerId, GameMode mode,
+        CancellationToken cancellationToken = default)
     {
         return Db.SortedSetRemoveAsync(GlobalKey(mode), playerId.ToString());
     }
 
-    public Task AddToCountryLeaderboardAsync(int playerId, int mode, string country, double score,
+    public Task AddToCountryLeaderboardAsync(int playerId, GameMode mode, string country, double score,
         CancellationToken cancellationToken = default)
     {
         return Db.SortedSetAddAsync(CountryKey(mode, country), playerId.ToString(), score);
     }
 
-    public Task RemoveFromCountryLeaderboardAsync(int playerId, int mode, string country,
+    public Task RemoveFromCountryLeaderboardAsync(int playerId, GameMode mode, string country,
         CancellationToken cancellationToken = default)
     {
         return Db.SortedSetRemoveAsync(CountryKey(mode, country), playerId.ToString());
     }
 
-    private static string GlobalKey(int mode)
+    private static string GlobalKey(GameMode mode)
     {
-        return $"bancho:leaderboard:{mode}";
+        return $"bancho:leaderboard:{(int)mode}";
     }
 
-    private static string CountryKey(int mode, string country)
+    private static string CountryKey(GameMode mode, string country)
     {
-        return $"bancho:leaderboard:{mode}:{country}";
+        return $"bancho:leaderboard:{(int)mode}:{country}";
     }
 }

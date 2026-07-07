@@ -2,6 +2,7 @@ using NSubstitute;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Domain;
+using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Users;
 using OpenOsuTournament.Bancho.Protocol.Packets;
 using Action = OpenOsuTournament.Bancho.Domain.Action;
@@ -18,7 +19,7 @@ public class UserStatsRequestHandlerTests
     {
         var self = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         var target = new PlayerSession(2, "target", "target-token", Privileges.Unrestricted, 0.0);
-        target.ModeStats[0] = new CachedPlayerStats(1000, 900, 95.0, 10, 500, 200, 300, 3);
+        target.ModeStats[GameMode.VanillaOsu] = new CachedPlayerStats(1000, 900, 95.0, 10, 500, 200, 300, 3);
         _sessionRegistry.All.Returns([self, target]);
         _sessionRegistry.GetById(2).Returns(target);
         var reader = new BanchoPacketReader(PacketWriter.WriteI32List([2]));

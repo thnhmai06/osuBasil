@@ -10,6 +10,7 @@ using OpenOsuTournament.Bancho.Application.Configuration;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.UseCases.Authentication;
+using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Users;
 using OpenOsuTournament.Bancho.Protocol;
 using OpenOsuTournament.Bancho.Protocol.Packets;
@@ -339,7 +340,7 @@ public class OsuLoginUseCaseTests
             new Stats(user.Id, 0, 100_000, 90_000, 50, 1000, 95.5, 300, 2000, 10, 1, 2, 3, 4, 5),
             new Stats(user.Id, 1, 200_000, 180_000, 80, 2000, 90.0, 250, 3000, 20, 0, 0, 0, 0, 0)
         ]);
-        _leaderboardStore.FetchGlobalRankAsync(user.Id, 0, Arg.Any<CancellationToken>()).Returns(7);
+        _leaderboardStore.FetchGlobalRankAsync(user.Id, GameMode.VanillaOsu, Arg.Any<CancellationToken>()).Returns(7);
 
         PlayerSession? captured = null;
         _sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
@@ -351,8 +352,8 @@ public class OsuLoginUseCaseTests
         Assert.NotNull(captured);
         Assert.Equal("us", captured!.Geoloc.CountryAcronym);
         Assert.Equal(2, captured.ModeStats.Count);
-        Assert.Equal(7, captured.ModeStats[0].Rank);
-        Assert.Equal(90_000, captured.ModeStats[0].Rscore);
+        Assert.Equal(7, captured.ModeStats[GameMode.VanillaOsu].Rank);
+        Assert.Equal(90_000, captured.ModeStats[GameMode.VanillaOsu].Rscore);
     }
 
     [Fact]
@@ -388,7 +389,7 @@ public class OsuLoginUseCaseTests
         _sessionRegistry.All.Returns([]);
         _stats.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         _relationships.FetchAllAsync(userId, null, Arg.Any<CancellationToken>()).Returns([]);
-        _leaderboardStore.FetchGlobalRankAsync(userId, Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _leaderboardStore.FetchGlobalRankAsync(userId, Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
             .Returns((int?)null);
         _mail.FetchUnreadMailToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         _tokenGenerator.GenerateToken().Returns("generated-token");

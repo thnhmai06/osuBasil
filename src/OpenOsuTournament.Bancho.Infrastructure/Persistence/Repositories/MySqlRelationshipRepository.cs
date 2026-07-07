@@ -53,6 +53,11 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
         return type == RelationshipType.Friend ? "friend" : "block";
     }
 
+    private static RelationshipType TypeFromColumn(string column)
+    {
+        return column == "friend" ? RelationshipType.Friend : RelationshipType.Block;
+    }
+
     private MySqlConnection Connect()
     {
         return new MySqlConnection(connectionString);
@@ -66,7 +71,7 @@ public sealed class MySqlRelationshipRepository(string connectionString) : IRela
 
         public Relationship ToRelationship()
         {
-            return new Relationship(User1, User2, Type == "friend" ? RelationshipType.Friend : RelationshipType.Block);
+            return new Relationship(User1, User2, TypeFromColumn(Type));
         }
     }
 }

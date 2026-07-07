@@ -16,17 +16,30 @@ public sealed record DirectSearchRequest(string Query, int Mode, int RankedStatu
 /// </summary>
 public sealed class DirectSearchService(IMapRepository maps)
 {
+    /// <summary>
+    ///     Shared with <see cref="DirectSearchResponseFormatter" /> — a full page signals "there may
+    ///     be more" to the client (reported as 101 rather than the literal count).
+    /// </summary>
+    internal const int PageSize = 100;
+
+    /// <summary>Client sentinel for "any mode" in <see cref="DirectSearchRequest.Mode" />.</summary>
+    private const int AnyMode = -1;
+
+    /// <summary>Client sentinel for "any ranked status" in <see cref="DirectSearchRequest.RankedStatusArg" />.</summary>
+    private const int AnyRankedStatus = 4;
+
     private static readonly string[] NonTextQueries = ["Newest", "Top+Rated", "Most+Played"];
 
     public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
         DirectSearchRequest request, CancellationToken cancellationToken = default)
     {
         var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;
-        GameMode? mode = request.Mode == -1 ? null : (GameMode)request.Mode;
-        RankedStatus? status = request.RankedStatusArg == 4
+        GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
+        RankedStatus? status = request.RankedStatusArg == AnyRankedStatus
             ? null
             : RankedStatusExtensions.FromOsuDirect(request.RankedStatusArg);
 
-        return await maps.SearchAsync(queryText, mode, status, request.PageNum * 100, 100, cancellationToken);
+        return await maps.SearchAsync(queryText, mode, status, request.PageNum * PageSize, PageSize,
+            cancellationToken);
     }
 }

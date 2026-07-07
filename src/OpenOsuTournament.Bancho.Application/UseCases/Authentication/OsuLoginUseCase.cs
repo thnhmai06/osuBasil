@@ -8,6 +8,7 @@ using OpenOsuTournament.Bancho.Application.Configuration;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
+using OpenOsuTournament.Bancho.Domain.Beatmaps;
 using OpenOsuTournament.Bancho.Domain.Login;
 using OpenOsuTournament.Bancho.Domain.Users;
 using OpenOsuTournament.Bancho.Protocol;
@@ -158,8 +159,9 @@ public sealed class OsuLoginUseCase(
         // cache instead of re-querying the DB/Redis per packet.
         foreach (var modeStat in await stats.FetchAllForUserAsync(user.Id, cancellationToken))
         {
-            var modeRank = await leaderboardStore.FetchGlobalRankAsync(user.Id, modeStat.Mode, cancellationToken) ?? 0;
-            session.ModeStats[modeStat.Mode] = new CachedPlayerStats(
+            var mode = (GameMode)modeStat.Mode;
+            var modeRank = await leaderboardStore.FetchGlobalRankAsync(user.Id, mode, cancellationToken) ?? 0;
+            session.ModeStats[mode] = new CachedPlayerStats(
                 modeStat.Tscore, modeStat.Rscore, modeStat.Acc, modeStat.Plays, modeStat.Playtime,
                 modeStat.MaxCombo, modeStat.TotalHits, modeRank);
         }

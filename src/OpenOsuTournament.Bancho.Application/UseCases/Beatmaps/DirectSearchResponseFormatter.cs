@@ -11,9 +11,9 @@ public static class DirectSearchResponseFormatter
 {
     public static string Format(IReadOnlyList<IReadOnlyList<Beatmap>> beatmapSets)
     {
-        // Ported from DirectSearchService.search: a full page (100 sets) signals "there may be
-        // more" to the client, so it's reported as 101 rather than the literal count.
-        var resultCount = beatmapSets.Count == 100 ? 101 : beatmapSets.Count;
+        // Ported from DirectSearchService.search: a full page signals "there may be more" to the
+        // client, so it's reported as 101 rather than the literal count.
+        var resultCount = beatmapSets.Count == DirectSearchService.PageSize ? 101 : beatmapSets.Count;
         var lines = new List<string> { resultCount.ToString() };
 
         foreach (var set in beatmapSets)

@@ -14,15 +14,6 @@ public sealed record BeatmapInfoRow(int Index, int Id, int SetId, string Md5, in
 /// </summary>
 public sealed class BeatmapInfoService(IMapRepository maps, IScoreRepository scores)
 {
-    private static readonly Dictionary<RankedStatus, int> BanchoToOsuApiStatus = new()
-    {
-        [RankedStatus.Pending] = 0,
-        [RankedStatus.Ranked] = 1,
-        [RankedStatus.Approved] = 2,
-        [RankedStatus.Qualified] = 3,
-        [RankedStatus.Loved] = 4
-    };
-
     public async Task<IReadOnlyList<BeatmapInfoRow>> FetchBeatmapInfoAsync(
         IReadOnlyList<string> filenames, int playerId, GameMode vanillaMode,
         CancellationToken cancellationToken = default)
@@ -40,7 +31,7 @@ public sealed class BeatmapInfoService(IMapRepository maps, IScoreRepository sco
             if (best is not null) grades[(int)vanillaMode] = best.Grade;
 
             result.Add(new BeatmapInfoRow(index, beatmap.Id, beatmap.SetId, beatmap.Md5,
-                BanchoToOsuApiStatus[beatmap.Status], grades));
+                beatmap.Status.OsuApi(), grades));
         }
 
         return result;

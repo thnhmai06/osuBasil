@@ -68,10 +68,10 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     ///     Per-mode stats, cached in memory at login (stats_from_sql_full) and never re-queried per
     ///     packet. Ported from Player.stats (dict[GameMode, ModeData]).
     /// </summary>
-    public Dictionary<int, CachedPlayerStats> ModeStats { get; } = new();
+    public Dictionary<GameMode, CachedPlayerStats> ModeStats { get; } = new();
 
     /// <summary>Ported from Player.gm_stats — the cached stats for the player's currently selected mode.</summary>
-    public CachedPlayerStats? CurrentStats => ModeStats.GetValueOrDefault((int)Status.Mode);
+    public CachedPlayerStats? CurrentStats => ModeStats.GetValueOrDefault(Status.Mode);
 
     public string SafeName => Domain.Users.SafeName.Make(Name);
 
