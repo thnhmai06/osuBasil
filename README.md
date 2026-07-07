@@ -1,9 +1,9 @@
-# bancho-net
+# OpenOsuTournament.Bancho
 
-A C# / .NET port of [bancho.py](https://github.com/osuAkatsuki/bancho.py), the osu! private server implementation, scoped down to run **multiplayer matches and tournaments**.
+A C# / .NET service for OpenOsuTournament, scoped to run the osu! Bancho side needed for **multiplayer matches and tournaments**.
 
 > [!NOTE]
-> This is not a drop-in replacement for bancho.py. Chat commands, the bot account, pp calculation, clans, friends, and the public developer API are intentionally out of scope right now — see [`docs/scope-decisions.md`](docs/scope-decisions.md) for what's kept, what's cut, and why.
+> This is not a drop-in replacement for bancho.py. It exists to power OpenOsuTournament's osu! tournament and multiplayer flows; chat commands, the bot account, pp calculation, clans, friends, and the public developer API are intentionally out of scope right now — see [`docs/scope-decisions.md`](docs/scope-decisions.md) for what's kept, what's cut, and why.
 
 ## What this is
 

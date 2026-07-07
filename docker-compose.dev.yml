@@ -9,7 +9,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - bancho-net-mysql-data:/var/lib/mysql
+      - bancho-mysql-data:/var/lib/mysql
     healthcheck:
       test: '/usr/bin/mysql --user=bancho --password=bancho --execute "SHOW DATABASES;"'
       interval: 2s
@@ -21,8 +21,8 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - bancho-net-redis-data:/data
+      - bancho-redis-data:/data
 
 volumes:
-  bancho-net-mysql-data:
-  bancho-net-redis-data:
+  bancho-mysql-data:
+  bancho-redis-data:

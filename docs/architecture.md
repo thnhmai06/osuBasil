@@ -1,6 +1,6 @@
 # Architecture
 
-bancho-net follows **Monolith Clean Architecture**: one deployable, but with the dependency-inversion discipline of Clean Architecture enforced between layers. The rule is checked by an automated test suite (`tests/Bancho.ArchitectureTests`, using [NetArchTest](https://github.com/BenMorris/NetArchTest)), not just left as a convention — a PR that violates the dependency direction fails CI.
+OpenOsuTournament.Bancho follows **Monolith Clean Architecture**: one deployable, but with the dependency-inversion discipline of Clean Architecture enforced between layers. The rule is checked by an automated test suite (`tests/Bancho.ArchitectureTests`, using [NetArchTest](https://github.com/BenMorris/NetArchTest)), not just left as a convention — a PR that violates the dependency direction fails CI.
 
 ## The five projects
 
@@ -45,7 +45,7 @@ Every subsequent client request carries an `osu-token` header; `BanchoHostGroups
 
 1. Client sends the `CREATE_MATCH` packet → `BanchoPacketDispatcher` routes it to `CreateMatchHandler` (`PacketHandlers/Multiplayer/`).
 2. `CreateMatchHandler` delegates to `MatchMembershipService.Create` (`UseCases/Multiplayer/`), which atomically allocates a match ID from the 64-slot `IMatchRegistry`, builds a `MatchSession` (`Sessions/Multiplayer/`), registers its dedicated chat channel, and joins the host into slot 0.
-3. Every subsequent match packet handler (`MatchChangeSlotHandler`, `MatchReadyHandler`, `MatchStartHandler`, etc.) acquires `MatchSession.Lock` — a per-match `SemaphoreSlim(1, 1)` — before reading or mutating slot state, then broadcasts the updated match state before releasing it. This lock is bancho-net's own addition: the Python source relies on asyncio's single-threaded event loop for atomicity between `await` points, which ASP.NET Core's real thread pool doesn't give for free.
+3. Every subsequent match packet handler (`MatchChangeSlotHandler`, `MatchReadyHandler`, `MatchStartHandler`, etc.) acquires `MatchSession.Lock` — a per-match `SemaphoreSlim(1, 1)` — before reading or mutating slot state, then broadcasts the updated match state before releasing it. This lock is OpenOsuTournament.Bancho's own addition: the Python source relies on asyncio's single-threaded event loop for atomicity between `await` points, which ASP.NET Core's real thread pool doesn't give for free.
 4. `tests/Bancho.Application.Tests/Sessions/MatchSessionRaceTests.cs` is the test that actually proves the lock works — it reproduces a genuine lost-write race with the lock removed, then shows the same scenario is race-free with it in place.
 
 ## Where to look when adding something new

@@ -1,6 +1,6 @@
 # Scope decisions
 
-bancho-net started as a full port of bancho.py, then was deliberately narrowed mid-project: *"I want to build a system that only serves multiplayer and tournaments, so peripheral features need to be removed."* This page is the condensed, by-topic record of what that meant in practice — what got cut, what got kept, and why. It supersedes the project's old chronological working log.
+OpenOsuTournament.Bancho started as a full port of bancho.py, then was deliberately narrowed mid-project: *"I want to build a system that only serves multiplayer and tournaments, so peripheral features need to be removed."* This page is the condensed, by-topic record of what that meant in practice — what got cut, what got kept, and why. It supersedes the project's old chronological working log.
 
 ## Dropped entirely
 
@@ -41,7 +41,7 @@ Kept as real, working implementations:
 
 Stubbed (route exists and responds, but does nothing): `osu-screenshot.php`, `osu-getfavourites.php`/`osu-addfavourite.php`, `osu-rate.php`, `osu-comment.php`, `POST /users` (in-game registration — returns bancho.py's real "registration disallowed" response), `POST /difficulty-rating` (redirects to osu.ppy.sh, same as upstream).
 
-**Anticheat, specifically:** bancho.py's lastfm handler can flag, restrict, and force-log-out a suspected cheater. bancho-net keeps only the *detection and logging* half — a flagged client hash is written to the existing `logs` table (same shape Python's `Player.restrict()` used) — and deliberately does not restrict or kick anyone. Building real restriction requires the moderation system, which is out of scope.
+**Anticheat, specifically:** bancho.py's lastfm handler can flag, restrict, and force-log-out a suspected cheater. OpenOsuTournament.Bancho keeps only the *detection and logging* half — a flagged client hash is written to the existing `logs` table (same shape Python's `Player.restrict()` used) — and deliberately does not restrict or kick anyone. Building real restriction requires the moderation system, which is out of scope.
 
 ## Deferred, not dropped
 
@@ -52,4 +52,4 @@ Stubbed (route exists and responds, but does nothing): `osu-screenshot.php`, `os
 ## Design decisions that shaped the cut scope
 
 - **No pp calculation, anywhere.** Star rating/difficulty is computed locally for display only (via the vendored `akatsuki-pp-rs` Rust crate); nothing in scoring, leaderboards, or match win conditions depends on pp. `!mp condition`'s old "pp" win-condition branch was dropped for the same reason.
-- **Manual real-client testing over automated parity.** The original Phase 11 plan included a "run bancho.py and bancho-net side by side" parity check. That assumption stopped making sense once so much of bancho.py's feature surface was intentionally cut. The user chose to instead manually test a real multiplayer/tournament flow with two actual osu! clients — see [`getting-started.md`](getting-started.md) for what that setup requires.
+- **Manual real-client testing over automated parity.** The original Phase 11 plan included a "run bancho.py and OpenOsuTournament.Bancho side by side" parity check. That assumption stopped making sense once so much of bancho.py's feature surface was intentionally cut. The user chose to instead manually test a real multiplayer/tournament flow with two actual osu! clients — see [`getting-started.md`](getting-started.md) for what that setup requires.

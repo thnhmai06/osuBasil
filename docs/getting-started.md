@@ -15,7 +15,7 @@ The app listens on `http://localhost:8080`. Relevant environment variables (see 
 | `BANCHO_DOMAIN` | the domain the server identifies itself as (used in menu icon links, etc.) |
 | `BANCHO_MENU_ICON_URL` / `BANCHO_MENU_ONCLICK_URL` | the in-game main menu icon and its click-through URL |
 
-Data persists in three named volumes (`bancho-net-mysql-data`, `bancho-net-redis-data`, `bancho-net-replays`).
+Data persists in three named volumes (`bancho-mysql-data`, `bancho-redis-data`, `bancho-replays`).
 
 ## Local development: `dotnet run` against dockerized MySQL/Redis
 

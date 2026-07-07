@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-bancho-net is a C#/.NET port of [bancho.py](https://github.com/osuAkatsuki/bancho.py) (the osu! private server backend), deliberately narrowed mid-project to serve **multiplayer matches and tournaments only**. It is not a full bancho.py port — chat commands, the bot account, pp calculation, clans, friends, and the public developer API are intentionally out of scope. Read [`docs/scope-decisions.md`](docs/scope-decisions.md) before assuming a bancho.py feature should exist here — a lot of it was cut on purpose, not left unfinished. [`README.md`](README.md), [`docs/architecture.md`](docs/architecture.md), and [`docs/api-reference.md`](docs/api-reference.md) are the other primary references; this file complements them rather than repeating their content.
+OpenOsuTournament.Bancho is a C#/.NET service for OpenOsuTournament, built from [bancho.py](https://github.com/osuAkatsuki/bancho.py) (the osu! private server backend) and deliberately narrowed mid-project to serve **multiplayer matches and tournaments only**. It is not a full bancho.py port — chat commands, the bot account, pp calculation, clans, friends, and the public developer API are intentionally out of scope. Read [`docs/scope-decisions.md`](docs/scope-decisions.md) before assuming a bancho.py feature should exist here — a lot of it was cut on purpose, not left unfinished. [`README.md`](README.md), [`docs/architecture.md`](docs/architecture.md), and [`docs/api-reference.md`](docs/api-reference.md) are the other primary references; this file complements them rather than repeating their content.
 
 ## Rules
 ### 1. Think Before Coding

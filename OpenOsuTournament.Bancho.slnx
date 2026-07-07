@@ -1,0 +1,21 @@
+<Solution>
+    <Folder Name="/Sources/">
+        <Project Path="src/OpenOsuTournament.Bancho.Application/OpenOsuTournament.Bancho.Application.csproj"/>
+        <Project Path="src/OpenOsuTournament.Bancho.Domain/OpenOsuTournament.Bancho.Domain.csproj"/>
+        <Project Path="src/OpenOsuTournament.Bancho.Infrastructure/OpenOsuTournament.Bancho.Infrastructure.csproj"/>
+        <Project Path="src/OpenOsuTournament.Bancho.Protocol/OpenOsuTournament.Bancho.Protocol.csproj"/>
+        <Project Path="src/OpenOsuTournament.Bancho.Web/OpenOsuTournament.Bancho.Web.csproj"/>
+    </Folder>
+    <Folder Name="/Tests/">
+        <Project
+                Path="tests/OpenOsuTournament.Bancho.Application.Tests/OpenOsuTournament.Bancho.Application.Tests.csproj"/>
+        <Project
+                Path="tests/OpenOsuTournament.Bancho.ArchitectureTests/OpenOsuTournament.Bancho.ArchitectureTests.csproj"/>
+        <Project Path="tests/OpenOsuTournament.Bancho.Domain.Tests/OpenOsuTournament.Bancho.Domain.Tests.csproj"/>
+        <Project
+                Path="tests/OpenOsuTournament.Bancho.Infrastructure.Tests/OpenOsuTournament.Bancho.Infrastructure.Tests.csproj"/>
+        <Project
+                Path="tests/OpenOsuTournament.Bancho.IntegrationTests/OpenOsuTournament.Bancho.IntegrationTests.csproj"/>
+        <Project Path="tests/OpenOsuTournament.Bancho.Protocol.Tests/OpenOsuTournament.Bancho.Protocol.Tests.csproj"/>
+    </Folder>
+</Solution>
