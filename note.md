@@ -180,4 +180,20 @@ Trước khi viết code, hỏi advisor để chốt 2 việc: (1) `!mp start <s
 
 **Test**: 12 file test mới, 59 test (bao test invalid-syntax, not-found, các nhánh chính + 1 nhánh an toàn hơn cho `mp_mods`). Application.Tests 430/430, ArchitectureTests 9/9, Infrastructure.Tests 116/116 (composition root resolve sạch, tổng cộng giờ có 17 `IMpSubCommand` đăng ký).
 
-## Còn lại: slice 3 (scrim-control: `!mp scrim`/`!mp endscrim`/`!mp rematch` — nối engine đã xây) rồi tới câu hỏi mappool tại điểm rẽ.
+## Slice 3: scrim-control `!mp scrim`/`!mp endscrim`/`!mp rematch` — commit trả cho scrim engine
+
+Đây là chỗ `MatchScoringService`/`IsScrimming`/`WinningPoints`/`MatchPoints`/`Winners` (xây trong 1 commit trước, chưa có đường nào từ client thật bật lên) LẦN ĐẦU TIÊN được nối vào 1 lệnh chat thật. Cả 3 lệnh đều mutate state trận đấu nên đều tự giữ `match.Lock` (đúng pattern đã chốt ở slice 2) — kể cả `mp_scrim`/`mp_endscrim` dù Python không khoá gì (không có lock nào cả), vì các field này cũng được `MatchScoringService` đọc/ghi (dưới lock ngắn ở cuối `UpdateMatchPointsAsync`) từ 1 task nền — không khoá ở đây sẽ tạo đúng loại race mà lock tồn tại để chặn.
+
+**Phát hiện thú vị khi viết test cho `mp_scrim`**: đọc kỹ công thức `winning_pts = (best_of // 2) + 1` với ràng buộc `0 <= best_of < 16` (đã check trước đó) — nhánh "đặt về 0 để huỷ scrim" (`if winning_pts != 0: ... else: ... "Scrimming cancelled."`) trong Python là **CODE CHẾT**: với `best_of` trong khoảng 0-15, `winning_pts` LUÔN LUÔN >= 1, không bao giờ bằng 0 — nên "!mp scrim 0" không bao giờ chạy tới nhánh huỷ, mà bị chặn ở check "Best of must be an odd number!" (0 là số chẵn) trước khi tới đó. Đây rõ ràng là tàn dư từ 1 phiên bản công thức cũ (có thể trước đây là `best_of // 2` không có `+1`) mà tác giả gốc không dọn nhánh else khi sửa công thức. **Port NGUYÊN VĂN, không "sửa"** — vì `!mp endscrim` đã là cách chính thức để huỷ scrim, nhánh else chỉ là code thừa vô hại, không phải bug ảnh hưởng hành vi thật. Test ban đầu của tôi giả định sai (tưởng "0" sẽ huỷ scrim) — bị test tự bắt lỗi ngay, sửa lại theo đúng hành vi thực tế (xem comment trong `MpScrimCommandTests.cs`).
+
+**Đã làm**:
+- `MatchSession` thêm `DecrementMatchPoint`/`PopLastWinner` (port `match.match_points[x] -= 1`/`match.winners.pop()`, dùng bởi `mp_rematch`).
+- `MpScrimCommand` (aliases: autoref) — port `mp_scrim` nguyên công thức `BEST_OF` regex (`^(?:bo)?(\d{1,2})$`).
+- `MpEndScrimCommand` (aliases: end).
+- `MpRematchCommand` (aliases: rm) — deduct điểm + pop winner khi rollback; message hiển thị tên người chơi (hoặc "player #id" nếu offline) hoặc "Blue"/"Red" cho team, đơn giản hơn 1 chút so với Python (Python interpolate thẳng object Player/MatchTeams vào f-string, cho ra text xấu tuỳ `__repr__` — bản port chủ động format cho dễ đọc, không phải divergence hành vi quan trọng).
+
+**Test**: 3 file test mới, 15 test. Application.Tests 445/445, ArchitectureTests 9/9, Infrastructure.Tests 116/116 (20 `IMpSubCommand` đăng ký, không đổi số packet handler).
+
+## Còn lại cho Phase 7
+
+Tổng cộng đã port 20/25 lệnh `!mp` (thiếu `loadpool`, `unloadpool`, `ban`, `unban`, `pick` — 5 lệnh còn lại đều cần mappool) + 0/7 lệnh `!pool`. **Điểm rẽ đã tới**: cần hỏi user có muốn xây tầng Mappool (Domain + Infrastructure repository `tourney_pools`/`tourney_pool_maps` hoàn toàn mới, xác nhận qua grep không tồn tại ở đâu trong bancho-net) hay bỏ qua 12 lệnh còn lại của `!mp`/`!pool`. Sau đó tới HTML pages `/matches`/`/online` theo đúng thứ tự đã ghi.

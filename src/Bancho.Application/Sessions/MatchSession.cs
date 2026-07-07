@@ -75,6 +75,9 @@ public sealed class MatchSession(
 
     public void AddMatchPoint(ScrimParticipant participant) => _matchPoints[participant] = GetMatchPoints(participant) + 1;
 
+    /// <summary>Ported from mp_rematch's `match.match_points[recent_winner] -= 1` — rolls back the most recent point.</summary>
+    public void DecrementMatchPoint(ScrimParticipant participant) => _matchPoints[participant] = GetMatchPoints(participant) - 1;
+
     /// <summary>Ported from Match.bans — (mods, map id) pairs banned for the current scrim.</summary>
     public IReadOnlyCollection<(Mods Mods, int MapId)> Bans => _bans;
 
@@ -84,6 +87,14 @@ public sealed class MatchSession(
     public IReadOnlyList<ScrimParticipant?> Winners => _winners;
 
     public void RecordWinner(ScrimParticipant? winner) => _winners.Add(winner);
+
+    /// <summary>Ported from mp_rematch's `match.winners.pop()` — removes and returns the most recently recorded point.</summary>
+    public ScrimParticipant? PopLastWinner()
+    {
+        var last = _winners[^1];
+        _winners.RemoveAt(_winners.Count - 1);
+        return last;
+    }
 
     /// <summary>Ported from Match.reset_scrim — clears match points, winners, and bans (not IsScrimming itself).</summary>
     public void ResetScrim()

@@ -105,6 +105,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IMpSubCommand, MpTeamsCommand>();
         services.AddSingleton<IMpSubCommand, MpConditionCommand>();
         services.AddSingleton<IMpSubCommand, MpForceCommand>();
+        services.AddSingleton<IMpSubCommand, MpScrimCommand>();
+        services.AddSingleton<IMpSubCommand, MpEndScrimCommand>();
+        services.AddSingleton<IMpSubCommand, MpRematchCommand>();
 
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 
