@@ -150,6 +150,25 @@ public sealed class MySqlMapRepository(string connectionString) : IMapRepository
             new { MapId = mapId });
     }
 
+    public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Beatmaps");
+    }
+
+    public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync("UPDATE Beatmaps SET Diff = @Diff WHERE Id = @Id", new { Id = id, Diff = diff });
+    }
+
+    public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<MapRow>("SELECT * FROM Beatmaps WHERE SetId = @SetId", new { SetId = setId });
+        return rows.Select(r => r.ToBeatmap()).ToList();
+    }
+
     private MySqlConnection Connect()
     {
         return new MySqlConnection(connectionString);

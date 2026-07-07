@@ -12,6 +12,7 @@ using OpenOsuTournament.Bancho.Application.Configuration;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
+using OpenOsuTournament.Bancho.Infrastructure.Beatmaps;
 using OpenOsuTournament.Bancho.Infrastructure.Persistence;
 using OpenOsuTournament.Bancho.Infrastructure.Persistence.Repositories;
 using OpenOsuTournament.Bancho.Infrastructure.Redis;
@@ -65,6 +66,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRelationshipRepository>(sp =>
             new MySqlRelationshipRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMapRepository>(sp => new MySqlMapRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMapsetRepository>(sp => new MySqlMapsetRepository(BuildConnectionString(sp)));
         services.AddSingleton<IRatingRepository>(sp => new MySqlRatingRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreRepository>(sp => new MySqlScoreRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreSubmissionPersistence>(sp =>
@@ -79,6 +81,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
         services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
+        services.AddSingleton<IBeatmapDifficultyCalculator, Performance.PpyBeatmapDifficultyCalculator>();
+        services.AddSingleton<BeatmapIngestionService>();
         services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
         services.AddSingleton<IClock, SystemClock>();
 

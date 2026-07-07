@@ -168,14 +168,25 @@ public class Phase8EndpointTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task DifficultyRating_RedirectsToRealOsu()
+    public async Task DifficultyRating_NoBeatmapId_ReturnsExplanatoryMessage()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating"));
+        var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
-        Assert.Equal("https://osu.ppy.sh/difficulty-rating", response.Headers.Location!.ToString());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("beatmap id", body);
+    }
+
+    [Fact]
+    public async Task DifficultyRating_UnknownBeatmapId_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating?b=999999999"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

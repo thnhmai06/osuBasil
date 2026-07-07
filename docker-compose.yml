@@ -17,6 +17,9 @@ services:
       ServerBehavior__MenuOnclickUrl: ${BANCHO_MENU_ONCLICK_URL:-https://example.local}
     volumes:
       - bancho-replays:/app/.data/osr
+      - bancho-avatars:/app/.data/avatars
+      - bancho-mapsets:/app/.data/mapsets
+      - bancho-seasonals:/app/.data/seasonals
     depends_on:
       mysql:
         condition: service_healthy
@@ -47,3 +50,6 @@ volumes:
   bancho-mysql-data:
   bancho-redis-data:
   bancho-replays:
+  bancho-avatars:
+  bancho-mapsets:
+  bancho-seasonals:

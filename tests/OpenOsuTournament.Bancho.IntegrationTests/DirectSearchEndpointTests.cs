@@ -224,5 +224,20 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         {
             return Task.CompletedTask;
         }
+
+        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
+        }
+
+        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
+        }
     }
 }

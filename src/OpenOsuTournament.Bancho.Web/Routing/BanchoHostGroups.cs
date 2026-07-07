@@ -39,11 +39,13 @@ public static class BanchoHostGroups
             .ToArray();
         var osuWebHosts = domains.Select(domain => $"osu.{domain}").ToArray();
         var beatmapAssetHosts = domains.Select(domain => $"b.{domain}").ToArray();
+        var avatarHosts = domains.Select(domain => $"a.{domain}").ToArray();
         var apiHosts = domains.Select(domain => $"api.{domain}").ToArray();
 
         app.MapGroup("/").RequireHost(banchoHosts).MapBanchoGroup();
         app.MapGroup("/").RequireHost(osuWebHosts).MapOsuWebGroup();
         app.MapGroup("/").RequireHost(beatmapAssetHosts).MapBeatmapAssetGroup();
+        app.MapGroup("/").RequireHost(avatarHosts).MapAvatarGroup();
         app.MapGroup("/").RequireHost(apiHosts).MapApiGroup();
     }
 
@@ -208,33 +210,70 @@ public static class BanchoHostGroups
             return Results.Text(DirectSearchResponseFormatter.FormatSet(bmapSet), "text/html", Encoding.UTF8);
         });
 
-        // Ported from app/api/domains/osu.py's get_osz. bancho.py always redirects to
-        // MIRROR_DOWNLOAD_ENDPOINT (a real internet host); this server has no local .osz storage
-        // and no internet default, so an unconfigured DownloadEndpoint reports the download as
-        // unavailable instead of reaching out anywhere.
-        group.MapGet("/d/{mapSetId}", (string mapSetId, HttpContext context) =>
+        // Ported from app/api/domains/osu.py's get_osz, extended for this server's fully-offline
+        // scope: if any beatmap in the set was locally ingested (BeatmapIngestionService), a fresh
+        // .osz is packaged on the fly from the stored "{id}.osu" files instead of reaching out
+        // anywhere. Only falls back to a configured mirror (kept from the original port) when the
+        // set has nothing local — this server never stores audio/background assets, so a
+        // locally-packaged .osz only ever contains .osu difficulty files, not a full mapset.
+        group.MapGet("/d/{mapSetId}", async (string mapSetId, HttpContext context, CancellationToken cancellationToken) =>
         {
+            const char noVideoSuffix = 'n';
+            var noVideo = mapSetId.EndsWith(noVideoSuffix);
+            var rawSetId = noVideo ? mapSetId[..^1] : mapSetId;
+
+            if (int.TryParse(rawSetId, out var setId))
+            {
+                var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+                var beatmaps = await maps.FetchAllBySetIdAsync(setId, cancellationToken);
+                if (beatmaps.Count > 0)
+                {
+                    var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+                    using var zipStream = new MemoryStream();
+                    using (var archive = new System.IO.Compression.ZipArchive(zipStream,
+                               System.IO.Compression.ZipArchiveMode.Create, true))
+                    {
+                        foreach (var beatmap in beatmaps)
+                        {
+                            var osuPath = Path.Combine(storage.MapsetsPath, $"{beatmap.Id}.osu");
+                            if (!File.Exists(osuPath)) continue;
+
+                            var entry = archive.CreateEntry(beatmap.Filename);
+                            await using var entryStream = entry.Open();
+                            await using var fileStream = File.OpenRead(osuPath);
+                            await fileStream.CopyToAsync(entryStream, cancellationToken);
+                        }
+                    }
+
+                    return Results.File(zipStream.ToArray(), "application/x-osu-beatmap-archive",
+                        $"{setId}.osz");
+                }
+            }
+
             var mirrorOptions = context.RequestServices.GetRequiredService<IOptions<MirrorOptions>>().Value;
             if (string.IsNullOrEmpty(mirrorOptions.DownloadEndpoint))
                 return Results.Text("Beatmap downloads are not available on this server.", "text/html", Encoding.UTF8);
 
-            const char noVideoSuffix = 'n';
             const int noVideoQueryValue = 0;
             const int withVideoQueryValue = 1;
-
-            var noVideo = mapSetId.EndsWith(noVideoSuffix);
-            var setId = noVideo ? mapSetId[..^1] : mapSetId;
-            var query = $"{setId}?n={(noVideo ? noVideoQueryValue : withVideoQueryValue)}";
+            var query = $"{rawSetId}?n={(noVideo ? noVideoQueryValue : withVideoQueryValue)}";
 
             return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", true);
         });
 
-        // Ported from app/api/domains/osu.py's get_updated_beatmap. bancho.py redirects to the
-        // real osu.ppy.sh in the non-devserver-host case; this server has no local .osu file
-        // storage and no internet default, so it always reports unavailability instead — even the
-        // real-osu.ppy.sh redirect fallback is dropped, not just the devserver-host special case.
-        group.MapGet("/web/maps/{mapFilename}", () =>
-            Results.Text("Beatmap file updates are not available on this server.", "text/html", Encoding.UTF8));
+        // Ported from app/api/domains/osu.py's get_updated_beatmap, replumbed to serve the locally
+        // ingested file instead of redirecting to osu.ppy.sh (this server runs fully offline).
+        group.MapGet("/web/maps/{mapFilename}", async (string mapFilename, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+            var bmap = await maps.FetchOneAsync(filename: mapFilename, cancellationToken: cancellationToken);
+            if (bmap is null) return Results.NotFound();
+
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var osuPath = Path.Combine(storage.MapsetsPath, $"{bmap.Id}.osu");
+            return File.Exists(osuPath) ? Results.File(osuPath, "text/plain") : Results.NotFound();
+        });
 
         // Ported from app/api/domains/osu.py's osuSubmitModularSelector. The "score" field name is
         // reused by the client for both the base64 score-data string and the replay file upload —
@@ -373,10 +412,40 @@ public static class BanchoHostGroups
             return Results.Text("", "text/html", Encoding.UTF8);
         });
 
-        // Ported from app/api/domains/osu.py's osuSeasonal. No seasonal background feature exists
-        // on this server, so this always reports an empty list rather than the settings-configured
-        // SEASONAL_BGS the Python source reads.
-        group.MapGet("/web/osu-getseasonal.php", () => Results.Json(Array.Empty<string>()));
+        // Ported from app/api/domains/osu.py's osuSeasonal, replumbed to list
+        // StorageOptions.SeasonalsPath instead of the settings-configured SEASONAL_BGS the Python
+        // source reads — this server has no config-file list, just a folder an admin drops images
+        // into (served back by the /seasonal/{file} route below).
+        group.MapGet("/web/osu-getseasonal.php", (HttpContext context) =>
+        {
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
+            Directory.CreateDirectory(storage.SeasonalsPath);
+
+            var files = Directory.EnumerateFiles(storage.SeasonalsPath)
+                .Select(path => $"https://osu.{domain}/seasonal/{Path.GetFileName(path)}")
+                .ToArray();
+            return Results.Json(files);
+        });
+
+        // Serves the files listed by osu-getseasonal.php above.
+        group.MapGet("/seasonal/{fileName}", (string fileName, HttpContext context) =>
+        {
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            // Path.GetFileName strips any directory component the client could smuggle in
+            // (e.g. "../../appsettings.json") before it ever reaches Path.Combine.
+            var path = Path.Combine(storage.SeasonalsPath, Path.GetFileName(fileName));
+            if (!File.Exists(path)) return Results.NotFound();
+
+            var contentType = Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
+            return Results.File(path, contentType);
+        });
 
         // Ported from app/api/domains/osu.py's banchoConnect — unauthenticated by design in the
         // Python source too (can be called before a session exists).
@@ -418,10 +487,47 @@ public static class BanchoHostGroups
             },
             statusCode: StatusCodes.Status400BadRequest));
 
-        // Ported from app/api/domains/osu.py's difficultyRatingHandler — unconditional redirect in
-        // the Python source too, not a divergence introduced here.
-        group.MapPost("/difficulty-rating", (HttpContext context) =>
-            Results.Redirect($"https://osu.ppy.sh{context.Request.Path}", false, true));
+        // Ported from app/api/domains/osu.py's difficultyRatingHandler — the Python source
+        // unconditionally redirects to osu.ppy.sh's difficulty-rating webpage (opened in the
+        // user's system browser, not parsed by the client itself); this server has no such
+        // webpage, so it computes the star rating locally with IBeatmapDifficultyCalculator
+        // instead and caches the NoMod result onto Beatmaps.Diff. `b` (beatmap id) and `mods`
+        // (bitmask) are read from the query string since the real client sends neither a body nor
+        // documented form fields for this endpoint.
+        group.MapPost("/difficulty-rating", async (
+            [FromQuery(Name = "b")] int? beatmapId,
+            HttpContext context,
+            CancellationToken cancellationToken,
+            [FromQuery(Name = "mods")] int mods = 0) =>
+        {
+            if (beatmapId is null)
+                return Results.Text("Difficulty rating requires a beatmap id (?b=).", "text/html", Encoding.UTF8);
+
+            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+            var bmap = await maps.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
+            if (bmap is null) return Results.NotFound();
+
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            var osuPath = Path.Combine(storage.MapsetsPath, $"{bmap.Id}.osu");
+            if (!File.Exists(osuPath))
+                return Results.Text("Beatmap file not available locally.", "text/html", Encoding.UTF8);
+
+            var requestedMods = (Domain.Mods)mods;
+            double stars;
+            if (requestedMods == Domain.Mods.NoMod && bmap.Diff > 0)
+            {
+                stars = bmap.Diff;
+            }
+            else
+            {
+                var calculator = context.RequestServices.GetRequiredService<IBeatmapDifficultyCalculator>();
+                stars = calculator.CalculateStarRating(osuPath, bmap.Mode, requestedMods);
+                if (requestedMods == Domain.Mods.NoMod)
+                    await maps.UpdateDiffAsync(bmap.Id, stars, cancellationToken);
+            }
+
+            return Results.Json(new { beatmap_id = bmap.Id, mods = (int)requestedMods, rating = stars });
+        });
     }
 
     private static void MapBeatmapAssetGroup(this RouteGroupBuilder group)
@@ -430,6 +536,30 @@ public static class BanchoHostGroups
         // host forwards straight through to osu!'s real static-asset CDN (thumbnails, previews).
         group.MapGet("/{**path}", (HttpContext context) =>
             Results.Redirect($"https://b.ppy.sh{context.Request.Path}", true));
+    }
+
+    // New for this server's fully-offline scope — bancho.py has no local avatar storage at all
+    // (the a.{domain} host there always forwards to a real CDN). Files are stored flat as
+    // "{userId}.{ext}" under StorageOptions.AvatarsPath by whatever admin tooling manages them.
+    private static void MapAvatarGroup(this RouteGroupBuilder group)
+    {
+        group.MapGet("/{userId:int}", (int userId, HttpContext context) =>
+        {
+            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
+            Directory.CreateDirectory(storage.AvatarsPath);
+
+            var match = Directory.EnumerateFiles(storage.AvatarsPath, $"{userId}.*").FirstOrDefault();
+            if (match is null) return Results.NotFound();
+
+            var contentType = Path.GetExtension(match).ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
+            return Results.File(match, contentType);
+        });
     }
 
     private static void MapApiGroup(this RouteGroupBuilder group)

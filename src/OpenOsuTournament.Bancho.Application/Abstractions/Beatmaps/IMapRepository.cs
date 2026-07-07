@@ -42,4 +42,16 @@ public interface IMapRepository
     ///     lost-update race between concurrent submissions on the same map).
     /// </summary>
     Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     New for BeatmapIngestionService: the highest Id currently in use (0 if the table is empty),
+    ///     used to allocate local ids for beatmaps whose .osu file carries no real online id.
+    /// </summary>
+    Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>New for /difficulty-rating: caches a freshly-computed star rating onto a beatmap row.</summary>
+    Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default);
+
+    /// <summary>New for /d/{setId}'s on-the-fly .osz packaging: every beatmap sharing a set.</summary>
+    Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, CancellationToken cancellationToken = default);
 }

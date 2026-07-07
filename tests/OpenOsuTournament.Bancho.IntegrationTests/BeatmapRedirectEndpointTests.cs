@@ -82,15 +82,13 @@ public class BeatmapRedirectEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
-    public async Task MapFile_ReturnsUnavailableMessage_NoRedirect()
+    public async Task MapFile_ReturnsNotFound_WhenFilenameUnknown()
     {
         var client = Configure(_factory)
             .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var response = await client.SendAsync(MakeRequest("/web/maps/Some%20Map.osu"));
-        var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("not available", body);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

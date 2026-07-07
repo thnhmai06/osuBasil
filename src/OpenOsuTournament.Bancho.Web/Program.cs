@@ -3,6 +3,7 @@ using OpenOsuTournament.Bancho.Application.Abstractions.Channels;
 using OpenOsuTournament.Bancho.Application.Configuration;
 using OpenOsuTournament.Bancho.Application.DependencyInjection;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
+using OpenOsuTournament.Bancho.Infrastructure.Beatmaps;
 using OpenOsuTournament.Bancho.Infrastructure.DependencyInjection;
 using OpenOsuTournament.Bancho.Infrastructure.Persistence;
 using OpenOsuTournament.Bancho.Web.Routing;
@@ -32,6 +33,13 @@ using (var scope = app.Services.CreateScope())
     var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
     var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
     channelRegistry.Seed(await channelRepository.FetchAllAutoJoinAsync());
+
+    // Same test-host guard as the migration above: no Database section means no DB to write into.
+    if (!string.IsNullOrEmpty(dbOptions.Host))
+    {
+        var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
+        await ingestionService.IngestAsync();
+    }
 }
 
 app.Run();
