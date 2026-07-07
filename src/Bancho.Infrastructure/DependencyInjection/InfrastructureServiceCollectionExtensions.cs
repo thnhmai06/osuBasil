@@ -55,6 +55,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRatingRepository>(sp => new MySqlRatingRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreRepository>(sp => new MySqlScoreRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreSubmissionPersistence>(sp => new MySqlScoreSubmissionPersistence(BuildConnectionString(sp)));
+        services.AddSingleton<ILogRepository>(sp => new MySqlLogRepository(BuildConnectionString(sp)));
 
         services.AddSingleton<ILeaderboardStore, RedisLeaderboardStore>();
         services.AddSingleton<IWebSessionStore, RedisWebSessionStore>();

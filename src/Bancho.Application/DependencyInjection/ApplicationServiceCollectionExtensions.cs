@@ -1,8 +1,10 @@
 using Bancho.Application.BackgroundServices;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Anticheat;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Application.UseCases.Mail;
 using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Application.UseCases.Spectating;
@@ -31,6 +33,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
         services.AddSingleton<MatchMembershipService>();
+        services.AddSingleton<BeatmapInfoService>();
+        services.AddSingleton<ClientIntegrityService>();
+        services.AddSingleton<MailReadService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

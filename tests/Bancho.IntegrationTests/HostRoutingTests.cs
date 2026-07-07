@@ -82,11 +82,11 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
     [InlineData("b.ppy.sh")]
     public async Task BeatmapAssetSubdomain_RoutesToMapGroup(string host)
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var response = await SendWithHost(client, host);
 
-        response.EnsureSuccessStatusCode();
-        Assert.Equal("map", await response.Content.ReadAsStringAsync());
+        Assert.Equal(System.Net.HttpStatusCode.MovedPermanently, response.StatusCode);
+        Assert.Equal("https://b.ppy.sh/", response.Headers.Location!.ToString());
     }
 
     [Theory]

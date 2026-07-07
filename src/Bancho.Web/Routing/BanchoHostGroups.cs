@@ -3,8 +3,10 @@ using Bancho.Application.Abstractions;
 using Bancho.Application.Configuration;
 using Bancho.Application.PacketHandlers;
 using Bancho.Application.Sessions;
+using Bancho.Application.UseCases.Anticheat;
 using Bancho.Application.UseCases.Authentication;
 using Bancho.Application.UseCases.Beatmaps;
+using Bancho.Application.UseCases.Mail;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Domain;
 using Bancho.Protocol;
@@ -311,11 +313,137 @@ public static class BanchoHostGroups
                 ? Results.NotFound()
                 : Results.Bytes(result.Data!, "application/octet-stream");
         });
+
+        // Ported from app/api/domains/osu.py's osuGetBeatmapInfo. Body is JSON {"Filenames": [...],
+        // "Ids": [...]}; the "Ids" path is dead in the Python source too ("still have yet to see
+        // this used" — only logged, no lookup), so it's read but never resolved here either.
+        group.MapPost("/web/osu-getbeatmapinfo.php", async (
+            [FromQuery(Name = "u")] string username,
+            [FromQuery(Name = "h")] string passwordMd5,
+            OsuBeatmapInfoRequest body,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
+            if (player is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var beatmapInfoService = context.RequestServices.GetRequiredService<BeatmapInfoService>();
+            var vanillaMode = (GameMode)player.Status.Mode.AsVanilla();
+            var rows = await beatmapInfoService.FetchBeatmapInfoAsync(body.Filenames, player.Id, vanillaMode, cancellationToken);
+
+            var lines = rows.Select(row => $"{row.Index}|{row.Id}|{row.SetId}|{row.Md5}|{row.Status}|{string.Join('|', row.Grades)}");
+            return Results.Text(string.Join('\n', lines), "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's lastFM. Per explicit user decision, detected
+        // cheat-tool flags are only logged (ClientIntegrityService) — no restrict/kick, since that
+        // machinery doesn't exist yet (Phase 10, deferred with the chat command system).
+        group.MapGet("/web/lastfm.php", async (
+            [FromQuery(Name = "b")] string beatmapIdOrHiddenFlag,
+            [FromQuery(Name = "us")] string username,
+            [FromQuery(Name = "ha")] string passwordMd5,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
+            if (player is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var clientIntegrity = context.RequestServices.GetRequiredService<ClientIntegrityService>();
+            var result = await clientIntegrity.HandleLastFmFlagsAsync(player, beatmapIdOrHiddenFlag, cancellationToken);
+
+            return result == ClientIntegrityResult.StopSending
+                ? Results.Text("-3", "text/html", Encoding.UTF8)
+                : Results.Text("", "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's osuMarkAsRead.
+        group.MapGet("/web/osu-markasread.php", async (
+            [FromQuery(Name = "u")] string username,
+            [FromQuery(Name = "h")] string passwordMd5,
+            [FromQuery(Name = "channel")] string channel,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var authentication = context.RequestServices.GetRequiredService<BanchoAuthenticationService>();
+            var player = await authentication.AuthenticateOnlinePlayerAsync(username, passwordMd5, cancellationToken);
+            if (player is null)
+            {
+                return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var mailReadService = context.RequestServices.GetRequiredService<MailReadService>();
+            await mailReadService.MarkChannelAsReadAsync(player, channel, cancellationToken);
+
+            return Results.Text("", "text/html", Encoding.UTF8);
+        });
+
+        // Ported from app/api/domains/osu.py's osuSeasonal. No seasonal background feature exists
+        // on this server, so this always reports an empty list rather than the settings-configured
+        // SEASONAL_BGS the Python source reads.
+        group.MapGet("/web/osu-getseasonal.php", () => Results.Json(Array.Empty<string>()));
+
+        // Ported from app/api/domains/osu.py's banchoConnect — unauthenticated by design in the
+        // Python source too (can be called before a session exists).
+        group.MapGet("/web/bancho_connect.php", () => Results.Text("", "text/html", Encoding.UTF8));
+
+        // Ported from app/api/domains/osu.py's checkUpdates (always an empty stub response there too).
+        group.MapGet("/web/check-updates.php", () => Results.Text("", "text/html", Encoding.UTF8));
+
+        // Screenshots, favourites, ratings, comments, and in-game registration are dropped per the
+        // multiplayer/tourney-only scope decision — these routes exist only so the client doesn't
+        // treat a 404 as a connectivity failure, matching the "not available on this server"
+        // messaging style already used by the map-download/beatmap-file-update stubs above.
+        group.MapPost("/web/osu-screenshot.php", () =>
+            Results.Text("Screenshots are not available on this server.", "text/html", Encoding.UTF8, StatusCodes.Status400BadRequest));
+
+        group.MapGet("/web/osu-getfavourites.php", () => Results.Text("", "text/html", Encoding.UTF8));
+
+        group.MapGet("/web/osu-addfavourite.php", () => Results.Text("", "text/html", Encoding.UTF8));
+
+        // "not ranked" is a real response code the Python source itself sends (BeatmapRatingResultCode.NOT_RANKED) — reused here instead of an ad-hoc string.
+        group.MapGet("/web/osu-rate.php", () => Results.Text("not ranked", "text/html", Encoding.UTF8));
+
+        group.MapPost("/web/osu-comment.php", () => Results.Text("", "text/html", Encoding.UTF8));
+
+        // Reuses the Python source's own "in-game registration disabled" response shape (a real,
+        // client-understood code path — INGAME_REGISTRATION_DISALLOWED_ERROR) rather than an
+        // ad-hoc stub, since registration through the client is genuinely unsupported here.
+        group.MapPost("/users", () => Results.Json(
+            new
+            {
+                form_error = new
+                {
+                    user = new
+                    {
+                        password = new[] { "In-game registration is disabled. Please register on the website." },
+                    },
+                },
+            },
+            statusCode: StatusCodes.Status400BadRequest));
+
+        // Ported from app/api/domains/osu.py's difficultyRatingHandler — unconditional redirect in
+        // the Python source too, not a divergence introduced here.
+        group.MapPost("/difficulty-rating", (HttpContext context) =>
+            Results.Redirect($"https://osu.ppy.sh{context.Request.Path}", permanent: false, preserveMethod: true));
     }
 
     private static void MapBeatmapAssetGroup(this RouteGroupBuilder group) =>
-        group.MapGet("/", () => "map");
+        // Ported from app/api/domains/map.py's everything — every request under the b.{domain}
+        // host forwards straight through to osu!'s real static-asset CDN (thumbnails, previews).
+        group.MapGet("/{**path}", (HttpContext context) =>
+            Results.Redirect($"https://b.ppy.sh{context.Request.Path}", permanent: true));
 
     private static void MapApiGroup(this RouteGroupBuilder group) =>
         group.MapGet("/", () => "api");
 }
+
+/// <summary>Ported from app/objects/models.py's OsuBeatmapRequestForm — osu-getbeatmapinfo.php's JSON request body.</summary>
+public sealed record OsuBeatmapInfoRequest(List<string> Filenames, List<int> Ids);
