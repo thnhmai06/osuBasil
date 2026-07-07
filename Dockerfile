@@ -11,14 +11,14 @@ RUN cargo build --release
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet-build
 WORKDIR /src
-COPY src/Bancho.Domain/*.csproj src/Bancho.Domain/
-COPY src/Bancho.Protocol/*.csproj src/Bancho.Protocol/
-COPY src/Bancho.Application/*.csproj src/Bancho.Application/
-COPY src/Bancho.Infrastructure/*.csproj src/Bancho.Infrastructure/
-COPY src/Bancho.Web/*.csproj src/Bancho.Web/
-RUN dotnet restore src/Bancho.Web/Bancho.Web.csproj
+COPY src/OpenOsuTournament.Bancho.Domain/*.csproj src/OpenOsuTournament.Bancho.Domain/
+COPY src/OpenOsuTournament.Bancho.Protocol/*.csproj src/OpenOsuTournament.Bancho.Protocol/
+COPY src/OpenOsuTournament.Bancho.Application/*.csproj src/OpenOsuTournament.Bancho.Application/
+COPY src/OpenOsuTournament.Bancho.Infrastructure/*.csproj src/OpenOsuTournament.Bancho.Infrastructure/
+COPY src/OpenOsuTournament.Bancho.Web/*.csproj src/OpenOsuTournament.Bancho.Web/
+RUN dotnet restore src/OpenOsuTournament.Bancho.Web/OpenOsuTournament.Bancho.Web.csproj
 COPY src/ ./src/
-RUN dotnet publish src/Bancho.Web/Bancho.Web.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish src/OpenOsuTournament.Bancho.Web/OpenOsuTournament.Bancho.Web.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
@@ -26,4 +26,4 @@ COPY --from=dotnet-build /app/publish .
 COPY --from=native-build /src/native/bancho-pp-ffi/target/release/libbancho_pp_ffi.so ./
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Bancho.Web.dll"]
+ENTRYPOINT ["dotnet", "OpenOsuTournament.Bancho.Web.dll"]
