@@ -86,6 +86,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ICommand, ReconnectCommand>();
         services.AddSingleton<ICommand, ChangeNameCommand>();
         services.AddSingleton<ICommand, ApiKeyCommand>();
+        services.AddSingleton<ICommand, MpCommandDispatcher>();
+
+        services.AddSingleton<IMpSubCommand, MpHelpCommand>();
 
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 

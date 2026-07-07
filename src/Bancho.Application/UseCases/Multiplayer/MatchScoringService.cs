@@ -106,14 +106,14 @@ public sealed partial class MatchScoringService(
     }
 
     private List<string> BuildFfaMessages(
-        MatchSession match, MatchRoundSnapshot snapshot, Dictionary<ScrimParticipant, long> scores, ScrimParticipant winner)
+        MatchSession match, MatchRoundSnapshot snapshot, Dictionary<ScrimParticipant, double> scores, ScrimParticipant winner)
     {
         var messages = new List<string>();
         var winnerName = sessionRegistry.GetById(winner.PlayerId!.Value)?.Name ?? $"player #{winner.PlayerId}";
         var average = scores.Values.Average();
 
         messages.Add($"{winnerName} takes the point! ({AddSuffix(scores[winner], snapshot.WinCondition)} " +
-                      $"[Match avg. {AddSuffix((long)average, snapshot.WinCondition)}])");
+                      $"[Match avg. {AddSuffix(average, snapshot.WinCondition)}])");
 
         var winnerPoints = match.GetMatchPoints(winner);
         if (match.WinningPoints > 0 && winnerPoints == match.WinningPoints)
@@ -133,7 +133,7 @@ public sealed partial class MatchScoringService(
     }
 
     private List<string> BuildTeamMessages(
-        MatchSession match, MatchRoundSnapshot snapshot, Dictionary<ScrimParticipant, long> scores, ScrimParticipant winner)
+        MatchSession match, MatchRoundSnapshot snapshot, Dictionary<ScrimParticipant, double> scores, ScrimParticipant winner)
     {
         var messages = new List<string>();
         var teamNameMatch = TourneyMatchNameRegex().Match(match.Name);
@@ -182,18 +182,18 @@ public sealed partial class MatchScoringService(
         return messages;
     }
 
-    private static string AddSuffix(long score, MatchWinConditions winCondition) => winCondition switch
+    private static string AddSuffix(double score, MatchWinConditions winCondition) => winCondition switch
     {
         MatchWinConditions.Accuracy => $"{score:F2}%",
-        MatchWinConditions.Combo => $"{score}x",
-        _ => score.ToString(),
+        MatchWinConditions.Combo => $"{(long)score}x",
+        _ => ((long)score).ToString(),
     };
 
     /// <summary>Ported from Match.await_submissions — a serial poll across `was_playing`, sharing one 10s budget for the whole list, not 10s per player.</summary>
-    private async Task<(Dictionary<ScrimParticipant, long> Scores, List<int> DidntSubmit)> AwaitSubmissionsAsync(
+    private async Task<(Dictionary<ScrimParticipant, double> Scores, List<int> DidntSubmit)> AwaitSubmissionsAsync(
         MatchRoundSnapshot snapshot, CancellationToken cancellationToken)
     {
-        var scores = new Dictionary<ScrimParticipant, long>();
+        var scores = new Dictionary<ScrimParticipant, double>();
         var didntSubmit = new List<int>();
         var timeWaited = TimeSpan.Zero;
         var ffa = snapshot.TeamType is MatchTeamTypes.HeadToHead or MatchTeamTypes.TagCoop;
@@ -216,7 +216,7 @@ public sealed partial class MatchScoringService(
                 {
                     var value = snapshot.WinCondition switch
                     {
-                        MatchWinConditions.Accuracy => (long)recent.Acc,
+                        MatchWinConditions.Accuracy => recent.Acc,
                         MatchWinConditions.Combo => recent.MaxCombo,
                         _ => recent.Score,
                     };
