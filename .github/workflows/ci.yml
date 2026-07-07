@@ -38,3 +38,6 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
+
+      - name: Build Docker image
+        run: docker build -t bancho-net:ci .

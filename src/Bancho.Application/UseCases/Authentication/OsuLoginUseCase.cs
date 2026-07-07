@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using Bancho.Application.Abstractions;
 using Bancho.Application.Configuration;
 using Bancho.Application.PacketHandlers;

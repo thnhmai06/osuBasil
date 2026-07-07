@@ -11,7 +11,6 @@ using Bancho.Application.UseCases.Scores;
 using Bancho.Domain;
 using Bancho.Protocol;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Bancho.Web.Routing;

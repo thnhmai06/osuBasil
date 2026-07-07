@@ -274,6 +274,19 @@ User xác nhận chuyển sang Phase 8, tôi liệt kê danh sách endpoint. Use
 
 **Test**: `BeatmapInfoServiceTests` (4 test), `ClientIntegrityServiceTests` (5 test), `MailReadServiceTests` (4 test), `MySqlLogRepositoryTests` (1 test, Testcontainers thật), `Phase8EndpointTests` (13 test tích hợp qua HTTP thật, `WebApplicationFactory`, không cần DB thật vì `BanchoAuthenticationService` short-circuit trước khi chạm DB nếu player không online). Baseline cuối: Application.Tests 324/324, ArchitectureTests 9/9, IntegrationTests 45/45, Infrastructure.Tests 117/117.
 
-## Còn lại
+## Phase 10 — xác nhận BỎ HOÀN TOÀN (2026-07-07)
 
-Phase 8 xong hoàn toàn theo phạm vi multiplayer+tourney. Phase 9 (API v1/v2) hoãn vô thời hạn theo quyết định user. Phase 10 phần lớn hoãn theo cascade (chat commands). Bước tiếp theo: xác nhận với user có chuyển sang Phase 11 (Docker/cutover) hay còn phần nào của Phase 10 cần làm riêng (BackgroundServices/observability) trước khi tới đó.
+Hỏi rõ 4 mục còn sót (moderation/clan commands — đã tự hoãn; BackgroundServices DonorExpiry/BotStatus; Discord webhook; Metrics/observability). Khi hỏi chi tiết "Metrics/observability chứa gì", phát hiện **plan cũ ghi sai**: liệt kê metric `scores_submitted` nhưng grep lại toàn bộ source Python xác nhận metric này KHÔNG tồn tại — chỉ có 2 metric Datadog thật (`bancho.online_players` tăng/giảm theo login/logout, `bancho.login_time` histogram đo thời gian login) + log file thường (Serilog side). User không dùng Datadog → **bỏ hết Phase 10**, không giữ mục nào. Đã sửa `glowing-snacking-hickey.md` phần Phase 10 để không còn "để ngỏ" nữa — chốt dứt điểm.
+
+## Phase 11 — Docker + CI (đã làm xong phần 1/2, phần 2 cần bàn lại với user)
+
+Phase 11 gốc có 2 việc: (1) Dockerfile/docker-compose/CI, (2) chạy song song bancho.py ↔ bancho-net để so sánh + golden test + checklist cutover. Việc (2) dựa trên giả định ban đầu là bancho-net gần như song song tính năng với bancho.py — giả định này không còn đúng sau khi cắt giảm phạm vi (bot commands/BanchoBot/scrim/friends/API/comments/ratings/registration đều đã bỏ chủ động). Đã báo cho user là cách làm (2) cần bàn lại, CHƯA làm, chỉ mới làm (1).
+
+**Đã làm (việc 1/2)**:
+- `Dockerfile` (multi-stage): stage 1 build native crate Rust (`native/bancho-pp-ffi`) bằng image `rust:1-bookworm` (chọn bookworm để khớp glibc với image runtime `aspnet:10.0`, cũng bookworm-based — tránh lỗi ABI không tương thích khi P/Invoke load `.so`); stage 2 `dotnet publish` chỉ `Bancho.Web.csproj` (copy `.csproj` trước để cache layer restore, KHÔNG copy `tests/` vào build context vì không cần cho image production); stage 3 runtime copy cả 2 output + set `ASPNETCORE_URLS=http://+:8080`.
+- `.dockerignore` — loại `bin/obj/target/tests/.git` khỏi build context.
+- `docker-compose.yml` (khác `docker-compose.dev.yml` cũ chỉ có mysql+redis cho dev) — thêm service `app`, set đúng env var theo tên section config thật (`Database__Host`, `Redis__Host`, `ServerBehavior__Domain`...), mount volume cho `.data/osr` (replay storage, path lấy từ `StorageOptions.ReplaysPath`).
+- **Đã build + chạy thử thật bằng Docker** (không chỉ viết xong là xong): `docker build` thành công, `docker compose up` chạy đủ 3 container (app/mysql/redis), xác nhận qua `curl` với đúng Host header rằng cả 3 host group (`c.*` → bancho protocol, `osu.*` → osu-web, `b.*` → redirect 301 sang `b.ppy.sh`) hoạt động đúng trong container thật, migration chạy tự động tạo đủ bảng (`SHOW TABLES` xác nhận `logs`/`mail`/`maps`/... có mặt), không có exception nào trong log app (đặc biệt là load native `.so` qua P/Invoke — rủi ro chính đã được xác minh, không phải giả định suông). Đã dọn dẹp container/volume/image test sau khi xác minh xong.
+- Thêm bước `docker build` vào `.github/workflows/ci.yml` để CI tự phát hiện lỗi Dockerfile về sau (trước đó CI chỉ build+test .NET, không đụng gì tới Docker).
+
+**CHƯA làm — cần hỏi lại user**: cách tiếp cận việc (2) "golden test/cutover checklist" giờ nên là gì, vì ý tưởng "so sánh song song với bancho.py" không còn khớp với phạm vi đã thu hẹp rất nhiều.

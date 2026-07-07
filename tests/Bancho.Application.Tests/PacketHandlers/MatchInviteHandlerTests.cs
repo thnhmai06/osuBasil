@@ -1,6 +1,4 @@
 using Bancho.Application.PacketHandlers;
-using Bancho.Application.Sessions;
-using Bancho.Domain;
 using Bancho.Protocol;
 using static Bancho.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 

@@ -9,7 +9,6 @@ using Bancho.Application.UseCases.Multiplayer;
 using Bancho.Application.UseCases.Scores;
 using Bancho.Application.UseCases.Spectating;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace Bancho.Application.DependencyInjection;
 

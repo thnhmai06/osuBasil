@@ -1,6 +1,5 @@
 using Bancho.Application.Abstractions;
 using Bancho.Application.Sessions;
-using Bancho.Domain;
 using Bancho.Protocol;
 
 namespace Bancho.Application.PacketHandlers;

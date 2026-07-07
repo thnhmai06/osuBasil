@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/target/
+tests/
+.git/
+.github/
+.idea/
+.vs/
+.codegraph/
+*.md

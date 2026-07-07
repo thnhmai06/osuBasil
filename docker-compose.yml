@@ -1,0 +1,49 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      Database__Host: mysql
+      Database__Port: "3306"
+      Database__User: bancho
+      Database__Password: bancho
+      Database__Name: bancho
+      Redis__Host: redis
+      Redis__Port: "6379"
+      ServerBehavior__Domain: ${BANCHO_DOMAIN:-localhost}
+      ServerBehavior__CommandPrefix: "!"
+      ServerBehavior__MenuIconUrl: ${BANCHO_MENU_ICON_URL:-https://example.local/icon.png}
+      ServerBehavior__MenuOnclickUrl: ${BANCHO_MENU_ONCLICK_URL:-https://example.local}
+    volumes:
+      - bancho-net-replays:/app/.data/osr
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_USER: bancho
+      MYSQL_PASSWORD: bancho
+      MYSQL_DATABASE: bancho
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+    volumes:
+      - bancho-net-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: '/usr/bin/mysql --user=bancho --password=bancho --execute "SHOW DATABASES;"'
+      interval: 2s
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7.4
+    volumes:
+      - bancho-net-redis-data:/data
+
+volumes:
+  bancho-net-mysql-data:
+  bancho-net-redis-data:
+  bancho-net-replays:

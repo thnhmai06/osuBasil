@@ -1,5 +1,3 @@
-using Bancho.Domain;
-
 namespace Bancho.Domain.Tests;
 
 public class ScoreAccuracyCalculatorTests
