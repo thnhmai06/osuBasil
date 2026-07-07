@@ -32,11 +32,14 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
             return Task.CompletedTask;
         }
 
-        if (matchMembership.Create(player, matchData) is null)
+        var match = matchMembership.Create(player, matchData);
+        if (match is null)
         {
             player.Enqueue(ServerPacketWriter.MatchJoinFail());
+            return Task.CompletedTask;
         }
 
+        matchMembership.SendBot(match, $"Match created by {player.Name}.");
         return Task.CompletedTask;
     }
 }

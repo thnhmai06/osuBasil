@@ -169,6 +169,8 @@ public sealed class ScoreSubmissionUseCase(
                 await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
             }
 
+            player.RecentScore = new RecentScoreSnapshot(score.Bmap.Md5, score.ServerTime, score.Score, score.Acc, score.MaxCombo);
+
             return new ScoreSubmissionOutcome(
                 ScoreSubmissionResultCode.Success,
                 new SubmittedScoreResult(score, scoreId, previousStats, updatedStats));

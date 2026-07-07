@@ -6,12 +6,14 @@ using Bancho.Protocol;
 namespace Bancho.Application.PacketHandlers;
 
 /// <summary>
-/// Ported from app/api/domains/cho.py's MatchComplete. The `is_scrimming` branch (kick off
-/// `update_matchpoints`/`await_submissions` to determine a scrim winner) is not ported — scrim
-/// state isn't on MatchSession yet, so `IsScrimming` is always false and that branch is dead code
-/// for every match today, exactly matching the Python source's behavior until scrim lands.
+/// Ported from app/api/domains/cho.py's MatchComplete, including the `is_scrimming` branch
+/// (asyncio.create_task(update_matchpoints(was_playing))). The scoring task is launched only
+/// AFTER this handler releases MatchSession.Lock — starting it from inside the lock would mean
+/// its first act (re-acquiring that same lock) blocks on the launcher, and if it "worked" anyway
+/// it would hold the lock across the up-to-10s score-submission poll, freezing every other slot
+/// mutation on the match. See MatchSession's doc comment.
 /// </summary>
-public sealed class MatchCompleteHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
+public sealed class MatchCompleteHandler(MatchMembershipService matchMembership, MatchScoringService scoringService) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchComplete;
 
@@ -24,6 +26,8 @@ public sealed class MatchCompleteHandler(MatchMembershipService matchMembership)
         {
             return;
         }
+
+        MatchRoundSnapshot? snapshot = null;
 
         await match.Lock.WaitAsync();
         try
@@ -46,16 +50,31 @@ public sealed class MatchCompleteHandler(MatchMembershipService matchMembership)
                 .Select(s => s.PlayerId!.Value)
                 .ToList();
 
+            var wasPlaying = match.Slots
+                .Where(s => s.PlayerId is not null && !notPlaying.Contains(s.PlayerId!.Value))
+                .Select(s => (s.PlayerId!.Value, s.Team))
+                .ToList();
+
             match.UnreadyPlayers(SlotStatus.Complete);
             match.ResetPlayersLoadedStatus();
             match.InProgress = false;
 
             matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), lobby: false, immune: notPlaying);
             matchMembership.EnqueueState(match);
+
+            if (match.IsScrimming)
+            {
+                snapshot = new MatchRoundSnapshot(wasPlaying, match.MapMd5, match.TeamType, match.WinCondition, match.Name);
+            }
         }
         finally
         {
             match.Lock.Release();
+        }
+
+        if (snapshot is not null)
+        {
+            _ = scoringService.ScoreCompletedRoundAsync(match, snapshot);
         }
     }
 }

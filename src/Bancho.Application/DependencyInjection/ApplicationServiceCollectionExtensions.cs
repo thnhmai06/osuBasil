@@ -32,6 +32,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
         services.AddSingleton<MatchMembershipService>();
+        services.AddSingleton<MatchScoringService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

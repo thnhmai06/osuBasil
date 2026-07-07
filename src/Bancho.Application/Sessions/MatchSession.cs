@@ -10,9 +10,10 @@ namespace Bancho.Application.Sessions;
 /// pool — there is nothing to "port" for synchronization, since the Python source has no lock of
 /// any kind. <see cref="Lock"/> is this port's from-scratch answer: callers that read-then-mutate
 /// slot state (join, change-slot, part, ...) must hold it for the whole read-mutate-broadcast
-/// sequence, exactly mirroring the atomicity asyncio gave Python for free. The one handler that
-/// must NOT hold it across an await is the (not-yet-ported) score-submission poll in
-/// await_submissions — that lives in a later scoring slice.
+/// sequence, exactly mirroring the atomicity asyncio gave Python for free. The one place that
+/// must NOT hold it across an await is scrim's await_submissions poll (up to 10s), run by
+/// MatchScoringService after MATCH_COMPLETE's lock is released, re-acquiring it only briefly at
+/// the end to record the point.
 /// </summary>
 public sealed class MatchSession(
     int id,
@@ -33,6 +34,9 @@ public sealed class MatchSession(
 {
     private readonly HashSet<int> _referees = [];
     private readonly HashSet<int> _tourneyClients = [];
+    private readonly Dictionary<ScrimParticipant, int> _matchPoints = [];
+    private readonly HashSet<(Mods Mods, int MapId)> _bans = [];
+    private readonly List<ScrimParticipant?> _winners = [];
 
     /// <summary>Held for the duration of any read-then-mutate-then-broadcast sequence on this match's slots or settings.</summary>
     public SemaphoreSlim Lock { get; } = new(1, 1);
@@ -62,6 +66,32 @@ public sealed class MatchSession(
     public int Seed { get; } = seed;
 
     public bool IsScrimming { get; set; }
+    public int WinningPoints { get; set; }
+
+    /// <summary>Ported from Match.match_points — accumulated scrim points per team or player.</summary>
+    public IReadOnlyDictionary<ScrimParticipant, int> MatchPoints => _matchPoints;
+
+    public int GetMatchPoints(ScrimParticipant participant) => _matchPoints.GetValueOrDefault(participant);
+
+    public void AddMatchPoint(ScrimParticipant participant) => _matchPoints[participant] = GetMatchPoints(participant) + 1;
+
+    /// <summary>Ported from Match.bans — (mods, map id) pairs banned for the current scrim.</summary>
+    public IReadOnlyCollection<(Mods Mods, int MapId)> Bans => _bans;
+
+    public void AddBan(Mods mods, int mapId) => _bans.Add((mods, mapId));
+
+    /// <summary>Ported from Match.winners — one entry per completed point; null means a tie.</summary>
+    public IReadOnlyList<ScrimParticipant?> Winners => _winners;
+
+    public void RecordWinner(ScrimParticipant? winner) => _winners.Add(winner);
+
+    /// <summary>Ported from Match.reset_scrim — clears match points, winners, and bans (not IsScrimming itself).</summary>
+    public void ResetScrim()
+    {
+        _matchPoints.Clear();
+        _winners.Clear();
+        _bans.Clear();
+    }
 
     /// <summary>Ported from Match.url — the match's invitation url.</summary>
     public string Url => $"osump://{Id}/{Password}";

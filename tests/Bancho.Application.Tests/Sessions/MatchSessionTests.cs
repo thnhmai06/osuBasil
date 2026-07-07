@@ -161,4 +161,66 @@ public class MatchSessionTests
 
         Assert.Equal(SlotStatus.Locked, slot.Status);
     }
+
+    [Fact]
+    public void AddMatchPoint_AccumulatesPerParticipant()
+    {
+        var match = MakeMatch();
+        var player = ScrimParticipant.OfPlayer(1);
+
+        match.AddMatchPoint(player);
+        match.AddMatchPoint(player);
+
+        Assert.Equal(2, match.GetMatchPoints(player));
+        Assert.Equal(0, match.GetMatchPoints(ScrimParticipant.OfPlayer(2)));
+    }
+
+    [Fact]
+    public void AddBan_TracksModsMapPairs()
+    {
+        var match = MakeMatch();
+
+        match.AddBan(Mods.Hidden, 123);
+
+        Assert.Contains((Mods.Hidden, 123), match.Bans);
+    }
+
+    [Fact]
+    public void RecordWinner_AppendsInOrder_NullMeansATie()
+    {
+        var match = MakeMatch();
+
+        match.RecordWinner(ScrimParticipant.OfPlayer(1));
+        match.RecordWinner(null);
+
+        Assert.Equal(2, match.Winners.Count);
+        Assert.Equal(1, match.Winners[0]!.Value.PlayerId);
+        Assert.Null(match.Winners[1]);
+    }
+
+    [Fact]
+    public void ResetScrim_ClearsMatchPointsWinnersAndBans_ButNotIsScrimming()
+    {
+        var match = MakeMatch();
+        match.IsScrimming = true;
+        match.AddMatchPoint(ScrimParticipant.OfPlayer(1));
+        match.AddBan(Mods.Hidden, 1);
+        match.RecordWinner(ScrimParticipant.OfPlayer(1));
+
+        match.ResetScrim();
+
+        Assert.Empty(match.MatchPoints);
+        Assert.Empty(match.Bans);
+        Assert.Empty(match.Winners);
+        Assert.True(match.IsScrimming);
+    }
+
+    [Fact]
+    public void ScrimParticipant_TeamAndPlayerAreDistinctKeys_EvenWithOverlappingValues()
+    {
+        var teamParticipant = ScrimParticipant.OfTeam(MatchTeams.Blue); // Blue = 1
+        var playerParticipant = ScrimParticipant.OfPlayer(1); // same underlying int value
+
+        Assert.NotEqual(teamParticipant, playerParticipant);
+    }
 }

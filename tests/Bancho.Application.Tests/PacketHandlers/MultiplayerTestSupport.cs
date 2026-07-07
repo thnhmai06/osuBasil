@@ -58,11 +58,14 @@ internal static class MultiplayerTestSupport
         public FakeChannelRegistry ChannelRegistry { get; } = new();
         public FakeMatchRegistry MatchRegistry { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
+        public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();
+        public IClock Clock { get; } = Substitute.For<IClock>();
         public MatchMembershipService MatchMembership { get; }
 
         public Fixture()
         {
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry, new ChannelMembershipService(SessionRegistry));
+            Clock.UtcNow.Returns(DateTimeOffset.UtcNow);
         }
 
         public void RegisterAll(params PlayerSession[] sessions)
@@ -77,6 +80,11 @@ internal static class MultiplayerTestSupport
         /// <summary>Creates a match with `host` in slot 0, registered in <see cref="MatchRegistry"/> and its channel in <see cref="ChannelRegistry"/>.</summary>
         public MatchSession CreateMatch(PlayerSession host, MatchTeamTypes teamType = MatchTeamTypes.HeadToHead) =>
             MatchMembership.Create(host, MakeMatchData(host.Id, teamType: teamType))!;
+
+        /// <summary>Poll interval/timeout default to a few ms so scrim tests never wait anywhere near the real 10s budget.</summary>
+        public MatchScoringService MakeScoringService(TimeSpan? pollInterval = null, TimeSpan? pollTimeout = null) => new(
+            MapRepository, SessionRegistry, MatchMembership, Clock,
+            pollInterval ?? TimeSpan.FromMilliseconds(5), pollTimeout ?? TimeSpan.FromMilliseconds(20));
     }
 
     public static PlayerSession MakePlayer(int id, string name) => new(id, name, "token", Privileges.Unrestricted, 0.0);

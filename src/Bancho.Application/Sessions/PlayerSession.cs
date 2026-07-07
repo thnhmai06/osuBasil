@@ -50,6 +50,14 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Ported from Player.match — the multiplayer match this player is currently in, if any.</summary>
     public MatchSession? Match { get; set; }
 
+    /// <summary>
+    /// Ported from Player.recent_score, simplified from a per-mode dict to a single
+    /// most-recently-submitted snapshot (bancho.py's version picks the max by server_time across
+    /// modes anyway) — set unconditionally at the end of every successful score submission,
+    /// consumed by scrim's await_submissions poll.
+    /// </summary>
+    public RecentScoreSnapshot? RecentScore { get; set; }
+
     /// <summary>Ported from Player.stealth — an admin spectating without the target being informed. Toggled by the (Phase 10) `!stealth` command; defaults off.</summary>
     public bool Stealth { get; set; }
 
@@ -181,3 +189,9 @@ public sealed record CachedPlayerStats(
     int ShCount = 0,
     int SCount = 0,
     int ACount = 0);
+
+/// <summary>
+/// Ported from the fields of Player.recent_score that scrim's await_submissions actually reads
+/// (bmap.md5, server_time, score/acc/max_combo — never pp, per the no-pp scope decision).
+/// </summary>
+public sealed record RecentScoreSnapshot(string BeatmapMd5, DateTime ServerTime, long Score, double Acc, int MaxCombo);
