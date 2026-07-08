@@ -1,3 +1,4 @@
+using System.Text.Json;
 using OpenOsuTournament.Bancho.Application.Abstractions;
 using OpenOsuTournament.Bancho.Application.Abstractions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.Sessions;
@@ -24,6 +25,7 @@ public sealed class MatchMembershipService(
     IPlayerSessionRegistry sessionRegistry,
     ChannelMembershipService channelMembership,
     IMatchPersistenceRepository matchPersistence,
+    IMatchEventBus eventBus,
     IClock clock)
 {
     private const string PrivateSuffix = "//private";
@@ -255,6 +257,12 @@ public sealed class MatchMembershipService(
 
         BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false),
             lobby);
+
+        // New for the api. host's live WS layer — every state-changing packet routes through here,
+        // so this is the single choke point for the WS /multi/{id} "main" channel. Publishing is a
+        // non-blocking best-effort write (see IMatchEventBus's doc comment), safe to call while
+        // still holding match.Lock.
+        eventBus.PublishMain(match.DbId, JsonSerializer.SerializeToUtf8Bytes(MatchLiveSnapshotBuilder.BuildMain(match)));
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)

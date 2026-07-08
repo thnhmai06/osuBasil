@@ -583,11 +583,56 @@ public static class BanchoHostGroups
     {
         group.MapGet("/", () => "api");
 
+        // GET (JSON snapshot) and WS (live "main" channel — meta/map/state, no per-player data,
+        // see MatchLiveSnapshotBuilder's doc comment) share this one path: a WS handshake is itself
+        // an HTTP GET with an Upgrade header, so the branch happens inside the handler.
         group.MapGet("/multi/{id:int}", async (int id, HttpContext context, CancellationToken cancellationToken) =>
         {
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                await MatchWebSocketRoutes.HandleMainAsync(id, context, cancellationToken);
+                return;
+            }
+
             var reportService = context.RequestServices.GetRequiredService<MatchReportService>();
             var report = await reportService.BuildAsync(id, cancellationToken);
-            return report is null ? Results.NotFound() : Results.Json(report);
+            if (report is null)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            await context.Response.WriteAsJsonAsync(report, cancellationToken);
+        });
+
+        // WS-only — one player's live score, decoded from MatchScoreUpdate frames (see
+        // MatchScoreUpdateHandler). Player name matches how the client's own name is used elsewhere
+        // (e.g. #multi_ channel membership), not a numeric id.
+        group.MapGet("/multi/{id:int}/{playerName}", async (int id, string playerName, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            if (!context.WebSockets.IsWebSocketRequest)
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
+            await MatchWebSocketRoutes.HandlePlayerAsync(id, playerName, context, cancellationToken);
+        });
+
+        // WS-only — raw spectator input frames for players in this match, tagged by player name.
+        // Only carries data while at least one client is spectating a player in the match (see
+        // SpectateFramesHandler).
+        group.MapGet("/multi/{id:int}/input", async (int id, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            if (!context.WebSockets.IsWebSocketRequest)
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
+            await MatchWebSocketRoutes.HandleInputAsync(id, context, cancellationToken);
         });
 
         group.MapGet("/replays/{scoreId:long}", async (long scoreId, HttpContext context,

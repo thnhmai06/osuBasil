@@ -1,5 +1,7 @@
+using System.Text.Json;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
+using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
 using OpenOsuTournament.Bancho.Application.UseCases.Multiplayer;
 using OpenOsuTournament.Bancho.Protocol.Packets;
 
@@ -7,9 +9,14 @@ namespace OpenOsuTournament.Bancho.Application.PacketHandlers.Multiplayer;
 
 /// <summary>
 ///     Ported from app/api/domains/cho.py's MatchScoreUpdate — runs very frequently during a match,
-///     so it stays a raw forward (no parsing) exactly like the Python source's "fastpath" comment.
+///     so the bancho-protocol relay stays a raw forward (no parsing) exactly like the Python source's
+///     "fastpath" comment. The one addition here is decoding the same bytes into a
+///     <see cref="Protocol.Multiplayer.ScoreFrameData" /> to publish on the api. host's WS
+///     /multi/{id}/{playerName} live channel — a second, independent read of the same buffer, not a
+///     change to the relayed packet.
 /// </summary>
-public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
+public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership, IMatchEventBus eventBus)
+    : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;
 
@@ -34,6 +41,19 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
             packet[11] = (byte)slotId.Value;
 
             matchMembership.Enqueue(match, packet, false);
+
+            try
+            {
+                var frame = new BanchoPacketReader(playData).ReadScoreFrame();
+                var payload = JsonSerializer.SerializeToUtf8Bytes(
+                    MatchLiveSnapshotBuilder.BuildPlayerScore(player.Name, frame));
+                eventBus.PublishPlayer(match.DbId, player.Name, payload);
+            }
+            catch (Exception)
+            {
+                // ponytail: a malformed/short scoreframe must never break the bancho relay above —
+                // the live WS channel just misses this one update.
+            }
         }
         finally
         {

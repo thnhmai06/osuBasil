@@ -32,7 +32,8 @@ public class LogoutHandlerTests
             new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
                 Substitute.For<IPlayerSessionRegistry>(),
                 new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()),
-                Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IClock>())), _clock);
+                Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(),
+                Substitute.For<IClock>())), _clock);
     }
 
     [Fact]

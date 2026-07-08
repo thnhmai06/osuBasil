@@ -195,6 +195,39 @@ internal static class MultiplayerTestSupport
         }
     }
 
+    /// <summary>Records what would have been pushed to WS subscribers, without any real channel/socket.</summary>
+    public sealed class FakeMatchEventBus : IMatchEventBus
+    {
+        public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
+        public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> InputPublishes { get; } = [];
+
+        public IDisposable SubscribeMain(int matchDbId, System.Threading.Channels.ChannelWriter<byte[]> writer) => NullDisposable.Instance;
+        public IDisposable SubscribePlayer(int matchDbId, string playerName, System.Threading.Channels.ChannelWriter<byte[]> writer) => NullDisposable.Instance;
+        public IDisposable SubscribeInput(int matchDbId, System.Threading.Channels.ChannelWriter<byte[]> writer) => NullDisposable.Instance;
+
+        public void PublishMain(int matchDbId, byte[] payload)
+        {
+            MainPublishes.Add((matchDbId, payload));
+        }
+
+        public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
+        {
+            PlayerPublishes.Add((matchDbId, playerName, payload));
+        }
+
+        public void PublishInput(int matchDbId, byte[] payload)
+        {
+            InputPublishes.Add((matchDbId, payload));
+        }
+
+        private sealed class NullDisposable : IDisposable
+        {
+            public static readonly NullDisposable Instance = new();
+            public void Dispose() { }
+        }
+    }
+
     /// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
     public sealed class Fixture
     {
@@ -204,12 +237,13 @@ internal static class MultiplayerTestSupport
             clock.UtcNow.Returns(DateTimeOffset.UtcNow);
 
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry), MatchPersistence, clock);
+                new ChannelMembershipService(SessionRegistry), MatchPersistence, EventBus, clock);
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();
         public FakeMatchRegistry MatchRegistry { get; } = new();
         public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
+        public FakeMatchEventBus EventBus { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
         public MatchMembershipService MatchMembership { get; }
 

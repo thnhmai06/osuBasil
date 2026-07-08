@@ -18,6 +18,8 @@ builder.Services.AddBanchoApplication();
 
 var app = builder.Build();
 
+app.UseWebSockets();
+
 var domain = builder.Configuration.GetSection(ServerBehaviorOptions.SectionName)["Domain"] ?? "localhost";
 
 BanchoHostGroups.MapAll(app, domain);

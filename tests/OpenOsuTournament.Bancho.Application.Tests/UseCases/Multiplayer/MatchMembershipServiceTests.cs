@@ -27,7 +27,7 @@ public class MatchMembershipServiceTests
         clock.UtcNow.Returns(DateTimeOffset.UtcNow);
 
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-            new ChannelMembershipService(_sessionRegistry), _matchPersistence, clock);
+            new ChannelMembershipService(_sessionRegistry), _matchPersistence, Substitute.For<IMatchEventBus>(), clock);
     }
 
     /// <summary>The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous shape.</summary>
