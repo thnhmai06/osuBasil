@@ -668,6 +668,8 @@ public static class BanchoHostGroups
             var osz = await BuildOszArchiveAsync(maps, storage, setId, cancellationToken);
             return osz is null ? Results.NotFound() : Results.File(osz, "application/x-osu-beatmap-archive", $"{setId}.osz");
         });
+
+        group.MapAdminManagement();
     }
 }
 

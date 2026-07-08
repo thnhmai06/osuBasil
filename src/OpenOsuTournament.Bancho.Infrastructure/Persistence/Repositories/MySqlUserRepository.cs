@@ -82,6 +82,13 @@ public sealed class MySqlUserRepository(string connectionString) : IUserReposito
         return (await FetchByIdAsync(id, cancellationToken))!;
     }
 
+    public async Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<UserRow>("SELECT * FROM Users ORDER BY Id");
+        return rows.Select(r => r.ToUser()).ToList();
+    }
+
     private MySqlConnection Connect()
     {
         return new MySqlConnection(connectionString);

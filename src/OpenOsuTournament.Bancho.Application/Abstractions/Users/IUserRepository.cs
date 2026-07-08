@@ -48,4 +48,7 @@ public interface IUserRepository
 
     Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
         CancellationToken cancellationToken = default);
+
+    /// <summary>New for the management REST API's user listing.</summary>
+    Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default);
 }

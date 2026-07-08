@@ -38,6 +38,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
         services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
+        services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
 
         static string BuildConnectionString(IServiceProvider sp)
         {

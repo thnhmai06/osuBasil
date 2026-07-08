@@ -177,6 +177,11 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         {
             throw new NotSupportedException();
         }
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<User>>([]);
+        }
     }
 
     private sealed class StubPasswordHasher : IPasswordHasher

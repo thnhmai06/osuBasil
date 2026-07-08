@@ -190,6 +190,11 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         {
             throw new NotSupportedException();
         }
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<User>>([]);
+        }
     }
 
     private sealed class StubPasswordHasher : IPasswordHasher
