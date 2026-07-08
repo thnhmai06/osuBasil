@@ -39,6 +39,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
         services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
         services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
+        services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
 
         static string BuildConnectionString(IServiceProvider sp)
         {

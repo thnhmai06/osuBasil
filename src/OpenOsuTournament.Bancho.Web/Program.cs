@@ -3,6 +3,7 @@ using OpenOsuTournament.Bancho.Application.Abstractions.Channels;
 using OpenOsuTournament.Bancho.Application.Configuration;
 using OpenOsuTournament.Bancho.Application.DependencyInjection;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
+using OpenOsuTournament.Bancho.Application.UseCases.Bot;
 using OpenOsuTournament.Bancho.Infrastructure.Beatmaps;
 using OpenOsuTournament.Bancho.Infrastructure.DependencyInjection;
 using OpenOsuTournament.Bancho.Infrastructure.Persistence;
@@ -41,6 +42,9 @@ using (var scope = app.Services.CreateScope())
     {
         var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
         await ingestionService.IngestAsync();
+
+        var botBootstrap = scope.ServiceProvider.GetRequiredService<BotBootstrapService>();
+        await botBootstrap.BootstrapAsync();
     }
 }
 

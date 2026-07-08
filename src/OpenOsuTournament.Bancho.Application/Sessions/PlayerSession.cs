@@ -29,6 +29,13 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 
     public int UtcOffset { get; init; }
 
+    /// <summary>
+    ///     True only for the bootstrapped BanchoBot session. Never sends real ping packets, so
+    ///     <see cref="LastRecvTime" /> never advances — exempted from GhostDisconnectService's reap
+    ///     sweep for exactly that reason.
+    /// </summary>
+    public bool IsBot { get; init; }
+
     /// <summary>Set at login from the client's login body, but mutable at runtime via TOGGLE_BLOCK_NON_FRIEND_DMS.</summary>
     public bool PmPrivate { get; set; }
 

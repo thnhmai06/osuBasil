@@ -50,6 +50,21 @@ public class GhostDisconnectServiceTests
     }
 
     [Fact]
+    public void RunOnce_BotSessionPastThreshold_IsNotRemoved()
+    {
+        var registry = new InMemoryPlayerSessionRegistryTestDouble();
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.FromUnixTimeSeconds(1000));
+        var bot = new PlayerSession(1, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0)
+            { LastRecvTime = 1000 - 301, IsBot = true };
+        registry.Add(bot);
+
+        new GhostDisconnectService(registry, clock).RunOnce();
+
+        Assert.NotNull(registry.GetByToken("bot-token"));
+    }
+
+    [Fact]
     public void RunOnce_DisconnectingUnrestrictedPlayer_BroadcastsLogoutToOthers()
     {
         var registry = new InMemoryPlayerSessionRegistryTestDouble();

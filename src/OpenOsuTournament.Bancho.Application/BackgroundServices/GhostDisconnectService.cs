@@ -21,7 +21,7 @@ public sealed class GhostDisconnectService(IPlayerSessionRegistry sessionRegistr
         var currentTime = clock.UtcNow.ToUnixTimeSeconds();
 
         foreach (var player in sessionRegistry.All)
-            if (currentTime - player.LastRecvTime > OsuClientMinPingIntervalSeconds)
+            if (!player.IsBot && currentTime - player.LastRecvTime > OsuClientMinPingIntervalSeconds)
             {
                 sessionRegistry.Remove(player);
 

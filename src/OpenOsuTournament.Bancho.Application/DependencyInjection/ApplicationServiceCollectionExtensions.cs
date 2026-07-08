@@ -9,6 +9,7 @@ using OpenOsuTournament.Bancho.Application.Sessions.Channels;
 using OpenOsuTournament.Bancho.Application.UseCases.Anticheat;
 using OpenOsuTournament.Bancho.Application.UseCases.Authentication;
 using OpenOsuTournament.Bancho.Application.UseCases.Beatmaps;
+using OpenOsuTournament.Bancho.Application.UseCases.Bot;
 using OpenOsuTournament.Bancho.Application.UseCases.Mail;
 using OpenOsuTournament.Bancho.Application.UseCases.Multiplayer;
 using OpenOsuTournament.Bancho.Application.UseCases.Scores;
@@ -40,6 +41,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<BeatmapInfoService>();
         services.AddSingleton<ClientIntegrityService>();
         services.AddSingleton<MailReadService>();
+        services.AddSingleton<BotBootstrapService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
