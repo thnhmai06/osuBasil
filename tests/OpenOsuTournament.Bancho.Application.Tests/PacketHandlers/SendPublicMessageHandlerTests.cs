@@ -2,6 +2,8 @@ using NSubstitute;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions;
 using OpenOsuTournament.Bancho.Application.Sessions.Channels;
+using OpenOsuTournament.Bancho.Application.Sessions.Multiplayer;
+using OpenOsuTournament.Bancho.Application.UseCases.Bot;
 using OpenOsuTournament.Bancho.Domain.Users;
 using OpenOsuTournament.Bancho.Protocol.Packets;
 
@@ -9,17 +11,19 @@ namespace OpenOsuTournament.Bancho.Application.Tests.PacketHandlers;
 
 /// <summary>
 ///     Ported from app/api/domains/cho.py's SendMessage (public), scoped to a single channel — no
-///     #spectator/#multiplayer routing yet (Phase 7). Bot commands aren't wired up yet, so a
-///     command-prefixed message is just broadcast as plain chat.
+///     #spectator/#multiplayer routing yet (Phase 7). ICommandDispatcher is a plain substitute here
+///     (defaults to a null reply, i.e. "not a recognized command") — CommandDispatcher/MpCommandService
+///     have their own tests.
 /// </summary>
 public class SendPublicMessageHandlerTests
 {
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+    private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private SendPublicMessageHandler MakeHandler()
     {
-        return new SendPublicMessageHandler(_channelRegistry, _sessionRegistry);
+        return new SendPublicMessageHandler(_channelRegistry, _sessionRegistry, _commandDispatcher);
     }
 
     private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId)
@@ -137,5 +141,26 @@ public class SendPublicMessageHandlerTests
 
         Assert.Equal(ServerPacketWriter.SendMessage("cmyui", "!help", "#osu", 1), member.Dequeue());
         Assert.Empty(sender.Dequeue());
+    }
+
+    [Fact]
+    public async Task Handle_DispatcherReturnsReply_BroadcastsReplyFromBotToWholeChannel()
+    {
+        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0)
+            { IsBot = true };
+        var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+        channel.Join(sender.Id);
+        sender.JoinChannel("#osu");
+        _channelRegistry.GetByName("#osu").Returns(channel);
+        _sessionRegistry.All.Returns([sender]);
+        _sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+        _commandDispatcher.DispatchAsync(sender, "!roll", null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>("cmyui rolls 42 point(s)"));
+
+        await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!roll", "#osu", 1));
+
+        Assert.Equal(ServerPacketWriter.SendMessage("BanchoBot", "cmyui rolls 42 point(s)", "#osu", BotBootstrapService.BotId),
+            sender.Dequeue());
     }
 }

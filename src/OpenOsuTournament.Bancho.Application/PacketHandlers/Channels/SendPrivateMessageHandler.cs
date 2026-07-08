@@ -2,6 +2,7 @@ using OpenOsuTournament.Bancho.Application.Abstractions.Social;
 using OpenOsuTournament.Bancho.Application.Abstractions.Users;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Core;
 using OpenOsuTournament.Bancho.Application.Sessions;
+using OpenOsuTournament.Bancho.Application.UseCases.Bot;
 using OpenOsuTournament.Bancho.Protocol;
 using OpenOsuTournament.Bancho.Protocol.Packets;
 using Action = OpenOsuTournament.Bancho.Domain.Action;
@@ -9,14 +10,18 @@ using Action = OpenOsuTournament.Bancho.Domain.Action;
 namespace OpenOsuTournament.Bancho.Application.PacketHandlers.Channels;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SendMessage (private). BanchoBot's special-cased routing is dropped along
-///     with the bot itself.
+///     Ported from app/api/domains/cho.py's SendMessage (private). BanchoBot's special-cased routing
+///     is re-added (see docs/scope-decisions.md) as a command-dispatch shortcut only — DMs to the bot
+///     never go through the normal deliver/mail path (nothing ever reads the bot's queue), and `!mp`
+///     is intentionally never usable this way: matchScope is always null for PMs, since a private
+///     message is never a match's own chat channel (matches bancho.py's ensure_match check).
 /// </summary>
 public sealed class SendPrivateMessageHandler(
     IPlayerSessionRegistry sessionRegistry,
     IUserRepository users,
     IRelationshipRepository relationships,
-    IMailRepository mail) : IBanchoPacketHandler
+    IMailRepository mail,
+    ICommandDispatcher commandDispatcher) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.SendPrivateMessage;
 
@@ -29,6 +34,13 @@ public sealed class SendPrivateMessageHandler(
         if (player.Silenced) return;
 
         var target = sessionRegistry.GetByName(message.Recipient);
+
+        if (target is { IsBot: true })
+        {
+            var reply = await commandDispatcher.DispatchAsync(player, message.Text, null);
+            if (reply is not null) player.Enqueue(ServerPacketWriter.SendMessage(target.Name, reply, target.Name, target.Id));
+            return;
+        }
 
         await DeliverToRealTargetAsync(player, message, target);
     }

@@ -3,18 +3,17 @@ using OpenOsuTournament.Bancho.Application.Abstractions.Social;
 using OpenOsuTournament.Bancho.Application.Abstractions.Users;
 using OpenOsuTournament.Bancho.Application.PacketHandlers.Channels;
 using OpenOsuTournament.Bancho.Application.Sessions;
+using OpenOsuTournament.Bancho.Application.UseCases.Bot;
 using OpenOsuTournament.Bancho.Domain.Users;
 using OpenOsuTournament.Bancho.Protocol.Packets;
 using Action = OpenOsuTournament.Bancho.Domain.Action;
 
 namespace OpenOsuTournament.Bancho.Application.Tests.PacketHandlers;
 
-/// <summary>
-///     Ported from app/api/domains/cho.py's SendMessage (private). Bot commands aren't wired up yet,
-///     so a PM to the bot session is simply dropped.
-/// </summary>
+/// <summary>Ported from app/api/domains/cho.py's SendMessage (private).</summary>
 public class SendPrivateMessageHandlerTests
 {
+    private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
     private readonly IMailRepository _mail = Substitute.For<IMailRepository>();
     private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
@@ -22,7 +21,7 @@ public class SendPrivateMessageHandlerTests
 
     private SendPrivateMessageHandler MakeHandler()
     {
-        return new SendPrivateMessageHandler(_sessionRegistry, _users, _relationships, _mail);
+        return new SendPrivateMessageHandler(_sessionRegistry, _users, _relationships, _mail, _commandDispatcher);
     }
 
     private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId)
@@ -126,6 +125,39 @@ public class SendPrivateMessageHandlerTests
 
         _ = _mail.Received(1).CreateAsync(1, 5, "hi");
         Assert.Empty(sender.Dequeue());
+    }
+
+    [Fact]
+    public async Task Handle_TargetIsBot_DispatchesWithNullMatchScopeAndRepliesDirectly_SkipsMail()
+    {
+        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0)
+            { IsBot = true };
+        _sessionRegistry.GetByName("BanchoBot").Returns(bot);
+        _commandDispatcher.DispatchAsync(sender, "!roll", null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>("cmyui rolls 7 point(s)"));
+
+        await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!roll", "BanchoBot", 1));
+
+        Assert.Equal(ServerPacketWriter.SendMessage("BanchoBot", "cmyui rolls 7 point(s)", "BanchoBot", BotBootstrapService.BotId),
+            sender.Dequeue());
+        _ = _mail.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default!);
+    }
+
+    [Fact]
+    public async Task Handle_TargetIsBot_DispatcherReturnsNull_NoReplySentNoMail()
+    {
+        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0)
+            { IsBot = true };
+        _sessionRegistry.GetByName("BanchoBot").Returns(bot);
+        _commandDispatcher.DispatchAsync(sender, "hi", null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>(null));
+
+        await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "BanchoBot", 1));
+
+        Assert.Empty(sender.Dequeue());
+        _ = _mail.DidNotReceiveWithAnyArgs().CreateAsync(default, default, default!);
     }
 
     [Fact]

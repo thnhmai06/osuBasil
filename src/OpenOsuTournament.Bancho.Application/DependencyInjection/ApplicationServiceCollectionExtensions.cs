@@ -42,6 +42,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ClientIntegrityService>();
         services.AddSingleton<MailReadService>();
         services.AddSingleton<BotBootstrapService>();
+        services.AddSingleton<MpCommandService>();
+        services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
