@@ -1,0 +1,21 @@
+<Solution>
+    <Folder Name="/Sources/">
+        <Project Path="src/Basil.Application/Basil.Application.csproj"/>
+        <Project Path="src/Basil.Domain/Basil.Domain.csproj"/>
+        <Project Path="src/Basil.Infrastructure/Basil.Infrastructure.csproj"/>
+        <Project Path="src/Basil.Protocol/Basil.Protocol.csproj"/>
+        <Project Path="src/Basil.Web/Basil.Web.csproj"/>
+    </Folder>
+    <Folder Name="/Tests/">
+        <Project
+                Path="tests/Basil.Application.Tests/Basil.Application.Tests.csproj"/>
+        <Project
+                Path="tests/Basil.ArchitectureTests/Basil.ArchitectureTests.csproj"/>
+        <Project Path="tests/Basil.Domain.Tests/Basil.Domain.Tests.csproj"/>
+        <Project
+                Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
+        <Project
+                Path="tests/Basil.IntegrationTests/Basil.IntegrationTests.csproj"/>
+        <Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
+    </Folder>
+</Solution>

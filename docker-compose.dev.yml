@@ -1,17 +1,19 @@
+name: basil
+
 services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_USER: bancho
-      MYSQL_PASSWORD: bancho
-      MYSQL_DATABASE: bancho
+      MYSQL_USER: basil
+      MYSQL_PASSWORD: basil
+      MYSQL_DATABASE: basil
       MYSQL_RANDOM_ROOT_PASSWORD: "true"
     ports:
       - "3306:3306"
     volumes:
-      - bancho-mysql-data:/var/lib/mysql
+      - basil-mysql-data:/var/lib/mysql
     healthcheck:
-      test: '/usr/bin/mysql --user=bancho --password=bancho --execute "SHOW DATABASES;"'
+      test: '/usr/bin/mysql --user=basil --password=basil --execute "SHOW DATABASES;"'
       interval: 2s
       timeout: 20s
       retries: 10
@@ -21,8 +23,8 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - bancho-redis-data:/data
+      - basil-redis-data:/data
 
 volumes:
-  bancho-mysql-data:
-  bancho-redis-data:
+  basil-mysql-data:
+  basil-redis-data:

@@ -27,4 +27,4 @@ jobs:
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
 
       - name: Build Docker image
-        run: docker build -t bancho:ci .
+        run: docker build -t basil:ci .

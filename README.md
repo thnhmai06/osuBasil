@@ -1,68 +1,48 @@
-# OpenOsuTournament.Bancho
+<div align="center">
 
-A C# / .NET service for OpenOsuTournament, scoped to run the osu! Bancho side needed for **multiplayer matches and tournaments**.
+<img src="assets/icon.png" width="160" alt="Basil">
 
-> [!NOTE]
-> This is not a drop-in replacement for bancho.py. It exists to power OpenOsuTournament's osu! tournament and multiplayer flows; chat commands, the bot account, pp calculation, clans, friends, and the public developer API are intentionally out of scope right now — see [`docs/scope-decisions.md`](docs/scope-decisions.md) for what's kept, what's cut, and why.
+# Basil
 
-## What this is
+<sub><i>Nếu [Akatsuki](https://github.com/osuAkatsuki) có nghĩa là "bình minh", thì Basil là bông hướng dương luôn hướng về Mặt Trời.</i></sub>
 
-- A real osu! bancho server: login, channels, multiplayer rooms (create/join/ready/start/mods/teams/host transfer/tourney referee client support), spectating, score submission, and beatmap/leaderboard lookups over the same wire protocol the osu! stable client speaks.
-- Rebuilt from bancho.py's Python source following Monolith Clean Architecture, with the whole thing covered by tests (unit, architecture-boundary, and Testcontainers-backed integration tests).
-- Fully offline-capable: no dependency on osu!api, a mirror service, or pp calculation. Star rating is computed locally via a small Rust FFI crate ([`native/bancho-pp-ffi`](native/bancho-pp-ffi)) for display only.
+**Một server [osu!](https://osu.ppy.sh/) (stable) nhẹ, nhằm phục vụ thi đấu multiplayer/tournament qua LAN - hoàn toàn offline, không phụ thuộc vào internet.**
 
-## What this isn't (yet)
+[![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
+[![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white&style=flat-square)](https://dotnet.microsoft.com/)
+[![Last commit](https://img.shields.io/github/last-commit/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil/commits/main)
 
-- No chat command system (`!help`, `!mp`, etc.) and no bot account — deferred, not deleted from history.
-- No public JSON API (`/api/v1`, `/api/v2`) — that's for external tooling (a website, a bracket tracker), not the game client, and is deferred indefinitely.
-- No friends, favourites, ratings, comments, screenshots, or in-game account registration — these routes exist and respond, but do nothing (see the endpoint table in [`docs/api-reference.md`](docs/api-reference.md)).
+</div>
+
+> [!IMPORTANT]
+> **Miễn trừ trách nhiệm.** 
+> Dự án này không liên kết, không được xác nhận, và không có bất kỳ liên hệ nào với [osu!](https://osu.ppy.sh/) ([ppy Pty Ltd](https://ppy.sh/)) hay [bancho.py](https://github.com/osuAkatsuki/bancho.py) ([Akatsuki](https://github.com/osuAkatsuki)). "Basil" chỉ là một cái tên tham chiếu. Hình ảnh mascot là nhân vật Basil đến từ [OMORI](https://www.omori-game.com/) - dự án này không liên kết, không được xác nhận, và không có bất kỳ liên hệ nào với OMORI hay nhà phát triển của nó, [OMOCAT](https://omocat.com/). Mọi quyền đối với nhân vật thuộc về chủ sở hữu tương ứng.
+
+## Các tính năng chính
+
+- Cung cấp [**môi trường multiplayer**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) giống với [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), **loại bỏ** hệ thống xử lý Singleplayer và các tính năng không liên quan.
+- Hỗ trợ [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat) và các **tính năng Xã hội cơ bản**.
+- Quản lý **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** ngay trên CSDL/ổ đĩa.
+- **Không phụ thuộc** vào [osu!api](https://osu.ppy.sh/wiki/en/osu%21api), dịch vụ mirror hay các dịch vụ bên thứ 3. Các thông số (như Star Rating) được tính toán cục bộ và lưu trữ trong CSDL. **Tất cả đều offline và local 100%**.
+- **Cung cấp các API** để theo dõi trực tiếp dữ liệu trận đấu, input của người chơi và các sự kiện diễn ra trong trận đấu.
 
 ## Tech stack
 
-| Layer | Choice |
+| Layer | Lựa chọn |
 | --- | --- |
-| Runtime | .NET 10 |
-| Database | MySQL 8, accessed via [Dapper](https://github.com/DapperLib/Dapper), schema managed by [DbUp](https://dbup.readthedocs.io/) |
-| Cache / leaderboards | Redis 7, via [StackExchange.Redis](https://github.com/StackExchange/StackExchange.Redis) |
-| Difficulty/star rating | A vendored Rust crate ([`akatsuki-pp-rs`](https://github.com/osuAkatsuki/akatsuki-pp-rs)) exposed as a C ABI and loaded via P/Invoke — display only, never used for scoring |
-| Tests | xUnit, [NetArchTest](https://github.com/BenMorris/NetArchTest) for layer-boundary enforcement, [Testcontainers](https://testcontainers.com/) for real-MySQL integration tests |
+| Runtime | [.NET](https://dot.net/) 10 với [ASP.NET](https://asp.net/) |
+| Database | [MySQL](https://www.mysql.com/) 8, truy cập qua [Dapper](https://github.com/DapperLib/Dapper), schema quản lý bởi [DbUp](https://dbup.readthedocs.io/) |
+| Cache | [Redis](https://redis.io/) 7, qua [StackExchange.Redis](https://github.com/StackExchange/StackExchange.Redis) |
+| Star rating | Tham chiếu đến các thuật toán tính toán trực tiếp của [osu!lazer](https://github.com/ppy/osu) |
+| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) để enforce ranh giới layer, [Testcontainers](https://testcontainers.com/) cho integration test MySQL thật |
 
-## Quick start
+## Credits
 
-```bash
-docker compose up --build
-```
+**Basil** được xây dựng trên nền tảng của [**bancho.py**](https://github.com/osuAkatsuki/bancho.py) bởi [Akatsuki](https://github.com/osuAkatsuki). 
 
-This builds the app image (including the native crate) and starts the app alongside MySQL and Redis. Migrations run automatically on startup. See [`docs/getting-started.md`](docs/getting-started.md) for configuration, running tests, and pointing a real osu! client at a local instance.
+Cảm ơn rất nhiều đội ngũ [Akatsuki](https://github.com/osuAkatsuki) về dự án tâm huyết này của họ!
 
-## Project structure
+## Star History
 
-Five projects under `src/`, following Monolith Clean Architecture — dependency direction is enforced by an automated test suite, not just convention:
-
-```
-Bancho.Domain          # framework-free types: enums, value objects, pure calculators
-Bancho.Protocol        # bancho wire-format packet reading/writing
-Bancho.Application     # use cases, packet handlers, ports (interfaces) to Infrastructure
-Bancho.Infrastructure   # MySQL/Redis/filesystem implementations of Application's ports
-Bancho.Web              # ASP.NET Core host: routing by subdomain, composition root
-```
-
-See [`docs/architecture.md`](docs/architecture.md) for the dependency rule, how a login request and a score submission actually flow through these layers, and where to look when adding something new.
-
-## Running tests
-
-```bash
-dotnet test tests/Bancho.Domain.Tests
-dotnet test tests/Bancho.Protocol.Tests
-dotnet test tests/Bancho.Application.Tests
-dotnet test tests/Bancho.ArchitectureTests
-dotnet test tests/Bancho.IntegrationTests
-dotnet test tests/Bancho.Infrastructure.Tests   # needs Docker; spins up a real MySQL via Testcontainers
-```
-
-## Further reading
-
-- [`docs/architecture.md`](docs/architecture.md) — project layout, dependency rule, request flow walkthroughs
-- [`docs/getting-started.md`](docs/getting-started.md) — local setup, docker-compose, running against a real osu! client
-- [`docs/scope-decisions.md`](docs/scope-decisions.md) — what was cut from bancho.py's feature set, and why
-- [`docs/api-reference.md`](docs/api-reference.md) — supported bancho packets and HTTP endpoints
+[![Star History Chart](https://api.star-history.com/chart?repos=thnhmai06/osuBasil&type=date&legend=top-left&sealed_token=wPQ_eLQYxDpC8IxGbg3aO7Pj4XQ1Pxr5Y16JLxzXZkGFuytVDcgJBdCUlsx9wbZzySsHPkAAj3L9OO5nOCpSebEGkL8fFpPoUwZSSgEHqj1RSWZgLn_G2Vuqc0itECn1WFYXPG74tJN9U1OzQoMcvyLnW8NBycp-yaxWQmDu-rlmTRVhvMpW3LGys9r1)](https://www.star-history.com/?repos=thnhmai06%2FosuBasil&type=date&legend=top-left)

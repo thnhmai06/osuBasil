@@ -13,9 +13,6 @@ obj/
 TestResults/
 *.trx
 
-## Rust
-native/*/target/
-
 ## OS
 .DS_Store
 Thumbs.db

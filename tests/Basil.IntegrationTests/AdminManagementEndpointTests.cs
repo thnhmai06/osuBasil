@@ -1,0 +1,210 @@
+using System.Net;
+using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Basil.IntegrationTests;
+
+/// <summary>
+///     Covers the third slice of Phase C: the admin-key gate on the management REST API. Per the
+///     review that shaped this phase, the admin key is the one thing here that MUST be verified —
+///     everything else is boilerplate CRUD — because a wrong-key DELETE returning 200 instead of 401
+///     would be a real, silent security hole on destructive endpoints.
+/// </summary>
+public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public AdminManagementEndpointTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ServerBehavior:Domain"] = "test.local",
+                    ["ServerBehavior:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Api:AdminKey"] = "correct-key"
+                });
+            });
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<IMatchPersistenceRepository>(new StubMatchPersistenceRepository());
+                services.AddSingleton<IUserRepository>(new StubUserRepository());
+            });
+        });
+    }
+
+    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = null)
+    {
+        var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
+        if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+        return request;
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-key")]
+    public async Task DeleteMatch_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/matches/1", adminKey));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-key")]
+    public async Task DeleteUser_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-key")]
+    public async Task DeleteBeatmap_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmaps/1", adminKey));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUsers_MissingAdminKey_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUsers_CorrectAdminKey_ReturnsOk()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"));
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task DeleteMatch_CorrectAdminKey_UnknownId_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/matches/999", "correct-key"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private sealed class StubMatchPersistenceRepository : IMatchPersistenceRepository
+    {
+        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
+            DateTime createdAt, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
+            DateTime startedAt, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<MatchRow?>(null);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
+
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<User>>([]);
+        }
+    }
+}

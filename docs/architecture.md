@@ -1,55 +1,133 @@
-# Architecture
+# Kiến trúc
 
-OpenOsuTournament.Bancho follows **Monolith Clean Architecture**: one deployable, but with the dependency-inversion discipline of Clean Architecture enforced between layers. The rule is checked by an automated test suite (`tests/Bancho.ArchitectureTests`, using [NetArchTest](https://github.com/BenMorris/NetArchTest)), not just left as a convention — a PR that violates the dependency direction fails CI.
+## Kiến trúc hệ thống
 
-## The five projects
+**Basil** tuân thủ kiến trúc **Monolith Clean Architecture** - một bản deploy duy nhất, nhưng có kỷ luật dependency-inversion của Clean Architecture được enforce giữa các layer.
 
-```
-Bancho.Domain           →  no project references. Pure C#: enums, records, value calculators.
-Bancho.Protocol         →  no project references. Bancho wire-format packet reading/writing.
-Bancho.Application      →  references Domain, Protocol. Use cases, packet handlers, and *ports*
-                            (interfaces) describing what Infrastructure must provide.
-Bancho.Infrastructure    →  references Application (to implement its ports), Domain. MySQL/Redis/
-                            filesystem/Rust-FFI implementations.
-Bancho.Web               →  references Application, Infrastructure, Protocol. ASP.NET Core host:
-                            subdomain-based routing, DI composition root, Program.cs.
-```
+Rule này được kiểm tra bởi bộ test tự động (`tests/Basil.ArchitectureTests`, dùng [NetArchTest](https://github.com/BenMorris/NetArchTest)), không chỉ để lại như một quy ước - một PR vi phạm hướng phụ thuộc sẽ fail CI.
 
-The dependency rule: **Domain and Protocol depend on nothing else in the solution.** Application depends on Domain and Protocol, but never on Infrastructure or Web — it only knows about *interfaces* (`IUserRepository`, `IScoreRepository`, `IReplayStorage`, etc., under `Bancho.Application.Abstractions.*`). Infrastructure implements those interfaces but is never referenced by Application. Web is the only project allowed to know about all four others — it's the composition root that wires interfaces to their concrete implementations at startup.
+![Clean Architecture](docs\assets\clean-architecture.jpg)
 
-This means every MySQL/Redis/filesystem detail lives in `Bancho.Infrastructure`, and `Bancho.Application`'s use cases can be unit-tested by substituting fakes for those interfaces — no database needed. `tests/Bancho.Infrastructure.Tests` is the one suite that talks to a real MySQL (spun up per-test-run via Testcontainers), verifying the concrete implementations actually match the schema.
+| Project                | References                            | Mục đích                                                                                   |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `Basil.Domain`         | Không có                              | C# thuần: enum, record, value calculator                                                   |
+| `Basil.Protocol`       | Không có                              | Đọc/ghi packet định dạng wire của bancho                                                   |
+| `Basil.Application`    | Domain, Protocol                      | Use case, packet handler, và*port* (interface) mô tả những gì Infrastructure phải cung cấp |
+| `Basil.Infrastructure` | Application, Domain                   | Triển khai MySQL/Redis/filesystem/thư viện ruleset osu!lazer                               |
+| `Basil.Web`            | Application, Infrastructure, Protocol | Host ASP.NET Core: routing theo subdomain, composition root, Program.cs                    |
 
-## Project layout within `Bancho.Application`
+**Dependency rule:**
 
-The three largest folders are organized by feature area rather than left flat:
+- **Domain và Protocol không phụ thuộc gì khác trong solution.**
+- Application phụ thuộc Domain và Protocol, nhưng không bao giờ phụ thuộc Infrastructure hay Web.
+- Infrastructure triển khai các interface đó nhưng không bao giờ được Application reference.
+- Web là project duy nhất được phép biết về cả bốn project còn lại - nó là composition root nối interface với triển khai cụ thể của chúng khi khởi động.
 
-- **`PacketHandlers/`** — one class per bancho client packet, split into `Core/` (session lifecycle: login-adjacent packets, presence, stats), `Channels/` (chat), `Spectating/`, and `Multiplayer/` (match + tournament packets, the largest group).
-- **`Abstractions/`** — the ports Infrastructure implements, split by domain concept: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (mail + relationships + moderation logging).
-- **`Sessions/`** — in-memory session state (`PlayerSession`, `ChannelSession`, `MatchSession`) and the registries that track it, split into `Channels/` and `Multiplayer/` subfolders with player-level state at the root.
-- **`UseCases/`** — one folder per feature (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Mail/`, `Anticheat/`), each holding the actual business logic a packet handler or HTTP route delegates to.
+điều này nghĩa là:
 
-`Bancho.Domain`, `Bancho.Protocol`, and `Bancho.Infrastructure/Persistence` follow the same pattern (topic subfolders like `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`, `Repositories/`) — the namespace matches the folder path, so `grep`-ing an import tells you exactly where the file lives.
+- Mọi chi tiết MySQL/Redis/filesystem đều nằm trong `Basil.Infrastructure`
+- Use case của `Basil.Application` có thể được unit test bằng cách thay thế fake cho các interface đó - không cần database.
+- `tests/Basil.Infrastructure.Tests` là bộ test duy nhất nói chuyện với MySQL thật (dựng lên mỗi lần chạy test qua Testcontainers), xác minh các triển khai cụ thể thực sự khớp với schema.
 
-## Request flow: login
+## Bố cục Layer
 
-The osu! client sends a login as an HTTP POST with no `osu-token` header. There's no dedicated packet for it.
+Ba thư mục lớn nhất được tổ chức theo khu vực tính năng thay vì để phẳng:
 
-1. `Bancho.Web/Routing/BanchoHostGroups.cs` — the `c.`/`ce.`/`c4.`/`c5.`/`c6.` subdomain group's `POST /` route reads the raw body, resolves the client IP (`Bancho.Domain.Login.ClientIpResolver`), and calls `OsuLoginUseCase.ExecuteAsync`.
-2. `OsuLoginUseCase` (`Bancho.Application/UseCases/Authentication/`) parses the login body (`LoginDataParser`, `OsuVersionParser`, `AdaptersStringParser` — all in `Bancho.Domain.Login`), authenticates against `IUserRepository`/`IPasswordHasher`, checks for an existing session, loads per-mode stats via `IStatsRepository`, and builds a `PlayerSession`.
-3. The concrete `IUserRepository`/`IStatsRepository`/`IPasswordHasher` implementations (`MySqlUserRepository`, `MySqlStatsRepository`, `BCryptPasswordHasher`) live in `Bancho.Infrastructure` and are wired in at startup by `InfrastructureServiceCollectionExtensions`/`ApplicationServiceCollectionExtensions` — `OsuLoginUseCase` itself never references a concrete class, only the interfaces.
-4. The response is a stream of bancho packets (`Bancho.Protocol.Packets.ServerPacketWriter`) — protocol version, login reply, privileges, channel list, and cached presence/stats for every already-online player.
+| Thư mục | Mục đích |
+| --- | --- |
+| **`PacketHandlers/`** | Một class cho mỗi bancho client packet, chia thành `Core/` (vòng đời session: các packet liên quan login, presence, stats), `Channels/` (chat), `Spectating/`, và `Multiplayer/` (packet match + tournament, nhóm lớn nhất) |
+| **`Abstractions/`** | Các port mà Infrastructure triển khai, chia theo khái niệm domain: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (mail + relationship + moderation logging) |
+| **`Sessions/`** | Trạng thái session trong bộ nhớ (`PlayerSession`, `ChannelSession`, `MatchSession`) và các registry theo dõi nó, chia thành thư mục con `Channels/` và `Multiplayer/` với trạng thái cấp player ở gốc. `Sessions/Multiplayer/IMatchEventBus` là pub/sub non-blocking dùng để đẩy trạng thái match trực tiếp tới lớp WebSocket của host `api.` |
+| **`UseCases/`** | Một thư mục cho mỗi tính năng (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Mail/`, `Anticheat/`, `Bot/`), mỗi thư mục chứa business logic thực sự mà một packet handler hay HTTP route ủy quyền tới. `UseCases/Multiplayer/MatchReportService` xây dựng tournament match report (TRT) tại thời điểm đọc. `UseCases/Bot/` là bootstrap session của BanchoBot cộng với command dispatcher `!help`/`!roll`/`!mp` |
 
-Every subsequent client request carries an `osu-token` header; `BanchoHostGroups.cs` looks the session up by token and dispatches the packet body through `BanchoPacketDispatcher` to the matching handler in `PacketHandlers/`.
+`Basil.Domain`, `Basil.Protocol`, và `Basil.Infrastructure/Persistence` theo cùng pattern (thư mục con theo chủ đề như `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`, `Repositories/`) - namespace khớp với đường dẫn thư mục, nên `grep` một import sẽ cho biết chính xác file nằm ở đâu.
 
-## Request flow: multiplayer match creation
+## Luồng request
 
-1. Client sends the `CREATE_MATCH` packet → `BanchoPacketDispatcher` routes it to `CreateMatchHandler` (`PacketHandlers/Multiplayer/`).
-2. `CreateMatchHandler` delegates to `MatchMembershipService.Create` (`UseCases/Multiplayer/`), which atomically allocates a match ID from the 64-slot `IMatchRegistry`, builds a `MatchSession` (`Sessions/Multiplayer/`), registers its dedicated chat channel, and joins the host into slot 0.
-3. Every subsequent match packet handler (`MatchChangeSlotHandler`, `MatchReadyHandler`, `MatchStartHandler`, etc.) acquires `MatchSession.Lock` — a per-match `SemaphoreSlim(1, 1)` — before reading or mutating slot state, then broadcasts the updated match state before releasing it. This lock is OpenOsuTournament.Bancho's own addition: the Python source relies on asyncio's single-threaded event loop for atomicity between `await` points, which ASP.NET Core's real thread pool doesn't give for free.
-4. `tests/Bancho.Application.Tests/Sessions/MatchSessionRaceTests.cs` is the test that actually proves the lock works — it reproduces a genuine lost-write race with the lock removed, then shows the same scenario is race-free with it in place.
+### Login
 
-## Where to look when adding something new
+Client osu! gửi login dưới dạng một HTTP POST không có header `osu-token`. Không có packet riêng cho việc này.
 
-- A new bancho packet → a new class in the matching `PacketHandlers/*` subfolder, registered in `ApplicationServiceCollectionExtensions`, counted in `CompositionRootTests`.
-- A new piece of persisted state → a new method on an existing (or new) interface under `Abstractions/*`, implemented in `Bancho.Infrastructure/Persistence/Repositories/`.
-- A new HTTP endpoint → a new route in `Bancho.Web/Routing/BanchoHostGroups.cs`, under whichever host group (`osu.`, `b.`, `api.`) it belongs to.
+1. `Basil.Web/Routing/BanchoHostGroups.cs` - route `POST /` của nhóm subdomain `c.`/`ce.`/`c4.`/`c5.`/`c6.` đọc raw body, resolve IP client (`Basil.Domain.Login.ClientIpResolver`), và gọi `OsuLoginUseCase.ExecuteAsync`.
+2. `OsuLoginUseCase` (`Basil.Application/UseCases/Authentication/`) parse body login (`LoginDataParser`, `OsuVersionParser`, `AdaptersStringParser` - tất cả trong `Basil.Domain.Login`), xác thực qua `IUserRepository`/`IPasswordHasher`, kiểm tra session hiện có, load stats theo từng mode qua `IStatsRepository`, và xây dựng một `PlayerSession`.
+3. Các triển khai cụ thể của `IUserRepository`/`IStatsRepository`/`IPasswordHasher` (`MySqlUserRepository`, `MySqlStatsRepository`, `BCryptPasswordHasher`) nằm trong `Basil.Infrastructure` và được nối vào lúc khởi động bởi `InfrastructureServiceCollectionExtensions`/`ApplicationServiceCollectionExtensions` - bản thân `OsuLoginUseCase` không bao giờ reference một class cụ thể, chỉ reference interface.
+4. Response là một stream các packet bancho (`Basil.Protocol.Packets.ServerPacketWriter`) - phiên bản giao thức, phản hồi login, privileges, danh sách channel, và presence/stats đã cache của mọi player đang online.
+
+Mọi request tiếp theo của client đều mang header `osu-token`; `BanchoHostGroups.cs` tra session theo token và dispatch body packet qua `BanchoPacketDispatcher` tới handler tương ứng trong `PacketHandlers/`.
+
+### Multiplayer
+
+1. Client gửi packet `CREATE_MATCH` → `BanchoPacketDispatcher` route nó tới `CreateMatchHandler` (`PacketHandlers/Multiplayer/`).
+2. `CreateMatchHandler` ủy quyền cho `MatchMembershipService.Create` (`UseCases/Multiplayer/`), hàm này cấp phát nguyên tử một match ID từ `IMatchRegistry` 64 slot, xây dựng một `MatchSession` (`Sessions/Multiplayer/`), đăng ký chat channel riêng của nó, và cho host vào slot 0.
+3. Mọi packet handler match tiếp theo (`MatchChangeSlotHandler`, `MatchReadyHandler`, `MatchStartHandler`, v.v.) đều acquire `MatchSession.Lock` - một `SemaphoreSlim(1, 1)` cho từng match - trước khi đọc hoặc mutate trạng thái slot, sau đó broadcast trạng thái match đã cập nhật trước khi release nó. 
+   
+   > [!NOTE]
+   > Lock này là bổ sung riêng cho **Basil**: mã nguồn Python gốc của **Akatsuki** dựa vào event loop đơn luồng của asyncio để đảm bảo tính nguyên tử giữa các điểm `await`, điều mà thread pool thật của ASP.NET Core không cho miễn phí.
+4. `tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs` là test thực sự chứng minh lock hoạt động - nó tái tạo một race lost-write có thật khi bỏ lock, rồi cho thấy cùng kịch bản đó không còn race khi có lock.
+
+## Database Schema
+
+*Schema dùng tên bảng/cột tuân thủ PascalCase, id auto-increment bắt đầu từ 1 (không có khoảng trống id kiểu của Akatsuki).*
+
+Các bảng phục vụ cho việc **quản lý chung**:
+
+| Bảng | Mục đích |
+| --- | --- |
+| `Users` | Tài khoản: credential, priv, clan/mode mặc định. `Id = 1` seed sẵn cho `BanchoBot` |
+| `Mapsets` | Một hàng cho mỗi beatmapset - chỉ để `Beatmaps.SetId` tham chiếu, không track staleness osu!api (server chạy offline, mapset chỉ được thêm qua ingest cục bộ) |
+| `Beatmaps` | Một hàng cho mỗi difficulty, khoá bởi `Md5`; nguồn cho việc tra map khi submit score và hiển thị star rating tính local |
+| `Channels` | Danh mục chat channel tĩnh (`#osu`, `#announce`, `#lobby`, ...) cộng cờ `ReadPriv`/`WritePriv`/`AutoJoin` |
+| `Mail` | Tin nhắn offline giữa hai user (gửi khi người nhận không online) |
+| `Relationships` | Cặp `(User1, User2)` kiểu `friend`/`block` |
+| `Ratings` | Đánh giá sao 1-10 của user cho một map (`UserId`, `MapMd5`), dùng bởi `BeatmapLeaderboardService` |
+| `ClientHashes` | Log hardware fingerprint (adapters/uninstall id/disk serial) mỗi lần login - chỉ dùng cho anticheat, không có logic chặn tự động |
+| `IngameLogins` | Log mỗi lần login: IP, version client, stream - chỉ ghi, không có consumer đọc lại |
+| `Logs` | Log hành động chung `From`/`To`/`Action` (vd. moderation) - chỉ ghi |
+
+Các bảng quan trọng cho **luồng giải đấu**:
+
+| Bảng | Mục đích |
+| --- | --- |
+| `Matches` | Một hàng cho mỗi phòng multiplayer. `Id` là id ổn định mà consumer bên ngoài dùng - khác với `MatchSession.Id`, slot trong bộ nhớ 0-63 mà bản thân giao thức wire của bancho dùng |
+| `Rounds` | Một hàng cho mỗi beatmap được chơi trong một match, tạo tại `MATCH_START`/`!mp start` |
+| `Scores` | Liên kết tới một `Round` qua `RoundId`, nộp qua pipeline `osu-submit-modular-selector.php` sẵn có |
+| `UserStats` | Được seed một lần ở giá trị 0 và không bao giờ được score submission cập nhật - server này không có xếp hạng/tiến triển singleplayer, nên stats theo từng mode là dữ liệu cố định chỉ để hiển thị, không tính toán trực tiếp |
+
+> [!IMPORTANT]
+>**Việc liên kết score-tới-round không có race window theo thiết kế** 
+> 
+>`MatchMembershipService.StartAsync` tạo hàng `Round` và lưu id của nó vào `MatchSession.CurrentRoundId` _trước khi_ gameplay bắt đầu. Score submission (một HTTP request) và `MATCH_COMPLETE` (một packet bancho) đến trên hai kết nối không liên quan, không có đảm bảo thứ tự giữa chúng - nên score submission đọc `CurrentRoundId` trực tiếp tại thời điểm submit thay vì có bước "gom score sau khi match hoàn thành" phải chờ cả hai.
+
+## Tournament match report (TRT)
+
+**TRT không bao giờ được lưu trữ trên Database** - `MatchReportService` (`UseCases/Multiplayer/`) xây dựng nó khi đọc từ `Matches`/`Rounds`/`Scores` (một match đã kết thúc) hợp nhất với `MatchSession` trực tiếp (một match đang diễn ra, tra bằng `IMatchRegistry.GetByDbId`). 
+
+`WinningTeam` cũng được tính khi đọc, không lưu trữ: nhóm các `Scores` đã hoàn thành theo team nếu có team không trung lập, nếu không thì rơi về người có điểm cao nhất cá nhân.
+
+Cập nhật trực tiếp được đẩy qua ba kênh WebSocket ASP.NET Core thô dưới host `api.`:
+
+| Endpoint | Mục đích |
+| --- | --- |
+| `WS /multi/{id}` | Trạng thái toàn match (slot/map/status), publish từ `MatchMembershipService.EnqueueState` - điểm nghẽn cổ chai duy nhất mà mọi packet match thay đổi trạng thái đã route qua sẵn |
+| `WS /multi/{id}/{playerName}` | Điểm trực tiếp của một player, publish từ `MatchScoreUpdateHandler` sau khi decode score frame |
+| `WS /multi/{id}/input` | Raw spectator input frame, publish từ `SpectateFramesHandler` chỉ khi có ai đó đang spectate một player trong match đó |
+
+Cả ba đều publish qua `IMatchEventBus`, có các method `Publish*` là `ChannelWriter.TryWrite` non-blocking - an toàn để gọi từ code vẫn đang giữ `MatchSession.Lock` (như `EnqueueState` và các handler score/spectate đang làm), vì việc ghi socket thực sự xảy ra trên một task pump riêng cho từng connection, tách biệt hoàn toàn, không inline với lời gọi publish.
+
+`GET /multi/{id}` (không upgrade) trả về cùng report đó dưới dạng một snapshot JSON one-shot thay vì một stream WS.
+
+## Handler cho BanchoBot
+
+`BanchoBot` (`UseCases/Bot/BotBootstrapService`) được bootstrap như một `PlayerSession` thật khi khởi động - không có kết nối client nào phía sau nó, nên nó được miễn khỏi đợt reap của `GhostDisconnectService` qua `PlayerSession.IsBot` (nó không bao giờ gửi packet ping thật, nên `LastRecvTime` sẽ không bao giờ tiến nếu không có ngoại lệ này). 
+
+`SendPublicMessageHandler`/`SendPrivateMessageHandler` chuyển mọi message bắt đầu bằng `!` cho `ICommandDispatcher`, hàm này route tới hoặc bảng lệnh thông thường (`!help`, `!roll`) hoặc `MpCommandService` cho `!mp <subcommand>` - cái sau chỉ khi message được gửi trong chat channel của chính match người gửi, và được kiểm soát bởi `MatchSession.IsReferee`.
+
+## TL;DR
+
+Khi thêm một tính năng mới, hãy nhớ:
+
+| Tính năng | Cách thêm |
+| --- | --- |
+| Một packet bancho mới | Một class mới trong thư mục con `PacketHandlers/*` tương ứng, đăng ký trong `ApplicationServiceCollectionExtensions`, đếm trong `CompositionRootTests` |
+| Một mảnh trạng thái được lưu trữ mới | Một method mới trên một interface hiện có (hoặc mới) dưới `Abstractions/*`, triển khai trong `Basil.Infrastructure/Persistence/Repositories/` |
+| Một HTTP endpoint mới | Một route mới trong `Basil.Web/Routing/BanchoHostGroups.cs`, dưới host group tương ứng (`osu.`, `b.`, `api.`) mà nó thuộc về |

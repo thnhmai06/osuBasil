@@ -1,3 +1,5 @@
+name: basil
+
 services:
   app:
     build: .
@@ -6,20 +8,33 @@ services:
     environment:
       Database__Host: mysql
       Database__Port: "3306"
-      Database__User: bancho
-      Database__Password: bancho
-      Database__Name: bancho
+      Database__User: basil
+      Database__Password: basil
+      Database__Name: basil
       Redis__Host: redis
       Redis__Port: "6379"
-      ServerBehavior__Domain: ${BANCHO_DOMAIN:-localhost}
-      ServerBehavior__CommandPrefix: "!"
-      ServerBehavior__MenuIconUrl: ${BANCHO_MENU_ICON_URL:-https://example.local/icon.png}
-      ServerBehavior__MenuOnclickUrl: ${BANCHO_MENU_ONCLICK_URL:-https://example.local}
+      ServerBehavior__Domain: ${BASIL_DOMAIN:-localhost}
+      ServerBehavior__CommandPrefix: ${BASIL_COMMAND_PREFIX:-!}
+      ServerBehavior__MenuIconUrl: ${BASIL_MENU_ICON_URL:-https://example.local/icon.png}
+      ServerBehavior__MenuOnclickUrl: ${BASIL_MENU_ONCLICK_URL:-https://example.local}
+      Bot__Name: ${BASIL_BOT_NAME:-BasilBot}
+      # Unset (the default) locks every management REST route (api.<domain>) down with 401 — set this
+      # in .env before relying on the CRUD endpoints for anything.
+      Api__AdminKey: ${BASIL_ADMIN_KEY:-}
+      Storage__ReplaysPath: ${BASIL_REPLAYS_PATH:-.data/osr}
+      Storage__AvatarsPath: ${BASIL_AVATARS_PATH:-.data/avatars}
+      Storage__MapsetsPath: ${BASIL_MAPSETS_PATH:-.data/mapsets}
+      Storage__SeasonalsPath: ${BASIL_SEASONALS_PATH:-.data/seasonals}
+      Storage__FaqsPath: ${BASIL_FAQS_PATH:-.data/faqs}
+    # These 5 mount targets match the Storage__*Path defaults above. If you override a
+    # BASIL_*_PATH in .env, update the matching target here too, or that data won't persist
+    # across container recreation.
     volumes:
-      - bancho-replays:/app/.data/osr
-      - bancho-avatars:/app/.data/avatars
-      - bancho-mapsets:/app/.data/mapsets
-      - bancho-seasonals:/app/.data/seasonals
+      - basil-replays:/app/.data/osr
+      - basil-avatars:/app/.data/avatars
+      - basil-mapsets:/app/.data/mapsets
+      - basil-seasonals:/app/.data/seasonals
+      - basil-faqs:/app/.data/faqs
     depends_on:
       mysql:
         condition: service_healthy
@@ -29,14 +44,14 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_USER: bancho
-      MYSQL_PASSWORD: bancho
-      MYSQL_DATABASE: bancho
+      MYSQL_USER: basil
+      MYSQL_PASSWORD: basil
+      MYSQL_DATABASE: basil
       MYSQL_RANDOM_ROOT_PASSWORD: "true"
     volumes:
-      - bancho-mysql-data:/var/lib/mysql
+      - basil-mysql-data:/var/lib/mysql
     healthcheck:
-      test: '/usr/bin/mysql --user=bancho --password=bancho --execute "SHOW DATABASES;"'
+      test: '/usr/bin/mysql --user=basil --password=basil --execute "SHOW DATABASES;"'
       interval: 2s
       timeout: 20s
       retries: 10
@@ -44,12 +59,13 @@ services:
   redis:
     image: redis:7.4
     volumes:
-      - bancho-redis-data:/data
+      - basil-redis-data:/data
 
 volumes:
-  bancho-mysql-data:
-  bancho-redis-data:
-  bancho-replays:
-  bancho-avatars:
-  bancho-mapsets:
-  bancho-seasonals:
+  basil-mysql-data:
+  basil-redis-data:
+  basil-replays:
+  basil-avatars:
+  basil-mapsets:
+  basil-seasonals:
+  basil-faqs:

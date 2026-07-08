@@ -1,7 +1,0 @@
-﻿<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Debug: https" type="CompoundRunConfigurationType">
-    <toRun name="Bancho.Web: https" type="LaunchSettings" />
-    <toRun name="Database" type="docker-deploy" />
-    <method v="2" />
-  </configuration>
-</component>

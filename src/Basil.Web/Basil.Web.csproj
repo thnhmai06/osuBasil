@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <ItemGroup>
+        <ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+        <ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj"/>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+</Project>
