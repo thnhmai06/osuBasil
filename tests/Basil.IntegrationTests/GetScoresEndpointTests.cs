@@ -35,7 +35,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Database:Path"] = ""
                 });
             });
             builder.ConfigureServices(services =>

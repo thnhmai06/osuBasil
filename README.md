@@ -31,11 +31,10 @@
 
 | Layer | Lựa chọn |
 | --- | --- |
-| Runtime | [.NET](https://dot.net/) 10 với [ASP.NET](https://asp.net/) |
-| Database | [MySQL](https://www.mysql.com/) 8, truy cập qua [Dapper](https://github.com/DapperLib/Dapper), schema quản lý bởi [DbUp](https://dbup.readthedocs.io/) |
-| Cache | [Redis](https://redis.io/) 7, qua [StackExchange.Redis](https://github.com/StackExchange/StackExchange.Redis) |
+| Runtime | [.NET](https://dot.net/) 10 với [ASP.NET](https://asp.net/), chạy như executable độc lập - không cần Docker |
+| Database | [SQLite](https://www.sqlite.org/) (1 file, cạnh executable), truy cập qua [Dapper](https://github.com/DapperLib/Dapper), schema quản lý bởi [DbUp](https://dbup.readthedocs.io/) |
 | Star rating | Tham chiếu đến các thuật toán tính toán trực tiếp của [osu!lazer](https://github.com/ppy/osu) |
-| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) để enforce ranh giới layer, [Testcontainers](https://testcontainers.com/) cho integration test MySQL thật |
+| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) để enforce ranh giới layer |
 
 ## Credits
 

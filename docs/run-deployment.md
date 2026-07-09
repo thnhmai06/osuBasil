@@ -3,59 +3,66 @@
 ## Dành cho Triển khai
 
 ```bash
-docker compose up --build
+dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
+# hoặc:
+dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
 ```
+
+Sau đó chạy executable vừa publish (`Basil.Web.exe` trên Windows, `Basil.Web` trên Linux) từ thư mục `publish/<rid>/`.
+Máy chạy cần cài sẵn **ASP.NET Core Runtime 10** (không self-contained, không bundle runtime vào exe).
 
 ### Nó làm gì?
 
-1. `docker-compose.yml` sẽ build một production image (multi-stage: `dotnet publish`, sau đó một runtime ASP.NET Core gọn nhẹ) và khởi động nó cùng MySQL 8.0 và Redis 7.4.
-2. `SqlMigrationRunner` áp dụng schema `001_base.sql` được nhúng sẵn vào MySQL tự động khi khởi động qua [DbUp](https://dbup.readthedocs.io/) để thực hiện tự động migration.
-3. Ngay sau đó, app cũng nạp mọi file beatmap được thả vào `Storage__MapsetsPath` và bootstrap session BanchoBot.
+1. Executable tự tạo file SQLite (`basil.db`, mặc định) ngay cạnh chính nó nếu chưa tồn tại.
+2. `SqlMigrationRunner` áp dụng schema `001_base.sql` được nhúng sẵn tự động khi khởi động qua [DbUp](https://dbup.readthedocs.io/) để thực hiện tự động migration — không cần bước migration thủ công.
+3. Ngay sau đó, app cũng nạp mọi file beatmap được thả vào folder `Mapsets/` và bootstrap session BanchoBot.
 
-App lắng nghe tại `http://localhost:8080`.
+App lắng nghe tại `http://localhost:<port do ASP.NET Core chọn>` theo mặc định — override qua `--urls` hoặc biến môi trường `ASPNETCORE_URLS` (ví dụ `--urls "http://*:8080"`).
 
 ### Các biến Môi trường tùy chỉnh
 
-| Biến                                                                                        | Mục đích                                                                                                             |
-| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `BASIL_DOMAIN`                                                                              | domain mà server tự nhận diện (dùng trong link icon menu, v.v.)                                                      |
-| `BASIL_COMMAND_PREFIX`                                                                      | tiền tố lệnh chat (`!help`, `!roll`, `!mp ...`)                                                                      |
-| `BASIL_MENU_ICON_URL` / `BASIL_MENU_ONCLICK_URL`                                            | icon menu chính trong game và URL click-through của nó                                                               |
-| `BASIL_BOT_NAME`                                                                            | tên hiển thị của BanchoBot                                                                                           |
-| `BASIL_ADMIN_KEY`                                                                           | khoá các route management CRUD của `api.<domain>` qua `X-Admin-Key`; để trống để giữ chúng khoá (401 cho mọi thứ)    |
-| `BASIL_REPLAYS_PATH` / `BASIL_AVATARS_PATH` / `BASIL_MAPSETS_PATH` / `BASIL_SEASONALS_PATH` | đường dẫn lưu trữ file cục bộ - chỉ override nếu bạn cũng cập nhật volume mount tương ứng trong `docker-compose.yml` |
+ASP.NET Core đọc `Section__Key` trực tiếp từ biến môi trường (không qua lớp dịch nào cả — không còn docker-compose để làm việc đó). Xem [`.env.example`](../.env.example) để có danh sách đầy đủ; các biến chính:
+
+| Biến                       | Mục đích                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ServerBehavior__Domain`   | domain mà server tự nhận diện (dùng trong link icon menu, v.v.)                                                    |
+| `ServerBehavior__CommandPrefix` | tiền tố lệnh chat (`!help`, `!roll`, `!mp ...`)                                                               |
+| `ServerBehavior__MenuIconUrl` / `ServerBehavior__MenuOnclickUrl` | icon menu chính trong game và URL click-through của nó                                       |
+| `Bot__Name`                | tên hiển thị của BanchoBot                                                                                        |
+| `Api__AdminKey`            | khoá các route management CRUD của `api.<domain>` qua `X-Admin-Key`; để trống để giữ chúng khoá (401 cho mọi thứ) |
+| `Database__Path`           | đường dẫn file SQLite - mặc định `basil.db` cạnh executable, override được nếu muốn đặt chỗ khác                  |
+
+**Không** có biến môi trường nào cho đường dẫn lưu trữ file (replay/avatar/beatmap/seasonal/faq) — 5 folder đó cố định, xem mục Dữ liệu bên dưới.
 
 ### Dữ liệu
 
-| Named Volume       | Mục đích                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------ |
-| `basil-mysql-data` | Lưu dữ liệu MySQL                                                                                      |
-| `basil-redis-data` | Lưu dữ liệu Redis                                                                                      |
-| `basil-replays`    | Lưu replay files                                                                                       |
-| `basil-avatars`    | Lưu avatar files                                                                                       |
-| `basil-mapsets`    | Lưu beatmap files (`.osu`/`.osz`) - thả file vào đây để chúng được nạp tự động ở lần khởi động kế tiếp |
-| `basil-seasonals`  | Lưu seasonal data                                                                                      |
+Tất cả nằm cố định ngay cạnh thư mục chứa executable, không cấu hình được:
+
+| Đường dẫn (cạnh exe) | Mục đích                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `basil.db`             | File database SQLite (tự tạo lúc khởi động lần đầu, kèm `basil.db-wal`/`basil.db-shm` khi đang chạy)    |
+| `Replays/`             | Lưu replay files                                                                                       |
+| `Avatars/`             | Lưu avatar files                                                                                       |
+| `Mapsets/`             | Lưu beatmap files (`.osu`/`.osz`) - thả file vào đây để chúng được nạp tự động ở lần khởi động kế tiếp |
+| `Seasonals/`           | Lưu seasonal data                                                                                       |
+| `Faqs/`                | Lưu nội dung `!faq`                                                                                     |
 
 Hoặc để nạp beatmap mà không cần restart, sử dụng `POST /beatmaps` trên host `api.` (khoá bằng admin-key).
+
+Muốn di dời sang máy khác: dừng server, copy nguyên thư mục chứa executable (bao gồm `basil.db*` và 5 folder trên) sang máy đích, chạy lại.
 
 ## Dành cho Phát triển
 
 ### Chạy Server
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-Lệnh này chỉ khởi động MySQL và Redis, với port được publish ra host (`3306`, `6379`) - tách biệt với instance do Testcontainers quản lý mà bộ test tự dựng lên. Sau đó:
-
-```bash
 dotnet run --project src/Basil.Web
 ```
 
-Cấu hình connection string trong `src/Basil.Web/appsettings.Development.json` để trỏ tới `localhost:3306` / `localhost:6379` với credential `basil`/`basil` từ `docker-compose.dev.yml`.
+Không cần khởi động thêm service nào khác — database là 1 file SQLite tự tạo cạnh binary output (`src/Basil.Web/bin/Debug/net10.0/basil.db`), migration tự chạy lúc khởi động.
 
 > [!IMPORTANT]
-> `Basil.Infrastructure.Tests` dựng lên một instance MySQL thật, dùng xong huỷ, qua [Testcontainers](https://testcontainers.com/) và cần daemon Docker đang chạy. Chạy nó ở foreground - chạy nền (background) đã từng bị quan sát thấy làm process bị kill trước khi Testcontainers dọn dẹp xong.
+> `Basil.Infrastructure.Tests` dựng lên một file SQLite tạm cho mỗi test class, xoá ngay sau khi test xong - không cần Docker daemon hay service ngoài nào. Xem [`CLAUDE.md`](../CLAUDE.md) về khuyến nghị chạy project test này ở foreground.
 
 ### Kết nối osu! client đến server
 
@@ -168,7 +175,7 @@ Cấu hình connection string trong `src/Basil.Web/appsettings.Development.json`
 6.  Chạy client với `osu!.exe --debug -devserver basil.local` (Windows) hoặc tương đương trên nền tảng khác.
 
 > [!IMPORTANT]
-> Chưa có endpoint đăng ký trong game (`POST /users` trên host `osu.` chỉ là stub), nên tạo tài khoản test trực tiếp trong MySQL - một hàng trong `Users` (với `Priv=3`, và `PwBcrypt` set thành bcrypt hash của **digest MD5 mã hoá hex** của mật khẩu - không phải digest thô, khớp với chính scheme mật khẩu của bancho.py) cộng một hàng cho mỗi game mode (`0,1,2,3,4,5,6,8` - mode `7` không tồn tại) trong `UserStats` - hoặc qua `POST /users` trên host `api.` (khoá bằng admin-key).
+> Chưa có endpoint đăng ký trong game (`POST /users` trên host `osu.` chỉ là stub), nên tạo tài khoản test trực tiếp trong file `basil.db` (dùng công cụ SQLite bất kỳ, ví dụ `sqlite3 basil.db` hoặc DB Browser for SQLite) - một hàng trong `Users` (với `Priv=3`, và `PwBcrypt` set thành bcrypt hash của **digest MD5 mã hoá hex** của mật khẩu - không phải digest thô, khớp với chính scheme mật khẩu của bancho.py) cộng một hàng cho mỗi game mode (`0,1,2,3,4,5,6,8` - mode `7` không tồn tại) trong `UserStats` - hoặc qua `POST /users` trên host `api.` (khoá bằng admin-key).
 
 > [!IMPORTANT]
 > Khi không có reverse proxy nginx phía trước cục bộ, server tự tổng hợp `X-Forwarded-For`/`X-Real-IP` từ địa chỉ remote của kết nối thô khi không có header nào trong hai header đó - nếu không, `Basil.Domain.ClientIpResolver.Resolve` sẽ throw, vì nó giả định (giống bancho.py) rằng một proxy luôn set các header này trong production.

@@ -13,11 +13,9 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-        <PackageReference Include="Testcontainers.MySql" Version="4.13.0"/>
-        <PackageReference Include="Testcontainers.Redis" Version="4.13.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9"/>
-        <PackageReference Include="xunit" Version="2.9.3"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+        <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -25,15 +23,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Using Include="Xunit"/>
+        <Using Include="Xunit" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+        <ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>

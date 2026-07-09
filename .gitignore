@@ -3,6 +3,7 @@ bin/
 obj/
 *.user
 *.suo
+publish/
 
 ## Rider / VS
 .vs/

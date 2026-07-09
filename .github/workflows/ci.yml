@@ -26,5 +26,20 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
 
-      - name: Build Docker image
-        run: docker build -t basil:ci .
+      - name: Publish win-x64
+        run: dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
+
+      - name: Publish linux-x64
+        run: dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
+
+      - name: Upload win-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basil-win-x64
+          path: publish/win-x64
+
+      - name: Upload linux-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basil-linux-x64
+          path: publish/linux-x64

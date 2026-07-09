@@ -14,6 +14,12 @@ public class CommandDispatcherTests
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
+    private static StorageOptions MakeStorageOptions(string faqsPath = "")
+    {
+        return new StorageOptions
+            { ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", SeasonalsPath = "", FaqsPath = faqsPath };
+    }
+
     private CommandDispatcher MakeDispatcher(string prefix = "!", MultiplayerTestSupport.Fixture? fixture = null,
         StorageOptions? storageOptions = null)
     {
@@ -31,7 +37,7 @@ public class CommandDispatcherTests
             _maps,
             fixture.SessionRegistry, Substitute.For<IUserRepository>(), clock);
         return new CommandDispatcher(options, mpCommands, _users,
-            Options.Create(storageOptions ?? new StorageOptions()),
+            Options.Create(storageOptions ?? MakeStorageOptions()),
             fixture.MatchRegistry);
     }
 
@@ -229,7 +235,7 @@ public class CommandDispatcherTests
         try
         {
             await File.WriteAllLinesAsync(Path.Combine(faqsPath, "rules.txt"), ["Line one", "Line two"]);
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq rules", null);
@@ -248,7 +254,7 @@ public class CommandDispatcherTests
         var faqsPath = CreateTempFaqsDir();
         try
         {
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq nonexistent", null);
@@ -270,7 +276,7 @@ public class CommandDispatcherTests
             await File.WriteAllTextAsync(Path.Combine(faqsPath, "rules.txt"), "rules");
             await File.WriteAllTextAsync(Path.Combine(faqsPath, "peppy.txt"), "peppy");
             await File.WriteAllTextAsync(Path.Combine(faqsPath, "list.txt"), "should be ignored");
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq list", null);
@@ -289,7 +295,7 @@ public class CommandDispatcherTests
         var faqsPath = CreateTempFaqsDir();
         try
         {
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq list", null);
@@ -312,7 +318,7 @@ public class CommandDispatcherTests
         {
             // A canary file OUTSIDE FaqsPath — if traversal ever worked, this is what would leak.
             await File.WriteAllTextAsync(Path.Combine(root, "secret.txt"), "TOP SECRET");
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq ../secret", null);
@@ -333,7 +339,7 @@ public class CommandDispatcherTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(faqsPath, "mod requests.txt"), "no mod requests here");
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq mod requests", null);
@@ -355,7 +361,7 @@ public class CommandDispatcherTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root, "secret.txt"), "TOP SECRET");
-            var dispatcher = MakeDispatcher(storageOptions: new StorageOptions { FaqsPath = faqsPath });
+            var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
             var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
             var reply = await dispatcher.DispatchAsync(sender, "!faq ..\\secret", null);

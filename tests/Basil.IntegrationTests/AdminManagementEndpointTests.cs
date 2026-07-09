@@ -29,7 +29,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
-                    ["Api:AdminKey"] = "correct-key"
+                    ["Api:AdminKey"] = "correct-key",
+                    ["Database:Path"] = ""
                 });
             });
             builder.ConfigureServices(services =>

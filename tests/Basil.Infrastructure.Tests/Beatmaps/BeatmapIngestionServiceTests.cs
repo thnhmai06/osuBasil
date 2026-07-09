@@ -8,26 +8,30 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Tests.Beatmaps;
 
 /// <summary>
-///     Verifies BeatmapIngestionService against a real MySQL instance and the real
+///     Verifies BeatmapIngestionService against a real SQLite file and the real
 ///     Fixtures/vivid_osu_file.osu (an old-format file with no BeatmapID/BeatmapSetID fields, so it
 ///     exercises the local-id-allocation fallback rather than the online-id path).
 /// </summary>
-public class BeatmapIngestionServiceTests : IClassFixture<MySqlFixture>, IDisposable
+public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
-    private readonly MySqlMapRepository _maps;
-    private readonly MySqlMapsetRepository _mapsets;
+    private readonly SqliteMapRepository _maps;
+    private readonly SqliteMapsetRepository _mapsets;
     private readonly string _mapsetsPath;
     private readonly BeatmapIngestionService _service;
 
-    public BeatmapIngestionServiceTests(MySqlFixture fixture)
+    public BeatmapIngestionServiceTests(SqliteFixture fixture)
     {
-        _maps = new MySqlMapRepository(fixture.ConnectionString);
-        _mapsets = new MySqlMapsetRepository(fixture.ConnectionString);
+        _maps = new SqliteMapRepository(fixture.ConnectionString);
+        _mapsets = new SqliteMapsetRepository(fixture.ConnectionString);
         _mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
         Directory.CreateDirectory(_mapsetsPath);
         _service = new BeatmapIngestionService(_maps, _mapsets, Options.Create(new StorageOptions
         {
-            MapsetsPath = _mapsetsPath
+            ReplaysPath = "",
+            AvatarsPath = "",
+            MapsetsPath = _mapsetsPath,
+            SeasonalsPath = "",
+            FaqsPath = ""
         }));
     }
 

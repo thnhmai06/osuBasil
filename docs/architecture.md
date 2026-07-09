@@ -13,7 +13,7 @@ Rule này được kiểm tra bởi bộ test tự động (`tests/Basil.Archite
 | `Basil.Domain`         | Không có                              | C# thuần: enum, record, value calculator                                                   |
 | `Basil.Protocol`       | Không có                              | Đọc/ghi packet định dạng wire của bancho                                                   |
 | `Basil.Application`    | Domain, Protocol                      | Use case, packet handler, và*port* (interface) mô tả những gì Infrastructure phải cung cấp |
-| `Basil.Infrastructure` | Application, Domain                   | Triển khai MySQL/Redis/filesystem/thư viện ruleset osu!lazer                               |
+| `Basil.Infrastructure` | Application, Domain                   | Triển khai SQLite/filesystem/thư viện ruleset osu!lazer                                    |
 | `Basil.Web`            | Application, Infrastructure, Protocol | Host ASP.NET Core: routing theo subdomain, composition root, Program.cs                    |
 
 **Dependency rule:**
@@ -25,9 +25,9 @@ Rule này được kiểm tra bởi bộ test tự động (`tests/Basil.Archite
 
 điều này nghĩa là:
 
-- Mọi chi tiết MySQL/Redis/filesystem đều nằm trong `Basil.Infrastructure`
+- Mọi chi tiết SQLite/filesystem đều nằm trong `Basil.Infrastructure`
 - Use case của `Basil.Application` có thể được unit test bằng cách thay thế fake cho các interface đó - không cần database.
-- `tests/Basil.Infrastructure.Tests` là bộ test duy nhất nói chuyện với MySQL thật (dựng lên mỗi lần chạy test qua Testcontainers), xác minh các triển khai cụ thể thực sự khớp với schema.
+- `tests/Basil.Infrastructure.Tests` là bộ test duy nhất nói chuyện với SQLite thật (một file tạm dựng lên mỗi lần chạy test, xoá khi xong), xác minh các triển khai cụ thể thực sự khớp với schema.
 
 ## Bố cục Layer
 
@@ -50,7 +50,7 @@ Client osu! gửi login dưới dạng một HTTP POST không có header `osu-to
 
 1. `Basil.Web/Routing/BanchoHostGroups.cs` - route `POST /` của nhóm subdomain `c.`/`ce.`/`c4.`/`c5.`/`c6.` đọc raw body, resolve IP client (`Basil.Domain.Login.ClientIpResolver`), và gọi `OsuLoginUseCase.ExecuteAsync`.
 2. `OsuLoginUseCase` (`Basil.Application/UseCases/Authentication/`) parse body login (`LoginDataParser`, `OsuVersionParser`, `AdaptersStringParser` - tất cả trong `Basil.Domain.Login`), xác thực qua `IUserRepository`/`IPasswordHasher`, kiểm tra session hiện có, load stats theo từng mode qua `IStatsRepository`, và xây dựng một `PlayerSession`.
-3. Các triển khai cụ thể của `IUserRepository`/`IStatsRepository`/`IPasswordHasher` (`MySqlUserRepository`, `MySqlStatsRepository`, `BCryptPasswordHasher`) nằm trong `Basil.Infrastructure` và được nối vào lúc khởi động bởi `InfrastructureServiceCollectionExtensions`/`ApplicationServiceCollectionExtensions` - bản thân `OsuLoginUseCase` không bao giờ reference một class cụ thể, chỉ reference interface.
+3. Các triển khai cụ thể của `IUserRepository`/`IStatsRepository`/`IPasswordHasher` (`SqliteUserRepository`, `SqliteStatsRepository`, `BCryptPasswordHasher`) nằm trong `Basil.Infrastructure` và được nối vào lúc khởi động bởi `InfrastructureServiceCollectionExtensions`/`ApplicationServiceCollectionExtensions` - bản thân `OsuLoginUseCase` không bao giờ reference một class cụ thể, chỉ reference interface.
 4. Response là một stream các packet bancho (`Basil.Protocol.Packets.ServerPacketWriter`) - phiên bản giao thức, phản hồi login, privileges, danh sách channel, và presence/stats đã cache của mọi player đang online.
 
 Mọi request tiếp theo của client đều mang header `osu-token`; `BanchoHostGroups.cs` tra session theo token và dispatch body packet qua `BanchoPacketDispatcher` tới handler tương ứng trong `PacketHandlers/`.

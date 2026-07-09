@@ -27,7 +27,7 @@ config duy nhất:
 
 ```
 ServerBehavior:Domain      (appsettings.json)
-ServerBehavior__Domain     (biến môi trường — dùng trong docker-compose.yml)
+ServerBehavior__Domain     (biến môi trường — override khi chạy executable đã publish)
 ```
 
 Với domain đã cấu hình đó **và** `ppy.sh` được hardcode (để một deployment production đứng sau reverse proxy trả
@@ -48,16 +48,16 @@ không có config host theo từng route nào khác ở bất kỳ đâu.
 | Môi trường                               | `ServerBehavior:Domain` (và mọi thứ khác) được set ở đâu                                                                                                       |
 |------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `dotnet run` (dev cục bộ)                | `src/Basil.Web/appsettings.Development.json` → `ServerBehavior:Domain` (mặc định `basil.local`)                                                                |
-| `docker compose up` (compose production) | `docker-compose.yml` → `app.environment.ServerBehavior__Domain` (mặc định `${BASIL_DOMAIN:-localhost}`, override qua biến môi trường `BASIL_DOMAIN` trên host) |
+| Executable đã publish                    | biến môi trường `ServerBehavior__Domain` (mặc định `localhost` nếu không set), xem [`run-deployment.md`](run-deployment.md)                                    |
 
 **Network binding (app thực sự lắng nghe port/protocol nào) là một trục config riêng biệt, không liên quan:**
 
 - Dev cục bộ: `Kestrel:Certificates:Default:Path`/`Password` dưới dạng biến môi trường (cert HTTPS để test với
-  client thật, xem [`getting-started.md`](getting-started.md)), kết hợp với `--urls` truyền vào `dotnet run` (ví
+  client thật, xem [`run-deployment.md`](run-deployment.md)), kết hợp với `--urls` truyền vào `dotnet run` (ví
   dụ `--urls "http://*:80;https://*:443"`).
-- `docker-compose.yml`: service `app` publish `8080:8080`, và `ASPNETCORE_URLS=http://+:8080` được bake sẵn vào
-  runtime stage của `Dockerfile` — chỉ HTTP thuần, dành cho việc đứng sau một reverse proxy thật (nginx/Caddy)
-  terminate TLS và forward `X-Forwarded-For`.
+- Executable đã publish: mặc định Kestrel lắng nghe HTTP thuần trên port do ASP.NET Core chọn (override qua
+  `--urls` hoặc `ASPNETCORE_URLS`) — dành cho việc đứng sau một reverse proxy thật (nginx/Caddy) terminate TLS và
+  forward `X-Forwarded-For`, hoặc set trực tiếp cert như trên nếu chạy độc lập.
 
 ---
 

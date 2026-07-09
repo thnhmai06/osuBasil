@@ -11,7 +11,7 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Ported from app/api/domains/cho.py's bancho_handler: dispatches by presence of the osu-token
 ///     header. Only the token-present branches are covered here — they touch only the in-memory
-///     session registry and dispatcher, no DB/Redis. The no-token (login) branch is fully covered by
+///     session registry and dispatcher, no DB. The no-token (login) branch is fully covered by
 ///     OsuLoginUseCase's own 19 unit tests and is not re-tested through HTTP here.
 /// </summary>
 public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -29,7 +29,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Database:Path"] = ""
                 });
             });
             builder.ConfigureServices(services =>

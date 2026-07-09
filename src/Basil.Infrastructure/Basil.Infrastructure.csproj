@@ -1,27 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+        <ProjectReference Include="..\Basil.Application\Basil.Application.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="Persistence\Migrations\*.sql"/>
+        <EmbeddedResource Include="Persistence\Migrations\*.sql" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="BCrypt.Net-Next" Version="4.2.0"/>
-        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2"/>
-        <PackageReference Include="Dapper" Version="2.1.79"/>
-        <PackageReference Include="dbup-mysql" Version="6.1.0"/>
-        <PackageReference Include="MySqlConnector" Version="2.6.1"/>
-        <PackageReference Include="StackExchange.Redis" Version="3.0.11"/>
-        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9"/>
-        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2026.702.1"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.702.1"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2026.702.1"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2026.702.1"/>
+        <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+        <PackageReference Include="Dapper" Version="2.1.79" />
+        <PackageReference Include="dbup-sqlite" Version="6.0.4" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+        <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2026.702.1" />
+        <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.702.1" />
+        <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2026.702.1" />
+        <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2026.702.1" />
     </ItemGroup>
 
     <PropertyGroup>

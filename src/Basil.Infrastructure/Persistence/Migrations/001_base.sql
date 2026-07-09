@@ -1,4 +1,4 @@
--- Basil schema. PascalCase tables/columns, ids AUTO_INCREMENT from 1.
+-- Basil schema (SQLite). PascalCase tables/columns, ids autoincrement from 1.
 -- Scope: multiplayer/tournament only. Cut vs. upstream bancho.py: Clans, Achievements,
 -- UserAchievements, Comments, Favourites, MapRequests, PerformanceReports, Startups (no consumer
 -- anywhere in the codebase). Kept: Ratings (consumed by BeatmapLeaderboardService), Mail/
@@ -8,7 +8,7 @@
 
 create table Users
 (
-    Id              int auto_increment primary key,
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
     Name            varchar(32)          not null,
     SafeName        varchar(32)          not null,
     Email           varchar(254)         not null,
@@ -38,22 +38,21 @@ create index Users_Priv_index on Users (Priv);
 -- (server does not track singleplayer ranking/progression).
 create table UserStats
 (
-    Id       int not null,
-    Mode     int not null,
-    Tscore   bigint unsigned default 0 not null,
-    Rscore   bigint unsigned default 0 not null,
-    Plays    int unsigned default 0 not null,
-    Playtime int unsigned default 0 not null,
-    Acc      float(6, 3
-) default 0.000 not null,
-    MaxCombo    int unsigned default 0 not null,
-    TotalHits   int unsigned default 0 not null,
-    ReplayViews int unsigned default 0 not null,
-    XhCount     int unsigned default 0 not null,
-    XCount      int unsigned default 0 not null,
-    ShCount     int unsigned default 0 not null,
-    SCount      int unsigned default 0 not null,
-    ACount      int unsigned default 0 not null,
+    Id          int not null,
+    Mode        int not null,
+    Tscore      bigint  default 0     not null,
+    Rscore      bigint  default 0     not null,
+    Plays       int     default 0     not null,
+    Playtime    int     default 0     not null,
+    Acc         float(6, 3) default 0.000 not null,
+    MaxCombo    int     default 0     not null,
+    TotalHits   int     default 0     not null,
+    ReplayViews int     default 0     not null,
+    XhCount     int     default 0     not null,
+    XCount      int     default 0     not null,
+    ShCount     int     default 0     not null,
+    SCount      int     default 0     not null,
+    ACount      int     default 0     not null,
     primary key (Id, Mode),
     constraint UserStats_Users_Id_fk foreign key (Id) references Users (Id)
 );
@@ -83,8 +82,7 @@ create table Beatmaps
     Plays       int     default 0     not null,
     Passes      int     default 0     not null,
     Mode        int                   not null,
-    Bpm         float(12, 2
-) default 0.00 not null,
+    Bpm         float(12, 2) default 0.00 not null,
     Cs          float(4, 2)  default 0.00 not null,
     Ar          float(4, 2)  default 0.00 not null,
     Od          float(4, 2)  default 0.00 not null,
@@ -99,7 +97,7 @@ create index Beatmaps_Mode_index on Beatmaps (Mode);
 
 create table Channels
 (
-    Id        int auto_increment primary key,
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
     Name      varchar(32)           not null,
     Topic     varchar(256)          not null,
     ReadPriv  int     default 1     not null,
@@ -111,7 +109,7 @@ create index Channels_AutoJoin_index on Channels (AutoJoin);
 
 create table Mail
 (
-    Id     int auto_increment primary key,
+    Id     INTEGER PRIMARY KEY AUTOINCREMENT,
     FromId int                   not null,
     ToId   int                   not null,
     Msg    varchar(2048)         not null,
@@ -123,7 +121,7 @@ create table Relationships
 (
     User1 int not null,
     User2 int not null,
-    Type  enum ('friend', 'block') not null,
+    Type  varchar(10) not null check (Type in ('friend', 'block')),
     primary key (User1, User2)
 );
 
@@ -149,7 +147,7 @@ create table ClientHashes
 
 create table IngameLogins
 (
-    Id        int auto_increment primary key,
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
     UserId    int         not null,
     Ip        varchar(45) not null,
     OsuVer    date        not null,
@@ -157,20 +155,23 @@ create table IngameLogins
     Datetime  datetime    not null
 );
 
+-- Time is always supplied by the app on insert (see SqliteLogRepository) — never UPDATEd
+-- afterwards, so no ON UPDATE trigger is needed (MySQL's `on update CURRENT_TIMESTAMP` here was
+-- dead weight; nothing ever updates a Logs row).
 create table Logs
 (
-    Id       int auto_increment primary key,
+    Id       INTEGER PRIMARY KEY AUTOINCREMENT,
     `From`   int         not null,
     `To`     int         not null,
     `Action` varchar(32) not null,
     Msg      varchar(2048) null,
-    Time     datetime    not null on update CURRENT_TIMESTAMP
+    Time     datetime    not null
 );
 
 -- One multiplayer room = one Match. EndedAt is null while the room is still open in-memory.
 create table Matches
 (
-    Id           int auto_increment primary key,
+    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
     Name         varchar(50) not null,
     Mode         int         not null,
     WinCondition int         not null,
@@ -185,7 +186,7 @@ create table Matches
 -- score submission and MatchComplete arrive on separate connections with no ordering guarantee.
 create table Rounds
 (
-    Id         int auto_increment primary key,
+    Id         INTEGER PRIMARY KEY AUTOINCREMENT,
     MatchId    int      not null,
     RoundIndex int      not null,
     BeatmapId  int      not null,
@@ -202,13 +203,12 @@ create index Rounds_MatchId_index on Rounds (MatchId);
 -- are null for a score submitted outside any match (not linked to a Round).
 create table Scores
 (
-    Id      bigint unsigned auto_increment primary key,
-    RoundId int null,
-    Team    int null,
-    MapMd5  char(32) not null,
-    Score   bigint   not null,
-    Acc     float(6, 3
-) not null,
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    RoundId         int null,
+    Team            int null,
+    MapMd5          char(32) not null,
+    Score           bigint   not null,
+    Acc             float(6, 3) not null,
     MaxCombo        int      not null,
     Mods            int      not null,
     N300            int      not null,
@@ -239,7 +239,7 @@ create index Scores_RoundId_index on Scores (RoundId);
 
 insert into Users (Id, Name, SafeName, Priv, Country, SilenceEnd, Email, PwBcrypt, CreationTime, LatestActivity)
 values (1, 'BasilBot', 'basilbot', 1, 'ca', 0, 'bot@localhost',
-        '_______________________my_cool_bcrypt_______________________', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+        '_______________________my_cool_bcrypt_______________________', unixepoch(), unixepoch());
 
 insert into UserStats (Id, Mode)
 values (1, 0);

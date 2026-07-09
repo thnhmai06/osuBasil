@@ -27,18 +27,30 @@ BanchoHostGroups.MapAll(app, domain);
 
 using (var scope = app.Services.CreateScope())
 {
-    // Test hosts (WebApplicationFactory) don't configure a Database section, so Host is empty
-    // there and there's nothing to migrate against — skip rather than fail startup.
+    // Test hosts (WebApplicationFactory) explicitly set Database:Path to "" so there's no real file
+    // to migrate/query against — skip migration, channel fetch, ingestion, and bot bootstrap rather
+    // than fail startup. A real deployment always has a non-empty Path (DatabaseOptions defaults it
+    // to "basil.db" next to the executable). channelRegistry.Seed is still always called (with an
+    // empty list when there's no database) so the registry is never left un-seeded.
     var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-    if (!string.IsNullOrEmpty(dbOptions.Host))
-        SqlMigrationRunner.RunMigrations(DatabaseConnectionStringBuilder.Build(dbOptions));
+    var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
 
     var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
     var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
-    channelRegistry.Seed(await channelRepository.FetchAllAutoJoinAsync());
+    IReadOnlyList<Channel> autoJoinChannels = Array.Empty<Channel>();
 
-    // Same test-host guard as the migration above: no Database section means no DB to write into.
-    if (!string.IsNullOrEmpty(dbOptions.Host))
+    if (hasDatabase)
+    {
+        var connectionString = DatabaseConnectionStringBuilder.Build(dbOptions);
+        Directory.CreateDirectory(Path.GetDirectoryName(DatabaseConnectionStringBuilder.ResolvePath(dbOptions))!);
+        SqlMigrationRunner.RunMigrations(connectionString);
+
+        autoJoinChannels = await channelRepository.FetchAllAutoJoinAsync();
+    }
+
+    channelRegistry.Seed(autoJoinChannels);
+
+    if (hasDatabase)
     {
         var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
         await ingestionService.IngestAsync();

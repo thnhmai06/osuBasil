@@ -1,21 +1,31 @@
 using System.Reflection;
 using DbUp;
+using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
-///     Applies the embedded SQL migration scripts (see Persistence/Migrations/) against a MySQL
-///     database. Only base.sql is embedded — bancho.py's own docker-compose mounts base.sql as the
-///     MySQL container's init script for fresh installs, while migrations.sql is exclusively a
-///     historical changelog replayed against existing production databases upgrading from old
-///     versions. A fresh Basil deployment needs only base.sql.
+///     Applies the embedded SQL migration scripts (see Persistence/Migrations/) against the SQLite
+///     database file. Only base.sql is embedded — a fresh Basil deployment needs only base.sql, no
+///     changelog of historical migrations exists yet.
 /// </summary>
 public static class SqlMigrationRunner
 {
     public static void RunMigrations(string connectionString)
     {
+        // journal_mode=WAL persists into the database file header, so this only needs to run once
+        // per database file, but running it every startup is harmless and keeps a hand-copied/older
+        // database file in WAL mode too.
+        using (var connection = new SqliteConnection(connectionString))
+        {
+            connection.Open();
+            using var pragma = connection.CreateCommand();
+            pragma.CommandText = "PRAGMA journal_mode=WAL;";
+            pragma.ExecuteNonQuery();
+        }
+
         var upgrader = DeployChanges.To
-            .MySqlDatabase(connectionString)
+            .SqliteDatabase(connectionString)
             .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
             .LogToConsole()
             .Build();

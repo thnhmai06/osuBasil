@@ -39,41 +39,22 @@ public class OptionsBindingTests
     }
 
     [Fact]
-    public void DatabaseOptions_Binds_ConnectionFields()
+    public void DatabaseOptions_Path_DefaultsToBasilDb()
     {
-        var options = BindOptions<DatabaseOptions>(DatabaseOptions.SectionName, new Dictionary<string, string?>
-        {
-            [$"{DatabaseOptions.SectionName}:Host"] = "db.local",
-            [$"{DatabaseOptions.SectionName}:Port"] = "3306",
-            [$"{DatabaseOptions.SectionName}:User"] = "bancho",
-            [$"{DatabaseOptions.SectionName}:Password"] = "p@ss:w/ord",
-            [$"{DatabaseOptions.SectionName}:Name"] = "bancho"
-        });
+        var options = BindOptions<DatabaseOptions>(DatabaseOptions.SectionName, new Dictionary<string, string?>());
 
-        Assert.Equal("db.local", options.Host);
-        Assert.Equal(3306, options.Port);
-        Assert.Equal("bancho", options.User);
-        Assert.Equal("p@ss:w/ord", options.Password);
-        Assert.Equal("bancho", options.Name);
+        Assert.Equal("basil.db", options.Path);
     }
 
     [Fact]
-    public void RedisOptions_Binds_ConnectionFields()
+    public void DatabaseOptions_Binds_Path()
     {
-        var options = BindOptions<RedisOptions>(RedisOptions.SectionName, new Dictionary<string, string?>
+        var options = BindOptions<DatabaseOptions>(DatabaseOptions.SectionName, new Dictionary<string, string?>
         {
-            [$"{RedisOptions.SectionName}:Host"] = "redis.local",
-            [$"{RedisOptions.SectionName}:Port"] = "6379",
-            [$"{RedisOptions.SectionName}:User"] = "default",
-            [$"{RedisOptions.SectionName}:Password"] = "hunter2",
-            [$"{RedisOptions.SectionName}:Database"] = "0"
+            [$"{DatabaseOptions.SectionName}:Path"] = "/srv/basil.db"
         });
 
-        Assert.Equal("redis.local", options.Host);
-        Assert.Equal(6379, options.Port);
-        Assert.Equal("default", options.User);
-        Assert.Equal("hunter2", options.Password);
-        Assert.Equal(0, options.Database);
+        Assert.Equal("/srv/basil.db", options.Path);
     }
 
     [Fact]
@@ -112,25 +93,6 @@ public class OptionsBindingTests
         var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
 
         Assert.Null(options.DownloadEndpoint);
-    }
-
-    [Fact]
-    public void StorageOptions_ReplaysPath_DefaultsToDotDataOsr()
-    {
-        var options = BindOptions<StorageOptions>(StorageOptions.SectionName, new Dictionary<string, string?>());
-
-        Assert.Equal(Path.Combine(".data", "osr"), options.ReplaysPath);
-    }
-
-    [Fact]
-    public void StorageOptions_Binds_ReplaysPath()
-    {
-        var options = BindOptions<StorageOptions>(StorageOptions.SectionName, new Dictionary<string, string?>
-        {
-            [$"{StorageOptions.SectionName}:ReplaysPath"] = "/srv/replays"
-        });
-
-        Assert.Equal("/srv/replays", options.ReplaysPath);
     }
 
     [Fact]
@@ -239,17 +201,6 @@ public class OptionsBindingTests
 
         Assert.Equal("turnstile", options.Provider);
         Assert.Equal("secret-value", options.Secret);
-    }
-
-    [Fact]
-    public void WebSessionOptions_Binds_CookieSecure()
-    {
-        var options = BindOptions<WebSessionOptions>(WebSessionOptions.SectionName, new Dictionary<string, string?>
-        {
-            [$"{WebSessionOptions.SectionName}:CookieSecure"] = "true"
-        });
-
-        Assert.True(options.CookieSecure);
     }
 
     [Fact]

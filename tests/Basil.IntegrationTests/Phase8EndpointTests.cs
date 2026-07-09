@@ -1,7 +1,10 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Beatmaps;
+using Basil.Domain.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.IntegrationTests;
 
@@ -28,10 +31,61 @@ public class Phase8EndpointTests(WebApplicationFactory<Program> factory) : IClas
                     ["ServerBehavior:Domain"] = "test.local",
                     ["ServerBehavior:CommandPrefix"] = "!",
                     ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
+                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Database:Path"] = ""
                 });
             });
+            builder.ConfigureServices(services =>
+                services.AddSingleton<IMapRepository, NullMapRepository>());
         });
+    }
+
+    // Database:Path is "" for this test host (no real DB) — /difficulty-rating still calls
+    // IMapRepository unconditionally, so it needs a stub rather than a real connection.
+    private sealed class NullMapRepository : IMapRepository
+    {
+        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+            int? setId = null, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Beatmap?>(null);
+        }
+
+        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
+            RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+        }
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
+        }
+
+        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
+        }
     }
 
     private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "osu.test.local")

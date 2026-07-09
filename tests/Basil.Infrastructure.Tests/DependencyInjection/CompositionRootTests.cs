@@ -10,7 +10,6 @@ using Basil.Application.UseCases.Spectating;
 using Basil.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Testcontainers.Redis;
 
 namespace Basil.Infrastructure.Tests.DependencyInjection;
 
@@ -21,25 +20,15 @@ namespace Basil.Infrastructure.Tests.DependencyInjection;
 ///     like this one — unit tests on the individual pieces can't see a missing/misconfigured
 ///     registration in the composition root itself.
 /// </summary>
-public class CompositionRootTests : IAsyncLifetime
+public class CompositionRootTests
 {
-    private readonly RedisContainer _redis = new RedisBuilder("redis:7.4").Build();
-    private ServiceProvider _provider = null!;
+    private readonly ServiceProvider _provider;
 
-    public async Task InitializeAsync()
+    public CompositionRootTests()
     {
-        await _redis.StartAsync();
-
-        var redisEndpoint = _redis.GetConnectionString().Split(':');
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Database:Host"] = "localhost",
-                ["Database:User"] = "root",
-                ["Database:Password"] = "unused",
-                ["Database:Name"] = "unused",
-                ["Redis:Host"] = redisEndpoint[0],
-                ["Redis:Port"] = redisEndpoint[1],
                 ["ServerBehavior:Domain"] = "test.local",
                 ["ServerBehavior:CommandPrefix"] = "!",
                 ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
@@ -51,11 +40,6 @@ public class CompositionRootTests : IAsyncLifetime
         services.AddBanchoInfrastructure(configuration);
         services.AddBanchoApplication();
         _provider = services.BuildServiceProvider();
-    }
-
-    public Task DisposeAsync()
-    {
-        return _redis.DisposeAsync().AsTask();
     }
 
     [Fact]

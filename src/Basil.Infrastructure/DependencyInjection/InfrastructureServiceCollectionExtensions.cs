@@ -13,20 +13,18 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Performance;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
-using Basil.Infrastructure.Redis;
 using Basil.Infrastructure.Security;
 using Basil.Infrastructure.Sessions;
 using Basil.Infrastructure.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis;
 
 namespace Basil.Infrastructure.DependencyInjection;
 
 /// <summary>
-///     Composition root helper for the Infrastructure layer: binds Options, builds the MySQL
-///     connection string and Redis multiplexer, and registers every port implementation.
+///     Composition root helper for the Infrastructure layer: binds Options, builds the SQLite
+///     connection string, and registers every port implementation.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
@@ -34,52 +32,47 @@ public static class InfrastructureServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
-        services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.SectionName));
         services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
-        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
         services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
+
+        // Storage folders are fixed, not configurable — always the 5 named folders next to the
+        // executable. See StorageOptions.
+        services.AddSingleton(Options.Create(new StorageOptions
+        {
+            ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Replays"),
+            AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Avatars"),
+            MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Mapsets"),
+            SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Seasonals"),
+            FaqsPath = Path.Combine(AppContext.BaseDirectory, "Faqs")
+        }));
 
         static string BuildConnectionString(IServiceProvider sp)
         {
             return DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
         }
 
-        services.AddSingleton<IConnectionMultiplexer>(sp =>
-        {
-            var redis = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
-            var config = new ConfigurationOptions
-            {
-                EndPoints = { { redis.Host, redis.Port } },
-                DefaultDatabase = redis.Database
-            };
-            if (!string.IsNullOrEmpty(redis.User)) config.User = redis.User;
-            if (!string.IsNullOrEmpty(redis.Password)) config.Password = redis.Password;
-            return ConnectionMultiplexer.Connect(config);
-        });
-
-        services.AddSingleton<IUserRepository>(sp => new MySqlUserRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IStatsRepository>(sp => new MySqlStatsRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IClientHashRepository>(sp => new MySqlClientHashRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IIngameLoginRepository>(sp => new MySqlIngameLoginRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IChannelRepository>(sp => new MySqlChannelRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMailRepository>(sp => new MySqlMailRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IUserRepository>(sp => new SqliteUserRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IStatsRepository>(sp => new SqliteStatsRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IClientHashRepository>(sp => new SqliteClientHashRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IIngameLoginRepository>(sp =>
+            new SqliteIngameLoginRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMailRepository>(sp => new SqliteMailRepository(BuildConnectionString(sp)));
         services.AddSingleton<IRelationshipRepository>(sp =>
-            new MySqlRelationshipRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMapRepository>(sp => new MySqlMapRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMapsetRepository>(sp => new MySqlMapsetRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IRatingRepository>(sp => new MySqlRatingRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IScoreRepository>(sp => new MySqlScoreRepository(BuildConnectionString(sp)));
+            new SqliteRelationshipRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMapRepository>(sp => new SqliteMapRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IMapsetRepository>(sp => new SqliteMapsetRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IRatingRepository>(sp => new SqliteRatingRepository(BuildConnectionString(sp)));
+        services.AddSingleton<IScoreRepository>(sp => new SqliteScoreRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreSubmissionPersistence>(sp =>
-            new MySqlScoreSubmissionPersistence(BuildConnectionString(sp)));
-        services.AddSingleton<ILogRepository>(sp => new MySqlLogRepository(BuildConnectionString(sp)));
+            new SqliteScoreSubmissionPersistence(BuildConnectionString(sp)));
+        services.AddSingleton<ILogRepository>(sp => new SqliteLogRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMatchPersistenceRepository>(sp =>
-            new MySqlMatchPersistenceRepository(BuildConnectionString(sp)));
-
-        services.AddSingleton<ILeaderboardStore, RedisLeaderboardStore>();
-        services.AddSingleton<IWebSessionStore, RedisWebSessionStore>();
+            new SqliteMatchPersistenceRepository(BuildConnectionString(sp)));
+        services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
 
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();

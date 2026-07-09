@@ -1,19 +1,19 @@
 namespace Basil.Application.Configuration;
 
 /// <summary>
-///     Ports REPLAYS_PATH from app/api/dependencies.py (".data/osr" relative to the process's
-///     working directory). AvatarsPath/MapsetsPath/SeasonalsPath/FaqsPath are new — bancho.py has no
-///     local equivalent (it proxies avatars/beatmaps to osu.ppy.sh, has no seasonal-background storage,
-///     and its `!faq` entries are hardcoded server-side, not read from files), added for this server's
+///     Local file storage folder names. Fixed, not configurable via appsettings/env — Infrastructure's
+///     DI composition root resolves each of these against the executable's directory (not the
+///     process's working directory) and constructs this POCO directly, it is not bound from
+///     IConfiguration. AvatarsPath/MapsetsPath/SeasonalsPath/FaqsPath have no bancho.py equivalent
+///     (it proxies avatars/beatmaps to osu.ppy.sh, has no seasonal-background storage, and its
+///     `!faq` entries are hardcoded server-side, not read from files) — added for this server's
 ///     fully-offline file serving.
 /// </summary>
 public sealed class StorageOptions
 {
-    public const string SectionName = "Storage";
-
-    public string ReplaysPath { get; init; } = Path.Combine(".data", "osr");
-    public string AvatarsPath { get; init; } = Path.Combine(".data", "avatars");
-    public string MapsetsPath { get; init; } = Path.Combine(".data", "mapsets");
-    public string SeasonalsPath { get; init; } = Path.Combine(".data", "seasonals");
-    public string FaqsPath { get; init; } = Path.Combine(".data", "faqs");
+    public required string ReplaysPath { get; init; }
+    public required string AvatarsPath { get; init; }
+    public required string MapsetsPath { get; init; }
+    public required string SeasonalsPath { get; init; }
+    public required string FaqsPath { get; init; }
 }

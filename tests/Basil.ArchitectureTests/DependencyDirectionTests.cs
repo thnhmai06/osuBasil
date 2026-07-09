@@ -57,8 +57,7 @@ public class DependencyDirectionTests
             .NotHaveDependencyOnAny(
                 "Microsoft.EntityFrameworkCore",
                 "Microsoft.AspNetCore",
-                "StackExchange.Redis",
-                "MySqlConnector",
+                "Microsoft.Data.Sqlite",
                 "Dapper")
             .GetResult();
 
@@ -95,8 +94,7 @@ public class DependencyDirectionTests
             .NotHaveDependencyOnAny(
                 "Microsoft.EntityFrameworkCore",
                 "Microsoft.AspNetCore",
-                "StackExchange.Redis",
-                "MySqlConnector",
+                "Microsoft.Data.Sqlite",
                 "Dapper")
             .GetResult();
 
