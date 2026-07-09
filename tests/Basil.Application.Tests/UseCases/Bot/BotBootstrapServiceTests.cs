@@ -18,8 +18,7 @@ public class BotBootstrapServiceTests
 
     private static User MakeUser(string name)
     {
-        return new User(1, name, name.ToLowerInvariant(), null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null,
-            null);
+        return new User(1, name, name.ToLowerInvariant(), null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
     }
 
     [Fact]

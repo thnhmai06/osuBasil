@@ -6,7 +6,11 @@ Trang này liệt kê những gì *hiện có* trong phạm vi đó, những gì
 
 ## Lệnh chat
 
-Dispatch bởi `ICommandDispatcher`/`CommandDispatcher` (lệnh chung) và `MpCommandService` (`!mp` subcommand), cả hai dưới `UseCases/Bot/`. Danh sách đầy đủ lệnh, cách dùng, và so sánh từng lệnh với bancho.py giờ nằm ở [`bot-commands.md`](bot-commands.md) — không lặp lại bảng ở đây để tránh 2 nguồn lệch nhau theo thời gian.
+Dispatch bởi `ICommandDispatcher`/`CommandDispatcher` (lệnh chung) và `MpCommandService` (`!mp` subcommand), cả hai dưới `UseCases/Bot/`. Danh sách đầy đủ lệnh, cách dùng, và so sánh từng lệnh với bancho.py giờ nằm ở [`bot-commands.md`](bot-commands.md) — không lặp lại bảng ở đây để tránh 2 nguồn lệnh nhau theo thời gian.
+
+## IRC Gateway
+
+Giờ **trong phạm vi**: Basil chạy một IRC gateway embedded (port 6667, `TcpIrcListener`/`TcpIrcConnection`) cho phép real IRC client (hoặc tool tournament như osu-ahr) kết nối và chat/`!mp` cùng osu! client. Chat core thống nhất qua `ChatDispatchService` + `ChannelMembershipService.BroadcastPrivmsg` — tin nhắn từ IRC client đến được osu! client và ngược lại, vì mọi `PlayerSession` đều có `IIrcConnection` (`BanchoIrcBridgeConnection` cho osu! client, `TcpIrcConnection` cho IRC client).
 
 ## Ngoài phạm vi hiện tại
 
@@ -16,6 +20,7 @@ Dispatch bởi `ICommandDispatcher`/`CommandDispatcher` (lệnh chung) và `MpCo
 | ❌ Scrim engine (`!mp scrim`/`autoref`/`endscrim`/`rematch`) | Race-safe match-point tallying cho scrim tự động trọng tài | Engine gốc (`MatchScoringService`) đã xoá hẳn cùng lớp lệnh cũ; chưa được yêu cầu xây lại |
 | ❌ `!mp force` | Admin ép người chơi vào trận | Chưa triển khai |
 | ❌ `!block`/`!unblock`/`!reconnect`/`!changename`/`!apikey` | Lệnh chat cá nhân (chặn user, đổi tên, quản lý API key...) | Nằm ngoài phạm vi multiplayer/giải đấu |
+| ❌ ApiKey (User field + `UpdateApiKeyAsync`) | Trường `ApiKey` trên User và repository method tương ứng — là dead code (IRC dùng password osu! trực tiếp, không cần key riêng) | Đã xoá — chưa bao giờ được dùng |
 | ❌ Friends (`osu-getfriends.php`, `FriendAddHandler`/`FriendRemoveHandler`) | HTTP endpoint + packet handler cho quan hệ bạn bè | Tính năng xã hội, ngoài phạm vi multiplayer/giải đấu |
 | ❌ Public JSON API v1/v2 tổng quát | API REST công khai kiểu osu-web (OAuth, rate limiting, versioning) cho công cụ bên ngoài | Chưa có nhu cầu cụ thể; người dùng dự định tự xây riêng sau |
 | ❌ Moderation/clan/metrics (`!clan`, admin command, webhook Discord, Datadog) | Lệnh clan/moderator, audit-log webhook, metric `bancho.online_players`/`bancho.login_time` | Phụ thuộc lớp lệnh đã xoá; dự án không dùng Datadog nên không có gì để port |
@@ -34,3 +39,4 @@ Dispatch bởi `ICommandDispatcher`/`CommandDispatcher` (lệnh chung) và `MpCo
 | Xoá hẳn `BanchoBot` + toàn bộ lớp lệnh chat (kể cả `!mp` đầy đủ 25 lệnh con) khi pivot sang "chỉ multiplayer + giải đấu" | Giải đấu vẫn cần cách điều khiển trận qua chat (`!mp start`, đổi map, quản slot...) - xoá sạch rồi mới nhận ra cần lại | `BanchoBot` bootstrap lại thành session thật (`BotBootstrapService`); lớp dispatch **hoàn toàn mới** (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) - cố tình không hồi sinh `ICommand`/`MpCommandDispatcher` cũ, chỉ wrap lại các mutation `MatchSession`/`MatchMembershipService` đã có sẵn, phạm vi hẹp hơn bộ lệnh gốc |
 | Hoãn vô thời hạn "API v1/v2 làm sau" | Giải đấu cần theo dõi trận trực tiếp (report, WebSocket) dù chưa cần API public đầy đủ | Host `api.<domain>` được xây cho tournament match report (TRT) qua `GET`/WebSocket, tải replay/beatmap, và management CRUD khoá admin-key - hẹp hơn nhiều so với API v1/v2 công khai (không OAuth, không rate limit, không versioning), API tổng quát đó vẫn chưa xây |
 | Kế hoạch test parity tự động ("chạy song song Bancho và Basil, so kết quả") | Không còn hợp lý khi phần lớn bề mặt tính năng Bancho đã bị cắt có chủ đích - không có gì để so sánh song song nữa | Test thủ công một luồng multiplayer/giải đấu thật bằng hai client osu! thật - xem [`getting-started.md`](getting-started.md) |
+

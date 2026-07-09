@@ -1,8 +1,11 @@
+using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.PacketHandlers.Channels;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
 using Basil.Application.UseCases.Bot;
+using Basil.Application.UseCases.Chat;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
@@ -10,7 +13,11 @@ using Action = Basil.Domain.Action;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
-/// <summary>Ported from app/api/domains/cho.py's SendMessage (private).</summary>
+/// <summary>
+///     Ported from app/api/domains/cho.py's SendMessage (private). Exercises the real
+///     <see cref="ChannelMembershipService" />/<see cref="ChatDispatchService" /> chain (not mocked) so
+///     these assertions actually cover the chat core the handler delegates to.
+/// </summary>
 public class SendPrivateMessageHandlerTests
 {
     private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
@@ -21,7 +28,11 @@ public class SendPrivateMessageHandlerTests
 
     private SendPrivateMessageHandler MakeHandler()
     {
-        return new SendPrivateMessageHandler(_sessionRegistry, _users, _relationships, _mail, _commandDispatcher);
+        var channelRegistry = Substitute.For<IChannelRegistry>();
+        var channelMembership = new ChannelMembershipService(_sessionRegistry, channelRegistry);
+        var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership, _users,
+            _relationships, _mail, _commandDispatcher);
+        return new SendPrivateMessageHandler(chatDispatch);
     }
 
     private static BanchoPacketReader MessageReader(string sender, string text, string recipient, int senderId)
@@ -119,7 +130,7 @@ public class SendPrivateMessageHandlerTests
         var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.GetByName("offlineuser").Returns((PlayerSession?)null);
         _users.FetchByNameAsync("offlineuser").Returns(new User(
-            5, "offlineuser", "offlineuser", null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null, null));
+            5, "offlineuser", "offlineuser", null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null));
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "offlineuser", 1));
 

@@ -37,8 +37,8 @@ Ba thư mục lớn nhất được tổ chức theo khu vực tính năng thay 
 | --- | --- |
 | **`PacketHandlers/`** | Một class cho mỗi bancho client packet, chia thành `Core/` (vòng đời session: các packet liên quan login, presence, stats), `Channels/` (chat), `Spectating/`, và `Multiplayer/` (packet match + tournament, nhóm lớn nhất) |
 | **`Abstractions/`** | Các port mà Infrastructure triển khai, chia theo khái niệm domain: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (mail + relationship + moderation logging) |
-| **`Sessions/`** | Trạng thái session trong bộ nhớ (`PlayerSession`, `ChannelSession`, `MatchSession`) và các registry theo dõi nó, chia thành thư mục con `Channels/` và `Multiplayer/` với trạng thái cấp player ở gốc. `Sessions/Multiplayer/IMatchEventBus` là pub/sub non-blocking dùng để đẩy trạng thái match trực tiếp tới lớp WebSocket của host `api.` |
-| **`UseCases/`** | Một thư mục cho mỗi tính năng (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Mail/`, `Anticheat/`, `Bot/`), mỗi thư mục chứa business logic thực sự mà một packet handler hay HTTP route ủy quyền tới. `UseCases/Multiplayer/MatchReportService` xây dựng tournament match report (TRT) tại thời điểm đọc. `UseCases/Bot/` là bootstrap session của BanchoBot cộng với command dispatcher `!help`/`!roll`/`!mp` |
+| **`Sessions/`** | Trạng thái session trong bộ nhớ (`PlayerSession`, `ChannelSession`, `MatchSession`) và các registry theo dõi nó, chia thành thư mục con `Channels/`, `Irc/` (IIrcConnection — bridge cho bancho packet hay real TCP), và `Multiplayer/` với trạng thái cấp player ở gốc. `Sessions/Multiplayer/IMatchEventBus` là pub/sub non-blocking dùng để đẩy trạng thái match trực tiếp tới lớp WebSocket của host `api.` |
+| **`UseCases/`** | Một thư mục cho mỗi tính năng (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Mail/`, `Anticheat/`, `Bot/`, `Chat/`, `Irc/`), mỗi thư mục chứa business logic thực sự mà một packet handler hay HTTP route ủy quyền tới. `UseCases/Chat/ChatDispatchService` là entry point duy nhất cho mọi traffic chat — dùng bởi cả bancho handler lẫn IRC PRIVMSG. `UseCases/Irc/IrcAuthenticationService` xác thực kết nối IRC TCP và tạo PlayerSession ảo. `UseCases/Multiplayer/MatchReportService` xây dựng tournament match report (TRT) tại thời điểm đọc. `UseCases/Bot/` là bootstrap session của BanchoBot cộng với command dispatcher `!help`/`!roll`/`!mp` |
 
 `Basil.Domain`, `Basil.Protocol`, và `Basil.Infrastructure/Persistence` theo cùng pattern (thư mục con theo chủ đề như `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`, `Repositories/`) - namespace khớp với đường dẫn thư mục, nên `grep` một import sẽ cho biết chính xác file nằm ở đâu.
 
@@ -116,11 +116,42 @@ Cả ba đều publish qua `IMatchEventBus`, có các method `Publish*` là `Cha
 
 `GET /multi/{id}` (không upgrade) trả về cùng report đó dưới dạng một snapshot JSON one-shot thay vì một stream WS.
 
+## IRC Gateway
+
+Basil chạy một **IRC gateway embedded** (không executable riêng, không Docker) — bất kỳ IRC client thật nào (hay tool tournament như osu-ahr) cũng có thể kết nối TCP tới port 6667 và chat/`!mp` cùng các osu! client.
+
+Mỗi `PlayerSession` có một `IIrcConnection` (`Sessions/Irc/`):
+
+| Implementation | Dùng cho | Hành vi |
+|---|---|---|
+| `BanchoIrcBridgeConnection` | Mặc định — mọi osu! client login bình thường | `Send(IrcMessage)` chỉ phản hồi `PRIVMSG`, encode lại thành packet `SEND_MESSAGE` bancho cho session poll |
+| `TcpIrcConnection` | IRC client thật qua TCP socket | Chạy read-loop (PASS/NICK/USER → PRIVMSG/JOIN/PART/AWAY/PING/QUIT), write-pump non-blocking qua bounded channel (DropOldest), ping loop 60s |
+
+**Chat core thống nhất:** Mọi chat — từ osu! client (SendPublicMessage/SendPrivateMessage handler) hay từ IRC PRIVMSG — đều qua `ChatDispatchService.SendPrivmsgAsync`. Lớp này quyết định:
+
+1. Kênh (`#` prefix): broadcast qua `ChannelMembershipService.BroadcastPrivmsg` (gửi tới từng member's IIrcConnection), rồi chạy `ICommandDispatcher` cho lệnh `!`.
+2. Bot DM: gửi thẳng tới `ICommandDispatcher` (prefix không bắt buộc).
+3. DM thường: check block/silence, deliver qua `target.IrcConnection.Send`, lưu offline mail.
+
+`BanchoIrcBridgeConnection.Send` lọc mọi IRC command trừ `PRIVMSG` — bancho client không cần JOIN/PART/QUIT numerics (channel presence đã có qua ChannelInfo packet). IRC client thật nhận được tất cả.
+
+### Luồng login IRC
+
+1. `TcpIrcListener` (`Infrastructure/Irc/`, `BackgroundService`) accept TCP connection trên port config (`IrcOptions.Port`, mặc định 6667).
+2. `TcpIrcConnection.ReadLoopAsync` đọc PASS + NICK + USER. Khi có cả nick và pass, gọi `IrcAuthenticationService.AuthenticateAsync`.
+3. `IrcAuthenticationService` tra `IUserRepository.FetchByNameAsync`, lấy password hash qua `FetchPasswordHashAsync`, **MD5 plaintext PASS rồi bcrypt verify** (giống hệt osu! client login flow). Tạo `PlayerSession` ảo (không bancho socket) với `IrcConnection = chính TcpIrcConnection đó`, join auto-join channels, trả về numerics RplWelcome + RplTopic + RplNamReply.
+4. Sau registered, mọi `PRIVMSG`/`JOIN`/`PART`/`AWAY`/`QUIT` từ IRC client được `TcpIrcConnection` dispatch tới `ChatDispatchService`/`ChannelMembershipService`.
+
+> [!NOTE]
+> **Passwords:** IRC PASS yêu cầu **mật khẩu account** (giống login osu! client) — khác với osu!Bancho chính thức (irc.ppy.sh dùng password riêng "different from your account password"). `ApiKey` và `UpdateApiKeyAsync` trong `IUserRepository` từng tồn tại ở dạng staged nhưng là dead code, đã được xoá trước khi commit.
+
 ## Handler cho BanchoBot
 
 `BanchoBot` (`UseCases/Bot/BotBootstrapService`) được bootstrap như một `PlayerSession` thật khi khởi động - không có kết nối client nào phía sau nó, nên nó được miễn khỏi đợt reap của `GhostDisconnectService` qua `PlayerSession.IsBot` (nó không bao giờ gửi packet ping thật, nên `LastRecvTime` sẽ không bao giờ tiến nếu không có ngoại lệ này). 
 
-`SendPublicMessageHandler`/`SendPrivateMessageHandler` chuyển mọi message bắt đầu bằng `!` cho `ICommandDispatcher`, hàm này route tới hoặc bảng lệnh thông thường (`!help`, `!roll`) hoặc `MpCommandService` cho `!mp <subcommand>` - cái sau chỉ khi message được gửi trong chat channel của chính match người gửi, và được kiểm soát bởi `MatchSession.IsReferee`.
+`SendPublicMessageHandler`/`SendPrivateMessageHandler` chuyển mọi message tới `ChatDispatchService.SendPrivmsgAsync`, lớp này route message bắt đầu bằng `!` cho `ICommandDispatcher` — dispatcher route tới hoặc bảng lệnh thông thường (`!help`, `!roll`) hoặc `MpCommandService` cho `!mp <subcommand>` - cái sau chỉ khi message được gửi trong chat channel của chính match người gửi, và được kiểm soát bởi `MatchSession.IsReferee`.
+
+Reply của bot được broadcast qua `ChannelMembershipService.BroadcastPrivmsg` (IRC-shaped) thay vì build packet trực tiếp — nên real IRC client trong channel cũng thấy câu trả lời của BasilBot.
 
 ## TL;DR
 
@@ -131,3 +162,6 @@ Khi thêm một tính năng mới, hãy nhớ:
 | Một packet bancho mới | Một class mới trong thư mục con `PacketHandlers/*` tương ứng, đăng ký trong `ApplicationServiceCollectionExtensions`, đếm trong `CompositionRootTests` |
 | Một mảnh trạng thái được lưu trữ mới | Một method mới trên một interface hiện có (hoặc mới) dưới `Abstractions/*`, triển khai trong `Basil.Infrastructure/Persistence/Repositories/` |
 | Một HTTP endpoint mới | Một route mới trong `Basil.Web/Routing/BanchoHostGroups.cs`, dưới host group tương ứng (`osu.`, `b.`, `api.`) mà nó thuộc về |
+| Một IRC command mới | Dispatch trong `TcpIrcConnection.HandleRegisteredCommandAsync` (`Infrastructure/Irc/`), gọi service có sẵn ở Application layer |
+| Chat routing mới | Logic thêm vào `ChatDispatchService.SendPrivmsgAsync` (`UseCases/Chat/`) — entry point duy nhất cho mọi chat |
+| Transport chat mới (không phải bancho packet, không phải IRC TCP) | Implement `IIrcConnection` interface (`Application/Sessions/Irc/`) — lớp mới nhận `IrcMessage` và encode ra format tương ứng |

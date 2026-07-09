@@ -26,8 +26,6 @@ create table Users
     CustomBadgeName varchar(16) null,
     CustomBadgeIcon varchar(64) null,
     UserpageContent varchar(2048) null,
-    ApiKey          varchar(36) null,
-    constraint Users_ApiKey_uindex unique (ApiKey),
     constraint Users_Email_uindex unique (Email),
     constraint Users_Name_uindex unique (Name),
     constraint Users_SafeName_uindex unique (SafeName)

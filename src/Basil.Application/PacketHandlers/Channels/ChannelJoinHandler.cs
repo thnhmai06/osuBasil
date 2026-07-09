@@ -10,8 +10,10 @@ namespace Basil.Application.PacketHandlers.Channels;
 ///     updates membership on both sides (Channel.append + Player.channels.append) then broadcasts
 ///     the updated channel_info to every session that can read it. Login only sends channel_info
 ///     for auto-join channels — the client is expected to send this packet itself to actually join.
+///     Membership/broadcast logic itself lives in <see cref="ChannelMembershipService" /> — shared with
+///     server-initiated joins (spectator, multiplayer) and real IRC connections.
 /// </summary>
-public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, IPlayerSessionRegistry sessionRegistry)
+public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
     : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.ChannelJoin;
@@ -25,16 +27,7 @@ public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, IPlayer
         if (name is "#highlight" or "#userlog") return Task.CompletedTask;
 
         var channel = channelRegistry.GetByName(name);
-        if (channel is null || !channel.CanRead(player.Priv) || player.InChannel(name)) return Task.CompletedTask;
-
-        channel.Join(player.Id);
-        player.JoinChannel(name);
-
-        player.Enqueue(ServerPacketWriter.ChannelJoin(name));
-
-        foreach (var session in sessionRegistry.All)
-            if (channel.CanRead(session.Priv))
-                session.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+        if (channel is not null) channelMembership.Join(player, channel);
 
         return Task.CompletedTask;
     }

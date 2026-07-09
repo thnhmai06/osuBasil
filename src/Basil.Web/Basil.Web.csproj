@@ -12,6 +12,10 @@
 
     <ItemGroup>
         <Content Include="settings*.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <None Remove="Assets\icon.png" />
+        <Content Include="Assets\icon.png">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <PropertyGroup>

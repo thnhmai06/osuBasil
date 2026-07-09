@@ -19,28 +19,23 @@ public sealed class Program
         var builder = WebApplication.CreateBuilder(args);
 
         ConfigureConfiguration(builder, args);
-
-        builder.Services.Configure<ServerBehaviorOptions>(
-            builder.Configuration.GetSection(ServerBehaviorOptions.SectionName));
+        builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 
         builder.Services.AddBanchoInfrastructure(builder.Configuration);
         builder.Services.AddBanchoApplication();
 
         var app = builder.Build();
-
         app.UseWebSockets();
 
-        var domain = builder.Configuration.GetSection(ServerBehaviorOptions.SectionName)["Domain"] ?? "localhost";
-
+        var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
         BanchoHostGroups.MapAll(app, domain);
 
         await InitializeDataAsync(app);
-
         await app.RunAsync();
     }
 
     // appsettings*.json keeps framework config (Logging, AllowedHosts) — standard ASP.NET Core
-    // convention, untouched. settings.toml carries Basil's own server settings (ServerBehavior,
+    // convention, untouched. settings.toml carries Basil's own server settings (Server,
     // Mirror, Bot, Api, Database) — the same file for development and deployment, edit it directly
     // next to the executable, no rebuild needed. No general environment-variable override layer
     // for those — settings.toml is the single source of truth for them. The one exception is

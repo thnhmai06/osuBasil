@@ -25,13 +25,13 @@ public class PlayerLogoutServiceTests
     private readonly MatchMembershipService _matchMembership = new(
         Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
         Substitute.For<IPlayerSessionRegistry>(),
-        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()),
+        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
         Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(), Substitute.For<IClock>());
 
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
-        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()));
+        new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()));
 
     private PlayerLogoutService MakeService()
     {
@@ -110,7 +110,8 @@ public class PlayerLogoutServiceTests
         var clock = Substitute.For<IClock>();
         clock.UtcNow.Returns(DateTimeOffset.UtcNow);
         var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
-            new ChannelMembershipService(sessionRegistry), new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
+            new ChannelMembershipService(sessionRegistry, channelRegistry),
+            new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
             new MultiplayerTestSupport.FakeMatchEventBus(), clock);
         var host = new PlayerSession(1, "host", "token", Privileges.Unrestricted, 0.0);
         sessionRegistry.All.Returns([host]);

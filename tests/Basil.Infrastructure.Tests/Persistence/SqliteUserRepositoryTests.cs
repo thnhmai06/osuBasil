@@ -107,16 +107,4 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
         Assert.Equal("renamed", updated!.Name);
         Assert.Equal("renamed", updated.SafeName);
     }
-
-    [Fact]
-    public async Task UpdateApiKey_PersistsChange()
-    {
-        var created = await _repository.CreateAsync("apikey test user", "apikey-test@example.test", "hash", "xx");
-        var apiKey = Guid.NewGuid().ToString();
-
-        await _repository.UpdateApiKeyAsync(created.Id, apiKey);
-
-        var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal(apiKey, updated!.ApiKey);
-    }
 }

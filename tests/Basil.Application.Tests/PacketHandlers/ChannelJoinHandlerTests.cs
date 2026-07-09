@@ -15,7 +15,7 @@ public class ChannelJoinHandlerTests
 
     private ChannelJoinHandler MakeHandler()
     {
-        return new ChannelJoinHandler(_channelRegistry, _sessionRegistry);
+        return new ChannelJoinHandler(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
     }
 
     private static BanchoPacketReader ChannelNameReader(string name)

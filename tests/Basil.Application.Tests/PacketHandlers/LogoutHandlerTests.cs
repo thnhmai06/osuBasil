@@ -28,10 +28,10 @@ public class LogoutHandlerTests
         return new LogoutHandler(new PlayerLogoutService(
             _sessionRegistry, _channelRegistry,
             new SpectatorService(Substitute.For<IChannelRegistry>(),
-                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>())),
+                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>())),
             new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
                 Substitute.For<IPlayerSessionRegistry>(),
-                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>()),
+                new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
                 Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(),
                 Substitute.For<IClock>())), _clock);
     }

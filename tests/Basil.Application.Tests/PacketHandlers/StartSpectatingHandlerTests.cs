@@ -29,7 +29,7 @@ public class StartSpectatingHandlerTests
     {
         _sessionRegistry.GetById(999).Returns((PlayerSession?)null);
         var handler = new StartSpectatingHandler(_sessionRegistry,
-            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry)));
+            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry())));
         var player = MakePlayer(1, "alice");
 
         await handler.HandleAsync(player, TargetIdReader(999));
@@ -46,7 +46,7 @@ public class StartSpectatingHandlerTests
         _sessionRegistry.All.Returns([host, player]);
         _sessionRegistry.GetById(1).Returns(player);
         var handler = new StartSpectatingHandler(_sessionRegistry,
-            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry)));
+            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry())));
 
         await handler.HandleAsync(player, TargetIdReader(2));
 
@@ -63,7 +63,7 @@ public class StartSpectatingHandlerTests
         _sessionRegistry.GetById(1).Returns(player);
         _sessionRegistry.All.Returns([host, player]);
         var spectatorService =
-            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry));
+            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()));
         var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService);
         await handler.HandleAsync(player, TargetIdReader(2));
         host.Dequeue();

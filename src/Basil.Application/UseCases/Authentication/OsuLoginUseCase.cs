@@ -34,7 +34,7 @@ public sealed class OsuLoginUseCase(
     ILeaderboardStore leaderboardStore,
     ITokenGenerator tokenGenerator,
     IClock clock,
-    IOptions<ServerBehaviorOptions> serverOptions)
+    IOptions<ServerOptions> serverOptions)
 {
     private const int FirstUserId = 3; // userid 2 is reserved for peppy/ppy, per bancho.py's base.sql auto_increment=3
 

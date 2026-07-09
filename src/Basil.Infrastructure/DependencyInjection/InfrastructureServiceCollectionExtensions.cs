@@ -10,6 +10,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Performance;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
@@ -35,6 +36,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
         services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
+        services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
 
         // Storage folders are fixed, not configurable — always the 5 named folders next to the
         // executable. See StorageOptions.
@@ -84,6 +86,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
         services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
         services.AddSingleton<IMatchEventBus, InMemoryMatchEventBus>();
+
+        services.AddHostedService<TcpIrcListener>();
 
         return services;
     }

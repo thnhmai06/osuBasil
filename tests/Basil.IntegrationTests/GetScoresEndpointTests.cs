@@ -33,10 +33,10 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ServerBehavior:Domain"] = "test.local",
+                    ["Server:Domain"] = "test.local",
                     ["Bot:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconPath"] = "icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Server:MenuIconPath"] = "icon.png",
+                    ["Server:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 });
             });
@@ -178,11 +178,6 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         }
 
         public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

@@ -29,10 +29,10 @@ public class CompositionRootTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ServerBehavior:Domain"] = "test.local",
+                ["Server:Domain"] = "test.local",
                 ["Bot:CommandPrefix"] = "!",
-                ["ServerBehavior:MenuIconPath"] = "icon.png",
-                ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
+                ["Server:MenuIconPath"] = "icon.png",
+                ["Server:MenuOnclickUrl"] = "https://example.test"
             })
             .Build();
 

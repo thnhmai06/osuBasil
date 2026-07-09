@@ -59,14 +59,6 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        await connection.ExecuteAsync(
-            "UPDATE Users SET ApiKey = @ApiKey WHERE Id = @Id",
-            new { Id = id, ApiKey = apiKey });
-    }
-
     public async Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
         CancellationToken cancellationToken = default)
     {
@@ -115,14 +107,13 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         public string? CustomBadgeName { get; set; }
         public string? CustomBadgeIcon { get; set; }
         public string? UserpageContent { get; set; }
-        public string? ApiKey { get; set; }
 
         public User ToUser()
         {
             return new User(
                 Id, Name, SafeName, Email, Priv, Country, SilenceEnd, DonorEnd, CreationTime,
                 LatestActivity, ClanId, ClanPriv, PreferredMode, PlayStyle, CustomBadgeName,
-                CustomBadgeIcon, UserpageContent, ApiKey);
+                CustomBadgeIcon, UserpageContent);
         }
     }
 }

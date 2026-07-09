@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.UseCases.Bot;
 using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -27,7 +28,8 @@ public class MatchMembershipServiceTests
         clock.UtcNow.Returns(DateTimeOffset.UtcNow);
 
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-            new ChannelMembershipService(_sessionRegistry), _matchPersistence, Substitute.For<IMatchEventBus>(), clock);
+            new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
+            Substitute.For<IMatchEventBus>(), clock);
     }
 
     /// <summary>
@@ -211,7 +213,7 @@ public class MatchMembershipServiceTests
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
         var lobby = _channelRegistry.GetByName("#lobby")!;
-        var membership = new ChannelMembershipService(_sessionRegistry);
+        var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
         membership.Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
@@ -272,11 +274,35 @@ public class MatchMembershipServiceTests
         Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
         var lobby = _channelRegistry.GetByName("#lobby")!;
-        new ChannelMembershipService(_sessionRegistry).Join(lobbyMember, lobby);
+        new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
         service.EnqueueState(match);
         Assert.NotEmpty(lobbyMember.Dequeue());
+    }
+
+    /// <summary>
+    ///     `EnqueueChat` is `MpCommandService.Announce`'s transport — asserts it produces the exact same
+    ///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
+    ///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead
+    ///     of a direct packet build.
+    /// </summary>
+    [Fact]
+    public void EnqueueChat_BroadcastsBanchoSendMessageToMatchChannelMembers()
+    {
+        var host = MakePlayer(1, "host");
+        RegisterAll(host);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+        _sessionRegistry.GetById(host.Id).Returns(host);
+        host.Dequeue();
+
+        service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
+
+        Assert.Equal(
+            ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", match.ChatChannelName,
+                BotBootstrapService.BotId),
+            host.Dequeue());
     }
 
     private static List<byte[]> Chunk(byte[] data)

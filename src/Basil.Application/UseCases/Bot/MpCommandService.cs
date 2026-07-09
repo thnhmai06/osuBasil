@@ -731,8 +731,7 @@ public sealed class MpCommandService(
         var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
         if (bot is null) return;
 
-        matchMembership.Enqueue(match, ServerPacketWriter.SendMessage(bot.Name, text, match.ChatChannelName, bot.Id),
-            false);
+        matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
     }
 
     private async Task<(bool Success, string? Reply)> AbortAsync(MatchSession match,

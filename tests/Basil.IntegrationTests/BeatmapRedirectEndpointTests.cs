@@ -26,10 +26,10 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
             {
                 var settings = new Dictionary<string, string?>
                 {
-                    ["ServerBehavior:Domain"] = "test.local",
+                    ["Server:Domain"] = "test.local",
                     ["Bot:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconPath"] = "icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Server:MenuIconPath"] = "icon.png",
+                    ["Server:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 };
                 if (downloadEndpoint is not null) settings["Mirror:DownloadEndpoint"] = downloadEndpoint;

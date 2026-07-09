@@ -16,7 +16,7 @@ public class SpectatorServiceTests
 
     private SpectatorService MakeService()
     {
-        return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry));
+        return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
     }
 
     private static PlayerSession MakePlayer(int id, string name)

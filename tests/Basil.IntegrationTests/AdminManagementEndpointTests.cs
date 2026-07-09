@@ -11,7 +11,7 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Covers the third slice of Phase C: the admin-key gate on the management REST API. Per the
 ///     review that shaped this phase, the admin key is the one thing here that MUST be verified —
-///     everything else is boilerplate CRUD — because a wrong-key DELETE returning 200 instead of 401
+///     everything else is boilerplate CRUD. This is because a wrong-key DELETE returning 200 instead of 401
 ///     would be a real, silent security hole on destructive endpoints.
 /// </summary>
 public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -26,10 +26,10 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ServerBehavior:Domain"] = "test.local",
+                    ["Server:Domain"] = "test.local",
                     ["Bot:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconPath"] = "icon.png",
-                    ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
+                    ["Server:MenuIconPath"] = "icon.png",
+                    ["Server:MenuOnclickUrl"] = "https://example.test",
                     ["Api:AdminKey"] = "correct-key",
                     ["Database:Path"] = ""
                 });
@@ -201,11 +201,6 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         }
 
         public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

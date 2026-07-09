@@ -8,6 +8,7 @@ using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
@@ -291,6 +292,21 @@ public sealed class MatchMembershipService(
         if (channel is not null) channelMembership.BroadcastToMembers(channel, data, immune);
 
         BroadcastToNonEmptyLobby(data, lobby);
+    }
+
+    /// <summary>
+    ///     Chat-text counterpart of <see cref="Enqueue" />, for BanchoBot's own match announcements
+    ///     (e.g. `!mp start` countdown) — routes through the IRC-shaped broadcast seam instead of a raw
+    ///     bancho packet, so a real IRC connection in the match's own channel sees it too. Match-state
+    ///     packets have no IRC representation and stay on <see cref="Enqueue" />/<see cref="EnqueueState" />;
+    ///     this is chat-only, and (matching <c>Announce</c>'s prior behavior) never touches the lobby.
+    /// </summary>
+    public void EnqueueChat(MatchSession match, string senderName, int senderId, string text)
+    {
+        var channel = channelRegistry.GetByName(match.ChatChannelName);
+        if (channel is null) return;
+
+        channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
     }
 
     /// <summary>Ported from Match.enqueue_state.</summary>

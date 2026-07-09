@@ -9,6 +9,8 @@ using Basil.Application.UseCases.Anticheat;
 using Basil.Application.UseCases.Authentication;
 using Basil.Application.UseCases.Beatmaps;
 using Basil.Application.UseCases.Bot;
+using Basil.Application.UseCases.Chat;
+using Basil.Application.UseCases.Irc;
 using Basil.Application.UseCases.Mail;
 using Basil.Application.UseCases.Multiplayer;
 using Basil.Application.UseCases.Scores;
@@ -44,6 +46,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<BotBootstrapService>();
         services.AddSingleton<MpCommandService>();
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
+        services.AddSingleton<ChatDispatchService>();
+        services.AddSingleton<IrcAuthenticationService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

@@ -22,7 +22,7 @@ public class StopSpectatingHandlerTests
     {
         var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
         var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
-            new ChannelMembershipService(sessionRegistry)));
+            new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry())));
         var player = MakePlayer(1, "alice");
 
         await handler.HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
@@ -40,7 +40,8 @@ public class StopSpectatingHandlerTests
         sessionRegistry.GetById(2).Returns(host);
         sessionRegistry.GetById(1).Returns(player);
         var spectatorService =
-            new SpectatorService(new FakeChannelRegistry(), new ChannelMembershipService(sessionRegistry));
+            new SpectatorService(new FakeChannelRegistry(),
+                new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry()));
         spectatorService.AddSpectator(host, player);
         var handler = new StopSpectatingHandler(spectatorService);
 

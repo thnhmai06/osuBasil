@@ -44,7 +44,7 @@ public class OsuLoginUseCaseTests
             _users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
             _mail, _relationships, _passwordHasher, _leaderboardStore,
             _tokenGenerator, _clock,
-            Options.Create(new ServerBehaviorOptions
+            Options.Create(new ServerOptions
             {
                 Domain = "test.local", MenuIconPath = "icon.png",
                 MenuOnclickUrl = "https://a"
@@ -402,8 +402,7 @@ public class OsuLoginUseCaseTests
         return new User(
             id, "cmyui", "cmyui", "cmyui@example.test", priv, country,
             0, 0, 0, 0, clanId, 0,
-            0, 0, null, null, null,
-            null);
+            0, 0, null, null, null);
     }
 
     private static byte[] Concat(params byte[][] parts)

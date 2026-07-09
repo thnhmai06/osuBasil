@@ -61,14 +61,14 @@ public class OptionsBindingTests
     }
 
     [Fact]
-    public void ServerBehaviorOptions_Binds_AllFields()
+    public void ServerOptions_Binds_AllFields()
     {
-        var options = BindOptions<ServerBehaviorOptions>(ServerBehaviorOptions.SectionName,
+        var options = BindOptions<ServerOptions>(ServerOptions.SectionName,
             new Dictionary<string, string?>
             {
-                [$"{ServerBehaviorOptions.SectionName}:Domain"] = "akatsuki.gg",
-                [$"{ServerBehaviorOptions.SectionName}:MenuIconPath"] = "icon.png",
-                [$"{ServerBehaviorOptions.SectionName}:MenuOnclickUrl"] = "https://a.example"
+                [$"{ServerOptions.SectionName}:Domain"] = "akatsuki.gg",
+                [$"{ServerOptions.SectionName}:MenuIconPath"] = "icon.png",
+                [$"{ServerOptions.SectionName}:MenuOnclickUrl"] = "https://a.example"
             });
 
         Assert.Equal("akatsuki.gg", options.Domain);

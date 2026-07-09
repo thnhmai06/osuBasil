@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain;
 using Basil.Domain.Beatmaps;
@@ -118,6 +119,21 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 
     /// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
     public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
+
+    private IIrcConnection? _ircConnection;
+
+    /// <summary>
+    ///     The IRC-shaped transport chat is routed through for this session — a bancho packet bridge by
+    ///     default, replaced with a real <c>TcpIrcConnection</c> for a session created by an actual IRC
+    ///     login. Lazily defaults to a bridge wrapping this session, so any <see cref="PlayerSession" />
+    ///     works out of the box even if the constructing code never wires one explicitly (tests, mostly)
+    ///     — a plain auto-property can't self-reference `this` in its initializer, hence the backing field.
+    /// </summary>
+    public IIrcConnection IrcConnection
+    {
+        get => _ircConnection ??= new BanchoIrcBridgeConnection(this);
+        set => _ircConnection = value;
+    }
 
     public void AddSpectator(PlayerSession spectator)
     {

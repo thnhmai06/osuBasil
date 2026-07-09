@@ -253,7 +253,7 @@ internal static class MultiplayerTestSupport
             clock.UtcNow.Returns(DateTimeOffset.UtcNow);
 
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry), MatchPersistence, EventBus, clock);
+                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus, clock);
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();

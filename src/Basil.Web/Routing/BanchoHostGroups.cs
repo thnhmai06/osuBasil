@@ -127,14 +127,14 @@ public static class BanchoHostGroups
     {
         group.MapGet("/", () => "osu");
 
-        // Serves ServerBehaviorOptions.MenuIconPath as an image — the in-game main menu icon is
+        // Serves ServerOptions.MenuIconPath as an image — the in-game main menu icon is
         // configured as a local file path (not a URL) so it doesn't depend on external hosting;
         // OsuLoginUseCase points the client at this endpoint instead of the file path itself.
         // Unauthenticated by design — fetched by the client's own image loader, not through the
         // bancho session.
         group.MapGet("/web/menuicon", (HttpContext context) =>
         {
-            var serverOptions = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value;
+            var serverOptions = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value;
             var path = Path.IsPathRooted(serverOptions.MenuIconPath)
                 ? serverOptions.MenuIconPath
                 : Path.Combine(AppContext.BaseDirectory, serverOptions.MenuIconPath);
@@ -327,7 +327,7 @@ public static class BanchoHostGroups
                         replayData),
                     cancellationToken);
 
-                var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
+                var domain = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value.Domain;
                 var body = outcome.Code == ScoreSubmissionResultCode.Success
                     ? ScoreSubmissionResponseBuilder.BuildSuccess(outcome.Result!, domain)
                     : ScoreSubmissionResponseBuilder.BuildError(outcome.Code);
@@ -428,7 +428,7 @@ public static class BanchoHostGroups
         group.MapGet("/web/osu-getseasonal.php", (HttpContext context) =>
         {
             var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-            var domain = context.RequestServices.GetRequiredService<IOptions<ServerBehaviorOptions>>().Value.Domain;
+            var domain = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value.Domain;
             Directory.CreateDirectory(storage.SeasonalsPath);
 
             var files = Directory.EnumerateFiles(storage.SeasonalsPath)

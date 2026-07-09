@@ -912,7 +912,6 @@ public class MpCommandServiceTests
 
     private static User MakeUser(int id, string name)
     {
-        return new User(id, name, name.ToLowerInvariant(), null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null,
-            null);
+        return new User(id, name, name.ToLowerInvariant(), null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
     }
 }

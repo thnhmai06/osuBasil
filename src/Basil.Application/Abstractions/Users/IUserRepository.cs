@@ -18,8 +18,7 @@ public sealed record User(
     int PlayStyle,
     string? CustomBadgeName,
     string? CustomBadgeIcon,
-    string? UserpageContent,
-    string? ApiKey);
+    string? UserpageContent);
 
 /// <summary>
 ///     Ported from app/repositories/users.py's UsersRepository — scoped to what login (Phase 3)
@@ -43,8 +42,6 @@ public interface IUserRepository
     Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default);
 
     Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
-
-    Task UpdateApiKeyAsync(int id, string apiKey, CancellationToken cancellationToken = default);
 
     Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
         CancellationToken cancellationToken = default);

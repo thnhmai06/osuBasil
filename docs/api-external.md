@@ -8,7 +8,7 @@ game client osu! gọi (bancho protocol + `osu-*.php`).
 
 ## Tổng quan
 
-- **Base URL**: `https://api.<domain>` (`<domain>` là giá trị `ServerBehavior:Domain` server admin cấu hình — hỏi
+- **Base URL**: `https://api.<domain>` (`<domain>` là giá trị `Server:Domain` server admin cấu hình — hỏi
   admin server của bạn giá trị này là gì).
 - **Định dạng**: toàn bộ endpoint JSON dưới đây dùng key kiểu `camelCase` (`matchId`, không phải `MatchId`).
   **Ngoại lệ**: 3 kênh WebSocket (mục 2) dùng `PascalCase` (`MatchId`) — hai tầng code khác nhau, chưa được
@@ -304,9 +304,11 @@ Response: `{ "ingested": 4 }` (số beatmap vừa nạp thành công).
   "clanId": 0, "clanPriv": 0,
   "preferredMode": 0, "playStyle": 0,
   "customBadgeName": null, "customBadgeIcon": null,
-  "userpageContent": null, "apiKey": null
+  "userpageContent": null
 }
 ```
+
+> `apiKey` đã bị xoá khỏi `User` — là dead code chưa bao giờ dùng (IRC authentication dùng trực tiếp password osu!).
 
 **`POST /users`** — request body JSON:
 

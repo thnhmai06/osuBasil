@@ -4,14 +4,13 @@
 # for development and deployment). This is the single source of truth for these values — no
 # environment-variable override layer (unlike Kestrel:* HTTPS cert settings, which stay env-only).
 
-[ServerBehavior]
-# Public-facing hostname clients connect to (c./ce./c4./c5./c6./osu./a./b./api. subdomains hang off this).
-Domain = "localhost"
+[Server]
+Domain = "basil.local" # Public-facing hostname clients connect to (c./ce./c4./c5./c6./osu./a./b./api. subdomains hang off this).
 # osu! client's in-game menu icon (top-left). MenuIconPath is a local file path (relative paths
 # resolve against the executable's directory) — the server serves it back over HTTP at
 # GET /web/menuicon and sends the client that URL, not the path itself. MenuOnclickUrl is the
 # click-through URL opened when the icon is clicked, unrelated to the file.
-MenuIconPath = 'V:\Code\cs\OpenOsuTournament\OpenOsuTournament.Bancho\assets\icon.png'
+MenuIconPath = 'Assets\icon.png'
 MenuOnclickUrl = "https://github.com/thnhmai06/osuBasil"
 
 [Mirror]
@@ -22,6 +21,13 @@ MenuOnclickUrl = "https://github.com/thnhmai06/osuBasil"
 [Bot]
 Name = "BasilBot" # BasilBot's display name. Changing this after the first boot renames the seeded id=1 user in-place.
 CommandPrefix = "!" # Prefix chat commands must start with (!help, !roll, !mp ...).
+
+[Irc]
+# Embedded IRC gateway (osu!Bancho's own irc.ppy.sh, narrowed) — lets referee/tournament tools (e.g.
+# osu-ahr) or a real IRC client connect and chat/`!mp` alongside osu! clients. PASS must be the
+# user's account password (the same credential used to log in via the osu! client).
+Name = "Basil" # IRC Server name
+Port = 6667 # IRC Server Port
 
 [Api]
 # Gates every api.<domain> management REST route (beatmap/user/replay/match/seasonal CRUD) via the

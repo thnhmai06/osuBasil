@@ -13,10 +13,11 @@ namespace Basil.Application.Tests.Sessions;
 public class ChannelMembershipServiceTests
 {
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+    private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 
     private ChannelMembershipService MakeService()
     {
-        return new ChannelMembershipService(_sessionRegistry);
+        return new ChannelMembershipService(_sessionRegistry, _channelRegistry);
     }
 
     private static PlayerSession MakePlayer(int id, string name)

@@ -14,7 +14,7 @@ checkout) — no rebuild needed after editing either, just restart the process:
 | File                | Owns                                                                                                      |
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
-| `settings.toml`     | Everything Basil itself reads — `ServerBehavior`, `Registration`, `Discord`, `Mirror`, `Bot`, `Api`, `Database`. Same file for development and deployment; edit it and restart. |
+| `settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Api`, `Database`. Same file for development and deployment; edit it and restart. |
 
 There is **no environment-variable override layer** for `settings.toml` values — edit the file
 directly. The one exception is `Kestrel__Certificates__Default__Path`/`Password` (the HTTPS cert),
@@ -25,10 +25,12 @@ config file that might get copied/published alongside the executable.
 
 | Section          | Key(s)                              | Meaning                                                                                                             |
 | ----------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `[ServerBehavior]`| `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
+| `[Server]`        | `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
 |                    | `MenuIconPath` / `MenuOnclickUrl`    | osu! client's in-game menu icon (top-left). `MenuIconPath` is a **local file path**, not a URL — served back over HTTP at `GET /web/menuicon` on the `osu.` host; the client is pointed at that URL, not the path. `MenuOnclickUrl` is the click-through URL opened when clicked. Cosmetic only. |
 | `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=1` user in-place.                   |
 |                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
+| `[Irc]`            | `Name`                               | IRC server name.                                                                                                   |
+|                    | `Port`                               | TCP port for the embedded IRC gateway (default 6667).                                                              |
 | `[Api]`            | `AdminKey`                           | Gates every `api.<domain>` management REST route (beatmap/user/replay/match/seasonal CRUD) via `X-Admin-Key`. Unset = locked down (401 on everything) — **set this to actually use the admin API**, e.g. to create the first user account (see Client setup below). |
 | `[Database]`       | `Path`                               | SQLite file path. Relative paths resolve next to the executable. Default `basil.db`, rarely needs changing.        |
 | `[Mirror]`         | `DownloadEndpoint`                   | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
@@ -67,13 +69,13 @@ To move a deployment to another machine: stop the server, copy the whole executa
    Copy the `publish/<rid>/` folder to the target machine (or publish directly on it).
 
 2. **Edit `settings.toml`** next to the published executable:
-   - `ServerBehavior.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
+   - `Server.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
-     subdomain (`c./ce./c4./c5./c6./osu./a./b./api.<Domain>`) — see [`api-client.md`](api-client.md)
+     subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see [`api-client.md`](api-client.md)
      for exactly how.
    - `Api.AdminKey` — set this to a real secret. Without it the management API (used to create
      user accounts, since in-game registration is disabled — see Client setup) stays 401-locked.
-   - `Bot.Name` / `Bot.CommandPrefix`, `ServerBehavior.MenuIconUrl`/`MenuOnclickUrl` — cosmetic,
+   - `Bot.Name` / `Bot.CommandPrefix`, `Server.MenuIconPath`/`MenuOnclickUrl`, `Irc.Name`/`Irc.Port` — cosmetic,
      optional.
 
 3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects
@@ -83,6 +85,12 @@ To move a deployment to another machine: stop the server, copy the whole executa
 
    `<domain>`, `c.<domain>`, `ce.<domain>`, `c4.<domain>`, `c5.<domain>`, `c6.<domain>`,
    `osu.<domain>`, `b.<domain>`, `a.<domain>`, `api.<domain>`
+
+   > [!NOTE]
+   > The IRC gateway (`irc.<domain>`) listens on a separate TCP port (6667 by default, configurable
+   > via `Irc.Port`) and is **not** served through ASP.NET Core/Kestrel — it binds a raw
+   > `TcpListener` from `TcpIrcListener` (`BackgroundService`). It does not need TLS; a real IRC
+   > client connects over plain TCP. No cert SAN entry is required for `irc.<domain>`.
 
    For a real public domain, any standard ACME/wildcard cert covering `*.<domain>` and `<domain>`
    works. For a LAN-only deployment without public DNS, generate a self-signed cert with those SANs
@@ -143,13 +151,16 @@ To move a deployment to another machine: stop the server, copy the whole executa
    build output (`src/Basil.Web/bin/Debug/net10.0/`) on first run, migrations run automatically.
 
 2. **`settings.toml` is the same file used in production** — there's no separate dev-only config
-   file. For local testing against a real osu! client, set `ServerBehavior.Domain = "basil.local"`
+   file. For local testing against a real osu! client, set `Server.Domain = "basil.local"`
    (or whatever local domain you're using) directly in `src/Basil.Web/settings.toml`.
+
+   The IRC gateway listens on port 6667 by default (configurable via `[Irc]` section in settings.toml).
+   Connect with any IRC client: `/server basil.local 6667` and authenticate with your account password.
 
 3. **To connect an actual osu! client to your dev server**, you need a trusted cert and hosts
    entries, same requirement as Deployment above (the client itself doesn't know or care whether
    it's talking to a dev or production build). Generate a self-signed cert covering all 9
-   subdomains:
+   subdomains (note: the IRC gateway uses a separate TCP port, no TLS, no cert needed):
 
    **PowerShell (Windows):**
 
