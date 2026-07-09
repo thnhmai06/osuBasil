@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,8 +27,8 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
                 var settings = new Dictionary<string, string?>
                 {
                     ["ServerBehavior:Domain"] = "test.local",
-                    ["ServerBehavior:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["Bot:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconPath"] = "icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 };

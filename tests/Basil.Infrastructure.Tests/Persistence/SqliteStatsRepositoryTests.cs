@@ -36,7 +36,7 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         var stat = await _repository.FetchOneAsync(1, 0);
 
         Assert.NotNull(stat);
-        Assert.Equal(0, stat!.Mode);
+        Assert.Equal(0, stat.Mode);
         Assert.Equal(0, stat.Tscore);
         Assert.Equal(0, stat.Plays);
     }
@@ -51,6 +51,6 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         var stat = await _repository.FetchOneAsync(1, 2);
 
         Assert.NotNull(stat);
-        Assert.Equal(2, stat!.ReplayViews);
+        Assert.Equal(2, stat.ReplayViews);
     }
 }

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
@@ -166,6 +167,26 @@ internal static class AdminManagementRoutes
             if (await users.FetchByIdAsync(id, cancellationToken) is null) return Results.NotFound();
 
             await users.UpdatePrivilegesAsync(id, 0, cancellationToken);
+            return Results.NoContent();
+        });
+
+        // Blocking a specific user (as opposed to ToggleBlockNonFriendDms's blanket "block everyone
+        // who isn't a friend" toggle) has no client packet to trigger it — osu! stable only ever
+        // sends FriendAdd/FriendRemove over the wire. Admin-key-gated CRUD is the only surface for it.
+        admin.MapPost("/users/{id:int}/block/{targetId:int}", async (int id, int targetId,
+            IRelationshipRepository relationships, CancellationToken cancellationToken) =>
+        {
+            if (await relationships.FetchOneAsync(id, targetId, cancellationToken) is null)
+                await relationships.CreateAsync(id, targetId, RelationshipType.Block, cancellationToken);
+            return Results.NoContent();
+        });
+
+        admin.MapDelete("/users/{id:int}/block/{targetId:int}", async (int id, int targetId,
+            IRelationshipRepository relationships, CancellationToken cancellationToken) =>
+        {
+            var relationship = await relationships.FetchOneAsync(id, targetId, cancellationToken);
+            if (relationship?.Type == RelationshipType.Block)
+                await relationships.DeleteAsync(id, targetId, cancellationToken);
             return Results.NoContent();
         });
     }

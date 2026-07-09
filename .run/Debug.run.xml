@@ -1,6 +1,0 @@
-﻿<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Debug" type="CompoundRunConfigurationType">
-    <toRun name="Basil.Web" type="LaunchSettings" />
-    <method v="2" />
-  </configuration>
-</component>

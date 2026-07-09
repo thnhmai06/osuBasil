@@ -22,7 +22,7 @@ public class GeolocationHeaderParserTests
         var geoloc = GeolocationHeaderParser.TryParse(headers);
 
         Assert.NotNull(geoloc);
-        Assert.Equal("us", geoloc!.CountryAcronym);
+        Assert.Equal("us", geoloc.CountryAcronym);
         Assert.Equal(225, geoloc.CountryNumeric);
         Assert.Equal(37.7749, geoloc.Latitude, 4);
         Assert.Equal(-122.4194, geoloc.Longitude, 4);
@@ -36,7 +36,7 @@ public class GeolocationHeaderParserTests
         var geoloc = GeolocationHeaderParser.TryParse(headers);
 
         Assert.NotNull(geoloc);
-        Assert.Equal("jp", geoloc!.CountryAcronym);
+        Assert.Equal("jp", geoloc.CountryAcronym);
         Assert.Equal(111, geoloc.CountryNumeric);
     }
 

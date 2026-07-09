@@ -18,7 +18,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 
         var relationship = await _repository.FetchOneAsync(1, friend.Id);
         Assert.NotNull(relationship);
-        Assert.Equal(RelationshipType.Friend, relationship!.Type);
+        Assert.Equal(RelationshipType.Friend, relationship.Type);
     }
 
     [Fact]

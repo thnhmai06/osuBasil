@@ -464,7 +464,7 @@ public class MpCommandServiceTests
         Assert.NotNull(match.PendingTimer);
         Assert.Equal("Match starts in 30 seconds", reply);
 
-        match.PendingTimer?.Cancel();
+        await match.PendingTimer?.CancelAsync();
     }
 
     [Fact]
@@ -480,7 +480,7 @@ public class MpCommandServiceTests
         Assert.False(match.InProgress);
         Assert.Equal("Countdown started: 10 seconds", reply);
 
-        match.PendingTimer?.Cancel();
+        await match.PendingTimer?.CancelAsync();
     }
 
     [Fact]
@@ -494,7 +494,7 @@ public class MpCommandServiceTests
 
         Assert.Equal("Countdown started: 30 seconds", reply);
 
-        match.PendingTimer?.Cancel();
+        await match.PendingTimer?.CancelAsync();
     }
 
     [Fact]

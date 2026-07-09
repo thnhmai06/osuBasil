@@ -1,0 +1,34 @@
+# Basil's own server settings — everything this app actually reads. Framework-level config
+# (Logging, AllowedHosts) stays in appsettings.json, standard ASP.NET Core convention, untouched.
+# Lives next to the published executable — edit this file directly, no rebuild needed (same file
+# for development and deployment). This is the single source of truth for these values — no
+# environment-variable override layer (unlike Kestrel:* HTTPS cert settings, which stay env-only).
+
+[ServerBehavior]
+# Public-facing hostname clients connect to (c./ce./c4./c5./c6./osu./a./b./api. subdomains hang off this).
+Domain = "localhost"
+# osu! client's in-game menu icon (top-left). MenuIconPath is a local file path (relative paths
+# resolve against the executable's directory) — the server serves it back over HTTP at
+# GET /web/menuicon and sends the client that URL, not the path itself. MenuOnclickUrl is the
+# click-through URL opened when the icon is clicked, unrelated to the file.
+MenuIconPath = 'V:\Code\cs\OpenOsuTournament\OpenOsuTournament.Bancho\assets\icon.png'
+MenuOnclickUrl = "https://github.com/thnhmai06/osuBasil"
+
+[Mirror]
+# Optional .osz download mirror for /d/{set_id}. Leave unset to report downloads as unavailable
+# instead of reaching out to the internet (this server runs fully offline by default).
+# DownloadEndpoint = "https://example.local/mirror"
+
+[Bot]
+Name = "BasilBot" # BasilBot's display name. Changing this after the first boot renames the seeded id=1 user in-place.
+CommandPrefix = "!" # Prefix chat commands must start with (!help, !roll, !mp ...).
+
+[Api]
+# Gates every api.<domain> management REST route (beatmap/user/replay/match/seasonal CRUD) via the
+# X-Admin-Key header. Leave unset to keep the management API locked down (401 on every request).
+# AdminKey = ""
+
+[Database]
+# SQLite database file path. Relative paths are resolved next to the executable. Only override if
+# you want the DB file somewhere other than the default (basil.db next to the executable).
+Path = "basil.db"

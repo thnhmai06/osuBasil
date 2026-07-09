@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,8 +30,8 @@ public class Phase8EndpointTests(WebApplicationFactory<Program> factory) : IClas
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ServerBehavior:Domain"] = "test.local",
-                    ["ServerBehavior:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["Bot:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconPath"] = "icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 });

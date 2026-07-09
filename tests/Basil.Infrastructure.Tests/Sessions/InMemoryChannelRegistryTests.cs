@@ -19,7 +19,7 @@ public class InMemoryChannelRegistryTests
         var session = registry.GetByName("#osu");
 
         Assert.NotNull(session);
-        Assert.Equal("General discussion.", session!.Topic);
+        Assert.Equal("General discussion.", session.Topic);
     }
 
     [Fact]

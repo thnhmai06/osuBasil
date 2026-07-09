@@ -18,7 +18,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
         var user = await _repository.FetchByIdAsync(1);
 
         Assert.NotNull(user);
-        Assert.Equal("BasilBot", user!.Name);
+        Assert.Equal("BasilBot", user.Name);
         Assert.Equal("basilbot", user.SafeName);
         Assert.Equal("ca", user.Country);
     }
@@ -45,7 +45,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
         else
         {
             Assert.NotNull(user);
-            Assert.Equal(1, user!.Id);
+            Assert.Equal(1, user.Id);
         }
     }
 

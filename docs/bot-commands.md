@@ -3,7 +3,7 @@
 Bên dưới là các lệnh chat của `BasilBot` - sử dụng trực tiếp thông qua chat (kênh chung, kênh của trận,
 hoặc DM cho `BasilBot`).
 
-Prefix mặc định là `!` (admin server có thể đổi qua `ServerBehaviorOptions.CommandPrefix`). **DM trực tiếp cho
+Prefix mặc định là `!` (admin server có thể đổi qua `BotOptions.CommandPrefix` trong `settings.toml`). **DM trực tiếp cho
 BasilBot là ngoại lệ - prefix ở đó không bắt buộc**: gõ `help` hay `!help` trong DM đều được hiểu như nhau (mọi
 DM gửi cho BasilBot vốn đã chỉ được xử lý như một lệnh, không có đường rơi xuống chat/mail thường nào khác, nên
 nới lỏng prefix ở đây không có rủi ro nuốt nhầm tin nhắn thường).

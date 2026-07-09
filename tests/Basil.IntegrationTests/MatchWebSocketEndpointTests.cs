@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,8 +31,8 @@ public class MatchWebSocketEndpointTests : IClassFixture<WebApplicationFactory<P
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ServerBehavior:Domain"] = "test.local",
-                    ["ServerBehavior:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["Bot:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconPath"] = "icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 });

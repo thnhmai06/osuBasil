@@ -10,7 +10,7 @@ namespace Basil.Application.UseCases.Bot;
 
 /// <inheritdoc cref="ICommandDispatcher" />
 public sealed class CommandDispatcher(
-    IOptions<ServerBehaviorOptions> serverBehavior,
+    IOptions<BotOptions> botOptions,
     MpCommandService mpCommands,
     IUserRepository userRepository,
     IOptions<StorageOptions> storageOptions,
@@ -42,7 +42,7 @@ public sealed class CommandDispatcher(
     public async Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
         bool prefixOptional = false, CancellationToken cancellationToken = default)
     {
-        var prefix = serverBehavior.Value.CommandPrefix;
+        var prefix = botOptions.Value.CommandPrefix;
         if (string.IsNullOrEmpty(prefix)) return null;
 
         string message;

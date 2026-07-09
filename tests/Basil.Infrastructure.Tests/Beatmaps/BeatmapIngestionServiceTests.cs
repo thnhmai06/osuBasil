@@ -54,7 +54,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
         var beatmap = await _maps.FetchOneAsync(900_000_000);
         Assert.NotNull(beatmap);
-        Assert.Equal("FAIRY FORE", beatmap!.Artist);
+        Assert.Equal("FAIRY FORE", beatmap.Artist);
         Assert.Equal("Vivid", beatmap.Title);
         Assert.Equal("Insane", beatmap.Version);
         Assert.Equal("Hitoshirenu Shourai", beatmap.Creator);

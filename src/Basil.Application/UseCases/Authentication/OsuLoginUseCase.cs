@@ -19,7 +19,7 @@ namespace Basil.Application.UseCases.Authentication;
 /// <summary>
 ///     Ported from app/api/domains/cho.py's handle_osu_login_request (spec §3.1 in
 ///     docs/csharp-migration-plan.md). Login has no specific packet — it's the request the osu!
-///     client sends without an "osu-token" header.
+///     Client sends it without an "osu-token" header.
 /// </summary>
 public sealed class OsuLoginUseCase(
     IUserRepository users,
@@ -169,7 +169,8 @@ public sealed class OsuLoginUseCase(
         var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
         var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
 
-        data.Add(ServerPacketWriter.MainMenuIcon(serverOptions.Value.MenuIconUrl, serverOptions.Value.MenuOnclickUrl));
+        var menuIconUrl = $"https://osu.{serverOptions.Value.Domain}/web/menuicon";
+        data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, serverOptions.Value.MenuOnclickUrl));
         data.Add(ServerPacketWriter.FriendsList(friendIds));
         data.Add(ServerPacketWriter.SilenceEnd((int)session.RemainingSilence));
 
@@ -187,7 +188,7 @@ public sealed class OsuLoginUseCase(
                 if (!other.Restricted)
                 {
                     // `other` is an already-online session — its presence/stats are read from its
-                    // own in-memory cache (populated at its own login), no DB/Redis query needed.
+                    // own in-memory cache (populated at its own login)
                     data.Add(PacketBuilders.BuildUserPresence(other));
                     data.Add(PacketBuilders.BuildUserStats(other));
                 }

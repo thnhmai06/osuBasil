@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,8 +27,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ServerBehavior:Domain"] = "test.local",
-                    ["ServerBehavior:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["Bot:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconPath"] = "icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
                     ["Api:AdminKey"] = "correct-key",
                     ["Database:Path"] = ""
@@ -80,6 +81,18 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var client = _factory.CreateClient();
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmaps/1", adminKey));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-key")]
+    public async Task BlockUser_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

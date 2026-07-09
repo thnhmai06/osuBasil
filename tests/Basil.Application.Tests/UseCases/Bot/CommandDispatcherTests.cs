@@ -23,13 +23,7 @@ public class CommandDispatcherTests
     private CommandDispatcher MakeDispatcher(string prefix = "!", MultiplayerTestSupport.Fixture? fixture = null,
         StorageOptions? storageOptions = null)
     {
-        var options = Options.Create(new ServerBehaviorOptions
-        {
-            Domain = "test.local",
-            CommandPrefix = prefix,
-            MenuIconUrl = "https://example.test/icon.png",
-            MenuOnclickUrl = "https://example.test"
-        });
+        var options = Options.Create(new BotOptions { CommandPrefix = prefix });
         fixture ??= new MultiplayerTestSupport.Fixture();
         var clock = Substitute.For<IClock>();
         clock.UtcNow.Returns(DateTimeOffset.UtcNow);
@@ -96,7 +90,7 @@ public class CommandDispatcherTests
 
         Assert.NotNull(reply);
         Assert.StartsWith("cmyui rolls ", reply);
-        var pointsToken = reply!.Split(' ')[2];
+        var pointsToken = reply.Split(' ')[2];
         var points = int.Parse(pointsToken);
         Assert.InRange(points, 0, 100);
     }
@@ -122,7 +116,7 @@ public class CommandDispatcherTests
         var reply = await dispatcher.DispatchAsync(sender, "!roll 2147483647", null);
 
         Assert.NotNull(reply);
-        var points = int.Parse(reply!.Split(' ')[2]);
+        var points = int.Parse(reply.Split(' ')[2]);
         Assert.InRange(points, 0, int.MaxValue);
     }
 

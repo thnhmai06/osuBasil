@@ -26,7 +26,7 @@ public class InMemoryMatchRegistryTests
         var match = registry.TryCreate(id => MakeMatch(id));
 
         Assert.NotNull(match);
-        Assert.Equal(0, match!.Id);
+        Assert.Equal(0, match.Id);
     }
 
     [Fact]

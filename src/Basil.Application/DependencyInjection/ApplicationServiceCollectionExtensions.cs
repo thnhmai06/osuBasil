@@ -54,6 +54,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IBanchoPacketHandler, UserPresenceRequestAllHandler>();
         services.AddSingleton<IBanchoPacketHandler, ReceiveUpdatesHandler>();
         services.AddSingleton<IBanchoPacketHandler, SetAwayMessageHandler>();
+        services.AddSingleton<IBanchoPacketHandler, FriendAddHandler>();
+        services.AddSingleton<IBanchoPacketHandler, FriendRemoveHandler>();
         services.AddSingleton<IBanchoPacketHandler, ChannelJoinHandler>();
         services.AddSingleton<IBanchoPacketHandler, ChannelPartHandler>();
         services.AddSingleton<IBanchoPacketHandler, SendPublicMessageHandler>();

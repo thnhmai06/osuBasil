@@ -10,4 +10,7 @@ public sealed class BotOptions
     public const string SectionName = "Bot";
 
     public string Name { get; init; } = "BasilBot";
+
+    /// <summary>Prefix chat commands must start with (!help, !roll, !mp ...).</summary>
+    public required string CommandPrefix { get; init; }
 }

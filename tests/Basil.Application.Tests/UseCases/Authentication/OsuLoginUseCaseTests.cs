@@ -46,7 +46,7 @@ public class OsuLoginUseCaseTests
             _tokenGenerator, _clock,
             Options.Create(new ServerBehaviorOptions
             {
-                Domain = "test.local", CommandPrefix = "!", MenuIconUrl = "https://a/i.png",
+                Domain = "test.local", MenuIconPath = "icon.png",
                 MenuOnclickUrl = "https://a"
             }));
     }

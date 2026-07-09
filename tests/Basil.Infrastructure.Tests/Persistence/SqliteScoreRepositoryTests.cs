@@ -170,7 +170,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         var best = await _repository.FetchPersonalBestLeaderboardScoreAsync(mapMd5, GameMode.VanillaOsu, 312);
 
         Assert.NotNull(best);
-        Assert.Equal(900_000, best!.Score);
+        Assert.Equal(900_000, best.Score);
         Assert.Equal("S", best.Grade);
     }
 
@@ -271,7 +271,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         var firstPlace = await _repository.FetchFirstPlaceScoreAsync(mapMd5, GameMode.VanillaOsu);
 
         Assert.NotNull(firstPlace);
-        Assert.Equal("quinn", firstPlace!.Name);
+        Assert.Equal("quinn", firstPlace.Name);
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         var owner = await _repository.FetchOwnerAsync(scoreId);
 
         Assert.NotNull(owner);
-        Assert.Equal(321, owner!.UserId);
+        Assert.Equal(321, owner.UserId);
         Assert.Equal(GameMode.VanillaTaiko, owner.Mode);
     }
 

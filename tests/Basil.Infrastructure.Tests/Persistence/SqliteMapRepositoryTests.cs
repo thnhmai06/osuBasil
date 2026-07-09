@@ -59,7 +59,7 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
         var fetched = await _repository.FetchOneAsync(bmap.Id);
 
         Assert.NotNull(fetched);
-        Assert.Equal(bmap.Md5, fetched!.Md5);
+        Assert.Equal(bmap.Md5, fetched.Md5);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
         var fetched = await _repository.FetchOneAsync(filename: bmap.Filename);
 
         Assert.NotNull(fetched);
-        Assert.Equal(bmap.Id, fetched!.Id);
+        Assert.Equal(bmap.Id, fetched.Id);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
         var fetched = await _repository.FetchOneAsync(setId: bmap.SetId);
 
         Assert.NotNull(fetched);
-        Assert.Equal(bmap.SetId, fetched!.SetId);
+        Assert.Equal(bmap.SetId, fetched.SetId);
     }
 
     private static Beatmap MakeBeatmap(int id, int setId, string md5, string artist, double diff,

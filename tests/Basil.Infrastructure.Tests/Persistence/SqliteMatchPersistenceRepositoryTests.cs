@@ -16,7 +16,7 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
         var row = await _repository.FetchMatchAsync(matchId);
 
         Assert.NotNull(row);
-        Assert.Equal("Grand Finals", row!.Name);
+        Assert.Equal("Grand Finals", row.Name);
         Assert.Equal(1, row.HostId);
         Assert.Null(row.EndedAt);
     }

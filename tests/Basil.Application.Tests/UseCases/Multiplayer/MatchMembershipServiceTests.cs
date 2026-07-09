@@ -70,7 +70,7 @@ public class MatchMembershipServiceTests
 
         Assert.NotNull(match);
         Assert.Same(match, host.Match);
-        Assert.Equal(host.Id, match!.Slots[0].PlayerId);
+        Assert.Equal(host.Id, match.Slots[0].PlayerId);
         Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
     }
 

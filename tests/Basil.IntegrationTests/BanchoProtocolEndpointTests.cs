@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Channels;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,8 +28,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ServerBehavior:Domain"] = "test.local",
-                    ["ServerBehavior:CommandPrefix"] = "!",
-                    ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                    ["Bot:CommandPrefix"] = "!",
+                    ["ServerBehavior:MenuIconPath"] = "icon.png",
                     ["ServerBehavior:MenuOnclickUrl"] = "https://example.test",
                     ["Database:Path"] = ""
                 });

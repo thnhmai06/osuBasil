@@ -1,192 +1,259 @@
 # Run & Deployment
 
-## Dành cho Triển khai
+Basil is one ASP.NET Core process. No Docker, no separate DB/cache service — SQLite is a single
+file, and everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text) is a plain
+folder next to the executable, auto-created on first startup. This doc has three parts: **Deployment**
+(a real LAN tournament server other machines connect to), **Development** (working on Basil itself),
+and **Client** (pointing an actual osu! stable install at either of the above).
 
-```bash
-dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
-# hoặc:
-dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
-```
+## Configuration surface
 
-Sau đó chạy executable vừa publish (`Basil.Web.exe` trên Windows, `Basil.Web` trên Linux) từ thư mục `publish/<rid>/`.
-Máy chạy cần cài sẵn **ASP.NET Core Runtime 10** (không self-contained, không bundle runtime vào exe).
+Two files, both plain text, both live next to the executable (or in `src/Basil.Web/` in a dev
+checkout) — no rebuild needed after editing either, just restart the process:
 
-### Nó làm gì?
+| File                | Owns                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
+| `settings.toml`     | Everything Basil itself reads — `ServerBehavior`, `Registration`, `Discord`, `Mirror`, `Bot`, `Api`, `Database`. Same file for development and deployment; edit it and restart. |
 
-1. Executable tự tạo file SQLite (`basil.db`, mặc định) ngay cạnh chính nó nếu chưa tồn tại.
-2. `SqlMigrationRunner` áp dụng schema `001_base.sql` được nhúng sẵn tự động khi khởi động qua [DbUp](https://dbup.readthedocs.io/) để thực hiện tự động migration — không cần bước migration thủ công.
-3. Ngay sau đó, app cũng nạp mọi file beatmap được thả vào folder `Mapsets/` và bootstrap session BanchoBot.
+There is **no environment-variable override layer** for `settings.toml` values — edit the file
+directly. The one exception is `Kestrel__Certificates__Default__Path`/`Password` (the HTTPS cert),
+which stays environment-variable-only on purpose: a cert password shouldn't sit in plaintext in a
+config file that might get copied/published alongside the executable.
 
-App lắng nghe tại `http://localhost:<port do ASP.NET Core chọn>` theo mặc định — override qua `--urls` hoặc biến môi trường `ASPNETCORE_URLS` (ví dụ `--urls "http://*:8080"`).
+`settings.toml` sections, as shipped:
 
-### Các biến Môi trường tùy chỉnh
+| Section          | Key(s)                              | Meaning                                                                                                             |
+| ----------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `[ServerBehavior]`| `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
+|                    | `MenuIconPath` / `MenuOnclickUrl`    | osu! client's in-game menu icon (top-left). `MenuIconPath` is a **local file path**, not a URL — served back over HTTP at `GET /web/menuicon` on the `osu.` host; the client is pointed at that URL, not the path. `MenuOnclickUrl` is the click-through URL opened when clicked. Cosmetic only. |
+| `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=1` user in-place.                   |
+|                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
+| `[Api]`            | `AdminKey`                           | Gates every `api.<domain>` management REST route (beatmap/user/replay/match/seasonal CRUD) via `X-Admin-Key`. Unset = locked down (401 on everything) — **set this to actually use the admin API**, e.g. to create the first user account (see Client setup below). |
+| `[Database]`       | `Path`                               | SQLite file path. Relative paths resolve next to the executable. Default `basil.db`, rarely needs changing.        |
+| `[Mirror]`         | `DownloadEndpoint`                   | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
 
-ASP.NET Core đọc `Section__Key` trực tiếp từ biến môi trường (không qua lớp dịch nào cả — không còn docker-compose để làm việc đó). Xem [`.env.example`](../.env.example) để có danh sách đầy đủ; các biến chính:
+### Data (always fixed, never configurable)
 
-| Biến                       | Mục đích                                                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `ServerBehavior__Domain`   | domain mà server tự nhận diện (dùng trong link icon menu, v.v.)                                                    |
-| `ServerBehavior__CommandPrefix` | tiền tố lệnh chat (`!help`, `!roll`, `!mp ...`)                                                               |
-| `ServerBehavior__MenuIconUrl` / `ServerBehavior__MenuOnclickUrl` | icon menu chính trong game và URL click-through của nó                                       |
-| `Bot__Name`                | tên hiển thị của BanchoBot                                                                                        |
-| `Api__AdminKey`            | khoá các route management CRUD của `api.<domain>` qua `X-Admin-Key`; để trống để giữ chúng khoá (401 cho mọi thứ) |
-| `Database__Path`           | đường dẫn file SQLite - mặc định `basil.db` cạnh executable, override được nếu muốn đặt chỗ khác                  |
+Created automatically next to the executable on startup if missing — no manual setup:
 
-**Không** có biến môi trường nào cho đường dẫn lưu trữ file (replay/avatar/beatmap/seasonal/faq) — 5 folder đó cố định, xem mục Dữ liệu bên dưới.
+| Path         | Contents                                                                 |
+| ------------- | --------------------------------------------------------------------------- |
+| `basil.db`    | SQLite database (+ `basil.db-wal`/`basil.db-shm` while running). Migrations run automatically on every startup. |
+| `Replays/`    | Score replay files.                                                      |
+| `Avatars/`    | User avatar files (`{userId}.{ext}`).                                    |
+| `Mapsets/`    | Beatmap files (`.osu`/`.osz`) — drop files here, they're ingested automatically on the next startup, or push them live via `POST /beatmaps` on `api.` (admin-key). |
+| `Seasonals/`  | Seasonal background images shown in the client's main menu.              |
+| `Faqs/`       | `!faq <entry>` text files (`<entry>.txt`).                               |
 
-### Dữ liệu
+To move a deployment to another machine: stop the server, copy the whole executable directory
+(including `basil.db*` and the five folders above) to the target, start it there.
 
-Tất cả nằm cố định ngay cạnh thư mục chứa executable, không cấu hình được:
+---
 
-| Đường dẫn (cạnh exe) | Mục đích                                                                                                |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| `basil.db`             | File database SQLite (tự tạo lúc khởi động lần đầu, kèm `basil.db-wal`/`basil.db-shm` khi đang chạy)    |
-| `Replays/`             | Lưu replay files                                                                                       |
-| `Avatars/`             | Lưu avatar files                                                                                       |
-| `Mapsets/`             | Lưu beatmap files (`.osu`/`.osz`) - thả file vào đây để chúng được nạp tự động ở lần khởi động kế tiếp |
-| `Seasonals/`           | Lưu seasonal data                                                                                       |
-| `Faqs/`                | Lưu nội dung `!faq`                                                                                     |
+## 1. Deployment — running a real server for others to connect to
 
-Hoặc để nạp beatmap mà không cần restart, sử dụng `POST /beatmaps` trên host `api.` (khoá bằng admin-key).
+### Steps
 
-Muốn di dời sang máy khác: dừng server, copy nguyên thư mục chứa executable (bao gồm `basil.db*` và 5 folder trên) sang máy đích, chạy lại.
+1. **Publish** a framework-dependent build for the target OS. The target machine needs the
+   [.NET 10 ASP.NET Core Runtime](https://dotnet.microsoft.com/) installed (not the SDK):
 
-## Dành cho Phát triển
+   ```bash
+   dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
+   # or:
+   dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
+   ```
 
-### Chạy Server
+   Copy the `publish/<rid>/` folder to the target machine (or publish directly on it).
 
-```bash
-dotnet run --project src/Basil.Web
-```
+2. **Edit `settings.toml`** next to the published executable:
+   - `ServerBehavior.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
+     `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
+     subdomain (`c./ce./c4./c5./c6./osu./a./b./api.<Domain>`) — see [`api-client.md`](api-client.md)
+     for exactly how.
+   - `Api.AdminKey` — set this to a real secret. Without it the management API (used to create
+     user accounts, since in-game registration is disabled — see Client setup) stays 401-locked.
+   - `Bot.Name` / `Bot.CommandPrefix`, `ServerBehavior.MenuIconUrl`/`MenuOnclickUrl` — cosmetic,
+     optional.
 
-Không cần khởi động thêm service nào khác — database là 1 file SQLite tự tạo cạnh binary output (`src/Basil.Web/bin/Debug/net10.0/basil.db`), migration tự chạy lúc khởi động.
+3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects
+   over **HTTPS on port 443** — plain HTTP is silently rejected before it reaches Kestrel, and the
+   client checks the exact subdomain it connects to, so a generic `CN=localhost`-style cert won't
+   work. The subdomains a cert needs SAN entries for:
 
-> [!IMPORTANT]
-> `Basil.Infrastructure.Tests` dựng lên một file SQLite tạm cho mỗi test class, xoá ngay sau khi test xong - không cần Docker daemon hay service ngoài nào. Xem [`CLAUDE.md`](../CLAUDE.md) về khuyến nghị chạy project test này ở foreground.
+   `<domain>`, `c.<domain>`, `ce.<domain>`, `c4.<domain>`, `c5.<domain>`, `c6.<domain>`,
+   `osu.<domain>`, `b.<domain>`, `a.<domain>`, `api.<domain>`
 
-### Kết nối osu! client đến server
+   For a real public domain, any standard ACME/wildcard cert covering `*.<domain>` and `<domain>`
+   works. For a LAN-only deployment without public DNS, generate a self-signed cert with those SANs
+   — see the Development section below for the exact `openssl`/`New-SelfSignedCertificate` commands
+   (same process, just swap `basil.local` for your real domain); every client machine will then need
+   that cert installed as trusted (see Client setup).
 
-> [!IMPORTANT]
-> Client osu! stable chỉ kết nối qua **HTTPS (port 443)** tới `c./ce./c4./c5./c6./osu./b./a./api.<domain-của-bạn>` - HTTP thường sẽ bị từ chối âm thầm trước khi tới được Kestrel.
+4. **Point Kestrel at the cert** via environment variables (this is the one setting that stays
+   environment-only, not in `settings.toml` — see Configuration surface above):
 
-Để giải quyết vấn đề này, bạn cần:
+   ```bash
+   export Kestrel__Certificates__Default__Path="/path/to/cert.pfx"
+   export Kestrel__Certificates__Default__Password="your-password"
+   ```
 
-1.  Khởi động server như trên.
-2.  Tạo một certificate self-signed có danh sách SAN bao phủ **domain và cả 9 subdomain**:
+5. **DNS or hosts entries**: every machine that connects (the server itself, and every client) needs
+   all 9 subdomains resolving to the server's address — either real DNS records for a public domain,
+   or a `hosts` file entry per machine for a LAN-only setup (see Client setup below for the exact
+   entries).
 
-    | Subdomain         | Mục đích                             |
-    | ----------------- | ------------------------------------ |
-    | `basil.local`     | Domain chính                         |
-    | `c.basil.local`   | Bancho binary protocol (Bank server) |
-    | `ce.basil.local`  | Bancho binary protocol (Chooses)     |
-    | `c4.basil.local`  | Bancho binary protocol (v4)          |
-    | `c5.basil.local`  | Bancho binary protocol (v5)          |
-    | `c6.basil.local`  | Bancho binary protocol (v6)          |
-    | `osu.basil.local` | HTTP endpoints (Legacy web API)      |
-    | `b.basil.local`   | Beatmap thumbnails                   |
-    | `a.basil.local`   | Avatar files                         |
-    | `api.basil.local` | Tournament API & management          |
+6. **Run it**, binding to port 443. Binding a port below 1024 needs elevated privileges (Administrator
+   on Windows, root or `setcap` on Linux):
 
-    Sau đó, hãy tạo certificate:
-    - **PowerShell (Windows):**
+   ```bash
+   ./Basil.Web --urls "https://*:443"
+   ```
 
-      ```powershell
-      $dnsNames = @("basil.local", "c.basil.local", "ce.basil.local", "c4.basil.local", "c5.basil.local", "c6.    basil.local", "osu.basil.local", "b.basil.local", "a.basil.local", "api.basil.local")
-      $cert = New-SelfSignedCertificate -DnsName $dnsNames -CertStoreLocation "cert:\LocalMachine\My"     -KeyExportPolicy Exportable
-      Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath "basil-cert.pfx"  -Password (ConvertTo-SecureString -String "your-password" -Force -AsPlainText)
-      Import-PfxCertificate -FilePath "basil-cert.pfx" -CertStoreLocation "cert:\LocalMachine\Root" -Password     (ConvertTo-SecureString -String "your-password" -Force -AsPlainText)
-      ```
+   Open port 443 in the firewall if one is active.
 
-    - **Bash (macOS/Linux):**
-      ```bash
-      openssl req -new -x509 -days 365 -nodes -out basil-cert.pem -keyout basil-key.pem -subj "/CN=basil. local"    \
-        -addext "subjectAltName=DNS:basil.local,DNS:c.basil.local,DNS:ce.basil.local,DNS:c4.basil.local,  DNS:c5.    basil.local,DNS:c6.basil.local,DNS:osu.basil.local,DNS:b.basil.local,DNS:a.basil.local,    DNS:api.basil.   local"
-      openssl pkcs12 -export -out basil-cert.pfx -inkey basil-key.pem -in basil-cert.pem -password        pass:your-password
-      # Trên macOS, thêm certificate vào Keychain: security add-trusted-cert -d -r trustRoot -k ~/Library/    Keychains/login.keychain basil-cert.pem
-      # Trên Linux, tùy thuộc vào distro (xem các bước cài certificate của hệ thống bạn)
-      ```
+7. **Verify it's up**: `curl -k https://osu.<domain>/web/bancho_connect.php` should return `200`
+   (the client's own connectivity check).
 
-    > [!NOTE]
-    > Client osu! stable kiểm tra chính xác subdomain nó kết nối tới, vậy nên một cert dev đơn giản `CN=localhost` sẽ fail.
+8. **Create the first account.** In-game registration is a disabled stub on purpose — create
+   accounts via the admin API instead:
 
-3.  Trỏ Kestrel tới file `.pfx` đó qua biến môi trường:
+   ```bash
+   curl -X POST https://api.<domain>/users \
+     -H "X-Admin-Key: <your Api.AdminKey>" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Player1","email":"player1@example.com","password":"hunter2"}'
+   ```
 
-    **PowerShell:**
+   The **first** account created this way (user id 3 — id 1 is BasilBot, id 2 is reserved) is
+   automatically granted staff/admin privileges the first time it logs in from the client; every
+   account is auto-verified on its own first login regardless. No further setup needed — just log in.
 
-    ```powershell
-    $env:Kestrel__Certificates__Default__Path = "<đường dẫn tuyệt đối tới basil-cert.pfx>"
-    $env:Kestrel__Certificates__Default__Password = "your-password"
-    ```
+---
 
-    **Bash:**
+## 2. Development — working on Basil itself
 
-    ```bash
-    export Kestrel__Certificates__Default__Path="<đường dẫn tuyệt đối tới basil-cert.pfx>"
-    export Kestrel__Certificates__Default__Password="your-password"
-    ```
+1. **Run it:**
 
-    Biến môi trường override `appsettings.*.json` theo thứ tự ưu tiên config mặc định của ASP.NET Core.
+   ```bash
+   dotnet run --project src/Basil.Web
+   ```
 
-4.  Chạy
+   No external services to start — `basil.db` and the five storage folders are created next to the
+   build output (`src/Basil.Web/bin/Debug/net10.0/`) on first run, migrations run automatically.
 
-    ```bash
-    `dotnet run --project src/Basil.Web --urls "http://*:80;https://*:443"`
-    ```
+2. **`settings.toml` is the same file used in production** — there's no separate dev-only config
+   file. For local testing against a real osu! client, set `ServerBehavior.Domain = "basil.local"`
+   (or whatever local domain you're using) directly in `src/Basil.Web/settings.toml`.
 
-    từ một terminal **elevated** (bind port 80/443 cần quyền Admin trên Windows).
+3. **To connect an actual osu! client to your dev server**, you need a trusted cert and hosts
+   entries, same requirement as Deployment above (the client itself doesn't know or care whether
+   it's talking to a dev or production build). Generate a self-signed cert covering all 9
+   subdomains:
 
-5.  Thêm domain và cả 9 subdomain vào hosts file:
-    - **Windows (PowerShell):**
+   **PowerShell (Windows):**
 
-    ```powershell
-    $hostsPath = "C:\Windows\System32\drivers\etc\hosts"
-    $entries = @(
-        "127.0.0.1 basil.local",
-        "127.0.0.1 c.basil.local",
-        "127.0.0.1 ce.basil.local",
-        "127.0.0.1 c4.basil.local",
-        "127.0.0.1 c5.basil.local",
-        "127.0.0.1 c6.basil.local",
-        "127.0.0.1 osu.basil.local",
-        "127.0.0.1 b.basil.local",
-        "127.0.0.1 a.basil.local",
-        "127.0.0.1 api.basil.local"
-    )
-    Add-Content -Path $hostsPath -Value "`n$($entries -join "`n")" -Encoding UTF8
-    ```
+   ```powershell
+   $dnsNames = @("basil.local", "c.basil.local", "ce.basil.local", "c4.basil.local", "c5.basil.local",
+                 "c6.basil.local", "osu.basil.local", "b.basil.local", "a.basil.local", "api.basil.local")
+   $cert = New-SelfSignedCertificate -DnsName $dnsNames -CertStoreLocation "cert:\LocalMachine\My" -KeyExportPolicy Exportable
+   Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath "basil-cert.pfx" -Password (ConvertTo-SecureString -String "your-password" -Force -AsPlainText)
+   Import-PfxCertificate -FilePath "basil-cert.pfx" -CertStoreLocation "cert:\LocalMachine\Root" -Password (ConvertTo-SecureString -String "your-password" -Force -AsPlainText)
+   ```
 
-    - **Linux/macOS (Bash):**
+   **Bash (macOS/Linux):**
 
-    ```bash
-    sudo tee -a /etc/hosts << EOF
-    127.0.0.1 basil.local
-    127.0.0.1 c.basil.local
-    127.0.0.1 ce.basil.local
-    127.0.0.1 c4.basil.local
-    127.0.0.1 c5.basil.local
-    127.0.0.1 c6.basil.local
-    127.0.0.1 osu.basil.local
-    127.0.0.1 b.basil.local
-    127.0.0.1 a.basil.local
-    127.0.0.1 api.basil.local
-    EOF
-    ```
+   ```bash
+   openssl req -new -x509 -days 365 -nodes -out basil-cert.pem -keyout basil-key.pem -subj "/CN=basil.local" \
+     -addext "subjectAltName=DNS:basil.local,DNS:c.basil.local,DNS:ce.basil.local,DNS:c4.basil.local,DNS:c5.basil.local,DNS:c6.basil.local,DNS:osu.basil.local,DNS:b.basil.local,DNS:a.basil.local,DNS:api.basil.local"
+   openssl pkcs12 -export -out basil-cert.pfx -inkey basil-key.pem -in basil-cert.pem -password pass:your-password
+   # macOS: security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain basil-cert.pem
+   # Linux: install into your distro's trust store
+   ```
 
-6.  Chạy client với `osu!.exe --debug -devserver basil.local` (Windows) hoặc tương đương trên nền tảng khác.
+   Point Kestrel at it and run on the standard ports (needs an elevated/Administrator terminal to
+   bind 80/443):
 
-> [!IMPORTANT]
-> Chưa có endpoint đăng ký trong game (`POST /users` trên host `osu.` chỉ là stub), nên tạo tài khoản test trực tiếp trong file `basil.db` (dùng công cụ SQLite bất kỳ, ví dụ `sqlite3 basil.db` hoặc DB Browser for SQLite) - một hàng trong `Users` (với `Priv=3`, và `PwBcrypt` set thành bcrypt hash của **digest MD5 mã hoá hex** của mật khẩu - không phải digest thô, khớp với chính scheme mật khẩu của bancho.py) cộng một hàng cho mỗi game mode (`0,1,2,3,4,5,6,8` - mode `7` không tồn tại) trong `UserStats` - hoặc qua `POST /users` trên host `api.` (khoá bằng admin-key).
+   ```bash
+   export Kestrel__Certificates__Default__Path="<absolute path to basil-cert.pfx>"
+   export Kestrel__Certificates__Default__Password="your-password"
+   dotnet run --project src/Basil.Web --urls "http://*:80;https://*:443"
+   ```
 
-> [!IMPORTANT]
-> Khi không có reverse proxy nginx phía trước cục bộ, server tự tổng hợp `X-Forwarded-For`/`X-Real-IP` từ địa chỉ remote của kết nối thô khi không có header nào trong hai header đó - nếu không, `Basil.Domain.ClientIpResolver.Resolve` sẽ throw, vì nó giả định (giống bancho.py) rằng một proxy luôn set các header này trong production.
+   Add hosts entries and launch the client — see Client setup below (same steps whether you're
+   pointed at a dev or deployed server).
 
-### Chạy test
+   > [!IMPORTANT]
+   > Without a reverse proxy in front locally, the server synthesizes `X-Forwarded-For`/`X-Real-IP`
+   > from the raw connection's remote address when neither header is present — otherwise
+   > `Basil.Domain.ClientIpResolver.Resolve` throws, since it assumes (like bancho.py) that a proxy
+   > always sets these headers in production.
 
-```bash
-dotnet test tests/Basil.Domain.Tests
-dotnet test tests/Basil.Protocol.Tests
-dotnet test tests/Basil.Application.Tests
-dotnet test tests/Basil.ArchitectureTests
-dotnet test tests/Basil.IntegrationTests
-dotnet test tests/Basil.Infrastructure.Tests
-```
+4. **Run tests:**
+
+   ```bash
+   dotnet test tests/Basil.Domain.Tests
+   dotnet test tests/Basil.Protocol.Tests
+   dotnet test tests/Basil.Application.Tests
+   dotnet test tests/Basil.ArchitectureTests
+   dotnet test tests/Basil.IntegrationTests
+   dotnet test tests/Basil.Infrastructure.Tests
+   ```
+
+   `Basil.Infrastructure.Tests` spins up a temp SQLite file per test class and deletes it
+   afterward — no Docker daemon or external service needed. See [`CLAUDE.md`](../CLAUDE.md) for the
+   recommendation to run this project in the foreground rather than backgrounded.
+
+---
+
+## 3. Client — connecting an actual osu! install
+
+Applies identically whether the server is a Development or Deployment instance — the client only
+cares about the domain, the cert, and the account.
+
+1. **Use osu! stable** (the classic/legacy client, not lazer) — it's the one that supports the
+   `-devserver` launch flag needed to point at a non-official server. Install it normally from the
+   official osu! site.
+
+2. **Trust the server's cert** on the client machine. For a self-signed dev/LAN cert, import the
+   `.pfx`/`.pem` into the OS's trusted root store (Windows: `certmgr.msc` → Trusted Root
+   Certification Authorities → Import; macOS: Keychain Access → System → drag in the cert, then
+   mark "Always Trust"; Linux: your distro's CA trust update tool). For a real ACME-issued cert on a
+   public domain, this step is unnecessary — it's already trusted.
+
+3. **Resolve all 9 subdomains** to the server's address. For a LAN/self-signed setup, add hosts
+   entries on the client machine (`C:\Windows\System32\drivers\etc\hosts` on Windows,
+   `/etc/hosts` on macOS/Linux) pointing every subdomain at the server's IP:
+
+   ```
+   <server-ip> basil.local
+   <server-ip> c.basil.local
+   <server-ip> ce.basil.local
+   <server-ip> c4.basil.local
+   <server-ip> c5.basil.local
+   <server-ip> c6.basil.local
+   <server-ip> osu.basil.local
+   <server-ip> b.basil.local
+   <server-ip> a.basil.local
+   <server-ip> api.basil.local
+   ```
+
+   (Substitute the real domain and swap `<server-ip>` for `127.0.0.1` if the client and server are
+   the same machine.) For a real public domain, this step is unnecessary — normal DNS resolves it.
+
+4. **Get an account.** In-game registration is disabled — someone with the server's `Api.AdminKey`
+   creates the account via the admin API (see Deployment step 8 above for the exact `curl` call).
+   Every account is auto-verified on its own first successful login — no extra step after that.
+
+5. **Launch the client pointed at the server:**
+
+   ```
+   osu!.exe --debug -devserver <domain>
+   ```
+
+   (or the platform equivalent — `-devserver` is the flag that matters; it works identically on
+   every OS the client ships for). Log in with the account from step 4.
+
+Every client version is accepted — Basil doesn't check for a minimum/maximum client build (that
+check proxied through osu!'s changelog API in bancho.py, which doesn't apply to a fully offline
+server).

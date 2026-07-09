@@ -30,8 +30,8 @@ public class CompositionRootTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ServerBehavior:Domain"] = "test.local",
-                ["ServerBehavior:CommandPrefix"] = "!",
-                ["ServerBehavior:MenuIconUrl"] = "https://example.test/icon.png",
+                ["Bot:CommandPrefix"] = "!",
+                ["ServerBehavior:MenuIconPath"] = "icon.png",
                 ["ServerBehavior:MenuOnclickUrl"] = "https://example.test"
             })
             .Build();
@@ -52,7 +52,7 @@ public class CompositionRootTests
     public void ResolvesBanchoPacketDispatcherWithAllHandlers()
     {
         Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-        Assert.Equal(42, _provider.GetServices<IBanchoPacketHandler>().Count());
+        Assert.Equal(44, _provider.GetServices<IBanchoPacketHandler>().Count());
     }
 
     [Fact]

@@ -29,7 +29,7 @@ public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture
         var channel = await _repository.FetchOneByNameAsync("#osu");
 
         Assert.NotNull(channel);
-        Assert.Equal("General discussion.", channel!.Topic);
+        Assert.Equal("General discussion.", channel.Topic);
     }
 
     [Fact]

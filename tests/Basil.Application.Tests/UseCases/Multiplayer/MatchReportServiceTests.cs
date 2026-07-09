@@ -47,7 +47,7 @@ public class MatchReportServiceTests
         var report = await MakeService().BuildAsync(5);
 
         Assert.NotNull(report);
-        Assert.False(report!.IsLive);
+        Assert.False(report.IsLive);
         Assert.Null(report.LiveSlots);
         Assert.Null(report.CurrentMapId);
     }
@@ -67,7 +67,7 @@ public class MatchReportServiceTests
         var report = await MakeService().BuildAsync(5);
 
         Assert.NotNull(report);
-        Assert.True(report!.IsLive);
+        Assert.True(report.IsLive);
         Assert.Equal(42, report.CurrentMapId);
         Assert.NotNull(report.LiveSlots);
         Assert.Equal(7, report.LiveSlots![0].UserId);
@@ -94,7 +94,7 @@ public class MatchReportServiceTests
         var report = await MakeService().BuildAsync(5);
 
         Assert.NotNull(report);
-        var builtRound = Assert.Single(report!.Rounds);
+        var builtRound = Assert.Single(report.Rounds);
         Assert.Equal(MatchTeams.Red.ToString(), builtRound.WinnerTeam);
         Assert.Null(builtRound.WinnerUserId);
         Assert.Equal(2, builtRound.Scores.Length);

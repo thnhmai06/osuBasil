@@ -14,7 +14,7 @@ public class OsuVersionParserTests
         var version = OsuVersionParser.Parse("b20231231.1cuttingedge");
 
         Assert.NotNull(version);
-        Assert.Equal(new DateOnly(2023, 12, 31), version!.Date);
+        Assert.Equal(new DateOnly(2023, 12, 31), version.Date);
         Assert.Equal(1, version.Revision);
         Assert.Equal(OsuStream.CuttingEdge, version.Stream);
     }
@@ -25,7 +25,7 @@ public class OsuVersionParserTests
         var version = OsuVersionParser.Parse("b20231231");
 
         Assert.NotNull(version);
-        Assert.Equal(new DateOnly(2023, 12, 31), version!.Date);
+        Assert.Equal(new DateOnly(2023, 12, 31), version.Date);
         Assert.Null(version.Revision);
         Assert.Equal(OsuStream.Stable, version.Stream);
     }
@@ -36,7 +36,7 @@ public class OsuVersionParserTests
         var version = OsuVersionParser.Parse("b20200201.2tourney");
 
         Assert.NotNull(version);
-        Assert.Equal(2, version!.Revision);
+        Assert.Equal(2, version.Revision);
         Assert.Equal(OsuStream.Tourney, version.Stream);
     }
 
@@ -46,7 +46,7 @@ public class OsuVersionParserTests
         var version = OsuVersionParser.Parse("b20231231beta");
 
         Assert.NotNull(version);
-        Assert.Null(version!.Revision);
+        Assert.Null(version.Revision);
         Assert.Equal(OsuStream.Beta, version.Stream);
     }
 
