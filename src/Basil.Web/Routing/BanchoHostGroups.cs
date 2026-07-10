@@ -524,8 +524,8 @@ public static class BanchoHostGroups
                     },
                     statusCode: StatusCodes.Status400BadRequest);
 
-            var passwordMd5 = MD5.HashData(Encoding.UTF8.GetBytes(password));
-            var pwBcrypt = passwordHasher.Hash(passwordMd5);
+            var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(password)));
+            var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(username, pwBcrypt, "xx", cancellationToken: cancellationToken);
 
             return Results.Json(new { id = user.Id, name = user.Name });

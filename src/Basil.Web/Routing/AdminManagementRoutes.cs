@@ -113,9 +113,9 @@ internal static class AdminManagementRoutes
         admin.MapPost("/users", async (CreateUserRequest body, IUserRepository users,
             IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
         {
-            var passwordMd5 = MD5.HashData(
-                Encoding.UTF8.GetBytes(body.Password));
-            var pwBcrypt = passwordHasher.Hash(passwordMd5);
+            var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(
+                Encoding.UTF8.GetBytes(body.Password)));
+            var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx", body.Priv,
                 cancellationToken);
             return Results.Json(user);
