@@ -11,6 +11,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\icon.png" />
+        <EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\default.png" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Content Include="Settings*.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
         <None Remove="Assets\icon.png" />
         <Content Include="Assets\icon.png">

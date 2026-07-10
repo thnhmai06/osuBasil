@@ -624,17 +624,45 @@ public static class BanchoHostGroups
             Directory.CreateDirectory(storage.AvatarsPath);
 
             var match = Directory.EnumerateFiles(storage.AvatarsPath, $"{userId}.*").FirstOrDefault();
-            if (match is null) return Results.NotFound();
-
-            var contentType = Path.GetExtension(match).ToLowerInvariant() switch
+            if (match is not null)
             {
-                ".png" => "image/png",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                _ => "application/octet-stream"
-            };
-            return Results.File(match, contentType);
+                var contentType = Path.GetExtension(match).ToLowerInvariant() switch
+                {
+                    ".png" => "image/png",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".gif" => "image/gif",
+                    _ => "application/octet-stream"
+                };
+                return Results.File(match, contentType);
+            }
+
+            // BasilBot (ID 0) fallback: extract embedded assets/avatars/basil.png to Avatars/0.png.
+            if (userId == 0)
+            {
+                var botPath = Path.Combine(storage.AvatarsPath, "0.png");
+                if (!File.Exists(botPath))
+                    TryWriteEmbeddedResource("Basil.Web.Resources.icon.png", botPath);
+                if (File.Exists(botPath))
+                    return Results.File(botPath, "image/png");
+            }
+
+            // Regular user fallback: extract embedded assets/avatars/default.png to Avatars/default.png.
+            var defaultPath = Path.Combine(storage.AvatarsPath, "default.png");
+            if (!File.Exists(defaultPath))
+                TryWriteEmbeddedResource("Basil.Web.Resources.default.png", defaultPath);
+            if (File.Exists(defaultPath))
+                return Results.File(defaultPath, "image/png");
+
+            return Results.NotFound();
         });
+    }
+
+    private static void TryWriteEmbeddedResource(string resourceName, string destinationPath)
+    {
+        using var stream = typeof(BanchoHostGroups).Assembly.GetManifestResourceStream(resourceName);
+        if (stream is null) return;
+        using var fileStream = File.Create(destinationPath);
+        stream.CopyTo(fileStream);
     }
 
     // api. host: TRT snapshot (GET+WS), file downloads, WS live channels, and admin-key-gated management CRUD.
