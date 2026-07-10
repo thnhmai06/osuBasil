@@ -169,7 +169,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+        public Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

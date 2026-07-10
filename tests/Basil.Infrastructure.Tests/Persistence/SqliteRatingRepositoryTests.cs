@@ -14,10 +14,10 @@ public class SqliteRatingRepositoryTests(SqliteFixture fixture) : IClassFixture<
         await using var connection = new SqliteConnection(fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
-            VALUES (@Id, @Name, @Name, @Email, 'unused', 3, 'xx', unixepoch(), unixepoch())
+            INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
+            VALUES (@Id, @Name, @Name, 'unused', 3, 'xx', unixepoch(), unixepoch())
             """,
-            new { Id = id, Name = name, Email = $"{name}@test.local" });
+            new { Id = id, Name = name });
     }
 
     private async Task InsertRatingAsync(int userId, string mapMd5, int rating)

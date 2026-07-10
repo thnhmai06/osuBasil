@@ -38,7 +38,7 @@ public sealed class Program
     }
 
     // appsettings*.json keeps framework config (Logging, AllowedHosts) — standard ASP.NET Core
-    // convention, untouched. Settings.toml carries all Basil settings (Server, Mirror, Bot, Api,
+    // convention, untouched. Settings.toml carries all Basil settings (Server, Mirror, Bot,
     // Database) — same file for development and deployment, edit directly next to the executable,
     // no rebuild needed. Settings.toml is the single source of truth, no env-var override layer.
     private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)

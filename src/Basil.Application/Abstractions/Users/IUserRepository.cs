@@ -5,7 +5,6 @@ public sealed record User(
     int Id,
     string Name,
     string SafeName,
-    string? Email,
     int Priv,
     string Country,
     int SilenceEnd,
@@ -43,7 +42,7 @@ public interface IUserRepository
 
     Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
 
-    Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+    Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>For the management REST API's user listing.</summary>

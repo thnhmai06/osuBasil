@@ -15,12 +15,12 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task FetchById_SeededBasilBot_ReturnsUser()
     {
-        var user = await _repository.FetchByIdAsync(1);
+        var user = await _repository.FetchByIdAsync(0);
 
         Assert.NotNull(user);
         Assert.Equal("BasilBot", user.Name);
         Assert.Equal("basilbot", user.SafeName);
-        Assert.Equal("ca", user.Country);
+        Assert.Equal("vn", user.Country);
     }
 
     [Fact]
@@ -45,14 +45,14 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
         else
         {
             Assert.NotNull(user);
-            Assert.Equal(1, user.Id);
+            Assert.Equal(0, user.Id);
         }
     }
 
     [Fact]
     public async Task FetchPasswordHash_SeededBasilBot_ReturnsStoredHash()
     {
-        var hash = await _repository.FetchPasswordHashAsync(1);
+        var hash = await _repository.FetchPasswordHashAsync(0);
 
         Assert.Equal("_______________________my_cool_bcrypt_______________________", hash);
     }
@@ -66,7 +66,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdateCountry_PersistsChange()
     {
-        var created = await _repository.CreateAsync("country test user", "country-test@example.test", "hash", "xx");
+        var created = await _repository.CreateAsync("country test user", "hash", "xx", null);
 
         await _repository.UpdateCountryAsync(created.Id, "jp");
 
@@ -77,7 +77,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdatePrivileges_PersistsChange()
     {
-        var created = await _repository.CreateAsync("priv test user", "priv-test@example.test", "hash", "xx");
+        var created = await _repository.CreateAsync("priv test user", "hash", "xx", null);
 
         await _repository.UpdatePrivilegesAsync(created.Id, 3);
 
@@ -88,7 +88,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task Create_ThenFetchByName_RoundTrips()
     {
-        var created = await _repository.CreateAsync("Fresh Player", "fresh@example.test", "some-hash", "us");
+        var created = await _repository.CreateAsync("Fresh Player", "some-hash", "us", null);
 
         Assert.Equal("fresh_player", created.SafeName);
 
@@ -99,7 +99,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdateName_PersistsNameAndSafeName()
     {
-        var created = await _repository.CreateAsync("rename me", "rename-test@example.test", "hash", "xx");
+        var created = await _repository.CreateAsync("rename me", "hash", "xx", null);
 
         await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
 

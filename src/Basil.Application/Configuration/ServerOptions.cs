@@ -24,4 +24,12 @@ public sealed class ServerOptions
     public required string MenuIconPath { get; init; }
 
     public required string MenuOnclickUrl { get; init; }
+
+    /// <summary>
+    ///     Gates every api.&lt;domain&gt; management REST route (beatmap/user/replay/match/seasonal CRUD)
+    ///     via the X-Admin-Key header. Also used by the in-game registration endpoint (osu. POST /users)
+    ///     as the secret the client must send in the Email field to self-register.
+    ///     Leave unset to lock management routes down (401) and disable in-game registration.
+    /// </summary>
+    public string? AdminKey { get; init; }
 }

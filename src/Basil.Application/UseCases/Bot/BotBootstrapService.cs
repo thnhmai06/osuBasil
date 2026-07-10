@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.Application.UseCases.Bot;
 
 /// <summary>
-///     Boots the seeded id=1 BanchoBot row into an in-memory PlayerSession at startup, so chat/mp
+///     Boots the seeded id=0 BanchoBot row into an in-memory PlayerSession at startup, so chat/mp
 ///     commands have a real sender identity to reply from. Not a login — there is no client
 ///     connection behind this session, so it skips the normal handshake entirely.
 /// </summary>
@@ -20,7 +20,7 @@ public sealed class BotBootstrapService(
     IOptions<BotOptions> botOptions,
     IClock clock)
 {
-    public const int BotId = 1;
+    public const int BotId = 0;
     private const string BotToken = "bancho-bot-session";
 
     public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
@@ -31,6 +31,10 @@ public sealed class BotBootstrapService(
         var configuredName = botOptions.Value.Name;
         if (user.Name != configuredName)
             await users.UpdateNameAsync(BotId, configuredName, SafeName.Make(configuredName), cancellationToken);
+
+        var configuredCountry = botOptions.Value.Country;
+        if (user.Country != configuredCountry)
+            await users.UpdateCountryAsync(BotId, configuredCountry, cancellationToken);
 
         var loginTime = clock.UtcNow.ToUnixTimeSeconds();
         var session = new PlayerSession(BotId, configuredName, BotToken, (Privileges)user.Priv, loginTime)

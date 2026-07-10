@@ -59,17 +59,24 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+    public async Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var id = await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Users (Name, SafeName, Email, PwBcrypt, Country, CreationTime, LatestActivity)
-            VALUES (@Name, @SafeName, @Email, @PwBcrypt, @Country, unixepoch(), unixepoch());
+            INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv, CreationTime, LatestActivity)
+            VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv, unixepoch(), unixepoch());
             SELECT last_insert_rowid();
             """,
-            new { Name = name, SafeName = SafeName.Make(name), Email = email, PwBcrypt = pwBcrypt, Country = country });
+            new
+            {
+                Name = name,
+                SafeName = SafeName.Make(name),
+                PwBcrypt = pwBcrypt,
+                Country = country,
+                Priv = priv ?? (int)(Privileges.Unrestricted | Privileges.Verified | Privileges.Supporter)
+            });
 
         return (await FetchByIdAsync(id, cancellationToken))!;
     }
@@ -93,7 +100,6 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string SafeName { get; set; } = "";
-        public string? Email { get; set; }
         public int Priv { get; set; }
         public string Country { get; set; } = "";
         public int SilenceEnd { get; set; }
@@ -111,7 +117,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         public User ToUser()
         {
             return new User(
-                Id, Name, SafeName, Email, Priv, Country, SilenceEnd, DonorEnd, CreationTime,
+                Id, Name, SafeName, Priv, Country, SilenceEnd, DonorEnd, CreationTime,
                 LatestActivity, ClanId, ClanPriv, PreferredMode, PlayStyle, CustomBadgeName,
                 CustomBadgeIcon, UserpageContent);
         }

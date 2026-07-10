@@ -284,23 +284,6 @@ public class OsuLoginUseCaseTests
     }
 
     [Fact]
-    public async Task HappyPath_FirstUserId_GrantsFullStaffPrivileges()
-    {
-        SetUpHappyPath(out _, (int)Privileges.Unrestricted, 3);
-
-        var useCase = MakeUseCase();
-        var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
-
-        await useCase.ExecuteAsync(request);
-
-        const Privileges expectedPriv = Privileges.Unrestricted | Privileges.Verified | Privileges.Staff |
-                                        Privileges.Nominator
-                                        | Privileges.Whitelisted | Privileges.TourneyManager | Privileges.Donator |
-                                        Privileges.Alumni;
-        await _users.Received(1).UpdatePrivilegesAsync(3, (int)expectedPriv, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
     public async Task HappyPath_AlreadyVerifiedUser_DoesNotUpdatePrivileges()
     {
         SetUpHappyPath(out _, (int)(Privileges.Unrestricted | Privileges.Verified));
@@ -399,7 +382,7 @@ public class OsuLoginUseCaseTests
     private static User MakeUser(int id, int priv, string country = "us", int clanId = 0)
     {
         return new User(
-            id, "cmyui", "cmyui", "cmyui@example.test", priv, country,
+            id, "cmyui", "cmyui", priv, country,
             0, 0, 0, 0, clanId, 0,
             0, 0, null, null, null);
     }

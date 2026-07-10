@@ -14,7 +14,7 @@ checkout) — no rebuild needed after editing either, just restart the process:
 | File                | Owns                                                                                                      |
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
-| `settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Api`, `Database`. Same file for development and deployment; edit it and restart. |
+| `settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Database`. Same file for development and deployment; edit it and restart. |
 
 There is **no environment-variable override layer** — `settings.toml` is the single source of
 truth for every setting. Edit the file directly and restart the process.
@@ -27,11 +27,12 @@ truth for every setting. Edit the file directly and restart the process.
 |                    | `Port`                               | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here.       |
 |                    | `CertPath` / `CertPassword`          | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
 |                    | `MenuIconPath` / `MenuOnclickUrl`    | osu! client's in-game menu icon (top-left). `MenuIconPath` is a **local file path**, not a URL — served back over HTTP at `GET /web/menuicon` on the `osu.` host; the client is pointed at that URL, not the path. `MenuOnclickUrl` is the click-through URL opened when clicked. Cosmetic only. |
-| `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=1` user in-place.                   |
+| `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=0` user in-place.                   |
 |                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
+|                    | `Country`                            | BasilBot's country code (default `"vn"`). Overrides seed migration value.                                          |
 | `[Irc]`            | `Name`                               | IRC server name.                                                                                                   |
 |                    | `Port`                               | TCP port for the embedded IRC gateway (default 6667).                                                              |
-| `[Api]`            | `AdminKey`                           | Gates every `api.<domain>` management REST route (beatmap/user/replay/match/seasonal CRUD) via `X-Admin-Key`. Unset = locked down (401 on everything) — **set this to actually use the admin API**, e.g. to create the first user account (see Client setup below). |
+| `[Server]`         | `AdminKey`                           | Gates every `api.<domain>` management REST route (beatmap/user/replay/match/seasonal CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
 | `[Database]`       | `Path`                               | SQLite file path. Relative paths resolve next to the executable. Default `basil.db`, rarely needs changing.        |
 | `[Mirror]`         | `DownloadEndpoint`                   | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
 
@@ -73,8 +74,8 @@ To move a deployment to another machine: stop the server, copy the whole executa
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see [`api-client.md`](api-client.md)
      for exactly how.
-   - `Api.AdminKey` — set this to a real secret. Without it the management API (used to create
-     user accounts, since in-game registration is disabled — see Client setup) stays 401-locked.
+    - `Server.AdminKey` — set this to a real secret. Without it the management API (used to create
+       user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
    - `Bot.Name` / `Bot.CommandPrefix`, `Server.MenuIconPath`/`MenuOnclickUrl`, `Irc.Name`/`Irc.Port` — cosmetic,
      optional.
 
@@ -120,19 +121,28 @@ To move a deployment to another machine: stop the server, copy the whole executa
 7. **Verify it's up**: `curl -k https://osu.<domain>/web/bancho_connect.php` should return `200`
    (the client's own connectivity check).
 
-8. **Create the first account.** In-game registration is a disabled stub on purpose — create
-   accounts via the admin API instead:
+8. **Create the first account.** Two ways:
+
+   **a) In-game registration** — launch the osu! client pointed at this server (see Client setup
+   below). On the login screen, click "Register". In the **Email** field, enter the value of
+   `Server:AdminKey` from `settings.toml`. Choose a username and password. The client will create
+   the account with default privileges (`Unrestricted | Verified | Supporter`).
+
+   **b) Admin API** — use `curl` (or any HTTP client) against the `api.` host:
 
    ```bash
    curl -X POST https://api.<domain>/users \
-     -H "X-Admin-Key: <your Api.AdminKey>" \
+     -H "X-Admin-Key: <your Server.AdminKey>" \
      -H "Content-Type: application/json" \
-     -d '{"name":"Player1","email":"player1@example.com","password":"hunter2"}'
+     -d '{"name":"Player1","password":"hunter2"}'
    ```
 
-   The **first** account created this way (user id 3 — id 1 is BasilBot, id 2 is reserved) is
-   automatically granted staff/admin privileges the first time it logs in from the client; every
-   account is auto-verified on its own first login regardless. No further setup needed — just log in.
+   Optional fields: `"country": "VN"`, `"priv": 19` (default — see [`privileges.md`](privileges.md)).
+
+   Every account is auto-verified (`Verified` flag added) on its own first login. No special
+   first-user staff grant exists — grant staff privileges via `PUT /users/{id}` on the `api.` host
+   with `"priv": 28683` (unrestricted + verified + supporter + moderator). See [`privileges.md`](privileges.md)
+   for the full flag reference.
 
 ---
 
@@ -248,9 +258,11 @@ cares about the domain, the cert, and the account.
    (Substitute the real domain and swap `<server-ip>` for `127.0.0.1` if the client and server are
    the same machine.) For a real public domain, this step is unnecessary — normal DNS resolves it.
 
-4. **Get an account.** In-game registration is disabled — someone with the server's `Api.AdminKey`
-   creates the account via the admin API (see Deployment step 8 above for the exact `curl` call).
-   Every account is auto-verified on its own first successful login — no extra step after that.
+4. **Get an account.** In-game registration is available — launch osu! with `-devserver`, click
+   "Register", and enter the server's `Server:AdminKey` in the **Email** field (see Deployment
+   step 8 above). Alternatively, someone with the server's `AdminKey` can create the account via
+   the admin API. Every account is auto-verified on its own first successful login — no extra step
+   after that.
 
 5. **Launch the client pointed at the server:**
 

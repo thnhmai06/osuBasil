@@ -36,9 +36,9 @@ public class TcpIrcConnectionTests
     {
         var hasher = new BCryptPasswordHasher();
         var users = new FakeUserRepository();
-        users.Add(new User(1, "alice", "alice", null, 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(1, "alice", "alice", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
             HashPassword(hasher, "alice-key"));
-        users.Add(new User(2, "bob", "bob", null, 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(2, "bob", "bob", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
             HashPassword(hasher, "bob-key"));
 
         var sessionRegistry = new InMemoryPlayerSessionRegistry();
@@ -105,7 +105,7 @@ public class TcpIrcConnectionTests
     {
         var hasher = new BCryptPasswordHasher();
         var users = new FakeUserRepository();
-        users.Add(new User(1, "alice", "alice", null, 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(1, "alice", "alice", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
             HashPassword(hasher, "alice-key"));
 
         var sessionRegistry = new InMemoryPlayerSessionRegistry();
@@ -253,7 +253,7 @@ public class TcpIrcConnectionTests
             throw new NotSupportedException();
         }
 
-        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+        public Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

@@ -14,7 +14,7 @@ public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixt
     [Fact]
     public async Task Create_FirstTime_OccurrencesIsOne()
     {
-        var user = await _users.CreateAsync("ch player 1", "ch1@example.test", "hash", "xx");
+        var user = await _users.CreateAsync("ch player 1", "hash", "xx", null);
 
         var hash = await _repository.CreateAsync(user.Id, "osupath-a", "adapters-a", "uninstall-a", "disk-a");
 
@@ -24,7 +24,7 @@ public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixt
     [Fact]
     public async Task Create_SameHashTwice_BumpsOccurrences()
     {
-        var user = await _users.CreateAsync("ch player 2", "ch2@example.test", "hash", "xx");
+        var user = await _users.CreateAsync("ch player 2", "hash", "xx", null);
 
         await _repository.CreateAsync(user.Id, "osupath-b", "adapters-b", "uninstall-b", "disk-b");
         var second = await _repository.CreateAsync(user.Id, "osupath-b", "adapters-b", "uninstall-b", "disk-b");
@@ -35,8 +35,8 @@ public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixt
     [Fact]
     public async Task FetchHardwareMatches_MatchingAdaptersOnDifferentUser_Found()
     {
-        var owner = await _users.CreateAsync("ch owner", "ch-owner@example.test", "hash", "xx");
-        var other = await _users.CreateAsync("ch other", "ch-other@example.test", "hash", "xx");
+        var owner = await _users.CreateAsync("ch owner", "hash", "xx", null);
+        var other = await _users.CreateAsync("ch other", "hash", "xx", null);
         await _repository.CreateAsync(other.Id, "osupath-shared", "adapters-shared", "uninstall-other", "disk-other");
 
         var matches = await _repository.FetchAnyHardwareMatchesForUserAsync(
@@ -49,7 +49,7 @@ public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixt
     [Fact]
     public async Task FetchHardwareMatches_NoOverlap_ReturnsEmpty()
     {
-        var owner = await _users.CreateAsync("ch owner 2", "ch-owner2@example.test", "hash", "xx");
+        var owner = await _users.CreateAsync("ch owner 2", "hash", "xx", null);
 
         var matches = await _repository.FetchAnyHardwareMatchesForUserAsync(
             owner.Id, false, "no-match", "no-match", "no-match");

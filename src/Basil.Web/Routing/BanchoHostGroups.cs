@@ -1,9 +1,11 @@
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using System.Security.Cryptography;
 using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
@@ -17,6 +19,7 @@ using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -480,21 +483,53 @@ public static class BanchoHostGroups
 
         group.MapPost("/web/osu-comment.php", () => Results.Text("", "text/html", Encoding.UTF8));
 
-        // Reuses the Python source's own "in-game registration disabled" response shape (a real,
-        // client-understood code path — INGAME_REGISTRATION_DISALLOWED_ERROR) rather than an
-        // ad-hoc stub, since registration through the client is genuinely unsupported here.
-        group.MapPost("/users", () => Results.Json(
-            new
-            {
-                form_error = new
-                {
-                    user = new
+        // In-game registration: the client sends user[username], user[user_email], user[password].
+        // The Email field must contain the AdminKey configured in [Server] section. If AdminKey is
+        // unset, registration is disabled entirely. Registered users get default privileges
+        // (Unrestricted | Verified | Supporter).
+        group.MapPost("/users", async (HttpContext context, IUserRepository users,
+            IPasswordHasher passwordHasher, IOptions<ServerOptions> serverOptions,
+            CancellationToken cancellationToken) =>
+        {
+            var username = context.Request.Form["user[username]"].FirstOrDefault();
+            var email = context.Request.Form["user[user_email]"].FirstOrDefault();
+            var password = context.Request.Form["user[password]"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                return Results.Json(
+                    new { form_error = new { user = new { email = new[] { "Username and password are required." } } } },
+                    statusCode: StatusCodes.Status400BadRequest);
+
+            var adminKey = serverOptions.Value.AdminKey;
+
+            if (string.IsNullOrEmpty(adminKey))
+                return Results.Json(
+                    new { form_error = new { user = new { email = new[] { "In-game registration is disabled." } } } },
+                    statusCode: StatusCodes.Status400BadRequest);
+
+            if (string.IsNullOrEmpty(email) || email != adminKey)
+                return Results.Json(
+                    new
                     {
-                        password = new[] { "In-game registration is disabled. Please register on the website." }
-                    }
-                }
-            },
-            statusCode: StatusCodes.Status400BadRequest));
+                        form_error = new
+                        {
+                            user = new
+                            {
+                                email = new[]
+                                {
+                                    "Invalid AdminKey. Please enter the AdminKey in the Email field to continue."
+                                }
+                            }
+                        }
+                    },
+                    statusCode: StatusCodes.Status400BadRequest);
+
+            var passwordMd5 = MD5.HashData(Encoding.UTF8.GetBytes(password));
+            var pwBcrypt = passwordHasher.Hash(passwordMd5);
+            var user = await users.CreateAsync(username, pwBcrypt, "xx", cancellationToken: cancellationToken);
+
+            return Results.Json(new { id = user.Id, name = user.Name });
+        });
 
         // Ported from app/api/domains/osu.py's difficultyRatingHandler — the Python source
         // unconditionally redirects to osu.ppy.sh's difficulty-rating webpage (opened in the

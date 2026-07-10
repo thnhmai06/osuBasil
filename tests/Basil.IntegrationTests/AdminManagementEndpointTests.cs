@@ -30,7 +30,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
                     ["Bot:CommandPrefix"] = "!",
                     ["Server:MenuIconPath"] = "icon.png",
                     ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Api:AdminKey"] = "correct-key",
+                    ["Server:AdminKey"] = "correct-key",
                     ["Database:Path"] = ""
                 });
             });
@@ -211,7 +211,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             return Task.CompletedTask;
         }
 
-        public Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
+        public Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

@@ -13,4 +13,7 @@ public sealed class BotOptions
 
     /// <summary>Prefix chat commands must start with (!help, !roll, !mp ...).</summary>
     public required string CommandPrefix { get; init; }
+
+    /// <summary>Country code for BasilBot (default 'ca'). Seeded in base.sql, overridable here.</summary>
+    public string Country { get; init; } = "vn";
 }

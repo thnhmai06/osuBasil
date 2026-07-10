@@ -14,12 +14,12 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     [Fact]
     public async Task FetchAllForUser_SeededBasilBot_ReturnsEightModes()
     {
-        var stats = await _repository.FetchAllForUserAsync(1);
+        var stats = await _repository.FetchAllForUserAsync(0);
 
         Assert.Equal(8, stats.Count);
         Assert.Contains(stats, s => s.Mode == 0);
         Assert.Contains(stats, s => s.Mode == 8); // ap!std
-        Assert.All(stats, s => Assert.Equal(1, s.Id));
+        Assert.All(stats, s => Assert.Equal(0, s.Id));
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     [Fact]
     public async Task FetchOne_ReturnsSingleModeRow()
     {
-        var stat = await _repository.FetchOneAsync(1, 0);
+        var stat = await _repository.FetchOneAsync(0, 0);
 
         Assert.NotNull(stat);
         Assert.Equal(0, stat.Mode);
@@ -45,10 +45,10 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     public async Task IncrementReplayViews_AddsOneEachCall()
     {
         // mode 2 (catch), same isolation rationale as UpdateAfterScore_PersistsNewTotals above.
-        await _repository.IncrementReplayViewsAsync(1, 2);
-        await _repository.IncrementReplayViewsAsync(1, 2);
+        await _repository.IncrementReplayViewsAsync(0, 2);
+        await _repository.IncrementReplayViewsAsync(0, 2);
 
-        var stat = await _repository.FetchOneAsync(1, 2);
+        var stat = await _repository.FetchOneAsync(0, 2);
 
         Assert.NotNull(stat);
         Assert.Equal(2, stat.ReplayViews);

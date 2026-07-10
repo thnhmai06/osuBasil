@@ -33,6 +33,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
                     ["Bot:CommandPrefix"] = "!",
                     ["Server:MenuIconPath"] = "icon.png",
                     ["Server:MenuOnclickUrl"] = "https://example.test",
+                    ["Server:AdminKey"] = "",
                     ["Database:Path"] = ""
                 });
             });
@@ -206,11 +207,17 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
     }
 
     [Fact]
-    public async Task Register_ReturnsInGameRegistrationDisabled()
+    public async Task Register_NoAdminKey_ReturnsInGameRegistrationDisabled()
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users"));
+        var request = MakeRequest(HttpMethod.Post, "/users");
+        request.Content = new StringContent(
+            "user[username]=Player1&user[user_email]=anything@test.com&user[password]=hunter2",
+            Encoding.UTF8,
+            "application/x-www-form-urlencoded");
+
+        var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

@@ -23,10 +23,10 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         await using var connection = new SqliteConnection(fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
-            VALUES (@Id, @Name, @Name, @Email, 'unused', @Priv, @Country, unixepoch(), unixepoch())
+            INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
+            VALUES (@Id, @Name, @Name, 'unused', @Priv, @Country, unixepoch(), unixepoch())
             """,
-            new { Id = id, Name = name, Email = $"{name}@test.local", Priv = priv, Country = country });
+            new { Id = id, Name = name, Priv = priv, Country = country });
     }
 
     private async Task<long> InsertScoreAsync(

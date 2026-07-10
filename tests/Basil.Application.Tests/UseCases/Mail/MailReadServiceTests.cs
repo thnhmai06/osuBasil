@@ -51,7 +51,7 @@ public class MailReadServiceTests
         var player = MakePlayer(1, "cmyui");
         _sessionRegistry.GetByName("offlineuser").Returns((PlayerSession?)null);
         _users.FetchByNameAsync("offlineuser", Arg.Any<CancellationToken>()).Returns(new User(
-            5, "offlineuser", "offlineuser", null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null));
+            5, "offlineuser", "offlineuser", 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null));
         var service = new MailReadService(_sessionRegistry, _users, _mail);
 
         await service.MarkChannelAsReadAsync(player, "offlineuser");

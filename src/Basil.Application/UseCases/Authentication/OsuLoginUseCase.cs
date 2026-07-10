@@ -36,8 +36,6 @@ public sealed class OsuLoginUseCase(
     IClock clock,
     IOptions<ServerOptions> serverOptions)
 {
-    private const int FirstUserId = 3; // userid 2 is reserved for peppy/ppy, per bancho.py's base.sql auto_increment=3
-
     private static readonly string InactionableDiskSignatureMd5 =
         Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
 
@@ -211,10 +209,6 @@ public sealed class OsuLoginUseCase(
             if ((user.Priv & (int)Privileges.Verified) == 0)
             {
                 var newPriv = (Privileges)user.Priv | Privileges.Verified;
-                if (user.Id == FirstUserId)
-                    newPriv |= Privileges.Staff | Privileges.Nominator | Privileges.Whitelisted
-                               | Privileges.TourneyManager | Privileges.Donator | Privileges.Alumni;
-
                 await users.UpdatePrivilegesAsync(user.Id, (int)newPriv, cancellationToken);
                 session.Priv = newPriv;
             }

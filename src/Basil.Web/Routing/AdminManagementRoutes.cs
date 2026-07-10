@@ -116,7 +116,7 @@ internal static class AdminManagementRoutes
             var passwordMd5 = MD5.HashData(
                 Encoding.UTF8.GetBytes(body.Password));
             var pwBcrypt = passwordHasher.Hash(passwordMd5);
-            var user = await users.CreateAsync(body.Name, body.Email, pwBcrypt, body.Country ?? "xx",
+            var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx", body.Priv,
                 cancellationToken);
             return Results.Json(user);
         });
@@ -268,6 +268,6 @@ internal static class AdminManagementRoutes
     }
 }
 
-public sealed record CreateUserRequest(string Name, string Email, string Password, string? Country);
+public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Priv);
 
 public sealed record UpdateUserRequest(string? Name, string? Country, int? Priv);

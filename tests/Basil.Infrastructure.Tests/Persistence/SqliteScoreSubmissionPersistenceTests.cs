@@ -23,10 +23,10 @@ public class SqliteScoreSubmissionPersistenceTests(SqliteFixture fixture) : ICla
         await using var connection = new SqliteConnection(fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO Users (Id, Name, SafeName, Email, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
-            VALUES (@Id, @Name, @Name, @Email, 'unused', @Priv, 'xx', unixepoch(), unixepoch())
+            INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country, CreationTime, LatestActivity)
+            VALUES (@Id, @Name, @Name, 'unused', @Priv, 'xx', unixepoch(), unixepoch())
             """,
-            new { Id = id, Name = name, Email = $"{name}@test.local", Priv = (int)Privileges.Unrestricted });
+            new { Id = id, Name = name, Priv = (int)Privileges.Unrestricted });
     }
 
     private async Task<long> InsertScoreAsync(string mapMd5, int userId, long score, SubmissionStatus status)

@@ -1,11 +1,10 @@
 namespace Basil.Application.Configuration;
 
 /// <summary>
-///     Configuration for the api. host's management REST endpoints (beatmap/user/replay/match/seasonal
-///     CRUD) — bancho.py has no equivalent admin surface. AdminKey gates every management route via
-///     the X-Admin-Key request header; unset (the default) locks every management route down rather
-///     than leaving them open.
+///     AdminKey moved to <see cref="ServerOptions.AdminKey"/> — the [Api] config section was removed.
+///     This class is kept only to avoid breaking a DI registration that hasn't been cleaned up yet.
 /// </summary>
+[Obsolete("AdminKey is now on ServerOptions. Remove this class and its registration once confirmed.")]
 public sealed class AdminApiOptions
 {
     public const string SectionName = "Api";

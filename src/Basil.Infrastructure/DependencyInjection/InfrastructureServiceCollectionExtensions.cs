@@ -34,7 +34,6 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
-        services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
         services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
 

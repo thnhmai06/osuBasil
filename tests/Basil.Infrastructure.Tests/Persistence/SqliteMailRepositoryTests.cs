@@ -11,9 +11,9 @@ public class SqliteMailRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task Create_ThenFetchUnread_ReturnsMailWithUsernames()
     {
-        var recipient = await _users.CreateAsync("mail recipient", "mail-recipient@example.test", "hash", "xx");
+        var recipient = await _users.CreateAsync("mail recipient", "hash", "xx", null);
 
-        await _repository.CreateAsync(1, recipient.Id, "hello there");
+        await _repository.CreateAsync(0, recipient.Id, "hello there");
 
         var unread = await _repository.FetchUnreadMailToUserAsync(recipient.Id);
 
@@ -26,10 +26,10 @@ public class SqliteMailRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task MarkConversationAsRead_ExcludesFromFutureUnreadFetch()
     {
-        var recipient = await _users.CreateAsync("mail recipient 2", "mail-recipient2@example.test", "hash", "xx");
-        await _repository.CreateAsync(1, recipient.Id, "msg one");
+        var recipient = await _users.CreateAsync("mail recipient 2", "hash", "xx", null);
+        await _repository.CreateAsync(0, recipient.Id, "msg one");
 
-        await _repository.MarkConversationAsReadAsync(recipient.Id, 1);
+        await _repository.MarkConversationAsReadAsync(recipient.Id, 0);
 
         var unread = await _repository.FetchUnreadMailToUserAsync(recipient.Id);
         Assert.Empty(unread);
@@ -38,7 +38,7 @@ public class SqliteMailRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task FetchUnread_NoMail_ReturnsEmpty()
     {
-        var recipient = await _users.CreateAsync("mail recipient 3", "mail-recipient3@example.test", "hash", "xx");
+        var recipient = await _users.CreateAsync("mail recipient 3", "hash", "xx", null);
 
         Assert.Empty(await _repository.FetchUnreadMailToUserAsync(recipient.Id));
     }

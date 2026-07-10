@@ -129,7 +129,7 @@ public class SendPrivateMessageHandlerTests
         var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
         _sessionRegistry.GetByName("offlineuser").Returns((PlayerSession?)null);
         _users.FetchByNameAsync("offlineuser").Returns(new User(
-            5, "offlineuser", "offlineuser", null, 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null));
+            5, "offlineuser", "offlineuser", 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null));
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "offlineuser", 1));
 

@@ -519,6 +519,6 @@ public class CommandDispatcherTests
 
     private static User MakeUser(string name, string country)
     {
-        return new User(1, name, name.ToLowerInvariant(), null, 1, country, 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
+        return new User(1, name, name.ToLowerInvariant(), 1, country, 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
     }
 }

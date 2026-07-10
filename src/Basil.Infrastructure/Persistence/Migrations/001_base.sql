@@ -11,7 +11,6 @@ create table Users
     Id              INTEGER PRIMARY KEY AUTOINCREMENT,
     Name            varchar(32)          not null,
     SafeName        varchar(32)          not null,
-    Email           varchar(254)         not null,
     Priv            int     default 1    not null,
     PwBcrypt        char(60)             not null,
     Country         char(2) default 'xx' not null,
@@ -26,7 +25,6 @@ create table Users
     CustomBadgeName varchar(16) null,
     CustomBadgeIcon varchar(64) null,
     UserpageContent varchar(2048) null,
-    constraint Users_Email_uindex unique (Email),
     constraint Users_Name_uindex unique (Name),
     constraint Users_SafeName_uindex unique (SafeName)
 );
@@ -260,26 +258,26 @@ create table MatchEvents
 );
 create index MatchEvents_MatchId_index on MatchEvents (MatchId);
 
-insert into Users (Id, Name, SafeName, Priv, Country, SilenceEnd, Email, PwBcrypt, CreationTime, LatestActivity)
-values (1, 'BasilBot', 'basilbot', 1, 'ca', 0, 'bot@localhost',
+insert into Users (Id, Name, SafeName, Priv, Country, SilenceEnd, PwBcrypt, CreationTime, LatestActivity)
+values (0, 'BasilBot', 'basilbot', 1, 'vn', 0,
         '_______________________my_cool_bcrypt_______________________', unixepoch(), unixepoch());
 
 insert into UserStats (Id, Mode)
-values (1, 0);
+values (0, 0);
 insert into UserStats (Id, Mode)
-values (1, 1);
+values (0, 1);
 insert into UserStats (Id, Mode)
-values (1, 2);
+values (0, 2);
 insert into UserStats (Id, Mode)
-values (1, 3);
+values (0, 3);
 insert into UserStats (Id, Mode)
-values (1, 4);
+values (0, 4);
 insert into UserStats (Id, Mode)
-values (1, 5);
+values (0, 5);
 insert into UserStats (Id, Mode)
-values (1, 6);
+values (0, 6);
 insert into UserStats (Id, Mode)
-values (1, 8);
+values (0, 8);
 
 insert into Channels (Name, Topic, ReadPriv, WritePriv, AutoJoin)
 values ('#osu', 'General discussion.', 1, 2, true),

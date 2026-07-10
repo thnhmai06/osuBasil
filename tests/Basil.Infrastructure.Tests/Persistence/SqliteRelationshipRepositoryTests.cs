@@ -12,7 +12,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
     [Fact]
     public async Task Create_ThenFetchOne_ReturnsRelationship()
     {
-        var friend = await _users.CreateAsync("rel friend", "rel-friend@example.test", "hash", "xx");
+        var friend = await _users.CreateAsync("rel friend", "hash", "xx", null);
 
         await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
 
@@ -24,8 +24,8 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
     [Fact]
     public async Task FetchAll_FiltersByType()
     {
-        var friend = await _users.CreateAsync("rel friend 2", "rel-friend2@example.test", "hash", "xx");
-        var blocked = await _users.CreateAsync("rel blocked", "rel-blocked@example.test", "hash", "xx");
+        var friend = await _users.CreateAsync("rel friend 2", "hash", "xx", null);
+        var blocked = await _users.CreateAsync("rel blocked", "hash", "xx", null);
         await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
         await _repository.CreateAsync(1, blocked.Id, RelationshipType.Block);
 
@@ -38,7 +38,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
     [Fact]
     public async Task Delete_RemovesRelationship()
     {
-        var friend = await _users.CreateAsync("rel friend 3", "rel-friend3@example.test", "hash", "xx");
+        var friend = await _users.CreateAsync("rel friend 3", "hash", "xx", null);
         await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
 
         await _repository.DeleteAsync(1, friend.Id);
@@ -49,7 +49,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
     [Fact]
     public async Task FetchOne_NoRelationship_ReturnsNull()
     {
-        var stranger = await _users.CreateAsync("rel stranger", "rel-stranger@example.test", "hash", "xx");
+        var stranger = await _users.CreateAsync("rel stranger", "hash", "xx", null);
 
         Assert.Null(await _repository.FetchOneAsync(1, stranger.Id));
     }

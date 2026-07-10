@@ -56,7 +56,7 @@ public class SqlMigrationRunnerTests : IAsyncLifetime
         await connection.OpenAsync();
 
         await using var userCommand = connection.CreateCommand();
-        userCommand.CommandText = "SELECT Name FROM Users WHERE Id = 1";
+        userCommand.CommandText = "SELECT Name FROM Users WHERE Id = 0";
         var botName = (string?)await userCommand.ExecuteScalarAsync();
         Assert.Equal("BasilBot", botName);
 

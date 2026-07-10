@@ -228,10 +228,10 @@ GET https://api.basil.example/beatmapsets/5000
 All endpoints below require the header:
 
 ```
-X-Admin-Key: <value of Api__AdminKey configured by the server admin>
+X-Admin-Key: <value of Server:AdminKey configured in settings.toml>
 ```
 
-Missing or wrong header → `401`. **If admin has not configured `Api__AdminKey`, the entire group is locked hard** (no "open when key unset" mode).
+Missing or wrong header → `401`. **If admin has not configured `Server:AdminKey` in `settings.toml`, the entire group is locked hard** (no "open when key unset" mode).
 
 ### 4.1 Beatmap
 
@@ -313,7 +313,7 @@ Response: `{ "ingested": 4 }` (number of beatmaps successfully ingested).
 ```jsonc
 {
   "id": 7, "name": "PlayerOne", "safeName": "playerone",
-  "email": "player@example.com", "priv": 3, "country": "VN",
+  "priv": 19, "country": "VN",
   "silenceEnd": 0, "donorEnd": 0,
   "creationTime": 1700000000, "latestActivity": 1720000000,
   "clanId": 0, "clanPriv": 0,
@@ -323,22 +323,25 @@ Response: `{ "ingested": 4 }` (number of beatmaps successfully ingested).
 }
 ```
 
-> `apiKey` was removed from `User` — was dead code never used (IRC authentication uses the osu! password directly).
+> `apiKey` was removed from `User` — was dead code never used (IRC authentication uses the osu! password directly). `email` was removed — the field no longer exists in the schema.
 
 **`POST /users`** — JSON request body:
 
 ```jsonc
-{ "name": "PlayerOne", "email": "player@example.com", "password": "plaintext-pass", "country": "VN" }
+{ "name": "PlayerOne", "password": "plaintext-pass", "country": "VN", "priv": 19 }
 ```
 
-`country` is optional. Server MD5-hashes then bcrypts the `password` — send raw password in JSON, do not pre-hash. Response: created `User` object.
+- `country` is optional (default `"xx"`).
+- `priv` is optional (default `19` = `Unrestricted | Verified | Supporter` — see [`privileges.md`](privileges.md)).
+- Server MD5-hashes then bcrypts the `password` — send raw password in JSON, do not pre-hash.
+- Response: created `User` object.
 
 ```
 POST https://api.basil.example/users
 X-Admin-Key: my-secret-key
 Content-Type: application/json
 
-{ "name": "PlayerOne", "email": "player@example.com", "password": "hunter2", "country": "VN" }
+{ "name": "PlayerOne", "password": "hunter2", "country": "VN" }
 ```
 
 **`PUT /users/{id}`** — JSON body, all fields optional (only present fields are changed):
