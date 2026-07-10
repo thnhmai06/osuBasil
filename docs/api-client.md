@@ -32,10 +32,12 @@ With that configured domain **and** `ppy.sh` hardcoded (so a production deployme
 
 **Where that config value lives:** `src/Basil.Web/settings.toml`, section `[Server]`, key `Domain` — same file for both `dotnet run` (local dev) and the published executable, no environment separation, no environment-variable override layer. Edit the file, restart the process. See [`run-deployment.md`](run-deployment.md).
 
-**Network binding (which port/protocol the app actually listens on) is a separate config axis, unrelated:**
+**Network binding (which port/protocol the app actually listens on) is configured in `settings.toml` `[Server]`:**
 
-- Local dev: `Kestrel:Certificates:Default:Path`/`Password` as environment variables (HTTPS cert for testing with real clients, see [`run-deployment.md`](run-deployment.md)), combined with `--urls` passed to `dotnet run` (e.g. `--urls "http://*:80;https://*:443"`).
-- Published executable: Kestrel defaults to plain HTTP on an ASP.NET Core-chosen port (override via `--urls` or `ASPNETCORE_URLS`) — intended to sit behind a real reverse proxy (nginx/Caddy) terminating TLS and forwarding `X-Forwarded-For`, or set the cert directly as above if running standalone.
+- `Port` — Kestrel HTTPS listen port (default 443). Disables automatic port selection — the server binds exclusively here.
+- `CertPath` / `CertPassword` — path to the HTTPS cert (PFX) and its password. Leave unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS.
+
+No `--urls` or `ASPNETCORE_URLS` override — every setting comes from `settings.toml`. See [`run-deployment.md`](run-deployment.md) for the full deployment walkthrough.
 
 ---
 

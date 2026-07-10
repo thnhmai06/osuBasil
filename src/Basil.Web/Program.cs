@@ -9,6 +9,7 @@ using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Routing;
 using Microsoft.Extensions.Options;
+using System.Net;
 using Tomlyn.Extensions.Configuration;
 
 namespace Basil.Web;
@@ -20,6 +21,7 @@ public sealed class Program
         var builder = WebApplication.CreateBuilder(args);
 
         ConfigureConfiguration(builder, args);
+        ConfigureKestrel(builder);
         builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 
         builder.Services.AddBanchoInfrastructure(builder.Configuration);
@@ -36,28 +38,39 @@ public sealed class Program
     }
 
     // appsettings*.json keeps framework config (Logging, AllowedHosts) — standard ASP.NET Core
-    // convention, untouched. settings.toml carries Basil's own server settings (Server,
-    // Mirror, Bot, Api, Database) — the same file for development and deployment, edit it directly
-    // next to the executable, no rebuild needed. No general environment-variable override layer
-    // for those — settings.toml is the single source of truth for them. The one exception is
-    // Kestrel:* (HTTPS cert path/password): unlike the app's own settings, a cert password
-    // shouldn't sit in plaintext in a config file, so it stays env-var-only. Read manually rather
-    // than via AddEnvironmentVariables(prefix) — that overload strips the prefix itself, which
-    // would drop the "Kestrel" section name Kestrel's own options binding needs.
+    // convention, untouched. Settings.toml carries all Basil settings (Server, Mirror, Bot, Api,
+    // Database) — same file for development and deployment, edit directly next to the executable,
+    // no rebuild needed. Settings.toml is the single source of truth, no env-var override layer.
     private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
     {
-        var kestrelEnvVars = Environment.GetEnvironmentVariables()
-            .Cast<System.Collections.DictionaryEntry>()
-            .Where(entry => ((string)entry.Key).StartsWith("Kestrel__", StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(entry => ((string)entry.Key).Replace("__", ":"), entry => (string?)entry.Value);
-
         builder.Configuration.Sources.Clear();
         builder.Configuration
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-            .AddTomlFile("settings.toml", optional: false, reloadOnChange: true)
-            .AddInMemoryCollection(kestrelEnvVars)
+            .AddTomlFile("Settings.toml", optional: false, reloadOnChange: true)
             .AddCommandLine(args);
+    }
+
+    // Kestrel endpoint and HTTPS cert configured from Settings.toml [Server] section (Port,
+    // CertPath, CertPassword). Disables auto port selection — server binds exclusively on the
+    // configured port. Leave CertPath/CertPassword unset to use the dev cert or OS-level TLS.
+    private static void ConfigureKestrel(WebApplicationBuilder builder)
+    {
+        builder.WebHost.ConfigureKestrel((context, options) =>
+        {
+            var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);
+            var port = serverSection.GetValue<int?>("Port") ?? 443;
+            var certPath = serverSection["CertPath"];
+            var certPassword = serverSection["CertPassword"];
+
+            options.Listen(IPAddress.Any, port, listenOptions =>
+            {
+                if (!string.IsNullOrEmpty(certPath))
+                    listenOptions.UseHttps(certPath, certPassword);
+                else
+                    listenOptions.UseHttps();
+            });
+        });
     }
 
     // Test hosts (WebApplicationFactory) explicitly set Database:Path to "" so there's no real file

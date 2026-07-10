@@ -1,7 +1,7 @@
 namespace Basil.Application.Configuration;
 
 /// <summary>
-///     Local file storage folder names. Fixed, not configurable via settings.toml/env — Infrastructure's
+///     Local file storage folder names. Fixed, not configurable via Settings.toml/env — Infrastructure's
 ///     DI composition root resolves each of these against the executable's directory (not the
 ///     process's working directory) and constructs this POCO directly, it is not bound from
 ///     IConfiguration. AvatarsPath/MapsetsPath/SeasonalsPath/FaqsPath have no bancho.py equivalent

@@ -4,8 +4,17 @@ namespace Basil.Application.Configuration;
 public sealed class ServerOptions
 {
     public const string SectionName = "Server";
-    
+
     public required string Domain { get; init; }
+
+    /// <summary>Kestrel HTTPS listen port. Disables automatic port selection.</summary>
+    public int Port { get; init; } = 443;
+
+    /// <summary>Path to the HTTPS certificate file (PFX).</summary>
+    public string? CertPath { get; init; }
+
+    /// <summary>Password for the HTTPS certificate.</summary>
+    public string? CertPassword { get; init; }
 
     /// <summary>
     ///     Local file path to the in-game menu icon image, served back by `GET /web/menu-icon` on the

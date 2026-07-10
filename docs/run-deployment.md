@@ -16,16 +16,16 @@ checkout) — no rebuild needed after editing either, just restart the process:
 | `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
 | `settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Api`, `Database`. Same file for development and deployment; edit it and restart. |
 
-There is **no environment-variable override layer** for `settings.toml` values — edit the file
-directly. The one exception is `Kestrel__Certificates__Default__Path`/`Password` (the HTTPS cert),
-which stays environment-variable-only on purpose: a cert password shouldn't sit in plaintext in a
-config file that might get copied/published alongside the executable.
+There is **no environment-variable override layer** — `settings.toml` is the single source of
+truth for every setting. Edit the file directly and restart the process.
 
 `settings.toml` sections, as shipped:
 
 | Section          | Key(s)                              | Meaning                                                                                                             |
 | ----------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | `[Server]`        | `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
+|                    | `Port`                               | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here.       |
+|                    | `CertPath` / `CertPassword`          | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
 |                    | `MenuIconPath` / `MenuOnclickUrl`    | osu! client's in-game menu icon (top-left). `MenuIconPath` is a **local file path**, not a URL — served back over HTTP at `GET /web/menuicon` on the `osu.` host; the client is pointed at that URL, not the path. `MenuOnclickUrl` is the click-through URL opened when clicked. Cosmetic only. |
 | `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=1` user in-place.                   |
 |                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
@@ -98,24 +98,21 @@ To move a deployment to another machine: stop the server, copy the whole executa
    (same process, just swap `basil.local` for your real domain); every client machine will then need
    that cert installed as trusted (see Client setup).
 
-4. **Point Kestrel at the cert** via environment variables (this is the one setting that stays
-   environment-only, not in `settings.toml` — see Configuration surface above):
-
-   ```bash
-   export Kestrel__Certificates__Default__Path="/path/to/cert.pfx"
-   export Kestrel__Certificates__Default__Password="your-password"
-   ```
+4. **Point Kestrel at the cert** by setting `CertPath` and `CertPassword` in `settings.toml`
+   `[Server]` section (see Configuration surface above). The server binds exclusively to the
+   port specified in `Server.Port` (default 443) — no `--urls` needed.
 
 5. **DNS or hosts entries**: every machine that connects (the server itself, and every client) needs
    all 9 subdomains resolving to the server's address — either real DNS records for a public domain,
    or a `hosts` file entry per machine for a LAN-only setup (see Client setup below for the exact
    entries).
 
-6. **Run it**, binding to port 443. Binding a port below 1024 needs elevated privileges (Administrator
-   on Windows, root or `setcap` on Linux):
+6. **Run it**. The port is read from `settings.toml` `Server.Port` (default 443); no `--urls`
+   argument needed. Binding a port below 1024 needs elevated privileges (Administrator on Windows,
+   root or `setcap` on Linux):
 
    ```bash
-   ./Basil.Web --urls "https://*:443"
+   ./Basil.Web
    ```
 
    Open port 443 in the firewall if one is active.
@@ -182,13 +179,12 @@ To move a deployment to another machine: stop the server, copy the whole executa
    # Linux: install into your distro's trust store
    ```
 
-   Point Kestrel at it and run on the standard ports (needs an elevated/Administrator terminal to
-   bind 80/443):
+   Point Kestrel at it by setting `CertPath`/`CertPassword` in `src/Basil.Web/settings.toml`
+   under `[Server]`. The server binds exclusively to the port specified in `Server.Port` (default
+   443 — elevated terminal needed). Run normally:
 
    ```bash
-   export Kestrel__Certificates__Default__Path="<absolute path to basil-cert.pfx>"
-   export Kestrel__Certificates__Default__Password="your-password"
-   dotnet run --project src/Basil.Web --urls "http://*:80;https://*:443"
+   dotnet run --project src/Basil.Web
    ```
 
    Add hosts entries and launch the client — see Client setup below (same steps whether you're
