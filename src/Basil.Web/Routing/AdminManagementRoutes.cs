@@ -113,6 +113,9 @@ internal static class AdminManagementRoutes
         admin.MapPost("/users", async (CreateUserRequest body, IUserRepository users,
             IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
         {
+            if (await users.FetchByNameAsync(body.Name, cancellationToken) is not null)
+                return Results.Conflict(new { error = "Username already exists." });
+
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(
                 Encoding.UTF8.GetBytes(body.Password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));

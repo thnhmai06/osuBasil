@@ -524,6 +524,11 @@ public static class BanchoHostGroups
                     },
                     statusCode: StatusCodes.Status400BadRequest);
 
+            if (await users.FetchByNameAsync(username, cancellationToken) is not null)
+                return Results.Json(
+                    new { form_error = new { user = new { username = new[] { "Username already taken." } } } },
+                    statusCode: StatusCodes.Status409Conflict);
+
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(username, pwBcrypt, "xx", cancellationToken: cancellationToken);
