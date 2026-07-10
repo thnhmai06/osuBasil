@@ -160,7 +160,8 @@ public class OsuLoginUseCaseTests
 
         Assert.Equal("incorrect-credentials", result.OsuToken);
         var expected = Concat(
-            ServerPacketWriter.Notification("test.local: Incorrect credentials"),
+            ServerPacketWriter.Notification(
+                "Incorrect credentials. Please contact to the staffs if you don't know or forget the username/password."),
             ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
         Assert.Equal(expected, result.ResponseBody);
     }
@@ -357,6 +358,48 @@ public class OsuLoginUseCaseTests
         await useCase.ExecuteAsync(request);
 
         await _users.Received(1).UpdateCountryAsync(user.Id, "us", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MotdFile_WhenFileExists_SendsNotification()
+    {
+        var motdPath = Path.Combine(AppContext.BaseDirectory, "MOTD.txt");
+        try
+        {
+            File.WriteAllText(motdPath, "Test message of the day!");
+            SetUpHappyPath(out _, (int)(Privileges.Unrestricted | Privileges.Verified));
+
+            var useCase = MakeUseCase();
+            var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+            var result = await useCase.ExecuteAsync(request);
+
+            var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
+            var bodyHex = Convert.ToHexString(result.ResponseBody);
+            Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
+        }
+        finally
+        {
+            File.Delete(motdPath);
+        }
+    }
+
+    [Fact]
+    public async Task MotdFile_WhenFileMissing_SendsNoNotification()
+    {
+        var motdPath = Path.Combine(AppContext.BaseDirectory, "MOTD.txt");
+        if (File.Exists(motdPath)) File.Delete(motdPath);
+
+        SetUpHappyPath(out _, (int)(Privileges.Unrestricted | Privileges.Verified));
+
+        var useCase = MakeUseCase();
+        var request = new OsuLoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+        var result = await useCase.ExecuteAsync(request);
+
+        // No welcome notification: the response starts with ProtocolVersion + LoginReply directly.
+        var expectedHeader = Concat(
+            ServerPacketWriter.ProtocolVersion(19),
+            ServerPacketWriter.LoginReply(10));
+        Assert.Equal(expectedHeader, result.ResponseBody.Take(expectedHeader.Length).ToArray());
     }
 
     private void SetUpHappyPath(out User user, int priv, int userId = 10, string country = "us")

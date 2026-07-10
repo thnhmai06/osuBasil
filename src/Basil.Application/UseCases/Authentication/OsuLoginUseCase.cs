@@ -36,6 +36,8 @@ public sealed class OsuLoginUseCase(
     IClock clock,
     IOptions<ServerOptions> serverOptions)
 {
+    private const string MotdPath = "MOTD.txt"; 
+    
     private static readonly string InactionableDiskSignatureMd5 =
         Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
 
@@ -133,8 +135,10 @@ public sealed class OsuLoginUseCase(
             ServerPacketWriter.ProtocolVersion(19),
             ServerPacketWriter.LoginReply(session.Id),
             ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPriv | ClientPrivileges.Supporter)),
-            WelcomeNotification()
         };
+
+        if (WelcomeNotification() is { } notification)
+            data.Add(notification);
 
         // send auto-join channel info; the client will attempt to join them.
         foreach (var channel in channelRegistry.AutoJoinChannels)
@@ -257,9 +261,12 @@ public sealed class OsuLoginUseCase(
         return new Geolocation(0.0, 0.0, acronym, numeric);
     }
 
-    private byte[] WelcomeNotification()
+    private static byte[]? WelcomeNotification()
     {
-        return ServerPacketWriter.Notification($"Welcome back to {serverOptions.Value.Domain}!\nRunning Basil.");
+        var motdPath = Path.Combine(AppContext.BaseDirectory, MotdPath);
+        if (!File.Exists(motdPath)) return null;
+        var text = File.ReadAllText(motdPath).TrimEnd();
+        return !string.IsNullOrEmpty(text) ? ServerPacketWriter.Notification(text) : null;
     }
 
     private static OsuLoginResult InvalidRequestFailure(string tokenOverride = "invalid-request")
@@ -269,10 +276,11 @@ public sealed class OsuLoginUseCase(
             ServerPacketWriter.Notification("Please restart your osu! and try again.")));
     }
 
-    private OsuLoginResult IncorrectCredentials()
+    private static OsuLoginResult IncorrectCredentials()
     {
         return new OsuLoginResult("incorrect-credentials", Concat(
-            ServerPacketWriter.Notification($"{serverOptions.Value.Domain}: Incorrect credentials"),
+            ServerPacketWriter.Notification(
+                "Incorrect credentials. Please contact to the staffs if you don't know or forget the username/password."),
             ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
     }
 

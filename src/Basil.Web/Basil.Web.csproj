@@ -16,6 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Content Include="MOTD.txt" CopyToOutputDirectory="PreserveNewest" />
         <Content Include="Settings*.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
         <None Remove="Assets\icon.png" />
         <Content Include="Assets\icon.png">
