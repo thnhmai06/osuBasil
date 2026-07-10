@@ -4,8 +4,7 @@ namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Expected checksum generated from bancho.py's exact format string via a pure-Python oracle
-///     script (hashlib.md5 over the literal template), not by re-deriving the C# logic — see
-///     docs/csharp-migration-plan.md Phase 6 notes.
+///     script (hashlib.md5 over the literal template), not by re-deriving the C# logic.
 /// </summary>
 public class ScoreChecksumTests
 {

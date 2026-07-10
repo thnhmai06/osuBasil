@@ -15,8 +15,7 @@ public enum ClientIntegrityResult
 ///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
 ///     Diverges from Python by explicit user decision: detected cheat-tool flags are only logged via
 ///     ILogRepository for later manual review — the restrict/force-logout/random-ban-roll/Discord-
-///     webhook side effects are all dropped, since Basil has no restrict machinery yet (Phase 10
-///     is deferred along with the rest of the chat command system it would otherwise ride on).
+///     webhook side effects are all dropped, since Basil has no restrict machinery.
 /// </summary>
 public sealed class ClientIntegrityService(ILogRepository logs)
 {

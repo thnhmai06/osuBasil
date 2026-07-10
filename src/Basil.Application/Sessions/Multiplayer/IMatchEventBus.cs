@@ -3,8 +3,8 @@ using System.Threading.Channels;
 namespace Basil.Application.Sessions.Multiplayer;
 
 /// <summary>
-///     New for the api. host's live WebSocket layer — bancho.py has no equivalent (its WS-less HTTP
-///     polling model never needed a push mechanism). Publishers (packet handlers, mostly already
+///     Non-blocking pub/sub for the api. host's live WebSocket layer — bancho.py has no equivalent
+///     (its WS-less HTTP polling model never needed a push mechanism). Publishers (packet handlers, mostly already
 ///     holding <see cref="MatchSession.Lock" />) must never block on a slow or dead subscriber, so
 ///     publishing is a non-blocking best-effort write into each subscriber's own bounded channel —
 ///     the actual socket I/O happens later, in that connection's own pump task, entirely decoupled

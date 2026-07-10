@@ -10,14 +10,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Ported from the remaining app/api/domains/osu.py endpoints kept for the multiplayer/tourney-
-///     only scope (getbeatmapinfo, lastfm, markasread, seasonal, bancho_connect, check-updates,
+///     Integration tests for the osu-web HTTP endpoints that aren't covered by unit tests
+///     (getbeatmapinfo, lastfm, markasread, seasonal, bancho_connect, check-updates,
 ///     b.* redirect) plus the endpoints deliberately stubbed out (screenshot, favourites, rate,
-///     comment, in-game registration, difficulty-rating) — see note.md for the scope decision.
+///     comment, in-game registration, difficulty-rating).
 ///     Authenticated routes only need "player not online" coverage here (no DB access happens before
 ///     that check — see BanchoAuthenticationService); their real logic is unit-tested separately.
 /// </summary>
-public class Phase8EndpointTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory = Configure(factory);
 

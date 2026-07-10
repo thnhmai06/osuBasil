@@ -95,9 +95,9 @@ public class TcpIrcConnectionTests
     }
 
     /// <summary>
-    ///     Proves the cross-world seam Phase 2 relies on: a "bancho" <see cref="PlayerSession" /> (no
-    ///     socket behind it, exactly like a real one would look from the chat core's perspective) and a
-    ///     real IRC TCP client share the same channel through <see cref="ChannelMembershipService" />/
+    ///     Proves the cross-world seam: a "bancho" <see cref="PlayerSession" /> (no socket behind it,
+    ///     exactly like a real one would look from the chat core's perspective) and a real IRC TCP
+    ///     client share the same channel through <see cref="ChannelMembershipService" />/
     ///     <see cref="ChatDispatchService" /> — a message from either side reaches the other.
     /// </summary>
     [Fact]

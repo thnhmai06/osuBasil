@@ -6,8 +6,8 @@ namespace Basil.Application.Configuration;
 ///     process's working directory) and constructs this POCO directly, it is not bound from
 ///     IConfiguration. AvatarsPath/MapsetsPath/SeasonalsPath/FaqsPath have no bancho.py equivalent
 ///     (it proxies avatars/beatmaps to osu.ppy.sh, has no seasonal-background storage, and its
-///     `!faq` entries are hardcoded server-side, not read from files) — added for this server's
-///     fully-offline file serving.
+///     `!faq` entries are hardcoded server-side, not read from files) — these were added for this
+///     server's fully-offline file serving.
 /// </summary>
 public sealed class StorageOptions
 {

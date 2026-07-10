@@ -52,8 +52,8 @@ public static class BanchoHostGroups
         app.MapGroup("/").RequireHost(apiHosts).MapApiGroup();
     }
 
-    // NOTE: placeholder handlers still cover the other host groups — real endpoints land in
-    // Phase 5/8 (osu web), Phase 5 (map redirect), Phase 9 (api v1/v2).
+    // NOTE: placeholder handlers still cover the other host groups — real endpoints are registered
+    // in MapOsuWebGroup, MapBeatmapAssetGroup, and MapApiGroup respectively.
     private static void MapBanchoGroup(this RouteGroupBuilder group)
     {
         group.MapGet("/", () => "cho");
@@ -382,8 +382,8 @@ public static class BanchoHostGroups
         });
 
         // Ported from app/api/domains/osu.py's lastFM. Per explicit user decision, detected
-        // cheat-tool flags are only logged (ClientIntegrityService) — no restrict/kick, since that
-        // machinery doesn't exist yet (Phase 10, deferred with the chat command system).
+        // cheat-tool flags are only logged (ClientIntegrityService) — no restrict/kick machinery
+        // exists, so only logging for manual review.
         group.MapGet("/web/lastfm.php", async (
             [FromQuery(Name = "b")] string beatmapIdOrHiddenFlag,
             [FromQuery(Name = "us")] string username,
@@ -579,9 +579,8 @@ public static class BanchoHostGroups
             Results.Redirect($"https://b.ppy.sh{context.Request.Path}", true));
     }
 
-    // New for this server's fully-offline scope — bancho.py has no local avatar storage at all
-    // (the a.{domain} host there always forwards to a real CDN). Files are stored flat as
-    // "{userId}.{ext}" under StorageOptions.AvatarsPath by whatever admin tooling manages them.
+    // bancho.py has no local avatar storage (the a.{domain} host there always forwards to a real CDN).
+    // Files are stored flat as "{userId}.{ext}" under StorageOptions.AvatarsPath.
     private static void MapAvatarGroup(this RouteGroupBuilder group)
     {
         group.MapGet("/{userId:int}", (int userId, HttpContext context) =>
@@ -603,9 +602,7 @@ public static class BanchoHostGroups
         });
     }
 
-    // New for this server's api. host — was a placeholder ("real API deferred") until now. Read-only
-    // for now: the TRT snapshot and file downloads. Live WS endpoints and admin-key-gated management
-    // CRUD land in a later slice of this same phase.
+    // api. host: TRT snapshot (GET+WS), file downloads, WS live channels, and admin-key-gated management CRUD.
     private static void MapApiGroup(this RouteGroupBuilder group)
     {
         group.MapGet("/", () => "api");

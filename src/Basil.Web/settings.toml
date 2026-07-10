@@ -36,5 +36,5 @@ Port = 6667 # IRC Server Port
 
 [Database]
 # SQLite database file path. Relative paths are resolved next to the executable. Only override if
-# you want the DB file somewhere other than the default (basil.db next to the executable).
-Path = "basil.db"
+# you want the DB file somewhere other than the default (Basil.db next to the executable).
+Path = "Basil.db"

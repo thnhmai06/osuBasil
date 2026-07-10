@@ -13,7 +13,7 @@ namespace Basil.Application.Tests.PacketHandlers;
 
 /// <summary>
 ///     Ported from app/api/domains/cho.py's SendMessage (public), scoped to a single channel — no
-///     #spectator/#multiplayer routing yet (Phase 7). ICommandDispatcher is a plain substitute here
+///     #spectator/#multiplayer routing. ICommandDispatcher is a plain substitute here
 ///     (defaults to a null reply, i.e. "not a recognized command") — CommandDispatcher/MpCommandService
 ///     have their own tests. Exercises the real <see cref="ChannelMembershipService" />/
 ///     <see cref="ChatDispatchService" /> chain (not mocked) so these assertions actually cover the

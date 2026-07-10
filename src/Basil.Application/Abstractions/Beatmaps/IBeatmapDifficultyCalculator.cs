@@ -5,9 +5,9 @@ namespace Basil.Application.Abstractions.Beatmaps;
 
 /// <summary>
 ///     Computes a beatmap's star rating under a given mode + mod combination. Basil
-///     has no player-facing pp/performance system — leaderboards rank by raw score, matching
-///     bancho.py's vanilla-mode "score" scoring metric — so this port only exposes difficulty (star
-///     rating), which depends solely on the beatmap, mode, and mods, not on any player's hit results.
+///     has no player-facing pp/performance system — leaderboards rank by raw score — so this
+///     port only exposes difficulty (star rating), which depends solely on the beatmap, mode,
+///     and mods, not on any player's hit results.
 /// </summary>
 public interface IBeatmapDifficultyCalculator
 {

@@ -11,7 +11,7 @@ namespace Basil.Application.Tests.UseCases.Anticheat;
 ///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
 ///     Per explicit user decision, restrict/force-logout/random-ban-roll/Discord-webhook side effects
 ///     are dropped entirely — detected flags are only logged for manual review (no restrict machinery
-///     exists yet in Basil; that's Phase 10, deferred with the rest of the chat command system).
+///     exists in Basil).
 /// </summary>
 public class ClientIntegrityServiceTests
 {

@@ -6,7 +6,7 @@ namespace Basil.Application.Abstractions.Scores;
 ///     Ported from app/repositories/scores.py's BeatmapLeaderboardScoreRow. The Python dataclass calls
 ///     this field `leaderboard_value` because it's pp for rx/ap and score for vanilla — Basil's
 ///     no-pp scope decision means it is unconditionally the `score` column, so it's named plainly.
-///     Clan tag prefixing (`[tag] name`) is deferred until clans exist; Name is the plain player name.
+///     Clan tag prefixing (`[tag] name`) is not implemented; Name is the plain player name.
 /// </summary>
 public sealed record BeatmapLeaderboardScoreRow(
     long Id,
@@ -52,7 +52,7 @@ public sealed record FirstPlaceScoreRow(int Id, string Name);
 /// <summary>The subset of a score row ReplayService.fetch_replay_file actually reads off `score.player`/`score.mode`.</summary>
 public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
 
-/// <summary>New for MatchReportService (the TRT builder) — every score submitted within one Round.</summary>
+/// <summary>Every score submitted within one Round, used by MatchReportService (the TRT builder).</summary>
 public sealed record RoundScoreRow(
     long Id,
     int UserId,
@@ -159,6 +159,6 @@ public interface IScoreRepository
     /// <summary>Ported from the `score.player`/`score.mode` reads in ReplayService.fetch_replay_file.</summary>
     Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
 
-    /// <summary>New for MatchReportService (the TRT builder) — every score linked to one Round.</summary>
+    /// <summary>For MatchReportService (the TRT builder) — every score linked to one Round.</summary>
     Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
 }

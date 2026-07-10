@@ -3,8 +3,8 @@ namespace Basil.Domain.Beatmaps;
 /// <summary>
 ///     Ported from app/objects/beatmap.py's Beatmap fields. Star rating (Diff) is a direct
 ///     passthrough of osu!api's difficultyrating field — bancho.py does not run a local difficulty
-///     calculator here, so this record never touches IBeatmapDifficultyCalculator (that FFI is only
-///     needed for Phase 7's mods-adjusted star rating in multiplayer rooms).
+///     calculator here. Mods-adjusted star ratings in multiplayer rooms use
+///     <see cref="Basil.Application.Abstractions.Beatmaps.IBeatmapDifficultyCalculator" /> instead.
 /// </summary>
 public sealed record Beatmap(
     string Md5,

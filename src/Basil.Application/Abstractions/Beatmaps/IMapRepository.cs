@@ -4,7 +4,7 @@ namespace Basil.Application.Abstractions.Beatmaps;
 
 /// <summary>
 ///     Ported from app/repositories/maps.py's MapsRepository, scoped to what beatmap resolution
-///     (Phase 5) needs: lookup by md5/id/filename and upsert. The `server` column (osu!/private) is
+///     needs: lookup by md5/id/filename and upsert. The `server` column (osu!/private) is
 ///     hardcoded to "osu!" — the private-server-map feature it models has no other code path
 ///     anywhere in bancho.py that ever sets it to "private".
 /// </summary>
@@ -44,14 +44,14 @@ public interface IMapRepository
     Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     New for BeatmapIngestionService: the highest Id currently in use (0 if the table is empty),
+    ///     The highest Id currently in use (0 if the table is empty),
     ///     used to allocate local ids for beatmaps whose .osu file carries no real online id.
     /// </summary>
     Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>New for /difficulty-rating: caches a freshly-computed star rating onto a beatmap row.</summary>
+    /// <summary>Caches a freshly-computed star rating onto a beatmap row for /difficulty-rating.</summary>
     Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default);
 
-    /// <summary>New for /d/{setId}'s on-the-fly .osz packaging: every beatmap sharing a set.</summary>
+    /// <summary>Every beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging.</summary>
     Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, CancellationToken cancellationToken = default);
 }

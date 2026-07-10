@@ -8,9 +8,7 @@ namespace Basil.Application.UseCases.Scores;
 ///     Ported from app/services/score_submission.py's apply_score_base_stats/ranked_score_delta/
 ///     grade_count_deltas/apply_ranked_score_stats/apply_score_stats. Pure over
 ///     <see cref="CachedPlayerStats" /> + <see cref="ScoreSubmission" /> inputs — no I/O, no mutation of
-///     either argument, matching the orchestration's compute-then-commit approach (see
-///     docs/csharp-migration-plan.md Phase 6 notes on why Python's deep-copy snapshot/restore isn't
-///     ported). Weighted pp/acc (fetch_weighted_best_performances/apply_weighted_performance_stats)
+///     either argument, matching the orchestration's compute-then-commit approach. Weighted pp/acc (fetch_weighted_best_performances/apply_weighted_performance_stats)
 ///     is dropped entirely — no-pp scope.
 /// </summary>
 public static class ScoreStatsCalculator

@@ -90,8 +90,7 @@ public sealed class ScoreSubmissionUseCase(
         }
         catch (ScoreSubmissionIntegrityException)
         {
-            // Non-fatal: bancho.py itself only logs + records a metric here right now (the
-            // restriction branch is commented out pending a trial period) — ported as-is.
+            // Non-fatal: bancho.py only logs + records a metric here — ported as-is.
         }
 
         if (score.Mode != player.Status.Mode)
@@ -120,9 +119,7 @@ public sealed class ScoreSubmissionUseCase(
 
             var replayData = score.Passed ? request.ReplayData : null;
             if (replayData is not null && replayData.Length < MinReplaySize)
-                // TODO(restriction-phase): bancho.py restricts + logs out the player here. No
-                // restriction/moderation system exists yet — only the replay is discarded for now;
-                // the score itself still counts.
+                // No restriction/moderation system — only the replay is discarded; the score still counts.
                 replayData = null;
 
             var scoreId = await scoreSubmissionPersistence.PersistScoreSubmissionAsync(

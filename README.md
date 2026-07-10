@@ -4,9 +4,9 @@
 
 # Basil
 
-<sub><i>Nếu [Akatsuki](https://github.com/osuAkatsuki) có nghĩa là "bình minh", thì Basil là bông hướng dương luôn hướng về Mặt Trời.</i></sub>
+<sub><i>If [Akatsuki](https://github.com/osuAkatsuki) means "dawn", then Basil is the sunflower always facing the Sun.</i></sub>
 
-**Một server [osu!](https://osu.ppy.sh/) (stable) nhẹ, nhằm phục vụ thi đấu multiplayer/tournament qua LAN - hoàn toàn offline, không phụ thuộc vào internet.**
+**A lightweight [osu!](https://osu.ppy.sh/) (stable) server for multiplayer/tournament play over LAN — fully offline, no internet dependency.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
@@ -16,31 +16,31 @@
 </div>
 
 > [!IMPORTANT]
-> **Miễn trừ trách nhiệm.** 
-> Dự án này không liên kết, không được xác nhận, và không có bất kỳ liên hệ nào với [osu!](https://osu.ppy.sh/) ([ppy Pty Ltd](https://ppy.sh/)) hay [bancho.py](https://github.com/osuAkatsuki/bancho.py) ([Akatsuki](https://github.com/osuAkatsuki)). "Basil" chỉ là một cái tên tham chiếu. Hình ảnh mascot là nhân vật Basil đến từ [OMORI](https://www.omori-game.com/) - dự án này không liên kết, không được xác nhận, và không có bất kỳ liên hệ nào với OMORI hay nhà phát triển của nó, [OMOCAT](https://omocat.com/). Mọi quyền đối với nhân vật thuộc về chủ sở hữu tương ứng.
+> **Disclaimer.**
+> This project is not affiliated with, endorsed by, or connected to [osu!](https://osu.ppy.sh/) ([ppy Pty Ltd](https://ppy.sh/)) or [bancho.py](https://github.com/osuAkatsuki/bancho.py) ([Akatsuki](https://github.com/osuAkatsuki)). "Basil" is a reference name only. The mascot art depicts the character Basil from [OMORI](https://www.omori-game.com/) — this project is not affiliated with, endorsed by, or connected to OMORI or its developer, [OMOCAT](https://omocat.com/). All character rights belong to their respective owners.
 
-## Các tính năng chính
+## Key features
 
-- Cung cấp [**môi trường multiplayer**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) giống với [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), **loại bỏ** hệ thống xử lý Singleplayer và các tính năng không liên quan.
-- Hỗ trợ [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat) và các **tính năng Xã hội cơ bản**.
-- Quản lý **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** ngay trên CSDL/ổ đĩa.
-- **Không phụ thuộc** vào [osu!api](https://osu.ppy.sh/wiki/en/osu%21api), dịch vụ mirror hay các dịch vụ bên thứ 3. Các thông số (như Star Rating) được tính toán cục bộ và lưu trữ trong CSDL. **Tất cả đều offline và local 100%**.
-- **Cung cấp các API** để theo dõi trực tiếp dữ liệu trận đấu, input của người chơi và các sự kiện diễn ra trong trận đấu.
+- Provides a [**multiplayer environment**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) matching [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), with singleplayer processing and unrelated features **removed**.
+- Supports [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat), and **basic social features**.
+- Manages **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** directly via database/filesystem.
+- **No dependencies** on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api), mirror services, or third-party services. Parameters (such as Star Rating) are computed locally and stored in the database. **100% offline and local**.
+- **Provides APIs** for live match data, player input, and match event tracking.
 
 ## Tech stack
 
-| Layer | Lựa chọn |
+| Layer | Choice |
 | --- | --- |
-| Runtime | [.NET](https://dot.net/) 10 với [ASP.NET](https://asp.net/), chạy như executable độc lập - không cần Docker |
-| Database | [SQLite](https://www.sqlite.org/) (1 file, cạnh executable), truy cập qua [Dapper](https://github.com/DapperLib/Dapper), schema quản lý bởi [DbUp](https://dbup.readthedocs.io/) |
-| Star rating | Tham chiếu đến các thuật toán tính toán trực tiếp của [osu!lazer](https://github.com/ppy/osu) |
-| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) để enforce ranh giới layer |
+| Runtime | [.NET](https://dot.net/) 10 with [ASP.NET](https://asp.net/), runs as a standalone executable — no Docker required |
+| Database | [SQLite](https://www.sqlite.org/) (1 file next to the executable), accessed via [Dapper](https://github.com/DapperLib/Dapper), schema managed by [DbUp](https://dbup.readthedocs.io/) |
+| Star rating | References [osu!lazer](https://github.com/ppy/osu)'s own calculation algorithms directly |
+| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) to enforce layer boundaries |
 
 ## Credits
 
-**Basil** được xây dựng trên nền tảng của [**bancho.py**](https://github.com/osuAkatsuki/bancho.py) bởi [Akatsuki](https://github.com/osuAkatsuki). 
+**Basil** is built on top of [**bancho.py**](https://github.com/osuAkatsuki/bancho.py) by [Akatsuki](https://github.com/osuAkatsuki).
 
-Cảm ơn rất nhiều đội ngũ [Akatsuki](https://github.com/osuAkatsuki) về dự án tâm huyết này của họ!
+Many thanks to the [Akatsuki](https://github.com/osuAkatsuki) team for their dedicated work on that project!
 
 ## Star History
 

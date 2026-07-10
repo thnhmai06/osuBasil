@@ -1,42 +1,41 @@
-# Phạm vi hoạt động
+# Scoping
 
-**Basil** là một server giải đấu multiplayer offline, được xây dựng dựa trên nền móng của **bancho.py**, không phải một server osu! hoàn chỉnh.
+**Basil** is a multiplayer tournament server built on top of **bancho.py**, not a full osu! server.
 
-Trang này liệt kê những gì *hiện có* trong phạm vi đó, những gì không có và lý do tại sao lại loại bỏ.
+This page lists what is *in scope*, what is not, and the rationale for each exclusion.
 
-## Lệnh chat
+## Chat commands
 
-Dispatch bởi `ICommandDispatcher`/`CommandDispatcher` (lệnh chung) và `MpCommandService` (`!mp` subcommand), cả hai dưới `UseCases/Bot/`. Danh sách đầy đủ lệnh, cách dùng, và so sánh từng lệnh với bancho.py giờ nằm ở [`bot-commands.md`](bot-commands.md) — không lặp lại bảng ở đây để tránh 2 nguồn lệnh nhau theo thời gian.
+Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list, usage, and comparison with bancho.py is at [`bot-commands.md`](bot-commands.md) — not duplicated here to avoid drift between two sources.
 
 ## IRC Gateway
 
-Giờ **trong phạm vi**: Basil chạy một IRC gateway embedded (port 6667, `TcpIrcListener`/`TcpIrcConnection`) cho phép real IRC client (hoặc tool tournament như osu-ahr) kết nối và chat/`!mp` cùng osu! client. Chat core thống nhất qua `ChatDispatchService` + `ChannelMembershipService.BroadcastPrivmsg` — tin nhắn từ IRC client đến được osu! client và ngược lại, vì mọi `PlayerSession` đều có `IIrcConnection` (`BanchoIrcBridgeConnection` cho osu! client, `TcpIrcConnection` cho IRC client).
+**In scope**: Basil runs an embedded IRC gateway (port 6667, `TcpIrcListener`/`TcpIrcConnection`) allowing real IRC clients (or tournament tools like osu-ahr) to connect and chat/`!mp` alongside osu! clients. A unified chat core through `ChatDispatchService` + `ChannelMembershipService.BroadcastPrivmsg` — messages from IRC clients reach osu! clients and vice versa, since every `PlayerSession` has an `IIrcConnection` (`BanchoIrcBridgeConnection` for osu! clients, `TcpIrcConnection` for IRC clients).
 
-## Ngoài phạm vi hiện tại
+## Out of scope
 
-| Hạng mục | Mô tả | Lý do |
+| Category | Description | Rationale |
 | --- | --- | --- |
-| ❌ `!pool` + `!mp loadpool/unloadpool/ban/unban/pick` | Toàn bộ hệ thống mappool cho giải đấu (7 lệnh `!pool`, 4 subcommand `!mp` liên quan) | Cần lớp persistence mới (`tourney_pools`/`tourney_pool_maps`) chưa tồn tại |
-| ❌ Scrim engine (`!mp scrim`/`autoref`/`endscrim`/`rematch`) | Race-safe match-point tallying cho scrim tự động trọng tài | Engine gốc (`MatchScoringService`) đã xoá hẳn cùng lớp lệnh cũ; chưa được yêu cầu xây lại |
-| ❌ `!mp force` | Admin ép người chơi vào trận | Chưa triển khai |
-| ❌ `!block`/`!unblock`/`!reconnect`/`!changename`/`!apikey` | Lệnh chat cá nhân (chặn user, đổi tên, quản lý API key...) | Nằm ngoài phạm vi multiplayer/giải đấu |
-| ❌ ApiKey (User field + `UpdateApiKeyAsync`) | Trường `ApiKey` trên User và repository method tương ứng — là dead code (IRC dùng password osu! trực tiếp, không cần key riêng) | Đã xoá — chưa bao giờ được dùng |
-| ❌ Friends (`osu-getfriends.php`, `FriendAddHandler`/`FriendRemoveHandler`) | HTTP endpoint + packet handler cho quan hệ bạn bè | Tính năng xã hội, ngoài phạm vi multiplayer/giải đấu |
-| ❌ Public JSON API v1/v2 tổng quát | API REST công khai kiểu osu-web (OAuth, rate limiting, versioning) cho công cụ bên ngoài | Chưa có nhu cầu cụ thể; người dùng dự định tự xây riêng sau |
-| ❌ Moderation/clan/metrics (`!clan`, admin command, webhook Discord, Datadog) | Lệnh clan/moderator, audit-log webhook, metric `bancho.online_players`/`bancho.login_time` | Phụ thuộc lớp lệnh đã xoá; dự án không dùng Datadog nên không có gì để port |
-| ❌ Trang debug HTML (`/matches`, `/online`) | View debug hướng admin của Bancho | Không bao giờ được game client gọi, từ chối rõ ràng |
-| ⚠️ `osu-screenshot.php` | Upload screenshot | Stub - trả 400 "not available" |
-| ⚠️ `osu-getfavourites.php`/`osu-addfavourite.php` | Danh sách map yêu thích | Stub - trả rỗng |
-| ⚠️ `osu-rate.php` | Đánh giá sao cho map | Stub - trả `"not ranked"` (mã phản hồi thật của Bancho) |
-| ⚠️ `osu-comment.php` | Bình luận trong game | Stub - trả rỗng |
-| ⚠️ `POST /users` (đăng ký trong game) | Tạo tài khoản qua game client | Stub - trả lỗi "registration disallowed" thật của Bancho |
-| ❌ Tính pp | Performance points cho scoring/leaderboard/điều kiện thắng | Cố tình không có - star rating chỉ để hiển thị, tính qua ruleset osu!lazer của ppy |
+| ❌ `!pool` + `!mp loadpool/unloadpool/ban/unban/pick` | Full tournament mappool system (7 `!pool` commands, 4 `!mp` subcommands) | Requires new persistence layer (`tourney_pools`/`tourney_pool_maps`) not present |
+| ❌ Scrim engine (`!mp scrim`/`autoref`/`endscrim`/`rematch`) | Race-safe match-point tallying for auto-refereed scrims | Engine (`MatchScoringService`) was removed along with the old command layer; not requested for rebuild |
+| ❌ `!mp force` | Admin force player into match | Not implemented |
+| ❌ `!block`/`!unblock`/`!reconnect`/`!changename`/`!apikey` | Personal chat commands (block user, rename, manage API key...) | Outside multiplayer/tournament scope |
+| ❌ ApiKey (User field + `UpdateApiKeyAsync`) | `ApiKey` field on User and corresponding repository method — dead code (IRC uses osu! password directly, no separate key needed) | Removed — never used |
+| ❌ Friends (`osu-getfriends.php`, `FriendAddHandler`/`FriendRemoveHandler`) | HTTP endpoint + packet handlers for friend relationships | Social feature, outside multiplayer/tournament scope |
+| ❌ General-purpose public JSON API v1/v2 | REST API like osu-web (OAuth, rate limiting, versioning) for external tools | No concrete demand; users expected to build their own later |
+| ❌ Moderation/clan/metrics (`!clan`, admin commands, Discord webhook, Datadog) | Clan/moderator commands, audit-log webhook, `bancho.online_players`/`bancho.login_time` metrics | Depends on removed command layer; project doesn't use Datadog so nothing to port |
+| ❌ Debug HTML pages (`/matches`, `/online`) | Admin-facing debug views from Bancho | Never called by game client, explicitly dropped |
+| ⚠️ `osu-screenshot.php` | Screenshot upload | Stub — returns 400 "not available" |
+| ⚠️ `osu-getfavourites.php`/`osu-addfavourite.php` | Favourite beatmap list | Stub — returns empty |
+| ⚠️ `osu-rate.php` | Beatmap star rating | Stub — returns `"not ranked"` (real Bancho response code) |
+| ⚠️ `osu-comment.php` | In-game comments | Stub — returns empty |
+| ⚠️ `POST /users` (in-game registration) | Create account via game client | Stub — returns real Bancho "registration disallowed" error |
+| ❌ pp calculation | Performance points for scoring/leaderboard/win conditions | Deliberately absent — star rating is display-only, computed via ppy's osu!lazer ruleset |
 
-## Bài học từ các quyết định bị đảo ngược
+## Lessons from reversed decisions
 
-| Quyết định cũ | Vấn đề | Hiện tại |
+| Decision | Problem | Resolution |
 | --- | --- | --- |
-| Xoá hẳn `BanchoBot` + toàn bộ lớp lệnh chat (kể cả `!mp` đầy đủ 25 lệnh con) khi pivot sang "chỉ multiplayer + giải đấu" | Giải đấu vẫn cần cách điều khiển trận qua chat (`!mp start`, đổi map, quản slot...) - xoá sạch rồi mới nhận ra cần lại | `BanchoBot` bootstrap lại thành session thật (`BotBootstrapService`); lớp dispatch **hoàn toàn mới** (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) - cố tình không hồi sinh `ICommand`/`MpCommandDispatcher` cũ, chỉ wrap lại các mutation `MatchSession`/`MatchMembershipService` đã có sẵn, phạm vi hẹp hơn bộ lệnh gốc |
-| Hoãn vô thời hạn "API v1/v2 làm sau" | Giải đấu cần theo dõi trận trực tiếp (report, WebSocket) dù chưa cần API public đầy đủ | Host `api.<domain>` được xây cho tournament match report (TRT) qua `GET`/WebSocket, tải replay/beatmap, và management CRUD khoá admin-key - hẹp hơn nhiều so với API v1/v2 công khai (không OAuth, không rate limit, không versioning), API tổng quát đó vẫn chưa xây |
-| Kế hoạch test parity tự động ("chạy song song Bancho và Basil, so kết quả") | Không còn hợp lý khi phần lớn bề mặt tính năng Bancho đã bị cắt có chủ đích - không có gì để so sánh song song nữa | Test thủ công một luồng multiplayer/giải đấu thật bằng hai client osu! thật - xem [`getting-started.md`](getting-started.md) |
-
+| Removed `BanchoBot` + entire chat command layer (including full 25 `!mp` subcommands) when pivoting to "multiplayer + tournaments only" | Tournaments still need chat-based match control (`!mp start`, map change, slot management...) — removing everything was overcorrection | `BanchoBot` re-bootstrapped as a real session (`BotBootstrapService`); fresh dispatch layer (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) wraps existing `MatchSession`/`MatchMembershipService` mutations, narrower than the original command set |
+| Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, WebSocket) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/WebSocket, replay/beatmap downloads, and admin-key-gated management CRUD — narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
+| Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut — nothing left to compare in parallel | Manual single-thread multiplayer/tournament testing with two real osu! clients — see [`getting-started.md`](getting-started.md) |

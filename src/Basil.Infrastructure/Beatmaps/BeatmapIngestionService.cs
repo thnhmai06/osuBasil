@@ -13,12 +13,11 @@ using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     New for this server's fully-offline scope — bancho.py always fetched beatmap metadata from
-///     osu!api, so it has no local ".osu file on disk" concept at all. Scans
-///     <see cref="StorageOptions.MapsetsPath" /> for ".osz" archives (unzipped in place, then
+///     Scans <see cref="StorageOptions.MapsetsPath" /> for ".osz" archives (unzipped in place, then
 ///     deleted) and loose ".osu" files (parsed, registered, renamed to "{beatmapId}.osu"), using
 ///     ppy.osu.Game's own decoder (the same one <see cref="Performance.PpyBeatmapDifficultyCalculator" />
 ///     uses) so metadata parsing matches the real client byte-for-byte.
+///     bancho.py has no equivalent — it always fetched beatmap metadata from osu!api.
 /// </summary>
 public sealed class BeatmapIngestionService(
     IMapRepository maps,

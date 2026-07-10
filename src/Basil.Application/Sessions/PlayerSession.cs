@@ -10,10 +10,9 @@ using Action = Basil.Domain.Action;
 namespace Basil.Application.Sessions;
 
 /// <summary>
-///     Server-side representation of an online player. Ported from app/objects/player.py's Player,
-///     scoped to what Phase 3 (login + basic packet handlers) needs — richer state (match,
-///     spectating, clan, friends/blocks as loaded sets) is added when the phase that consumes it
-///     lands, matching the fields' actual introduction order in bancho.py's own history.
+///     Server-side representation of an online player. Ported from app/objects/player.py's Player.
+///     Holds runtime session state: packet queue, channel memberships, spectator list, match
+///     reference, per-mode stats, geolocation, and IRC transport bridge.
 /// </summary>
 public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime)
 {
@@ -70,8 +69,8 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     public MatchSession? Match { get; set; }
 
     /// <summary>
-    ///     Ported from Player.stealth — an admin spectating without the target being informed. Toggled by the (Phase 10)
-    ///     `!stealth` command; defaults off.
+    ///     Ported from Player.stealth — an admin spectating without the target being informed.
+    ///     Toggled by the `!stealth` command; defaults off.
     /// </summary>
     public bool Stealth { get; set; }
 

@@ -1,7 +1,7 @@
 namespace Basil.Application.Abstractions.Beatmaps;
 
 /// <summary>
-///     New for the Mapsets table — bancho.py has no equivalent (a beatmap set there is just a
+///     Repository for the Mapsets table — bancho.py has no equivalent (a beatmap set there is just a
 ///     grouping of `maps` rows fetched from osu!api, never a row of its own). Here it exists purely
 ///     so Beatmaps.SetId has something to reference; BeatmapIngestionService is the only writer.
 /// </summary>

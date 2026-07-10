@@ -3,7 +3,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Tests.Sessions;
 
-/// <summary>Ported from app/objects/player.py's Player — scoped to Phase 3 (login + basic packet handlers).</summary>
+/// <summary>Ported from app/objects/player.py's Player — session state for online players.</summary>
 public class PlayerSessionTests
 {
     private static PlayerSession MakeSession(Privileges priv)

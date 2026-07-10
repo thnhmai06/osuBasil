@@ -21,8 +21,8 @@ public sealed record User(
     string? UserpageContent);
 
 /// <summary>
-///     Ported from app/repositories/users.py's UsersRepository — scoped to what login (Phase 3)
-///     needs. Broader filter/paging methods get added when a use case actually needs them.
+///     Ported from app/repositories/users.py's UsersRepository — scoped to what login needs.
+///     Broader filter/paging methods are added when a use case needs them.
 /// </summary>
 public interface IUserRepository
 {
@@ -46,6 +46,6 @@ public interface IUserRepository
     Task<User> CreateAsync(string name, string email, string pwBcrypt, string country,
         CancellationToken cancellationToken = default);
 
-    /// <summary>New for the management REST API's user listing.</summary>
+    /// <summary>For the management REST API's user listing.</summary>
     Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default);
 }

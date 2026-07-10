@@ -18,10 +18,9 @@ using NSubstitute;
 namespace Basil.Application.Tests.UseCases.Authentication;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's handle_osu_login_request — the 14-step login flow
-///     (spec §3.1 in docs/csharp-migration-plan.md). Each early-exit validation branch is tested in
-///     isolation with mocked ports; the happy path is exercised separately, verifying the assembled
-///     packet stream structure against ServerPacketWriter (already verified byte-exact in Phase 1).
+///     Ported from app/api/domains/cho.py's handle_osu_login_request — the 14-step login flow.
+///     Each early-exit validation branch is tested in isolation with mocked ports; the happy path
+///     is exercised separately, verifying the assembled packet stream structure against ServerPacketWriter.
 /// </summary>
 public class OsuLoginUseCaseTests
 {

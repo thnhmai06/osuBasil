@@ -2,9 +2,8 @@ namespace Basil.Application.Abstractions.Beatmaps;
 
 /// <summary>
 ///     Ported from app/repositories/ratings.py, scoped to what the getscores response header needs:
-///     the average player-submitted rating for a beatmap. Rating submission (POST /web/osu-rate.php)
-///     is out of scope for Phase 5 — deferred to whichever later phase ports the remaining osu-web
-///     endpoints.
+///     the average player-submitted rating for a beatmap. Rating submission
+///     (POST /web/osu-rate.php) is a stub returning "not ranked".
 /// </summary>
 public interface IRatingRepository
 {

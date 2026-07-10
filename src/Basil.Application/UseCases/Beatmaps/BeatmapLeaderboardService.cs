@@ -20,7 +20,7 @@ public enum BeatmapLeaderboardResultCode
 /// <summary>
 ///     Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow +
 ///     app/services/score_leaderboards.py's PersonalBestLeaderboardScoreListing, merged: UserId/Name
-///     are always the requesting player's own (clan tag prefixing deferred until clans exist).
+///     are always the requesting player's own (clan tag prefixing is not implemented).
 /// </summary>
 public sealed record PersonalBestLeaderboardScoreListing(
     long Id,
@@ -43,8 +43,7 @@ public sealed record PersonalBestLeaderboardScoreListing(
 ///     Ported from app/services/beatmap_leaderboards.py's BeatmapLeaderboardRequest. map_set_id and
 ///     aqn_files_found are dropped: map_set_id only existed to consult the whole-set osu!api cache
 ///     (removed along with the osu!api fallback — see EnsureBeatmapUseCase), and aqn_files_found only
-///     fed an anti-cheat "strange occurrence" logger that doesn't exist yet (deferred to whichever
-///     phase builds moderation logging).
+///     fed an anti-cheat "strange occurrence" logger that does not exist.
 /// </summary>
 public sealed record BeatmapLeaderboardRequest(
     bool RequestingFromEditorSongSelect,
@@ -70,7 +69,7 @@ public sealed record BeatmapLeaderboardResult(
 ///     app/services/score_leaderboards.py's ScoreLeaderboardsService (the split existed in Python to
 ///     separate beatmap-gating from score-querying; Basil's simpler no-pp, no-clan, no-osu!api
 ///     scope doesn't carry enough independent complexity to justify keeping them as two classes).
-///     Clan-tag prefixing on the personal-best display name is deferred until clans exist.
+///     Clan-tag prefixing on the personal-best display name is not implemented.
 /// </summary>
 public sealed class BeatmapLeaderboardService(
     EnsureBeatmapUseCase ensureBeatmap,

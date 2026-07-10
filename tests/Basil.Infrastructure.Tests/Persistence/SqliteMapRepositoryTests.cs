@@ -4,7 +4,7 @@ using Basil.Infrastructure.Persistence.Repositories;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/maps.py, scoped to what beatmap resolution (Phase 5) needs:
+///     Ported from app/repositories/maps.py, scoped to what beatmap resolution needs:
 ///     lookup by id/md5/filename and upsert. `server` is hardcoded to "osu!" everywhere.
 /// </summary>
 public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>

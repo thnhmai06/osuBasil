@@ -3,9 +3,9 @@ using Basil.Infrastructure.Persistence.Repositories;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/users.py — scoped to what the Phase 3 login flow needs
+///     Ported from app/repositories/users.py — scoped to what the login flow needs
 ///     (fetch by id/name, password hash, country fix, privilege grant). Broader filter/paging/create
-///     methods are added when a use case actually needs them (Phase 4+), not speculatively now.
+///     methods are added when a use case needs them.
 ///     migrations/base.sql seeds a BasilBot user (id=1), which these tests read back.
 /// </summary>
 public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>

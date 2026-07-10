@@ -8,7 +8,7 @@ namespace Basil.Application.UseCases.Beatmaps;
 ///     fixture exists in the Python repo for this endpoint (0 hits in tests/unit or
 ///     tests/integration) — every expected string here is hand-built from the documented format
 ///     string, not captured from a running bancho.py. Byte-exactness against a real osu! client is
-///     still unverified, same caveat as Phase 3/4's untested wire-format assumptions.
+///     still unverified — same caveat as other wire-format assumptions.
 /// </summary>
 public static class GetScoresResponseFormatter
 {

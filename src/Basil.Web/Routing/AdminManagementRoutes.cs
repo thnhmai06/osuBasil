@@ -14,9 +14,9 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     Third and last slice of Phase C — admin-key-gated CRUD for beatmaps/users/replays/matches/
-///     seasonals, new for this server's fully-offline scope (bancho.py has no equivalent admin
-///     surface at all). Every route here sits behind <see cref="AdminKeyFilter" />.
+///     Admin-key-gated CRUD for beatmaps/users/replays/matches/seasonals —
+///     bancho.py has no equivalent admin surface. Every route here sits behind
+///     <see cref="AdminKeyFilter" />.
 /// </summary>
 internal static class AdminManagementRoutes
 {

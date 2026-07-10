@@ -2,7 +2,7 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Ported from app/objects/beatmap.py's Beatmap fields + the properties Phase 5 actually consumes.</summary>
+/// <summary>Ported from app/objects/beatmap.py's Beatmap fields + the properties actually consumed by score submission and leaderboards.</summary>
 public class BeatmapTests
 {
     private static Beatmap MakeBeatmap(RankedStatus status)

@@ -7,7 +7,7 @@ namespace Basil.Protocol.Packets;
 /// <summary>
 ///     Reads Bancho packet primitives from a client request body. Ported from
 ///     app/packets.py's BanchoPacketReader (read-side only; the packet_map-driven
-///     iteration/dispatch loop is wired up in Basil.Web during Phase 3, once handlers exist).
+///     iteration/dispatch loop is wired up in Basil.Web).
 ///     All multi-byte integers are little-endian, per the osu! protocol.
 /// </summary>
 public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
