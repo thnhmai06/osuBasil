@@ -118,8 +118,8 @@ public sealed class MpCommandService(
             "name" => await RunLockedAsync(match, () => Task.FromResult(SetName(match, args))),
             "password" => await RunLockedAsync(match, () => Task.FromResult((true, SetPassword(match, args)))),
             "invite" => Invite(sender, match, args),
-            "addref" => AddReferee(match, args),
-            "removeref" => await RunLockedAsync(match, () => RemoveRefereeAsync(match, args, cancellationToken)),
+            "addref" => await AddRefereeAsync(sender, match, args, cancellationToken),
+            "removeref" => await RunLockedAsync(match, () => RemoveRefereeAsync(sender, match, args, cancellationToken)),
             "listrefs" => (true, ListReferees(match)),
             "banlist" => (true, await BanListAsync(match, cancellationToken)),
             "team" => await RunLockedAsync(match, () => Task.FromResult(SetTeam(match, args))),
@@ -130,10 +130,10 @@ public sealed class MpCommandService(
             "timer" => await RunLockedAsync(match, () => Task.FromResult(Timer(match, args))),
             "aborttimer" => await RunLockedAsync(match, () => Task.FromResult(AbortTimer(match))),
             "abort" => await RunLockedAsync(match, () => AbortAsync(match, cancellationToken)),
-            "kick" => await RunLockedAsync(match, () => Task.FromResult(Kick(match, args))),
-            "ban" => await RunLockedAsync(match, () => Task.FromResult(Ban(match, args))),
+            "kick" => await RunLockedAsync(match, () => KickAsync(sender, match, args, cancellationToken)),
+            "ban" => await RunLockedAsync(match, () => BanAsync(sender, match, args, cancellationToken)),
             "unban" => await RunLockedAsync(match, () => UnbanAsync(match, args, cancellationToken)),
-            "close" => await RunLockedAsync(match, () => AlwaysSucceeds(CloseAsync(match, cancellationToken))),
+            "close" => await RunLockedAsync(match, () => AlwaysSucceeds(CloseAsync(sender, match, cancellationToken))),
             _ => (false, null)
         };
     }
@@ -332,9 +332,17 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
+        var prevHostId = match.HostId;
         match.HostId = target.Id;
         target.Enqueue(ServerPacketWriter.MatchTransferHost());
         matchMembership.EnqueueState(match);
+
+        var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
+        _ = matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.HostGranted,
+            prevHostId, prevHostName, target.Id, target.Name,
+            clock.UtcNow.UtcDateTime, null));
+
         return (true, $"Changed match host to {target.Name}");
     }
 
@@ -384,7 +392,8 @@ public sealed class MpCommandService(
         return (true, $"Invited {target.Name} to the room");
     }
 
-    private (bool Success, string? Reply) AddReferee(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> AddRefereeAsync(PlayerSession sender, MatchSession match,
+        IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         if (args.Count < 1) return (false, "Usage: !mp addref <name>");
 
@@ -393,6 +402,12 @@ public sealed class MpCommandService(
         if (target is null) return (false, $"User not found: {targetName}");
 
         match.AddReferee(target.Id);
+
+        await matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.RefAdded,
+            sender.Id, sender.Name, target.Id, target.Name,
+            clock.UtcNow.UtcDateTime, null), cancellationToken);
+
         return (true, $"Added {target.Name} to the match referees");
     }
 
@@ -401,7 +416,7 @@ public sealed class MpCommandService(
     ///     <see cref="MatchSession.CreatedViaMakeCommand" />'s doc comment) — normal client-created
     ///     rooms are unaffected, they keep tearing down only once every slot empties.
     /// </summary>
-    private async Task<(bool Success, string? Reply)> RemoveRefereeAsync(MatchSession match,
+    private async Task<(bool Success, string? Reply)> RemoveRefereeAsync(PlayerSession sender, MatchSession match,
         IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         if (args.Count < 1) return (false, "Usage: !mp removeref <name>");
@@ -412,9 +427,14 @@ public sealed class MpCommandService(
 
         match.RemoveReferee(target.Id);
 
+        await matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.RefRemoved,
+            sender.Id, sender.Name, target.Id, target.Name,
+            clock.UtcNow.UtcDateTime, null), cancellationToken);
+
         if (match is { CreatedViaMakeCommand: true, Referees.Count: 0 })
         {
-            await matchMembership.CloseAsync(match, cancellationToken);
+            await matchMembership.CloseAsync(match, cancellationToken: cancellationToken);
             return (true, $"Removed {target.Name} from the match referees. No referees remain — match closed");
         }
 
@@ -745,7 +765,7 @@ public sealed class MpCommandService(
 
         if (match.CurrentRoundId is { } roundId)
         {
-            await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime, cancellationToken);
+            await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime, true, cancellationToken);
             match.CurrentRoundId = null;
         }
 
@@ -754,8 +774,8 @@ public sealed class MpCommandService(
         return (true, "Aborted the match");
     }
 
-    /// <summary>Kick/ban only ever act on physical room presence — a referee's `!mp` authority is untouched either way.</summary>
-    private (bool Success, string? Reply) Kick(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> KickAsync(PlayerSession sender, MatchSession match,
+        IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         if (args.Count < 1) return (false, "Usage: !mp kick <name>");
 
@@ -765,16 +785,17 @@ public sealed class MpCommandService(
 
         matchMembership.Leave(target, match);
         target.Enqueue(ServerPacketWriter.MatchJoinFail());
+
+        await matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.Kicked,
+            sender.Id, sender.Name, target.Id, target.Name,
+            clock.UtcNow.UtcDateTime, "Kicked"), cancellationToken);
+
         return (true, $"Kicked {target.Name} from the match");
     }
 
-    /// <summary>
-    ///     Resolves the target among players actually present in the room (not `IUserRepository` — ban
-    ///     only ever removes/blocks physical presence, so it only ever makes sense against someone
-    ///     currently in the room). A banned referee keeps full `!mp` authority — see
-    ///     <see cref="MatchSession.IsReferee" />'s doc comment — they just can't rejoin as a player.
-    /// </summary>
-    private (bool Success, string? Reply) Ban(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> BanAsync(PlayerSession sender, MatchSession match,
+        IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         if (args.Count < 1) return (false, "Usage: !mp ban <name>");
 
@@ -785,6 +806,12 @@ public sealed class MpCommandService(
         match.AddBan(target.Id);
         matchMembership.Leave(target, match);
         target.Enqueue(ServerPacketWriter.MatchJoinFail());
+
+        await matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.Kicked,
+            sender.Id, sender.Name, target.Id, target.Name,
+            clock.UtcNow.UtcDateTime, "Banned"), cancellationToken);
+
         return (true, $"Banned {target.Name} from the match");
     }
 
@@ -803,9 +830,9 @@ public sealed class MpCommandService(
         return (true, $"Unbanned {targetUser.Name} from the match");
     }
 
-    private async Task<string?> CloseAsync(MatchSession match, CancellationToken cancellationToken)
+    private async Task<string?> CloseAsync(PlayerSession sender, MatchSession match, CancellationToken cancellationToken)
     {
-        await matchMembership.CloseAsync(match, cancellationToken);
+        await matchMembership.CloseAsync(match, sender.Id, sender.Name, cancellationToken);
         return "Closed the match";
     }
 

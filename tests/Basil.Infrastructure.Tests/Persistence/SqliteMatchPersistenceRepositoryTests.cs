@@ -11,20 +11,19 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     [Fact]
     public async Task CreateMatchThenFetch_RoundTrips()
     {
-        var matchId = await _repository.CreateMatchAsync("Grand Finals", 0, 0, 1, 1, FixedTime);
+        var matchId = await _repository.CreateMatchAsync("Grand Finals", FixedTime);
 
         var row = await _repository.FetchMatchAsync(matchId);
 
         Assert.NotNull(row);
         Assert.Equal("Grand Finals", row.Name);
-        Assert.Equal(1, row.HostId);
         Assert.Null(row.EndedAt);
     }
 
     [Fact]
     public async Task SetMatchEnded_PersistsEndedAt()
     {
-        var matchId = await _repository.CreateMatchAsync("Ends Soon", 0, 0, 1, 1, FixedTime);
+        var matchId = await _repository.CreateMatchAsync("Ends Soon", FixedTime);
 
         await _repository.SetMatchEndedAsync(matchId, FixedTime.AddHours(1));
 
@@ -35,10 +34,10 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     [Fact]
     public async Task CreateRoundThenFetchRounds_ReturnsOrderedByRoundIndex()
     {
-        var matchId = await _repository.CreateMatchAsync("Multi-Round", 0, 0, 1, 1, FixedTime);
+        var matchId = await _repository.CreateMatchAsync("Multi-Round", FixedTime);
         var mapMd5 = new string('r', 32);
-        await _repository.CreateRoundAsync(matchId, 2, 200, mapMd5, 0, FixedTime.AddMinutes(5));
-        await _repository.CreateRoundAsync(matchId, 1, 100, mapMd5, 0, FixedTime);
+        await _repository.CreateRoundAsync(matchId, 2, 200, mapMd5, 0, 0, 0, "", "", "", "", 0, FixedTime.AddMinutes(5));
+        await _repository.CreateRoundAsync(matchId, 1, 100, mapMd5, 0, 0, 0, "", "", "", "", 0, FixedTime);
 
         var rounds = await _repository.FetchRoundsAsync(matchId);
 
@@ -51,10 +50,10 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     [Fact]
     public async Task SetRoundEnded_PersistsEndedAt()
     {
-        var matchId = await _repository.CreateMatchAsync("Round End", 0, 0, 1, 1, FixedTime);
-        var roundId = await _repository.CreateRoundAsync(matchId, 1, 100, new string('s', 32), 0, FixedTime);
+        var matchId = await _repository.CreateMatchAsync("Round End", FixedTime);
+        var roundId = await _repository.CreateRoundAsync(matchId, 1, 100, new string('s', 32), 0, 0, 0, "", "", "", "", 0, FixedTime);
 
-        await _repository.SetRoundEndedAsync(roundId, FixedTime.AddMinutes(3));
+        await _repository.SetRoundEndedAsync(roundId, FixedTime.AddMinutes(3), false);
 
         var rounds = await _repository.FetchRoundsAsync(matchId);
         Assert.Equal(FixedTime.AddMinutes(3), rounds[0].EndedAt);
@@ -63,8 +62,8 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     [Fact]
     public async Task FetchAllMatches_OrdersByIdDescending()
     {
-        var first = await _repository.CreateMatchAsync("First", 0, 0, 1, 1, FixedTime);
-        var second = await _repository.CreateMatchAsync("Second", 0, 0, 1, 1, FixedTime);
+        var first = await _repository.CreateMatchAsync("First", FixedTime);
+        var second = await _repository.CreateMatchAsync("Second", FixedTime);
 
         var all = await _repository.FetchAllMatchesAsync();
 
@@ -76,8 +75,8 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     [Fact]
     public async Task DeleteMatch_RemovesMatchAndItsRounds()
     {
-        var matchId = await _repository.CreateMatchAsync("To Delete", 0, 0, 1, 1, FixedTime);
-        await _repository.CreateRoundAsync(matchId, 1, 100, new string('d', 32), 0, FixedTime);
+        var matchId = await _repository.CreateMatchAsync("To Delete", FixedTime);
+        await _repository.CreateRoundAsync(matchId, 1, 100, new string('d', 32), 0, 0, 0, "", "", "", "", 0, FixedTime);
 
         await _repository.DeleteMatchAsync(matchId);
 

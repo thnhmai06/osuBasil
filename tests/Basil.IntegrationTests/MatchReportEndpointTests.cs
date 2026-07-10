@@ -59,7 +59,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task GetMulti_KnownMatch_ReturnsReportJson()
     {
-        _matchPersistence.Match = new MatchRow(5, "Grand Finals", 0, 0, 0, 1,
+        _matchPersistence.Match = new MatchRow(5, "Grand Finals",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
         var client = _factory.CreateClient();
 
@@ -75,8 +75,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
     {
         public MatchRow? Match { get; set; }
 
-        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
-            DateTime createdAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -86,13 +85,15 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             throw new NotSupportedException();
         }
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
-            DateTime startedAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+            int mode, int winCondition, int teamType,
+            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
+            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -117,6 +118,11 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
         {
             return Task.CompletedTask;
         }
+
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 
     private sealed class StubScoreRepository : IScoreRepository

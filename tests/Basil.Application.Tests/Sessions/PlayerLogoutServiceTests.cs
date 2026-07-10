@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -26,7 +27,8 @@ public class PlayerLogoutServiceTests
         Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
         Substitute.For<IPlayerSessionRegistry>(),
         new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
-        Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(), Substitute.For<IClock>());
+        Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(), Substitute.For<IClock>(),
+        Substitute.For<IMapRepository>());
 
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
@@ -112,7 +114,8 @@ public class PlayerLogoutServiceTests
         var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
             new ChannelMembershipService(sessionRegistry, channelRegistry),
             new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
-            new MultiplayerTestSupport.FakeMatchEventBus(), clock);
+            new MultiplayerTestSupport.FakeMatchEventBus(), clock,
+            Substitute.For<IMapRepository>());
         var host = new PlayerSession(1, "host", "token", Privileges.Unrestricted, 0.0);
         sessionRegistry.All.Returns([host]);
         sessionRegistry.GetById(1).Returns(host);

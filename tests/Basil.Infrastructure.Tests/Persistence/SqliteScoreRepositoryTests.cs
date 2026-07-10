@@ -39,11 +39,11 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
             INSERT INTO Scores (
                 MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
                 Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
-                RoundId, Team
+                SubmittedAt, RoundId, Team
             ) VALUES (
                 @MapMd5, @Score, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
                 'S', @Status, @Mode, datetime('now'), 120000, 0, @UserId, @Perfect, @Checksum,
-                @RoundId, @Team
+                datetime('now'), @RoundId, @Team
             );
             SELECT last_insert_rowid();
             """,
@@ -204,7 +204,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
             300, 10, 5, 0, 0, 0,
             "S", (int)SubmissionStatus.Best, (int)GameMode.VanillaOsu,
             DateTime.UtcNow, 120000, 0, userId,
-            false, checksum);
+            false, checksum, DateTime.UtcNow);
     }
 
     [Fact]
@@ -327,14 +327,14 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         await using var connection = new SqliteConnection(fixture.ConnectionString);
         var matchId = await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Matches (Name, Mode, WinCondition, TeamType, HostId, CreatedAt)
-            VALUES ('test match', 0, 0, 0, 1, datetime('now'));
+            INSERT INTO Matches (Name, CreatedAt)
+            VALUES ('test match', datetime('now'));
             SELECT last_insert_rowid();
             """);
         return await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Rounds (MatchId, RoundIndex, BeatmapId, MapMd5, Mods, StartedAt)
-            VALUES (@MatchId, 1, 1, @MapMd5, 0, datetime('now'));
+            INSERT INTO Rounds (MatchId, RoundIndex, BeatmapId, MapMd5, Mode, WinCondition, TeamType, BeatmapArtist, BeatmapTitle, BeatmapVersion, BeatmapCreator, Mods, StartedAt)
+            VALUES (@MatchId, 1, 1, @MapMd5, 0, 0, 0, '', '', '', '', 0, datetime('now'));
             SELECT last_insert_rowid();
             """,
             new { MatchId = matchId, MapMd5 = new string('a', 32) });

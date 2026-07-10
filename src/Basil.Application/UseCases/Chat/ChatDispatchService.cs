@@ -3,7 +3,6 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.UseCases.Bot;
-using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Action = Basil.Domain.Action;

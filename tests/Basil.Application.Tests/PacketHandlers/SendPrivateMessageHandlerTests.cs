@@ -1,4 +1,3 @@
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.PacketHandlers.Channels;

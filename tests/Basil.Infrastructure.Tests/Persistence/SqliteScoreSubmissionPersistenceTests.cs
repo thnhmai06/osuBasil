@@ -36,10 +36,12 @@ public class SqliteScoreSubmissionPersistenceTests(SqliteFixture fixture) : ICla
             """
             INSERT INTO Scores (
                 MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum
+                Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
+                SubmittedAt
             ) VALUES (
                 @MapMd5, @Score, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
-                'S', @Status, @Mode, datetime('now'), 120000, 0, @UserId, 0, @Checksum
+                'S', @Status, @Mode, datetime('now'), 120000, 0, @UserId, 0, @Checksum,
+                datetime('now')
             );
             SELECT last_insert_rowid();
             """,
@@ -57,7 +59,7 @@ public class SqliteScoreSubmissionPersistenceTests(SqliteFixture fixture) : ICla
             300, 10, 5, 0, 0, 0,
             "S", (int)SubmissionStatus.Best, (int)GameMode.VanillaOsu,
             DateTime.UtcNow, 120000, 0, userId,
-            false, checksum);
+            false, checksum, DateTime.UtcNow);
     }
 
     [Fact]

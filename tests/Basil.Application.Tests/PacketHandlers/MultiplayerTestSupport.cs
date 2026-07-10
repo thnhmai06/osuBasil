@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Basil.Application.Abstractions;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -153,8 +154,7 @@ internal static class MultiplayerTestSupport
         private int _nextMatchId = 1;
         private int _nextRoundId = 1;
 
-        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
-            DateTime createdAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextMatchId++);
         }
@@ -164,13 +164,15 @@ internal static class MultiplayerTestSupport
             return Task.CompletedTask;
         }
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
-            DateTime startedAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+            int mode, int winCondition, int teamType,
+            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
+            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextRoundId++);
         }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -195,6 +197,11 @@ internal static class MultiplayerTestSupport
         {
             return Task.CompletedTask;
         }
+
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 
     /// <summary>Records what would have been pushed to WS subscribers, without any real channel/socket.</summary>
@@ -253,7 +260,8 @@ internal static class MultiplayerTestSupport
             clock.UtcNow.Returns(DateTimeOffset.UtcNow);
 
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus, clock);
+                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus, clock,
+                Substitute.For<IMapRepository>());
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();

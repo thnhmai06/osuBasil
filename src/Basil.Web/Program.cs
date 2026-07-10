@@ -3,6 +3,7 @@ using Basil.Application.Configuration;
 using Basil.Application.DependencyInjection;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.UseCases.Bot;
+using Basil.Application.UseCases.Multiplayer;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
@@ -101,6 +102,9 @@ public sealed class Program
 
             var botBootstrap = scope.ServiceProvider.GetRequiredService<BotBootstrapService>();
             await botBootstrap.BootstrapAsync();
+
+            var recoveryService = scope.ServiceProvider.GetRequiredService<MatchRecoveryService>();
+            await recoveryService.RecoverAsync();
         }
     }
 }

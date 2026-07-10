@@ -126,10 +126,10 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             """
             INSERT INTO Scores
                 (MapMd5, Score, Acc, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-                 Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, RoundId, Team)
+                 Grade, Status, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, RoundId, Team, SubmittedAt)
             VALUES
                 (@MapMd5, @Score, @Acc, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
-                 @Grade, @Status, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum, @RoundId, @Team);
+                 @Grade, @Status, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum, @RoundId, @Team, @SubmittedAt);
             SELECT last_insert_rowid();
             """,
             row);
@@ -189,7 +189,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         var rows = await connection.QueryAsync<RoundScoreRowDto>(
             """
             SELECT s.Id, s.UserId, u.Name AS UserName, s.Team, s.Mods, s.Score, s.Acc, s.MaxCombo,
-                   s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu, s.Grade, s.Perfect
+                   s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu, s.Grade, s.Perfect, s.SubmittedAt
             FROM Scores s
             JOIN Users u ON u.Id = s.UserId
             WHERE s.RoundId = @RoundId
@@ -222,12 +222,13 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         public int NKatu { get; set; }
         public string Grade { get; set; } = "N";
         public bool Perfect { get; set; }
+        public DateTime SubmittedAt { get; set; }
 
         public RoundScoreRow ToRow()
         {
             return new RoundScoreRow(
                 Id, UserId, UserName, Team, Mods, Score, Acc, MaxCombo, N300, N100, N50, NMiss, NGeki, NKatu,
-                Grade, Perfect);
+                Grade, Perfect, SubmittedAt);
         }
     }
 

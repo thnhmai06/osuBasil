@@ -167,36 +167,43 @@ create table Logs
 );
 
 -- One multiplayer room = one Match. EndedAt is null while the room is still open in-memory.
+-- Mode/WinCondition/TeamType moved to Rounds (can change between rounds).
+-- HostId removed — tracked via MatchEvents instead.
 create table Matches
 (
-    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name         varchar(50) not null,
-    Mode         int         not null,
-    WinCondition int         not null,
-    TeamType     int         not null,
-    HostId       int         not null,
-    CreatedAt    datetime    not null,
-    EndedAt      datetime null
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name      varchar(50) not null,
+    CreatedAt datetime    not null,
+    EndedAt   datetime null
 );
 
 -- One beatmap played within a Match = one Round. WinningTeam is intentionally NOT stored here —
 -- it's computed on read (TRT generation) from whatever Scores rows exist for the round, since
 -- score submission and MatchComplete arrive on separate connections with no ordering guarantee.
+-- Mode/WinCondition/TeamType/beatmap fields denormalized per round for self-contained TRT.
 create table Rounds
 (
-    Id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    MatchId    int      not null,
-    RoundIndex int      not null,
-    BeatmapId  int      not null,
-    MapMd5     char(32) not null,
-    Mods       int      not null,
-    StartedAt  datetime not null,
-    EndedAt    datetime null,
+    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    MatchId        int      not null,
+    RoundIndex     int      not null,
+    BeatmapId      int      not null,
+    MapMd5         char(32) not null,
+    Mode           int      not null,
+    WinCondition   int      not null,
+    TeamType       int      not null,
+    BeatmapArtist  varchar(128) not null default '',
+    BeatmapTitle   varchar(128) not null default '',
+    BeatmapVersion varchar(128) not null default '',
+    BeatmapCreator varchar(64)  not null default '',
+    Aborted        boolean not null default 0,
+    Mods           int      not null,
+    StartedAt      datetime not null,
+    EndedAt        datetime null,
     constraint Rounds_Matches_Id_fk foreign key (MatchId) references Matches (Id)
 );
 create index Rounds_MatchId_index on Rounds (MatchId);
 
--- MapMd5/Mode kept denormalized (not just via Round) so the solo-leaderboard-shaped read paths
+-- MapMd5/Mode kept denormalised (not just via Round) so the solo-leaderboard-shaped read paths
 -- (osu-osz2-getscores.php) can keep querying by map without joining through Rounds. RoundId/Team
 -- are null for a score submitted outside any match (not linked to a Round).
 create table Scores
@@ -224,6 +231,7 @@ create table Scores
     UserId          int      not null,
     Perfect         boolean  not null,
     OnlineChecksum  char(32) not null,
+    SubmittedAt     datetime not null,
     constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
 create index Scores_MapMd5_index on Scores (MapMd5);
@@ -234,6 +242,23 @@ create index Scores_UserId_index on Scores (UserId);
 create index Scores_OnlineChecksum_index on Scores (OnlineChecksum);
 create index Scores_FetchLeaderboard_index on Scores (MapMd5, Status, Mode);
 create index Scores_RoundId_index on Scores (RoundId);
+
+-- Chronological log of match lifecycle events. ActorUserId is null for system actions
+-- (e.g. server shutdown recovery, external API). Usernames denormalised for self-contained TRT.
+create table MatchEvents
+(
+    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    MatchId        int       not null,
+    EventType      int       not null,
+    ActorUserId    int       null,
+    ActorUserName  varchar(32) null,
+    TargetUserId   int       null,
+    TargetUserName varchar(32) null,
+    Timestamp      datetime  not null,
+    Detail         varchar(512) null,
+    constraint MatchEvents_Matches_Id_fk foreign key (MatchId) references Matches (Id)
+);
+create index MatchEvents_MatchId_index on MatchEvents (MatchId);
 
 insert into Users (Id, Name, SafeName, Priv, Country, SilenceEnd, Email, PwBcrypt, CreationTime, LatestActivity)
 values (1, 'BasilBot', 'basilbot', 1, 'ca', 0, 'bot@localhost',

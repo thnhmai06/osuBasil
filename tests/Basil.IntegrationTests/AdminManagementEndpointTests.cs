@@ -129,8 +129,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 
     private sealed class StubMatchPersistenceRepository : IMatchPersistenceRepository
     {
-        public Task<int> CreateMatchAsync(string name, int mode, int winCondition, int teamType, int hostId,
-            DateTime createdAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -140,13 +139,15 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             throw new NotSupportedException();
         }
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5, int mods,
-            DateTime startedAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+            int mode, int winCondition, int teamType,
+            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
+            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, CancellationToken cancellationToken = default)
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -171,6 +172,11 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         {
             return Task.CompletedTask;
         }
+
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 
     private sealed class StubUserRepository : IUserRepository

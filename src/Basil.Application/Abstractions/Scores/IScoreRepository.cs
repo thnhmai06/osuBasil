@@ -69,7 +69,8 @@ public sealed record RoundScoreRow(
     int NGeki,
     int NKatu,
     string Grade,
-    bool Perfect);
+    bool Perfect,
+    DateTime SubmittedAt);
 
 /// <summary>
 ///     Ported from the parameters of ScoresRepository.create — `pp` is deliberately absent, the
@@ -97,6 +98,7 @@ public sealed record ScoreInsertRow(
     int UserId,
     bool Perfect,
     string OnlineChecksum,
+    DateTime SubmittedAt,
     int? RoundId = null,
     int? Team = null);
 

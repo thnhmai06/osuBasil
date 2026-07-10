@@ -1,5 +1,7 @@
+using Basil.Application.Abstractions;
 using Basil.Application.PacketHandlers.Multiplayer;
 using Basil.Protocol.Packets;
+using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -21,7 +23,10 @@ public class MatchTransferHostHandlerTests
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
         fixture.MatchMembership.Join(guest, match, "");
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership);
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+            fixture.MatchPersistence, clock);
 
         await handler.HandleAsync(guest, ReaderFor(1));
 
@@ -38,7 +43,10 @@ public class MatchTransferHostHandlerTests
         var match = fixture.CreateMatch(host);
         fixture.MatchMembership.Join(guest, match, "");
         guest.Dequeue();
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership);
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+            fixture.MatchPersistence, clock);
 
         await handler.HandleAsync(host, ReaderFor(1));
 
@@ -53,7 +61,10 @@ public class MatchTransferHostHandlerTests
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
         var match = fixture.CreateMatch(host);
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership);
+        var clock = Substitute.For<IClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+            fixture.MatchPersistence, clock);
 
         await handler.HandleAsync(host, ReaderFor(4));
 

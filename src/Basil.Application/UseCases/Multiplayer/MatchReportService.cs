@@ -1,23 +1,17 @@
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.UseCases.Multiplayer;
 
-/// <summary>
-///     Builds the TRT ("biên bản trận đấu" — match report) the user asked for: no dedicated table,
-///     assembled on read from Matches/Rounds/Scores plus, for a room that's still open, the live
-///     <see cref="MatchSession" /> in the registry. A round's Scores rows populate as soon as each
-///     player submits (score submission links to <see cref="MatchSession.CurrentRoundId" /> directly —
-///     see ScoreSubmissionUseCase's doc comment), so an in-progress round's partial results show up
-///     here too, not just completed ones.
-/// </summary>
 public sealed class MatchReportService(
     IMatchRegistry matchRegistry,
     IMatchPersistenceRepository matchPersistence,
-    IScoreRepository scores)
+    IScoreRepository scores,
+    IPlayerSessionRegistry sessionRegistry)
 {
     public async Task<MatchReport?> BuildAsync(int matchId, CancellationToken cancellationToken = default)
     {
@@ -32,84 +26,234 @@ public sealed class MatchReportService(
             rounds.Add(BuildRound(round, roundScores));
         }
 
+        var events = await matchPersistence.FetchEventsAsync(matchId, cancellationToken);
+        var reportEvents = events.Select(e => new MatchReportEvent(
+            e.EventType, ((MatchEventType)e.EventType).ToString(),
+            e.ActorUserId, e.ActorUserName,
+            e.TargetUserId, e.TargetUserName,
+            e.Timestamp, e.Detail)).ToArray();
+
         var live = matchRegistry.GetByDbId(matchId);
-        MatchReportSlot[]? liveSlots = null;
-        int? currentMapId = null;
+        MatchReportLiveInfo? liveInfo = null;
         if (live is not null)
         {
-            liveSlots = live.Slots
-                .Select((slot, index) => new MatchReportSlot(index, slot.PlayerId, slot.Status.ToString(),
-                    slot.Team.ToString(), (int)slot.Mods))
+            var host = live.HostId > 0 ? sessionRegistry.GetById(live.HostId) : null;
+            var referees = live.Referees
+                .Select(id =>
+                {
+                    var s = sessionRegistry.GetById(id);
+                    return new UserBrief(id, s?.Name, s?.Geoloc.CountryAcronym);
+                })
                 .ToArray();
-            currentMapId = live.MapId;
+            var liveSlots = live.Slots
+                .Select((slot, index) =>
+                {
+                    var s = slot.PlayerId is { } pid ? sessionRegistry.GetById(pid) : null;
+                    return new LiveSlotInfo(index, slot.PlayerId, s?.Name, s?.Geoloc.CountryAcronym,
+                        slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods);
+                })
+                .ToArray();
+
+            liveInfo = new MatchReportLiveInfo(
+                host is not null ? new UserBrief(host.Id, host.Name, host.Geoloc.CountryAcronym) : null,
+                referees, liveSlots,
+                live.MapId, live.MapMd5, live.Mode, live.WinCondition, live.TeamType,
+                (int)live.Mods, live.Freemods, live.InProgress);
         }
 
         return new MatchReport(
-            matchRow.Id, matchRow.Name, (GameMode)matchRow.Mode, (MatchWinConditions)matchRow.WinCondition,
-            (MatchTeamTypes)matchRow.TeamType, matchRow.HostId, matchRow.CreatedAt, matchRow.EndedAt,
-            live is not null, liveSlots, currentMapId, rounds.ToArray());
+            matchRow.Id, matchRow.Name, matchRow.CreatedAt, matchRow.EndedAt,
+            liveInfo, reportEvents, rounds.ToArray());
     }
 
     private static MatchReportRound BuildRound(RoundRow round, IReadOnlyList<RoundScoreRow> roundScores)
     {
         int? winnerUserId = null;
+        string? winnerUserName = null;
         string? winnerTeam = null;
-
-        if (roundScores.Count > 0)
+        var winMetric = round.WinCondition switch
         {
+            (int)MatchWinConditions.Score => "score",
+            (int)MatchWinConditions.Accuracy => "accuracy",
+            (int)MatchWinConditions.Combo => "combo",
+            (int)MatchWinConditions.ScoreV2 => "scorev2",
+            _ => "score"
+        };
+        long? winDiff = null;
+
+        if (roundScores.Count == 0)
+        {
+            // No players
+        }
+        else if (roundScores.Count == 1)
+        {
+            // One player — they win by default, diff = 0
+            var only = roundScores[0];
             if (roundScores.Any(s => s.Team is not null and not (int)MatchTeams.Neutral))
             {
-                var topTeam = roundScores
-                    .GroupBy(s => s.Team)
-                    .OrderByDescending(g => g.Sum(s => s.Score))
-                    .First();
-                winnerTeam = ((MatchTeams)(topTeam.Key ?? (int)MatchTeams.Neutral)).ToString();
+                winnerTeam = ((MatchTeams)(only.Team ?? (int)MatchTeams.Neutral)).ToString();
+                winnerUserId = only.UserId;
+                winnerUserName = only.UserName;
             }
             else
             {
-                winnerUserId = roundScores.OrderByDescending(s => s.Score).First().UserId;
+                winnerUserId = only.UserId;
+                winnerUserName = only.UserName;
+            }
+            winDiff = 0;
+        }
+        else if (roundScores.Any(s => s.Team is not null and not (int)MatchTeams.Neutral))
+        {
+            // Team mode (≥2 players)
+            var teams = roundScores
+                .Where(s => s.Team is not null && s.Team != (int)MatchTeams.Neutral)
+                .GroupBy(s => s.Team)
+                .ToList();
+
+            if (teams.Count < 2)
+            {
+                // Only one team has players — that team wins, diff = 0
+                winnerTeam = ((MatchTeams)(teams[0].Key ?? (int)MatchTeams.Neutral)).ToString();
+                winDiff = 0;
+            }
+            else
+            {
+                var sorted = teams
+                    .Select(g => new
+                    {
+                        Team = g.Key,
+                        Total = g.Sum(s => GetMetric(s, round.WinCondition)),
+                        Players = g.ToList()
+                    })
+                    .OrderByDescending(t => t.Total)
+                    .ToList();
+
+                if (sorted[0].Total == sorted[1].Total)
+                {
+                    // Draw — no winner, diff = 0
+                    winDiff = 0;
+                }
+                else
+                {
+                    winnerTeam = ((MatchTeams)(sorted[0].Team ?? (int)MatchTeams.Neutral)).ToString();
+                    winDiff = sorted[0].Total - sorted[1].Total;
+                }
+            }
+        }
+        else
+        {
+            // Individual mode (≥2 players)
+            var sorted = roundScores
+                .Select(s => new { s.UserId, s.UserName, Metric = GetMetric(s, round.WinCondition) })
+                .OrderByDescending(s => s.Metric)
+                .ToList();
+
+            if (sorted[0].Metric == sorted[1].Metric)
+            {
+                // Draw — no winner, diff = 0
+                winDiff = 0;
+            }
+            else
+            {
+                winnerUserId = sorted[0].UserId;
+                winnerUserName = sorted[0].UserName;
+                winDiff = sorted[0].Metric - sorted[1].Metric;
             }
         }
 
         var reportScores = roundScores.Select(s => new MatchReportScore(
-                s.UserId, s.UserName, s.Team is null ? null : ((MatchTeams)s.Team.Value).ToString(), s.Mods,
-                s.Score, s.Acc, s.MaxCombo, s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu, s.Grade, s.Perfect))
+                s.UserId, s.UserName, s.Team is null ? null : ((MatchTeams)s.Team.Value).ToString(),
+                s.Mods, s.Score, s.Acc, s.MaxCombo,
+                s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu,
+                s.Grade, s.Perfect, s.SubmittedAt))
             .ToArray();
 
         return new MatchReportRound(
-            round.RoundIndex, round.BeatmapId, round.MapMd5, round.Mods, round.StartedAt, round.EndedAt,
-            winnerUserId, winnerTeam, reportScores);
+            round.RoundIndex, round.BeatmapId, round.MapMd5,
+            round.BeatmapArtist, round.BeatmapTitle, round.BeatmapVersion, round.BeatmapCreator,
+            round.Mode, round.WinCondition, round.TeamType,
+            round.Mods, round.Aborted, round.StartedAt, round.EndedAt,
+            winnerUserId, winnerUserName, winnerTeam,
+            winMetric, winDiff, reportScores);
+    }
+
+    private static long GetMetric(RoundScoreRow s, int winCondition)
+    {
+        return winCondition switch
+        {
+            (int)MatchWinConditions.Accuracy => (long)(s.Acc * 1000), // preserve 3 decimal places
+            (int)MatchWinConditions.Combo => s.MaxCombo,
+            _ => s.Score
+        };
     }
 }
 
-/// <summary>The TRT (match report) DTO — see <see cref="MatchReportService" />.</summary>
+/// <summary>The TRT (match report) DTO.</summary>
 public sealed record MatchReport(
     int MatchId,
     string Name,
+    DateTime CreatedAt,
+    DateTime? EndedAt,
+    MatchReportLiveInfo? Live,
+    MatchReportEvent[] Events,
+    MatchReportRound[] Rounds);
+
+/// <summary>Live room state — null when match is closed.</summary>
+public sealed record MatchReportLiveInfo(
+    UserBrief? Host,
+    UserBrief[] Referees,
+    LiveSlotInfo[] Slots,
+    int CurrentMapId,
+    string CurrentMapMd5,
     GameMode Mode,
     MatchWinConditions WinCondition,
     MatchTeamTypes TeamType,
-    int HostId,
-    DateTime CreatedAt,
-    DateTime? EndedAt,
-    bool IsLive,
-    MatchReportSlot[]? LiveSlots,
-    int? CurrentMapId,
-    MatchReportRound[] Rounds);
+    int Mods,
+    bool Freemods,
+    bool InProgress);
 
-/// <summary>One of a live match's 16 slots. Null (not present) once the match is no longer live.</summary>
-public sealed record MatchReportSlot(int SlotIndex, int? UserId, string Status, string Team, int Mods);
+/// <summary>One of a live match's 16 slots.</summary>
+public sealed record LiveSlotInfo(
+    int SlotIndex,
+    int? UserId,
+    string? UserName,
+    string? Country,
+    string Status,
+    string Team,
+    int Mods);
 
-/// <summary>One beatmap played within the match. Winner fields are both null until any score lands.</summary>
+/// <summary>One match lifecycle event.</summary>
+public sealed record MatchReportEvent(
+    int EventType,
+    string EventTypeName,
+    int? ActorUserId,
+    string? ActorUserName,
+    int? TargetUserId,
+    string? TargetUserName,
+    DateTime Timestamp,
+    string? Detail);
+
+/// <summary>One beatmap played within the match.</summary>
 public sealed record MatchReportRound(
     int RoundIndex,
     int BeatmapId,
     string MapMd5,
+    string BeatmapArtist,
+    string BeatmapTitle,
+    string BeatmapVersion,
+    string BeatmapCreator,
+    int Mode,
+    int WinCondition,
+    int TeamType,
     int Mods,
+    bool Aborted,
     DateTime StartedAt,
     DateTime? EndedAt,
     int? WinnerUserId,
+    string? WinnerUserName,
     string? WinnerTeam,
+    string? WinMetric,
+    long? WinDiff,
     MatchReportScore[] Scores);
 
 public sealed record MatchReportScore(
@@ -127,4 +271,5 @@ public sealed record MatchReportScore(
     int NGeki,
     int NKatu,
     string Grade,
-    bool Perfect);
+    bool Perfect,
+    DateTime SubmittedAt);

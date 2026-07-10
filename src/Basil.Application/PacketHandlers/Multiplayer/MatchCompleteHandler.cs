@@ -49,7 +49,7 @@ public sealed class MatchCompleteHandler(
 
             if (match.CurrentRoundId is { } roundId)
             {
-                await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime);
+                await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime, false);
                 match.CurrentRoundId = null;
             }
 

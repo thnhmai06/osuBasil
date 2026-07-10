@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
@@ -33,7 +34,7 @@ public class LogoutHandlerTests
                 Substitute.For<IPlayerSessionRegistry>(),
                 new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
                 Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(),
-                Substitute.For<IClock>())), _clock);
+                Substitute.For<IClock>(), Substitute.For<IMapRepository>())), _clock);
     }
 
     [Fact]

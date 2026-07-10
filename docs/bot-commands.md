@@ -198,7 +198,7 @@ Không giới hạn số phòng cùng lúc tạo được. Không truyền tên 
 > dòng này - Basil không có 2 trang đó (offline, không có lịch sử/hồ sơ public) nên chỉ hiện text/số thô: `#42`
 > thay cho link lịch sử, user ID số (`7`, `12`) thay cho link hồ sơ. Muốn tra username từ ID, dùng
 > `GET /users/{id}` phía admin (xem [`api-external.md`](api-external.md#42-user)) hoặc TRT snapshot
-> (`GET /multi/{id}`, field `liveSlots[].userId`). Tag cuối mỗi slot (`[Host]`, `[NoFail]`, `[Host / NoFail]`)
+> (`GET /multi/{id}`, field `live.slots[].userId`). Tag cuối mỗi slot (`[Host]`, `[NoFail]`, `[Host / NoFail]`)
 > gộp vai trò host + mod riêng của người đó khi đang freemod.
 
 ```

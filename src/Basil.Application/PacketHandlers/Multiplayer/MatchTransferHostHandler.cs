@@ -1,3 +1,5 @@
+using Basil.Application.Abstractions;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
 using Basil.Application.UseCases.Multiplayer;
@@ -5,10 +7,11 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchTransferHost.</summary>
 public sealed class MatchTransferHostHandler(
     IPlayerSessionRegistry sessionRegistry,
-    MatchMembershipService matchMembership) : IBanchoPacketHandler
+    MatchMembershipService matchMembership,
+    IMatchPersistenceRepository matchPersistence,
+    IClock clock) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchTransferHost;
 
@@ -27,9 +30,18 @@ public sealed class MatchTransferHostHandler(
             var targetId = match.Slots[slotId].PlayerId;
             if (targetId is null) return;
 
+            var prevHostId = match.HostId;
             match.HostId = targetId.Value;
-            sessionRegistry.GetById(targetId.Value)?.Enqueue(ServerPacketWriter.MatchTransferHost());
+
+            var targetPlayer = sessionRegistry.GetById(targetId.Value);
+            targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
             matchMembership.EnqueueState(match);
+
+            var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
+            _ = matchPersistence.CreateEventAsync(new MatchEventRow(
+                match.DbId, (int)MatchEventType.HostGranted,
+                prevHostId, prevHostName, targetId, targetPlayer?.Name,
+                clock.UtcNow.UtcDateTime, null));
         }
         finally
         {

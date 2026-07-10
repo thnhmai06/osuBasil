@@ -222,6 +222,7 @@ public sealed class ScoreSubmissionUseCase(
             score.PlayerId,
             score.Perfect,
             score.ClientChecksum,
+            score.ServerTime,
             roundId,
             team);
     }
