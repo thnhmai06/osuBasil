@@ -112,6 +112,12 @@ public sealed class MatchMembershipService(
             return false;
         }
 
+        if (match.IsPrivate && (player.Priv & Privileges.Staff) == 0 && !match.InvitedIds.Contains(player.Id))
+        {
+            player.Enqueue(ServerPacketWriter.MatchJoinFail());
+            return false;
+        }
+
         int slotId;
         if (player.Id != match.HostId)
         {
@@ -290,7 +296,8 @@ public sealed class MatchMembershipService(
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is not null) channelMembership.BroadcastToMembers(channel, data, immune);
 
-        BroadcastToNonEmptyLobby(data, lobby);
+        if (!match.IsPrivate)
+            BroadcastToNonEmptyLobby(data, lobby);
     }
 
     public void EnqueueChat(MatchSession match, string senderName, int senderId, string text)
@@ -308,8 +315,9 @@ public sealed class MatchMembershipService(
             channelMembership.BroadcastToMembers(channel,
                 ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match)));
 
-        BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false),
-            lobby);
+        if (!match.IsPrivate)
+            BroadcastToNonEmptyLobby(
+                ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
 
         eventBus.PublishMain(match.DbId,
             JsonSerializer.SerializeToUtf8Bytes(MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry)));

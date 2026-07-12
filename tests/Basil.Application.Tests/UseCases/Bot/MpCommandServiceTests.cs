@@ -910,6 +910,110 @@ public class MpCommandServiceTests
         Assert.Contains("No active match", reply);
     }
 
+    [Fact]
+    public async Task HandleAsync_Private_NonReferee_SilentlyIgnored()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var other = MultiplayerTestSupport.MakePlayer(2, "other");
+        _fixture.RegisterAll(host, other);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().HandleAsync(other, match, "private", []);
+
+        Assert.Null(reply);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Private_Referee_ShowsStatus()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().HandleAsync(host, match, "private", []);
+
+        Assert.Contains("not private", reply);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Private_Referee_SetsTrue()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().HandleAsync(host, match, "private", ["1"]);
+
+        Assert.True(match.IsPrivate);
+        Assert.Contains("now private", reply);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Private_Referee_SetsFalse()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+        match.IsPrivate = true;
+
+        var reply = await MakeService().HandleAsync(host, match, "private", ["0"]);
+
+        Assert.False(match.IsPrivate);
+        Assert.Contains("now public", reply);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Makeprivate_SetsPrivate()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().HandleAsync(host, match, "makeprivate", []);
+
+        Assert.True(match.IsPrivate);
+        Assert.Contains("now private", reply);
+    }
+
+    [Fact]
+    public async Task JoinAsync_NonExistent_ReturnsError()
+    {
+        var sender = MultiplayerTestSupport.MakePlayer(1, "player");
+        _fixture.RegisterAll(sender);
+
+        var reply = await MakeService().JoinAsync(sender, ["999"]);
+
+        Assert.Contains("No active match", reply);
+    }
+
+    [Fact]
+    public async Task JoinAsync_Private_Fails()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var player = MultiplayerTestSupport.MakePlayer(2, "player");
+        _fixture.RegisterAll(host, player);
+        var match = _fixture.CreateMatch(host);
+        match.IsPrivate = true;
+
+        var reply = await MakeService().JoinAsync(player, ["0"]);
+
+        Assert.Contains("private", reply);
+    }
+
+    [Fact]
+    public async Task JoinAsync_Normal_Succeeds()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var player = MultiplayerTestSupport.MakePlayer(2, "player");
+        _fixture.RegisterAll(host, player);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().JoinAsync(player, ["0"]);
+
+        Assert.NotNull(reply);
+        Assert.Contains("Joined match", reply);
+    }
+
     private static User MakeUser(int id, string name)
     {
         return new User(id, name, name.ToLowerInvariant(), 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);

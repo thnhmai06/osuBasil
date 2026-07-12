@@ -29,7 +29,8 @@ public sealed class CommandDispatcher(
         new("!roll [max]", "roll a random number from 0 to max (default 100)"),
         new("!where <username>", "show a player's country"),
         new("!faq <entry>|list", "print a FAQ entry, or list every entry"),
-        new("!mp make/makeprivate <name>", "create a tournament room from anywhere, scoping you to it"),
+        new("!mp make <name>", "create a tournament room from anywhere, scoping you to it"),
+        new("!mp join <id> [password]", "join a match by id (private rooms need an invite from the host/a referee)"),
         new("!mp in [match_id]", "target/show a match you're not physically in (needs referee rights there)"),
         new("!mp help", "list multiplayer subcommands (usable while scoped to a match)")
     ];
@@ -37,7 +38,7 @@ public sealed class CommandDispatcher(
     private static readonly string HelpText = BuildHelpText(ChatCommands);
 
     private static readonly HashSet<string> NonChainableMpSubcommands =
-        new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "makeprivate", "in" };
+        new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "in", "join" };
 
     public async Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
         bool prefixOptional = false, CancellationToken cancellationToken = default)
@@ -83,11 +84,14 @@ public sealed class CommandDispatcher(
 
                 switch (subcommand)
                 {
-                    // `make`/`makeprivate` create a match, and `in` targets one the sender may not be in at
-                    // all — all three run with no channel-derived match scope (reachable via PM to the bot),
-                    // unlike every other !mp subcommand — see MpCommandService.MakeAsync/SetScopeAsync.
-                    case "make" or "makeprivate":
+                    // `make` creates a match, `join` targets any match by wire id, and `in` targets one
+                    // the sender may not be in at all — all three run with no channel-derived match scope
+                    // (reachable via PM to the bot), unlike every other !mp subcommand — see
+                    // MpCommandService.MakeAsync/JoinAsync/SetScopeAsync.
+                    case "make":
                         return await mpCommands.MakeAsync(sender, args[1..], cancellationToken);
+                    case "join":
+                        return await mpCommands.JoinAsync(sender, args[1..], cancellationToken);
                     case "in":
                         return mpCommands.SetScopeAsync(sender, args[1..]);
                 }
@@ -131,8 +135,8 @@ public sealed class CommandDispatcher(
     /// <summary>
     ///     Runs a `;`/`&amp;&amp;`-chained line of `!mp` subcommands sequentially against the resolved
     ///     scope. Only chainable when the sender is currently a referee of that scope, and only for
-    ///     `!mp` subcommands that operate on it — `make`/`makeprivate`/`in`/`help` don't (they either
-    ///     create a match or change scope elsewhere), and a bare `!roll`/`!where`/`!faq` segment isn't a
+    ///     `!mp` subcommands that operate on it — `make`/`join`/`in`/`help` don't (they either
+    ///     create/match/change scope elsewhere), and a bare `!roll`/`!where`/`!faq` segment isn't a
     ///     `!mp` command at all, so any of those inside a chain reject the whole line rather than run
     ///     part of it silently.
     /// </summary>

@@ -162,7 +162,7 @@ public class CommandDispatcherTests
     }
 
     [Fact]
-    public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_Succeeds()
+    public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_ReturnsNull()
     {
         var fixture = new MultiplayerTestSupport.Fixture();
         var dispatcher = MakeDispatcher(fixture: fixture);
@@ -171,9 +171,79 @@ public class CommandDispatcherTests
 
         var reply = await dispatcher.DispatchAsync(sender, "!mp makeprivate Room", null);
 
+        Assert.Null(reply);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MpMakeprivateWithMatchScope_SetsPrivate()
+    {
+        var fixture = new MultiplayerTestSupport.Fixture();
+        var dispatcher = MakeDispatcher(fixture: fixture);
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.CreateMatch(host);
+
+        var reply = await dispatcher.DispatchAsync(host, "!mp makeprivate", match);
+
+        Assert.True(match.IsPrivate);
+        Assert.Contains("now private", reply);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MpJoin_NonExistent_ReturnsError()
+    {
+        var dispatcher = MakeDispatcher();
+        var sender = MultiplayerTestSupport.MakePlayer(1, "player");
+
+        var reply = await dispatcher.DispatchAsync(sender, "!mp join 999", null);
+
+        Assert.Contains("No active match", reply);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MpJoin_Private_Fails()
+    {
+        var fixture = new MultiplayerTestSupport.Fixture();
+        var dispatcher = MakeDispatcher(fixture: fixture);
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var player = MultiplayerTestSupport.MakePlayer(2, "player");
+        fixture.RegisterAll(host, player);
+        var match = fixture.CreateMatch(host);
+        match.IsPrivate = true;
+
+        var reply = await dispatcher.DispatchAsync(player, "!mp join 0", null);
+
+        Assert.Contains("private", reply);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MpJoin_Normal_Succeeds()
+    {
+        var fixture = new MultiplayerTestSupport.Fixture();
+        var dispatcher = MakeDispatcher(fixture: fixture);
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var player = MultiplayerTestSupport.MakePlayer(2, "player");
+        fixture.RegisterAll(host, player);
+        var match = fixture.CreateMatch(host);
+
+        var reply = await dispatcher.DispatchAsync(player, "!mp join 0", null);
+
         Assert.NotNull(reply);
-        Assert.Contains("Created the match", reply);
-        Assert.NotNull(sender.Match);
+        Assert.Contains("Joined match", reply);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MpPrivate_Referee_ShowsStatus()
+    {
+        var fixture = new MultiplayerTestSupport.Fixture();
+        var dispatcher = MakeDispatcher(fixture: fixture);
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.CreateMatch(host);
+
+        var reply = await dispatcher.DispatchAsync(host, "!mp private", match);
+
+        Assert.Contains("not private", reply);
     }
 
     [Fact]

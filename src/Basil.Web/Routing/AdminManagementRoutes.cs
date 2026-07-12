@@ -5,6 +5,8 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Beatmaps;
@@ -231,6 +233,32 @@ internal static class AdminManagementRoutes
             await matchPersistence.DeleteMatchAsync(id, cancellationToken);
             return Results.NoContent();
         });
+
+        admin.MapPut("/multi/{id:int}/privacy", async (int id, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var body = await context.Request.ReadFromJsonAsync<PrivacyBody>(cancellationToken);
+            if (body is null) return Results.BadRequest();
+
+            var matchRegistry = context.RequestServices.GetRequiredService<IMatchRegistry>();
+            var match = matchRegistry.GetByDbId(id);
+            if (match is null) return Results.NotFound();
+
+            await match.Lock.WaitAsync(cancellationToken);
+            try
+            {
+                match.IsPrivate = body.IsPrivate;
+            }
+            finally
+            {
+                match.Lock.Release();
+            }
+
+            var membership = context.RequestServices.GetRequiredService<MatchMembershipService>();
+            membership.EnqueueState(match);
+
+            return Results.Json(new { isPrivate = match.IsPrivate });
+        });
     }
 
     private static void MapSeasonals(RouteGroupBuilder admin)
@@ -274,3 +302,5 @@ internal static class AdminManagementRoutes
 public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Priv);
 
 public sealed record UpdateUserRequest(string? Name, string? Country, int? Priv);
+
+public sealed record PrivacyBody(bool IsPrivate);

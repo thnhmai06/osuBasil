@@ -63,4 +63,80 @@ public class JoinMatchHandlerTests
 
         Assert.Same(match, guest.Match);
     }
+
+    [Fact]
+    public async Task Handle_PrivateMatch_CorrectPassword_UninvitedRejected()
+    {
+        var fixture = new Fixture();
+        var host = MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
+            .GetAwaiter().GetResult()!;
+        match.IsPrivate = true;
+
+        var guest = MakePlayer(2, "guest");
+        fixture.RegisterAll(host, guest);
+        var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+        await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+        Assert.Null(guest.Match);
+        Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
+    }
+
+    [Fact]
+    public async Task Handle_PrivateMatch_InvitedGuest_Succeeds()
+    {
+        var fixture = new Fixture();
+        var host = MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
+            .GetAwaiter().GetResult()!;
+        match.IsPrivate = true;
+
+        var guest = MakePlayer(2, "guest");
+        fixture.RegisterAll(host, guest);
+        match.AddInvite(guest.Id);
+        var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+        await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+        Assert.Same(match, guest.Match);
+    }
+
+    [Fact]
+    public async Task Handle_PrivateMatch_HostRejoinsWithoutInvite_Rejected()
+    {
+        var fixture = new Fixture();
+        var host = MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
+            .GetAwaiter().GetResult()!;
+        match.IsPrivate = true;
+        fixture.MatchMembership.Leave(host, match);
+        var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+        await handler.HandleAsync(host, ReaderFor(match.Id, ""));
+
+        Assert.Null(host.Match);
+        Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(host.Dequeue()));
+    }
+
+    [Fact]
+    public async Task Handle_PrivateMatch_HostRejoinsWithInvite_Succeeds()
+    {
+        var fixture = new Fixture();
+        var host = MakePlayer(1, "host");
+        fixture.RegisterAll(host);
+        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
+            .GetAwaiter().GetResult()!;
+        match.IsPrivate = true;
+        fixture.MatchMembership.Leave(host, match);
+        match.AddInvite(host.Id);
+        var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+        await handler.HandleAsync(host, ReaderFor(match.Id, ""));
+
+        Assert.Same(match, host.Match);
+    }
 }

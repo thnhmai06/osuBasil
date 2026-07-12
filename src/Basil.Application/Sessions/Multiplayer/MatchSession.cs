@@ -31,6 +31,7 @@ public sealed class MatchSession(
     bool createdViaMakeCommand = false)
 {
     private readonly HashSet<int> _bannedIds = [];
+    private readonly HashSet<int> _invitedIds = [];
     private readonly HashSet<int> _referees = [];
     private readonly HashSet<int> _tourneyClients = [];
 
@@ -67,6 +68,20 @@ public sealed class MatchSession(
     ///     per-slot lock) and by `!mp size` shrinking the room.
     /// </summary>
     public bool IsLocked { get; set; }
+
+    /// <summary>
+    ///     Set by <c>!mp private [0|1]</c> — when <c>true</c>, the room cannot be (re)joined by anyone
+    ///     but staff or <see cref="InvitedIds" />, via any path (<c>!mp join</c>, the native client
+    ///     join packet, or an <c>osump://</c> URL) — see
+    ///     <see cref="Basil.Application.UseCases.Multiplayer.MatchMembershipService.Join" />. The host
+    ///     is NOT exempt: hosting only grants in-room settings control, not a standing invite, so a
+    ///     host who leaves a private room needs a referee's <c>!mp invite</c> like anyone else to get
+    ///     back in. Also hidden from <c>#lobby</c>. Distinct from <see cref="IsLocked" />, which blocks
+    ///     every non-member outright regardless of invite status. Defaults to <c>false</c> for all new
+    ///     rooms. Not persisted to the database — a room that closes while private loses this flag
+    ///     (and its invite list).
+    /// </summary>
+    public bool IsPrivate { get; set; }
 
     /// <summary>
     ///     Teardown-strategy marker, not a privacy/history flag: true for rooms made via `!mp make`,
@@ -115,6 +130,9 @@ public sealed class MatchSession(
 
     public IReadOnlyCollection<int> BannedIds => _bannedIds;
 
+    /// <summary>Players `!mp invite` has been used on — see <see cref="IsPrivate" />'s doc comment.</summary>
+    public IReadOnlyCollection<int> InvitedIds => _invitedIds;
+
     public void AddReferee(int playerId)
     {
         _referees.Add(playerId);
@@ -133,6 +151,11 @@ public sealed class MatchSession(
     public void RemoveBan(int playerId)
     {
         _bannedIds.Remove(playerId);
+    }
+
+    public void AddInvite(int playerId)
+    {
+        _invitedIds.Add(playerId);
     }
 
     /// <summary>

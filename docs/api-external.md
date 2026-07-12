@@ -114,6 +114,27 @@ Notes:
 
 ---
 
+### 1.2 Match privacy
+
+**`GET /api/multi/{id}/privacy`** — public, no admin key required. Reads the current privacy status of a match.
+
+```
+GET https://api.basil.example/multi/42/privacy
+```
+
+Response — `200 OK`:
+```jsonc
+{
+  "isPrivate": false
+}
+```
+
+- Returns the live `IsPrivate` flag for matches still open in memory.
+- Closed matches (or matches not currently live) return `isPrivate: false` (the flag is not persisted).
+- **Errors**: `404` empty body if `{id}` does not exist in `Matches` at all.
+
+---
+
 ## 2. Live channels via WebSocket
 
 Three independent sockets, all scoped to the same match `{id}`. All three **only push data from server to client** — no upload messages are read (server ignores them). Payloads use **`PascalCase`** (unlike the JSON snapshot in section 1). A slow client will have its oldest frames dropped (buffer of 32 frames, no waiting).
@@ -371,8 +392,9 @@ Response: updated `User` object. `404` if `{id}` does not exist.
 | --- | --- |
 | `GET /matches` | List all stored matches |
 | `DELETE /matches/{id}` | Delete one match (and all its rounds/scores) |
+| `PUT /multi/{id}/privacy` | Set a live match's private status (`X-Admin-Key` required) |
 
-`GET /matches` → array (`mode`/`winCondition`/`teamType`/`hostId` are no longer at the Match level — these fields live in each `rounds` entry of `GET /multi/{id}`):
+`GET /matches` → array:
 
 ```jsonc
 [
@@ -382,6 +404,17 @@ Response: updated `User` object. `404` if `{id}` does not exist.
   }
 ]
 ```
+
+`PUT /multi/{id}/privacy` — request body:
+```jsonc
+{ "isPrivate": true }
+```
+
+- Response `200`: `{ "isPrivate": true }`
+- Response `400`: invalid body
+- Response `401`: missing/wrong `X-Admin-Key`
+- Response `404`: match `{id}` not found or not currently live
+- Broadcasts the change to the match's channel and (if becoming public) to `#lobby`.
 
 `DELETE /matches/{id}` → `204` (cascading delete of `Rounds`/`Scores` in one transaction), or `404`.
 

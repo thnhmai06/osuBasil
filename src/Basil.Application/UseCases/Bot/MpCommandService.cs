@@ -8,6 +8,7 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
@@ -16,14 +17,15 @@ namespace Basil.Application.UseCases.Bot;
 /// <summary>
 ///     `!mp` subcommands, matched against real osu! Bancho's own wiki/chat behaviour rather than
 ///     bancho.py — see docs/scope-decisions.md for what's a deliberate Basil-only addition vs a real
-///     Bancho command. `make`/`makeprivate` (<see cref="MakeAsync" />) is one shared implementation,
-///     `makeprivate` purely an alias (there is no private-match-history concept in this codebase).
-///     Scrim/mappool commands are deliberately NOT ported (scrim engine was deleted wholesale — not
-///     resurrected here without being asked). Every subcommand except `help`/`make`/`makeprivate`/`in`
-///     requires <see cref="MatchSession.IsReferee" /> — unmet permission is a silent no-op (no error
-///     reply), not an upgraded error message. Referee is a pure permission flag (doesn't require
-///     physical presence in the room); the host is NOT automatically a referee — hosting only grants
-///     direct in-client settings control, which ranks below referee authority for `!mp` purposes.
+///     Bancho command. <c>makeprivate</c> is no longer an alias of <c>make</c> — it now redirects to
+///     <see cref="SetPrivate" /> (setting the room private), and <c>!mp private [0|1]</c> is the
+///     canonical way to view/change privacy. <c>!mp join &lt;id&gt;</c> bypasses the referee gate
+///     (routed from <see cref="CommandDispatcher" /> directly). Every subcommand except
+///     <c>help</c>/<c>make</c>/<c>join</c>/<c>in</c> requires <see cref="MatchSession.IsReferee" /> —
+///     unmet permission is a silent no-op (no error reply), not an upgraded error message. Referee is
+///     a pure permission flag (doesn't require physical presence in the room); the host is NOT
+///     automatically a referee — hosting only grants direct in-client settings control, which ranks
+///     below referee authority for `!mp` purposes.
 /// </summary>
 public sealed class MpCommandService(
     MatchMembershipService matchMembership,
@@ -47,6 +49,7 @@ public sealed class MpCommandService(
         new("!mp settings", "show match id, map, team type, win condition, mods, and slots"),
         new("!mp lock", "lock the room, blocking new joins"),
         new("!mp unlock", "unlock the room"),
+        new("!mp private [0|1]", "show or set the room's private status (hidden from lobby, invite-only)"),
         new("!mp size <1-16>", "set the number of available slots"),
         new("!mp move <name> <slot 1-16>", "move a player to another slot"),
         new("!mp host <name>", "transfer host to another player"),
@@ -111,6 +114,8 @@ public sealed class MpCommandService(
             "settings" => (true, Settings(match)),
             "lock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, true)))),
             "unlock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, false)))),
+            "private" => (true, SetPrivate(match, args)),
+            "makeprivate" => (true, SetPrivate(match, ["1"])),
             "size" => await RunLockedAsync(match, () => Task.FromResult(SetSize(match, args))),
             "move" => await RunLockedAsync(match, () => Task.FromResult(MoveSlot(match, args))),
             "host" => await RunLockedAsync(match, () => Task.FromResult(SetHost(match, args))),
@@ -169,6 +174,40 @@ public sealed class MpCommandService(
         sender.MpScopeMatchId = match.DbId;
         return
             $"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.";
+    }
+
+    /// <summary>
+    ///     Backs `!mp join &lt;id&gt; [password]` — lets any player join a match by its wire-format id
+    ///     (0-63). A private match rejects everyone but staff and invitees, host included (see
+    ///     <see cref="MatchSession.IsPrivate" />); locked rooms and banned players are rejected too,
+    ///     with a descriptive message. Runs with no <see cref="MatchSession" /> scope (routed directly
+    ///     from <see cref="CommandDispatcher" />, bypassing scope resolution).
+    /// </summary>
+    public async Task<string?> JoinAsync(PlayerSession sender, IReadOnlyList<string> args,
+        CancellationToken cancellationToken = default)
+    {
+        if (args.Count < 1 || !int.TryParse(args[0], out var matchId))
+            return "Usage: !mp join <id> [password]";
+
+        var match = matchRegistry.GetById(matchId);
+        if (match is null) return $"No active match with id {matchId}.";
+        if (match.IsPrivate && (sender.Priv & Privileges.Staff) == 0 && !match.InvitedIds.Contains(sender.Id))
+            return $"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.";
+        if (sender.Match is not null) return "You're already in a match.";
+        if (match.BannedIds.Contains(sender.Id)) return "You're banned from this match.";
+
+        await match.Lock.WaitAsync(cancellationToken);
+        try
+        {
+            var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
+            return matchMembership.Join(sender, match, password)
+                ? $"Joined match #{matchId} {match.Name}"
+                : "Failed to join the match.";
+        }
+        finally
+        {
+            match.Lock.Release();
+        }
     }
 
     /// <summary>
@@ -379,6 +418,23 @@ public sealed class MpCommandService(
         return "Changed the match password";
     }
 
+    private string? SetPrivate(MatchSession match, IReadOnlyList<string> args)
+    {
+        if (args.Count == 0)
+            return $"This match is {(match.IsPrivate ? "private" : "not private")}.";
+
+        if (args[0] is "0" or "1")
+        {
+            match.IsPrivate = args[0] == "1";
+            matchMembership.EnqueueState(match);
+            return match.IsPrivate
+                ? "The match is now private. It will be hidden from the lobby."
+                : "The match is now public.";
+        }
+
+        return "Usage: !mp private [0|1]";
+    }
+
     private (bool Success, string? Reply) Invite(PlayerSession sender, MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 1) return (false, "Usage: !mp invite <name>");
@@ -388,6 +444,7 @@ public sealed class MpCommandService(
         if (target is null) return (false, $"User not found: {targetName}");
         if (target.Match == match) return (false, "User is already in the room");
 
+        match.AddInvite(target.Id);
         target.Enqueue(ServerPacketWriter.MatchInvite(sender.Id, sender.Name, match.Embed, target.Name));
         return (true, $"Invited {target.Name} to the room");
     }

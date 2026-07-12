@@ -4,8 +4,10 @@ using System.Text;
 using System.Security.Cryptography;
 using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
@@ -695,6 +697,23 @@ public static class BanchoHostGroups
             }
 
             await context.Response.WriteAsJsonAsync(report, cancellationToken);
+        });
+
+        // GET — read a match's privacy status. Public (no auth). Returns the current runtime
+        // IsPrivate flag for live matches; closed matches default to false.
+        group.MapGet("/multi/{id:int}/privacy", async (int id, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var matchRegistry = context.RequestServices.GetRequiredService<IMatchRegistry>();
+            var match = matchRegistry.GetByDbId(id);
+            if (match is not null)
+                return Results.Json(new { isPrivate = match.IsPrivate });
+
+            var matchPersistence = context.RequestServices.GetRequiredService<IMatchPersistenceRepository>();
+            var row = await matchPersistence.FetchMatchAsync(id, cancellationToken);
+            return row is not null
+                ? Results.Json(new { isPrivate = false })
+                : Results.NotFound();
         });
 
         // WS-only — one player's live score, decoded from MatchScoreUpdate frames (see
