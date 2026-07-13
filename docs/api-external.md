@@ -249,10 +249,10 @@ GET https://api.basil.example/beatmapsets/5000
 All endpoints below require the header:
 
 ```
-X-Admin-Key: <value of Server:AdminKey configured in settings.toml>
+X-Admin-Key: <value of Server:AdminKey configured in Settings.toml>
 ```
 
-Missing or wrong header → `401`. **If admin has not configured `Server:AdminKey` in `settings.toml`, the entire group is locked hard** (no "open when key unset" mode).
+Missing or wrong header → `401`. **If admin has not configured `Server:AdminKey` in `Settings.toml`, the entire group is locked hard** (no "open when key unset" mode).
 
 ### 4.1 Beatmap
 

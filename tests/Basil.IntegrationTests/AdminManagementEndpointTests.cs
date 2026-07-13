@@ -211,7 +211,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             return Task.CompletedTask;
         }
 
-        public Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

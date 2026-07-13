@@ -123,7 +123,9 @@ internal static class AdminManagementRoutes
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx", body.Priv,
                 cancellationToken);
-            return Results.Json(user);
+            return user is null
+                ? Results.Conflict(new { error = "Username already exists." })
+                : Results.Json(user);
         });
 
         // Deliberately scoped to what IUserRepository already exposes (name/country/priv) rather

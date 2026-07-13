@@ -59,24 +59,32 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+    public async Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var id = await connection.ExecuteScalarAsync<int>(
-            """
-            INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv, CreationTime, LatestActivity)
-            VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv, unixepoch(), unixepoch());
-            SELECT last_insert_rowid();
-            """,
-            new
-            {
-                Name = name,
-                SafeName = SafeName.Make(name),
-                PwBcrypt = pwBcrypt,
-                Country = country,
-                Priv = priv ?? (int)(Privileges.Unrestricted | Privileges.Verified | Privileges.Supporter)
-            });
+        int id;
+        try
+        {
+            id = await connection.ExecuteScalarAsync<int>(
+                """
+                INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv, CreationTime, LatestActivity)
+                VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv, unixepoch(), unixepoch());
+                SELECT last_insert_rowid();
+                """,
+                new
+                {
+                    Name = name,
+                    SafeName = SafeName.Make(name),
+                    PwBcrypt = pwBcrypt,
+                    Country = country,
+                    Priv = priv ?? (int)(Privileges.Unrestricted | Privileges.Verified | Privileges.Supporter)
+                });
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT (Name/SafeName UNIQUE)
+        {
+            return null;
+        }
 
         return (await FetchByIdAsync(id, cancellationToken))!;
     }

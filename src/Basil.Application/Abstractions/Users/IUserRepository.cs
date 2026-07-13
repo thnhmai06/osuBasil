@@ -42,7 +42,8 @@ public interface IUserRepository
 
     Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
 
-    Task<User> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+    /// <summary>Null when Name/SafeName collides with an existing row (a concurrent registration won the race).</summary>
+    Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>For the management REST API's user listing.</summary>

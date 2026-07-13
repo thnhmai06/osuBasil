@@ -485,7 +485,12 @@ public static class BanchoHostGroups
 
         group.MapPost("/web/osu-comment.php", () => Results.Text("", "text/html", Encoding.UTF8));
 
-        // In-game registration: the client sends user[username], user[user_email], user[password].
+        // In-game registration: the client sends user[username], user[user_email], user[password],
+        // plus a `check` field — "0" is the real submit, any other value is a live-validation POST
+        // fired while the user is still filling the form (one per field, tabbing through). Only
+        // "0" may create the account; other values run every validation below and report errors
+        // the same way, but stop short of CreateAsync so filling in earlier fields doesn't already
+        // register the account before the user reaches submit.
         // The Email field must contain the AdminKey configured in [Server] section. If AdminKey is
         // unset, registration is disabled entirely. Registered users get default privileges
         // (Unrestricted | Verified | Supporter).
@@ -496,6 +501,7 @@ public static class BanchoHostGroups
             var username = context.Request.Form["user[username]"].FirstOrDefault();
             var email = context.Request.Form["user[user_email]"].FirstOrDefault();
             var password = context.Request.Form["user[password]"].FirstOrDefault();
+            var check = context.Request.Form["check"].FirstOrDefault();
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 return Results.Json(
@@ -531,9 +537,16 @@ public static class BanchoHostGroups
                     new { form_error = new { user = new { username = new[] { "Username already taken." } } } },
                     statusCode: StatusCodes.Status409Conflict);
 
+            if (check != "0")
+                return Results.Text("");
+
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(username, pwBcrypt, "xx", cancellationToken: cancellationToken);
+            if (user is null)
+                return Results.Json(
+                    new { form_error = new { user = new { username = new[] { "Username already taken." } } } },
+                    statusCode: StatusCodes.Status409Conflict);
 
             return Results.Json(new { id = user.Id, name = user.Name });
         });
@@ -664,12 +677,18 @@ public static class BanchoHostGroups
         });
     }
 
+    // Writes to a per-call temp file then renames into place, so concurrent first-avatar-request
+    // races (fresh deploy, several clients fetching the same not-yet-materialized fallback at once)
+    // each finish with a complete file instead of racing File.Create on the same destination path.
     private static void TryWriteEmbeddedResource(string resourceName, string destinationPath)
     {
         using var stream = typeof(BanchoHostGroups).Assembly.GetManifestResourceStream(resourceName);
         if (stream is null) return;
-        using var fileStream = File.Create(destinationPath);
-        stream.CopyTo(fileStream);
+
+        var tempPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
+        using (var fileStream = File.Create(tempPath))
+            stream.CopyTo(fileStream);
+        File.Move(tempPath, destinationPath, overwrite: true);
     }
 
     // api. host: TRT snapshot (GET+WS), file downloads, WS live channels, and admin-key-gated management CRUD.

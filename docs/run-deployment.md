@@ -14,12 +14,12 @@ checkout) — no rebuild needed after editing either, just restart the process:
 | File                | Owns                                                                                                      |
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
-| `settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Database`. Same file for development and deployment; edit it and restart. |
+| `Settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Database`. Same file for development and deployment; edit it and restart. |
 
-There is **no environment-variable override layer** — `settings.toml` is the single source of
+There is **no environment-variable override layer** — `Settings.toml` is the single source of
 truth for every setting. Edit the file directly and restart the process.
 
-`settings.toml` sections, as shipped:
+`Settings.toml` sections, as shipped:
 
 | Section          | Key(s)                              | Meaning                                                                                                             |
 | ----------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -69,7 +69,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
 
    Copy the `publish/<rid>/` folder to the target machine (or publish directly on it).
 
-2. **Edit `settings.toml`** next to the published executable:
+2. **Edit `Settings.toml`** next to the published executable:
    - `Server.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see [`api-client.md`](api-client.md)
@@ -99,7 +99,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    (same process, just swap `basil.local` for your real domain); every client machine will then need
    that cert installed as trusted (see Client setup).
 
-4. **Point Kestrel at the cert** by setting `CertPath` and `CertPassword` in `settings.toml`
+4. **Point Kestrel at the cert** by setting `CertPath` and `CertPassword` in `Settings.toml`
    `[Server]` section (see Configuration surface above). The server binds exclusively to the
    port specified in `Server.Port` (default 443) — no `--urls` needed.
 
@@ -108,7 +108,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    or a `hosts` file entry per machine for a LAN-only setup (see Client setup below for the exact
    entries).
 
-6. **Run it**. The port is read from `settings.toml` `Server.Port` (default 443); no `--urls`
+6. **Run it**. The port is read from `Settings.toml` `Server.Port` (default 443); no `--urls`
    argument needed. Binding a port below 1024 needs elevated privileges (Administrator on Windows,
    root or `setcap` on Linux):
 
@@ -125,7 +125,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
 
    **a) In-game registration** — launch the osu! client pointed at this server (see Client setup
    below). On the login screen, click "Register". In the **Email** field, enter the value of
-   `Server:AdminKey` from `settings.toml`. Choose a username and password. The client will create
+   `Server:AdminKey` from `Settings.toml`. Choose a username and password. The client will create
    the account with default privileges (`Unrestricted | Verified | Supporter`).
 
    **b) Admin API** — use `curl` (or any HTTP client) against the `api.` host:
@@ -157,11 +157,11 @@ To move a deployment to another machine: stop the server, copy the whole executa
    No external services to start — `basil.db` and the five storage folders are created next to the
    build output (`src/Basil.Web/bin/Debug/net10.0/`) on first run, migrations run automatically.
 
-2. **`settings.toml` is the same file used in production** — there's no separate dev-only config
+2. **`Settings.toml` is the same file used in production** — there's no separate dev-only config
    file. For local testing against a real osu! client, set `Server.Domain = "basil.local"`
-   (or whatever local domain you're using) directly in `src/Basil.Web/settings.toml`.
+   (or whatever local domain you're using) directly in `src/Basil.Web/Settings.toml`.
 
-   The IRC gateway listens on port 6667 by default (configurable via `[Irc]` section in settings.toml).
+   The IRC gateway listens on port 6667 by default (configurable via `[Irc]` section in Settings.toml).
    Connect with any IRC client: `/server basil.local 6667` and authenticate with your account password.
 
 3. **To connect an actual osu! client to your dev server**, you need a trusted cert and hosts
@@ -189,7 +189,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    # Linux: install into your distro's trust store
    ```
 
-   Point Kestrel at it by setting `CertPath`/`CertPassword` in `src/Basil.Web/settings.toml`
+   Point Kestrel at it by setting `CertPath`/`CertPassword` in `src/Basil.Web/Settings.toml`
    under `[Server]`. The server binds exclusively to the port specified in `Server.Port` (default
    443 — elevated terminal needed). Run normally:
 

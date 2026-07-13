@@ -7,12 +7,17 @@ namespace Basil.Application.Abstractions.Users;
 /// </summary>
 public interface IPasswordHasher
 {
-    /// <summary>Bcrypt-hashes an md5 password digest, for storing on registration.</summary>
-    string Hash(byte[] passwordMd5);
+    /// <summary>
+    ///     Bcrypt-hashes a password's md5 digest, for storing on registration. Takes the UTF-8 bytes
+    ///     of the digest's 32-character lowercase-hex string — NOT the raw 16-byte digest — matching
+    ///     what the osu! client sends and what <see cref="Verify" /> expects.
+    /// </summary>
+    string Hash(byte[] passwordMd5Hex);
 
     /// <summary>
-    ///     Verifies an untrusted md5 password digest against a trusted stored bcrypt hash. Caches
-    ///     verified (hash -> md5) pairs in memory so repeat logins skip the ~200ms bcrypt check.
+    ///     Verifies an untrusted md5 password digest against a trusted stored bcrypt hash. Takes the
+    ///     UTF-8 bytes of the digest's 32-character lowercase-hex string, same as <see cref="Hash" />.
+    ///     Caches verified (hash -> md5) pairs in memory so repeat logins skip the ~200ms bcrypt check.
     /// </summary>
-    bool Verify(byte[] untrustedPasswordMd5, string trustedBcryptHash);
+    bool Verify(byte[] untrustedPasswordMd5Hex, string trustedBcryptHash);
 }

@@ -15,7 +15,7 @@ See [`bot-commands.md`](bot-commands.md) for the BasilBot command reference, [`a
 Every endpoint below — bancho protocol, osu-web, beatmap assets — is a single ASP.NET Core application (`Basil.Web`), routed separately by **hostname, not path prefix**. `BanchoHostGroups.MapAll` (`src/Basil.Web/Routing/BanchoHostGroups.cs:33`) builds the actual host list at startup from a single config value:
 
 ```
-Server:Domain      (settings.toml, next to the executable — same file for dev and deployment)
+Server:Domain      (Settings.toml, next to the executable — same file for dev and deployment)
 ```
 
 With that configured domain **and** `ppy.sh` hardcoded (so a production deployment behind a reverse proxy answering on the real osu! domain works without extra config), it generates:
@@ -30,14 +30,14 @@ With that configured domain **and** `ppy.sh` hardcoded (so a production deployme
 
 `Program.cs:30` reads `Server:Domain` and passes it to `MapAll` — that is the single place the domain is threaded through; there is no per-route host config anywhere else.
 
-**Where that config value lives:** `src/Basil.Web/settings.toml`, section `[Server]`, key `Domain` — same file for both `dotnet run` (local dev) and the published executable, no environment separation, no environment-variable override layer. Edit the file, restart the process. See [`run-deployment.md`](run-deployment.md).
+**Where that config value lives:** `src/Basil.Web/Settings.toml`, section `[Server]`, key `Domain` — same file for both `dotnet run` (local dev) and the published executable, no environment separation, no environment-variable override layer. Edit the file, restart the process. See [`run-deployment.md`](run-deployment.md).
 
-**Network binding (which port/protocol the app actually listens on) is configured in `settings.toml` `[Server]`:**
+**Network binding (which port/protocol the app actually listens on) is configured in `Settings.toml` `[Server]`:**
 
 - `Port` — Kestrel HTTPS listen port (default 443). Disables automatic port selection — the server binds exclusively here.
 - `CertPath` / `CertPassword` — path to the HTTPS cert (PFX) and its password. Leave unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS.
 
-No `--urls` or `ASPNETCORE_URLS` override — every setting comes from `settings.toml`. See [`run-deployment.md`](run-deployment.md) for the full deployment walkthrough.
+No `--urls` or `ASPNETCORE_URLS` override — every setting comes from `Settings.toml`. See [`run-deployment.md`](run-deployment.md) for the full deployment walkthrough.
 
 ---
 
@@ -172,7 +172,7 @@ Everything the client's web-request layer calls outside the persistent bancho co
 | Favourites (add) stub      | `GET /web/osu-addfavourite.php` — inline stub                                                       | empty response                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Adds for real                                                                                                                                 | ⚠️ Yes, limited        |
 | Rate map stub              | `GET /web/osu-rate.php` — inline stub                                                               | returns `"not ranked"` — a real bancho.py response code, reused not invented                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Accepts real ratings when map has a leaderboard                                                                                             | ⚠️ Yes, limited        |
 | Comment stub               | `POST /web/osu-comment.php` — inline stub                                                           | empty response                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Stores real comments                                                                                                                         | ⚠️ Yes, limited        |
-| In-game registration       | `POST /users` — inline                                                                              | in-game account registration — requires `user[user_email]` field to match `Server:AdminKey` (configured in `settings.toml`). If AdminKey is unset, returns "registration disabled" error. On success, creates user with default privileges (`Unrestricted \| Verified \| Supporter`). | Can optionally allow real registration                                                                                                       | ⚠️ Yes, limited        |
+| In-game registration       | `POST /users` — inline                                                                              | in-game account registration — requires `user[user_email]` field to match `Server:AdminKey` (configured in `Settings.toml`). If AdminKey is unset, returns "registration disabled" error. On success, creates user with default privileges (`Unrestricted \| Verified \| Supporter`). | Can optionally allow real registration                                                                                                       | ⚠️ Yes, limited        |
 | Star rating                | `POST /difficulty-rating` — inline                                                                  | computes star rating locally via `IBeatmapDifficultyCalculator` for beatmap id in `?b=` (optionally with `?mods=`, a bitmask), and caches the no-mod result in `Beatmaps.Diff` to avoid recomputing every call. The original only redirects to an osu.ppy.sh webpage opened in the system browser — this server has no such page, so it returns JSON (`{beatmap_id, mods, rating}`) directly instead | Redirects to osu.ppy.sh webpage                                                                                                             | ⚠️ Yes, limited        |
 
 #### Example request/response details
