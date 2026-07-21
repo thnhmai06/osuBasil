@@ -67,9 +67,20 @@ internal static class MultiplayerTestSupport
         parts.Add((byte)winCondition);
         parts.Add((byte)teamType);
         parts.Add((byte)(freeMods ? 1 : 0));
-        // freeMods false above -> no per-slot mods written
+        if (freeMods)
+            for (var i = 0; i < 16; i++)
+                parts.AddRange(PacketWriter.WriteInt32(0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
         parts.AddRange(PacketWriter.WriteInt32(seed));
         return new BanchoPacketReader(parts.ToArray());
+    }
+
+    /// <summary>Dummy valid beatmap for tests that need `mapRepository.FetchOneAsync` to resolve successfully.</summary>
+    public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
+    {
+        var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
+        var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+        return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500, false, 0, 0,
+            new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0));
     }
 
     public static List<byte[]> Chunk(byte[] data)
@@ -257,9 +268,12 @@ internal static class MultiplayerTestSupport
     {
         public Fixture()
         {
+            MapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
+
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
                 new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
-                Substitute.For<IMapRepository>());
+                MapRepository);
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -267,6 +281,10 @@ internal static class MultiplayerTestSupport
         public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
         public FakeMatchEventBus EventBus { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
+
+        /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
+        public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();
+
         public MatchMembershipService MatchMembership { get; }
 
         public void RegisterAll(params PlayerSession[] sessions)

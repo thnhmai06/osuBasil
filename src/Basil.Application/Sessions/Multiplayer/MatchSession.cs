@@ -100,6 +100,14 @@ public sealed class MatchSession(
     public CancellationTokenSource? PendingTimer { get; set; }
 
     /// <summary>
+    ///     True when <see cref="PendingTimer" /> is a `!mp start &lt;seconds&gt;` countdown that will
+    ///     actually start the match when it reaches zero, as opposed to a plain `!mp timer` (which only
+    ///     announces). A gameplay-affecting settings change (map, team type, win condition, size, a
+    ///     player's team) cancels only this kind — see MatchMembershipService.CancelQueuedAutoStart.
+    /// </summary>
+    public bool PendingTimerIsAutoStart { get; set; }
+
+    /// <summary>
     ///     The persistent database Matches.Id for this room, distinct from <see cref="Id" /> (the
     ///     0-63 in-memory registry slot, which is what the bancho wire protocol actually uses as a
     ///     match id). Set once, right after the room is created, by MatchMembershipService.CreateAsync.

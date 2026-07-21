@@ -109,7 +109,7 @@ public sealed class MpCommandService(
 
         return subcommand switch
         {
-            "settings" => (true, Settings(match)),
+            "settings" => (true, await SettingsAsync(match, cancellationToken)),
             "lock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, true)))),
             "unlock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, false)))),
             "private" => (true, SetPrivate(match, args)),
@@ -263,12 +263,18 @@ public sealed class MpCommandService(
     ///     Basil has neither (no public match-history page, no profile pages), so those are plain
     ///     text/IDs here instead of links.
     /// </summary>
-    private string Settings(MatchSession match)
+    private async Task<string> SettingsAsync(MatchSession match, CancellationToken cancellationToken)
     {
+        var beatmapLine = match.MapId > 0
+            ? await mapRepository.FetchOneAsync(id: match.MapId, cancellationToken: cancellationToken) is { } bmap
+                ? $"Beatmap: {bmap.Id} {bmap.FullName}"
+                : "Beatmap: Not found"
+            : $"Beatmap: {match.MapId} {match.MapName}";
+
         var lines = new List<string>
         {
             $"Room name: {match.Name} (#{match.DbId})",
-            $"Beatmap: {match.MapId} {match.MapName}",
+            beatmapLine,
             $"Team mode: {match.TeamType}, Win condition: {match.WinCondition}"
         };
 
@@ -322,6 +328,7 @@ public sealed class MpCommandService(
         size = Math.Clamp(size, 1, 16);
         ApplySize(match, size);
         matchMembership.EnqueueState(match);
+        matchMembership.CancelQueuedAutoStart(match);
         return (true, $"Changed match to size {size}");
     }
 
@@ -534,6 +541,7 @@ public sealed class MpCommandService(
 
         slot.Team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
         matchMembership.EnqueueState(match, false);
+        matchMembership.CancelQueuedAutoStart(match);
         var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
         return (true, $"Moved {target!.Name} to team {teamDisplay}");
     }
@@ -578,6 +586,7 @@ public sealed class MpCommandService(
         if (size is { } s) ApplySize(match, s);
 
         matchMembership.EnqueueState(match);
+        matchMembership.CancelQueuedAutoStart(match);
         return (true, $"Changed match settings to {teamType}, {match.WinCondition}" +
                       (size is { } sz ? $", {sz} slots." : "."));
     }
@@ -614,6 +623,7 @@ public sealed class MpCommandService(
         match.MapName = bmap.FullName;
         match.Mode = bmap.Difficulty.Mode;
         matchMembership.EnqueueState(match);
+        matchMembership.CancelQueuedAutoStart(match);
         return (true, $"Changed beatmap to {bmap.Mapset.Artist} - {bmap.Mapset.Title}");
     }
 
@@ -704,8 +714,10 @@ public sealed class MpCommandService(
             return (true, $"Match starts in {seconds} seconds");
         }
 
-        await matchMembership.StartAsync(match, cancellationToken);
-        return (true, "Match started");
+        var started = await matchMembership.StartAsync(match, cancellationToken);
+        return started
+            ? (true, "Match started")
+            : (false, "Match cannot start because the beatmap does not exist on the server.");
     }
 
     private (bool Success, string? Reply) Timer(MatchSession match, IReadOnlyList<string> args)
@@ -724,12 +736,34 @@ public sealed class MpCommandService(
 
         match.PendingTimer.Cancel();
         match.PendingTimer = null;
+        match.PendingTimerIsAutoStart = false;
         return (true, "Countdown aborted");
     }
 
+    private const int PeriodicReminderIntervalSeconds = 60;
+    private const int NearTotalIgnoreWindowSeconds = 5;
+
+    /// <summary>
+    ///     Fixed marks plus an extra reminder every 60s for long countdowns (e.g. a 5-minute timer also
+    ///     announces at 240/180/120). A mark that's a multiple of 60 (whether from the fixed list's own
+    ///     "60" or a periodic one) is dropped if it's within <see cref="NearTotalIgnoreWindowSeconds" />
+    ///     of <paramref name="totalSeconds" /> — otherwise it'd fire almost immediately after "Queued...",
+    ///     which is redundant. The sub-60 marks (30/10/5/4/3/2/1) are exempt from that check — they're
+    ///     meant to fire close together as the final countdown ticks down.
+    /// </summary>
     public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds)
     {
-        return TimerCheckpoints.Where(c => c < totalSeconds).OrderByDescending(c => c).ToList();
+        var periodic = Enumerable.Range(1, int.MaxValue)
+            .Select(k => k * PeriodicReminderIntervalSeconds)
+            .TakeWhile(c => c < totalSeconds);
+
+        return TimerCheckpoints
+            .Concat(periodic)
+            .Where(c => c < totalSeconds)
+            .Distinct()
+            .Where(c => c % PeriodicReminderIntervalSeconds != 0 || totalSeconds - c > NearTotalIgnoreWindowSeconds)
+            .OrderByDescending(c => c)
+            .ToList();
     }
 
     /// <summary>
@@ -743,6 +777,7 @@ public sealed class MpCommandService(
         match.PendingTimer?.Cancel();
         var cts = new CancellationTokenSource();
         match.PendingTimer = cts;
+        match.PendingTimerIsAutoStart = autoStart;
 
         _ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
     }
@@ -769,11 +804,12 @@ public sealed class MpCommandService(
         {
             if (token.IsCancellationRequested) return;
             match.PendingTimer = null;
+            match.PendingTimerIsAutoStart = false;
 
             if (autoStart)
             {
-                Announce(match, "Good luck, have fun!");
-                if (!match.InProgress) await matchMembership.StartAsync(match, token);
+                var started = match.InProgress || await matchMembership.StartAsync(match, token);
+                if (started) Announce(match, "Good luck, have fun!");
             }
             else
             {

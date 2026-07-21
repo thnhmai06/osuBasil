@@ -66,6 +66,7 @@ public sealed class MatchChangeSettingsHandler(
                 match.MapId = -1;
                 match.MapMd5 = "";
                 match.MapName = "";
+                matchMembership.CancelQueuedAutoStart(match);
             }
             else if (match.MapId == -1)
             {
@@ -78,6 +79,7 @@ public sealed class MatchChangeSettingsHandler(
 
                     var host = sessionRegistry.GetById(match.HostId);
                     if (host is not null) match.Mode = host.Status.Mode;
+                    matchMembership.CancelQueuedAutoStart(match);
                 }
                 else
                 {
@@ -103,10 +105,15 @@ public sealed class MatchChangeSettingsHandler(
                         slot.Team = newTeam;
 
                 match.TeamType = newTeamType;
+                matchMembership.CancelQueuedAutoStart(match);
             }
 
             var newWinCondition = (MatchWinCondition)matchData.WinCondition;
-            if (match.WinCondition != newWinCondition) match.WinCondition = newWinCondition;
+            if (match.WinCondition != newWinCondition)
+            {
+                match.WinCondition = newWinCondition;
+                matchMembership.CancelQueuedAutoStart(match);
+            }
 
             match.Name = matchData.Name;
             matchMembership.EnqueueState(match);

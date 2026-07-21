@@ -6,6 +6,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -24,11 +25,20 @@ public class MatchMembershipServiceTests
     private readonly FakeMatchRegistry _matchRegistry = new();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
+    /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
+    private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
+
+    public MatchMembershipServiceTests()
+    {
+        _mapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+            Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
+    }
+
     private MatchMembershipService MakeService()
     {
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
             new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-            Substitute.For<IMatchEventBus>(), Substitute.For<IMapRepository>());
+            Substitute.For<IMatchEventBus>(), _mapRepository);
     }
 
     /// <summary>
@@ -303,6 +313,99 @@ public class MatchMembershipServiceTests
             ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", match.ChatChannelName,
                 BotBootstrapService.BotId),
             host.Dequeue());
+    }
+
+    [Fact]
+    public void CancelQueuedAutoStart_PendingAutoStartTimer_CancelsAndAnnounces()
+    {
+        var host = MakePlayer(1, "host");
+        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+        RegisterAll(host, bot);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+        var cts = new CancellationTokenSource();
+        match.PendingTimer = cts;
+        match.PendingTimerIsAutoStart = true;
+        host.Dequeue();
+
+        service.CancelQueuedAutoStart(match);
+
+        Assert.Null(match.PendingTimer);
+        Assert.False(match.PendingTimerIsAutoStart);
+        Assert.True(cts.IsCancellationRequested);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+                match.ChatChannelName, bot.Id),
+            Chunk(host.Dequeue()));
+    }
+
+    [Fact]
+    public void CancelQueuedAutoStart_PendingPlainTimer_LeavesItRunning()
+    {
+        var host = MakePlayer(1, "host");
+        RegisterAll(host);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+        var cts = new CancellationTokenSource();
+        match.PendingTimer = cts;
+        match.PendingTimerIsAutoStart = false;
+
+        service.CancelQueuedAutoStart(match);
+
+        Assert.Same(cts, match.PendingTimer);
+        Assert.False(cts.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void CancelQueuedAutoStart_NoPendingTimer_NoOp()
+    {
+        var host = MakePlayer(1, "host");
+        RegisterAll(host);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+
+        service.CancelQueuedAutoStart(match);
+
+        Assert.Null(match.PendingTimer);
+    }
+
+    [Fact]
+    public async Task StartAsync_BeatmapExists_StartsMatch()
+    {
+        var host = MakePlayer(1, "host");
+        RegisterAll(host);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+
+        var started = await service.StartAsync(match);
+
+        Assert.True(started);
+        Assert.True(match.InProgress);
+        Assert.NotNull(match.CurrentRoundId);
+    }
+
+    [Fact]
+    public async Task StartAsync_BeatmapMissingFromDb_DoesNotStartAndAnnouncesError()
+    {
+        var host = MakePlayer(1, "host");
+        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+        RegisterAll(host, bot);
+        var service = MakeService();
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+        _mapRepository.FetchOneAsync(id: 100, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((Beatmap?)null);
+        host.Dequeue();
+
+        var started = await service.StartAsync(match);
+
+        Assert.False(started);
+        Assert.False(match.InProgress);
+        Assert.Null(match.CurrentRoundId);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name,
+                "Match cannot start because the beatmap does not exist on the server.",
+                match.ChatChannelName, bot.Id),
+            Chunk(host.Dequeue()));
     }
 
     private static List<byte[]> Chunk(byte[] data)
