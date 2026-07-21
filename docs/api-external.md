@@ -227,7 +227,7 @@ Raw replay-frames of **anyone being spectated** in the match — for reconstruct
 | --- | --- | --- |
 | `GET /replays/{scoreId}` | `application/octet-stream` | Download saved `.osr` file by `scoreId` |
 | `GET /beatmaps/{beatmapId}` | `text/plain` | Download a single `.osu` difficulty file that has been locally ingested |
-| `GET /beatmapsets/{setId}` | `application/x-osu-beatmap-archive` | Package a fresh `.osz` on-the-fly containing all ingested difficulties in the set (`.osu` files only, **no** audio/background) |
+| `GET /beatmapsets/{setId}` | `application/x-osu-beatmap-archive` | Zip the set's full mapset folder as-is (audio/images/video/`.osu` — the original `.osz` contents) into a fresh `.osz`, named `"{setId} {Artist} - {Title}.osz"` |
 
 **Examples:**
 
@@ -237,7 +237,7 @@ GET https://api.basil.example/replays/9001
 
 GET https://api.basil.example/beatmapsets/5000
 → 200, Content-Type: application/x-osu-beatmap-archive
-   Content-Disposition filename: 5000.osz
+   Content-Disposition filename: "5000 Camellia - Frontier.osz"
 ```
 
 **Errors**: `404` **empty body** (no JSON `{ error: ... }`) if not found — either not in DB, or DB has it but the physical file is missing on disk.
@@ -260,13 +260,13 @@ Missing or wrong header → `401`. **If admin has not configured `Server:AdminKe
 | --- | --- |
 | `GET /beatmaps` | List/find beatmaps |
 | `GET /beatmaps/{id}` | Get one beatmap |
-| `POST /beatmaps` | Upload `.osu`/`.osz` |
-| `POST /beatmaps/rescan` | Rescan the storage directory, ingest new beatmaps |
+| `POST /beatmaps` | Upload a `.osz` mapset |
+| `POST /beatmaps/rescan` | Full reconciliation pass over the storage directory (add/update/delete) — normally unnecessary, since a live `FileSystemWatcher`-backed service already syncs changes within ~2 seconds |
 | `DELETE /beatmaps/{id}` | Delete one beatmap |
 
-**`GET /beatmaps?query=&mode=&status=&offset=&amount=`**
+**`GET /beatmaps?query=&mode=&offset=&amount=`**
 
-All query params optional: `query` (search by name/artist), `mode` (GameMode number), `status` (RankedStatus number), `offset` (default `0`), `amount` (default `50` if `0`).
+All query params optional: `query` (search by name/artist), `mode` (GameMode number), `offset` (default `0`), `amount` (default `50` if `0`). No status filter — every beatmap in the DB is always ranked-status Loved (no per-map curation), so a filter would be meaningless.
 
 ```
 GET https://api.basil.example/beatmaps?query=frontier&amount=10
@@ -279,25 +279,30 @@ Response — **array of arrays**, grouped by beatmap set (each set = 1 sub-array
 [
   [
     {
-      "md5": "9f8c2e1a...", "id": 111222, "setId": 5000,
-      "artist": "Camellia", "title": "Frontier", "version": "Insane",
-      "creator": "MapperName", "lastUpdate": "2024-01-01T00:00:00Z",
-      "totalLength": 120, "maxCombo": 512,
-      "status": 2, "frozen": false, "plays": 10, "passes": 4,
-      "mode": 0, "bpm": 180.0, "cs": 4.0, "od": 8.0, "ar": 9.0, "hp": 6.0,
-      "diff": 5.42, "filename": "Camellia - Frontier (MapperName) [Insane].osu",
-      "fullName": "Camellia - Frontier [Insane]",
-      "hasLeaderboard": true, "hasLeaderboardStrict": true, "awardsRankedScore": true
+      "md5": "9f8c2e1a...", "id": 111222,
+      "mapset": {
+        "id": 5000, "artist": "Camellia", "title": "Frontier", "creator": "MapperName",
+        "status": 5, "lastUpdate": "2024-01-01T00:00:00Z", "createdAt": "2023-06-01T00:00:00Z"
+      },
+      "version": "Insane", "filename": "Camellia - Frontier (MapperName) [Insane].osu",
+      "totalLength": "00:02:00", "maxCombo": 512,
+      "isFrozen": false, "plays": 10, "passes": 4,
+      "difficulty": {
+        "mode": 0, "bpm": 180.0, "cs": 4.0, "ar": 9.0, "od": 8.0, "hp": 6.0, "sr": 5.42
+      },
+      "fullName": "Camellia - Frontier [Insane]"
     }
   ]
 ]
 ```
 
-`fullName`/`hasLeaderboard`/`hasLeaderboardStrict`/`awardsRankedScore` are derived values (not stored in DB) but still present in JSON.
+`isFrozen` (stored server-side but hidden from every client-reachable lookup) is only ever `true` here — `GET /beatmaps`/`GET /beatmaps/{id}` are the only reads that pass `includeFrozen: true` internally; every non-admin endpoint filters frozen rows out by default.
+
+`mapset.status` is always `5` (Loved) — not stored in DB, computed on read (no per-map ranked-status curation). `fullName` is a derived value (not stored in DB) but still present in JSON.
 
 **`GET /beatmaps/{id}`** — 1 `Beatmap` object (not wrapped in array). `404` if not found.
 
-**`POST /beatmaps`** — multipart form, file field named `"file"` (`.osu` or `.osz`, anything else → `400`):
+**`POST /beatmaps`** — multipart form, file field named `"file"` (`.osz` only — a lone `.osu` has no set context and is rejected with `400`):
 
 ```
 POST https://api.basil.example/beatmaps
@@ -329,22 +334,23 @@ Response: `{ "ingested": 4 }` (number of beatmaps successfully ingested).
 | `POST /users/{id}/avatar` | Upload avatar |
 | `DELETE /users/{id}` | Delete (soft-delete) user |
 
-**`User` shape** (used for all responses below):
+**`User` shape** (used for all responses below) — scoped to fields Basil actually reads back
+somewhere; `SafeName` (DB-only lookup key derived from `Name`), clan/preferred-mode/play-style/
+custom-badge/userpage columns have no reader anywhere in this server (see
+[`working-scopes.md`](working-scopes.md)) and aren't carried on this record:
 
 ```jsonc
 {
-  "id": 7, "name": "PlayerOne", "safeName": "playerone",
-  "priv": 19, "country": "VN",
-  "silenceEnd": 0, "donorEnd": 0,
-  "creationTime": 1700000000, "latestActivity": 1720000000,
-  "clanId": 0, "clanPriv": 0,
-  "preferredMode": 0, "playStyle": 0,
-  "customBadgeName": null, "customBadgeIcon": null,
-  "userpageContent": null
+  "id": 7, "name": "PlayerOne",
+  "country": 239, "priv": 19,
+  "silenceEnd": "2024-01-01T00:00:00"
 }
 ```
 
-> `apiKey` was removed from `User` — was dead code never used (IRC authentication uses the osu! password directly). `email` was removed — the field no longer exists in the schema.
+> `country` serializes as the raw `Country` enum ordinal (System.Text.Json default — no string
+> converter configured); `silenceEnd` is a real datetime, not a unix-epoch int. `apiKey` was
+> removed from `User` — was dead code never used (IRC authentication uses the osu! password
+> directly). `email` was removed — the field no longer exists in the schema.
 
 **`POST /users`** — JSON request body:
 

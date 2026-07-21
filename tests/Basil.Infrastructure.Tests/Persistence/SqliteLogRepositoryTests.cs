@@ -15,11 +15,11 @@ public class SqliteLogRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
         await _repository.CreateAsync(0, 42, "lastfm_flag", "hq!osu running (HqAssembly)");
 
         await using var connection = new SqliteConnection(fixture.ConnectionString);
-        var row = await connection.QuerySingleAsync<(int From, int To, string Action, string Msg)>(
-            "SELECT `From`, `To`, `Action`, Msg FROM Logs WHERE `To` = 42 AND `Action` = 'lastfm_flag'");
+        var row = await connection.QuerySingleAsync<(int FromId, int ToId, string Action, string Msg)>(
+            "SELECT FromId, ToId, Action, Msg FROM Logs WHERE ToId = 42 AND Action = 'lastfm_flag'");
 
-        Assert.Equal(0, row.From);
-        Assert.Equal(42, row.To);
+        Assert.Equal(0, row.FromId);
+        Assert.Equal(42, row.ToId);
         Assert.Equal("lastfm_flag", row.Action);
         Assert.Equal("hq!osu running (HqAssembly)", row.Msg);
     }

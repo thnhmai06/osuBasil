@@ -1,11 +1,10 @@
 using System.Collections.Concurrent;
 using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Action = Basil.Domain.Action;
 
 namespace Basil.Application.Sessions;
 
@@ -14,7 +13,7 @@ namespace Basil.Application.Sessions;
 ///     Holds runtime session state: packet queue, channel memberships, spectator list, match
 ///     reference, per-mode stats, geolocation, and IRC transport bridge.
 /// </summary>
-public sealed class PlayerSession(int id, string name, string token, Privileges priv, double loginTime)
+public sealed class PlayerSession(int id, string name, string token, UserPrivileges priv, DateTimeOffset loginTime)
 {
     private readonly ConcurrentDictionary<string, byte> _channels = new();
     private readonly ConcurrentQueue<byte[]> _packetQueue = new();
@@ -23,9 +22,9 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     public int Id { get; } = id;
     public string Name { get; } = name;
     public string Token { get; } = token;
-    public Privileges Priv { get; set; } = priv;
-    public double LoginTime { get; } = loginTime;
-    public double LastRecvTime { get; set; } = loginTime;
+    public UserPrivileges Priv { get; set; } = priv;
+    public DateTimeOffset LoginTime { get; } = loginTime;
+    public DateTimeOffset LastRecvTime { get; set; } = loginTime;
 
     public int UtcOffset { get; init; }
 
@@ -39,8 +38,7 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Set at login from the client's login body, but mutable at runtime via TOGGLE_BLOCK_NON_FRIEND_DMS.</summary>
     public bool PmPrivate { get; set; }
 
-    public long SilenceEnd { get; set; }
-    public long DonorEnd { get; set; }
+    public DateTimeOffset SilenceEnd { get; set; } = DateTimeOffset.UnixEpoch;
     public string? AwayMessage { get; set; }
     public PresenceFilter PresenceFilter { get; set; } = PresenceFilter.Nil;
 
@@ -53,7 +51,7 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     public int? MpScopeMatchId { get; set; }
 
     /// <summary>Ported from Player.geoloc — defaults to "xx"/0/0 when unavailable, matching Player.__init__.</summary>
-    public Geolocation Geoloc { get; set; } = new(0.0, 0.0, "xx", 0);
+    public Geolocation Geoloc { get; set; } = new(0.0, 0.0, Country.Xx);
 
     /// <summary>
     ///     Ported from Player.client_details — the hardware/version fingerprint captured at login,
@@ -61,6 +59,13 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     ///     different client session than the one currently logged in.
     /// </summary>
     public ClientDetails? Client { get; set; }
+
+    /// <summary>
+    ///     The osu! client version captured at login (alongside <see cref="Client" />) — kept separate
+    ///     since <see cref="ClientDetails" /> no longer carries a version date (it isn't part of the
+    ///     client-hash string). Score submission's version-mismatch check compares against this.
+    /// </summary>
+    public OsuVersion? OsuVersion { get; set; }
 
     /// <summary>Ported from Player.spectating — the session this player is currently spectating, if any.</summary>
     public PlayerSession? Spectating { get; set; }
@@ -88,9 +93,9 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// <summary>Ported from Player.gm_stats — the cached stats for the player's currently selected mode.</summary>
     public CachedPlayerStats? CurrentStats => ModeStats.GetValueOrDefault(Status.Mode);
 
-    public string SafeName => Domain.Users.SafeName.Make(Name);
+    public string SafeName => User.MakeSafeName(Name);
 
-    public bool Restricted => (Priv & Privileges.Unrestricted) == 0;
+    public bool Restricted => (Priv & UserPrivileges.Unrestricted) == 0;
 
     /// <summary>Ported from Player.bancho_priv — maps server-side privileges to client-facing ones.</summary>
     public ClientPrivileges BanchoPriv
@@ -98,28 +103,26 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
         get
         {
             var result = (ClientPrivileges)0;
-            if ((Priv & Privileges.Unrestricted) != 0) result |= ClientPrivileges.Player;
+            if ((Priv & UserPrivileges.Unrestricted) != 0) result |= ClientPrivileges.Player;
 
-            if ((Priv & Privileges.Donator) != 0) result |= ClientPrivileges.Supporter;
+            if ((Priv & UserPrivileges.Donator) != 0) result |= ClientPrivileges.Supporter;
 
-            if ((Priv & Privileges.Moderator) != 0) result |= ClientPrivileges.Moderator;
+            if ((Priv & UserPrivileges.Moderator) != 0) result |= ClientPrivileges.Moderator;
 
-            if ((Priv & Privileges.Administrator) != 0) result |= ClientPrivileges.Developer;
+            if ((Priv & UserPrivileges.Administrator) != 0) result |= ClientPrivileges.Developer;
 
-            if ((Priv & Privileges.Developer) != 0) result |= ClientPrivileges.Owner;
+            if ((Priv & UserPrivileges.Developer) != 0) result |= ClientPrivileges.Owner;
 
             return result;
         }
     }
 
-    public long RemainingSilence => Math.Max(0, SilenceEnd - DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+    public TimeSpan RemainingSilence => SilenceEnd > DateTimeOffset.UtcNow ? SilenceEnd - DateTimeOffset.UtcNow : TimeSpan.Zero;
 
-    public bool Silenced => RemainingSilence != 0;
+    public bool Silenced => RemainingSilence != TimeSpan.Zero;
 
     /// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
     public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
-
-    private IIrcConnection? _ircConnection;
 
     /// <summary>
     ///     The IRC-shaped transport chat is routed through for this session — a bancho packet bridge by
@@ -130,8 +133,8 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
     /// </summary>
     public IIrcConnection IrcConnection
     {
-        get => _ircConnection ??= new BanchoIrcBridgeConnection(this);
-        set => _ircConnection = value;
+        get => field ??= new BanchoIrcBridgeConnection(this);
+        init;
     }
 
     public void AddSpectator(PlayerSession spectator)
@@ -191,26 +194,13 @@ public sealed class PlayerSession(int id, string name, string token, Privileges 
 /// <summary>Ported from app/objects/player.py's Status — the client's currently reported state.</summary>
 public sealed class PlayerStatus
 {
-    public Action Action { get; set; } = Action.Idle;
+    public UserActivity UserActivity { get; set; } = UserActivity.Idle;
     public string InfoText { get; set; } = "";
     public string MapMd5 { get; set; } = "";
     public Mods Mods { get; set; } = Mods.NoMod;
-    public GameMode Mode { get; set; } = GameMode.VanillaOsu;
+    public GameMode Mode { get; set; } = GameMode.Standard;
     public int MapId { get; set; }
 }
 
 /// <summary>Ported from app/objects/player.py's ModeData — a player's cached stats in a single gamemode.</summary>
-public sealed record CachedPlayerStats(
-    long Tscore,
-    long Rscore,
-    double Acc,
-    int Plays,
-    int Playtime,
-    int MaxCombo,
-    int TotalHits,
-    int Rank,
-    int XhCount = 0,
-    int XCount = 0,
-    int ShCount = 0,
-    int SCount = 0,
-    int ACount = 0);
+public sealed record CachedPlayerStats(long Tscore, long Rscore, double Acc, int Plays, int Rank);

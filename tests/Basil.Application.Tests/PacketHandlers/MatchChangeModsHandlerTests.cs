@@ -1,5 +1,5 @@
 using Basil.Application.PacketHandlers.Multiplayer;
-using Basil.Domain;
+using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 

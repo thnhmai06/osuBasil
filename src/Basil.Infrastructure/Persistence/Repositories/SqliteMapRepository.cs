@@ -8,8 +8,14 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IMapRepository" />
 public sealed class SqliteMapRepository(string connectionString) : IMapRepository
 {
+    private const string SharedColumns = """
+        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.Frozen, b.Plays, b.Passes,
+        b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr,
+        m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt
+        """;
+
     public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-        int? setId = null, CancellationToken cancellationToken = default)
+        int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
     {
         if (id is null && md5 is null && filename is null && setId is null)
             throw new ArgumentException("Must provide at least one of id/md5/filename/setId.");
@@ -19,75 +25,88 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 
         if (id is not null)
         {
-            conditions.Add("Id = @Id");
+            conditions.Add("b.Id = @Id");
             parameters.Add("Id", id);
         }
 
         if (md5 is not null)
         {
-            conditions.Add("Md5 = @Md5");
+            conditions.Add("b.Md5 = @Md5");
             parameters.Add("Md5", md5);
         }
 
         if (filename is not null)
         {
-            conditions.Add("Filename = @Filename");
+            conditions.Add("b.Filename = @Filename");
             parameters.Add("Filename", filename);
         }
 
         if (setId is not null)
         {
-            conditions.Add("SetId = @SetId");
-            parameters.Add("SetId", setId);
+            conditions.Add("b.MapsetId = @MapsetId");
+            parameters.Add("MapsetId", setId);
         }
 
+        if (!includeFrozen) conditions.Add("b.Frozen = 0");
+
         await using var connection = Connect();
-        // QueryFirstOrDefault, not QuerySingle: id/md5/filename each match at most one row (unique
-        // constraints), but setId can match several maps within the same set — any one will do.
-        var row = await connection.QueryFirstOrDefaultAsync<MapRow>(
-            $"SELECT * FROM Beatmaps WHERE {string.Join(" AND ", conditions)}",
-            parameters);
-        return row?.ToBeatmap();
+        // Dapper has no multi-map QueryFirstOrDefaultAsync overload — QueryAsync + FirstOrDefault.
+        // id/md5/filename each match at most one row (unique constraints), but setId can match
+        // several maps within the same set — any one will do.
+        var beatmaps = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+            $"""
+             SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+             WHERE {string.Join(" AND ", conditions)}
+             """,
+            (b, m) => b.ToBeatmap(m.ToMapset()),
+            parameters,
+            splitOn: "Id");
+        return beatmaps.FirstOrDefault();
     }
 
-    public async Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+    public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
     {
+        var existing = await FetchOneAsync(md5: beatmap.Md5, includeFrozen: true, cancellationToken: cancellationToken);
+        int resolvedId;
+        if (existing is not null) resolvedId = existing.Id;
+        else if (beatmap.Id > 0) resolvedId = beatmap.Id;
+        else resolvedId = Math.Max(Beatmap.LocalIdFloor, await FetchMaxIdAsync(cancellationToken) + 1);
+
+        var resolved = beatmap with { Id = resolvedId };
+
         await using var connection = Connect();
         await connection.ExecuteAsync(
             """
             REPLACE INTO Beatmaps (
-                Md5, Id, SetId, Artist, Title, Version, Creator, Filename, LastUpdate,
-                TotalLength, MaxCombo, Status, Frozen, Plays, Passes, Mode, Bpm, Cs, Od, Ar, Hp, Diff
+                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, Frozen, Plays, Passes,
+                Mode, Bpm, Cs, Od, Ar, Hp, Sr
             ) VALUES (
-                @Md5, @Id, @SetId, @Artist, @Title, @Version, @Creator, @Filename, @LastUpdate,
-                @TotalLength, @MaxCombo, @Status, @Frozen, @Plays, @Passes, @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Diff
+                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @Frozen, @Plays, @Passes,
+                @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr
             )
             """,
             new
             {
-                beatmap.Md5,
-                beatmap.Id,
-                beatmap.SetId,
-                beatmap.Artist,
-                beatmap.Title,
-                beatmap.Version,
-                beatmap.Creator,
-                beatmap.Filename,
-                beatmap.LastUpdate,
-                beatmap.TotalLength,
-                beatmap.MaxCombo,
-                Status = (int)beatmap.Status,
-                beatmap.Frozen,
-                beatmap.Plays,
-                beatmap.Passes,
-                Mode = (int)beatmap.Mode,
-                beatmap.Bpm,
-                beatmap.Cs,
-                beatmap.Od,
-                beatmap.Ar,
-                beatmap.Hp,
-                beatmap.Diff
+                resolved.Md5,
+                resolved.Id,
+                MapsetId = resolved.Mapset.Id,
+                resolved.Version,
+                resolved.Filename,
+                TotalLength = (int)resolved.TotalLength.TotalSeconds,
+                resolved.MaxCombo,
+                Frozen = resolved.IsFrozen,
+                resolved.Plays,
+                resolved.Passes,
+                Mode = (int)resolved.Difficulty.Mode,
+                resolved.Difficulty.Bpm,
+                resolved.Difficulty.Cs,
+                resolved.Difficulty.Od,
+                resolved.Difficulty.Ar,
+                resolved.Difficulty.Hp,
+                resolved.Difficulty.Sr
             });
+
+        return resolved;
     }
 
     public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
@@ -97,46 +116,50 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
     }
 
     public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-        string? query, GameMode? mode, RankedStatus? status, int offset, int amount,
+        string? query, GameMode? mode, int offset, int amount,
         CancellationToken cancellationToken = default)
     {
-        var conditions = new List<string>();
+        var conditions = new List<string> { "b.Frozen = 0" };
         var parameters = new DynamicParameters();
 
         if (query is not null)
         {
-            conditions.Add("(Artist LIKE @Query OR Title LIKE @Query OR Creator LIKE @Query)");
+            conditions.Add("(m.Artist LIKE @Query OR m.Title LIKE @Query OR m.Creator LIKE @Query)");
             parameters.Add("Query", $"%{query}%");
         }
 
         if (mode is not null)
         {
-            conditions.Add("Mode = @Mode");
+            conditions.Add("b.Mode = @Mode");
             parameters.Add("Mode", (int)mode);
         }
 
-        if (status is not null)
-        {
-            conditions.Add("Status = @Status");
-            parameters.Add("Status", (int)status);
-        }
-
-        var whereClause = conditions.Count > 0 ? $"WHERE {string.Join(" AND ", conditions)}" : "";
+        var whereClause = $"WHERE {string.Join(" AND ", conditions)}";
         parameters.Add("Offset", offset);
         parameters.Add("Amount", amount);
 
         await using var connection = Connect();
         var setIds = (await connection.QueryAsync<int>(
-            $"SELECT DISTINCT SetId FROM Beatmaps {whereClause} ORDER BY SetId DESC LIMIT @Amount OFFSET @Offset",
+            $"""
+             SELECT DISTINCT b.MapsetId FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+             {whereClause}
+             ORDER BY b.MapsetId DESC LIMIT @Amount OFFSET @Offset
+             """,
             parameters)).ToList();
 
         if (setIds.Count == 0) return [];
 
-        var rows = await connection.QueryAsync<MapRow>(
-            "SELECT * FROM Beatmaps WHERE SetId IN @SetIds ORDER BY Diff ASC",
-            new { SetIds = setIds });
+        var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+            $"""
+             SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+             WHERE b.MapsetId IN @SetIds AND b.Frozen = 0
+             ORDER BY b.Sr ASC
+             """,
+            (b, m) => b.ToBeatmap(m.ToMapset()),
+            new { SetIds = setIds },
+            splitOn: "Id");
 
-        var mapsBySet = rows.Select(r => r.ToBeatmap()).GroupBy(b => b.SetId)
+        var mapsBySet = rows.GroupBy(b => b.Mapset.Id)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)g.ToList());
 
         return setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id]).ToList();
@@ -159,16 +182,23 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
     public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        await connection.ExecuteAsync("UPDATE Beatmaps SET Diff = @Diff WHERE Id = @Id", new { Id = id, Diff = diff });
+        await connection.ExecuteAsync("UPDATE Beatmaps SET Sr = @Sr WHERE Id = @Id", new { Id = id, Sr = diff });
     }
 
-    public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId,
+    public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var rows = await connection.QueryAsync<MapRow>("SELECT * FROM Beatmaps WHERE SetId = @SetId",
-            new { SetId = setId });
-        return rows.Select(r => r.ToBeatmap()).ToList();
+        var whereClause = includeFrozen ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND b.Frozen = 0";
+        var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+            $"""
+             SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+             {whereClause}
+             """,
+            (b, m) => b.ToBeatmap(m.ToMapset()),
+            new { MapsetId = setId },
+            splitOn: "Id");
+        return rows.ToList();
     }
 
     private SqliteConnection Connect()
@@ -176,37 +206,48 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         return new SqliteConnection(connectionString);
     }
 
-    // Mutable DTO so Dapper maps by property name instead of strict positional-constructor-type matching.
-    private sealed class MapRow
+    // Mutable DTOs so Dapper maps by property name instead of strict positional-constructor-type
+    // matching. Split into Beatmaps-only and Mapsets-only halves for the JOIN's multi-mapping.
+    private sealed class BeatmapRow
     {
         public string Md5 { get; set; } = "";
         public int Id { get; set; }
-        public int SetId { get; set; }
-        public string Artist { get; set; } = "";
-        public string Title { get; set; } = "";
         public string Version { get; set; } = "";
-        public string Creator { get; set; } = "";
-        public DateTime LastUpdate { get; set; }
+        public string Filename { get; set; } = "";
         public int TotalLength { get; set; }
         public int MaxCombo { get; set; }
-        public int Status { get; set; }
         public bool Frozen { get; set; }
         public int Plays { get; set; }
         public int Passes { get; set; }
         public int Mode { get; set; }
         public double Bpm { get; set; }
         public double Cs { get; set; }
-        public double Od { get; set; }
         public double Ar { get; set; }
+        public double Od { get; set; }
         public double Hp { get; set; }
-        public double Diff { get; set; }
-        public string Filename { get; set; } = "";
+        public double Sr { get; set; }
 
-        public Beatmap ToBeatmap()
+        public Beatmap ToBeatmap(Mapset mapset)
         {
             return new Beatmap(
-                Md5, Id, SetId, Artist, Title, Version, Creator, LastUpdate, TotalLength, MaxCombo,
-                (RankedStatus)Status, Frozen, Plays, Passes, (GameMode)Mode, Bpm, Cs, Od, Ar, Hp, Diff, Filename);
+                Md5, Id, mapset, Version, Filename,
+                TimeSpan.FromSeconds(TotalLength), MaxCombo, Frozen, Plays, Passes,
+                new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr));
+        }
+    }
+
+    private sealed class MapsetRow
+    {
+        public int Id { get; set; }
+        public string Artist { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Creator { get; set; } = "";
+        public DateTime LastUpdate { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        public Mapset ToMapset()
+        {
+            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt);
         }
     }
 }

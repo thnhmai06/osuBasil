@@ -1,11 +1,11 @@
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Multiplayer;
@@ -63,8 +63,8 @@ public class MatchReportServiceTests
         _matchPersistence.FetchEventsAsync(5, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<MatchEventRow>)[]);
 
-        var live = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 1, GameMode.VanillaOsu,
-            Mods.NoMod, MatchWinConditions.Score, MatchTeamTypes.TeamVs, false, 0, "#mp_0") { DbId = 5 };
+        var live = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 1, GameMode.Standard,
+            Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0") { DbId = 5 };
         live.Slots[0].PlayerId = 7;
         _matchRegistry.GetByDbId(5).Returns(live);
 
@@ -91,9 +91,9 @@ public class MatchReportServiceTests
 
         _scores.FetchByRoundIdAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<RoundScoreRow>)
         [
-            new RoundScoreRow(1, 7, "red-player", (int)MatchTeams.Red, 0, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0,
+            new RoundScoreRow(1, 7, "red-player", MatchTeam.Red, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0,
                 "S", true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
-            new RoundScoreRow(2, 8, "blue-player", (int)MatchTeams.Blue, 0, 300_000, 0.90, 700, 250, 20, 5, 0, 0, 0,
+            new RoundScoreRow(2, 8, "blue-player", MatchTeam.Blue, Mods.NoMod, 300_000, 0.90, 700, 250, 20, 5, 0, 0, 0,
                 "A", false, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))
         ]);
 
@@ -101,7 +101,7 @@ public class MatchReportServiceTests
 
         Assert.NotNull(report);
         var builtRound = Assert.Single(report.Rounds);
-        Assert.Equal(MatchTeams.Red.ToString(), builtRound.WinnerTeam);
+        Assert.Equal(MatchTeam.Red.ToString(), builtRound.WinnerTeam);
         Assert.Null(builtRound.WinnerUserId);
         Assert.Equal(2, builtRound.Scores.Length);
     }
@@ -121,9 +121,9 @@ public class MatchReportServiceTests
 
         _scores.FetchByRoundIdAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<RoundScoreRow>)
         [
-            new RoundScoreRow(1, 7, "player-one", null, 0, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S", true,
+            new RoundScoreRow(1, 7, "player-one", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S", true,
                 new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
-            new RoundScoreRow(2, 8, "player-two", null, 0, 600_000, 0.90, 700, 250, 20, 5, 0, 0, 0, "A", false,
+            new RoundScoreRow(2, 8, "player-two", null, Mods.NoMod, 600_000, 0.90, 700, 250, 20, 5, 0, 0, 0, "A", false,
                 new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))
         ]);
 

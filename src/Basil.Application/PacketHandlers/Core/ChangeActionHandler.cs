@@ -1,8 +1,8 @@
 using Basil.Application.Sessions;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Protocol.Packets;
-using Action = Basil.Domain.Action;
 
 namespace Basil.Application.PacketHandlers.Core;
 
@@ -21,25 +21,9 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
 
         var mods = (Mods)reader.ReadU32();
         var mode = reader.ReadU8();
-
-        if ((mods & Mods.Relax) != Mods.NoMod)
-        {
-            if (mode == 3) // rx!mania doesn't exist
-                mods &= ~Mods.Relax;
-            else
-                mode += 4;
-        }
-        else if ((mods & Mods.Autopilot) != Mods.NoMod)
-        {
-            if (mode is 1 or 2 or 3) // ap!catch, taiko and mania don't exist
-                mods &= ~Mods.Autopilot;
-            else
-                mode += 8;
-        }
-
         var mapId = reader.ReadI32();
 
-        player.Status.Action = (Action)action;
+        player.Status.UserActivity = (UserActivity)action;
         player.Status.InfoText = infoText;
         player.Status.MapMd5 = mapMd5;
         player.Status.Mods = mods;

@@ -1,18 +1,18 @@
-using Basil.Domain;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Sessions.Multiplayer;
 
 /// <summary>
 ///     One of a match's 16 slots. Ported from app/objects/match.py's Slot — a plain mutable holder,
-///     synchronization is the owning <see cref="MatchSession" />'s responsibility (its <c>Lock</c>),
+///     synchronisation is the owning <see cref="MatchSession" />'s responsibility (its <c>Lock</c>),
 ///     not this type's.
 /// </summary>
 public sealed class MatchSlot
 {
     public int? PlayerId { get; set; }
     public SlotStatus Status { get; set; } = SlotStatus.Open;
-    public MatchTeams Team { get; set; } = MatchTeams.Neutral;
+    public MatchTeam Team { get; set; } = MatchTeam.Neutral;
     public Mods Mods { get; set; } = Mods.NoMod;
     public bool Loaded { get; set; }
     public bool Skipped { get; set; }
@@ -31,7 +31,7 @@ public sealed class MatchSlot
     {
         PlayerId = null;
         Status = newStatus;
-        Team = MatchTeams.Neutral;
+        Team = MatchTeam.Neutral;
         Mods = Mods.NoMod;
         Loaded = false;
         Skipped = false;

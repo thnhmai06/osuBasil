@@ -20,7 +20,7 @@ public class TourneyMatchLeaveChannelHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         var observer = MakePlayer(2, "observer");
-        observer.Priv = Privileges.Unrestricted | Privileges.Supporter;
+        observer.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
         fixture.RegisterAll(host, observer);
         var match = fixture.CreateMatch(host);
         var handler = new TourneyMatchLeaveChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
@@ -37,7 +37,7 @@ public class TourneyMatchLeaveChannelHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         var observer = MakePlayer(2, "observer");
-        observer.Priv = Privileges.Unrestricted | Privileges.Supporter;
+        observer.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
         fixture.RegisterAll(host, observer);
         var match = fixture.CreateMatch(host);
         var membership = new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry);

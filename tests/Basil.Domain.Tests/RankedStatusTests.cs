@@ -25,14 +25,14 @@ public class RankedStatusTests
     [InlineData(RankedStatus.Loved, 4)]
     public void OsuApi_MatchesPythonMapping(RankedStatus status, int expected)
     {
-        Assert.Equal(expected, status.OsuApi());
+        Assert.Equal(expected, status.ToOsuApi());
     }
 
     [Fact]
     public void OsuApi_UnmappedStatus_Throws()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => RankedStatus.NotSubmitted.OsuApi());
-        Assert.Throws<ArgumentOutOfRangeException>(() => RankedStatus.UpdateAvailable.OsuApi());
+        Assert.Throws<ArgumentOutOfRangeException>(() => RankedStatus.NotSubmitted.ToOsuApi());
+        Assert.Throws<ArgumentOutOfRangeException>(() => RankedStatus.UpdateAvailable.ToOsuApi());
     }
 
     [Theory]

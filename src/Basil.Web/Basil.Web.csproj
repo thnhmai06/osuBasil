@@ -1,26 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <ItemGroup>
-        <ProjectReference Include="..\Basil.Application\Basil.Application.csproj" />
-        <ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj" />
-        <ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj" />
+        <ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+        <ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\icon.png" />
-        <EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\default.png" />
+        <EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\icon.png"/>
+        <EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\default.png"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="MOTD.txt" CopyToOutputDirectory="PreserveNewest" />
-        <Content Include="Settings*.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-        <None Remove="Assets\icon.png" />
+        <Content Include="Data\MOTD.txt" CopyToOutputDirectory="PreserveNewest"/>
+        <None Remove="Assets\icon.png"/>
         <Content Include="Assets\icon.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 

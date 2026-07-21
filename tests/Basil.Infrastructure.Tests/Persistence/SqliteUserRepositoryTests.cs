@@ -1,3 +1,5 @@
+using Basil.Domain.Login;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Repositories;
 
 namespace Basil.Infrastructure.Tests.Persistence;
@@ -19,8 +21,8 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 
         Assert.NotNull(user);
         Assert.Equal("BasilBot", user.Name);
-        Assert.Equal("basilbot", user.SafeName);
-        Assert.Equal("vn", user.Country);
+        Assert.Equal("basilbot", User.MakeSafeName(user.Name));
+        Assert.Equal(Country.Vn, user.Country);
     }
 
     [Fact]
@@ -71,7 +73,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
         await _repository.UpdateCountryAsync(created.Id, "jp");
 
         var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal("jp", updated!.Country);
+        Assert.Equal(Country.Jp, updated!.Country);
     }
 
     [Fact]
@@ -79,10 +81,10 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     {
         var created = (await _repository.CreateAsync("priv test user", "hash", "xx", null))!;
 
-        await _repository.UpdatePrivilegesAsync(created.Id, 3);
+        await _repository.UpdatePrivilegesAsync(created.Id, (UserPrivileges)3);
 
         var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal(3, updated!.Priv);
+        Assert.Equal((UserPrivileges)3, updated!.Priv);
     }
 
     [Fact]
@@ -90,7 +92,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     {
         var created = (await _repository.CreateAsync("Fresh Player", "some-hash", "us", null))!;
 
-        Assert.Equal("fresh_player", created.SafeName);
+        Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
 
         var fetched = await _repository.FetchByNameAsync("fresh player");
         Assert.Equal(created.Id, fetched!.Id);
@@ -105,6 +107,6 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 
         var updated = await _repository.FetchByIdAsync(created.Id);
         Assert.Equal("renamed", updated!.Name);
-        Assert.Equal("renamed", updated.SafeName);
+        Assert.Equal("renamed", User.MakeSafeName(updated.Name));
     }
 }

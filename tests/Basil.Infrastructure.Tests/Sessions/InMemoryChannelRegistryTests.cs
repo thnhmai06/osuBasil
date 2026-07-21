@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Sessions.Channels;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Sessions;
 
 namespace Basil.Infrastructure.Tests.Sessions;
@@ -14,7 +15,7 @@ public class InMemoryChannelRegistryTests
     public void Seed_ThenGetByName_ReturnsSession()
     {
         var registry = new InMemoryChannelRegistry();
-        registry.Seed([new Channel(1, "#osu", "General discussion.", 1, 2, true)]);
+        registry.Seed([new Channel(1, "#osu", "General discussion.", (UserPrivileges)1, (UserPrivileges)2, true)]);
 
         var session = registry.GetByName("#osu");
 
@@ -35,8 +36,8 @@ public class InMemoryChannelRegistryTests
     {
         var registry = new InMemoryChannelRegistry();
         registry.Seed([
-            new Channel(1, "#osu", "t", 1, 2, true),
-            new Channel(2, "#lobby", "t", 1, 2, false)
+            new Channel(1, "#osu", "t", (UserPrivileges)1, (UserPrivileges)2, true),
+            new Channel(2, "#lobby", "t", (UserPrivileges)1, (UserPrivileges)2, false)
         ]);
 
         var autoJoin = registry.AutoJoinChannels;
@@ -50,8 +51,8 @@ public class InMemoryChannelRegistryTests
     {
         var registry = new InMemoryChannelRegistry();
         registry.Seed([
-            new Channel(1, "#osu", "t", 1, 2, true),
-            new Channel(2, "#lobby", "t", 1, 2, false)
+            new Channel(1, "#osu", "t", (UserPrivileges)1, (UserPrivileges)2, true),
+            new Channel(2, "#lobby", "t", (UserPrivileges)1, (UserPrivileges)2, false)
         ]);
 
         Assert.Equal(2, registry.All.Count);

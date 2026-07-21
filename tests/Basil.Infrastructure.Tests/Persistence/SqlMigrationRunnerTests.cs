@@ -34,7 +34,7 @@ public class SqlMigrationRunnerTests : IAsyncLifetime
 
         foreach (var table in new[]
                  {
-                     "Users", "UserStats", "Scores", "Channels", "ClientHashes", "IngameLogins", "Mail", "Matches",
+                     "Users", "UserStats", "Scores", "Channels", "ClientHashes", "IngameLogins", "Matches",
                      "Rounds", "Beatmaps", "Mapsets"
                  })
         {

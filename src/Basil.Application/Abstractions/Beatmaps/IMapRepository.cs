@@ -15,12 +15,22 @@ public interface IMapRepository
     ///     (setId added on top of the Python source's fetch_one — it's how osu-search-set.php's "any
     ///     map in this set" lookup is served, mirroring fetch_set_info without a separate DTO/method).
     ///     When multiple maps share a setId, an arbitrary one among them is returned.
+    ///     <paramref name="includeFrozen" /> defaults to false (a frozen beatmap is hidden from the
+    ///     client entirely) — only admin-key-gated routes and internal ingestion/upsert plumbing
+    ///     that must see a frozen row to update it in place should pass true.
     /// </summary>
     Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null, int? setId = null,
-        CancellationToken cancellationToken = default);
+        bool includeFrozen = false, CancellationToken cancellationToken = default);
 
-    /// <summary>Ported from BeatmapSet._save_to_sql's REPLACE INTO semantics for a single map.</summary>
-    Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default);
+    /// <summary>
+    ///     Ported from BeatmapSet._save_to_sql's REPLACE INTO semantics for a single map, plus id
+    ///     resolution: matched by <see cref="Beatmap.Md5" /> first (existing row keeps its own Id
+    ///     regardless of what's passed in); otherwise <paramref name="beatmap" />'s `Id` is used
+    ///     directly if positive (a real osu! online id), or resolved from
+    ///     <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c> when `Id` is 0. Returns the
+    ///     row as actually persisted, with its resolved Id.
+    /// </summary>
+    Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default);
 
     /// <summary>Ported from the map_md5s_to_delete cascade in BeatmapSet._update_if_available.</summary>
     Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default);
@@ -29,10 +39,11 @@ public interface IMapRepository
     ///     Ported from DirectSearchService.search, replumbed to query the local `maps` table instead
     ///     of proxying a mirror API (osu-search.php now runs fully offline). Returns beatmap sets
     ///     (grouped by set_id, newest set_id first) each already ordered by star rating ascending,
-    ///     matching the mirror-response shape the Python source consumed.
+    ///     matching the mirror-response shape the Python source consumed. Always excludes frozen
+    ///     beatmaps — a discovery surface, not a specific-row lookup.
     /// </summary>
     Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-        string? query, GameMode? mode, RankedStatus? status, int offset, int amount,
+        string? query, GameMode? mode, int offset, int amount,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -52,6 +63,12 @@ public interface IMapRepository
     /// <summary>Caches a freshly-computed star rating onto a beatmap row for /difficulty-rating.</summary>
     Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default);
 
-    /// <summary>Every beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging.</summary>
-    Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, CancellationToken cancellationToken = default);
+    /// <summary>
+    ///     Every non-frozen beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging
+    ///     (ships file bytes to the client, so frozen beatmaps are always excluded) and by ingestion
+    ///     reconciliation's disk-diff (which needs every beatmap regardless of frozen status —
+    ///     ingestion passes <paramref name="includeFrozen" /> true for that internal use).
+    /// </summary>
+    Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+        CancellationToken cancellationToken = default);
 }

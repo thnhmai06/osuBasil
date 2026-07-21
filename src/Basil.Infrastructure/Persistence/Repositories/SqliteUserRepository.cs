@@ -22,7 +22,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         await using var connection = Connect();
         var row = await connection.QuerySingleOrDefaultAsync<UserRow>(
             "SELECT * FROM Users WHERE SafeName = @SafeName",
-            new { SafeName = SafeName.Make(name) });
+            new { SafeName = User.MakeSafeName(name) });
         return row?.ToUser();
     }
 
@@ -42,12 +42,12 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Country = country });
     }
 
-    public async Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+    public async Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
             "UPDATE Users SET Priv = @Priv WHERE Id = @Id",
-            new { Id = id, Priv = priv });
+            new { Id = id, Priv = (int)priv });
     }
 
     public async Task UpdateNameAsync(int id, string name, string safeName,
@@ -59,7 +59,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+    public async Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -68,17 +68,17 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         {
             id = await connection.ExecuteScalarAsync<int>(
                 """
-                INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv, CreationTime, LatestActivity)
-                VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv, unixepoch(), unixepoch());
+                INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv)
+                VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv);
                 SELECT last_insert_rowid();
                 """,
                 new
                 {
                     Name = name,
-                    SafeName = SafeName.Make(name),
+                    SafeName = User.MakeSafeName(name),
                     PwBcrypt = pwBcrypt,
                     Country = country,
-                    Priv = priv ?? (int)(Privileges.Unrestricted | Privileges.Verified | Privileges.Supporter)
+                    Priv = (int)(priv ?? (UserPrivileges.Unrestricted | UserPrivileges.Verified | UserPrivileges.Supporter))
                 });
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT (Name/SafeName UNIQUE)
@@ -110,24 +110,15 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         public string SafeName { get; set; } = "";
         public int Priv { get; set; }
         public string Country { get; set; } = "";
-        public int SilenceEnd { get; set; }
-        public int DonorEnd { get; set; }
-        public int CreationTime { get; set; }
-        public int LatestActivity { get; set; }
-        public int ClanId { get; set; }
-        public int ClanPriv { get; set; }
-        public int PreferredMode { get; set; }
-        public int PlayStyle { get; set; }
-        public string? CustomBadgeName { get; set; }
-        public string? CustomBadgeIcon { get; set; }
-        public string? UserpageContent { get; set; }
+        public DateTime SilenceEnd { get; set; }
 
         public User ToUser()
         {
-            return new User(
-                Id, Name, SafeName, Priv, Country, SilenceEnd, DonorEnd, CreationTime,
-                LatestActivity, ClanId, ClanPriv, PreferredMode, PlayStyle, CustomBadgeName,
-                CustomBadgeIcon, UserpageContent);
+            var country = Enum.TryParse<Basil.Domain.Login.Country>(Country, ignoreCase: true, out var parsed)
+                ? parsed
+                : Basil.Domain.Login.Country.Xx;
+            return new User(Id, Name, country, (UserPrivileges)Priv,
+                new DateTimeOffset(DateTime.SpecifyKind(SilenceEnd, DateTimeKind.Utc)));
         }
     }
 }

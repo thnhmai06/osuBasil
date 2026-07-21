@@ -18,9 +18,9 @@ public class MatchChangeTeamHandlerTests
         var handler = new MatchChangeTeamHandler(fixture.MatchMembership);
 
         await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
-        Assert.Equal(MatchTeams.Blue, match.GetSlot(host.Id)!.Team);
+        Assert.Equal(MatchTeam.Blue, match.GetSlot(host.Id)!.Team);
 
         await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
-        Assert.Equal(MatchTeams.Red, match.GetSlot(host.Id)!.Team);
+        Assert.Equal(MatchTeam.Red, match.GetSlot(host.Id)!.Team);
     }
 }

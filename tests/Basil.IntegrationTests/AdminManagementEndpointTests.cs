@@ -1,10 +1,18 @@
 using System.Net;
+using System.Net.Http.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configuration;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Web;
+using Basil.Web.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -26,16 +34,16 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Server:AdminKey"] = "correct-key",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+                    ["Basil:Server:AdminKey"] = "correct-key"
                 });
             });
             builder.ConfigureServices(services =>
             {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMatchPersistenceRepository>(new StubMatchPersistenceRepository());
                 services.AddSingleton<IUserRepository>(new StubUserRepository());
             });
@@ -118,6 +126,21 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task CreateUser_InvalidUsername_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+
+        var request = MakeRequest(HttpMethod.Post, "/users", "correct-key");
+        request.Content = JsonContent.Create(new CreateUserRequest("ab", "hunter2", null, null));
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("between 3 and 15 characters", body);
+    }
+
+    [Fact]
     public async Task DeleteMatch_CorrectAdminKey_UnknownId_ReturnsNotFound()
     {
         var client = _factory.CreateClient();
@@ -140,9 +163,9 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
-            int mode, int winCondition, int teamType,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
             string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -201,7 +224,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -211,7 +234,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             return Task.CompletedTask;
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

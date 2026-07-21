@@ -1,9 +1,10 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Bot;
 using Basil.Application.Tests.PacketHandlers;
-using Basil.Application.UseCases.Bot;
+using Basil.Domain.Login;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -25,11 +26,9 @@ public class CommandDispatcherTests
     {
         var options = Options.Create(new BotOptions { CommandPrefix = prefix });
         fixture ??= new MultiplayerTestSupport.Fixture();
-        var clock = Substitute.For<IClock>();
-        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
         var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchPersistence,
             _maps,
-            fixture.SessionRegistry, Substitute.For<IUserRepository>(), clock);
+            fixture.SessionRegistry, Substitute.For<IUserRepository>());
         return new CommandDispatcher(options, mpCommands, _users,
             Options.Create(storageOptions ?? MakeStorageOptions()),
             fixture.MatchRegistry);
@@ -589,6 +588,6 @@ public class CommandDispatcherTests
 
     private static User MakeUser(string name, string country)
     {
-        return new User(1, name, name.ToLowerInvariant(), 1, country, 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
+        return new User(1, name, Enum.Parse<Country>(country, ignoreCase: true), UserPrivileges.Unrestricted, default);
     }
 }

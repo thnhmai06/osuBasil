@@ -1,4 +1,3 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
 
@@ -8,7 +7,7 @@ namespace Basil.Application.PacketHandlers.Core;
 ///     Ported from app/api/domains/cho.py's Logout — the 1-second login-grace-period check plus the shared
 ///     PlayerLogoutService cleanup.
 /// </summary>
-public sealed class LogoutHandler(PlayerLogoutService logoutService, IClock clock) : IBanchoPacketHandler
+public sealed class LogoutHandler(PlayerLogoutService logoutService) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.Logout;
 
@@ -20,7 +19,7 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService, IClock cloc
 
         // osu! has a weird tendency to log out immediately after login (300-800ms observed) —
         // block any logout request within 1 second from login.
-        if (clock.UtcNow.ToUnixTimeSeconds() - player.LoginTime < 1) return Task.CompletedTask;
+        if (DateTimeOffset.UtcNow - player.LoginTime < TimeSpan.FromSeconds(1)) return Task.CompletedTask;
 
         logoutService.Logout(player);
 

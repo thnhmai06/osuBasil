@@ -1,11 +1,13 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -15,7 +17,7 @@ namespace Basil.IntegrationTests;
 ///     b.* redirect) plus the endpoints deliberately stubbed out (screenshot, favourites, rate,
 ///     comment, in-game registration, difficulty-rating).
 ///     Authenticated routes only need "player not online" coverage here (no DB access happens before
-///     that check — see BanchoAuthenticationService); their real logic is unit-tested separately.
+///     that check — see AuthenticationService); their real logic is unit-tested separately.
 /// </summary>
 public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -29,16 +31,18 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Server:AdminKey"] = "",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+                    ["Basil:Server:AdminKey"] = ""
                 });
             });
             builder.ConfigureServices(services =>
-                services.AddSingleton<IMapRepository, NullMapRepository>());
+            {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+                services.AddSingleton<IMapRepository, NullMapRepository>();
+            });
         });
     }
 
@@ -47,14 +51,14 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
     private sealed class NullMapRepository : IMapRepository
     {
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, CancellationToken cancellationToken = default)
+            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Beatmap?>(null);
         }
 
-        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(beatmap);
         }
 
         public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
@@ -63,7 +67,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
         }
 
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
-            RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default)
+            int offset, int amount, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
         }
@@ -83,7 +87,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Beatmap>>([]);
@@ -123,7 +127,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
         var client = _factory.CreateClient();
 
         var response =
-            await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x&channel=other"));
+            await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -222,6 +226,24 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("In-game registration is disabled", body);
+    }
+
+    [Fact]
+    public async Task Register_InvalidUsername_ReturnsUsernameError()
+    {
+        var client = _factory.CreateClient();
+
+        var request = MakeRequest(HttpMethod.Post, "/users");
+        request.Content = new StringContent(
+            "user[username]=ab&user[user_email]=anything@test.com&user[password]=hunter2",
+            Encoding.UTF8,
+            "application/x-www-form-urlencoded");
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("between 3 and 15 characters", body);
     }
 
     [Fact]

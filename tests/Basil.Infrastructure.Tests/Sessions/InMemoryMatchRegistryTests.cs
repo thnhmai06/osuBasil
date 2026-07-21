@@ -1,7 +1,7 @@
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Infrastructure.Sessions;
 
 namespace Basil.Infrastructure.Tests.Sessions;
@@ -14,8 +14,8 @@ public class InMemoryMatchRegistryTests
         return new MatchSession(
             id, "test", "",
             "", 0, new string('a', 32), 1,
-            GameMode.VanillaOsu, Mods.NoMod, MatchWinConditions.Score,
-            MatchTeamTypes.HeadToHead, false, 0, $"#multi_{id}");
+            GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, false, 0, $"#multi_{id}");
     }
 
     [Fact]

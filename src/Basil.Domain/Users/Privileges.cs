@@ -1,8 +1,8 @@
 namespace Basil.Domain.Users;
 
-/// <summary>Ported from app/constants/privileges.py's Privileges (IntFlag) — server-side user privileges.</summary>
+/// <summary>Ported from app/constants/privileges.py's UserPrivileges (IntFlag) — server-side user privileges.</summary>
 [Flags]
-public enum Privileges
+public enum UserPrivileges : ushort
 {
     Unrestricted = 1 << 0,
     Verified = 1 << 1,
@@ -22,7 +22,7 @@ public enum Privileges
 
 /// <summary>Ported from app/constants/privileges.py's ClientPrivileges (IntFlag) — client-side user privileges.</summary>
 [Flags]
-public enum ClientPrivileges
+public enum ClientPrivileges : byte
 {
     Player = 1 << 0,
     Moderator = 1 << 1,
@@ -30,12 +30,4 @@ public enum ClientPrivileges
     Owner = 1 << 3,
     Developer = 1 << 4,
     Tournament = 1 << 5 // NOTE: not used in communications with osu! client
-}
-
-/// <summary>Ported from app/constants/privileges.py's ClanPrivileges (IntEnum).</summary>
-public enum ClanPrivileges
-{
-    Member = 1,
-    Officer = 2,
-    Owner = 3
 }

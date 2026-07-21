@@ -1,26 +1,28 @@
+using Basil.Domain.Users;
+
 namespace Basil.Application.Abstractions.Users;
 
-/// <summary>Ported from app/repositories/client_hashes.py's ClientHash dataclass.</summary>
+/// <summary>Ported from app/repositories/client_hashes.py's Hash dataclass.</summary>
 public sealed record ClientHash(
     int UserId,
-    string OsuPath,
+    string OsuPathMd5,
     string Adapters,
     string UninstallId,
     string DiskSerial,
-    DateTime LatestTime,
+    DateTime LastSeenAt,
     int Occurrences);
 
 /// <summary>Ported from app/repositories/client_hashes.py's ClientHashWithPlayer dataclass.</summary>
 public sealed record ClientHashWithPlayer(
     int UserId,
-    string OsuPath,
+    string OsuPathMd5,
     string Adapters,
     string UninstallId,
     string DiskSerial,
-    DateTime LatestTime,
+    DateTime LastSeenAt,
     int Occurrences,
     string Name,
-    int Priv);
+    UserPrivileges Priv);
 
 /// <summary>
 ///     Ported from app/repositories/client_hashes.py's ClientHashesRepository, scoped to what login
@@ -28,8 +30,8 @@ public sealed record ClientHashWithPlayer(
 /// </summary>
 public interface IClientHashRepository
 {
-    Task<ClientHash> CreateAsync(int userId, string osuPath, string adapters, string uninstallId, string diskSerial,
-        CancellationToken cancellationToken = default);
+    Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
+        string diskSerial, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     Finds other users (not <paramref name="userId" />) sharing hardware identifiers. When

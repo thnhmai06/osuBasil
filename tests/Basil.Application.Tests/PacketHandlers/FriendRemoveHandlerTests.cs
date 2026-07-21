@@ -25,7 +25,7 @@ public class FriendRemoveHandlerTests
     [Fact]
     public async Task HandleAsync_ExistingFriendRelationship_DeletesIt()
     {
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _relationships.FetchOneAsync(1, 2).Returns(new Relationship(1, 2, RelationshipType.Friend));
 
         await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -36,7 +36,7 @@ public class FriendRemoveHandlerTests
     [Fact]
     public async Task HandleAsync_ExistingBlockRelationship_DoesNotDeleteIt()
     {
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _relationships.FetchOneAsync(1, 2).Returns(new Relationship(1, 2, RelationshipType.Block));
 
         await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -47,7 +47,7 @@ public class FriendRemoveHandlerTests
     [Fact]
     public async Task HandleAsync_NoExistingRelationship_DoesNothing()
     {
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _relationships.FetchOneAsync(1, 2).Returns((Relationship?)null);
 
         await MakeHandler().HandleAsync(player, TargetReader(2));

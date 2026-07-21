@@ -2,7 +2,7 @@
 
 Below are the chat commands of `BasilBot` — usable directly through chat (public channels, match channels, or DM to `BasilBot`).
 
-Default prefix is `!` (server admin can change it via `BotOptions.CommandPrefix` in `Settings.toml`). **Direct DM to BasilBot is an exception — prefix is optional there**: typing `help` or `!help` in DM are handled identically (every DM sent to BasilBot is already treated as a command; there is no fallback to regular chat/mail, so relaxing the prefix here carries no risk of swallowing normal messages).
+Default prefix is `!` (server admin can change it via `BotOptions.CommandPrefix` in `Settings.toml`). **Direct DM to BasilBot is an exception — prefix is optional there**: typing `help` or `!help` in DM are handled identically (every DM sent to BasilBot is already treated as a command; there is no fallback to regular chat, so relaxing the prefix here carries no risk of swallowing normal messages).
 
 For why specific differences from original osu! Bancho exist (deliberate vs. scope-related), see [`working-scopes.md`](working-scopes.md).
 

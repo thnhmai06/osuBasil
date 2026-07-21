@@ -23,7 +23,7 @@ public class PingHandlerTests
     [Fact]
     public async Task Handle_DoesNothing()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var reader = new BanchoPacketReader(Array.Empty<byte>());
 
         await new PingHandler().HandleAsync(session, reader);

@@ -1,6 +1,6 @@
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Chat;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Chat;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Channels;

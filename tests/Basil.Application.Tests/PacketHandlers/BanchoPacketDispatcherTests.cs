@@ -32,7 +32,7 @@ public class BanchoPacketDispatcherTests
         var called = false;
         var handler = new FakeHandler(ClientPackets.Ping, true, (_, _) => called = true);
         var dispatcher = new BanchoPacketDispatcher([handler]);
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
         await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.Ping, []));
 
@@ -43,7 +43,7 @@ public class BanchoPacketDispatcherTests
     public async Task Dispatch_UnknownPacket_SkippedWithoutError()
     {
         var dispatcher = new BanchoPacketDispatcher([]);
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
         await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.CantSpectate, [1, 2, 3, 4]));
         // no exception -> success
@@ -60,7 +60,7 @@ public class BanchoPacketDispatcherTests
             calls.Add(ClientPackets.Logout);
         });
         var dispatcher = new BanchoPacketDispatcher([pingHandler, logoutHandler]);
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var body = PacketBytes(ClientPackets.Ping, [])
             .Concat(PacketBytes(ClientPackets.Logout, PacketWriter.WriteInt32(0))).ToArray();
 
@@ -77,7 +77,7 @@ public class BanchoPacketDispatcherTests
         var pingHandler = new FakeHandler(ClientPackets.Ping, true, (_, _) => pingCalled = true);
         var chatHandler = new FakeHandler(ClientPackets.SendPublicMessage, false, (_, _) => chatCalled = true);
         var dispatcher = new BanchoPacketDispatcher([pingHandler, chatHandler]);
-        var restrictedSession = new PlayerSession(1, "cmyui", "token", Privileges.Verified, 0.0); // restricted
+        var restrictedSession = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 
         var body = PacketBytes(ClientPackets.Ping, []).Concat(PacketBytes(ClientPackets.SendPublicMessage, [1, 2]))
             .ToArray();

@@ -1,6 +1,6 @@
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Spectating;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Spectating;

@@ -9,7 +9,7 @@ public class ChannelSessionTests
     [Fact]
     public void CanRead_ZeroReadPriv_AlwaysTrue()
     {
-        var channel = new ChannelSession(1, "#osu", "topic", 0, 2, true);
+        var channel = new ChannelSession(1, "#osu", "topic", 0, (UserPrivileges)2, true);
 
         Assert.True(channel.CanRead(0));
     }
@@ -17,23 +17,23 @@ public class ChannelSessionTests
     [Fact]
     public void CanRead_OverlappingBit_IsTrue()
     {
-        var channel = new ChannelSession(1, "#staff", "topic", (int)Privileges.Staff, (int)Privileges.Staff, true);
+        var channel = new ChannelSession(1, "#staff", "topic", UserPrivileges.Staff, UserPrivileges.Staff, true);
 
-        Assert.True(channel.CanRead(Privileges.Moderator));
+        Assert.True(channel.CanRead(UserPrivileges.Moderator));
     }
 
     [Fact]
     public void CanRead_NoOverlappingBit_IsFalse()
     {
-        var channel = new ChannelSession(1, "#staff", "topic", (int)Privileges.Staff, (int)Privileges.Staff, true);
+        var channel = new ChannelSession(1, "#staff", "topic", UserPrivileges.Staff, UserPrivileges.Staff, true);
 
-        Assert.False(channel.CanRead(Privileges.Unrestricted | Privileges.Verified));
+        Assert.False(channel.CanRead(UserPrivileges.Unrestricted | UserPrivileges.Verified));
     }
 
     [Fact]
     public void CanWrite_ZeroWritePriv_AlwaysTrue()
     {
-        var channel = new ChannelSession(1, "#osu", "topic", 1, 0, true);
+        var channel = new ChannelSession(1, "#osu", "topic", (UserPrivileges)1, 0, true);
 
         Assert.True(channel.CanWrite(0));
     }

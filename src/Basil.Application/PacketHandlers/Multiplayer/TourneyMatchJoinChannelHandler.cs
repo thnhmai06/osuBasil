@@ -21,7 +21,7 @@ public sealed class TourneyMatchJoinChannelHandler(
     {
         var matchId = reader.ReadI32();
 
-        if (matchId is < 0 or >= 64 || (player.Priv & Privileges.Donator) == 0) return Task.CompletedTask;
+        if (matchId is < 0 or >= 64 || (player.Priv & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
         var match = matchRegistry.GetById(matchId);
         if (match is null) return Task.CompletedTask;

@@ -12,7 +12,7 @@ public sealed class SqliteLogRepository(string connectionString) : ILogRepositor
     {
         await using var connection = new SqliteConnection(connectionString);
         await connection.ExecuteAsync(
-            "INSERT INTO Logs (`From`, `To`, `Action`, Msg, Time) VALUES (@FromId, @ToId, @Action, @Message, datetime('now'))",
+            "INSERT INTO Logs (FromId, ToId, Action, Msg, CreatedAt) VALUES (@FromId, @ToId, @Action, @Message, datetime('now'))",
             new { FromId = fromId, ToId = toId, Action = action, Message = message });
     }
 }

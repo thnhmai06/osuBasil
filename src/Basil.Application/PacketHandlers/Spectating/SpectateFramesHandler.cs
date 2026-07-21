@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Spectating;

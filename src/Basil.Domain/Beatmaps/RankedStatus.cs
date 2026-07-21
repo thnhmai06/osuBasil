@@ -1,7 +1,7 @@
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>Ported from app/constants/beatmap_statuses.py's RankedStatus (IntEnum).</summary>
-public enum RankedStatus
+public enum RankedStatus : sbyte
 {
     NotSubmitted = -1,
     Pending = 0,
@@ -16,7 +16,7 @@ public enum RankedStatus
 public static class RankedStatusExtensions
 {
     /// <summary>Ported from RankedStatus.osu_api — only statuses osu!api itself returns are mapped.</summary>
-    public static int OsuApi(this RankedStatus status)
+    public static int ToOsuApi(this RankedStatus status)
     {
         return status switch
         {
@@ -54,7 +54,7 @@ public static class RankedStatusExtensions
             2 => RankedStatus.Pending,
             3 => RankedStatus.Qualified,
             5 => RankedStatus.Pending, // graveyard
-            7 => RankedStatus.Ranked, // played before
+            7 => RankedStatus.Ranked, // ranked + played before
             8 => RankedStatus.Loved,
             _ => RankedStatus.UpdateAvailable
         };

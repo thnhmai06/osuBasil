@@ -4,8 +4,7 @@ namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
 ///     Ported from app/repositories/channels.py, scoped to what login needs: the auto-join channel
-///     list. migrations/base.sql seeds 7 channels (#osu, #announce, #lobby, #supporter, #staff,
-///     #admin, #dev), 5 of which have auto_join=true (#lobby and #supporter do not).
+///     list. migrations/base.sql seeds 2 channels (#osu, #lobby), only #osu has auto_join=true.
 /// </summary>
 public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
@@ -17,9 +16,7 @@ public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture
         var channels = await _repository.FetchAllAutoJoinAsync();
 
         Assert.Contains(channels, c => c.Name == "#osu");
-        Assert.Contains(channels, c => c.Name == "#announce");
         Assert.DoesNotContain(channels, c => c.Name == "#lobby");
-        Assert.DoesNotContain(channels, c => c.Name == "#supporter");
         Assert.All(channels, c => Assert.True(c.AutoJoin));
     }
 

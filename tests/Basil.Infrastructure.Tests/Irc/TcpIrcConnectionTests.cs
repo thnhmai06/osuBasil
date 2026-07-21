@@ -6,12 +6,13 @@ using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Chat;
+using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Bot;
-using Basil.Application.UseCases.Chat;
-using Basil.Application.UseCases.Irc;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Security;
@@ -36,9 +37,9 @@ public class TcpIrcConnectionTests
     {
         var hasher = new BCryptPasswordHasher();
         var users = new FakeUserRepository();
-        users.Add(new User(1, "alice", "alice", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(1, "alice", Country.Xx, 0, default),
             HashPassword(hasher, "alice-key"));
-        users.Add(new User(2, "bob", "bob", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(2, "bob", Country.Xx, 0, default),
             HashPassword(hasher, "bob-key"));
 
         var sessionRegistry = new InMemoryPlayerSessionRegistry();
@@ -47,9 +48,8 @@ public class TcpIrcConnectionTests
 
         var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
         var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-            new NotSupportedRelationshipRepository(), new NotSupportedMailRepository(), new NullCommandDispatcher());
-        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions,
-            new SystemClock(), hasher);
+            new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
+        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions, hasher);
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -63,7 +63,7 @@ public class TcpIrcConnectionTests
             {
                 var client = await listener.AcceptTcpClientAsync(cts.Token);
                 var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-                    channelRegistry, sessionRegistry, _fakeIrcOptions, new SystemClock());
+                    channelRegistry, sessionRegistry, _fakeIrcOptions);
                 _ = connection.RunAsync(cts.Token);
             }
         }, cts.Token);
@@ -105,7 +105,7 @@ public class TcpIrcConnectionTests
     {
         var hasher = new BCryptPasswordHasher();
         var users = new FakeUserRepository();
-        users.Add(new User(1, "alice", "alice", 0, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null),
+        users.Add(new User(1, "alice", Country.Xx, 0, default),
             HashPassword(hasher, "alice-key"));
 
         var sessionRegistry = new InMemoryPlayerSessionRegistry();
@@ -114,13 +114,12 @@ public class TcpIrcConnectionTests
 
         var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
         var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-            new NotSupportedRelationshipRepository(), new NotSupportedMailRepository(), new NullCommandDispatcher());
-        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions,
-            new SystemClock(), hasher);
+            new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
+        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions, hasher);
 
         // Stands in for a real bancho client: same PlayerSession/IrcConnection shape the chat core sees
-        // once OsuLoginUseCase logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
-        var banchoPlayer = new PlayerSession(99, "bob", "bancho-token", Privileges.Unrestricted, 0.0);
+        // once LoginService logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
+        var banchoPlayer = new PlayerSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         sessionRegistry.Add(banchoPlayer);
         channelMembership.Join(banchoPlayer, channelRegistry.GetByName("#osu")!);
 
@@ -134,7 +133,7 @@ public class TcpIrcConnectionTests
         {
             var client = await listener.AcceptTcpClientAsync(cts.Token);
             var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-                channelRegistry, sessionRegistry, _fakeIrcOptions, new SystemClock());
+                channelRegistry, sessionRegistry, _fakeIrcOptions);
             _ = connection.RunAsync(cts.Token);
         }, cts.Token);
 
@@ -218,7 +217,7 @@ public class TcpIrcConnectionTests
 
         public void Add(User user, string? pwBcrypt = null)
         {
-            _byName[SafeName.Make(user.Name)] = user;
+            _byName[User.MakeSafeName(user.Name)] = user;
             if (pwBcrypt is not null)
                 _passwordHashes[user.Id] = pwBcrypt;
         }
@@ -230,7 +229,7 @@ public class TcpIrcConnectionTests
 
         public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(_byName.GetValueOrDefault(SafeName.Make(name)));
+            return Task.FromResult(_byName.GetValueOrDefault(User.MakeSafeName(name)));
         }
 
         public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
@@ -243,7 +242,7 @@ public class TcpIrcConnectionTests
             throw new NotSupportedException();
         }
 
-        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -253,7 +252,7 @@ public class TcpIrcConnectionTests
             throw new NotSupportedException();
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -286,27 +285,6 @@ public class TcpIrcConnectionTests
         }
 
         public Task DeleteAsync(int user1, int user2, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-    }
-
-    /// <summary>Unused by this test's channel-PRIVMSG path — only DM delivery touches mail.</summary>
-    private sealed class NotSupportedMailRepository : IMailRepository
-    {
-        public Task<Mail> CreateAsync(int fromId, int toId, string msg, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<MailWithUsernames>> FetchUnreadMailToUserAsync(int userId,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<Mail>> MarkConversationAsReadAsync(int toId, int fromId,
-            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

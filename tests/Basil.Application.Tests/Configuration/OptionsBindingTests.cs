@@ -22,24 +22,8 @@ public class OptionsBindingTests
         return provider.GetRequiredService<IOptions<T>>().Value;
     }
 
-    [Fact]
-    public void DatabaseOptions_Path_DefaultsToBasilDb()
-    {
-        var options = BindOptions<DatabaseOptions>(DatabaseOptions.SectionName, new Dictionary<string, string?>());
-
-        Assert.Equal("basil.db", options.Path);
-    }
-
-    [Fact]
-    public void DatabaseOptions_Binds_Path()
-    {
-        var options = BindOptions<DatabaseOptions>(DatabaseOptions.SectionName, new Dictionary<string, string?>
-        {
-            [$"{DatabaseOptions.SectionName}:Path"] = "/srv/basil.db"
-        });
-
-        Assert.Equal("/srv/basil.db", options.Path);
-    }
+    // DatabaseOptions is no longer bound from IConfiguration — fixed to Data/Basil.db.
+    // No binding tests needed.
 
     [Fact]
     public void MirrorOptions_Binds_DownloadEndpoint()

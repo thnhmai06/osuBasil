@@ -1,3 +1,7 @@
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+
 namespace Basil.Application.Abstractions.Multiplayer;
 
 /// <summary>
@@ -17,9 +21,9 @@ public interface IMatchPersistenceRepository
     /// <summary>Returns the newly created Rounds.Id.</summary>
     Task<int> CreateRoundAsync(
         int matchId, int roundIndex, int beatmapId, string mapMd5,
-        int mode, int winCondition, int teamType,
+        GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
         string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-        int mods, DateTime startedAt,
+        Mods mods, DateTime startedAt,
         CancellationToken cancellationToken = default);
 
     Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
@@ -64,14 +68,14 @@ public sealed record RoundRow(
     int RoundIndex,
     int BeatmapId,
     string MapMd5,
-    int Mode,
-    int WinCondition,
-    int TeamType,
+    GameMode Mode,
+    MatchWinCondition WinCondition,
+    MatchTeamType TeamType,
     string BeatmapArtist,
     string BeatmapTitle,
     string BeatmapVersion,
     string BeatmapCreator,
     bool Aborted,
-    int Mods,
+    Mods Mods,
     DateTime StartedAt,
     DateTime? EndedAt);

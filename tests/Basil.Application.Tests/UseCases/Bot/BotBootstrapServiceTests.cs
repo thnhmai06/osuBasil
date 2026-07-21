@@ -1,9 +1,10 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Bot;
+using Basil.Domain.Login;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -12,13 +13,12 @@ namespace Basil.Application.Tests.UseCases.Bot;
 public class BotBootstrapServiceTests
 {
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
     private static User MakeUser(string name)
     {
-        return new User(0, name, name.ToLowerInvariant(), 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
+        return new User(0, name, Country.Xx, UserPrivileges.Unrestricted, default);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class BotBootstrapServiceTests
     {
         _users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns((User?)null);
         var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-            Options.Create(new BotOptions { CommandPrefix = "!" }), _clock);
+            Options.Create(new BotOptions { CommandPrefix = "!" }));
 
         var result = await service.BootstrapAsync();
 
@@ -39,7 +39,7 @@ public class BotBootstrapServiceTests
     {
         _users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
         var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-            Options.Create(new BotOptions { CommandPrefix = "!" }), _clock);
+            Options.Create(new BotOptions { CommandPrefix = "!" }));
 
         var result = await service.BootstrapAsync();
 
@@ -55,7 +55,7 @@ public class BotBootstrapServiceTests
     {
         _users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
         var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-            Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }), _clock);
+            Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }));
 
         var result = await service.BootstrapAsync();
 
@@ -70,7 +70,7 @@ public class BotBootstrapServiceTests
         var osu = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.AutoJoinChannels.Returns([osu]);
         var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-            Options.Create(new BotOptions { CommandPrefix = "!" }), _clock);
+            Options.Create(new BotOptions { CommandPrefix = "!" }));
 
         var result = await service.BootstrapAsync();
 

@@ -18,7 +18,7 @@ public class TourneyMatchJoinChannelHandlerTests
     private static PlayerSession MakeDonator(int id, string name)
     {
         var player = MakePlayer(id, name);
-        player.Priv = Privileges.Unrestricted | Privileges.Supporter;
+        player.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
         return player;
     }
 
@@ -31,7 +31,7 @@ public class TourneyMatchJoinChannelHandlerTests
         var match = fixture.CreateMatch(host);
         var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
             new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry));
-        host.Priv = Privileges.Unrestricted | Privileges.Supporter;
+        host.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 
         await handler.HandleAsync(host, ReaderFor(match.Id));
 

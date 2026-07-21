@@ -1,11 +1,10 @@
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
-using Action = Basil.Domain.Action;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -30,93 +29,53 @@ public class ChangeActionHandlerTests
     [Fact]
     public async Task Handle_UpdatesStatusFields()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var reader =
-            new BanchoPacketReader(Payload((int)Action.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
+            new BanchoPacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
-        Assert.Equal(Action.Playing, session.Status.Action);
+        Assert.Equal(UserActivity.Playing, session.Status.UserActivity);
         Assert.Equal("playing a map", session.Status.InfoText);
         Assert.Equal("abc123", session.Status.MapMd5);
         Assert.Equal(Mods.Hidden, session.Status.Mods);
-        Assert.Equal(GameMode.VanillaOsu, session.Status.Mode);
+        Assert.Equal(GameMode.Standard, session.Status.Mode);
         Assert.Equal(42, session.Status.MapId);
     }
 
     [Fact]
-    public async Task Handle_RelaxMod_ShiftsModeToRelaxVariant()
+    public async Task Handle_RelaxMod_PassesThroughModeAndModsUnchanged()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        // GameMode is a plain 4-value enum — Relax/Autopilot are ordinary Mods bits now, with no
+        // effect on Mode, unlike the old Vanilla/Relax/Autopilot-variant enum.
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, 0, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
-        Assert.Equal(GameMode.RelaxOsu, session.Status.Mode);
+        Assert.Equal(GameMode.Standard, session.Status.Mode);
         Assert.Equal(Mods.Relax, session.Status.Mods);
     }
 
     [Fact]
-    public async Task Handle_RelaxModOnMania_StripsRelaxSinceRxManiaDoesNotExist()
+    public async Task Handle_AutopilotModOnMania_PassesThroughModeAndModsUnchanged()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Relax, 3, 0));
-
-        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
-
-        Assert.Equal(GameMode.VanillaMania, session.Status.Mode);
-        Assert.Equal(Mods.NoMod, session.Status.Mods);
-    }
-
-    [Fact]
-    public async Task Handle_AutopilotMod_ShiftsModeToAutopilotVariant()
-    {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 0, 0));
-
-        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
-
-        Assert.Equal(GameMode.AutopilotOsu, session.Status.Mode);
-    }
-
-    [Fact]
-    public async Task Handle_AutopilotModOnNonOsuMode_StripsAutopilot()
-    {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 1, 0));
-
-        await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
-
-        Assert.Equal(GameMode.VanillaTaiko, session.Status.Mode);
-        Assert.Equal(Mods.NoMod, session.Status.Mods);
-    }
-
-    [Fact]
-    public async Task Handle_AutopilotModOnMania_DivergesFromGameModeExtensionsFromParams()
-    {
-        // Regression test for the deliberate Relax-before-Autopilot check order documented on
-        // BeatmapLeaderboardService.ResolveModeAndMods: this handler and that service both check
-        // Relax first, unlike GameModeExtensions.FromParams (Autopilot first, matching Python's
-        // GameMode.from_params). For mods=Autopilot, mode=mania, FromParams would produce
-        // AutopilotMania (11, an "unused" combo); this handler strips Autopilot instead, since mania
-        // has no ap! variant, and keeps VanillaMania — the two must keep disagreeing here.
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var reader = new BanchoPacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 3, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
-        Assert.Equal(GameMode.VanillaMania, session.Status.Mode);
-        Assert.Equal(Mods.NoMod, session.Status.Mods);
-        Assert.NotEqual(GameModeExtensions.FromParams(3, Mods.Autopilot), session.Status.Mode);
+        Assert.Equal(GameMode.Mania, session.Status.Mode);
+        Assert.Equal(Mods.Autopilot, session.Status.Mods);
     }
 
     [Fact]
     public async Task Handle_Unrestricted_BroadcastsUpdatedStatsToAllOnlinePlayers()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var other = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([session, other]);
-        var reader = new BanchoPacketReader(Payload((int)Action.Idle, "", "", 0, 0, 0));
+        var reader = new BanchoPacketReader(Payload((int)UserActivity.Idle, "", "", 0, 0, 0));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -126,8 +85,8 @@ public class ChangeActionHandlerTests
     [Fact]
     public async Task Handle_Restricted_DoesNotBroadcast()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Verified, 0.0); // restricted
-        var other = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+        var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([session, other]);
         var reader = new BanchoPacketReader(Payload(0, "", "", 0, 0, 0));
 

@@ -1,50 +1,8 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Abstractions.Scores;
-
-/// <summary>
-///     Ported from app/repositories/scores.py's BeatmapLeaderboardScoreRow. The Python dataclass calls
-///     this field `leaderboard_value` because it's pp for rx/ap and score for vanilla — Basil's
-///     no-pp scope decision means it is unconditionally the `score` column, so it's named plainly.
-///     Clan tag prefixing (`[tag] name`) is not implemented; Name is the plain player name.
-/// </summary>
-public sealed record BeatmapLeaderboardScoreRow(
-    long Id,
-    long Score,
-    int MaxCombo,
-    int N50,
-    int N100,
-    int N300,
-    int NMiss,
-    int NKatu,
-    int NGeki,
-    bool Perfect,
-    int Mods,
-    long Time,
-    int UserId,
-    string Name);
-
-/// <summary>
-///     Ported from app/repositories/scores.py's PersonalBestLeaderboardScoreRow. `Grade` was added on
-///     top of the Python source's field set (which selects it separately, via `Score.from_sql`, only
-///     when score submission's calculate_status needs it for grade_count_deltas) — defaulted so the
-///     getscores read path's existing call sites are unaffected.
-/// </summary>
-public sealed record PersonalBestLeaderboardScoreRow(
-    long Id,
-    long Score,
-    int MaxCombo,
-    int N50,
-    int N100,
-    int N300,
-    int NMiss,
-    int NKatu,
-    int NGeki,
-    bool Perfect,
-    int Mods,
-    long Time,
-    string Grade = "N",
-    double Acc = 0.0);
 
 /// <summary>Ported from app/repositories/scores.py's FirstPlaceScore.</summary>
 public sealed record FirstPlaceScoreRow(int Id, string Name);
@@ -57,10 +15,10 @@ public sealed record RoundScoreRow(
     long Id,
     int UserId,
     string UserName,
-    int? Team,
-    int Mods,
+    MatchTeam? Team,
+    Mods Mods,
     long Score,
-    double Acc,
+    double Accuracy,
     int MaxCombo,
     int N300,
     int N100,
@@ -80,9 +38,9 @@ public sealed record RoundScoreRow(
 public sealed record ScoreInsertRow(
     string MapMd5,
     long Score,
-    double Acc,
+    double Accuracy,
     int MaxCombo,
-    int Mods,
+    Mods Mods,
     int N300,
     int N100,
     int N50,
@@ -90,52 +48,19 @@ public sealed record ScoreInsertRow(
     int NGeki,
     int NKatu,
     string Grade,
-    int Status,
-    int Mode,
+    GameMode Mode,
     DateTime PlayTime,
     int TimeElapsed,
-    int ClientFlags,
+    ClientFlags ClientFlags,
     int UserId,
     bool Perfect,
     string OnlineChecksum,
     DateTime SubmittedAt,
     int? RoundId = null,
-    int? Team = null);
+    MatchTeam? Team = null);
 
-/// <summary>
-///     Ported from app/repositories/scores.py's ScoresRepository, scoped to the three leaderboard
-///     reads the getscores endpoint needs. `scoring_metric` is dropped entirely from every method's
-///     signature (compared to the Python source) — Basil always ranks by raw score, never pp.
-/// </summary>
 public interface IScoreRepository
 {
-    /// <summary>
-    ///     Ported from fetch_beatmap_leaderboard_scores. Only unrestricted players' scores are
-    ///     visible, except the requesting player's own row is always included.
-    /// </summary>
-    Task<IReadOnlyList<BeatmapLeaderboardScoreRow>> FetchBeatmapLeaderboardScoresAsync(
-        string mapMd5,
-        GameMode mode,
-        int userId,
-        int? mods = null,
-        IReadOnlySet<int>? friendIds = null,
-        string? country = null,
-        int limit = 50,
-        CancellationToken cancellationToken = default);
-
-    Task<PersonalBestLeaderboardScoreRow?> FetchPersonalBestLeaderboardScoreAsync(
-        string mapMd5,
-        GameMode mode,
-        int userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>Ported from fetch_personal_best_leaderboard_rank — count of unrestricted scores strictly above, plus one.</summary>
-    Task<int> FetchPersonalBestLeaderboardRankAsync(
-        string mapMd5,
-        GameMode mode,
-        long score,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Ported from ScoresRepository.create. Returns the new row's auto-increment id.</summary>
     Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default);
 
@@ -144,10 +69,6 @@ public interface IScoreRepository
     ///     existence check is used, so this skips deserializing a full row.
     /// </summary>
     Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default);
-
-    /// <summary>Ported from ScoresRepository.mark_previous_best_scores_submitted.</summary>
-    Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId, GameMode mode,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     Ported from ScoresRepository.fetch_first_place_score, scoring_metric dropped (always score,

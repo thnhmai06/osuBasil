@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Domain;
+using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Core;

@@ -1,12 +1,16 @@
 using System.Net;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -25,15 +29,15 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
             {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMatchPersistenceRepository>(_matchPersistence);
                 services.AddSingleton<IScoreRepository>(_scores);
                 services.AddSingleton<IMatchRegistry>(new StubMatchRegistry());
@@ -86,9 +90,9 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
         }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
-            int mode, int winCondition, int teamType,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
             string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -127,28 +131,6 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
     private sealed class StubScoreRepository : IScoreRepository
     {
-        public Task<IReadOnlyList<BeatmapLeaderboardScoreRow>> FetchBeatmapLeaderboardScoresAsync(
-            string mapMd5, GameMode mode, int userId, int? mods = null,
-            IReadOnlySet<int>? friendIds = null, string? country = null, int limit = 50,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<PersonalBestLeaderboardScoreRow?> FetchPersonalBestLeaderboardScoreAsync(string mapMd5,
-            GameMode mode, int userId,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> FetchPersonalBestLeaderboardRankAsync(string mapMd5,
-            GameMode mode, long score,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -156,12 +138,6 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
             CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task MarkPreviousBestScoresSubmittedAsync(string mapMd5, int userId,
-            GameMode mode, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

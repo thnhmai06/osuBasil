@@ -1,10 +1,10 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
@@ -77,7 +77,7 @@ public sealed class MatchChangeSettingsHandler(
                     match.MapName = bmap.FullName;
 
                     var host = sessionRegistry.GetById(match.HostId);
-                    if (host is not null) match.Mode = (GameMode)host.Status.Mode.AsVanilla();
+                    if (host is not null) match.Mode = host.Status.Mode;
                 }
                 else
                 {
@@ -88,12 +88,12 @@ public sealed class MatchChangeSettingsHandler(
                 }
             }
 
-            var newTeamType = (MatchTeamTypes)matchData.TeamType;
+            var newTeamType = (MatchTeamType)matchData.TeamType;
             if (match.TeamType != newTeamType)
             {
-                var newTeam = newTeamType is MatchTeamTypes.HeadToHead or MatchTeamTypes.TagCoop
-                    ? MatchTeams.Neutral
-                    : MatchTeams.Red;
+                var newTeam = newTeamType is MatchTeamType.HeadToHead or MatchTeamType.TagCoop
+                    ? MatchTeam.Neutral
+                    : MatchTeam.Red;
 
                 foreach (var slot in match.Slots)
                     if (slot.PlayerId is not null)
@@ -102,7 +102,7 @@ public sealed class MatchChangeSettingsHandler(
                 match.TeamType = newTeamType;
             }
 
-            var newWinCondition = (MatchWinConditions)matchData.WinCondition;
+            var newWinCondition = (MatchWinCondition)matchData.WinCondition;
             if (match.WinCondition != newWinCondition) match.WinCondition = newWinCondition;
 
             match.Name = matchData.Name;

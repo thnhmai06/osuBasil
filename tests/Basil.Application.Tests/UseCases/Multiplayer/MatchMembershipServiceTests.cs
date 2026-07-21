@@ -1,13 +1,14 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Bot;
-using Basil.Application.UseCases.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
@@ -25,12 +26,9 @@ public class MatchMembershipServiceTests
 
     private MatchMembershipService MakeService()
     {
-        var clock = Substitute.For<IClock>();
-        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
-
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
             new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-            Substitute.For<IMatchEventBus>(), clock, Substitute.For<IMapRepository>());
+            Substitute.For<IMatchEventBus>(), Substitute.For<IMapRepository>());
     }
 
     /// <summary>
@@ -44,7 +42,7 @@ public class MatchMembershipServiceTests
 
     private static PlayerSession MakePlayer(int id, string name)
     {
-        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
     }
 
     private void RegisterAll(params PlayerSession[] sessions)
@@ -145,7 +143,7 @@ public class MatchMembershipServiceTests
     {
         var host = MakePlayer(1, "host");
         var staff = MakePlayer(2, "mod");
-        staff.Priv = Privileges.Unrestricted | Privileges.Moderator;
+        staff.Priv = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
         RegisterAll(host, staff);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
@@ -197,11 +195,11 @@ public class MatchMembershipServiceTests
         RegisterAll(host, guest);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        match.TeamType = MatchTeamTypes.TeamVs;
+        match.TeamType = MatchTeamType.TeamVs;
 
         service.Join(guest, match, "");
 
-        Assert.Equal(MatchTeams.Red, match.GetSlot(guest.Id)!.Team);
+        Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
     }
 
     [Fact]
@@ -399,9 +397,9 @@ public class MatchMembershipServiceTests
         }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
-            int mode, int winCondition, int teamType,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
             string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextRoundId++);
         }

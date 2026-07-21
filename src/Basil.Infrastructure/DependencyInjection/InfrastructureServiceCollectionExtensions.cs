@@ -1,4 +1,3 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Multiplayer;
@@ -29,23 +28,24 @@ namespace Basil.Infrastructure.DependencyInjection;
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddBanchoInfrastructure(this IServiceCollection services,
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
         services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
         services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
 
-        // Storage folders are fixed, not configurable — always the 5 named folders next to the
-        // executable. See StorageOptions.
+        // Database path is fixed to Data/Basil.db next to the executable — not configurable.
+        services.AddSingleton(Options.Create(new DatabaseOptions()));
+
+        // Storage folders are fixed under a Data/ subdirectory next to the executable.
         services.AddSingleton(Options.Create(new StorageOptions
         {
-            ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Replays"),
-            AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Avatars"),
-            MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Mapsets"),
-            SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Seasonals"),
-            FaqsPath = Path.Combine(AppContext.BaseDirectory, "Faqs")
+            ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
+            AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
+            MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
+            SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
+            FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs")
         }));
 
         static string BuildConnectionString(IServiceProvider sp)
@@ -59,15 +59,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IIngameLoginRepository>(sp =>
             new SqliteIngameLoginRepository(BuildConnectionString(sp)));
         services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMailRepository>(sp => new SqliteMailRepository(BuildConnectionString(sp)));
         services.AddSingleton<IRelationshipRepository>(sp =>
             new SqliteRelationshipRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMapRepository>(sp => new SqliteMapRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMapsetRepository>(sp => new SqliteMapsetRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IRatingRepository>(sp => new SqliteRatingRepository(BuildConnectionString(sp)));
         services.AddSingleton<IScoreRepository>(sp => new SqliteScoreRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IScoreSubmissionPersistence>(sp =>
-            new SqliteScoreSubmissionPersistence(BuildConnectionString(sp)));
         services.AddSingleton<ILogRepository>(sp => new SqliteLogRepository(BuildConnectionString(sp)));
         services.AddSingleton<IMatchPersistenceRepository>(sp =>
             new SqliteMatchPersistenceRepository(BuildConnectionString(sp)));
@@ -76,10 +72,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
         services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
-        services.AddSingleton<IBeatmapDifficultyCalculator, PpyBeatmapDifficultyCalculator>();
+        services.AddSingleton<IDifficultyCalculator, PpyDifficultyCalculator>();
         services.AddSingleton<BeatmapIngestionService>();
         services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
-        services.AddSingleton<IClock, SystemClock>();
 
         services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
         services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
@@ -87,6 +82,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IMatchEventBus, InMemoryMatchEventBus>();
 
         services.AddHostedService<TcpIrcListener>();
+        services.AddHostedService<BeatmapWatcherService>();
 
         return services;
     }

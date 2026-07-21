@@ -10,7 +10,7 @@ namespace Basil.Application.Configuration;
 /// </summary>
 public sealed class MirrorOptions
 {
-    public const string SectionName = "Mirror";
+    public const string SectionName = "Basil:Mirror";
 
     public string? DownloadEndpoint { get; init; }
 }

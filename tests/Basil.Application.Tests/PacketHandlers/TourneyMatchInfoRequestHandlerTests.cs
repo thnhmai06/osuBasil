@@ -1,5 +1,5 @@
 using Basil.Application.PacketHandlers.Multiplayer;
-using Basil.Application.UseCases.Multiplayer;
+using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -35,7 +35,7 @@ public class TourneyMatchInfoRequestHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         var requester = MakePlayer(2, "req");
-        requester.Priv = Privileges.Unrestricted | Privileges.Supporter;
+        requester.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
         fixture.RegisterAll(host, requester);
         var match = fixture.CreateMatch(host);
         var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry);

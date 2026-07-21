@@ -1,10 +1,10 @@
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.PacketHandlers.Channels;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Bot;
-using Basil.Application.UseCases.Chat;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
@@ -29,8 +29,7 @@ public class SendPublicMessageHandlerTests
     {
         var channelMembership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
         var chatDispatch = new ChatDispatchService(_channelRegistry, _sessionRegistry, channelMembership,
-            Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(),
-            Substitute.For<IMailRepository>(), _commandDispatcher);
+            Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher);
         return new SendPublicMessageHandler(chatDispatch);
     }
 
@@ -46,8 +45,8 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_Silenced_NoOp()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        sender.SilenceEnd = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 60;
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        sender.SilenceEnd = DateTimeOffset.UtcNow.AddSeconds(60);
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.GetByName("#osu").Returns(channel);
 
@@ -59,7 +58,7 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_UnknownChannel_NoOp()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _channelRegistry.GetByName("#missing").Returns((ChannelSession?)null);
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hello", "#missing", 1));
@@ -70,7 +69,7 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_NotAMember_NoOp()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.GetByName("#osu").Returns(channel);
 
@@ -82,8 +81,8 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_NoWritePriv_NoOp()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var channel = new ChannelSession(1, "#staff", "Staff", 0, (int)Privileges.Staff, true);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var channel = new ChannelSession(1, "#staff", "Staff", 0, UserPrivileges.Staff, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#staff");
         _channelRegistry.GetByName("#staff").Returns(channel);
@@ -96,8 +95,8 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_PlainMessage_BroadcastsToOtherMembersButNotSender()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var member = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var member = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#osu");
@@ -116,8 +115,8 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_MessageOverLengthLimit_TruncatesTo2000Chars()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var member = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var member = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#osu");
@@ -137,8 +136,8 @@ public class SendPublicMessageHandlerTests
     [Fact]
     public async Task Handle_CommandPrefixedMessage_IsBroadcastAsPlainChat()
     {
-        var sender = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var member = new PlayerSession(2, "other", "other-token", Privileges.Unrestricted, 0.0);
+        var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var member = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#osu");
@@ -159,8 +158,8 @@ public class SendPublicMessageHandlerTests
     {
         // id=5, not 1 — 1 collides with BotBootstrapService.BotId, and both sender+bot are now looked
         // up via sessionRegistry.GetById(channel member id) for the reply broadcast.
-        var sender = new PlayerSession(5, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", Privileges.Unrestricted, 0.0)
+        var sender = new PlayerSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
             { IsBot = true };
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
@@ -183,8 +182,8 @@ public class SendPublicMessageHandlerTests
     public async Task Handle_DispatcherReturnsMultilineReply_SendsOnePacketPerLine()
     {
         // id=5, not 1 — see Handle_DispatcherReturnsReply_BroadcastsReplyFromBotToWholeChannel's comment.
-        var sender = new PlayerSession(5, "cmyui", "token", Privileges.Unrestricted, 0.0);
-        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token", Privileges.Unrestricted, 0.0)
+        var sender = new PlayerSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
             { IsBot = true };
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);

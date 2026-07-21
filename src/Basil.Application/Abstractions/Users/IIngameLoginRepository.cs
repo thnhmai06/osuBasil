@@ -1,7 +1,7 @@
 namespace Basil.Application.Abstractions.Users;
 
 /// <summary>Ported from app/repositories/ingame_logins.py's IngameLogin dataclass.</summary>
-public sealed record IngameLogin(int Id, int UserId, string Ip, DateOnly OsuVer, string OsuStream, DateTime Datetime);
+public sealed record IngameLogin(int Id, int UserId, string Ip, DateOnly OsuVer, string OsuStream, DateTime LoggedInAt);
 
 /// <summary>
 ///     Ported from app/repositories/ingame_logins.py's IngameLoginsRepository, scoped to what login

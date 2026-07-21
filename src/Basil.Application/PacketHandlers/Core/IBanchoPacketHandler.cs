@@ -6,7 +6,7 @@ namespace Basil.Application.PacketHandlers.Core;
 /// <summary>
 ///     Handles one client-to-server Bancho packet. Ported from app/api/domains/cho.py's
 ///     BasePacket subclasses — each Python class's `__init__(reader)` + `handle(player)` are
-///     merged into a single HandleAsync call here. Async since handlers (mail/relationship/
+///     merged into a single HandleAsync call here. Async since handlers (relationship/
 ///     user lookups) need real I/O — sync-over-async here would risk thread-pool starvation under
 ///     concurrent packet load, which matters most for this server's multiplayer focus.
 /// </summary>

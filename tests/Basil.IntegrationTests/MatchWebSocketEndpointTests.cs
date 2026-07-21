@@ -1,11 +1,13 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -30,13 +32,14 @@ public class MatchWebSocketEndpointTests : IClassFixture<WebApplicationFactory<P
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
                 });
             });
+            builder.ConfigureServices(services =>
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" })));
         });
     }
 

@@ -1,6 +1,7 @@
-using Basil.Domain;
+using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Sessions.Multiplayer;
 
@@ -23,8 +24,8 @@ public sealed class MatchSession(
     int hostId,
     GameMode mode,
     Mods mods,
-    MatchWinConditions winCondition,
-    MatchTeamTypes teamType,
+    MatchWinCondition winCondition,
+    MatchTeamType teamType,
     bool freemods,
     int seed,
     string chatChannelName,
@@ -55,8 +56,8 @@ public sealed class MatchSession(
 
     public string ChatChannelName { get; } = chatChannelName;
 
-    public MatchTeamTypes TeamType { get; set; } = teamType;
-    public MatchWinConditions WinCondition { get; set; } = winCondition;
+    public MatchTeamType TeamType { get; set; } = teamType;
+    public MatchWinCondition WinCondition { get; set; } = winCondition;
 
     public bool InProgress { get; set; }
     public int Seed { get; } = seed;
@@ -73,7 +74,7 @@ public sealed class MatchSession(
     ///     Set by <c>!mp private [0|1]</c> — when <c>true</c>, the room cannot be (re)joined by anyone
     ///     but staff or <see cref="InvitedIds" />, via any path (<c>!mp join</c>, the native client
     ///     join packet, or an <c>osump://</c> URL) — see
-    ///     <see cref="Basil.Application.UseCases.Multiplayer.MatchMembershipService.Join" />. The host
+    ///     <see cref="MatchMembershipService.Join" />. The host
     ///     is NOT exempt: hosting only grants in-room settings control, not a standing invite, so a
     ///     host who leaves a private room needs a referee's <c>!mp invite</c> like anyone else to get
     ///     back in. Also hidden from <c>#lobby</c>. Distinct from <see cref="IsLocked" />, which blocks
@@ -109,7 +110,7 @@ public sealed class MatchSession(
     ///     The Rounds.Id of the beatmap currently being played, or null when no round is in progress.
     ///     Set at match start (a new Round row is created per beatmap played) and cleared at
     ///     MatchComplete. Score submissions link to this so score-to-round linking doesn't depend on
-    ///     any gather/wait step at MatchComplete — see ScoreSubmissionUseCase's doc comment.
+    ///     any gather/wait step at MatchComplete — see ScoreSubmissionService's doc comment.
     /// </summary>
     public int? CurrentRoundId { get; set; }
 

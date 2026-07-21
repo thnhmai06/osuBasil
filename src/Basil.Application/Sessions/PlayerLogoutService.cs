@@ -1,6 +1,6 @@
+using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Multiplayer;
-using Basil.Application.UseCases.Spectating;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.Sessions;

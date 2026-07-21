@@ -12,7 +12,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 
     public MatchSession? GetById(int id)
     {
-        if (id < 0 || id >= MaxMatches) return null;
+        if (id is < 0 or >= MaxMatches) return null;
 
         lock (_registryLock)
         {
@@ -46,7 +46,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 
     public void Remove(int id)
     {
-        if (id < 0 || id >= MaxMatches) return;
+        if (id is < 0 or >= MaxMatches) return;
 
         lock (_registryLock)
         {

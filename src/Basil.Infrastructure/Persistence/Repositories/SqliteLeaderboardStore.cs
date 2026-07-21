@@ -13,7 +13,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
     {
         await using var connection = Connect();
         var ownScore = await connection.QuerySingleOrDefaultAsync<long?>(
-            "SELECT Rscore FROM UserStats WHERE Id = @PlayerId AND Mode = @Mode",
+            "SELECT Rscore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
             new { PlayerId = playerId, Mode = (int)mode });
         if (ownScore is null) return null;
 
@@ -28,7 +28,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
     {
         await using var connection = Connect();
         var ownScore = await connection.QuerySingleOrDefaultAsync<long?>(
-            "SELECT Rscore FROM UserStats WHERE Id = @PlayerId AND Mode = @Mode",
+            "SELECT Rscore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
             new { PlayerId = playerId, Mode = (int)mode });
         if (ownScore is null) return null;
 

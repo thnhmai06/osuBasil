@@ -1,11 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
-using Basil.Application.Abstractions;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Chat;
+using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Chat;
-using Basil.Application.UseCases.Irc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -25,7 +24,6 @@ public sealed class TcpIrcListener(
     ChannelMembershipService channelMembership,
     IChannelRegistry channelRegistry,
     IPlayerSessionRegistry sessionRegistry,
-    IClock clock,
     ILogger<TcpIrcListener> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -51,7 +49,7 @@ public sealed class TcpIrcListener(
             {
                 var client = await listener.AcceptTcpClientAsync(stoppingToken);
                 var connection = new TcpIrcConnection(
-                    client, authService, chatDispatch, channelMembership, channelRegistry, sessionRegistry, options, clock);
+                    client, authService, chatDispatch, channelMembership, channelRegistry, sessionRegistry, options);
 
                 _ = RunConnectionAsync(connection, client, stoppingToken);
             }

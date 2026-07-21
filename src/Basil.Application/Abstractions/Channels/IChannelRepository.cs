@@ -1,7 +1,9 @@
+using Basil.Domain.Users;
+
 namespace Basil.Application.Abstractions.Channels;
 
 /// <summary>Ported from app/repositories/channels.py's Channel dataclass.</summary>
-public sealed record Channel(int Id, string Name, string Topic, int ReadPriv, int WritePriv, bool AutoJoin);
+public sealed record Channel(int Id, string Name, string Topic, UserPrivileges ReadPriv, UserPrivileges WritePriv, bool AutoJoin);
 
 /// <summary>
 ///     Ported from app/repositories/channels.py's ChannelsRepository, scoped to what login needs:

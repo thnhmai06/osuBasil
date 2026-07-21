@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Users;
+using Basil.Domain.Beatmaps;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -17,23 +18,6 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
         return rows.Select(r => r.ToStats()).ToList();
     }
 
-    public async Task<Stats?> FetchOneAsync(int userId, int mode, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        var row = await connection.QuerySingleOrDefaultAsync<StatsRow>(
-            "SELECT * FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
-            new { UserId = userId, Mode = mode });
-        return row?.ToStats();
-    }
-
-    public async Task IncrementReplayViewsAsync(int userId, int mode, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        await connection.ExecuteAsync(
-            "UPDATE UserStats SET ReplayViews = ReplayViews + 1 WHERE Id = @UserId AND Mode = @Mode",
-            new { UserId = userId, Mode = mode });
-    }
-
     private SqliteConnection Connect()
     {
         return new SqliteConnection(connectionString);
@@ -46,22 +30,11 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
         public long Tscore { get; set; }
         public long Rscore { get; set; }
         public int Plays { get; set; }
-        public int Playtime { get; set; }
         public double Acc { get; set; }
-        public int MaxCombo { get; set; }
-        public int TotalHits { get; set; }
-        public int ReplayViews { get; set; }
-        public int XhCount { get; set; }
-        public int XCount { get; set; }
-        public int ShCount { get; set; }
-        public int SCount { get; set; }
-        public int ACount { get; set; }
 
         public Stats ToStats()
         {
-            return new Stats(
-                Id, Mode, Tscore, Rscore, Plays, Playtime, Acc, MaxCombo, TotalHits, ReplayViews,
-                XhCount, XCount, ShCount, SCount, ACount);
+            return new Stats(Id, (GameMode)Mode, Tscore, Rscore, Plays, Acc);
         }
     }
 }

@@ -27,7 +27,7 @@ public class ChannelPartHandlerTests
     public async Task Handle_JoinedChannel_LeavesBothSidesAndBroadcastsUpdatedInfo()
     {
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         channel.Join(player.Id);
         player.JoinChannel("#osu");
         _channelRegistry.GetByName("#osu").Returns(channel);
@@ -45,7 +45,7 @@ public class ChannelPartHandlerTests
     public async Task Handle_UnknownChannel_NoOp()
     {
         _channelRegistry.GetByName("#missing").Returns((ChannelSession?)null);
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
         await MakeHandler().HandleAsync(player, ChannelNameReader("#missing"));
 
@@ -57,7 +57,7 @@ public class ChannelPartHandlerTests
     {
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         _channelRegistry.GetByName("#osu").Returns(channel);
-        var player = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
         await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 

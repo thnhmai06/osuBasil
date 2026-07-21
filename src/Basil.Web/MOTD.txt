@@ -1,2 +1,0 @@
-Welcome to Basil, the local multiplayer/tournament osu! server.
-Crafted with love by thnhmai06 <3

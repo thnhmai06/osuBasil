@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
 
@@ -11,16 +10,17 @@ public class ScoreSubmissionValidationTests
     [Fact]
     public void ParseUniqueIdHashes_HashesEachHalfIndependently()
     {
-        var hashes = ScoreSubmissionValidation.ParseUniqueIdHashes("uid1value|uid2value");
+        var hashes = ScoreSubmission.ParseUniqueIdHashes("uid1value|uid2value");
 
         Assert.Equal(Md5("uid1value"), hashes.UniqueId1Md5);
         Assert.Equal(Md5("uid2value"), hashes.UniqueId2Md5);
     }
 
-    private static ClientDetails MakeClient(DateOnly? version = null)
+    private static readonly DateOnly LoginVersionDate = new(2021, 5, 20);
+
+    private static ClientDetails MakeClient()
     {
         return new ClientDetails(
-            version ?? new DateOnly(2021, 5, 20),
             "pathmd5",
             "adaptersmd5",
             Md5("uid1value"),
@@ -32,108 +32,75 @@ public class ScoreSubmissionValidationTests
     public void ValidateClientDetails_AllMatching_DoesNotThrow()
     {
         var client = MakeClient();
-        var hashes = ScoreSubmissionValidation.ParseUniqueIdHashes("uid1value|uid2value");
+        var hashes = ScoreSubmission.ParseUniqueIdHashes("uid1value|uid2value");
 
-        ScoreSubmissionValidation.ValidateClientDetails(client, "20210520", client.ClientHash, hashes);
+        ScoreSubmission.ValidateClientDetails(client, LoginVersionDate, "20210520", client.Hash(), hashes);
     }
 
     [Fact]
     public void ValidateClientDetails_NullClientDetails_Throws()
     {
-        var hashes = ScoreSubmissionValidation.ParseUniqueIdHashes("uid1value|uid2value");
+        var hashes = ScoreSubmission.ParseUniqueIdHashes("uid1value|uid2value");
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-            ScoreSubmissionValidation.ValidateClientDetails(null, "20210520", "anyhash", hashes));
+            ScoreSubmission.ValidateClientDetails(null, LoginVersionDate, "20210520", "anyhash", hashes));
     }
 
     [Fact]
     public void ValidateClientDetails_VersionMismatch_Throws()
     {
         var client = MakeClient();
-        var hashes = ScoreSubmissionValidation.ParseUniqueIdHashes("uid1value|uid2value");
+        var hashes = ScoreSubmission.ParseUniqueIdHashes("uid1value|uid2value");
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-            ScoreSubmissionValidation.ValidateClientDetails(client, "20200101", client.ClientHash, hashes));
+            ScoreSubmission.ValidateClientDetails(client, LoginVersionDate, "20200101", client.Hash(), hashes));
     }
 
     [Fact]
     public void ValidateClientDetails_UniqueIdMismatch_Throws()
     {
         var client = MakeClient();
-        var wrongHashes = ScoreSubmissionValidation.ParseUniqueIdHashes("wrong1|wrong2");
+        var wrongHashes = ScoreSubmission.ParseUniqueIdHashes("wrong1|wrong2");
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-            ScoreSubmissionValidation.ValidateClientDetails(client, "20210520", client.ClientHash, wrongHashes));
+            ScoreSubmission.ValidateClientDetails(client, LoginVersionDate, "20210520", client.Hash(), wrongHashes));
     }
 
     [Fact]
     public void ValidateBeatmapHash_Mismatch_Throws()
     {
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-            ScoreSubmissionValidation.ValidateBeatmapHash("aaa", "bbb"));
+            ScoreSubmission.ValidateBeatmapHash("aaa", "bbb"));
     }
 
     [Fact]
     public void ValidateBeatmapHash_Match_DoesNotThrow()
     {
-        ScoreSubmissionValidation.ValidateBeatmapHash("same", "same");
+        ScoreSubmission.ValidateBeatmapHash("same", "same");
     }
 
     [Fact]
     public void ValidateScoreChecksum_Mismatch_Throws()
     {
-        var bmap = MakeBeatmap();
         var score = ScoreSubmission.FromSubmission([
             "wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
             "210520235959", "20210520 "
-        ]);
-        score.Bmap = bmap;
-        score.PlayerName = "cookiezi";
+        ]) with { BeatmapMd5 = "beatmap_md5_hash_1234567890abcd" };
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-            ScoreSubmissionValidation.ValidateScoreChecksum(score, "20210520", "clienthash", null));
+            score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null));
     }
 
     [Fact]
     public void ValidateScoreChecksum_Match_DoesNotThrow()
     {
-        var bmap = MakeBeatmap();
         var score = ScoreSubmission.FromSubmission([
             "placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
             "210520235959", "20210520 "
-        ]);
-        score.Bmap = bmap;
-        score.PlayerName = "cookiezi";
-        score.ClientChecksum = score.ComputeOnlineChecksum("20210520", "clienthash", "");
+        ]) with { BeatmapMd5 = "beatmap_md5_hash_1234567890abcd" };
+        score = score with { ClientChecksum = score.ComputeOnlineChecksum("cookiezi", "20210520", "clienthash", "") };
 
-        ScoreSubmissionValidation.ValidateScoreChecksum(score, "20210520", "clienthash", null);
-    }
-
-    private static Beatmap MakeBeatmap()
-    {
-        return new Beatmap(
-            "beatmap_md5_hash_1234567890abcd",
-            1,
-            1,
-            "a",
-            "b",
-            "c",
-            "d",
-            DateTime.UtcNow,
-            1,
-            500,
-            RankedStatus.Ranked,
-            false,
-            0,
-            0,
-            GameMode.VanillaOsu,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            "f.osu");
+        score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null);
     }
 
     private static string Md5(string value)

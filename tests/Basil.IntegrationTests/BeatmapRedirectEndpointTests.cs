@@ -1,10 +1,12 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -26,18 +28,21 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
             {
                 var settings = new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
                 };
-                if (downloadEndpoint is not null) settings["Mirror:DownloadEndpoint"] = downloadEndpoint;
-
                 config.AddInMemoryCollection(settings);
             });
             builder.ConfigureServices(services =>
-                services.AddSingleton<IMapRepository, NullMapRepository>());
+            {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+                if (downloadEndpoint is not null)
+                    services.AddSingleton<IOptions<MirrorOptions>>(Options.Create(
+                        new MirrorOptions { DownloadEndpoint = downloadEndpoint }));
+                services.AddSingleton<IMapRepository, NullMapRepository>();
+            });
         });
     }
 
@@ -46,14 +51,14 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
     private sealed class NullMapRepository : IMapRepository
     {
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, CancellationToken cancellationToken = default)
+            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Beatmap?>(null);
         }
 
-        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(beatmap);
         }
 
         public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
@@ -62,7 +67,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
         }
 
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
-            RankedStatus? status, int offset, int amount, CancellationToken cancellationToken = default)
+            int offset, int amount, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
         }
@@ -82,7 +87,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Beatmap>>([]);

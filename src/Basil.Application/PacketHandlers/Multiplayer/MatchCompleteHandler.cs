@@ -1,8 +1,7 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 
@@ -12,12 +11,11 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 ///     Ported from app/api/domains/cho.py's MatchComplete. The `is_scrimming` branch
 ///     (asyncio.create_task(update_matchpoints(was_playing))) is dropped along with the rest of the
 ///     scrim engine — see note.md. Closes the round's EndedAt; does NOT gather/wait for score
-///     submissions (see ScoreSubmissionUseCase's doc comment for why that isn't needed here).
+///     submissions (see ScoreSubmissionService's doc comment for why that isn't needed here).
 /// </summary>
 public sealed class MatchCompleteHandler(
     MatchMembershipService matchMembership,
-    IMatchPersistenceRepository matchPersistence,
-    IClock clock) : IBanchoPacketHandler
+    IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchComplete;
 
@@ -49,7 +47,7 @@ public sealed class MatchCompleteHandler(
 
             if (match.CurrentRoundId is { } roundId)
             {
-                await matchPersistence.SetRoundEndedAsync(roundId, clock.UtcNow.UtcDateTime, false);
+                await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, false);
                 match.CurrentRoundId = null;
             }
 

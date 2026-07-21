@@ -45,7 +45,7 @@ Created automatically next to the executable on startup if missing — no manual
 | `basil.db`    | SQLite database (+ `basil.db-wal`/`basil.db-shm` while running). Migrations run automatically on every startup. |
 | `Replays/`    | Score replay files.                                                      |
 | `Avatars/`    | User avatar files (`{userId}.{ext}`).                                    |
-| `Mapsets/`    | Beatmap files (`.osu`/`.osz`) — drop files here, they're ingested automatically on the next startup, or push them live via `POST /beatmaps` on `api.` (admin-key). |
+| `Mapsets/`    | One folder per beatmapset (`"{id} Artist - Title"`, full original `.osz` contents — audio/images/video/`.osu`). A loose `.osz` dropped at the root is auto-extracted into its own folder. A loose `.osu` file alone is **not** ingested (a single difficulty has no set context). Sync is live — a `FileSystemWatcher`-backed background service picks up any add/change/delete within ~2 seconds, plus a full reconciliation pass at every startup to catch drift while the server was offline. Admin uploads via `POST /beatmaps` on `api.` (admin-key) accept `.osz` only. |
 | `Seasonals/`  | Seasonal background images shown in the client's main menu.              |
 | `Faqs/`       | `!faq <entry>` text files (`<entry>.txt`).                               |
 

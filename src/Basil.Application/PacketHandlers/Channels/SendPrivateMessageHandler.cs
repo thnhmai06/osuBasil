@@ -1,14 +1,14 @@
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Chat;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Chat;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Channels;
 
 /// <summary>
 ///     Ported from app/api/domains/cho.py's SendMessage (private). All routing (bot-command shortcut,
-///     block/PmPrivate/silence checks, offline mail) lives in <see cref="ChatDispatchService" /> —
-///     shared with public messages and real IRC PRIVMSG.
+///     block/PmPrivate/silence checks) lives in <see cref="ChatDispatchService" /> — shared with public
+///     messages and real IRC PRIVMSG.
 /// </summary>
 public sealed class SendPrivateMessageHandler(ChatDispatchService chatDispatch) : IBanchoPacketHandler
 {

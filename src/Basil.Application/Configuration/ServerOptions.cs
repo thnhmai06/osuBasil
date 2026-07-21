@@ -3,7 +3,7 @@ namespace Basil.Application.Configuration;
 /// <summary>Ports DOMAIN, MENU_ICON_URL, MENU_ONCLICK_URL from app/settings.py.</summary>
 public sealed class ServerOptions
 {
-    public const string SectionName = "Server";
+    public const string SectionName = "Basil:Server";
 
     public required string Domain { get; init; }
 

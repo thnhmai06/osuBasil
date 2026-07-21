@@ -7,8 +7,8 @@ namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Spot-checks for the flat constant enums ported from app/constants/privileges.py,
-///     app/objects/player.py (Action), and app/objects/match.py (SlotStatus, MatchTeams,
-///     MatchWinConditions, MatchTeamTypes) — these carry no logic, just bit/value constants,
+///     app/objects/player.py (UserActivity), and app/objects/match.py (SlotStatus, MatchTeam,
+///     MatchWinCondition, MatchTeamType) — these carry no logic, just bit/value constants,
 ///     so a representative sample (rather than exhaustive per-value tests) guards against
 ///     transcription errors.
 /// </summary>
@@ -17,12 +17,12 @@ public class FlatEnumsTests
     [Fact]
     public void CountryCodes_MatchesPythonTable()
     {
-        Assert.Equal(252, CountryCodes.ByAcronym.Count);
-        Assert.Equal(1, CountryCodes.ByAcronym["oc"]);
-        Assert.Equal(225, CountryCodes.ByAcronym["us"]);
-        Assert.Equal(111, CountryCodes.ByAcronym["jp"]);
-        Assert.Equal(244, CountryCodes.ByAcronym["xx"]);
-        Assert.Equal(252, CountryCodes.ByAcronym["mf"]);
+        Assert.Equal(252, Enum.GetValues<Country>().Length);
+        Assert.Equal((byte)1, (byte)Country.Oc);
+        Assert.Equal((byte)225, (byte)Country.Us);
+        Assert.Equal((byte)111, (byte)Country.Jp);
+        Assert.Equal((byte)244, (byte)Country.Xx);
+        Assert.Equal((byte)252, (byte)Country.Mf);
     }
 
     [Fact]
@@ -36,12 +36,12 @@ public class FlatEnumsTests
     [Fact]
     public void Privileges_MatchesPythonBitValues()
     {
-        Assert.Equal(1 << 0, (int)Privileges.Unrestricted);
-        Assert.Equal(1 << 1, (int)Privileges.Verified);
-        Assert.Equal(1 << 13, (int)Privileges.Administrator);
-        Assert.Equal(1 << 14, (int)Privileges.Developer);
-        Assert.Equal(Privileges.Supporter | Privileges.Premium, Privileges.Donator);
-        Assert.Equal(Privileges.Moderator | Privileges.Administrator | Privileges.Developer, Privileges.Staff);
+        Assert.Equal(1 << 0, (int)UserPrivileges.Unrestricted);
+        Assert.Equal(1 << 1, (int)UserPrivileges.Verified);
+        Assert.Equal(1 << 13, (int)UserPrivileges.Administrator);
+        Assert.Equal(1 << 14, (int)UserPrivileges.Developer);
+        Assert.Equal(UserPrivileges.Supporter | UserPrivileges.Premium, UserPrivileges.Donator);
+        Assert.Equal(UserPrivileges.Moderator | UserPrivileges.Administrator | UserPrivileges.Developer, UserPrivileges.Staff);
     }
 
     [Fact]
@@ -53,19 +53,11 @@ public class FlatEnumsTests
     }
 
     [Fact]
-    public void ClanPrivileges_MatchesPythonValues()
-    {
-        Assert.Equal(1, (int)ClanPrivileges.Member);
-        Assert.Equal(2, (int)ClanPrivileges.Officer);
-        Assert.Equal(3, (int)ClanPrivileges.Owner);
-    }
-
-    [Fact]
     public void Action_MatchesPythonValues()
     {
-        Assert.Equal(0, (int)Action.Idle);
-        Assert.Equal(2, (int)Action.Playing);
-        Assert.Equal(13, (int)Action.OsuDirect);
+        Assert.Equal(0, (int)UserActivity.Idle);
+        Assert.Equal(2, (int)UserActivity.Playing);
+        Assert.Equal(13, (int)UserActivity.OsuDirect);
     }
 
     [Fact]
@@ -83,44 +75,27 @@ public class FlatEnumsTests
     [Fact]
     public void MatchTeams_MatchesPythonValues()
     {
-        Assert.Equal(0, (int)MatchTeams.Neutral);
-        Assert.Equal(1, (int)MatchTeams.Blue);
-        Assert.Equal(2, (int)MatchTeams.Red);
+        Assert.Equal(0, (int)MatchTeam.Neutral);
+        Assert.Equal(1, (int)MatchTeam.Blue);
+        Assert.Equal(2, (int)MatchTeam.Red);
     }
 
     [Fact]
     public void MatchWinConditions_MatchesPythonValues()
     {
-        Assert.Equal(0, (int)MatchWinConditions.Score);
-        Assert.Equal(1, (int)MatchWinConditions.Accuracy);
-        Assert.Equal(2, (int)MatchWinConditions.Combo);
-        Assert.Equal(3, (int)MatchWinConditions.ScoreV2);
+        Assert.Equal(0, (int)MatchWinCondition.Score);
+        Assert.Equal(1, (int)MatchWinCondition.Accuracy);
+        Assert.Equal(2, (int)MatchWinCondition.Combo);
+        Assert.Equal(3, (int)MatchWinCondition.ScoreV2);
     }
 
     [Fact]
     public void MatchTeamTypes_MatchesPythonValues()
     {
-        Assert.Equal(0, (int)MatchTeamTypes.HeadToHead);
-        Assert.Equal(1, (int)MatchTeamTypes.TagCoop);
-        Assert.Equal(2, (int)MatchTeamTypes.TeamVs);
-        Assert.Equal(3, (int)MatchTeamTypes.TagTeamVs);
+        Assert.Equal(0, (int)MatchTeamType.HeadToHead);
+        Assert.Equal(1, (int)MatchTeamType.TagCoop);
+        Assert.Equal(2, (int)MatchTeamType.TeamVs);
+        Assert.Equal(3, (int)MatchTeamType.TagTeamVs);
     }
 
-    [Fact]
-    public void SubmissionStatus_MatchesPythonValues()
-    {
-        Assert.Equal(0, (int)SubmissionStatus.Failed);
-        Assert.Equal(1, (int)SubmissionStatus.Submitted);
-        Assert.Equal(2, (int)SubmissionStatus.Best);
-    }
-
-    [Fact]
-    public void LeaderboardType_MatchesPythonValues()
-    {
-        Assert.Equal(0, (int)LeaderboardType.Local);
-        Assert.Equal(1, (int)LeaderboardType.Top);
-        Assert.Equal(2, (int)LeaderboardType.Mods);
-        Assert.Equal(3, (int)LeaderboardType.Friends);
-        Assert.Equal(4, (int)LeaderboardType.Country);
-    }
 }

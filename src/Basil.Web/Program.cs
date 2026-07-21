@@ -1,16 +1,15 @@
+using System.Net;
+using Basil.Application;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configuration;
-using Basil.Application.DependencyInjection;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Bot;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Routing;
 using Microsoft.Extensions.Options;
-using System.Net;
-using Tomlyn.Extensions.Configuration;
 
 namespace Basil.Web;
 
@@ -24,8 +23,8 @@ public sealed class Program
         ConfigureKestrel(builder);
         builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 
-        builder.Services.AddBanchoInfrastructure(builder.Configuration);
-        builder.Services.AddBanchoApplication();
+        builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddApplication();
 
         var app = builder.Build();
         app.UseWebSockets();
@@ -37,21 +36,18 @@ public sealed class Program
         await app.RunAsync();
     }
 
-    // appsettings*.json keeps framework config (Logging, AllowedHosts) — standard ASP.NET Core
-    // convention, untouched. Settings.toml carries all Basil settings (Server, Mirror, Bot,
-    // Database) — same file for development and deployment, edit directly next to the executable,
-    // no rebuild needed. Settings.toml is the single source of truth, no env-var override layer.
+    // appsettings.json carries all Basil settings under a "Basil" section alongside standard
+    // ASP.NET Core config (Logging, AllowedHosts). appsettings.{env}.json and command-line args
+    // are layered on top for environment-specific overrides.
     private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
     {
-        builder.Configuration.Sources.Clear();
         builder.Configuration
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-            .AddTomlFile("Settings.toml", optional: false, reloadOnChange: true)
             .AddCommandLine(args);
     }
 
-    // Kestrel endpoint and HTTPS cert configured from Settings.toml [Server] section (Port,
+    // Kestrel endpoint and HTTPS cert configured from appsettings.json Basil:Server section (Port,
     // CertPath, CertPassword). Disables auto port selection — server binds exclusively on the
     // configured port. Leave CertPath/CertPassword unset to use the dev cert or OS-level TLS.
     private static void ConfigureKestrel(WebApplicationBuilder builder)
@@ -111,7 +107,7 @@ public sealed class Program
         if (hasDatabase)
         {
             var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
-            await ingestionService.IngestAsync();
+            await ingestionService.ReconcileAllAsync();
 
             var botBootstrap = scope.ServiceProvider.GetRequiredService<BotBootstrapService>();
             await botBootstrap.BootstrapAsync();

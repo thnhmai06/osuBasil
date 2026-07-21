@@ -1,13 +1,12 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Abstractions;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Chat;
+using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
-using Basil.Application.UseCases.Chat;
-using Basil.Application.UseCases.Irc;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 
@@ -26,8 +25,7 @@ public sealed class TcpIrcConnection(
     ChannelMembershipService channelMembership,
     IChannelRegistry channelRegistry,
     IPlayerSessionRegistry sessionRegistry,
-    IOptions<IrcOptions> options,
-    IClock clock) : IIrcConnection
+    IOptions<IrcOptions> options) : IIrcConnection
 {
     private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
 
@@ -89,7 +87,7 @@ public sealed class TcpIrcConnection(
 
             if (_registered)
             {
-                Player.LastRecvTime = clock.UtcNow.ToUnixTimeSeconds();
+                Player.LastRecvTime = DateTimeOffset.UtcNow;
                 if (!await HandleRegisteredCommandAsync(message, cancellationToken)) return;
 
                 continue;

@@ -2,7 +2,7 @@ namespace Basil.Application.Abstractions.Users;
 
 /// <summary>
 ///     Verifies/creates password hashes. Ported from app/services/bancho.py's
-///     BanchoAuthenticationService: bancho.py stores bcrypt hashes of the md5 digest of the
+///     AuthenticationService: bancho.py stores bcrypt hashes of the md5 digest of the
 ///     plaintext password (the osu! client sends md5(password) at login, never the raw password).
 /// </summary>
 public interface IPasswordHasher

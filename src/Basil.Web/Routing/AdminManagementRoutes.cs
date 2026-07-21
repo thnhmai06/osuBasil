@@ -5,8 +5,8 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Beatmaps;
@@ -36,23 +36,24 @@ internal static class AdminManagementRoutes
     private static void MapBeatmaps(RouteGroupBuilder admin)
     {
         admin.MapGet("/beatmaps", async (
-            [FromQuery] string? query, [FromQuery] int? mode, [FromQuery] int? status,
+            [FromQuery] string? query, [FromQuery] int? mode,
             [FromQuery] int offset, [FromQuery] int amount,
             IMapRepository maps, CancellationToken cancellationToken) =>
         {
-            var sets = await maps.SearchAsync(query, (GameMode?)mode, (RankedStatus?)status, offset,
+            var sets = await maps.SearchAsync(query, (GameMode?)mode, offset,
                 amount == 0 ? 50 : amount, cancellationToken);
             return Results.Json(sets);
         });
 
         admin.MapGet("/beatmaps/{id:int}", async (int id, IMapRepository maps, CancellationToken cancellationToken) =>
         {
-            var bmap = await maps.FetchOneAsync(id, cancellationToken: cancellationToken);
+            var bmap = await maps.FetchOneAsync(id, includeFrozen: true, cancellationToken: cancellationToken);
             return bmap is null ? Results.NotFound() : Results.Json(bmap);
         });
 
-        // Accepts a single .osu or .osz upload (field name "file"), drops it into MapsetsPath and
-        // runs the same ingestion scan BeatmapIngestionService already runs at startup.
+        // Accepts a single .osz upload (field name "file"), drops it into MapsetsPath and runs a
+        // full reconciliation pass. A lone .osu has no set context under the folder-per-mapset
+        // model — only a full archive is accepted here.
         admin.MapPost("/beatmaps", async (HttpContext context, IOptions<StorageOptions> storage,
             BeatmapIngestionService ingestion, CancellationToken cancellationToken) =>
         {
@@ -63,9 +64,8 @@ internal static class AdminManagementRoutes
             if (file is null) return Results.BadRequest("Missing 'file' form field.");
 
             var extension = Path.GetExtension(file.FileName);
-            if (!string.Equals(extension, ".osu", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
-                return Results.BadRequest("Only .osu and .osz files are accepted.");
+            if (!string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
+                return Results.BadRequest("Only .osz uploads are accepted — a single .osu file has no set context.");
 
             Directory.CreateDirectory(storage.Value.MapsetsPath);
             // Path.GetFileName strips any directory component a malicious filename could smuggle in.
@@ -76,25 +76,25 @@ internal static class AdminManagementRoutes
                 await file.CopyToAsync(fileStream, cancellationToken);
             }
 
-            var ingested = await ingestion.IngestAsync(cancellationToken);
+            var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
             return Results.Json(new { ingested });
         });
 
         admin.MapPost("/beatmaps/rescan",
             async (BeatmapIngestionService ingestion, CancellationToken cancellationToken) =>
             {
-                var ingested = await ingestion.IngestAsync(cancellationToken);
+                var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
                 return Results.Json(new { ingested });
             });
 
         admin.MapDelete("/beatmaps/{id:int}", async (int id, IMapRepository maps, IOptions<StorageOptions> storage,
             CancellationToken cancellationToken) =>
         {
-            var bmap = await maps.FetchOneAsync(id, cancellationToken: cancellationToken);
+            var bmap = await maps.FetchOneAsync(id, includeFrozen: true, cancellationToken: cancellationToken);
             if (bmap is null) return Results.NotFound();
 
             await maps.DeleteByMd5Async(bmap.Md5, cancellationToken);
-            var osuPath = Path.Combine(storage.Value.MapsetsPath, $"{id}.osu");
+            var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
             if (File.Exists(osuPath)) File.Delete(osuPath);
 
             return Results.NoContent();
@@ -115,14 +115,17 @@ internal static class AdminManagementRoutes
         admin.MapPost("/users", async (CreateUserRequest body, IUserRepository users,
             IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
         {
+            if (!User.ValidateUsername(body.Name, out var usernameError))
+                return Results.BadRequest(new { error = usernameError });
+
             if (await users.FetchByNameAsync(body.Name, cancellationToken) is not null)
                 return Results.Conflict(new { error = "Username already exists." });
 
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(
                 Encoding.UTF8.GetBytes(body.Password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
-            var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx", body.Priv,
-                cancellationToken);
+            var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx",
+                (UserPrivileges?)body.Priv, cancellationToken);
             return user is null
                 ? Results.Conflict(new { error = "Username already exists." })
                 : Results.Json(user);
@@ -136,11 +139,16 @@ internal static class AdminManagementRoutes
             if (await users.FetchByIdAsync(id, cancellationToken) is null) return Results.NotFound();
 
             if (body.Name is not null)
-                await users.UpdateNameAsync(id, body.Name, SafeName.Make(body.Name), cancellationToken);
+            {
+                if (!User.ValidateUsername(body.Name, out var usernameError))
+                    return Results.BadRequest(new { error = usernameError });
+
+                await users.UpdateNameAsync(id, body.Name, User.MakeSafeName(body.Name), cancellationToken);
+            }
             if (body.Country is not null)
                 await users.UpdateCountryAsync(id, body.Country, cancellationToken);
             if (body.Priv is not null)
-                await users.UpdatePrivilegesAsync(id, body.Priv.Value, cancellationToken);
+                await users.UpdatePrivilegesAsync(id, (UserPrivileges)body.Priv.Value, cancellationToken);
 
             return Results.Json(await users.FetchByIdAsync(id, cancellationToken));
         });

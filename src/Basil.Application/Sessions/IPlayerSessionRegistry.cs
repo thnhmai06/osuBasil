@@ -15,6 +15,6 @@ public interface IPlayerSessionRegistry
 
     PlayerSession? GetById(int id);
 
-    /// <summary>Looks up by SafeName.Make(name), matching bancho.py's safe_name comparison.</summary>
+    /// <summary>Looks up by User.MakeSafeName(name), matching bancho.py's safe_name comparison.</summary>
     PlayerSession? GetByName(string name);
 }

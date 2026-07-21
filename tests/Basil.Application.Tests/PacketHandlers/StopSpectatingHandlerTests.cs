@@ -1,8 +1,8 @@
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.PacketHandlers.Spectating;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.UseCases.Spectating;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
@@ -14,7 +14,7 @@ public class StopSpectatingHandlerTests
 {
     private static PlayerSession MakePlayer(int id, string name)
     {
-        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
     }
 
     [Fact]

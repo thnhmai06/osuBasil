@@ -21,32 +21,35 @@ public class ScoreSubmissionTests
         var score = ScoreSubmission.FromSubmission(Fields);
 
         Assert.Equal("abc123checksum", score.ClientChecksum);
-        Assert.Equal(490, score.N300);
-        Assert.Equal(5, score.N100);
-        Assert.Equal(3, score.N50);
-        Assert.Equal(0, score.NGeki);
-        Assert.Equal(0, score.NKatu);
-        Assert.Equal(1, score.NMiss);
+        Assert.Equal(490, score.HitCounts.x300);
+        Assert.Equal(5, score.HitCounts.x100);
+        Assert.Equal(3, score.HitCounts.x50);
+        Assert.Equal(0, score.HitCounts.xGeki);
+        Assert.Equal(0, score.HitCounts.xKatu);
+        Assert.Equal(1, score.HitCounts.xMiss);
         Assert.Equal(12345678, score.Score);
         Assert.Equal(500, score.MaxCombo);
-        Assert.False(score.Perfect);
+        Assert.False(score.IsFullCombo);
         Assert.Equal(Grade.S, score.Grade);
         Assert.Equal(Mods.Hidden | Mods.DoubleTime, score.Mods);
-        Assert.True(score.Passed);
-        Assert.Equal(GameMode.VanillaOsu, score.Mode);
+        Assert.True(score.IsPassed);
+        Assert.Equal(GameMode.Standard, score.Mode);
         Assert.Equal(new DateTime(2021, 5, 20, 23, 59, 59), score.ClientTime);
         Assert.Equal((ClientFlags)1, score.ClientFlags);
     }
 
     [Fact]
-    public void FromSubmission_RelaxMod_ShiftsModeToRelaxEquivalent()
+    public void FromSubmission_RelaxMod_DoesNotAffectMode()
     {
+        // GameMode is a plain 4-value enum — Relax/Autopilot are ordinary Mods bits with no effect
+        // on the parsed Mode, unlike the old Vanilla/Relax/Autopilot-variant enum.
         var fields = (string[])Fields.Clone();
         fields[11] = ((int)Mods.Relax).ToString(); // mods = RX only
-        fields[13] = "0"; // vanilla osu
+        fields[13] = "0"; // osu!
 
         var score = ScoreSubmission.FromSubmission(fields);
 
-        Assert.Equal(GameMode.RelaxOsu, score.Mode);
+        Assert.Equal(GameMode.Standard, score.Mode);
+        Assert.Equal(Mods.Relax, score.Mods);
     }
 }

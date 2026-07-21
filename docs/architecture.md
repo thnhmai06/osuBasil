@@ -36,9 +36,9 @@ The three largest directories are organized by feature area rather than kept fla
 | Directory | Purpose |
 | --- | --- |
 | **`PacketHandlers/`** | One class per Bancho client packet, split into `Core/` (session lifecycle: login, presence, stats), `Channels/` (chat), `Spectating/`, and `Multiplayer/` (match + tournament packets, the largest group) |
-| **`Abstractions/`** | Ports that Infrastructure implements, organized by domain concept: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (mail + relationship + moderation logging) |
+| **`Abstractions/`** | Ports that Infrastructure implements, organized by domain concept: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (relationship + moderation logging) |
 | **`Sessions/`** | In-memory session state (`PlayerSession`, `ChannelSession`, `MatchSession`) and the registries tracking them, split into `Channels/`, `Irc/` (IIrcConnection — bridge for bancho packets or real TCP), and `Multiplayer/` with per-player state at the root. `Sessions/Multiplayer/IMatchEventBus` is non-blocking pub/sub pushing match state directly to the `api.` host's WebSocket layer |
-| **`UseCases/`** | One directory per feature (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Mail/`, `Anticheat/`, `Bot/`, `Chat/`, `Irc/`), each containing the actual business logic that a packet handler or HTTP route delegates to. `UseCases/Chat/ChatDispatchService` is the single entry point for all chat traffic — used by both bancho handlers and IRC PRIVMSG. `UseCases/Irc/IrcAuthenticationService` authenticates IRC TCP connections and creates virtual PlayerSessions. `UseCases/Multiplayer/MatchReportService` builds tournament match reports (TRT) at read time. `UseCases/Bot/` contains BanchoBot's session bootstrap plus the `!help`/`!roll`/`!mp` command dispatcher |
+| **`UseCases/`** | One directory per feature (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Anticheat/`, `Bot/`, `Chat/`, `Irc/`), each containing the actual business logic that a packet handler or HTTP route delegates to. `UseCases/Chat/ChatDispatchService` is the single entry point for all chat traffic — used by both bancho handlers and IRC PRIVMSG. `UseCases/Irc/IrcAuthenticationService` authenticates IRC TCP connections and creates virtual PlayerSessions. `UseCases/Multiplayer/MatchReportService` builds tournament match reports (TRT) at read time. `UseCases/Bot/` contains BanchoBot's session bootstrap plus the `!help`/`!roll`/`!mp` command dispatcher |
 
 `Basil.Domain`, `Basil.Protocol`, and `Basil.Infrastructure/Persistence` follow the same pattern (subdirectories per topic like `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`, `Repositories/`) — namespace matches folder path, so `grep` on an import tells you exactly where the file lives.
 
@@ -73,16 +73,14 @@ Tables serving **general management**:
 
 | Table | Purpose |
 | --- | --- |
-| `Users` | Accounts: credentials, priv, clan/mode defaults. `Id = 1` seeded for `BanchoBot` |
-| `Mapsets` | One row per beatmapset — exists only for `Beatmaps.SetId` to reference, no osu!api staleness tracking (offline server, mapsets added only through local ingestion) |
-| `Beatmaps` | One row per difficulty, keyed by `Md5`; source for score-submission map lookup and locally-computed star rating display |
-| `Channels` | Static chat channel catalog (`#osu`, `#announce`, `#lobby`, ...) with `ReadPriv`/`WritePriv`/`AutoJoin` flags |
-| `Mail` | Offline messages between two users (sent when recipient is offline) |
+| `Users` | Accounts: `Name`/`SafeName`, `PwBcrypt`, `Priv`, `Country`, `SilenceEnd`. `Id = 1` seeded for `BanchoBot`. Trimmed to fields actually read back somewhere — no clan/preferred-mode/play-style/custom-badge/userpage columns (dead weight ported from bancho.py, no reader anywhere; clans/public profiles are out of scope, see [`working-scopes.md`](working-scopes.md)) |
+| `Mapsets` | One row per beatmapset: `Artist`/`Title`/`Creator`/`Status`/`LastUpdate`/`CreatedAt` — kept live by `BeatmapWatcherService` reconciling `StorageOptions.MapsetsPath` (a per-set folder `"{Id} {Artist} - {Title}"` holding the full original `.osz` contents), not just a bare FK anchor. No osu!api staleness tracking (offline server, mapsets added only through local ingestion) |
+| `Beatmaps` | One row per difficulty, keyed by `Md5`, FK'd to `Mapsets` via `MapsetId` (`on delete cascade` — deleting a mapset drops its beatmaps automatically); source for score-submission map lookup and locally-computed star rating display. `Frozen` (C# `Beatmap.IsFrozen`) hides a row from every client-reachable lookup while keeping it in the DB — admin-only |
+| `Channels` | Static chat channel catalog (`#osu`, `#lobby`, ...) with `ReadPriv`/`WritePriv`/`AutoJoin` flags |
 | `Relationships` | `(User1, User2)` pairs of type `friend`/`block` |
-| `Ratings` | 1-10 star ratings from users for a map (`UserId`, `MapMd5`), used by `BeatmapLeaderboardService` |
-| `ClientHashes` | Hardware fingerprint log (adapters/uninstall id/disk serial) per login — used only for anticheat, no automatic blocking logic |
-| `IngameLogins` | Login log: IP, client version, stream — write-only, no consumer reads it back |
-| `Logs` | General action log `From`/`To`/`Action` (e.g. moderation) — write-only |
+| `ClientHashes` | Hardware fingerprint log (`OsuPathMd5`/adapters/uninstall id/disk serial) per login, `LastSeenAt`/`Occurrences` — used only for anticheat, no automatic blocking logic |
+| `IngameLogins` | Login log: IP, client version, stream, `LoggedInAt` — write-only, no consumer reads it back |
+| `Logs` | General action log `FromId`/`ToId`/`Action` (e.g. moderation), `CreatedAt` — write-only |
 
 Tables important for the **tournament flow**:
 
@@ -92,7 +90,7 @@ Tables important for the **tournament flow**:
 | `Rounds` | One row per beatmap played within a match, created at `MATCH_START`/`!mp start`. Carries per-round `Mode`, `WinCondition`, `TeamType`, denormalized beatmap fields (`BeatmapArtist`/`Title`/`Version`/`Creator`), `Aborted` flag, and `Mods` |
 | `Scores` | Links to a `Round` via `RoundId`, submitted through the existing `osu-submit-modular-selector.php` pipeline. New `SubmittedAt` = server wall clock when the score arrived (not `ClientTime`) |
 | `MatchEvents` | Lifecycle audit log: `EventType` (0=Created…7=Closed), optional `ActorUserId`/`TargetUserId`, `Detail` text. Written by `MatchMembershipService`, `MpCommandService`, packet handlers, and `MatchRecoveryService` |
-| `UserStats` | Seeded once at zero, never updated by score submission — this server has no singleplayer ranking/progression; per-mode stats are static display data, not computed |
+| `UserStats` | `Tscore`/`Rscore`/`Plays`/`Acc`, seeded once at zero, never updated by score submission — this server has no singleplayer ranking/progression; per-mode stats are static display data, not computed. Trimmed to the 4 columns actually read at login (`Playtime`/`MaxCombo`/`TotalHits`/`ReplayViews`/grade-count columns were dead — the only code that would have consumed them, `ScoreStatsCalculator`, was itself never called from anywhere) |
 
 > [!IMPORTANT]
 > **Score-to-round linking has no race window by design**
@@ -132,7 +130,7 @@ Every `PlayerSession` has an `IIrcConnection` (`Sessions/Irc/`):
 
 1. Channel (`#` prefix): broadcast via `ChannelMembershipService.BroadcastPrivmsg` (sends to each member's IIrcConnection), then runs `ICommandDispatcher` for `!` commands.
 2. Bot DM: sends directly to `ICommandDispatcher` (prefix not required).
-3. Regular DM: checks block/silence, delivers via `target.IrcConnection.Send`, saves offline mail.
+3. Regular DM: checks block/silence, delivers via `target.IrcConnection.Send` — online only, no offline persistence.
 
 `BanchoIrcBridgeConnection.Send` filters out every IRC command except `PRIVMSG` — bancho clients don't need JOIN/PART/QUIT numerics (channel presence is already handled by the ChannelInfo packet). Real IRC clients receive everything.
 

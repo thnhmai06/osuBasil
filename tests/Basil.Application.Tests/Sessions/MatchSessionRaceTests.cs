@@ -1,7 +1,7 @@
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Tests.Sessions;
 
@@ -20,8 +20,8 @@ public class MatchSessionRaceTests
         return new MatchSession(
             0, "race test", "",
             "", 0, new string('a', 32), 1,
-            GameMode.VanillaOsu, Mods.NoMod, MatchWinConditions.Score,
-            MatchTeamTypes.HeadToHead, false, 0, "#multi_0");
+            GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, false, 0, "#multi_0");
     }
 
     /// <summary>

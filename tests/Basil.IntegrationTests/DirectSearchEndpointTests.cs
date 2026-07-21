@@ -3,6 +3,7 @@ using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
@@ -10,6 +11,7 @@ using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -32,15 +34,15 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
             {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IChannelRepository, NullChannelRepository>();
                 services.AddSingleton<IUserRepository, StubUserRepository>();
                 services.AddSingleton<IPasswordHasher, StubPasswordHasher>();
@@ -51,9 +53,10 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
     private static Beatmap MakeBeatmap(int id, int setId)
     {
+        var mapset = new Mapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(
-            new string('0', 32), id, setId, "Artist", "Title", "Version", "cmyui", DateTime.UtcNow, 100, 500,
-            RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180, 4, 8, 9, 5, 6.5, "file.osu");
+            new string('0', 32), id, mapset, "Version", "file.osu", TimeSpan.FromSeconds(100), 500, false, 0, 0,
+            new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5));
     }
 
     private static HttpRequestMessage MakeRequest(string path, string queryString)
@@ -76,7 +79,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task Search_Authenticated_ReturnsFormattedResults()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(60, "search-user", "tok", Privileges.Unrestricted, 0.0));
+        sessionRegistry.Add(new PlayerSession(60, "search-user", "tok", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
         _maps.SearchResult = [[MakeBeatmap(1, 100)]];
         var request = MakeRequest("/web/osu-search.php", "u=search-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
 
@@ -100,7 +103,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task SearchSet_UnknownSet_ReturnsEmptyBody()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(61, "searchset-unknown", "tok2", Privileges.Unrestricted, 0.0));
+        sessionRegistry.Add(new PlayerSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
         _maps.SetInfo = null;
         var request = MakeRequest("/web/osu-search-set.php", "u=searchset-unknown&h=correct-md5&s=999");
 
@@ -114,7 +117,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task SearchSet_KnownSet_ReturnsFormattedSetLine()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(62, "searchset-known", "tok3", Privileges.Unrestricted, 0.0));
+        sessionRegistry.Add(new PlayerSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
         _maps.SetInfo = MakeBeatmap(1, 100);
         var request = MakeRequest("/web/osu-search-set.php", "u=searchset-known&h=correct-md5&s=100");
 
@@ -159,7 +162,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -169,7 +172,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -200,14 +203,14 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         public Beatmap? SetInfo { get; set; }
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, CancellationToken cancellationToken = default)
+            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(SetInfo);
         }
 
-        public Task UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(beatmap);
         }
 
         public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
@@ -216,7 +219,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
         }
 
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-            string? query, GameMode? mode, RankedStatus? status, int offset, int amount,
+            string? query, GameMode? mode, int offset, int amount,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(SearchResult);
@@ -237,7 +240,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Beatmap>>([]);

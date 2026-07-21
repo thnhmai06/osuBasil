@@ -1,12 +1,13 @@
 using System.Threading.Channels;
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
@@ -23,12 +24,12 @@ internal static class MultiplayerTestSupport
 {
     public static PlayerSession MakePlayer(int id, string name)
     {
-        return new PlayerSession(id, name, "token", Privileges.Unrestricted, 0.0);
+        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
     }
 
     public static ReadMatchResult MakeMatchData(
         int hostId, string name = "test match", string password = "", bool freeMods = false,
-        int mapId = 100, string mapMd5 = "", MatchTeamTypes teamType = MatchTeamTypes.HeadToHead, int winCondition = 0)
+        int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead, int winCondition = 0)
     {
         return new ReadMatchResult(
             0, false, 0, 0, name, password,
@@ -165,9 +166,9 @@ internal static class MultiplayerTestSupport
         }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
-            int mode, int winCondition, int teamType,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
             string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-            int mods, DateTime startedAt, CancellationToken cancellationToken = default)
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextRoundId++);
         }
@@ -256,11 +257,8 @@ internal static class MultiplayerTestSupport
     {
         public Fixture()
         {
-            var clock = Substitute.For<IClock>();
-            clock.UtcNow.Returns(DateTimeOffset.UtcNow);
-
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus, clock,
+                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
                 Substitute.For<IMapRepository>());
         }
 
@@ -289,7 +287,7 @@ internal static class MultiplayerTestSupport
         ///     right away) — MatchSession.IsReferee itself does NOT auto-include the host; pass false to exercise
         ///     that real host-is-not-a-referee behavior.
         /// </summary>
-        public MatchSession CreateMatch(PlayerSession host, MatchTeamTypes teamType = MatchTeamTypes.HeadToHead,
+        public MatchSession CreateMatch(PlayerSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
             bool hostIsReferee = true)
         {
             var match = MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))

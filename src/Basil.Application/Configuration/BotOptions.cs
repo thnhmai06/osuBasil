@@ -7,7 +7,7 @@ namespace Basil.Application.Configuration;
 /// </summary>
 public sealed class BotOptions
 {
-    public const string SectionName = "Bot";
+    public const string SectionName = "Basil:Bot";
 
     public string Name { get; init; } = "BasilBot";
 

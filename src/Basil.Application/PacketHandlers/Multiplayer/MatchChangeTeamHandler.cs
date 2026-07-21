@@ -1,6 +1,6 @@
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 
@@ -24,7 +24,7 @@ public sealed class MatchChangeTeamHandler(MatchMembershipService matchMembershi
             var slot = match.GetSlot(player.Id);
             if (slot is null) return;
 
-            slot.Team = slot.Team == MatchTeams.Blue ? MatchTeams.Red : MatchTeams.Blue;
+            slot.Team = slot.Team == MatchTeam.Blue ? MatchTeam.Red : MatchTeam.Blue;
             matchMembership.EnqueueState(match, false);
         }
         finally

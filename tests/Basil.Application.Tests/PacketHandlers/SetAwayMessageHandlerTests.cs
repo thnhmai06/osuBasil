@@ -11,7 +11,7 @@ public class SetAwayMessageHandlerTests
     [Fact]
     public async Task Handle_SetsAwayMessageFromMessageText()
     {
-        var session = new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var payload =
             ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)
                 [7..]; // strip packet header, keep message payload

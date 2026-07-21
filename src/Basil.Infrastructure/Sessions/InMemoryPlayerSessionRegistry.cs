@@ -31,7 +31,7 @@ public sealed class InMemoryPlayerSessionRegistry : IPlayerSessionRegistry
 
     public PlayerSession? GetByName(string name)
     {
-        var safeName = SafeName.Make(name);
+        var safeName = User.MakeSafeName(name);
         return _byToken.Values.FirstOrDefault(s => s.SafeName == safeName);
     }
 

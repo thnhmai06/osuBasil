@@ -1,23 +1,6 @@
-namespace Basil.Application.Abstractions.Users;
+using Basil.Domain.Users;
 
-/// <summary>Ported from app/repositories/users.py's User dataclass.</summary>
-public sealed record User(
-    int Id,
-    string Name,
-    string SafeName,
-    int Priv,
-    string Country,
-    int SilenceEnd,
-    int DonorEnd,
-    int CreationTime,
-    int LatestActivity,
-    int ClanId,
-    int ClanPriv,
-    int PreferredMode,
-    int PlayStyle,
-    string? CustomBadgeName,
-    string? CustomBadgeIcon,
-    string? UserpageContent);
+namespace Basil.Application.Abstractions.Users;
 
 /// <summary>
 ///     Ported from app/repositories/users.py's UsersRepository — scoped to what login needs.
@@ -27,7 +10,7 @@ public interface IUserRepository
 {
     Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default);
 
-    /// <summary>Looks up by SafeName.Make(name), matching bancho.py's safe_name lookup.</summary>
+    /// <summary>Looks up by User.MakeSafeName(name), matching bancho.py's safe_name lookup.</summary>
     Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -38,12 +21,12 @@ public interface IUserRepository
 
     Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default);
 
-    Task UpdatePrivilegesAsync(int id, int priv, CancellationToken cancellationToken = default);
+    Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default);
 
     Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
 
     /// <summary>Null when Name/SafeName collides with an existing row (a concurrent registration won the race).</summary>
-    Task<User?> CreateAsync(string name, string pwBcrypt, string country, int? priv = null,
+    Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>For the management REST API's user listing.</summary>

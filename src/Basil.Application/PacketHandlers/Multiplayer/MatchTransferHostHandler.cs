@@ -1,8 +1,7 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.UseCases.Multiplayer;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
@@ -10,8 +9,7 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 public sealed class MatchTransferHostHandler(
     IPlayerSessionRegistry sessionRegistry,
     MatchMembershipService matchMembership,
-    IMatchPersistenceRepository matchPersistence,
-    IClock clock) : IBanchoPacketHandler
+    IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchTransferHost;
 
@@ -41,7 +39,7 @@ public sealed class MatchTransferHostHandler(
             _ = matchPersistence.CreateEventAsync(new MatchEventRow(
                 match.DbId, (int)MatchEventType.HostGranted,
                 prevHostId, prevHostName, targetId, targetPlayer?.Name,
-                clock.UtcNow.UtcDateTime, null));
+                DateTimeOffset.UtcNow.UtcDateTime, null));
         }
         finally
         {

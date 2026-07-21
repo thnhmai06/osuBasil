@@ -1,11 +1,14 @@
-using Basil.Application.Abstractions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Services.Bot;
+using Basil.Application.Sessions;
 using Basil.Application.Tests.PacketHandlers;
-using Basil.Application.UseCases.Bot;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Basil.Protocol.Packets;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Bot;
@@ -24,10 +27,8 @@ public class MpCommandServiceTests
 
     private MpCommandService MakeService()
     {
-        var clock = Substitute.For<IClock>();
-        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
         return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchPersistence, _maps,
-            _fixture.SessionRegistry, _users, clock);
+            _fixture.SessionRegistry, _users);
     }
 
     [Fact]
@@ -309,7 +310,7 @@ public class MpCommandServiceTests
 
         await MakeService().HandleAsync(host, match, "team", ["host", "blue"]);
 
-        Assert.Equal(MatchTeams.Blue, match.Slots[0].Team);
+        Assert.Equal(MatchTeam.Blue, match.Slots[0].Team);
     }
 
     [Fact]
@@ -318,8 +319,9 @@ public class MpCommandServiceTests
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         _fixture.RegisterAll(host);
         var match = _fixture.CreateMatch(host);
-        var bmap = new Beatmap(new string('a', 32), 500, 1, "Artist", "Title", "Version", "creator", DateTime.UtcNow,
-            120, 500, RankedStatus.Ranked, false, 0, 0, GameMode.VanillaOsu, 180, 4, 8, 9, 5, 6.5, "file.osu");
+        var mapset = new Mapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+        var bmap = new Beatmap(new string('a', 32), 500, mapset, "Version", "file.osu", TimeSpan.FromSeconds(120),
+            500, false, 0, 0, new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5));
         _maps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
         var reply = await MakeService().HandleAsync(host, match, "map", ["500"]);
@@ -351,6 +353,19 @@ public class MpCommandServiceTests
         await MakeService().HandleAsync(host, match, "mods", ["HDHR"]);
 
         Assert.Equal(Mods.Hidden | Mods.HardRock, match.Mods);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Mods_NotFreemod_ReplyOmitsFreemodText()
+    {
+        // Freemod was never on here — the reply must not claim it was just disabled.
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+
+        var reply = await MakeService().HandleAsync(host, match, "mods", ["HD"]);
+
+        Assert.Equal("Enabled Hidden", reply);
     }
 
     [Fact]
@@ -524,6 +539,36 @@ public class MpCommandServiceTests
         Assert.Null(match.PendingTimer);
         Assert.True(cts!.IsCancellationRequested);
         Assert.Equal("Countdown aborted", reply);
+    }
+
+    /// <summary>
+    ///     Diagnostic/regression test for the real end-to-end announce pipeline (checkpoint computation
+    ///     alone is covered by <see cref="ComputeAnnounceCheckpoints_ReturnsExpectedMarks" />, but every
+    ///     other timer test cancels the countdown immediately, so nothing exercises whether
+    ///     <see cref="MpCommandService.CountdownLoopAsync" />'s fire-and-forget task actually reaches
+    ///     the match channel with a real bot session registered).
+    /// </summary>
+    [Fact]
+    public async Task HandleAsync_Timer_AnnouncesQueuedAndFinishedMessagesToMatchChannel()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+        _fixture.RegisterAll(host, bot);
+        var match = _fixture.CreateMatch(host);
+        host.Dequeue();
+
+        await MakeService().HandleAsync(host, match, "timer", ["2"]);
+
+        var queuedPacket = ServerPacketWriter.SendMessage("BasilBot", "Queued the match to start in 2 seconds",
+            match.ChatChannelName, BotBootstrapService.BotId);
+        Assert.Contains(queuedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
+
+        await Task.Delay(TimeSpan.FromSeconds(2.5));
+
+        var finishedPacket = ServerPacketWriter.SendMessage("BasilBot", "Countdown finished",
+            match.ChatChannelName, BotBootstrapService.BotId);
+        Assert.Contains(finishedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
     }
 
     [Theory]
@@ -707,8 +752,8 @@ public class MpCommandServiceTests
 
         var reply = await MakeService().HandleAsync(host, match, "set", ["2", "1", "8"]);
 
-        Assert.Equal(MatchTeamTypes.TeamVs, match.TeamType);
-        Assert.Equal(MatchWinConditions.Accuracy, match.WinCondition);
+        Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
+        Assert.Equal(MatchWinCondition.Accuracy, match.WinCondition);
         Assert.Equal(SlotStatus.Locked, match.Slots[8].Status);
         Assert.Equal("Changed match settings to TeamVs, Accuracy, 8 slots.", reply);
     }
@@ -719,12 +764,12 @@ public class MpCommandServiceTests
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         _fixture.RegisterAll(host);
         var match = _fixture.CreateMatch(host);
-        match.WinCondition = MatchWinConditions.Combo;
+        match.WinCondition = MatchWinCondition.Combo;
 
         var reply = await MakeService().HandleAsync(host, match, "set", ["2"]);
 
-        Assert.Equal(MatchTeamTypes.TeamVs, match.TeamType);
-        Assert.Equal(MatchWinConditions.Combo, match.WinCondition);
+        Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
+        Assert.Equal(MatchWinCondition.Combo, match.WinCondition);
         Assert.Equal("Changed match settings to TeamVs, Combo.", reply);
     }
 
@@ -1016,6 +1061,6 @@ public class MpCommandServiceTests
 
     private static User MakeUser(int id, string name)
     {
-        return new User(id, name, name.ToLowerInvariant(), 1, "xx", 0, 0, 0, 0, 0, 0, 0, 0, null, null, null);
+        return new User(id, name, Country.Xx, UserPrivileges.Unrestricted, default);
     }
 }

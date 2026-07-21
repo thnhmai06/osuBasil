@@ -13,7 +13,7 @@ public sealed class SqliteIngameLoginRepository(string connectionString) : IInga
         await using var connection = Connect();
         var id = await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO IngameLogins (UserId, Ip, OsuVer, OsuStream, Datetime)
+            INSERT INTO IngameLogins (UserId, Ip, OsuVer, OsuStream, LoggedInAt)
             VALUES (@UserId, @Ip, @OsuVer, @OsuStream, datetime('now'));
             SELECT last_insert_rowid();
             """,
@@ -38,11 +38,11 @@ public sealed class SqliteIngameLoginRepository(string connectionString) : IInga
         public string Ip { get; set; } = "";
         public DateTime OsuVer { get; set; }
         public string OsuStream { get; set; } = "";
-        public DateTime Datetime { get; set; }
+        public DateTime LoggedInAt { get; set; }
 
         public IngameLogin ToIngameLogin()
         {
-            return new IngameLogin(Id, UserId, Ip, DateOnly.FromDateTime(OsuVer), OsuStream, Datetime);
+            return new IngameLogin(Id, UserId, Ip, DateOnly.FromDateTime(OsuVer), OsuStream, LoggedInAt);
         }
     }
 }

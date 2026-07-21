@@ -1,6 +1,5 @@
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
-using Basil.Domain;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 
@@ -11,7 +10,7 @@ public class ReceiveUpdatesHandlerTests
 {
     private static PlayerSession MakeSession()
     {
-        return new PlayerSession(1, "cmyui", "token", Privileges.Unrestricted, 0.0);
+        return new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
     }
 
     [Theory]

@@ -1,55 +1,48 @@
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
-///     Ported from app/objects/beatmap.py's Beatmap fields. Star rating (Diff) is a direct
+///     Ported from app/objects/beatmap.py's Beatmap fields. Star rating (Sr) is a direct
 ///     passthrough of osu!api's difficultyrating field — bancho.py does not run a local difficulty
-///     calculator here. Mods-adjusted star ratings in multiplayer rooms use
-///     <see cref="Basil.Application.Abstractions.Beatmaps.IBeatmapDifficultyCalculator" /> instead.
+///     calculator here.
 /// </summary>
 public sealed record Beatmap(
+
+    #region Identity
+
     string Md5,
     int Id,
-    int SetId,
-    string Artist,
-    string Title,
+    Mapset Mapset,
+
+    #endregion
+
+    #region Metadata
+
     string Version,
-    string Creator,
-    DateTime LastUpdate,
-    int TotalLength,
+    string Filename,
+
+    #endregion
+
+    #region Stats
+
+    TimeSpan TotalLength,
     int MaxCombo,
-    RankedStatus Status,
-    bool Frozen,
+    bool IsFrozen,
     int Plays,
     int Passes,
-    GameMode Mode,
-    double Bpm,
-    double Cs,
-    double Od,
-    double Ar,
-    double Hp,
-    double Diff,
-    string Filename)
+    Difficulty Difficulty
+
+    #endregion
+
+)
 {
+    //! Real osu! online ids are still well under this in 2026; a private-server-only
+    //! local id range this far up the int32 space keeps collisions with real ids implausible
+    //! without needing a dedicated id-space reservation table.
+    public const int LocalIdFloor = 1_000_000_000;
+
+    /// <summary>True for maps ingested without a real osu! online id (see <see cref="LocalIdFloor" />).</summary>
+    public bool IsLocallyIngested => Id >= LocalIdFloor;
+
     /// <summary>Ported from Beatmap.full_name.</summary>
-    public string FullName => $"{Artist} - {Title} [{Version}]";
-
-    /// <summary>
-    ///     Ported from the literal `bmap.status &lt; RankedStatus.Ranked` gate in
-    ///     beatmap_leaderboards.py:119 (the getscores endpoint's actual check) — not the same set as
-    ///     Beatmap.has_leaderboard's (Ranked, Approved, Loved) property, which excludes Qualified.
-    /// </summary>
-    public bool HasLeaderboard => Status >= RankedStatus.Ranked;
-
-    /// <summary>
-    ///     Ported from Beatmap.has_leaderboard (the property, not the getscores gate above) — used by
-    ///     score submission's max-combo stat gate. Deliberately excludes Qualified, unlike
-    ///     <see cref="HasLeaderboard" />.
-    /// </summary>
-    public bool HasLeaderboardStrict => Status is RankedStatus.Ranked or RankedStatus.Approved or RankedStatus.Loved;
-
-    /// <summary>
-    ///     Ported from Beatmap.awards_ranked_pp — used by score submission to gate ranked-score,
-    ///     grade-count, and leaderboard-rank updates. Excludes Loved as well as Qualified.
-    /// </summary>
-    public bool AwardsRankedScore => Status is RankedStatus.Ranked or RankedStatus.Approved;
+    public string FullName => $"{Mapset.Artist} - {Mapset.Title} [{Version}]";
 }

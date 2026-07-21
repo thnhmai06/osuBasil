@@ -1,12 +1,12 @@
+using Basil.Application;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.DependencyInjection;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Scores;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.UseCases.Authentication;
-using Basil.Application.UseCases.Scores;
-using Basil.Application.UseCases.Spectating;
 using Basil.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Basil.Infrastructure.Tests.DependencyInjection;
 
 /// <summary>
-///     Resolves the full Web-endpoint dependency graph (OsuLoginUseCase's 17 constructor deps,
+///     Resolves the full Web-endpoint dependency graph (LoginService's 17 constructor deps,
 ///     BanchoPacketDispatcher's 9 handlers, session registries) from the real DI container. A
 ///     deep constructor graph like this is exactly what silently breaks at runtime without a test
 ///     like this one — unit tests on the individual pieces can't see a missing/misconfigured
@@ -29,23 +29,23 @@ public class CompositionRootTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Server:Domain"] = "test.local",
-                ["Bot:CommandPrefix"] = "!",
-                ["Server:MenuIconPath"] = "icon.png",
-                ["Server:MenuOnclickUrl"] = "https://example.test"
+                ["Basil:Server:Domain"] = "test.local",
+                ["Basil:Bot:CommandPrefix"] = "!",
+                ["Basil:Server:MenuIconPath"] = "icon.png",
+                ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
             })
             .Build();
 
         var services = new ServiceCollection();
-        services.AddBanchoInfrastructure(configuration);
-        services.AddBanchoApplication();
+        services.AddInfrastructure(configuration);
+        services.AddApplication();
         _provider = services.BuildServiceProvider();
     }
 
     [Fact]
     public void ResolvesOsuLoginUseCase()
     {
-        Assert.NotNull(_provider.GetRequiredService<OsuLoginUseCase>());
+        Assert.NotNull(_provider.GetRequiredService<LoginService>());
     }
 
     [Fact]
@@ -66,13 +66,7 @@ public class CompositionRootTests
     [Fact]
     public void ResolvesScoreSubmissionUseCase()
     {
-        Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionUseCase>());
-    }
-
-    [Fact]
-    public void ResolvesScoreSubmissionPersistence()
-    {
-        Assert.NotNull(_provider.GetRequiredService<IScoreSubmissionPersistence>());
+        Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionService>());
     }
 
     [Fact]

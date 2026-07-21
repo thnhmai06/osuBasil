@@ -12,7 +12,7 @@ public class InMemoryPlayerSessionRegistryTests
 {
     private static PlayerSession MakeSession(int id, string name, string token)
     {
-        return new PlayerSession(id, name, token, Privileges.Unrestricted, 0.0);
+        return new PlayerSession(id, name, token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
     }
 
     [Fact]

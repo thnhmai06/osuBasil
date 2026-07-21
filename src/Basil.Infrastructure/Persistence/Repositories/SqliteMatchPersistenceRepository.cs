@@ -1,4 +1,7 @@
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -30,9 +33,9 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 
     public async Task<int> CreateRoundAsync(
         int matchId, int roundIndex, int beatmapId, string mapMd5,
-        int mode, int winCondition, int teamType,
+        GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
         string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-        int mods, DateTime startedAt,
+        Mods mods, DateTime startedAt,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -188,9 +191,9 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         public RoundRow ToRow()
         {
             return new RoundRow(Id, MatchId, RoundIndex, BeatmapId, MapMd5,
-                Mode, WinCondition, TeamType,
+                (GameMode)Mode, (MatchWinCondition)WinCondition, (MatchTeamType)TeamType,
                 BeatmapArtist, BeatmapTitle, BeatmapVersion, BeatmapCreator,
-                Aborted, Mods, StartedAt, EndedAt);
+                Aborted, (Mods)Mods, StartedAt, EndedAt);
         }
     }
 

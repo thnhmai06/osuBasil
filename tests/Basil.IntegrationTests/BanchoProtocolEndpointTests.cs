@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -6,6 +7,7 @@ using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
@@ -13,7 +15,7 @@ namespace Basil.IntegrationTests;
 ///     Ported from app/api/domains/cho.py's bancho_handler: dispatches by presence of the osu-token
 ///     header. Only the token-present branches are covered here — they touch only the in-memory
 ///     session registry and dispatcher, no DB. The no-token (login) branch is fully covered by
-///     OsuLoginUseCase's own 19 unit tests and is not re-tested through HTTP here.
+///     LoginService's own 19 unit tests and is not re-tested through HTTP here.
 /// </summary>
 public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -27,15 +29,17 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Server:Domain"] = "test.local",
-                    ["Bot:CommandPrefix"] = "!",
-                    ["Server:MenuIconPath"] = "icon.png",
-                    ["Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Database:Path"] = ""
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
                 });
             });
             builder.ConfigureServices(services =>
-                services.AddSingleton<IChannelRepository, NullChannelRepository>());
+            {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+                services.AddSingleton<IChannelRepository, NullChannelRepository>();
+            });
         });
     }
 
@@ -60,7 +64,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
     public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        var session = new PlayerSession(1, "cmyui", "known-token", Privileges.Unrestricted, 0.0);
+        var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         session.Enqueue(ServerPacketWriter.Notification("hello"));
         sessionRegistry.Add(session);
 

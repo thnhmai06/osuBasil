@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Channels;
+using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -40,7 +41,7 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 
         public Channel ToChannel()
         {
-            return new Channel(Id, Name, Topic, ReadPriv, WritePriv, AutoJoin);
+            return new Channel(Id, Name, Topic, (UserPrivileges)ReadPriv, (UserPrivileges)WritePriv, AutoJoin);
         }
     }
 }

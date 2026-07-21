@@ -1,7 +1,7 @@
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Tests.Sessions;
 
@@ -13,8 +13,8 @@ public class MatchSessionTests
         return new MatchSession(
             0, "test match", "pw",
             "Some Map", 100, new string('a', 32), hostId,
-            GameMode.VanillaOsu, Mods.NoMod, MatchWinConditions.Score,
-            MatchTeamTypes.HeadToHead, false, 0, "#multi_0");
+            GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, false, 0, "#multi_0");
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class MatchSessionTests
     {
         var source = new MatchSlot
         {
-            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true,
+            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeam.Red, Mods = Mods.Hidden, Loaded = true,
             Skipped = true
         };
         var target = new MatchSlot();
@@ -137,7 +137,7 @@ public class MatchSessionTests
 
         Assert.Equal(5, target.PlayerId);
         Assert.Equal(SlotStatus.Ready, target.Status);
-        Assert.Equal(MatchTeams.Red, target.Team);
+        Assert.Equal(MatchTeam.Red, target.Team);
         Assert.Equal(Mods.Hidden, target.Mods);
         Assert.False(target.Loaded);
         Assert.False(target.Skipped);
@@ -148,7 +148,7 @@ public class MatchSessionTests
     {
         var slot = new MatchSlot
         {
-            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeams.Red, Mods = Mods.Hidden, Loaded = true,
+            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeam.Red, Mods = Mods.Hidden, Loaded = true,
             Skipped = true
         };
 
@@ -156,7 +156,7 @@ public class MatchSessionTests
 
         Assert.True(slot.Empty);
         Assert.Equal(SlotStatus.Open, slot.Status);
-        Assert.Equal(MatchTeams.Neutral, slot.Team);
+        Assert.Equal(MatchTeam.Neutral, slot.Team);
         Assert.Equal(Mods.NoMod, slot.Mods);
         Assert.False(slot.Loaded);
         Assert.False(slot.Skipped);
