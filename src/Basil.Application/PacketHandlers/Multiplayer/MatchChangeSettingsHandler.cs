@@ -1,8 +1,8 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
@@ -81,10 +81,13 @@ public sealed class MatchChangeSettingsHandler(
                 }
                 else
                 {
-                    match.MapId = matchData.MapId;
-                    match.MapMd5 = matchData.MapMd5;
-                    match.MapName = matchData.MapName;
-                    match.Mode = (GameMode)matchData.Mode;
+                    // Diverges from bancho.py's cho.py, which blindly accepts the client-supplied
+                    // id/md5/name here — that let a beatmap absent from this server's local DB get
+                    // written into authoritative match state, corrupting round/match-report data.
+                    var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+                    if (bot is not null)
+                        matchMembership.EnqueueChat(match, bot.Name, bot.Id,
+                            "Beatmap not found locally — map selection ignored.");
                 }
             }
 

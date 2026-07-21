@@ -241,8 +241,6 @@ public sealed class MatchMembershipService(
 
         TeardownMatch(match, channel);
 
-        await matchPersistence.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
-
         await matchPersistence.CreateEventAsync(new MatchEventRow(
             match.DbId, (int)MatchEventType.Closed,
             actorId, actorName, null, null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -255,6 +253,8 @@ public sealed class MatchMembershipService(
 
         matchRegistry.Remove(match.Id);
         if (channel is not null) channelRegistry.Remove(channel.Name);
+
+        _ = matchPersistence.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
 
         var lobby = channelRegistry.GetByName("#lobby");
         if (lobby is not null)

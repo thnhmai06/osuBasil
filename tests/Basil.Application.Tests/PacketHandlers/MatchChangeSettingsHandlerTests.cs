@@ -1,7 +1,10 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Services.Bot;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Packets;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -85,21 +88,29 @@ public class MatchChangeSettingsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MapChosenButUnknownServerSide_FallsBackToClientSuppliedInfo()
+    public async Task Handle_MapChosenButUnknownServerSide_ReportsErrorAndLeavesMapUnchanged()
     {
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
-        fixture.RegisterAll(host);
+        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+        fixture.RegisterAll(host, bot);
         var match = fixture.CreateMatch(host);
         match.MapId = -1;
+        var previousMd5 = match.MapMd5;
+        var previousName = match.MapName;
         var newMd5 = new string('c', 32);
         _mapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
 
         await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
 
-        Assert.Equal(777, match.MapId);
-        Assert.Equal(newMd5, match.MapMd5);
-        Assert.Equal("Unknown Map", match.MapName);
+        Assert.Equal(-1, match.MapId);
+        Assert.Equal(previousMd5, match.MapMd5);
+        Assert.Equal(previousName, match.MapName);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+                match.ChatChannelName, bot.Id),
+            Chunk(host.Dequeue()));
     }
 }

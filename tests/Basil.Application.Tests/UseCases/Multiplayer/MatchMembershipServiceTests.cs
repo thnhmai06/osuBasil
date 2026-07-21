@@ -222,6 +222,7 @@ public class MatchMembershipServiceTests
         Assert.Null(_channelRegistry.GetByName("#multi_0"));
         Assert.Null(host.Match);
         Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
+        Assert.Contains(match.DbId, _matchPersistence.EndedMatchIds);
     }
 
     [Fact]
@@ -386,6 +387,8 @@ public class MatchMembershipServiceTests
         private int _nextMatchId = 1;
         private int _nextRoundId = 1;
 
+        public List<int> EndedMatchIds { get; } = [];
+
         public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextMatchId++);
@@ -393,6 +396,7 @@ public class MatchMembershipServiceTests
 
         public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
         {
+            EndedMatchIds.Add(matchId);
             return Task.CompletedTask;
         }
 
