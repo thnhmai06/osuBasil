@@ -45,12 +45,6 @@ internal static class AdminManagementRoutes
             return Results.Json(sets);
         });
 
-        admin.MapGet("/beatmaps/{id:int}", async (int id, IMapRepository maps, CancellationToken cancellationToken) =>
-        {
-            var bmap = await maps.FetchOneAsync(id, includeFrozen: true, cancellationToken: cancellationToken);
-            return bmap is null ? Results.NotFound() : Results.Json(bmap);
-        });
-
         // Accepts a single .osz upload (field name "file"), drops it into MapsetsPath and runs a
         // full reconciliation pass. A lone .osu has no set context under the folder-per-mapset
         // model — only a full archive is accepted here.
