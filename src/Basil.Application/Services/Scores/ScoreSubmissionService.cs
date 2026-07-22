@@ -54,7 +54,7 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 ///     Ported from app/services/score_submission.py's ScoreSubmissionService.submit_score, collapsed
 ///     to Basil's no-pp scope (every `pp`-vs-`score` branch in the Python source always takes the
 ///     score branch here), its 100%-offline scope (no `.osu` file fetch), and its fixed-stats scope
-///     (no per-user stats/rank update on submission — see docs/scope-decisions.md). If the submitting
+///     (no per-user stats/rank update on submission — see docs/working-scopes.md). If the submitting
 ///     player is currently in a multiplayer match, the score is linked to the match's current Round
 ///     (<see cref="MatchSession.CurrentRoundId" />) with the player's slot team — this is what lets
 ///     the TRT and Scores read paths reconstruct a match's results, without any gather/wait step:

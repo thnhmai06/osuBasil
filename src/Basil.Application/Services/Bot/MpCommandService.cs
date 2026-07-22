@@ -15,7 +15,7 @@ namespace Basil.Application.Services.Bot;
 
 /// <summary>
 ///     `!mp` subcommands, matched against real osu! Bancho's own wiki/chat behaviour rather than
-///     bancho.py — see docs/scope-decisions.md for what's a deliberate Basil-only addition vs a real
+///     bancho.py — see docs/working-scopes.md for what's a deliberate Basil-only addition vs a real
 ///     Bancho command. <c>makeprivate</c> is no longer an alias of <c>make</c> — it now redirects to
 ///     <see cref="SetPrivate" /> (setting the room private), and <c>!mp private [0|1]</c> is the
 ///     canonical way to view/change privacy. <c>!mp join &lt;id&gt;</c> bypasses the referee gate
