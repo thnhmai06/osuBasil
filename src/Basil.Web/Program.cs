@@ -25,6 +25,7 @@ public sealed class Program
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddApplication();
+        ConfigureOpenApi(builder);
 
         var app = builder.Build();
         app.UseWebSockets();
@@ -65,6 +66,45 @@ public sealed class Program
                     listenOptions.UseHttps(certPath, certPassword);
                 else
                     listenOptions.UseHttps();
+            });
+        });
+    }
+
+    // One OpenAPI document per host group (bancho/osuweb/beatmapassets/avatar/basilapi) rather than
+    // one document for the whole app — routing here is host-based (RequireHost), and several groups
+    // register the same literal path template (e.g. both the bancho and osu-web groups have their
+    // own GET /), which OpenAPI can't represent twice in one document. Routes opt into a document via
+    // .WithGroupName(...), matching AddOpenApi's default ShouldInclude filter.
+    private static void ConfigureOpenApi(WebApplicationBuilder builder)
+    {
+        AddOpenApiDocument(builder, "bancho", "osu! Client API — Bancho Protocol",
+            "The osu! stable client's binary bancho protocol — login and the packet-multiplexed " +
+            "connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
+        AddOpenApiDocument(builder, "osuweb", "osu! Client API — osu! Web",
+            "The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
+            "downloads and in-game registration. Served from the osu. subdomain.");
+        AddOpenApiDocument(builder, "beatmapassets", "osu! Client API — Beatmap Assets",
+            "Legacy beatmap thumbnail/preview asset requests, redirected to osu.ppy.sh's own CDN. " +
+            "Served from the b. subdomain.");
+        AddOpenApiDocument(builder, "avatar", "osu! Client API — Avatar Files",
+            "Locally-stored player avatar images. Served from the a. subdomain.");
+        AddOpenApiDocument(builder, "basilapi", "Basil API",
+            "Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
+            "beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
+            "api. subdomain.");
+    }
+
+    private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
+        string description)
+    {
+        builder.Services.AddOpenApi(documentName, options =>
+        {
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info.Title = title;
+                document.Info.Description = description;
+                document.Info.Version = "v1";
+                return Task.CompletedTask;
             });
         });
     }

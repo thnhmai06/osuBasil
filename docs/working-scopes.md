@@ -6,7 +6,7 @@ This page lists what is *in scope*, what is not, and the rationale for each excl
 
 ## Chat commands
 
-Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list, usage, and comparison with bancho.py is at [`bot-commands.md`](bot-commands.md) — not duplicated here to avoid drift between two sources.
+Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list and usage is on the BasilBot Commands page (`api.<domain>/basilbot`, or the same page on GitHub Pages) — not duplicated here to avoid drift between two sources.
 
 ## IRC Gateway
 

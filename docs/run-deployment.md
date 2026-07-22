@@ -72,8 +72,8 @@ To move a deployment to another machine: stop the server, copy the whole executa
 2. **Edit `Settings.toml`** next to the published executable:
    - `Server.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
-     subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see [`api-client.md`](api-client.md)
-     for exactly how.
+     subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see the osu! Client API docs
+     (`api.<domain>/osu-client`) for exactly how.
     - `Server.AdminKey` — set this to a real secret. Without it the management API (used to create
        user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
    - `Bot.Name` / `Bot.CommandPrefix`, `Server.MenuIconPath`/`MenuOnclickUrl`, `Irc.Name`/`Irc.Port` — cosmetic,
