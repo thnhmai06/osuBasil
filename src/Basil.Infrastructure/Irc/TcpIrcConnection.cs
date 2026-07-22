@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Irc;
 
 /// <summary>
 ///     One real TCP IRC client. Owns the socket's read loop (handshake, then PRIVMSG/JOIN/PART/AWAY/
-///     PING/QUIT dispatch) and a bounded-channel write pump mirroring <c>MatchWebSocketRoutes</c>'s
+///     PING/QUIT dispatch) and a bounded-channel write pump mirroring <c>LiveSseRoutes</c>'s
 ///     pattern — <see cref="Send" /> is a non-blocking <c>TryWrite</c> so a slow/dead client can never
 ///     stall a broadcast still holding a lock elsewhere in the chat core.
 /// </summary>

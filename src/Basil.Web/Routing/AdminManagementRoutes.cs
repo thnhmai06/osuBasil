@@ -244,7 +244,7 @@ internal static class AdminManagementRoutes
             return Results.NoContent();
         });
 
-        admin.MapPut("/multi/{id:int}/privacy", async (int id, HttpContext context,
+        admin.MapPut("/match/{id:int}/privacy", async (int id, HttpContext context,
             CancellationToken cancellationToken) =>
         {
             var body = await context.Request.ReadFromJsonAsync<PrivacyBody>(cancellationToken);

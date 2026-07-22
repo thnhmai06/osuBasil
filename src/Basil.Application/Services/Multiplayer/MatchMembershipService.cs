@@ -27,7 +27,7 @@ public sealed class MatchMembershipService(
     IPlayerSessionRegistry sessionRegistry,
     ChannelMembershipService channelMembership,
     IMatchPersistenceRepository matchPersistence,
-    IMatchEventBus eventBus,
+    IMatchLiveEvents eventBus,
     IMapRepository mapRepo)
 {
     private const int MaxMatchNameLength = 50;

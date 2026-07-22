@@ -7,7 +7,7 @@ See [`bot-commands.md`](bot-commands.md) for BasilBot chat commands, [`api-clien
 ## Overview
 
 - **Base URL**: `https://api.<domain>` (`<domain>` is the `Server:Domain` value configured by the server admin — ask your server admin for this value).
-- **Format**: all JSON endpoints below use `camelCase` keys (`matchId`, not `MatchId`). **Exception**: the 3 WebSocket channels (section 2) use `PascalCase` (`MatchId`) — two different code layers, not yet synchronized.
+- **Format**: all JSON endpoints below use `camelCase` keys (`matchId`, not `MatchId`). **Exception**: the 3 SSE channels (section 2) use `PascalCase` (`MatchId`) — two different code layers, not yet synchronized.
 - **No OAuth, no rate limit.** Most read endpoints are public (no key required). Only the **Management CRUD** group (section 3) requires the `X-Admin-Key` header.
 - **Not a general-purpose REST API v1/v2** — narrow surface serving specific needs: viewing live matches (TRT), file downloads, and data management via admin key.
 - Numbers/enums (`mode`, `status`, `winCondition`...) are mostly **raw integers** (not name strings) unless noted otherwise. Dates are ISO-8601 strings (`"2026-07-09T12:34:56Z"`). `null` fields are returned as `null`, not omitted.
@@ -18,12 +18,12 @@ See [`bot-commands.md`](bot-commands.md) for BasilBot chat commands, [`api-clien
 
 Match report (maps played, round scores, winner...), reconstructed at call time from stored data (or directly from the live match if still in progress). **No admin key required.**
 
-### `GET /multi/{id}`
+### `GET /match/{id}`
 
 **Request**
 
 ```
-GET https://api.basil.example/multi/42
+GET https://api.basil.example/match/42
 ```
 
 No headers or query params needed. `{id}` is `Matches.Id` (integer match ID) — get this from chat (`!mp settings` returns `#<id>`), or from `GET /matches` (section 3).
@@ -116,10 +116,10 @@ Notes:
 
 ### 1.2 Match privacy
 
-**`GET /api/multi/{id}/privacy`** — public, no admin key required. Reads the current privacy status of a match.
+**`GET /match/{id}/privacy`** — public, no admin key required. Reads the current privacy status of a match.
 
 ```
-GET https://api.basil.example/multi/42/privacy
+GET https://api.basil.example/match/42/privacy
 ```
 
 Response — `200 OK`:
@@ -135,19 +135,19 @@ Response — `200 OK`:
 
 ---
 
-## 2. Live channels via WebSocket
+## 2. Live channels via SSE
 
-Three independent sockets, all scoped to the same match `{id}`. All three **only push data from server to client** — no upload messages are read (server ignores them). Payloads use **`PascalCase`** (unlike the JSON snapshot in section 1). A slow client will have its oldest frames dropped (buffer of 32 frames, no waiting).
+Three independent [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) streams — plain `GET` requests, no WebSocket upgrade handshake. All three **only push data from server to client** — nothing is ever read from the connection. Payloads use **`PascalCase`** (unlike the JSON snapshot in section 1). A slow client will have its oldest frames dropped (buffer of 32 frames, no waiting). Each stream tags its frames with an SSE `event:` line (`main`, `playerScore`, or `input`) so an `EventSource` client can `addEventListener` per channel instead of using the generic `onmessage`.
 
-### 2.1 Main channel — `WS /multi/{id}`
+### 2.1 Main channel — `GET /match/{id}` (`Accept: text/event-stream`)
 
-Same path as the JSON snapshot — just upgrade to WebSocket instead of plain `GET`. Pushes on every slot/map/state change (join/leave/ready/map change...), **no per-player scores**.
+Same path as the JSON snapshot (section 1) — request it with `Accept: text/event-stream` (which `EventSource` sends automatically) instead of a plain `GET` to get the live stream. Pushes on every slot/map/state change (join/leave/ready/map change...), **no per-player scores**.
 
 **Connection** (JS example):
 
 ```js
-const ws = new WebSocket("wss://api.basil.example/multi/42");
-ws.onmessage = (e) => console.log(JSON.parse(e.data));
+const es = new EventSource("https://api.basil.example/match/42");
+es.addEventListener("main", (e) => console.log(JSON.parse(e.data)));
 ```
 
 **Payload per frame:**
@@ -181,12 +181,13 @@ Notes: `HostId` (integer) was replaced by a `Host` object with `UserName`/`Count
 
 For round winner/player scores → call the JSON snapshot (section 1); this channel does not have them.
 
-### 2.2 Per-player score channel — `WS /multi/{id}/{playerName}`
+### 2.2 Per-player score channel — `GET /match/{id}/{playerName}`
 
 Pushes **live scores during gameplay** (score frames sent every few hundred ms by the osu! client of `{playerName}`) — for overlay HUD displaying combo/HP in real time, not the final round result (final results are in the TRT snapshot after the round ends).
 
 ```js
-const ws = new WebSocket("wss://api.basil.example/multi/42/PlayerOne");
+const es = new EventSource("https://api.basil.example/match/42/PlayerOne");
+es.addEventListener("playerScore", (e) => console.log(JSON.parse(e.data)));
 ```
 
 ```jsonc
@@ -202,11 +203,16 @@ const ws = new WebSocket("wss://api.basil.example/multi/42/PlayerOne");
 }
 ```
 
-Data only when `{playerName}` is actually in the match and playing — if the player does not exist or is not playing, socket stays silent (no error).
+Data only when `{playerName}` is actually in the match and playing — if the player does not exist or is not playing, the connection stays open but silent (no error).
 
-### 2.3 Spectator input channel (raw) — `WS /multi/{id}/input`
+### 2.3 Player input channel (raw) — `GET /spec/{id}`
 
-Raw replay-frames of **anyone being spectated** in the match — for reconstructing mouse/keyboard movements in advanced overlays. Data only when someone is actually spectating someone else in the match.
+Raw replay-frames of a **specific player** — for reconstructing mouse/keyboard movements in advanced overlays. `{id}` is the player's numeric `Users.Id`, not a match id: BasilBot starts "watching" every player the moment they log in (the client only sends replay-frame packets while it believes it has ≥1 spectator), so this channel carries data for that player any time they're logged in and playing — in a tournament match or not.
+
+```js
+const es = new EventSource("https://api.basil.example/spec/7");
+es.addEventListener("input", (e) => console.log(JSON.parse(e.data)));
+```
 
 ```jsonc
 {
@@ -217,7 +223,7 @@ Raw replay-frames of **anyone being spectated** in the match — for reconstruct
 
 `DataBase64` is raw osu! client data — to use it you must decode it yourself per the osu! replay-frame format (outside the scope of this document).
 
-**Errors for all 3 sockets**: plain `GET` (no upgrade) → `400`. Match `{id}` does not exist → socket still opens but no frames arrive (no close, no error).
+**Errors for all 3 channels**: player/match `{id}` does not exist → the connection still opens but no frames arrive (no close, no error).
 
 ---
 
@@ -398,7 +404,7 @@ Response: updated `User` object. `404` if `{id}` does not exist.
 | --- | --- |
 | `GET /matches` | List all stored matches |
 | `DELETE /matches/{id}` | Delete one match (and all its rounds/scores) |
-| `PUT /multi/{id}/privacy` | Set a live match's private status (`X-Admin-Key` required) |
+| `PUT /match/{id}/privacy` | Set a live match's private status (`X-Admin-Key` required) |
 
 `GET /matches` → array:
 
@@ -411,7 +417,7 @@ Response: updated `User` object. `404` if `{id}` does not exist.
 ]
 ```
 
-`PUT /multi/{id}/privacy` — request body:
+`PUT /match/{id}/privacy` — request body:
 ```jsonc
 { "isPrivate": true }
 ```
@@ -444,6 +450,5 @@ Response: updated `User` object. `404` if `{id}` does not exist.
 
 | Code | When | Body |
 | --- | --- | --- |
-| `400` | Calling a WS endpoint (section 2) with plain HTTP instead of upgrade | empty |
 | `401` | Missing/wrong `X-Admin-Key` on Management CRUD routes | empty |
 | `404` | Resource not found (match, beatmap, user, replay, file...) | **empty** — no JSON `{ error }` anywhere in this file |

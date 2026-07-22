@@ -199,7 +199,7 @@ You are automatically placed in slot 0 as host **and** added as a referee. Basil
 → BasilBot: "Slot 4  Not Ready 12 PlayerTwo       [NoFail]"
 ```
 
-> **Note:** Original osu! Bancho attaches links to `osu.ppy.sh/mp/{id}` (match history) and player profiles to these lines — Basil does not have these two pages (offline, no public history/profile), so it shows raw text/numbers: `#42` instead of a history link, raw user IDs (`7`, `12`) instead of profile links. To look up a username from an ID, use `GET /users/{id}` from the admin API (see [`api-external.md`](api-external.md#42-user)) or the TRT snapshot (`GET /multi/{id}`, field `live.slots[].userId`). The trailing tag per slot (`[Host]`, `[NoFail]`, `[Host / NoFail]`) combines host role + personal mods under freemod.
+> **Note:** Original osu! Bancho attaches links to `osu.ppy.sh/mp/{id}` (match history) and player profiles to these lines — Basil does not have these two pages (offline, no public history/profile), so it shows raw text/numbers: `#42` instead of a history link, raw user IDs (`7`, `12`) instead of profile links. To look up a username from an ID, use `GET /users/{id}` from the admin API (see [`api-external.md`](api-external.md#42-user)) or the TRT snapshot (`GET /match/{id}`, field `live.slots[].userId`). The trailing tag per slot (`[Host]`, `[NoFail]`, `[Host / NoFail]`) combines host role + personal mods under freemod.
 
 ```
 !mp size 8

@@ -7,6 +7,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Anticheat;
@@ -713,36 +714,27 @@ public static class BanchoHostGroups
         File.Move(tempPath, destinationPath, overwrite: true);
     }
 
-    // api. host: TRT snapshot (GET+WS), file downloads, WS live channels, and admin-key-gated management CRUD.
+    // api. host: TRT snapshot (GET+SSE), file downloads, SSE live channels, and admin-key-gated management CRUD.
     private static void MapApiGroup(this RouteGroupBuilder group)
     {
         group.MapGet("/", () => "api");
 
-        // GET (JSON snapshot) and WS (live "main" channel — meta/map/state, no per-player data,
-        // see MatchLiveSnapshotBuilder's doc comment) share this one path: a WS handshake is itself
-        // an HTTP GET with an Upgrade header, so the branch happens inside the handler.
-        group.MapGet("/multi/{id:int}", async (int id, HttpContext context, CancellationToken cancellationToken) =>
+        // GET (JSON snapshot) and SSE (live "main" channel — meta/map/state, no per-player data,
+        // see MatchLiveSnapshotBuilder's doc comment) share this one path, branched on the client's
+        // Accept header (EventSource always sends "text/event-stream").
+        group.MapGet("/match/{id:int}", async (int id, HttpContext context, MatchReportService reportService,
+            IMatchLiveEvents events, CancellationToken cancellationToken) =>
         {
-            if (context.WebSockets.IsWebSocketRequest)
-            {
-                await MatchWebSocketRoutes.HandleMainAsync(id, context, cancellationToken);
-                return;
-            }
+            if (context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream") == true))
+                return LiveSseRoutes.HandleMain(id, events, cancellationToken);
 
-            var reportService = context.RequestServices.GetRequiredService<MatchReportService>();
             var report = await reportService.BuildAsync(id, cancellationToken);
-            if (report is null)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-
-            await context.Response.WriteAsJsonAsync(report, cancellationToken);
+            return report is null ? Results.NotFound() : Results.Json(report);
         });
 
         // GET — read a match's privacy status. Public (no auth). Returns the current runtime
         // IsPrivate flag for live matches; closed matches default to false.
-        group.MapGet("/multi/{id:int}/privacy", async (int id, HttpContext context,
+        group.MapGet("/match/{id:int}/privacy", async (int id, HttpContext context,
             CancellationToken cancellationToken) =>
         {
             var matchRegistry = context.RequestServices.GetRequiredService<IMatchRegistry>();
@@ -757,35 +749,17 @@ public static class BanchoHostGroups
                 : Results.NotFound();
         });
 
-        // WS-only — one player's live score, decoded from MatchScoreUpdate frames (see
+        // SSE — one player's live score, decoded from MatchScoreUpdate frames (see
         // MatchScoreUpdateHandler). Player name matches how the client's own name is used elsewhere
         // (e.g. #multi_ channel membership), not a numeric id.
-        group.MapGet("/multi/{id:int}/{playerName}", async (int id, string playerName, HttpContext context,
+        group.MapGet("/match/{id:int}/{playerName}", (int id, string playerName, IMatchLiveEvents events,
             CancellationToken cancellationToken) =>
-        {
-            if (!context.WebSockets.IsWebSocketRequest)
-            {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                return;
-            }
+            LiveSseRoutes.HandlePlayer(id, playerName, events, cancellationToken));
 
-            await MatchWebSocketRoutes.HandlePlayerAsync(id, playerName, context, cancellationToken);
-        });
-
-        // WS-only — raw spectator input frames for players in this match, tagged by player name.
-        // Only carries data while at least one client is spectating a player in the match (see
-        // SpectateFramesHandler).
-        group.MapGet("/multi/{id:int}/input", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            if (!context.WebSockets.IsWebSocketRequest)
-            {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                return;
-            }
-
-            await MatchWebSocketRoutes.HandleInputAsync(id, context, cancellationToken);
-        });
+        // SSE — raw spectator input frames for a player, keyed by player id (Users.Id), populated any
+        // time that player is logged in regardless of match membership (see SpectateFramesHandler).
+        group.MapGet("/spec/{id:int}", (int id, IPlayerInputEvents events, CancellationToken cancellationToken) =>
+            LiveSseRoutes.HandleInput(id, events, cancellationToken));
 
         group.MapGet("/replays/{scoreId:long}", async (long scoreId, HttpContext context,
             CancellationToken cancellationToken) =>

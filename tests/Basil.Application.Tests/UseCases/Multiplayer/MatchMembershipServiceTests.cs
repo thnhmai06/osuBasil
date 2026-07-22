@@ -38,7 +38,7 @@ public class MatchMembershipServiceTests
     {
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
             new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-            Substitute.For<IMatchEventBus>(), _mapRepository);
+            Substitute.For<IMatchLiveEvents>(), _mapRepository);
     }
 
     /// <summary>

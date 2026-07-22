@@ -1,10 +1,10 @@
-using System.Threading.Channels;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -216,50 +216,39 @@ internal static class MultiplayerTestSupport
         public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 
-    /// <summary>Records what would have been pushed to WS subscribers, without any real channel/socket.</summary>
-    public sealed class FakeMatchEventBus : IMatchEventBus
+    /// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
+    public sealed class FakeMatchLiveEvents : IMatchLiveEvents
     {
         public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
         public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> InputPublishes { get; } = [];
 
-        public IDisposable SubscribeMain(int matchDbId, ChannelWriter<byte[]> writer)
-        {
-            return NullDisposable.Instance;
-        }
-
-        public IDisposable SubscribePlayer(int matchDbId, string playerName, ChannelWriter<byte[]> writer)
-        {
-            return NullDisposable.Instance;
-        }
-
-        public IDisposable SubscribeInput(int matchDbId, ChannelWriter<byte[]> writer)
-        {
-            return NullDisposable.Instance;
-        }
+        public event Action<int, byte[]>? MainPublished;
+        public event Action<int, string, byte[]>? PlayerScorePublished;
 
         public void PublishMain(int matchDbId, byte[] payload)
         {
             MainPublishes.Add((matchDbId, payload));
+            MainPublished?.Invoke(matchDbId, payload);
         }
 
         public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
         {
             PlayerPublishes.Add((matchDbId, playerName, payload));
+            PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
         }
+    }
 
-        public void PublishInput(int matchDbId, byte[] payload)
+    /// <summary>Records what would have been pushed to the /spec/{id} SSE subscribers.</summary>
+    public sealed class FakePlayerInputEvents : IPlayerInputEvents
+    {
+        public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
+
+        public event Action<int, byte[]>? InputPublished;
+
+        public void PublishInput(int playerId, byte[] payload)
         {
-            InputPublishes.Add((matchDbId, payload));
-        }
-
-        private sealed class NullDisposable : IDisposable
-        {
-            public static readonly NullDisposable Instance = new();
-
-            public void Dispose()
-            {
-            }
+            Publishes.Add((playerId, payload));
+            InputPublished?.Invoke(playerId, payload);
         }
     }
 
@@ -279,7 +268,7 @@ internal static class MultiplayerTestSupport
         public FakeChannelRegistry ChannelRegistry { get; } = new();
         public FakeMatchRegistry MatchRegistry { get; } = new();
         public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
-        public FakeMatchEventBus EventBus { get; } = new();
+        public FakeMatchLiveEvents EventBus { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
 
         /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>

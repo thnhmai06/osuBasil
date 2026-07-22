@@ -8,11 +8,11 @@ using Basil.Protocol.Multiplayer;
 namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>
-///     Builds the lightweight, in-memory-only payloads pushed over the live WS channels
-///     (<see cref="IMatchEventBus" />) — deliberately cheaper than <see cref="MatchReportService" />'s
+///     Builds the lightweight, in-memory-only payloads pushed over the live SSE channels
+///     (<see cref="IMatchLiveEvents" />) — deliberately cheaper than <see cref="MatchReportService" />'s
 ///     DB-backed <c>MatchReport</c>, since these fire on every state-changing packet (join, ready,
 ///     slot change, ...), not on demand. Consequently, the main channel carries live slot/map/state
-///     only, not aggregated team scores or a round winner — those come from polling GET /multi/{id}.
+///     only, not aggregated team scores or a round winner — those come from polling GET /match/{id}.
 /// </summary>
 public static class MatchLiveSnapshotBuilder
 {
@@ -56,7 +56,7 @@ public static class MatchLiveSnapshotBuilder
 /// <summary>Brief user info for embedded references (host, referees, slots).</summary>
 public sealed record UserBrief(int? UserId, string? UserName, string? Country = null);
 
-/// <summary>Payload for the WS /multi/{id} main channel.</summary>
+/// <summary>Payload for the SSE /match/{id} main channel.</summary>
 public sealed record MatchLiveSnapshot(
     int MatchId,
     string Name,
@@ -81,7 +81,7 @@ public sealed record MatchLiveSlot(
     string Team,
     int Mods);
 
-/// <summary>Payload for the WS /multi/{id}/{playerName} channel.</summary>
+/// <summary>Payload for the SSE /match/{id}/{playerName} channel.</summary>
 public sealed record PlayerLiveScore(
     string PlayerName,
     int Time,
@@ -97,5 +97,5 @@ public sealed record PlayerLiveScore(
     bool Perfect,
     int CurrentHp);
 
-/// <summary>Payload for the WS /multi/{id}/input channel.</summary>
+/// <summary>Payload for the SSE /spec/{id} channel.</summary>
 public sealed record PlayerInputFrame(string PlayerName, string DataBase64);

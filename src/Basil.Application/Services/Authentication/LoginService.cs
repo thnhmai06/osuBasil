@@ -5,6 +5,8 @@ using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Login;
@@ -31,6 +33,7 @@ public sealed class LoginService(
     IPasswordHasher passwordHasher,
     ILeaderboardStore leaderboardStore,
     ITokenGenerator tokenGenerator,
+    SpectatorService spectatorService,
     IOptions<ServerOptions> serverOptions)
 {
     private static readonly string MotdPath = Path.Combine("Data", "MOTD.txt");
@@ -69,6 +72,13 @@ public sealed class LoginService(
                 return new LoginResult("user-already-logged-in", Concat(
                     ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
                     ServerPacketWriter.Notification("User already logged in.")));
+
+            // #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
+            // the bot's spectate relationship on the departing session now, or a relogin would pile
+            // a dead member reference onto the channel the new session's own AddSpectator call
+            // below re-creates.
+            var staleBot = sessionRegistry.GetById(BotBootstrapService.BotId);
+            if (staleBot is not null) spectatorService.RemoveSpectator(existingSession, staleBot);
 
             sessionRegistry.Remove(existingSession);
         }
@@ -211,6 +221,12 @@ public sealed class LoginService(
         }
 
         sessionRegistry.Add(session);
+
+        // BasilBot spectates every player from the moment they log in, so their input can be
+        // exposed externally via the api. host's SSE /spec/{id} channel — the real osu! client only
+        // sends SpectateFrames packets while it believes it has >=1 spectator.
+        var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+        if (bot is not null) spectatorService.AddSpectator(session, bot);
 
         return new LoginResult(session.Token, Concat([.. data]));
     }

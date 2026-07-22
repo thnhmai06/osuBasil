@@ -1,4 +1,6 @@
 using Basil.Application.BackgroundServices;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
@@ -28,6 +30,13 @@ public class GhostDisconnectServiceTests
         return new ChannelMembershipService(registry, Substitute.For<IChannelRegistry>());
     }
 
+    private static SpectatorService MakeSpectatorService(IPlayerSessionRegistry registry,
+        IChannelRegistry? channelRegistry = null)
+    {
+        channelRegistry ??= Substitute.For<IChannelRegistry>();
+        return new SpectatorService(channelRegistry, new ChannelMembershipService(registry, channelRegistry));
+    }
+
     [Fact]
     public void RunOnce_SessionPastThreshold_IsRemovedFromRegistry()
     {
@@ -35,7 +44,8 @@ public class GhostDisconnectServiceTests
         var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
         registry.Add(stale);
 
-        new GhostDisconnectService(registry, MakeChannelMembership(registry)).RunOnce();
+        new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
+            .RunOnce();
 
         Assert.Null(registry.GetByToken("stale-token"));
     }
@@ -47,7 +57,8 @@ public class GhostDisconnectServiceTests
         var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
         registry.Add(fresh);
 
-        new GhostDisconnectService(registry, MakeChannelMembership(registry)).RunOnce();
+        new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
+            .RunOnce();
 
         Assert.NotNull(registry.GetByToken("fresh-token"));
     }
@@ -60,7 +71,8 @@ public class GhostDisconnectServiceTests
             { LastRecvTime = Now.AddSeconds(-301), IsBot = true };
         registry.Add(bot);
 
-        new GhostDisconnectService(registry, MakeChannelMembership(registry)).RunOnce();
+        new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
+            .RunOnce();
 
         Assert.NotNull(registry.GetByToken("bot-token"));
     }
@@ -74,7 +86,8 @@ public class GhostDisconnectServiceTests
         registry.Add(stale);
         registry.Add(bystander);
 
-        new GhostDisconnectService(registry, MakeChannelMembership(registry)).RunOnce();
+        new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
+            .RunOnce();
 
         Assert.Equal(ServerPacketWriter.Logout(1), bystander.Dequeue());
     }
@@ -96,10 +109,30 @@ public class GhostDisconnectServiceTests
         registry.Add(stale);
         registry.Add(bystander);
 
-        new GhostDisconnectService(registry, new ChannelMembershipService(registry, channelRegistry)).RunOnce();
+        new GhostDisconnectService(registry, new ChannelMembershipService(registry, channelRegistry),
+            MakeSpectatorService(registry, channelRegistry)).RunOnce();
 
         Assert.False(channel.Contains(stale.Id));
         Assert.False(stale.InChannel("#osu"));
+    }
+
+    [Fact]
+    public void RunOnce_SessionPastThreshold_RemovesBotSpectateRelationship()
+    {
+        var registry = new InMemoryPlayerSessionRegistryTestDouble();
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+        registry.Add(bot);
+        var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
+        stale.AddSpectator(bot);
+        bot.Spectating = stale;
+        registry.Add(stale);
+
+        new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
+            .RunOnce();
+
+        Assert.Empty(stale.Spectators);
+        Assert.Null(bot.Spectating);
     }
 
     /// <summary>
