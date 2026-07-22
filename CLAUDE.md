@@ -111,7 +111,7 @@ dotnet test tests/Basil.Application.Tests --filter "FullyQualifiedName=Basil.App
 
 ### CI
 
-`.github/workflows/ci.yml`: `dotnet restore`/`build`/`test` across the whole solution, then publishes framework-dependent `win-x64`/`linux-x64` builds and uploads them as workflow artifacts. Mirror this locally before assuming a change is CI-clean.
+`.github/workflows/ci.yml`: `dotnet restore`/`build`/`test` across the whole solution (runs on every push/PR/manual dispatch), then a `deploy-docs` job rebuilds `src/Basil.Web` alone to regenerate the 5 OpenAPI documents and publishes the Scalar docs site to GitHub Pages (push/dispatch only). Mirror the build/test locally before assuming a change is CI-clean. Executable publishing is separate: `.github/workflows/release.yml` builds self-contained `win-x64`/`linux-x64` binaries and attaches them to the GitHub Release only when one is published — not run on every push.
 
 ## Architecture
 

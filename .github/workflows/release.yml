@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-executables:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      # OpenApiGenerateDocumentsOnBuild disabled: Microsoft.Extensions.ApiDescription.Server's build-time
+      # doc generation runs the freshly-published binary to introspect it, which fails for a cross-OS RID
+      # (win-x64 published from this Linux runner has no win-x64 native SQLite driver to load). Neither
+      # publish needs the OpenAPI JSON anyway — that's the CI workflow's deploy-docs job.
+      - name: Publish win-x64 (self-contained)
+        run: dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained true -o publish/win-x64 -p:OpenApiGenerateDocumentsOnBuild=false
+
+      - name: Publish linux-x64 (self-contained)
+        run: dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained true -o publish/linux-x64 -p:OpenApiGenerateDocumentsOnBuild=false
+
+      - name: Package artifacts
+        run: |
+          set -e
+          cd publish/win-x64 && zip -r ../../basil-win-x64.zip . && cd ../..
+          cd publish/linux-x64 && tar -czf ../../basil-linux-x64.tar.gz . && cd ../..
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" basil-win-x64.zip basil-linux-x64.tar.gz
