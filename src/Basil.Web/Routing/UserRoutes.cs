@@ -107,7 +107,7 @@ internal static class UserRoutes
                 "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
             .WithTags("Users");
 
-        admin.MapPost("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
+        admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
             CancellationToken cancellationToken) =>
         {
             if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
@@ -131,6 +131,22 @@ internal static class UserRoutes
             .WithSummary("Upload a user's avatar image.")
             .WithDescription("Multipart upload, field name `file`. Replaces any existing avatar for this user id " +
                 "(any prior file with a different extension is deleted first). 204 on success." + AdminKeyNote)
+            .WithTags("Users");
+
+        admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage) =>
+        {
+            if (Directory.Exists(storage.Value.AvatarsPath))
+                foreach (var existing in Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*"))
+                    File.Delete(existing);
+
+            return Results.NoContent();
+        })
+            .WithGroupName("basilapi")
+            .WithSummary("Reset a user's avatar to the default.")
+            .WithDescription("Deletes every uploaded avatar file for this user id, if any. Always 204, even if " +
+                "no avatar was ever uploaded (idempotent-delete convention). The `a.<domain>` host's own avatar " +
+                "route re-checks the filesystem per request, so its default-avatar fallback reappears " +
+                "immediately." + AdminKeyNote)
             .WithTags("Users");
 
         group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users, HttpContext context,
