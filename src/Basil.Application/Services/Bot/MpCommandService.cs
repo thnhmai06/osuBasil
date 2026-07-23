@@ -25,6 +25,12 @@ namespace Basil.Application.Services.Bot;
 ///     a pure permission flag (doesn't require physical presence in the room); the host is NOT
 ///     automatically a referee — hosting only grants direct in-client settings control, which ranks
 ///     below referee authority for `!mp` purposes.
+///
+///     The actual room-mutation logic lives in <see cref="MatchControlService" /> — shared with the
+///     `api.` host's HTTP write routes so both surfaces call the identical state-mutation/broadcast
+///     code. This class owns everything chat-specific: parsing raw argument tokens, resolving a
+///     target player by name (<see cref="IPlayerSessionRegistry.GetByName" />), the referee gate, and
+///     formatting a reply string from the result.
 /// </summary>
 public sealed class MpCommandService(
     MatchMembershipService matchMembership,
@@ -35,6 +41,9 @@ public sealed class MpCommandService(
     IUserRepository userRepository)
 {
     private const int MaxMatchNameLength = 50;
+
+    private readonly MatchControlService _matchControl =
+        new(matchMembership, matchPersistence, mapRepository, sessionRegistry);
 
     /// <summary>
     ///     Single source of truth for `!mp help`'s output — add a subcommand here, and it shows up with
@@ -78,14 +87,6 @@ public sealed class MpCommandService(
     ];
 
     private static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
-
-    /// <summary>
-    ///     Announcement checkpoints for `!mp start &lt;seconds&gt;`/`!mp timer`, matching the wiki's
-    ///     "announcements occurring every minute, 30s, 10s, 5s, and earlier" — sparse marks down to 5s, then
-    ///     every second. Kept as a pure function (no `Task.Delay`), so the mapping from a requested total
-    ///     to the marks that get announced is unit-testable without a real/fake clock.
-    /// </summary>
-    private static readonly int[] TimerCheckpoints = [60, 30, 10, 5, 4, 3, 2, 1];
 
     public async Task<string?> HandleAsync(PlayerSession sender, MatchSession match, string subcommand,
         IReadOnlyList<string> args, CancellationToken cancellationToken = default)
@@ -314,9 +315,9 @@ public sealed class MpCommandService(
         };
     }
 
-    private static string? SetRoomLocked(MatchSession match, bool locked)
+    private string? SetRoomLocked(MatchSession match, bool locked)
     {
-        match.IsLocked = locked;
+        _matchControl.SetLocked(match, locked);
         return locked ? "Locked the match" : "Unlocked the match";
     }
 
@@ -326,22 +327,8 @@ public sealed class MpCommandService(
             return (false, "Usage: !mp size <1-16>");
 
         size = Math.Clamp(size, 1, 16);
-        ApplySize(match, size);
-        matchMembership.EnqueueState(match);
-        matchMembership.CancelQueuedAutoStart(match);
+        _matchControl.SetSize(match, size);
         return (true, $"Changed match to size {size}");
-    }
-
-    private static void ApplySize(MatchSession match, int size)
-    {
-        for (var i = 0; i < 16; i++)
-        {
-            var slot = match.Slots[i];
-            if (!slot.Empty) continue;
-
-            if (i >= size && slot.Status == SlotStatus.Open) slot.Status = SlotStatus.Locked;
-            else if (i < size && slot.Status == SlotStatus.Locked) slot.Status = SlotStatus.Open;
-        }
     }
 
     private (bool Success, string? Reply) MoveSlot(MatchSession match, IReadOnlyList<string> args)
@@ -355,17 +342,13 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        destSlotId--;
-        var destSlot = match.Slots[destSlotId];
-        if (destSlot.Status != SlotStatus.Open) return (false, "Destination slot is not open.");
-
-        var sourceSlot = match.GetSlot(target.Id);
-        if (sourceSlot is null) return (false, $"{targetName} is not in this match.");
-
-        destSlot.CopyFrom(sourceSlot);
-        sourceSlot.Reset();
-        matchMembership.EnqueueState(match);
-        return (true, $"Moved {target.Name} into slot {destSlotId + 1}");
+        var result = _matchControl.MoveSlot(match, target, destSlotId - 1);
+        return result switch
+        {
+            MatchControlService.MoveResult.DestinationNotOpen => (false, "Destination slot is not open."),
+            MatchControlService.MoveResult.TargetNotInMatch => (false, $"{targetName} is not in this match."),
+            _ => (true, $"Moved {target.Name} into slot {destSlotId}")
+        };
     }
 
     private (bool Success, string? Reply) SetHost(MatchSession match, IReadOnlyList<string> args)
@@ -376,24 +359,13 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        var prevHostId = match.HostId;
-        match.HostId = target.Id;
-        target.Enqueue(ServerPacketWriter.MatchTransferHost());
-        matchMembership.EnqueueState(match);
-
-        var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
-        _ = matchPersistence.CreateEventAsync(new MatchEventRow(
-            match.DbId, (int)MatchEventType.HostGranted,
-            prevHostId, prevHostName, target.Id, target.Name,
-            DateTimeOffset.UtcNow.UtcDateTime, null));
-
+        _matchControl.SetHost(match, target);
         return (true, $"Changed match host to {target.Name}");
     }
 
     private string? ClearHost(MatchSession match)
     {
-        match.HostId = 0;
-        matchMembership.EnqueueState(match);
+        _matchControl.ClearHost(match);
         return "Cleared match host";
     }
 
@@ -401,26 +373,15 @@ public sealed class MpCommandService(
     {
         if (args.Count < 1) return (false, "Usage: !mp name <text>");
 
-        var name = string.Join(' ', args);
-        if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
-
-        match.Name = name;
-        matchMembership.EnqueueState(match);
-        return (true, $"Room name updated to \"{name}\"");
+        _matchControl.SetName(match, string.Join(' ', args));
+        return (true, $"Room name updated to \"{match.Name}\"");
     }
 
     private string? SetPassword(MatchSession match, IReadOnlyList<string> args)
     {
-        if (args.Count == 0)
-        {
-            match.Password = "";
-            matchMembership.EnqueueState(match);
-            return "Removed the match password";
-        }
-
-        match.Password = string.Join(' ', args);
-        matchMembership.EnqueueState(match);
-        return "Changed the match password";
+        var password = args.Count == 0 ? "" : string.Join(' ', args);
+        _matchControl.SetPassword(match, password);
+        return args.Count == 0 ? "Removed the match password" : "Changed the match password";
     }
 
     private string? SetPrivate(MatchSession match, IReadOnlyList<string> args)
@@ -430,8 +391,7 @@ public sealed class MpCommandService(
 
         if (args[0] is "0" or "1")
         {
-            match.IsPrivate = args[0] == "1";
-            matchMembership.EnqueueState(match);
+            _matchControl.SetPrivate(match, args[0] == "1");
             return match.IsPrivate
                 ? "The match is now private. It will be hidden from the lobby."
                 : "The match is now public.";
@@ -447,11 +407,11 @@ public sealed class MpCommandService(
         var targetName = string.Join(' ', args);
         var target = sessionRegistry.GetByName(targetName);
         if (target is null) return (false, $"User not found: {targetName}");
-        if (target.Match == match) return (false, "User is already in the room");
 
-        match.AddInvite(target.Id);
-        target.Enqueue(ServerPacketWriter.MatchInvite(sender.Id, sender.Name, match.Embed, target.Name));
-        return (true, $"Invited {target.Name} to the room");
+        var result = _matchControl.Invite(sender, match, target);
+        return result == MatchControlService.InviteResult.TargetAlreadyInRoom
+            ? (false, "User is already in the room")
+            : (true, $"Invited {target.Name} to the room");
     }
 
     private async Task<(bool Success, string? Reply)> AddRefereeAsync(PlayerSession sender, MatchSession match,
@@ -463,13 +423,7 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null) return (false, $"User not found: {targetName}");
 
-        match.AddReferee(target.Id);
-
-        await matchPersistence.CreateEventAsync(new MatchEventRow(
-            match.DbId, (int)MatchEventType.RefAdded,
-            sender.Id, sender.Name, target.Id, target.Name,
-            DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
-
+        await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
         return (true, $"Added {target.Name} to the match referees");
     }
 
@@ -487,20 +441,10 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null) return (false, $"User not found: {targetName}");
 
-        match.RemoveReferee(target.Id);
-
-        await matchPersistence.CreateEventAsync(new MatchEventRow(
-            match.DbId, (int)MatchEventType.RefRemoved,
-            sender.Id, sender.Name, target.Id, target.Name,
-            DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
-
-        if (match is { CreatedViaMakeCommand: true, Referees.Count: 0 })
-        {
-            await matchMembership.CloseAsync(match, cancellationToken: cancellationToken);
-            return (true, $"Removed {target.Name} from the match referees. No referees remain — match closed");
-        }
-
-        return (true, $"Removed {target.Name} from the match referees");
+        var closed = await _matchControl.RemoveRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+        return closed
+            ? (true, $"Removed {target.Name} from the match referees. No referees remain — match closed")
+            : (true, $"Removed {target.Name} from the match referees");
     }
 
     private string ListReferees(MatchSession match)
@@ -536,29 +480,15 @@ public sealed class MpCommandService(
 
         var targetName = string.Join(' ', args.Take(args.Count - 1));
         var target = sessionRegistry.GetByName(targetName);
-        var slot = target is not null ? match.GetSlot(target.Id) : null;
-        if (slot is null) return (false, $"{targetName} is not in this match.");
+        if (target is null) return (false, $"{targetName} is not in this match.");
 
-        slot.Team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
-        matchMembership.EnqueueState(match, false);
-        matchMembership.CancelQueuedAutoStart(match);
+        var team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
+        var result = _matchControl.SetTeam(match, target, team);
+        if (result == MatchControlService.TeamResult.TargetNotInMatch)
+            return (false, $"{targetName} is not in this match.");
+
         var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-        return (true, $"Moved {target!.Name} to team {teamDisplay}");
-    }
-
-    private static void ApplyTeamType(MatchSession match, MatchTeamType newType)
-    {
-        if (match.TeamType == newType) return;
-
-        var newTeam = newType is MatchTeamType.HeadToHead or MatchTeamType.TagCoop
-            ? MatchTeam.Neutral
-            : MatchTeam.Red;
-
-        foreach (var slot in match.Slots)
-            if (slot.PlayerId is not null)
-                slot.Team = newTeam;
-
-        match.TeamType = newType;
+        return (true, $"Moved {target.Name} to team {teamDisplay}");
     }
 
     private (bool Success, string? Reply) Set(MatchSession match, IReadOnlyList<string> args)
@@ -581,13 +511,8 @@ public sealed class MpCommandService(
             size = Math.Clamp(parsedSize, 1, 16);
         }
 
-        ApplyTeamType(match, teamType);
-        if (winCondition is { } wc) match.WinCondition = wc;
-        if (size is { } s) ApplySize(match, s);
-
-        matchMembership.EnqueueState(match);
-        matchMembership.CancelQueuedAutoStart(match);
-        return (true, $"Changed match settings to {teamType}, {match.WinCondition}" +
+        _matchControl.SetTeamTypeWinConditionAndSize(match, teamType, winCondition, size);
+        return (true, $"Changed match settings to {match.TeamType}, {match.WinCondition}" +
                       (size is { } sz ? $", {sz} slots." : "."));
     }
 
@@ -614,17 +539,10 @@ public sealed class MpCommandService(
     {
         if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId)) return (false, "Usage: !mp map <beatmap id>");
 
-        var bmap = await mapRepository.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
-        if (bmap is null) return (false, $"No beatmap with id {beatmapId} found locally.");
-
-        match.UnreadyPlayers();
-        match.MapId = bmap.Id;
-        match.MapMd5 = bmap.Md5;
-        match.MapName = bmap.FullName;
-        match.Mode = bmap.Difficulty.Mode;
-        matchMembership.EnqueueState(match);
-        matchMembership.CancelQueuedAutoStart(match);
-        return (true, $"Changed beatmap to {bmap.Mapset.Artist} - {bmap.Mapset.Title}");
+        var (result, bmap) = await _matchControl.SetMapAsync(match, beatmapId, cancellationToken);
+        return result == MatchControlService.SetMapResult.BeatmapNotFound
+            ? (false, $"No beatmap with id {beatmapId} found locally.")
+            : (true, $"Changed beatmap to {bmap!.Mapset.Artist} - {bmap.Mapset.Title}");
     }
 
     /// <summary>
@@ -638,14 +556,12 @@ public sealed class MpCommandService(
 
         if (args.Any(a => a.Equals("Freemod", StringComparison.OrdinalIgnoreCase)))
         {
-            EnableFreemods(match);
-            matchMembership.EnqueueState(match);
+            _matchControl.SetMods(match, Mods.NoMod, true);
             return (true, "Enabled FreeMod");
         }
 
         var before = match.Mods;
         var wasFreemod = match.Freemods;
-        if (wasFreemod) DisableFreemods(match);
 
         var mods = Mods.NoMod;
         foreach (var token in args)
@@ -654,8 +570,7 @@ public sealed class MpCommandService(
             mods |= ModsExtensions.FromModString(token);
         }
 
-        match.Mods = mods;
-        matchMembership.EnqueueState(match);
+        _matchControl.SetMods(match, mods, false);
         return (true, DescribeModChange(before, mods, wasFreemod));
     }
 
@@ -679,45 +594,21 @@ public sealed class MpCommandService(
         return parts.Count > 0 ? string.Join(", ", parts) : "No mod changes";
     }
 
-    private static void EnableFreemods(MatchSession match)
-    {
-        if (match.Freemods) return;
-
-        match.Freemods = true;
-        foreach (var slot in match.Slots)
-            if (slot.PlayerId is not null)
-                slot.Mods = match.Mods & ~ModsExtensions.SpeedChangingMods;
-
-        match.Mods &= ModsExtensions.SpeedChangingMods;
-    }
-
-    private static void DisableFreemods(MatchSession match)
-    {
-        var hostSlot = match.GetHostSlot();
-        match.Freemods = false;
-        match.Mods &= ModsExtensions.SpeedChangingMods;
-        if (hostSlot is not null) match.Mods |= hostSlot.Mods;
-
-        foreach (var slot in match.Slots)
-            if (slot.PlayerId is not null)
-                slot.Mods = Mods.NoMod;
-    }
-
     private async Task<(bool Success, string? Reply)> StartAsync(MatchSession match, IReadOnlyList<string> args,
         CancellationToken cancellationToken)
     {
-        if (match.InProgress) return (false, "Match is already in progress.");
+        int? countdownSeconds = args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0
+            ? seconds
+            : null;
 
-        if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
+        var result = await _matchControl.StartAsync(match, countdownSeconds, cancellationToken);
+        return result switch
         {
-            BeginCountdown(match, seconds, true);
-            return (true, $"Match starts in {seconds} seconds");
-        }
-
-        var started = await matchMembership.StartAsync(match, cancellationToken);
-        return started
-            ? (true, "Match started")
-            : (false, "Match cannot start because the beatmap does not exist on the server.");
+            MatchControlService.StartResult.AlreadyInProgress => (false, "Match is already in progress."),
+            MatchControlService.StartResult.CountdownQueued => (true, $"Match starts in {countdownSeconds} seconds"),
+            MatchControlService.StartResult.Started => (true, "Match started"),
+            _ => (false, "Match cannot start because the beatmap does not exist on the server.")
+        };
     }
 
     private (bool Success, string? Reply) Timer(MatchSession match, IReadOnlyList<string> args)
@@ -726,144 +617,25 @@ public sealed class MpCommandService(
         if (args.Count > 0 && (!int.TryParse(args[0], out seconds) || seconds <= 0))
             return (false, "Usage: !mp timer [seconds]");
 
-        BeginCountdown(match, seconds, false);
+        _matchControl.Timer(match, seconds);
         return (true, $"Countdown started: {seconds} seconds");
     }
 
-    private static (bool Success, string? Reply) AbortTimer(MatchSession match)
+    private (bool Success, string? Reply) AbortTimer(MatchSession match)
     {
-        if (match.PendingTimer is null) return (false, "No countdown is running.");
-
-        match.PendingTimer.Cancel();
-        match.PendingTimer = null;
-        match.PendingTimerIsAutoStart = false;
-        return (true, "Countdown aborted");
-    }
-
-    private const int PeriodicReminderIntervalSeconds = 60;
-    private const int NearTotalIgnoreWindowSeconds = 5;
-
-    /// <summary>
-    ///     Fixed marks plus an extra reminder every 60s for long countdowns (e.g. a 5-minute timer also
-    ///     announces at 240/180/120). A mark that's a multiple of 60 (whether from the fixed list's own
-    ///     "60" or a periodic one) is dropped if it's within <see cref="NearTotalIgnoreWindowSeconds" />
-    ///     of <paramref name="totalSeconds" /> — otherwise it'd fire almost immediately after "Queued...",
-    ///     which is redundant. The sub-60 marks (30/10/5/4/3/2/1) are exempt from that check — they're
-    ///     meant to fire close together as the final countdown ticks down.
-    /// </summary>
-    public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds)
-    {
-        var periodic = Enumerable.Range(1, int.MaxValue)
-            .Select(k => k * PeriodicReminderIntervalSeconds)
-            .TakeWhile(c => c < totalSeconds);
-
-        return TimerCheckpoints
-            .Concat(periodic)
-            .Where(c => c < totalSeconds)
-            .Distinct()
-            .Where(c => c % PeriodicReminderIntervalSeconds != 0 || totalSeconds - c > NearTotalIgnoreWindowSeconds)
-            .OrderByDescending(c => c)
-            .ToList();
-    }
-
-    /// <summary>
-    ///     Kicks off a fire-and-forget countdown, cancelling any timer already pending on this match.
-    ///     The loop itself (<see cref="CountdownLoopAsync" />) only holds <see cref="MatchSession.Lock" />
-    ///     briefly at its final tick — never across a `Task.Delay` — matching this codebase's rule
-    ///     against holding the lock across an unrelated await.
-    /// </summary>
-    private void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart)
-    {
-        match.PendingTimer?.Cancel();
-        var cts = new CancellationTokenSource();
-        match.PendingTimer = cts;
-        match.PendingTimerIsAutoStart = autoStart;
-
-        _ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
-    }
-
-    private async Task CountdownLoopAsync(MatchSession match, int totalSeconds, bool autoStart,
-        CancellationTokenSource cts)
-    {
-        var token = cts.Token;
-        Announce(match, $"Queued the match to start in {totalSeconds} seconds");
-
-        var remaining = totalSeconds;
-        foreach (var checkpoint in ComputeAnnounceCheckpoints(totalSeconds))
-        {
-            if (!await DelayAsync(remaining - checkpoint, token)) return;
-
-            Announce(match, $"Match starts in {checkpoint} seconds");
-            remaining = checkpoint;
-        }
-
-        if (!await DelayAsync(remaining, token)) return;
-
-        await match.Lock.WaitAsync(token);
-        try
-        {
-            if (token.IsCancellationRequested) return;
-            match.PendingTimer = null;
-            match.PendingTimerIsAutoStart = false;
-
-            if (autoStart)
-            {
-                var started = match.InProgress || await matchMembership.StartAsync(match, token);
-                if (started) Announce(match, "Good luck, have fun!");
-            }
-            else
-            {
-                Announce(match, "Countdown finished");
-            }
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
-
-    /// <summary>Returns false (caller should stop) if cancelled during the delay.</summary>
-    private static async Task<bool> DelayAsync(int seconds, CancellationToken token)
-    {
-        if (seconds <= 0) return !token.IsCancellationRequested;
-
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(seconds), token);
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            return false;
-        }
-    }
-
-    private void Announce(MatchSession match, string text)
-    {
-        var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-        if (bot is null) return;
-
-        matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
+        var result = _matchControl.AbortTimer(match);
+        return result == MatchControlService.AbortTimerResult.NoTimerRunning
+            ? (false, "No countdown is running.")
+            : (true, "Countdown aborted");
     }
 
     private async Task<(bool Success, string? Reply)> AbortAsync(MatchSession match,
         CancellationToken cancellationToken)
     {
-        if (!match.InProgress) return (false, "Match is not in progress.");
-
-        match.UnreadyPlayers(SlotStatus.Playing);
-        match.ResetPlayersLoadedStatus();
-        match.InProgress = false;
-
-        if (match.CurrentRoundId is { } roundId)
-        {
-            await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, true, cancellationToken);
-            match.CurrentRoundId = null;
-        }
-
-        matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
-        matchMembership.EnqueueState(match);
-        return (true, "Aborted the match");
+        var result = await _matchControl.AbortAsync(match, cancellationToken);
+        return result == MatchControlService.AbortResult.NotInProgress
+            ? (false, "Match is not in progress.")
+            : (true, "Aborted the match");
     }
 
     private async Task<(bool Success, string? Reply)> KickAsync(PlayerSession sender, MatchSession match,
@@ -875,14 +647,7 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        matchMembership.Leave(target, match);
-        target.Enqueue(ServerPacketWriter.MatchJoinFail());
-
-        await matchPersistence.CreateEventAsync(new MatchEventRow(
-            match.DbId, (int)MatchEventType.Kicked,
-            sender.Id, sender.Name, target.Id, target.Name,
-            DateTimeOffset.UtcNow.UtcDateTime, "Kicked"), cancellationToken);
-
+        await _matchControl.KickAsync(sender.Id, sender.Name, match, target, cancellationToken);
         return (true, $"Kicked {target.Name} from the match");
     }
 
@@ -895,15 +660,7 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        match.AddBan(target.Id);
-        matchMembership.Leave(target, match);
-        target.Enqueue(ServerPacketWriter.MatchJoinFail());
-
-        await matchPersistence.CreateEventAsync(new MatchEventRow(
-            match.DbId, (int)MatchEventType.Kicked,
-            sender.Id, sender.Name, target.Id, target.Name,
-            DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
-
+        await _matchControl.BanAsync(sender.Id, sender.Name, match, target, cancellationToken);
         return (true, $"Banned {target.Name} from the match");
     }
 
@@ -915,17 +672,26 @@ public sealed class MpCommandService(
         var targetName = string.Join(' ', args);
         var targetUser = await userRepository.FetchByNameAsync(targetName, cancellationToken);
         if (targetUser is null) return (false, $"{targetName} is not registered.");
-        if (!match.BannedIds.Contains(targetUser.Id))
-            return (false, $"{targetUser.Name} is not banned from this match.");
 
-        match.RemoveBan(targetUser.Id);
-        return (true, $"Unbanned {targetUser.Name} from the match");
+        var result = _matchControl.Unban(match, targetUser.Id);
+        return result == MatchControlService.UnbanResult.NotBanned
+            ? (false, $"{targetUser.Name} is not banned from this match.")
+            : (true, $"Unbanned {targetUser.Name} from the match");
     }
 
     private async Task<string?> CloseAsync(PlayerSession sender, MatchSession match, CancellationToken cancellationToken)
     {
-        await matchMembership.CloseAsync(match, sender.Id, sender.Name, cancellationToken);
+        await _matchControl.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
         return "Closed the match";
+    }
+
+    /// <summary>
+    ///     Forwards to <see cref="MatchControlService.ComputeAnnounceCheckpoints" /> — kept here too since
+    ///     existing tests reference it as <c>MpCommandService.ComputeAnnounceCheckpoints</c>.
+    /// </summary>
+    public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds)
+    {
+        return MatchControlService.ComputeAnnounceCheckpoints(totalSeconds);
     }
 
     /// <summary>One entry in the auto-generated `!mp help` listing — usage plus a one-line description.</summary>

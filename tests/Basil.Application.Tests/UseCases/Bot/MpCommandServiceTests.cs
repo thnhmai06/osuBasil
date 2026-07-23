@@ -644,7 +644,7 @@ public class MpCommandServiceTests
     ///     Diagnostic/regression test for the real end-to-end announce pipeline (checkpoint computation
     ///     alone is covered by <see cref="ComputeAnnounceCheckpoints_ReturnsExpectedMarks" />, but every
     ///     other timer test cancels the countdown immediately, so nothing exercises whether
-    ///     <see cref="MpCommandService.CountdownLoopAsync" />'s fire-and-forget task actually reaches
+    ///     <see cref="Basil.Application.Services.Multiplayer.MatchControlService" />'s fire-and-forget task actually reaches
     ///     the match channel with a real bot session registered).
     /// </summary>
     [Fact]

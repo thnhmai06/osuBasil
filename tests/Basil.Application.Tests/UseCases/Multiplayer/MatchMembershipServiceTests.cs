@@ -292,7 +292,7 @@ public class MatchMembershipServiceTests
     }
 
     /// <summary>
-    ///     `EnqueueChat` is `MpCommandService.Announce`'s transport — asserts it produces the exact same
+    ///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the exact same
     ///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
     ///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead
     ///     of a direct packet build.
