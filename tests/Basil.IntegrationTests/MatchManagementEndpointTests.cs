@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
@@ -174,6 +175,85 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var json = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
         var items = json.GetProperty("items").EnumerateArray().ToList();
         Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == id);
+    }
+
+    /// <summary>
+    ///     End-to-end smoke test per the route-redesign plan's Verification section: create a match,
+    ///     open its settings SSE channel, confirm the first event is a full snapshot, confirm a
+    ///     subsequent settings write produces a delta-only event (not a re-sent full snapshot), and
+    ///     confirm the raw password is never present in either payload — only `hasPassword`.
+    /// </summary>
+    [Fact]
+    public async Task Smoke_CreateMatch_OpenSettingsSse_FirstEventFull_ThenPatchProducesDeltaWithoutPassword()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        createRequest.Content = JsonContent.Create(new { name = "Smoke Test", password = "hunter2" });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        var streamClient = _factory.CreateClient();
+        var streamRequest = new HttpRequestMessage(HttpMethod.Get, $"/match/{id}/settings")
+            { Headers = { Host = "api.test.local" } };
+        streamRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var response =
+            await streamClient.SendAsync(streamRequest, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var reader = new StreamReader(stream);
+
+        var (firstEvent, firstData) = await ReadNextSseEventAsync(reader, cts.Token);
+        Assert.Equal("settings", firstEvent);
+        Assert.Contains("\"name\":\"Smoke Test\"", firstData);
+        Assert.DoesNotContain("hunter2", firstData);
+
+        var patchRequest = MakeRequest(HttpMethod.Patch, $"/match/{id}/settings", AdminKey);
+        patchRequest.Content = JsonContent.Create(new { name = "Renamed Smoke Test" });
+        var patchResponseTask = client.SendAsync(patchRequest, cts.Token);
+
+        var (secondEvent, secondData) = await ReadNextSseEventAsync(reader, cts.Token);
+        await patchResponseTask;
+
+        Assert.Equal("settings", secondEvent);
+        Assert.Contains("\"name\":\"Renamed Smoke Test\"", secondData);
+        // A delta only carries the changed field(s) -- unrelated settings fields from the first
+        // event must not be repeated.
+        Assert.DoesNotContain("mapId", secondData);
+        Assert.DoesNotContain("winCondition", secondData);
+        Assert.DoesNotContain("hunter2", secondData);
+    }
+
+    [Fact]
+    public async Task Smoke_GetUserLive_UserIdZero_IsBlocked()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/0/live"));
+
+        // BasilBot (user id 0) has no gameplay stream of its own -- blocked rather than opening a
+        // stream that would never receive a frame. Implemented as 400 (not the plan's literal "404"
+        // wording) since the id is malformed input for this route, not a missing resource -- same
+        // reasoning already applied consistently to every other BasilBot-id guard in UserRoutes.cs.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private static async Task<(string? EventType, string Data)> ReadNextSseEventAsync(StreamReader reader,
+        CancellationToken cancellationToken)
+    {
+        string? eventType = null;
+        while (true)
+        {
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null) throw new IOException("Stream ended unexpectedly.");
+
+            if (line.StartsWith("event: ", StringComparison.Ordinal))
+                eventType = line["event: ".Length..];
+            else if (line.StartsWith("data: ", StringComparison.Ordinal))
+                return (eventType, line["data: ".Length..]);
+        }
     }
 
     /// <summary>Minimal in-memory fake so CreateEmptyAsync/FetchAllMatchesAsync/DeleteMatchAsync behave realistically without a real SQLite file.</summary>
