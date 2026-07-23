@@ -70,7 +70,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/spec/7",
+        var (eventType, data) = await ReceiveAfterPublishAsync("/user/7/live",
             () => events.PublishInput(7, "frame-data"u8.ToArray()));
 
         Assert.Equal("input", eventType);
@@ -82,7 +82,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync("/spec/7", () =>
+        var (_, data) = await ReceiveAfterPublishAsync("/user/7/live", () =>
         {
             events.PublishInput(8, "not for player 7"u8.ToArray());
             events.PublishInput(7, "for player 7"u8.ToArray());

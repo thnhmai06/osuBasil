@@ -52,7 +52,7 @@ public static class BanchoHostGroups
         ToggleBlockNonFriendDms.
 
         Spectating: StartSpectating, StopSpectating, SpectateFrames (raw replay-frame bytes — also
-        published live to the Basil API's `GET /spec/{id}` SSE channel), CantSpectate.
+        published live to the Basil API's `GET /user/{id}/live` SSE channel), CantSpectate.
 
         Multiplayer: CreateMatch, JoinMatch, PartMatch, MatchChangeSlot, MatchChangeSettings,
         MatchChangePassword, MatchChangeMods, MatchChangeTeam, MatchLock, MatchTransferHost,
@@ -1022,19 +1022,7 @@ public static class BanchoHostGroups
                 "stays open regardless. Public, no authentication.")
             .WithTags("Live Channels (SSE)");
 
-        // SSE — raw spectator input frames for a player, keyed by player id (Users.Id), populated any
-        // time that player is logged in regardless of match membership (see SpectateFramesHandler).
-        group.MapGet("/spec/{id:int}", (int id, HttpContext context, IPlayerInputEvents events,
-            CancellationToken cancellationToken) =>
-            LiveSseRoutes.HandleInput(context, id, events, cancellationToken))
-            .WithGroupName("basilapi")
-            .WithSummary("Live raw spectator-input stream (SSE) for one player, by player id.")
-            .WithDescription("Server-Sent Events stream (event name `input`) of one player's raw replay-frame " +
-                "bytes (base64-encoded), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
-                "BasilBot automatically spectates every player from the moment they log in, so this stream is " +
-                "live whenever that player is online and playing, tournament match or not. A nonexistent or " +
-                "offline player id simply never receives any frames. Public, no authentication.")
-            .WithTags("Live Channels (SSE)");
+        group.MapUserRoutes();
 
         group.MapGet("/replays/{scoreId:long}", async (long scoreId, HttpContext context,
             CancellationToken cancellationToken) =>
