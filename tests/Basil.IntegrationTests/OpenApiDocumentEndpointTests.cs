@@ -51,7 +51,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
     [InlineData("avatar", "osu! Client API — Avatar Files", new[] { "/{userId}" })]
     [InlineData("basilapi", "Basil API", new[]
     {
-        "/match/{id}", "/match", "/mapset/{id}", "/user", "/score/{id}", "/faq/{entry}", "/seasonal/{fileName}"
+        "/match/{id}", "/match", "/mapset/{id}", "/user", "/score/{id}", "/faq/{entry}", "/seasonal/{fileName}",
+        "/health"
     })]
     public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,
         string[] expectedPaths)
@@ -81,10 +82,10 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Theory]
-    [InlineData("/")]
-    [InlineData("/osu-client/")]
-    [InlineData("/basil-api/")]
-    [InlineData("/basilbot/")]
+    [InlineData("/docs/")]
+    [InlineData("/docs/osu-client/")]
+    [InlineData("/docs/basil-api/")]
+    [InlineData("/docs/basilbot/")]
     public async Task DocsPage_ReturnsOk(string path)
     {
         var client = _factory.CreateClient();
@@ -93,6 +94,31 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Root_RedirectsToDocs()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.SendAsync(MakeRequest("/"));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/docs/", response.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task Health_ReturnsOkStatus()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/health"));
+        var body = await response.Content.ReadFromJsonAsync<HealthShape>();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("ok", body!.Status);
+    }
+
+    private sealed record HealthShape(string Status);
 
     private sealed record OpenApiDocumentShape(OpenApiInfoShape Info, Dictionary<string, object> Paths);
 

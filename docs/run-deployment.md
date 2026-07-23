@@ -32,7 +32,7 @@ truth for every setting. Edit the file directly and restart the process.
 |                    | `Country`                            | BasilBot's country code (default `"vn"`). Overrides seed migration value.                                          |
 | `[Irc]`            | `Name`                               | IRC server name.                                                                                                   |
 |                    | `Port`                               | TCP port for the embedded IRC gateway (default 6667).                                                              |
-| `[Server]`         | `AdminKey`                           | Gates every `api.<domain>` management REST route (beatmap/user/replay/match/seasonal CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
+| `[Server]`         | `AdminKey`                           | Gates every write route on the `api.<domain>` host (mapset/user/match/faq/seasonal CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
 | `[Database]`       | `Path`                               | SQLite file path. Relative paths resolve next to the executable. Default `basil.db`, rarely needs changing.        |
 | `[Mirror]`         | `DownloadEndpoint`                   | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
 
@@ -73,7 +73,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    - `Server.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see the osu! Client API docs
-     (`api.<domain>/osu-client`) for exactly how.
+     (`api.<domain>/docs/osu-client`) for exactly how.
     - `Server.AdminKey` — set this to a real secret. Without it the management API (used to create
        user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
    - `Bot.Name` / `Bot.CommandPrefix`, `Server.MenuIconPath`/`MenuOnclickUrl`, `Irc.Name`/`Irc.Port` — cosmetic,
@@ -131,7 +131,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    **b) Admin API** — use `curl` (or any HTTP client) against the `api.` host:
 
    ```bash
-   curl -X POST https://api.<domain>/users \
+   curl -X POST https://api.<domain>/user \
      -H "X-Admin-Key: <your Server.AdminKey>" \
      -H "Content-Type: application/json" \
      -d '{"name":"Player1","password":"hunter2"}'
@@ -140,7 +140,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
    Optional fields: `"country": "VN"`, `"priv": 19` (default — see [`privileges.md`](privileges.md)).
 
    Every account is auto-verified (`Verified` flag added) on its own first login. No special
-   first-user staff grant exists — grant staff privileges via `PUT /users/{id}` on the `api.` host
+   first-user staff grant exists — grant staff privileges via `PATCH /user/{id}` on the `api.` host
    with `"priv": 28683` (unrestricted + verified + supporter + moderator). See [`privileges.md`](privileges.md)
    for the full flag reference.
 

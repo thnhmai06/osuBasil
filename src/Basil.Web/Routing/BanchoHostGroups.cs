@@ -930,24 +930,38 @@ public static class BanchoHostGroups
     }
 
     // api. host: TRT snapshot (GET+SSE), file downloads, SSE live channels, admin-key-gated management
-    // CRUD, and (below) the generated OpenAPI/Scalar documentation site — same content whether this
-    // server is self-hosted or run locally; the GitHub Pages copy is a separate, fully static build of
-    // the same 3 pages (see docs-site/ and the CI workflow) with Try-it-out disabled, since it has no
-    // live backend behind it.
+    // CRUD, a trivial /health probe, and (below) the generated OpenAPI/Scalar documentation site —
+    // same content whether this server is self-hosted or run locally; the GitHub Pages copy is a
+    // separate, fully static build of the same 3 pages (see docs-site/ and the CI workflow) with
+    // Try-it-out disabled, since it has no live backend behind it.
     private static void MapApiGroup(this RouteGroupBuilder group)
     {
         group.MapOpenApi().ExcludeFromDescription();
 
-        var docsSiteRoot = Path.Combine(AppContext.BaseDirectory, "docs-site");
+        group.MapGet("/", () => Results.Redirect("/docs/"))
+            .WithGroupName("basilapi")
+            .WithSummary("Redirects to the documentation site.")
+            .WithDescription("302 redirect to `/docs/`.")
+            .WithTags("Health");
 
-        group.MapGet("/", () => Results.File(Path.Combine(docsSiteRoot, "index.html"), "text/html"))
+        group.MapGet("/health", () => Results.Json(new { status = "ok" }))
+            .WithGroupName("basilapi")
+            .WithSummary("Liveness probe.")
+            .WithDescription("Trivial `{ status: \"ok\" }` — no dependency checks (the database is an " +
+                "embedded SQLite file, always available once the process is up). Public, no authentication.")
+            .WithTags("Health");
+
+        var docsSiteRoot = Path.Combine(AppContext.BaseDirectory, "docs-site");
+        var docs = group.MapGroup("/docs");
+
+        docs.MapGet("/", () => Results.File(Path.Combine(docsSiteRoot, "index.html"), "text/html"))
             .ExcludeFromDescription();
 
-        group.MapGet("/basilbot/",
+        docs.MapGet("/basilbot/",
                 () => Results.File(Path.Combine(docsSiteRoot, "basilbot", "index.html"), "text/html"))
             .ExcludeFromDescription();
 
-        group.MapScalarApiReference("/osu-client", options =>
+        docs.MapScalarApiReference("/osu-client", options =>
         {
             options.Title = "osu! Client API";
             options.AddDocument("bancho", "Bancho Protocol");
@@ -956,7 +970,7 @@ public static class BanchoHostGroups
             options.AddDocument("avatar", "Avatar Files");
         }).ExcludeFromDescription();
 
-        group.MapScalarApiReference("/basil-api", options =>
+        docs.MapScalarApiReference("/basil-api", options =>
         {
             options.Title = "Basil API";
             options.AddDocument("basilapi", "Basil API");

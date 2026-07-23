@@ -103,17 +103,19 @@ Tables important for the **tournament flow**:
 
 `WinningTeam` is also computed at read time, not stored: completed `Scores` are grouped by team if non-neutral teams exist, otherwise falls back to the highest individual score.
 
-Live updates are pushed through three ASP.NET Core SSE (`TypedResults.ServerSentEvents`) channels under the `api.` host:
+Live updates are pushed through several ASP.NET Core SSE (`TypedResults.ServerSentEvents`) channels under the `api.` host, all following the same convention: the first event on a connection is a full snapshot, every event after that is an RFC 7396 JSON Merge Patch against the previous one (computed per-connection, not globally — a client that just connected always gets a full snapshot regardless of what earlier clients already received).
 
 | Endpoint | Purpose |
 | --- | --- |
-| `SSE /match/{id}` | Full match state (slots/map/status), published from `MatchMembershipService.EnqueueState` — the single bottleneck every state-changing match packet already routes through |
-| `SSE /match/{id}/{playerName}` | Live score of one player, published from `MatchScoreUpdateHandler` after decoding the score frame |
-| `SSE /spec/{id}` | Raw spectator input frames for one player (keyed by `Users.Id`, not match id), published from `SpectateFramesHandler` any time that player is logged in — BasilBot spectates every player from login onward specifically so this channel always has a source |
+| `SSE /match/{id}` | Full match state (slots/map/status, no per-player score/input data), published from `MatchMembershipService.EnqueueState` — the single bottleneck every state-changing match packet already routes through |
+| `SSE /match/{id}/settings` | Just the room-configuration fields (name/password presence/size/map/mods/team type/win condition/host/referees) — never the raw password, only `hasPassword` |
+| `SSE /match/{id}/live` | Room-wide "currently playing" status (`inProgress`/`currentRoundId`/`mapId`/`mode`), idle outside an active round |
+| `SSE /match/{id}/live/{slotIndex}` | One slot's membership/score/input, merged into a single stream tagged by SSE event name (`slot`, `score`, `input`) — follows whoever currently occupies the slot, so an occupant change takes effect on the next event with no reconnect needed |
+| `SSE /user/{id}/live` | Raw spectator input frames for one player (keyed by `Users.Id`, not match id — a rename of the old `/spec/{id}`), published from `SpectateFramesHandler` any time that player is logged in — BasilBot spectates every player from login onward specifically so this channel always has a source |
 
-`/match/{id}`/`/match/{id}/{playerName}` publish through `IMatchLiveEvents`; `/spec/{id}` publishes through the player-scoped `IPlayerInputEvents`. Both are plain C# events — `Publish*` just raises the event, and each SSE connection's own subscriber does a non-blocking `ChannelWriter.TryWrite` into its own buffer — safe to call from code still holding `MatchSession.Lock` (as `EnqueueState` and the score/spectate handlers do), since the actual response writes happen on a per-connection pump, fully decoupled from the publish call.
+Every `/match/{id}*` channel publishes through `IMatchLiveEvents`; `/user/{id}/live` publishes through the player-scoped `IPlayerInputEvents`. Both are plain C# events — `Publish*` just raises the event, and each SSE connection's own subscriber does a non-blocking `ChannelWriter.TryWrite` into its own buffer — safe to call from code still holding `MatchSession.Lock` (as `EnqueueState` and the score/spectate handlers do), since the actual response writes happen on a per-connection pump, fully decoupled from the publish call.
 
-`GET /match/{id}` without an `Accept: text/event-stream` header returns the same report as a one-shot JSON snapshot instead of an SSE stream.
+`GET /match/{id}` without an `Accept: text/event-stream` header returns the same report as a one-shot JSON snapshot instead of an SSE stream. `PUT`/`PATCH /match/{id}/settings` and `POST /match/{id}/{action}` (admin-key gated) write to a match's settings and perform one-shot room actions (kick/ban/host/start/...) respectively, both routing through the shared `MatchControlService` that `!mp` chat commands also call.
 
 ## IRC Gateway
 
