@@ -146,7 +146,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         await _service.ReconcileDeletedFolderAsync(resolvedFolder);
 
         Assert.Null(await _mapsets.FetchByIdAsync(setId.Value));
-        Assert.Null(await _maps.FetchOneAsync(setId: setId.Value, includeFrozen: true));
+        Assert.Null(await _maps.FetchOneAsync(setId: setId.Value, includePrivate: true));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         await _service.ReconcileFolderAsync(folder);
 
         Assert.True(await FetchIsInvalidatedAsync(removedScoreId));
-        Assert.Null(await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId, includeFrozen: true));
+        Assert.Null(await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId, includePrivate: true));
         Assert.NotNull(await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId));
     }
 
@@ -233,7 +233,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         Assert.NotNull(updated);
         Assert.NotEqual(oldMd5, updated!.Md5);
         Assert.Equal(original.Id, updated.Id);
-        Assert.Null(await _maps.FetchOneAsync(md5: oldMd5, includeFrozen: true));
+        Assert.Null(await _maps.FetchOneAsync(md5: oldMd5, includePrivate: true));
     }
 
     /// <summary>Writes a copy of the fixture .osu with AudioLeadIn tweaked so its content (and md5) differs.</summary>

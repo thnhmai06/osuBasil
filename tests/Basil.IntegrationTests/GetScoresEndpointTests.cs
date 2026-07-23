@@ -219,7 +219,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             new Difficulty(GameMode.Standard, 0, 0, 0, 0, 0, 0));
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(md5 == KnownMd5 ? Beatmap : null);
         }
@@ -255,7 +255,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             throw new NotSupportedException();
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Beatmap>>([]);

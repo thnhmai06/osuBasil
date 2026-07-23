@@ -15,12 +15,12 @@ public interface IMapRepository
     ///     (setId added on top of the Python source's fetch_one — it's how osu-search-set.php's "any
     ///     map in this set" lookup is served, mirroring fetch_set_info without a separate DTO/method).
     ///     When multiple maps share a setId, an arbitrary one among them is returned.
-    ///     <paramref name="includeFrozen" /> defaults to false (a frozen beatmap is hidden from the
+    ///     <paramref name="includePrivate" /> defaults to false (a frozen beatmap is hidden from the
     ///     client entirely) — only admin-key-gated routes and internal ingestion/upsert plumbing
     ///     that must see a frozen row to update it in place should pass true.
     /// </summary>
     Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null, int? setId = null,
-        bool includeFrozen = false, CancellationToken cancellationToken = default);
+        bool includePrivate = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     Ported from BeatmapSet._save_to_sql's REPLACE INTO semantics for a single map, plus id
@@ -67,8 +67,8 @@ public interface IMapRepository
     ///     Every non-frozen beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging
     ///     (ships file bytes to the client, so frozen beatmaps are always excluded) and by ingestion
     ///     reconciliation's disk-diff (which needs every beatmap regardless of frozen status —
-    ///     ingestion passes <paramref name="includeFrozen" /> true for that internal use).
+    ///     ingestion passes <paramref name="includePrivate" /> true for that internal use).
     /// </summary>
-    Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+    Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
         CancellationToken cancellationToken = default);
 }

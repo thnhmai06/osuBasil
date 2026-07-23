@@ -207,7 +207,7 @@ public sealed partial class BeatmapIngestionService(
         foreach (var file in decoded)
         {
             var existingByPath = await maps.FetchOneAsync(
-                filename: file.OriginalFilename, setId: mapset.Id, includeFrozen: true,
+                filename: file.OriginalFilename, setId: mapset.Id, includePrivate: true,
                 cancellationToken: cancellationToken);
 
             // The .osu content changed under the same filename — UpsertAsync below moves this same
@@ -233,7 +233,7 @@ public sealed partial class BeatmapIngestionService(
                 file.OriginalFilename,
                 TimeSpan.FromMilliseconds(info.Length),
                 info.MaxCombo ?? 0,
-                existingByPath?.IsFrozen ?? false,
+                existingByPath?.IsPrivate ?? false,
                 existingByPath?.Plays ?? 0,
                 existingByPath?.Passes ?? 0,
                 new Difficulty(
@@ -246,7 +246,7 @@ public sealed partial class BeatmapIngestionService(
         }
 
         var onDisk = decoded.Select(f => f.OriginalFilename).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var known = await maps.FetchAllBySetIdAsync(mapset.Id, includeFrozen: true, cancellationToken: cancellationToken);
+        var known = await maps.FetchAllBySetIdAsync(mapset.Id, includePrivate: true, cancellationToken: cancellationToken);
         foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
         {
             await scores.InvalidateByMapMd5Async(gone.Md5, cancellationToken);
@@ -276,7 +276,7 @@ public sealed partial class BeatmapIngestionService(
     /// <summary>Flags every score on every beatmap under a mapset about to lose its DB row — the beatmaps/mapset row are hard-deleted, but a player's own score history is only ever flagged, never dropped.</summary>
     private async Task InvalidateScoresForMapsetAsync(int mapsetId, CancellationToken cancellationToken)
     {
-        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includeFrozen: true, cancellationToken: cancellationToken);
+        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includePrivate: true, cancellationToken: cancellationToken);
         foreach (var beatmap in beatmaps)
             await scores.InvalidateByMapMd5Async(beatmap.Md5, cancellationToken);
     }
@@ -292,7 +292,7 @@ public sealed partial class BeatmapIngestionService(
     {
         foreach (var file in decoded)
         {
-            var existing = await maps.FetchOneAsync(md5: file.Md5, includeFrozen: true, cancellationToken: cancellationToken);
+            var existing = await maps.FetchOneAsync(md5: file.Md5, includePrivate: true, cancellationToken: cancellationToken);
             if (existing is not null) return existing.Mapset;
         }
 

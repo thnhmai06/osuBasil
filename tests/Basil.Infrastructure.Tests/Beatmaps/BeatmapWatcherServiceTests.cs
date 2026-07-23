@@ -60,10 +60,10 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
             var deadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < deadline &&
-                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true) is null)
+                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
                 await Task.Delay(200);
 
-            var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true);
+            var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
             Assert.True(found is not null,
                 "Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
                 " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
@@ -91,10 +91,10 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
             var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < ingestDeadline &&
-                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true) is null)
+                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
                 await Task.Delay(200);
 
-            var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true);
+            var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
             Assert.NotNull(beatmap);
 
             // ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
@@ -110,10 +110,10 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
             var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < deleteDeadline &&
-                   await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includeFrozen: true) is not null)
+                   await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true) is not null)
                 await Task.Delay(200);
 
-            Assert.Null(await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includeFrozen: true));
+            Assert.Null(await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true));
         }
         finally
         {

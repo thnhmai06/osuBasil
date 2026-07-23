@@ -269,7 +269,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         public IReadOnlyList<Beatmap> SetBeatmaps { get; set; } = [];
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(filename is not null ? ByFilename : OneBeatmap);
         }
@@ -305,7 +305,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(SetBeatmaps.Count > 0 && SetBeatmaps[0].Mapset.Id == setId

@@ -12,7 +12,8 @@ public sealed record Mapset(
     string Title,
     string Creator,
     DateTime LastUpdate,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    bool IsFrozen = false)
 {
     /// <summary>Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status curation.</summary>
     public RankedStatus Status => RankedStatus.Loved;

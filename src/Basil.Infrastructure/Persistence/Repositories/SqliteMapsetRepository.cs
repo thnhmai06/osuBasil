@@ -22,10 +22,12 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         // INSERT ... ON CONFLICT DO UPDATE, not REPLACE INTO: REPLACE deletes-then-reinserts on a
         // PK conflict, and that delete cascades via Beatmaps_Mapsets_Id_fk (on delete cascade),
         // wiping every Beatmap under this Mapset on every re-upsert (e.g. every reconcile pass).
+        // IsFrozen is deliberately absent from the UPDATE SET clause — a re-ingestion pass must never
+        // clear an admin-set freeze lock.
         await connection.ExecuteAsync(
             """
-            INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt)
-            VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt)
+            INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen)
+            VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen)
             ON CONFLICT(Id) DO UPDATE SET
                 Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
                 LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
@@ -37,9 +39,18 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
                 mapset.Title,
                 mapset.Creator,
                 mapset.LastUpdate,
-                mapset.CreatedAt
+                mapset.CreatedAt,
+                mapset.IsFrozen
             });
-        return mapset;
+
+        return (await FetchByIdAsync(mapset.Id, cancellationToken))!;
+    }
+
+    public async Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
+            new { Id = id, Frozen = frozen });
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
@@ -76,10 +87,11 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         public string Creator { get; set; } = "";
         public DateTime LastUpdate { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsFrozen { get; set; }
 
         public Mapset ToMapset()
         {
-            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt);
+            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen);
         }
     }
 }

@@ -109,7 +109,7 @@ internal static class AdminManagementRoutes
         admin.MapDelete("/beatmaps/{id:int}", async (int id, IMapRepository maps, IOptions<StorageOptions> storage,
             CancellationToken cancellationToken) =>
         {
-            var bmap = await maps.FetchOneAsync(id, includeFrozen: true, cancellationToken: cancellationToken);
+            var bmap = await maps.FetchOneAsync(id, includePrivate: true, cancellationToken: cancellationToken);
             if (bmap is null) return Results.NotFound();
 
             await maps.DeleteByMd5Async(bmap.Md5, cancellationToken);

@@ -58,7 +58,7 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
         await _mapsetRepository.DeleteAsync(mapset.Id);
 
         Assert.Null(await _mapsetRepository.FetchByIdAsync(mapset.Id));
-        Assert.Null(await _mapRepository.FetchOneAsync(beatmap.Id, includeFrozen: true));
+        Assert.Null(await _mapRepository.FetchOneAsync(beatmap.Id, includePrivate: true));
     }
 
     [Fact]
@@ -82,5 +82,31 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 
         Assert.Contains(9020, ids);
         Assert.Contains(9021, ids);
+    }
+
+    [Fact]
+    public async Task SetFrozenAsync_TogglesIsFrozen()
+    {
+        var mapset = MakeMapset(9030);
+        await _mapsetRepository.UpsertAsync(mapset);
+
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, true);
+        Assert.True((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, false);
+        Assert.False((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+    }
+
+    [Fact]
+    public async Task Upsert_ExistingFrozenMapset_ReingestionDoesNotClearFreeze()
+    {
+        var mapset = MakeMapset(9031);
+        await _mapsetRepository.UpsertAsync(mapset);
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, true);
+
+        var reingested = await _mapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+
+        Assert.True(reingested.IsFrozen);
+        Assert.True((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
     }
 }

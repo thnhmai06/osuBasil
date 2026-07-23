@@ -22,4 +22,10 @@ public interface IMapsetRepository
 
     /// <summary>Every Mapset id in the DB — used by the full reconciliation pass to find rows whose backing folder no longer exists on disk.</summary>
     Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Toggles the write-lock the `api.` host's `PATCH /mapset/{id}/freeze` route sets — blocks
+    ///     `PUT`/`DELETE /mapset/{id}` (409) regardless of admin role until unfrozen again.
+    /// </summary>
+    Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default);
 }
