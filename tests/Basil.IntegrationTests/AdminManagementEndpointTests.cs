@@ -76,7 +76,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/user/1", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -84,25 +84,25 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     [Theory]
     [InlineData(null)]
     [InlineData("wrong-key")]
-    public async Task DeleteBeatmap_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    public async Task DeleteMapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmaps/1", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/1", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("wrong-key")]
-    public async Task BlockUser_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    // Block/unblock (POST/DELETE /users/{id}/block/{targetId}) was dropped entirely per the /user
+    // redesign — no replacement route exists, so this can no longer succeed.
+    [Fact]
+    public async Task BlockUser_RouteNoLongerExists()
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/user/1/block/2", "correct-key"));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.False(response.IsSuccessStatusCode);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -120,7 +120,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user", "correct-key"));
 
         response.EnsureSuccessStatusCode();
     }
@@ -130,7 +130,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var request = MakeRequest(HttpMethod.Post, "/users", "correct-key");
+        var request = MakeRequest(HttpMethod.Post, "/user", "correct-key");
         request.Content = JsonContent.Create(new CreateUserRequest("ab", "hunter2", null, null));
 
         var response = await client.SendAsync(request);
@@ -148,6 +148,59 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/matches/999", "correct-key"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUserAvatar_MissingAdminKey_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/1/avatar"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUserAvatar_NoAvatarUploaded_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/1/avatar", "correct-key"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteUser_BasilBotId_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/user/0", "correct-key"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUser_BasilBotId_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+
+        var request = MakeRequest(HttpMethod.Patch, "/user/0", "correct-key");
+        request.Content = JsonContent.Create(new UpdateUserRequest("newname", null, null));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUserLive_BasilBotId_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/0/live"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private sealed class StubMatchPersistenceRepository : IMatchPersistenceRepository

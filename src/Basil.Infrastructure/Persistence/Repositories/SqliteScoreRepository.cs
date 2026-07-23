@@ -67,6 +67,21 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         return row?.ToRow();
     }
 
+    public async Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var row = await connection.QuerySingleOrDefaultAsync<ScoreRowDto>(
+            """
+            SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
+                   NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
+                   OnlineChecksum, SubmittedAt, IsInvalidated
+            FROM Scores
+            WHERE Id = @Id
+            """,
+            new { Id = id });
+        return row?.ToRow();
+    }
+
     public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
         CancellationToken cancellationToken = default)
     {
@@ -82,6 +97,14 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             """,
             new { RoundId = roundId });
         return rows.Select(r => r.ToRow()).ToList();
+    }
+
+    public async Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            "UPDATE Scores SET IsInvalidated = 1 WHERE MapMd5 = @MapMd5",
+            new { MapMd5 = mapMd5 });
     }
 
     private SqliteConnection Connect()
@@ -136,6 +159,42 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         public FirstPlaceScoreRow ToRow()
         {
             return new FirstPlaceScoreRow(Id, Name);
+        }
+    }
+
+    private sealed class ScoreRowDto
+    {
+        public long Id { get; set; }
+        public int? RoundId { get; set; }
+        public int? Team { get; set; }
+        public string MapMd5 { get; set; } = "";
+        public long Score { get; set; }
+        public double Accuracy { get; set; }
+        public int MaxCombo { get; set; }
+        public int Mods { get; set; }
+        public int N300 { get; set; }
+        public int N100 { get; set; }
+        public int N50 { get; set; }
+        public int NMiss { get; set; }
+        public int NGeki { get; set; }
+        public int NKatu { get; set; }
+        public string Grade { get; set; } = "N";
+        public int Mode { get; set; }
+        public DateTime PlayTime { get; set; }
+        public int TimeElapsed { get; set; }
+        public int ClientFlags { get; set; }
+        public int UserId { get; set; }
+        public bool Perfect { get; set; }
+        public string OnlineChecksum { get; set; } = "";
+        public DateTime SubmittedAt { get; set; }
+        public bool IsInvalidated { get; set; }
+
+        public ScoreRow ToRow()
+        {
+            return new ScoreRow(
+                Id, RoundId, (MatchTeam?)Team, MapMd5, Score, Accuracy, MaxCombo, (Mods)Mods, N300, N100, N50,
+                NMiss, NGeki, NKatu, Grade, (GameMode)Mode, PlayTime, TimeElapsed, (ClientFlags)ClientFlags,
+                UserId, Perfect, OnlineChecksum, SubmittedAt, IsInvalidated);
         }
     }
 }

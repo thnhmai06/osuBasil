@@ -37,7 +37,7 @@ The three largest directories are organized by feature area rather than kept fla
 | --- | --- |
 | **`PacketHandlers/`** | One class per Bancho client packet, split into `Core/` (session lifecycle: login, presence, stats), `Channels/` (chat), `Spectating/`, and `Multiplayer/` (match + tournament packets, the largest group) |
 | **`Abstractions/`** | Ports that Infrastructure implements, organized by domain concept: `Beatmaps/`, `Scores/`, `Users/`, `Channels/`, `Social/` (relationship + moderation logging) |
-| **`Sessions/`** | In-memory session state (`PlayerSession`, `ChannelSession`, `MatchSession`) and the registries tracking them, split into `Channels/`, `Irc/` (IIrcConnection — bridge for bancho packets or real TCP), and `Multiplayer/` with per-player state at the root. `Sessions/Multiplayer/IMatchEventBus` is non-blocking pub/sub pushing match state directly to the `api.` host's WebSocket layer |
+| **`Sessions/`** | In-memory session state (`PlayerSession`, `ChannelSession`, `MatchSession`) and the registries tracking them, split into `Channels/`, `Irc/` (IIrcConnection — bridge for bancho packets or real TCP), `Multiplayer/` with per-player state at the root, and `Spectating/`. `Sessions/Multiplayer/IMatchLiveEvents` and `Sessions/Spectating/IPlayerInputEvents` are non-blocking, C#-event-based pub/sub pushing match/player state directly to the `api.` host's live SSE layer |
 | **`UseCases/`** | One directory per feature (`Authentication/`, `Beatmaps/`, `Multiplayer/`, `Scores/`, `Spectating/`, `Anticheat/`, `Bot/`, `Chat/`, `Irc/`), each containing the actual business logic that a packet handler or HTTP route delegates to. `UseCases/Chat/ChatDispatchService` is the single entry point for all chat traffic — used by both bancho handlers and IRC PRIVMSG. `UseCases/Irc/IrcAuthenticationService` authenticates IRC TCP connections and creates virtual PlayerSessions. `UseCases/Multiplayer/MatchReportService` builds tournament match reports (TRT) at read time. `UseCases/Bot/` contains BanchoBot's session bootstrap plus the `!help`/`!roll`/`!mp` command dispatcher |
 
 `Basil.Domain`, `Basil.Protocol`, and `Basil.Infrastructure/Persistence` follow the same pattern (subdirectories per topic like `Login/`, `Beatmaps/`, `Scores/`, `Multiplayer/`, `Users/`, `Repositories/`) — namespace matches folder path, so `grep` on an import tells you exactly where the file lives.
@@ -103,17 +103,19 @@ Tables important for the **tournament flow**:
 
 `WinningTeam` is also computed at read time, not stored: completed `Scores` are grouped by team if non-neutral teams exist, otherwise falls back to the highest individual score.
 
-Live updates are pushed through three raw ASP.NET Core WebSocket channels under the `api.` host:
+Live updates are pushed through several ASP.NET Core SSE (`TypedResults.ServerSentEvents`) channels under the `api.` host, all following the same convention: the first event on a connection is a full snapshot, every event after that is an RFC 7396 JSON Merge Patch against the previous one (computed per-connection, not globally — a client that just connected always gets a full snapshot regardless of what earlier clients already received).
 
 | Endpoint | Purpose |
 | --- | --- |
-| `WS /multi/{id}` | Full match state (slots/map/status), published from `MatchMembershipService.EnqueueState` — the single bottleneck every state-changing match packet already routes through |
-| `WS /multi/{id}/{playerName}` | Live score of one player, published from `MatchScoreUpdateHandler` after decoding the score frame |
-| `WS /multi/{id}/input` | Raw spectator input frames, published from `SpectateFramesHandler` only when someone is spectating a player in that match |
+| `SSE /match/{id}` | Full match state (slots/map/status, no per-player score/input data), published from `MatchMembershipService.EnqueueState` — the single bottleneck every state-changing match packet already routes through |
+| `SSE /match/{id}/settings` | Just the room-configuration fields (name/password presence/size/map/mods/team type/win condition/host/referees) — never the raw password, only `hasPassword` |
+| `SSE /match/{id}/live` | Room-wide "currently playing" status (`inProgress`/`currentRoundId`/`mapId`/`mode`), idle outside an active round |
+| `SSE /match/{id}/live/{slotIndex}` | One slot's membership/score/input, merged into a single stream tagged by SSE event name (`slot`, `score`, `input`) — follows whoever currently occupies the slot, so an occupant change takes effect on the next event with no reconnect needed |
+| `SSE /user/{id}/live` | Raw spectator input frames for one player (keyed by `Users.Id`, not match id — a rename of the old `/spec/{id}`), published from `SpectateFramesHandler` any time that player is logged in — BasilBot spectates every player from login onward specifically so this channel always has a source |
 
-All three publish through `IMatchEventBus`, whose `Publish*` methods are non-blocking `ChannelWriter.TryWrite` — safe to call from code still holding `MatchSession.Lock` (as `EnqueueState` and the score/spectate handlers do), since the actual socket writes happen on a per-connection pump task, fully decoupled from the publish call.
+Every `/match/{id}*` channel publishes through `IMatchLiveEvents`; `/user/{id}/live` publishes through the player-scoped `IPlayerInputEvents`. Both are plain C# events — `Publish*` just raises the event, and each SSE connection's own subscriber does a non-blocking `ChannelWriter.TryWrite` into its own buffer — safe to call from code still holding `MatchSession.Lock` (as `EnqueueState` and the score/spectate handlers do), since the actual response writes happen on a per-connection pump, fully decoupled from the publish call.
 
-`GET /multi/{id}` (no upgrade) returns the same report as a one-shot JSON snapshot instead of a WS stream.
+`GET /match/{id}` without an `Accept: text/event-stream` header returns the same report as a one-shot JSON snapshot instead of an SSE stream. `PUT`/`PATCH /match/{id}/settings` and `POST /match/{id}/{action}` (admin-key gated) write to a match's settings and perform one-shot room actions (kick/ban/host/start/...) respectively, both routing through the shared `MatchControlService` that `!mp` chat commands also call.
 
 ## IRC Gateway
 

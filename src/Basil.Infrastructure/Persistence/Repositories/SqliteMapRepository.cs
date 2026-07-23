@@ -9,13 +9,13 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 public sealed class SqliteMapRepository(string connectionString) : IMapRepository
 {
     private const string SharedColumns = """
-        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.Frozen, b.Plays, b.Passes,
+        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.IsPrivate, b.Plays, b.Passes,
         b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr,
         m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt
         """;
 
     public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-        int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
+        int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
     {
         if (id is null && md5 is null && filename is null && setId is null)
             throw new ArgumentException("Must provide at least one of id/md5/filename/setId.");
@@ -47,7 +47,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
             parameters.Add("MapsetId", setId);
         }
 
-        if (!includeFrozen) conditions.Add("b.Frozen = 0");
+        if (!includePrivate) conditions.Add("b.IsPrivate = 0");
 
         await using var connection = Connect();
         // Dapper has no multi-map QueryFirstOrDefaultAsync overload — QueryAsync + FirstOrDefault.
@@ -66,7 +66,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 
     public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
     {
-        var existing = await FetchOneAsync(md5: beatmap.Md5, includeFrozen: true, cancellationToken: cancellationToken);
+        var existing = await FetchOneAsync(md5: beatmap.Md5, includePrivate: true, cancellationToken: cancellationToken);
         int resolvedId;
         if (existing is not null) resolvedId = existing.Id;
         else if (beatmap.Id > 0) resolvedId = beatmap.Id;
@@ -78,10 +78,10 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         await connection.ExecuteAsync(
             """
             REPLACE INTO Beatmaps (
-                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, Frozen, Plays, Passes,
+                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, IsPrivate, Plays, Passes,
                 Mode, Bpm, Cs, Od, Ar, Hp, Sr
             ) VALUES (
-                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @Frozen, @Plays, @Passes,
+                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @IsPrivate, @Plays, @Passes,
                 @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr
             )
             """,
@@ -94,7 +94,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
                 resolved.Filename,
                 TotalLength = (int)resolved.TotalLength.TotalSeconds,
                 resolved.MaxCombo,
-                Frozen = resolved.IsFrozen,
+                IsPrivate = resolved.IsPrivate,
                 resolved.Plays,
                 resolved.Passes,
                 Mode = (int)resolved.Difficulty.Mode,
@@ -119,7 +119,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         string? query, GameMode? mode, int offset, int amount,
         CancellationToken cancellationToken = default)
     {
-        var conditions = new List<string> { "b.Frozen = 0" };
+        var conditions = new List<string> { "b.IsPrivate = 0" };
         var parameters = new DynamicParameters();
 
         if (query is not null)
@@ -152,7 +152,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
             $"""
              SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
-             WHERE b.MapsetId IN @SetIds AND b.Frozen = 0
+             WHERE b.MapsetId IN @SetIds AND b.IsPrivate = 0
              ORDER BY b.Sr ASC
              """,
             (b, m) => b.ToBeatmap(m.ToMapset()),
@@ -185,11 +185,11 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         await connection.ExecuteAsync("UPDATE Beatmaps SET Sr = @Sr WHERE Id = @Id", new { Id = id, Sr = diff });
     }
 
-    public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+    public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var whereClause = includeFrozen ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND b.Frozen = 0";
+        var whereClause = includePrivate ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND b.IsPrivate = 0";
         var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
             $"""
              SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
@@ -216,7 +216,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public string Filename { get; set; } = "";
         public int TotalLength { get; set; }
         public int MaxCombo { get; set; }
-        public bool Frozen { get; set; }
+        public bool IsPrivate { get; set; }
         public int Plays { get; set; }
         public int Passes { get; set; }
         public int Mode { get; set; }
@@ -231,7 +231,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         {
             return new Beatmap(
                 Md5, Id, mapset, Version, Filename,
-                TimeSpan.FromSeconds(TotalLength), MaxCombo, Frozen, Plays, Passes,
+                TimeSpan.FromSeconds(TotalLength), MaxCombo, IsPrivate, Plays, Passes,
                 new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr));
         }
     }

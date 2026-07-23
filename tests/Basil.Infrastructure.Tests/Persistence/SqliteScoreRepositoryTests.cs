@@ -141,6 +141,44 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     }
 
     [Fact]
+    public async Task FetchById_ReturnsFullRow()
+    {
+        var mapMd5 = new string('k', 32);
+        await InsertUserAsync(322, "tara");
+        var scoreId = await InsertScoreAsync(mapMd5, 322, 850_000, mode: GameMode.Mania);
+
+        var row = await _repository.FetchByIdAsync(scoreId);
+
+        Assert.NotNull(row);
+        Assert.Equal(scoreId, row.Id);
+        Assert.Equal(322, row.UserId);
+        Assert.Equal(mapMd5, row.MapMd5);
+        Assert.Equal(850_000, row.Score);
+        Assert.Equal(GameMode.Mania, row.Mode);
+        Assert.False(row.IsInvalidated);
+    }
+
+    [Fact]
+    public async Task FetchById_AfterInvalidation_ReportsIsInvalidatedTrue()
+    {
+        var mapMd5 = new string('l', 32);
+        await InsertUserAsync(323, "uma");
+        var scoreId = await InsertScoreAsync(mapMd5, 323, 850_000);
+
+        await _repository.InvalidateByMapMd5Async(mapMd5);
+        var row = await _repository.FetchByIdAsync(scoreId);
+
+        Assert.NotNull(row);
+        Assert.True(row.IsInvalidated);
+    }
+
+    [Fact]
+    public async Task FetchById_NotFound_ReturnsNull()
+    {
+        Assert.Null(await _repository.FetchByIdAsync(999_999));
+    }
+
+    [Fact]
     public async Task FetchByRoundId_ReturnsScoresOrderedByScoreDescending_WithUserNameJoined()
     {
         await InsertUserAsync(401, "roundwinner");
@@ -159,6 +197,28 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         Assert.Equal(900_000, rows[0].Score);
         Assert.Equal(MatchTeam.Blue, rows[0].Team);
         Assert.Equal("roundloser", rows[1].UserName);
+    }
+
+    [Fact]
+    public async Task InvalidateByMapMd5_FlagsMatchingScoresOnly()
+    {
+        var invalidatedMd5 = new string('i', 32);
+        var otherMd5 = new string('j', 32);
+        await InsertUserAsync(410, "invalidated-owner");
+        var invalidatedId = await InsertScoreAsync(invalidatedMd5, 410, 600_000);
+        var otherId = await InsertScoreAsync(otherMd5, 410, 600_000);
+
+        await _repository.InvalidateByMapMd5Async(invalidatedMd5);
+
+        Assert.True(await FetchIsInvalidatedAsync(invalidatedId));
+        Assert.False(await FetchIsInvalidatedAsync(otherId));
+    }
+
+    private async Task<bool> FetchIsInvalidatedAsync(long scoreId)
+    {
+        await using var connection = new SqliteConnection(fixture.ConnectionString);
+        return await connection.ExecuteScalarAsync<bool>("SELECT IsInvalidated FROM Scores WHERE Id = @Id",
+            new { Id = scoreId });
     }
 
     private async Task<int> InsertRoundAsync()

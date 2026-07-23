@@ -6,7 +6,7 @@ This page lists what is *in scope*, what is not, and the rationale for each excl
 
 ## Chat commands
 
-Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list, usage, and comparison with bancho.py is at [`bot-commands.md`](bot-commands.md) — not duplicated here to avoid drift between two sources.
+Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list and usage is on the BasilBot Commands page (`api.<domain>/docs/basilbot`, or the same page on GitHub Pages) — not duplicated here to avoid drift between two sources.
 
 ## IRC Gateway
 
@@ -37,5 +37,5 @@ Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `M
 | Decision | Problem | Resolution |
 | --- | --- | --- |
 | Removed `BanchoBot` + entire chat command layer (including full 25 `!mp` subcommands) when pivoting to "multiplayer + tournaments only" | Tournaments still need chat-based match control (`!mp start`, map change, slot management...) — removing everything was overcorrection | `BanchoBot` re-bootstrapped as a real session (`BotBootstrapService`); fresh dispatch layer (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) wraps existing `MatchSession`/`MatchMembershipService` mutations, narrower than the original command set |
-| Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, WebSocket) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/WebSocket, replay/beatmap downloads, and admin-key-gated management CRUD — narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
+| Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, SSE) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/SSE, replay/beatmap downloads, and admin-key-gated management CRUD — narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
 | Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut — nothing left to compare in parallel | Manual single-thread multiplayer/tournament testing with two real osu! clients — see [`getting-started.md`](getting-started.md) |

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>osu! Client API — Basil</title>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+<script>
+  Scalar.createApiReference('#app', {
+    sources: [
+      { title: 'Bancho Protocol', url: 'bancho.json' },
+      { title: 'osu! Web', url: 'osuweb.json' },
+      { title: 'Beatmap Assets', url: 'beatmapassets.json' },
+      { title: 'Avatar Files', url: 'avatar.json' }
+    ],
+    // No live backend behind this static build — hide the interactive request button.
+    hideTestRequestButton: true
+  })
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -26,20 +27,50 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
 
-      - name: Publish win-x64
-        run: dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
+  deploy-docs:
+    needs: build-and-test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
-      - name: Publish linux-x64
-        run: dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload win-x64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          name: basil-win-x64
-          path: publish/win-x64
+          dotnet-version: "10.0.x"
 
-      - name: Upload linux-x64 artifact
-        uses: actions/upload-artifact@v4
+      - name: Restore
+        run: dotnet restore
+
+      # Building src/Basil.Web alone regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
+      # into src/Basil.Web/obj/Basil.Web_{documentName}.json.
+      - name: Build (generates OpenAPI documents)
+        run: dotnet build src/Basil.Web --no-restore --configuration Release
+
+      - name: Assemble static docs site
+        run: |
+          set -e
+          SITE=site
+          rm -rf "$SITE"
+          cp -r src/Basil.Web/docs-site "$SITE"
+          cp src/Basil.Web/obj/Basil.Web_bancho.json "$SITE/osu-client/bancho.json"
+          cp src/Basil.Web/obj/Basil.Web_osuweb.json "$SITE/osu-client/osuweb.json"
+          cp src/Basil.Web/obj/Basil.Web_beatmapassets.json "$SITE/osu-client/beatmapassets.json"
+          cp src/Basil.Web/obj/Basil.Web_avatar.json "$SITE/osu-client/avatar.json"
+          cp src/Basil.Web/obj/Basil.Web_basilapi.json "$SITE/basil-api/basilapi.json"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: basil-linux-x64
-          path: publish/linux-x64
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

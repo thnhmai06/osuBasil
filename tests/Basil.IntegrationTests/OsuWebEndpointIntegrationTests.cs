@@ -51,7 +51,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
     private sealed class NullMapRepository : IMapRepository
     {
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includeFrozen = false, CancellationToken cancellationToken = default)
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Beatmap?>(null);
         }
@@ -87,7 +87,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includeFrozen = false,
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Beatmap>>([]);

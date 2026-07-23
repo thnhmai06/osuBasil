@@ -8,6 +8,7 @@ using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Performance;
@@ -79,10 +80,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
         services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
         services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
-        services.AddSingleton<IMatchEventBus, InMemoryMatchEventBus>();
+        services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
+        services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
 
         services.AddHostedService<TcpIrcListener>();
         services.AddHostedService<BeatmapWatcherService>();
+        services.AddHostedService<MapsetGarbageCollectorService>();
 
         return services;
     }

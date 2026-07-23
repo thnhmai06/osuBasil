@@ -5,7 +5,7 @@ namespace Basil.Application.Services.Bot;
 
 /// <summary>
 ///     Fresh command-dispatch layer for BanchoBot — deliberately not a resurrection of the deleted
-///     ICommand/MpCommandDispatcher architecture (see docs/scope-decisions.md). Returns the bot's
+///     ICommand/MpCommandDispatcher architecture (see docs/working-scopes.md). Returns the bot's
 ///     reply text, or null when the message isn't a recognized command (or fails a permission check,
 ///     matching bancho.py's silent-ignore behavior for unauthorized !mp use).
 /// </summary>

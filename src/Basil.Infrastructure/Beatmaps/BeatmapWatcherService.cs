@@ -32,7 +32,7 @@ public sealed class BeatmapWatcherService(
         watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite;
         watcher.Created += (_, e) => Debounce(AffectedPath(path, e.FullPath));
         watcher.Changed += (_, e) => Debounce(AffectedPath(path, e.FullPath));
-        watcher.Renamed += (_, e) => Debounce(AffectedPath(path, e.FullPath));
+        watcher.Renamed += (_, e) => DebounceRenamed(path, e);
         watcher.Deleted += (_, e) => Debounce(AffectedPath(path, e.FullPath));
         watcher.Error += (_, e) => logger.LogWarning(e.GetException(), "Mapsets FileSystemWatcher error.");
         watcher.EnableRaisingEvents = true;
@@ -59,6 +59,30 @@ public sealed class BeatmapWatcherService(
         return Path.Combine(root, firstSegment);
     }
 
+    /// <summary>
+    ///     A rename into a `.deleted_`-suffixed name (see
+    ///     <see cref="BeatmapIngestionService.DeletedFolderInfix" /> — the atomic marker the `api.`
+    ///     host's async mapset-delete route uses) means the folder's *new* name is never a live
+    ///     mapset. Debouncing on the *old* path instead lets <see cref="Settle" />'s own
+    ///     Directory.Exists/File.Exists checks naturally resolve it to
+    ///     <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" /> — the old path no longer
+    ///     exists on disk, and its name (unlike the new one) still carries the mapset's real leading
+    ///     id. Any other rename (e.g. a human renaming a mapset folder) still debounces on the new
+    ///     path as before.
+    /// </summary>
+    private void DebounceRenamed(string root, RenamedEventArgs e)
+    {
+        var newAffected = AffectedPath(root, e.FullPath);
+        if (newAffected is not null && Path.GetFileName(newAffected)
+                .Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
+        {
+            Debounce(AffectedPath(root, e.OldFullPath));
+            return;
+        }
+
+        Debounce(newAffected);
+    }
+
     private void Debounce(string? affected)
     {
         if (affected is null) return;
@@ -76,6 +100,11 @@ public sealed class BeatmapWatcherService(
     {
         _timers.TryRemove(affected, out var timer);
         if (timer is not null) await timer.DisposeAsync();
+
+        // A `.deleted_` folder is mid-deletion (rename-in-place done, physical removal pending the
+        // GC pass) — never a live mapset, so no reconciliation pathway applies to it.
+        if (Path.GetFileName(affected).Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
+            return;
 
         try
         {

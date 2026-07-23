@@ -22,9 +22,9 @@ public class SpectateFramesHandlerTests
         host.AddSpectator(spectator1);
         host.AddSpectator(spectator2);
         var rawFrameData = new byte[] { 1, 2, 3, 4, 5 };
-        var eventBus = new MultiplayerTestSupport.FakeMatchEventBus();
+        var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(eventBus).HandleAsync(host, new BanchoPacketReader(rawFrameData));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(rawFrameData));
 
         var expected = ServerPacketWriter.SpectateFrames(rawFrameData);
         Assert.Equal(expected, spectator1.Dequeue());
@@ -35,37 +35,38 @@ public class SpectateFramesHandlerTests
     public async Task Handle_NoSpectators_NoOp()
     {
         var host = MakePlayer(1, "host");
-        var eventBus = new MultiplayerTestSupport.FakeMatchEventBus();
+        var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(eventBus).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
 
         Assert.Empty(host.Dequeue());
     }
 
     [Fact]
-    public async Task Handle_SpectatedPlayerNotInAMatch_DoesNotPublishInputFrame()
+    public async Task Handle_SpectatedPlayerNotInAMatch_StillPublishesInputFrameByPlayerId()
     {
         var host = MakePlayer(1, "host");
-        var eventBus = new MultiplayerTestSupport.FakeMatchEventBus();
+        var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(eventBus).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
 
-        Assert.Empty(eventBus.InputPublishes);
+        var publish = Assert.Single(playerInputEvents.Publishes);
+        Assert.Equal(host.Id, publish.PlayerId);
     }
 
     [Fact]
-    public async Task Handle_SpectatedPlayerInAMatch_PublishesInputFrameForThatMatch()
+    public async Task Handle_SpectatedPlayerInAMatch_AlsoPublishesInputFrameByPlayerId()
     {
         var host = MakePlayer(1, "host");
         var fixture = new MultiplayerTestSupport.Fixture();
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership
-            .CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id))
-            .GetAwaiter().GetResult()!;
+        fixture.MatchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id))
+            .GetAwaiter().GetResult();
+        var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(fixture.EventBus).HandleAsync(host, new BanchoPacketReader(new byte[] { 9 }));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 9 }));
 
-        var publish = Assert.Single(fixture.EventBus.InputPublishes);
-        Assert.Equal(match.DbId, publish.MatchDbId);
+        var publish = Assert.Single(playerInputEvents.Publishes);
+        Assert.Equal(host.Id, publish.PlayerId);
     }
 }

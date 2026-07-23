@@ -121,7 +121,7 @@ public class ClientIntegrityServiceTests
         Assert.Equal(ClientIntegrityResult.StopSending, result);
 
         var expectedWarning = ServerPacketWriter.SendMessage("BasilBot",
-            "Anti-cheat flag for host: hq!osu relife multiaccounting tool registry edits detected",
+            "Anti-cheat flag for host: hq!osu tool registry edits detected",
             match.ChatChannelName, BotBootstrapService.BotId);
         Assert.Contains(expectedWarning, MultiplayerTestSupport.Chunk(host.Dequeue()));
     }

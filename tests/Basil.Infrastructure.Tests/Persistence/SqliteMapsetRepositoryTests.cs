@@ -58,7 +58,7 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
         await _mapsetRepository.DeleteAsync(mapset.Id);
 
         Assert.Null(await _mapsetRepository.FetchByIdAsync(mapset.Id));
-        Assert.Null(await _mapRepository.FetchOneAsync(beatmap.Id, includeFrozen: true));
+        Assert.Null(await _mapRepository.FetchOneAsync(beatmap.Id, includePrivate: true));
     }
 
     [Fact]
@@ -82,5 +82,54 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 
         Assert.Contains(9020, ids);
         Assert.Contains(9021, ids);
+    }
+
+    [Fact]
+    public async Task SetFrozenAsync_TogglesIsFrozen()
+    {
+        var mapset = MakeMapset(9030);
+        await _mapsetRepository.UpsertAsync(mapset);
+
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, true);
+        Assert.True((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, false);
+        Assert.False((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+    }
+
+    [Fact]
+    public async Task FetchPageAsync_OnlyWithVisibleBeatmaps_ExcludesMapsetsWithNoPublicBeatmap()
+    {
+        var visible = MakeMapset(9040);
+        var privateOnly = MakeMapset(9041);
+        await _mapsetRepository.UpsertAsync(visible);
+        await _mapsetRepository.UpsertAsync(privateOnly);
+        await _mapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
+            TimeSpan.FromSeconds(120), 500, false, 0, 0,
+            new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5)));
+        await _mapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
+            TimeSpan.FromSeconds(120), 500, true, 0, 0,
+            new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5)));
+
+        var visibleOnly = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: true);
+        var everything = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: false);
+
+        Assert.Contains(visibleOnly, m => m.Id == 9040);
+        Assert.DoesNotContain(visibleOnly, m => m.Id == 9041);
+        Assert.Contains(everything, m => m.Id == 9040);
+        Assert.Contains(everything, m => m.Id == 9041);
+    }
+
+    [Fact]
+    public async Task Upsert_ExistingFrozenMapset_ReingestionDoesNotClearFreeze()
+    {
+        var mapset = MakeMapset(9031);
+        await _mapsetRepository.UpsertAsync(mapset);
+        await _mapsetRepository.SetFrozenAsync(mapset.Id, true);
+
+        var reingested = await _mapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+
+        Assert.True(reingested.IsFrozen);
+        Assert.True((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
     }
 }

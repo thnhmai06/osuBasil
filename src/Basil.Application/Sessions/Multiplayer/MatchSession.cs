@@ -39,6 +39,26 @@ public sealed class MatchSession(
     /// <summary>Held for the duration of any read-then-mutate-then-broadcast sequence on this match's slots or settings.</summary>
     public SemaphoreSlim Lock { get; } = new(1, 1);
 
+    /// <summary>
+    ///     Lock-free full-snapshot/delta state for the `api.` host's `GET /match/{id}` live SSE
+    ///     channel — see <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded
+    ///     by <see cref="Lock" />.
+    /// </summary>
+    public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new();
+
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/settings` channel.</summary>
+    public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
+
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/live` channel.</summary>
+    public SnapshotChannel<MatchLiveStatus> LiveSnapshot { get; } = new();
+
+    /// <summary>
+    ///     One <see cref="SnapshotChannel{T}" /> per slot (0-based, matching <see cref="Slots" />), for
+    ///     the `GET /match/{id}/live/{slotIndex}` channel's "slot" sub-event.
+    /// </summary>
+    public IReadOnlyList<SnapshotChannel<MatchLiveSlot>> SlotSnapshots { get; } =
+        [.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchLiveSlot>())];
+
     public int Id { get; } = id;
     public string Name { get; set; } = name;
     public string Password { get; set; } = password;
@@ -98,6 +118,14 @@ public sealed class MatchSession(
     ///     (see MatchMembershipService.TeardownMatch) so no announcement fires into a dead channel.
     /// </summary>
     public CancellationTokenSource? PendingTimer { get; set; }
+
+    /// <summary>
+    ///     True when <see cref="PendingTimer" /> is a `!mp start &lt;seconds&gt;` countdown that will
+    ///     actually start the match when it reaches zero, as opposed to a plain `!mp timer` (which only
+    ///     announces). A gameplay-affecting settings change (map, team type, win condition, size, a
+    ///     player's team) cancels only this kind — see MatchMembershipService.CancelQueuedAutoStart.
+    /// </summary>
+    public bool PendingTimerIsAutoStart { get; set; }
 
     /// <summary>
     ///     The persistent database Matches.Id for this room, distinct from <see cref="Id" /> (the

@@ -1,7 +1,12 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Services.Bot;
+using Basil.Application.Sessions;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
+using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Packets;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -85,21 +90,139 @@ public class MatchChangeSettingsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MapChosenButUnknownServerSide_FallsBackToClientSuppliedInfo()
+    public async Task Handle_MapChosenButUnknownServerSide_ReportsErrorAndLeavesMapUnchanged()
     {
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
-        fixture.RegisterAll(host);
+        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+        fixture.RegisterAll(host, bot);
         var match = fixture.CreateMatch(host);
         match.MapId = -1;
+        var previousMd5 = match.MapMd5;
+        var previousName = match.MapName;
         var newMd5 = new string('c', 32);
         _mapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
 
         await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
 
-        Assert.Equal(777, match.MapId);
-        Assert.Equal(newMd5, match.MapMd5);
-        Assert.Equal("Unknown Map", match.MapName);
+        Assert.Equal(-1, match.MapId);
+        Assert.Equal(previousMd5, match.MapMd5);
+        Assert.Equal(previousName, match.MapName);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+                match.ChatChannelName, bot.Id),
+            Chunk(host.Dequeue()));
+    }
+
+    private static (Fixture Fixture, PlayerSession Host, PlayerSession Bot, MatchSession Match)
+        SetUpMatchWithPendingAutoStart()
+    {
+        var fixture = new Fixture();
+        var host = MakePlayer(1, "host");
+        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+        fixture.RegisterAll(host, bot);
+        var match = fixture.CreateMatch(host);
+        match.PendingTimer = new CancellationTokenSource();
+        match.PendingTimerIsAutoStart = true;
+        return (fixture, host, bot, match);
+    }
+
+    private static void AssertAutoStartCancelled(MatchSession match, PlayerSession host, PlayerSession bot)
+    {
+        Assert.Null(match.PendingTimer);
+        Assert.False(match.PendingTimerIsAutoStart);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+                match.ChatChannelName, bot.Id),
+            Chunk(host.Dequeue()));
+    }
+
+    [Fact]
+    public async Task Handle_MapCleared_CancelsPendingAutoStart()
+    {
+        var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
+
+        await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
+
+        AssertAutoStartCancelled(match, host, bot);
+    }
+
+    [Fact]
+    public async Task Handle_MapResolvedSuccessfully_CancelsPendingAutoStart()
+    {
+        var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
+        match.MapId = -1;
+        var newMd5 = new string('d', 32);
+        var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+        var bmap = new Beatmap(
+            newMd5, 500, mapset, "V", "map.osu", TimeSpan.FromSeconds(60), 100, false, 0, 0,
+            new Difficulty(GameMode.Standard, 120, 4, 9, 8, 5, 5.0));
+        _mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
+
+        await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Client Map Name", 999, newMd5, host.Id));
+
+        AssertAutoStartCancelled(match, host, bot);
+    }
+
+    [Fact]
+    public async Task Handle_TeamTypeChanged_CancelsPendingAutoStart()
+    {
+        var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
+
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id, teamType: 2));
+
+        AssertAutoStartCancelled(match, host, bot);
+    }
+
+    [Fact]
+    public async Task Handle_WinConditionChanged_CancelsPendingAutoStart()
+    {
+        var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        host.Dequeue();
+
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id,
+                winCondition: 2));
+
+        AssertAutoStartCancelled(match, host, bot);
+    }
+
+    [Fact]
+    public async Task Handle_OnlyNameChanged_LeavesPendingAutoStartRunning()
+    {
+        var (fixture, host, _, match) = SetUpMatchWithPendingAutoStart();
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        var cts = match.PendingTimer;
+
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, "renamed", "", match.MapName, match.MapId, match.MapMd5, host.Id));
+
+        Assert.Same(cts, match.PendingTimer);
+        Assert.True(match.PendingTimerIsAutoStart);
+    }
+
+    [Fact]
+    public async Task Handle_OnlyFreemodsChanged_LeavesPendingAutoStartRunning()
+    {
+        var (fixture, host, _, match) = SetUpMatchWithPendingAutoStart();
+        var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+        var cts = match.PendingTimer;
+
+        await handler.HandleAsync(host,
+            MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id,
+                freeMods: true));
+
+        Assert.Same(cts, match.PendingTimer);
+        Assert.True(match.PendingTimerIsAutoStart);
     }
 }

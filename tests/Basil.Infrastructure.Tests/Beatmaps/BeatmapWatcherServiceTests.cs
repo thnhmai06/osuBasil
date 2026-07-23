@@ -30,7 +30,8 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
         {
             ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
         });
-        var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeDifficultyCalculator(), options, _ingestionLog);
+        var scores = new SqliteScoreRepository(fixture.ConnectionString);
+        var ingestion = new BeatmapIngestionService(_maps, mapsets, scores, new FakeDifficultyCalculator(), options, _ingestionLog);
         _watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
     }
 
@@ -59,13 +60,60 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
             var deadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < deadline &&
-                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true) is null)
+                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
                 await Task.Delay(200);
 
-            var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includeFrozen: true);
+            var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
             Assert.True(found is not null,
                 "Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
                 " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+        }
+        finally
+        {
+            await _watcher.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task RenamingMapsetFolderToDeletedMarker_RemovesMapsetWithoutReingestingIt()
+    {
+        await _watcher.StartAsync(CancellationToken.None);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+            await Task.Delay(300);
+            File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+
+            var folder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
+            Directory.CreateDirectory(folder);
+            File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
+                Path.Combine(folder, "vivid_osu_file.osu"));
+
+            var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < ingestDeadline &&
+                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
+                await Task.Delay(200);
+
+            var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
+            Assert.NotNull(beatmap);
+
+            // ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
+            // parses the Mapset id from the folder's own leading digits — rename to the actually
+            // resolved id first, matching every other test here that relies on that lookup.
+            var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
+                new StorageOptions { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+                beatmap!.Mapset);
+            Directory.Move(folder, resolvedFolder);
+
+            var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
+            Directory.Move(resolvedFolder, deletedFolder);
+
+            var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < deleteDeadline &&
+                   await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true) is not null)
+                await Task.Delay(200);
+
+            Assert.Null(await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true));
         }
         finally
         {

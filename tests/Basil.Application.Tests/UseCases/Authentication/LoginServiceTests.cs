@@ -5,6 +5,8 @@ using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Beatmaps;
@@ -35,17 +37,31 @@ public class LoginServiceTests
     private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
+    private readonly SpectatorService _spectatorService;
+
+    public LoginServiceTests()
+    {
+        _spectatorService = new SpectatorService(_channelRegistry,
+            new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+    }
+
     private LoginService MakeUseCase()
     {
         return new LoginService(
             _users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
             _relationships, _passwordHasher, _leaderboardStore,
-            _tokenGenerator,
+            _tokenGenerator, _spectatorService,
             Options.Create(new ServerOptions
             {
                 Domain = "test.local", MenuIconPath = "icon.png",
                 MenuOnclickUrl = "https://a"
             }));
+    }
+
+    private static PlayerSession MakeBot()
+    {
+        return new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
     }
 
     private static byte[] LoginBody(
@@ -143,6 +159,30 @@ public class LoginServiceTests
 
         _sessionRegistry.Received(1).Remove(existing);
         Assert.Equal("incorrect-credentials", result.OsuToken);
+    }
+
+    [Fact]
+    public async Task DuplicateExpiredSession_RemovesOldSessionsBotSpectateRelationship()
+    {
+        // #spec_{userId} is keyed by the persistent user id, stable across relogins — without this
+        // cleanup a relogin would pile a dead member reference onto the previous session's channel.
+        var bot = MakeBot();
+        _sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+        var existing = new PlayerSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        {
+            LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
+        };
+        existing.AddSpectator(bot);
+        bot.Spectating = existing;
+        _sessionRegistry.GetByName("cmyui").Returns(existing);
+        _users.FetchByNameAsync("cmyui").Returns((User?)null);
+        var useCase = MakeUseCase();
+        var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+        await useCase.ExecuteAsync(request);
+
+        Assert.Empty(existing.Spectators);
+        Assert.Null(bot.Spectating);
     }
 
     [Fact]
@@ -278,6 +318,24 @@ public class LoginServiceTests
         await _users.Received(1).UpdatePrivilegesAsync(user.Id, UserPrivileges.Unrestricted | UserPrivileges.Verified,
             Arg.Any<CancellationToken>());
         _sessionRegistry.Received(1).Add(Arg.Is<PlayerSession>(s => s.Id == user.Id && s.Token == "generated-token"));
+    }
+
+    [Fact]
+    public async Task HappyPath_BotStartsSpectatingTheNewSession()
+    {
+        var bot = MakeBot();
+        _sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+        SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+        PlayerSession? captured = null;
+        _sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
+
+        var useCase = MakeUseCase();
+        var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+        await useCase.ExecuteAsync(request);
+
+        Assert.NotNull(captured);
+        Assert.Contains(bot, captured!.Spectators);
     }
 
     [Fact]

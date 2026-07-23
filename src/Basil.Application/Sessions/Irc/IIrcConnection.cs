@@ -20,6 +20,6 @@ public interface IIrcConnection
     /// </summary>
     bool IsExternalIrcClient { get; }
 
-    /// <summary>Must never block on I/O — mirrors <c>IMatchEventBus</c>'s non-blocking publish contract.</summary>
+    /// <summary>Must never block on I/O — mirrors <c>IMatchLiveEvents</c>'s non-blocking publish contract.</summary>
     void Send(IrcMessage message);
 }

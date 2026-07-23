@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
@@ -26,7 +27,7 @@ public class PlayerLogoutServiceTests
         Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
         Substitute.For<IPlayerSessionRegistry>(),
         new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
-        Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchEventBus>(),
+        Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
         Substitute.For<IMapRepository>());
 
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
@@ -103,6 +104,22 @@ public class PlayerLogoutServiceTests
     }
 
     [Fact]
+    public void Logout_PlayerWhoseOnlySpectatorIsTheBot_RemovesBotSpectateRelationship()
+    {
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+        _sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        player.AddSpectator(bot);
+        bot.Spectating = player;
+
+        MakeService().Logout(player);
+
+        Assert.Empty(player.Spectators);
+        Assert.Null(bot.Spectating);
+    }
+
+    [Fact]
     public void Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
     {
         var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
@@ -111,7 +128,7 @@ public class PlayerLogoutServiceTests
         var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
             new ChannelMembershipService(sessionRegistry, channelRegistry),
             new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
-            new MultiplayerTestSupport.FakeMatchEventBus(),
+            new MultiplayerTestSupport.FakeMatchLiveEvents(),
             Substitute.For<IMapRepository>());
         var host = new PlayerSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         sessionRegistry.All.Returns([host]);

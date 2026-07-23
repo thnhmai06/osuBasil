@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basil API Documentation</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 4rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: #1b1b1f;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e4e4e7; background: #17171a; }
+    .card { border-color: #3a3a40 !important; background: #1f1f23 !important; }
+    .card p { color: #b8b8c0 !important; }
+    a { color: #8ab4ff; }
+  }
+  h1 { font-size: 2rem; margin-bottom: .25rem; }
+  p.subtitle { color: #666; margin-top: 0; }
+  .cards { display: grid; gap: 1rem; margin-top: 2rem; }
+  .card {
+    display: block;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .1s ease;
+  }
+  .card:hover { transform: translateY(-2px); }
+  .card h2 { margin: 0 0 .35rem; font-size: 1.15rem; }
+  .card p { margin: 0; color: #555; font-size: .92rem; }
+</style>
+</head>
+<body>
+
+<h1>Basil API Documentation</h1>
+<p class="subtitle">A private osu! (stable) tournament server — API reference and bot command wiki.</p>
+
+<div class="cards">
+  <a class="card" href="osu-client/">
+    <h2>osu! Client API</h2>
+    <p>The osu! stable client's own protocol: the bancho binary protocol, the osu!web HTTP endpoints, beatmap
+      asset redirects, and avatar files.</p>
+  </a>
+  <a class="card" href="basil-api/">
+    <h2>Basil API</h2>
+    <p>Basil's own tournament-facing HTTP API: match reports, live SSE channels, file downloads, and
+      admin-key-gated management CRUD.</p>
+  </a>
+  <a class="card" href="basilbot/">
+    <h2>BasilBot Commands</h2>
+    <p>Chat commands for Basil's bot account — general commands and multiplayer/tournament match control.</p>
+  </a>
+</div>
+
+</body>
+</html>

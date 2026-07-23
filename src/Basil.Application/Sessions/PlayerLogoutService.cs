@@ -1,3 +1,4 @@
+using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions.Channels;
@@ -32,6 +33,12 @@ public sealed class PlayerLogoutService(
         }
 
         if (player.Spectating is { } host) spectatorService.RemoveSpectator(host, player);
+
+        // #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
+        // BasilBot's own watch of this departing player now, or the channel would be left with a
+        // dead member reference until this same user logs back in and re-triggers AddSpectator.
+        var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+        if (bot is not null) spectatorService.RemoveSpectator(player, bot);
 
         foreach (var channelName in player.Channels.ToArray())
         {

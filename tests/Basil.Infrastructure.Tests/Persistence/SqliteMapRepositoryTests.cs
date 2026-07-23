@@ -19,11 +19,11 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
             new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
-    private static Beatmap MakeBeatmap(int id, string md5, bool isFrozen = false)
+    private static Beatmap MakeBeatmap(int id, string md5, bool isPrivate = false)
     {
         return new Beatmap(md5, id, MakeMapset(1000 + id), "Hyper",
             $"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu", TimeSpan.FromSeconds(120), 500,
-            isFrozen, 0, 0, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5));
+            isPrivate, 0, 0, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5));
     }
 
     private async Task<Beatmap> UpsertBeatmapAsync(Beatmap beatmap)
@@ -143,19 +143,19 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
     }
 
     [Fact]
-    public async Task FetchOne_FrozenBeatmap_HiddenByDefault_VisibleWithIncludeFrozen()
+    public async Task FetchOne_PrivateBeatmap_HiddenByDefault_VisibleWithIncludePrivate()
     {
-        var bmap = MakeBeatmap(108, "gg00000000000000000000000000gg", isFrozen: true);
+        var bmap = MakeBeatmap(108, "gg00000000000000000000000000gg", isPrivate: true);
         await UpsertBeatmapAsync(bmap);
 
         Assert.Null(await _repository.FetchOneAsync(bmap.Id));
-        var fetched = await _repository.FetchOneAsync(bmap.Id, includeFrozen: true);
+        var fetched = await _repository.FetchOneAsync(bmap.Id, includePrivate: true);
         Assert.NotNull(fetched);
-        Assert.True(fetched.IsFrozen);
+        Assert.True(fetched.IsPrivate);
     }
 
     [Fact]
-    public async Task FetchAllBySetId_ExcludesFrozenByDefault_IncludesWithFlag()
+    public async Task FetchAllBySetId_ExcludesPrivateByDefault_IncludesWithFlag()
     {
         var setId = 5050;
         var mapset = MakeMapset(setId);
@@ -167,10 +167,10 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
         await UpsertBeatmapAsync(frozen);
 
         var defaultResult = await _repository.FetchAllBySetIdAsync(setId);
-        var includingFrozen = await _repository.FetchAllBySetIdAsync(setId, includeFrozen: true);
+        var includingPrivate = await _repository.FetchAllBySetIdAsync(setId, includePrivate: true);
 
         Assert.Single(defaultResult);
-        Assert.Equal(2, includingFrozen.Count);
+        Assert.Equal(2, includingPrivate.Count);
     }
 
     private static Beatmap MakeBeatmap(int id, int setId, string md5, string artist, double diff,
@@ -240,15 +240,15 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
     }
 
     [Fact]
-    public async Task SearchAsync_ExcludesFrozenBeatmaps()
+    public async Task SearchAsync_ExcludesPrivateBeatmaps()
     {
         var setId = 5060;
-        var mapset = MakeMapset(setId, artist: "FrozenSearchArtist260");
+        var mapset = MakeMapset(setId, artist: "PrivateSearchArtist260");
         var frozen = new Beatmap(new string('p', 32), 260, mapset, "Diff", "p.osu",
             TimeSpan.FromSeconds(120), 500, true, 0, 0, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 1.0));
         await UpsertBeatmapAsync(frozen);
 
-        var results = await _repository.SearchAsync("FrozenSearchArtist260", null, 0, 100);
+        var results = await _repository.SearchAsync("PrivateSearchArtist260", null, 0, 100);
 
         Assert.Empty(results);
     }

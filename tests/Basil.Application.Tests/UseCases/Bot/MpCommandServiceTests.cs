@@ -246,6 +246,33 @@ public class MpCommandServiceTests
     }
 
     [Fact]
+    public async Task HandleAsync_Settings_BeatmapExists_ShowsBeatmapInfo()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+        var bmap = MultiplayerTestSupport.MakeBeatmap(match.MapId);
+        _maps.FetchOneAsync(id: match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+
+        var reply = await MakeService().HandleAsync(host, match, "settings", []);
+
+        Assert.Contains($"Beatmap: {bmap.Id} {bmap.FullName}", reply);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Settings_BeatmapMissingFromDb_ShowsNotFound()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+        _maps.FetchOneAsync(id: match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns((Beatmap?)null);
+
+        var reply = await MakeService().HandleAsync(host, match, "settings", []);
+
+        Assert.Contains("Beatmap: Not found", reply);
+    }
+
+    [Fact]
     public async Task HandleAsync_AddRefThenListRefs_ReflectsAddition()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
@@ -477,6 +504,7 @@ public class MpCommandServiceTests
 
         Assert.False(match.InProgress);
         Assert.NotNull(match.PendingTimer);
+        Assert.True(match.PendingTimerIsAutoStart);
         Assert.Equal("Match starts in 30 seconds", reply);
 
         await match.PendingTimer?.CancelAsync();
@@ -493,6 +521,7 @@ public class MpCommandServiceTests
 
         Assert.NotNull(match.PendingTimer);
         Assert.False(match.InProgress);
+        Assert.False(match.PendingTimerIsAutoStart);
         Assert.Equal("Countdown started: 10 seconds", reply);
 
         await match.PendingTimer?.CancelAsync();
@@ -537,15 +566,85 @@ public class MpCommandServiceTests
         var reply = await service.HandleAsync(host, match, "aborttimer", []);
 
         Assert.Null(match.PendingTimer);
+        Assert.False(match.PendingTimerIsAutoStart);
         Assert.True(cts!.IsCancellationRequested);
         Assert.Equal("Countdown aborted", reply);
+    }
+
+    [Theory]
+    [InlineData("size", new[] { "5" })]
+    [InlineData("set", new[] { "2" })]
+    [InlineData("team", new[] { "guest", "red" })]
+    public async Task HandleAsync_GameplaySettingChange_CancelsQueuedAutoStart(string subcommand, string[] args)
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var guest = MultiplayerTestSupport.MakePlayer(2, "guest");
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+        _fixture.RegisterAll(host, guest, bot);
+        var match = _fixture.CreateMatch(host);
+        _fixture.MatchMembership.Join(guest, match, "");
+        var service = MakeService();
+        await service.HandleAsync(host, match, "start", ["30"]);
+        var cts = match.PendingTimer;
+        host.Dequeue();
+
+        await service.HandleAsync(host, match, subcommand, args);
+
+        Assert.Null(match.PendingTimer);
+        Assert.False(match.PendingTimerIsAutoStart);
+        Assert.True(cts!.IsCancellationRequested);
+        Assert.Contains(
+            ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+                match.ChatChannelName, bot.Id),
+            MultiplayerTestSupport.Chunk(host.Dequeue()));
+    }
+
+    [Fact]
+    public async Task HandleAsync_MapChange_CancelsQueuedAutoStart()
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+        _fixture.RegisterAll(host, bot);
+        var match = _fixture.CreateMatch(host);
+        var bmap = MultiplayerTestSupport.MakeBeatmap(200);
+        _maps.FetchOneAsync(200, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+        var service = MakeService();
+        await service.HandleAsync(host, match, "start", ["30"]);
+
+        await service.HandleAsync(host, match, "map", ["200"]);
+
+        Assert.Null(match.PendingTimer);
+        Assert.False(match.PendingTimerIsAutoStart);
+    }
+
+    [Theory]
+    [InlineData("name", new[] { "renamed" })]
+    [InlineData("password", new[] { "secret" })]
+    public async Task HandleAsync_NonGameplaySettingChange_LeavesQueuedAutoStartRunning(string subcommand,
+        string[] args)
+    {
+        var host = MultiplayerTestSupport.MakePlayer(1, "host");
+        _fixture.RegisterAll(host);
+        var match = _fixture.CreateMatch(host);
+        var service = MakeService();
+        await service.HandleAsync(host, match, "start", ["30"]);
+        var cts = match.PendingTimer;
+
+        await service.HandleAsync(host, match, subcommand, args);
+
+        Assert.Same(cts, match.PendingTimer);
+        Assert.True(match.PendingTimerIsAutoStart);
+
+        await match.PendingTimer!.CancelAsync();
     }
 
     /// <summary>
     ///     Diagnostic/regression test for the real end-to-end announce pipeline (checkpoint computation
     ///     alone is covered by <see cref="ComputeAnnounceCheckpoints_ReturnsExpectedMarks" />, but every
     ///     other timer test cancels the countdown immediately, so nothing exercises whether
-    ///     <see cref="MpCommandService.CountdownLoopAsync" />'s fire-and-forget task actually reaches
+    ///     <see cref="Basil.Application.Services.Multiplayer.MatchControlService" />'s fire-and-forget task actually reaches
     ///     the match channel with a real bot session registered).
     /// </summary>
     [Fact]
@@ -575,7 +674,12 @@ public class MpCommandServiceTests
     [InlineData(5, new[] { 4, 3, 2, 1 })]
     [InlineData(3, new[] { 2, 1 })]
     [InlineData(45, new[] { 30, 10, 5, 4, 3, 2, 1 })]
-    [InlineData(61, new[] { 60, 30, 10, 5, 4, 3, 2, 1 })]
+    // 60 is within the 5s near-total ignore window (61-60=1) — announcing it right after
+    // "Queued...61 seconds" would be redundant, so it's dropped.
+    [InlineData(61, new[] { 30, 10, 5, 4, 3, 2, 1 })]
+    [InlineData(65, new[] { 30, 10, 5, 4, 3, 2, 1 })]
+    // Long countdowns get an extra reminder every 60s on top of the fixed marks.
+    [InlineData(300, new[] { 240, 180, 120, 60, 30, 10, 5, 4, 3, 2, 1 })]
     public void ComputeAnnounceCheckpoints_ReturnsExpectedMarks(int total, int[] expected)
     {
         var result = MpCommandService.ComputeAnnounceCheckpoints(total);

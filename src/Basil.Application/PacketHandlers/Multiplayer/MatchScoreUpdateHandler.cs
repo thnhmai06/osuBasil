@@ -11,11 +11,11 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 ///     Ported from app/api/domains/cho.py's MatchScoreUpdate — runs very frequently during a match,
 ///     so the bancho-protocol relay stays a raw forward (no parsing) exactly like the Python source's
 ///     "fastpath" comment. The one addition here is decoding the same bytes into a
-///     <see cref="Protocol.Multiplayer.ScoreFrameData" /> to publish on the api. host's WS
-///     /multi/{id}/{playerName} live channel — a second, independent read of the same buffer, not a
+///     <see cref="Protocol.Multiplayer.ScoreFrameData" /> to publish on the api. host's SSE
+///     /match/{id}/{playerName} live channel — a second, independent read of the same buffer, not a
 ///     change to the relayed packet.
 /// </summary>
-public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership, IMatchEventBus eventBus)
+public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership, IMatchLiveEvents eventBus)
     : IBanchoPacketHandler
 {
     public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;

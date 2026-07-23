@@ -59,6 +59,34 @@ public sealed record ScoreInsertRow(
     int? RoundId = null,
     MatchTeam? Team = null);
 
+/// <summary>One score's full row, for the public `GET /score/{id}` route — includes `IsInvalidated`,
+/// which the API surfaces as a flag rather than hiding the score entirely.</summary>
+public sealed record ScoreRow(
+    long Id,
+    int? RoundId,
+    MatchTeam? Team,
+    string MapMd5,
+    long Score,
+    double Accuracy,
+    int MaxCombo,
+    Mods Mods,
+    int N300,
+    int N100,
+    int N50,
+    int NMiss,
+    int NGeki,
+    int NKatu,
+    string Grade,
+    GameMode Mode,
+    DateTime PlayTime,
+    int TimeElapsed,
+    ClientFlags ClientFlags,
+    int UserId,
+    bool Perfect,
+    string OnlineChecksum,
+    DateTime SubmittedAt,
+    bool IsInvalidated);
+
 public interface IScoreRepository
 {
     /// <summary>Ported from ScoresRepository.create. Returns the new row's auto-increment id.</summary>
@@ -80,6 +108,16 @@ public interface IScoreRepository
     /// <summary>Ported from the `score.player`/`score.mode` reads in ReplayService.fetch_replay_file.</summary>
     Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
 
+    /// <summary>One score's full row, for the public `GET /score/{id}` route. Null if no score with this id exists.</summary>
+    Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default);
+
     /// <summary>For MatchReportService (the TRT builder) — every score linked to one Round.</summary>
     Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Flags every score on <paramref name="mapMd5" /> as invalidated — never a hard delete. Called
+    ///     by the beatmap ingestion cascade whenever a beatmap's content changes or its file/mapset
+    ///     disappears, so a player's own historical record survives a metadata fix or map removal.
+    /// </summary>
+    Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default);
 }

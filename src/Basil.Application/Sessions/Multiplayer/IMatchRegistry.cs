@@ -11,7 +11,7 @@ public interface IMatchRegistry
     MatchSession? GetById(int id);
 
     /// <summary>
-    ///     New for the api. host's /multi/{id} routes, which key by the persistent Matches.Id
+    ///     New for the api. host's /match/{id} routes, which key by the persistent Matches.Id
     ///     (<see cref="MatchSession.DbId" />) rather than the 0-63 wire-protocol slot <see cref="GetById" /> uses.
     /// </summary>
     MatchSession? GetByDbId(int dbId);

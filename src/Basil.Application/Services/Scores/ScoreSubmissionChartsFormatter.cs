@@ -11,7 +11,7 @@ namespace Basil.Application.Services.Scores;
 ///     automatically, so the field is kept (preserving the protocol's key/value shape for the osu!
 ///     client's result-screen parser) without any pp-specific special-casing. The "overall" (profile
 ///     stats) section has no before/after delta to show — stats are fixed, not updated on submission
-///     (see docs/scope-decisions.md) — so every overall entry is emitted empty rather than fetching
+///     (see docs/working-scopes.md) — so every overall entry is emitted empty rather than fetching
 ///     stats that would never have actually changed.
 /// </summary>
 public static class ScoreSubmissionChartsFormatter

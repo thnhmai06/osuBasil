@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Scores;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
@@ -30,6 +31,7 @@ namespace Basil.Infrastructure.Beatmaps;
 public sealed partial class BeatmapIngestionService(
     IMapRepository maps,
     IMapsetRepository mapsets,
+    IScoreRepository scores,
     IDifficultyCalculator difficultyCalculator,
     IOptions<StorageOptions> options,
     ILogger<BeatmapIngestionService> logger)
@@ -39,6 +41,10 @@ public sealed partial class BeatmapIngestionService(
     // beatmap's title is a perfectly valid path character there and is left alone.
     private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
     private static readonly Regex LeadingIdPattern = MyRegex();
+
+    /// <summary>Marker infix for a mapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
+    /// doc comment and the `api.` host's async mapset delete route) — never treated as a live mapset.</summary>
+    public const string DeletedFolderInfix = ".deleted_";
 
     public static string MapsetFolderName(Mapset mapset)
     {
@@ -98,6 +104,7 @@ public sealed partial class BeatmapIngestionService(
         foreach (var folder in Directory.EnumerateDirectories(path))
         {
             if (!preExistingFolders.Contains(folder)) continue;
+            if (Path.GetFileName(folder).Contains(DeletedFolderInfix, StringComparison.OrdinalIgnoreCase)) continue;
 
             var (count, setId) = await ReconcileFolderAsync(folder, cancellationToken);
             ingested += count;
@@ -113,7 +120,10 @@ public sealed partial class BeatmapIngestionService(
 
         var known = await mapsets.FetchAllIdsAsync(cancellationToken);
         foreach (var orphanId in known.Where(id => !seenSetIds.Contains(id)))
+        {
+            await InvalidateScoresForMapsetAsync(orphanId, cancellationToken);
             await mapsets.DeleteAsync(orphanId, cancellationToken);
+        }
 
         return ingested;
     }
@@ -148,27 +158,37 @@ public sealed partial class BeatmapIngestionService(
 
         var mapset = await ResolveMapsetAsync(decoded, Path.GetFileNameWithoutExtension(oszPath), cancellationToken);
         var targetFolder = MapsetFolderPath(options.Value, mapset);
-        Directory.CreateDirectory(targetFolder);
-
-        await using (var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken))
-        {
-            foreach (var entry in archive.Entries)
-            {
-                if (entry.Name.Length == 0) continue; // directory entry
-
-                var destination = Path.GetFullPath(Path.Combine(targetFolder, entry.FullName));
-                if (!destination.StartsWith(targetFolder, StringComparison.OrdinalIgnoreCase))
-                    continue; // zip-slip guard
-
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                await entry.ExtractToFileAsync(destination, true, cancellationToken);
-            }
-        }
+        await ExtractOszIntoFolderAsync(oszPath, targetFolder, cancellationToken);
 
         File.Delete(oszPath);
 
         var (count, _) = await ReconcileFolderAsync(targetFolder, cancellationToken);
         return (count, mapset.Id);
+    }
+
+    /// <summary>
+    ///     Extracts every entry of a `.osz` archive into <paramref name="targetFolder" /> (overwriting
+    ///     existing files), creating the folder if needed. Filesystem-only — never touches the
+    ///     database; the caller (or the live <see cref="BeatmapWatcherService" />) is responsible for
+    ///     any DB reconciliation that should follow.
+    /// </summary>
+    public static async Task ExtractOszIntoFolderAsync(string oszPath, string targetFolder,
+        CancellationToken cancellationToken = default)
+    {
+        Directory.CreateDirectory(targetFolder);
+
+        await using var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken);
+        foreach (var entry in archive.Entries)
+        {
+            if (entry.Name.Length == 0) continue; // directory entry
+
+            var destination = Path.GetFullPath(Path.Combine(targetFolder, entry.FullName));
+            if (!destination.StartsWith(targetFolder, StringComparison.OrdinalIgnoreCase))
+                continue; // zip-slip guard
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            await entry.ExtractToFileAsync(destination, true, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -197,8 +217,14 @@ public sealed partial class BeatmapIngestionService(
         foreach (var file in decoded)
         {
             var existingByPath = await maps.FetchOneAsync(
-                filename: file.OriginalFilename, setId: mapset.Id, includeFrozen: true,
+                filename: file.OriginalFilename, setId: mapset.Id, includePrivate: true,
                 cancellationToken: cancellationToken);
+
+            // The .osu content changed under the same filename — UpsertAsync below moves this same
+            // beatmap row onto the new md5, so scores keyed to the old md5 would otherwise be
+            // orphaned. Flag them instead of silently losing them.
+            if (existingByPath is not null && existingByPath.Md5 != file.Md5)
+                await scores.InvalidateByMapMd5Async(existingByPath.Md5, cancellationToken);
 
             var info = file.Parsed.BeatmapInfo;
             var mode = (GameMode)info.Ruleset.OnlineID;
@@ -217,7 +243,7 @@ public sealed partial class BeatmapIngestionService(
                 file.OriginalFilename,
                 TimeSpan.FromMilliseconds(info.Length),
                 info.MaxCombo ?? 0,
-                existingByPath?.IsFrozen ?? false,
+                existingByPath?.IsPrivate ?? false,
                 existingByPath?.Plays ?? 0,
                 existingByPath?.Passes ?? 0,
                 new Difficulty(
@@ -230,9 +256,12 @@ public sealed partial class BeatmapIngestionService(
         }
 
         var onDisk = decoded.Select(f => f.OriginalFilename).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var known = await maps.FetchAllBySetIdAsync(mapset.Id, includeFrozen: true, cancellationToken: cancellationToken);
+        var known = await maps.FetchAllBySetIdAsync(mapset.Id, includePrivate: true, cancellationToken: cancellationToken);
         foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
+        {
+            await scores.InvalidateByMapMd5Async(gone.Md5, cancellationToken);
             await maps.DeleteByMd5Async(gone.Md5, cancellationToken);
+        }
 
         return (ingested, mapset.Id);
     }
@@ -245,10 +274,21 @@ public sealed partial class BeatmapIngestionService(
         if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
 
         if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
+        {
+            await InvalidateScoresForMapsetAsync(id, cancellationToken);
             await mapsets.DeleteAsync(id, cancellationToken);
+        }
         // ponytail: a manually-renamed-away-from-convention folder that's then deleted leaves an
         // orphan row until the next ReconcileAllAsync pass reclaims it — acceptable for a
         // human-admin server.
+    }
+
+    /// <summary>Flags every score on every beatmap under a mapset about to lose its DB row — the beatmaps/mapset row are hard-deleted, but a player's own score history is only ever flagged, never dropped.</summary>
+    private async Task InvalidateScoresForMapsetAsync(int mapsetId, CancellationToken cancellationToken)
+    {
+        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includePrivate: true, cancellationToken: cancellationToken);
+        foreach (var beatmap in beatmaps)
+            await scores.InvalidateByMapMd5Async(beatmap.Md5, cancellationToken);
     }
 
     /// <summary>
@@ -262,7 +302,7 @@ public sealed partial class BeatmapIngestionService(
     {
         foreach (var file in decoded)
         {
-            var existing = await maps.FetchOneAsync(md5: file.Md5, includeFrozen: true, cancellationToken: cancellationToken);
+            var existing = await maps.FetchOneAsync(md5: file.Md5, includePrivate: true, cancellationToken: cancellationToken);
             if (existing is not null) return existing.Mapset;
         }
 

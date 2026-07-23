@@ -8,11 +8,11 @@ using Basil.Protocol.Multiplayer;
 namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>
-///     Builds the lightweight, in-memory-only payloads pushed over the live WS channels
-///     (<see cref="IMatchEventBus" />) — deliberately cheaper than <see cref="MatchReportService" />'s
+///     Builds the lightweight, in-memory-only payloads pushed over the live SSE channels
+///     (<see cref="IMatchLiveEvents" />) — deliberately cheaper than <see cref="MatchReportService" />'s
 ///     DB-backed <c>MatchReport</c>, since these fire on every state-changing packet (join, ready,
 ///     slot change, ...), not on demand. Consequently, the main channel carries live slot/map/state
-///     only, not aggregated team scores or a round winner — those come from polling GET /multi/{id}.
+///     only, not aggregated team scores or a round winner — those come from polling GET /match/{id}.
 /// </summary>
 public static class MatchLiveSnapshotBuilder
 {
@@ -51,12 +51,53 @@ public static class MatchLiveSnapshotBuilder
             playerName, frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
             frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp);
     }
+
+    /// <summary>
+    ///     The `api.` host's `/match/{id}/settings` payload shape — never the raw <see cref="MatchSession.Password" />,
+    ///     only whether one is set, even for an admin-elevated caller (a public, unauthenticated SSE
+    ///     channel is not the place to leak it).
+    /// </summary>
+    /// <summary>The `api.` host's `/match/{id}/live` payload — room-wide "currently playing" info, no per-player data.</summary>
+    public static MatchLiveStatus BuildLiveStatus(MatchSession match)
+    {
+        return new MatchLiveStatus(match.InProgress, match.CurrentRoundId, match.MapId, match.Mode);
+    }
+
+    public static MatchSettingsView BuildSettings(MatchSession match)
+    {
+        var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+        return new MatchSettingsView(
+            match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+            match.MapId, match.MapName, (int)match.Mods, match.Freemods,
+            match.TeamType, match.WinCondition,
+            match.HostId == 0 ? null : match.HostId, match.Referees.ToArray());
+    }
 }
+
+/// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round.</summary>
+public sealed record MatchLiveStatus(bool InProgress, int? CurrentRoundId, int MapId, GameMode Mode);
+
+/// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write.</summary>
+public sealed record MatchSettingsView(
+    int Id,
+    string Name,
+    bool HasPassword,
+    bool IsPrivate,
+    bool IsLocked,
+    int Size,
+    int MapId,
+    string MapName,
+    int Mods,
+    bool Freemod,
+    MatchTeamType TeamType,
+    MatchWinCondition WinCondition,
+    int? HostId,
+    IReadOnlyCollection<int> RefereeIds);
 
 /// <summary>Brief user info for embedded references (host, referees, slots).</summary>
 public sealed record UserBrief(int? UserId, string? UserName, string? Country = null);
 
-/// <summary>Payload for the WS /multi/{id} main channel.</summary>
+/// <summary>Payload for the SSE /match/{id} main channel.</summary>
 public sealed record MatchLiveSnapshot(
     int MatchId,
     string Name,
@@ -81,7 +122,7 @@ public sealed record MatchLiveSlot(
     string Team,
     int Mods);
 
-/// <summary>Payload for the WS /multi/{id}/{playerName} channel.</summary>
+/// <summary>Payload for the SSE /match/{id}/{playerName} channel.</summary>
 public sealed record PlayerLiveScore(
     string PlayerName,
     int Time,
@@ -97,5 +138,5 @@ public sealed record PlayerLiveScore(
     bool Perfect,
     int CurrentHp);
 
-/// <summary>Payload for the WS /multi/{id}/input channel.</summary>
+/// <summary>Payload for the SSE /spec/{id} channel.</summary>
 public sealed record PlayerInputFrame(string PlayerName, string DataBase64);
