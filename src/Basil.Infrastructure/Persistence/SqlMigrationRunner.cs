@@ -6,8 +6,8 @@ namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
 ///     Applies the embedded SQL migration scripts (see Persistence/Migrations/) against the SQLite
-///     database file. Only base.sql is embedded — a fresh Basil deployment needs only base.sql, no
-///     changelog of historical migrations exists yet.
+///     database file, in filename order, tracked via DbUp's own journal table so each script only
+///     ever runs once per database file.
 /// </summary>
 public static class SqlMigrationRunner
 {

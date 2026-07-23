@@ -291,5 +291,10 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         {
             return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
         }
+
+        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

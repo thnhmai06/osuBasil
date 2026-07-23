@@ -161,6 +161,28 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         Assert.Equal("roundloser", rows[1].UserName);
     }
 
+    [Fact]
+    public async Task InvalidateByMapMd5_FlagsMatchingScoresOnly()
+    {
+        var invalidatedMd5 = new string('i', 32);
+        var otherMd5 = new string('j', 32);
+        await InsertUserAsync(410, "invalidated-owner");
+        var invalidatedId = await InsertScoreAsync(invalidatedMd5, 410, 600_000);
+        var otherId = await InsertScoreAsync(otherMd5, 410, 600_000);
+
+        await _repository.InvalidateByMapMd5Async(invalidatedMd5);
+
+        Assert.True(await FetchIsInvalidatedAsync(invalidatedId));
+        Assert.False(await FetchIsInvalidatedAsync(otherId));
+    }
+
+    private async Task<bool> FetchIsInvalidatedAsync(long scoreId)
+    {
+        await using var connection = new SqliteConnection(fixture.ConnectionString);
+        return await connection.ExecuteScalarAsync<bool>("SELECT IsInvalidated FROM Scores WHERE Id = @Id",
+            new { Id = scoreId });
+    }
+
     private async Task<int> InsertRoundAsync()
     {
         await using var connection = new SqliteConnection(fixture.ConnectionString);

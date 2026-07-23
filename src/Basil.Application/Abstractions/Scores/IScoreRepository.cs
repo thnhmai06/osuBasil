@@ -82,4 +82,11 @@ public interface IScoreRepository
 
     /// <summary>For MatchReportService (the TRT builder) — every score linked to one Round.</summary>
     Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Flags every score on <paramref name="mapMd5" /> as invalidated — never a hard delete. Called
+    ///     by the beatmap ingestion cascade whenever a beatmap's content changes or its file/mapset
+    ///     disappears, so a player's own historical record survives a metadata fix or map removal.
+    /// </summary>
+    Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default);
 }

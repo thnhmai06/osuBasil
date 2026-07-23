@@ -85,6 +85,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddHostedService<TcpIrcListener>();
         services.AddHostedService<BeatmapWatcherService>();
+        services.AddHostedService<MapsetGarbageCollectorService>();
 
         return services;
     }

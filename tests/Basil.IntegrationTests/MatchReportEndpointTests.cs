@@ -158,6 +158,11 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
         {
             return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
         }
+
+        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class StubMatchRegistry : IMatchRegistry

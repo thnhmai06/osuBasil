@@ -84,6 +84,14 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         return rows.Select(r => r.ToRow()).ToList();
     }
 
+    public async Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync(
+            "UPDATE Scores SET IsInvalidated = 1 WHERE MapMd5 = @MapMd5",
+            new { MapMd5 = mapMd5 });
+    }
+
     private SqliteConnection Connect()
     {
         return new SqliteConnection(connectionString);

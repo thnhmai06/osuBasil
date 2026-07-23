@@ -345,6 +345,11 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         {
             return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
         }
+
+        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class StubReplayStorage : IReplayStorage
