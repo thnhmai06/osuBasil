@@ -15,9 +15,11 @@ public interface IMapRepository
     ///     (setId added on top of the Python source's fetch_one — it's how osu-search-set.php's "any
     ///     map in this set" lookup is served, mirroring fetch_set_info without a separate DTO/method).
     ///     When multiple maps share a setId, an arbitrary one among them is returned.
-    ///     <paramref name="includePrivate" /> defaults to false (a frozen beatmap is hidden from the
-    ///     client entirely) — only admin-key-gated routes and internal ingestion/upsert plumbing
-    ///     that must see a frozen row to update it in place should pass true.
+    ///     <paramref name="includePrivate" /> defaults to false (every beatmap under a private mapset
+    ///     is hidden from the client entirely) — only admin-key-gated routes and internal
+    ///     ingestion/upsert plumbing that must see a private mapset's row to update it in place
+    ///     should pass true. Privacy is a <see cref="Mapset.IsPrivate" /> (set-level) flag, not a
+    ///     per-beatmap one.
     /// </summary>
     Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null, int? setId = null,
         bool includePrivate = false, CancellationToken cancellationToken = default);
@@ -39,8 +41,8 @@ public interface IMapRepository
     ///     Ported from DirectSearchService.search, replumbed to query the local `maps` table instead
     ///     of proxying a mirror API (osu-search.php now runs fully offline). Returns beatmap sets
     ///     (grouped by set_id, newest set_id first) each already ordered by star rating ascending,
-    ///     matching the mirror-response shape the Python source consumed. Always excludes frozen
-    ///     beatmaps — a discovery surface, not a specific-row lookup.
+    ///     matching the mirror-response shape the Python source consumed. Always excludes beatmaps
+    ///     under a private mapset — a discovery surface, not a specific-row lookup.
     /// </summary>
     Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
         string? query, GameMode? mode, int offset, int amount,
@@ -64,9 +66,9 @@ public interface IMapRepository
     Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Every non-frozen beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging
-    ///     (ships file bytes to the client, so frozen beatmaps are always excluded) and by ingestion
-    ///     reconciliation's disk-diff (which needs every beatmap regardless of frozen status —
+    ///     Every beatmap sharing a set, used by /d/{setId}'s on-the-fly .osz packaging (ships file
+    ///     bytes to the client, so a private mapset's beatmaps are excluded by default) and by
+    ///     ingestion reconciliation's disk-diff (which needs every beatmap regardless of privacy —
     ///     ingestion passes <paramref name="includePrivate" /> true for that internal use).
     /// </summary>
     Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,

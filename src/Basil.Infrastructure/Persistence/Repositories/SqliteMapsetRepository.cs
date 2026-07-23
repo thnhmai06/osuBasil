@@ -22,12 +22,12 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         // INSERT ... ON CONFLICT DO UPDATE, not REPLACE INTO: REPLACE deletes-then-reinserts on a
         // PK conflict, and that delete cascades via Beatmaps_Mapsets_Id_fk (on delete cascade),
         // wiping every Beatmap under this Mapset on every re-upsert (e.g. every reconcile pass).
-        // IsFrozen is deliberately absent from the UPDATE SET clause — a re-ingestion pass must never
-        // clear an admin-set freeze lock.
+        // IsFrozen/IsPrivate are deliberately absent from the UPDATE SET clause — a re-ingestion
+        // pass must never clear an admin-set freeze lock or privacy flag.
         await connection.ExecuteAsync(
             """
-            INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen)
-            VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen)
+            INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate)
+            VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate)
             ON CONFLICT(Id) DO UPDATE SET
                 Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
                 LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
@@ -40,7 +40,8 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
                 mapset.Creator,
                 mapset.LastUpdate,
                 mapset.CreatedAt,
-                mapset.IsFrozen
+                mapset.IsFrozen,
+                mapset.IsPrivate
             });
 
         return (await FetchByIdAsync(mapset.Id, cancellationToken))!;
@@ -51,6 +52,13 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         await using var connection = Connect();
         await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
             new { Id = id, Frozen = frozen });
+    }
+
+    public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        await connection.ExecuteAsync("UPDATE Mapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
+            new { Id = id, IsPrivate = isPrivate });
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
@@ -77,9 +85,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var whereClause = onlyWithVisibleBeatmaps
-            ? "WHERE EXISTS(SELECT 1 FROM Beatmaps b WHERE b.MapsetId = m.Id AND b.IsPrivate = 0)"
-            : "";
+        var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
         var rows = await connection.QueryAsync<MapsetRow>(
             $"""
              SELECT m.* FROM Mapsets m
@@ -105,10 +111,11 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         public DateTime LastUpdate { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsFrozen { get; set; }
+        public bool IsPrivate { get; set; }
 
         public Mapset ToMapset()
         {
-            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen);
+            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
         }
     }
 }

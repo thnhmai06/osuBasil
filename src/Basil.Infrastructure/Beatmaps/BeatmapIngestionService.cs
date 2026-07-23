@@ -243,7 +243,6 @@ public sealed partial class BeatmapIngestionService(
                 file.OriginalFilename,
                 TimeSpan.FromMilliseconds(info.Length),
                 info.MaxCombo ?? 0,
-                existingByPath?.IsPrivate ?? false,
                 existingByPath?.Plays ?? 0,
                 existingByPath?.Passes ?? 0,
                 new Difficulty(

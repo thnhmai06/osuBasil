@@ -42,7 +42,7 @@ public class ScoreSubmissionResponseBuilderTests
     {
         var mapset = new Mapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(
-            "md5", 1, mapset, "c", "f.osu", TimeSpan.FromSeconds(1), 500, false, 0, 0,
+            "md5", 1, mapset, "c", "f.osu", TimeSpan.FromSeconds(1), 500, 0, 0,
             new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1));
     }
 

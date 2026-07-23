@@ -35,7 +35,7 @@ public class ScoreSubmissionServiceTests
         var mapset = new Mapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(
             new string('a', 32), 42, mapset, "c",
-            "f.osu", TimeSpan.FromSeconds(1), 500, false, 0, 0, new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1));
+            "f.osu", TimeSpan.FromSeconds(1), 500, 0, 0, new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1));
     }
 
     private PlayerSession MakePlayer(int id = 7, string name = "cookiezi")

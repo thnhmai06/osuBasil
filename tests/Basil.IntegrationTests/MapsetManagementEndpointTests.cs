@@ -256,5 +256,11 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
             if (Mapset?.Id == id) Mapset = Mapset with { IsFrozen = frozen };
             return Task.CompletedTask;
         }
+
+        public Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
+        {
+            if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
+            return Task.CompletedTask;
+        }
     }
 }

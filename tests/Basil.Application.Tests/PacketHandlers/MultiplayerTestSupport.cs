@@ -79,7 +79,7 @@ internal static class MultiplayerTestSupport
     {
         var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
         var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-        return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500, false, 0, 0,
+        return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500, 0, 0,
             new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0));
     }
 

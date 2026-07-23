@@ -24,17 +24,23 @@ public interface IMapsetRepository
     Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Newest-first page of mapsets, for the `api.` host's `GET /mapset` list. When
-    ///     <paramref name="onlyWithVisibleBeatmaps" /> is true, a mapset whose every beatmap is
-    ///     <see cref="Beatmap.IsPrivate" /> is excluded entirely (the public, non-admin view) — pass
-    ///     false for an admin-elevated caller, who sees every mapset regardless.
+    ///     Newest-first page of mapsets, for the `api.` host's `GET /beatmapsets` list. When
+    ///     <paramref name="onlyWithVisibleBeatmaps" /> is true, a mapset whose <see cref="Mapset.IsPrivate" />
+    ///     flag is set is excluded entirely (the public, non-admin view) — pass false for an
+    ///     admin-elevated caller, who sees every mapset regardless.
     /// </summary>
     Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Toggles the write-lock the `api.` host's `PATCH /mapset/{id}/freeze` route sets — blocks
-    ///     `PUT`/`DELETE /mapset/{id}` (409) regardless of admin role until unfrozen again.
+    ///     Toggles the write-lock the `api.` host's `PATCH /beatmapsets/{id}` route sets — blocks
+    ///     `PUT`/`DELETE /beatmapsets/{id}` (409) regardless of admin role until unfrozen again.
     /// </summary>
     Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Toggles <see cref="Mapset.IsPrivate" /> — the set-level visibility flag hiding every
+    ///     beatmap under this mapset from non-admin listings/lookups. Set via `PATCH /beatmapsets/{id}`.
+    /// </summary>
+    Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default);
 }

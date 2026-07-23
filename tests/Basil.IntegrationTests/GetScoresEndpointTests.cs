@@ -215,7 +215,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         private static readonly Mapset Mapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 
         private static readonly Beatmap Beatmap = new(
-            KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0, false, 0, 0,
+            KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0, 0, 0,
             new Difficulty(GameMode.Standard, 0, 0, 0, 0, 0, 0));
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,

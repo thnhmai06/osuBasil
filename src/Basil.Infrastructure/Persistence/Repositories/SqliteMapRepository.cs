@@ -9,9 +9,9 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 public sealed class SqliteMapRepository(string connectionString) : IMapRepository
 {
     private const string SharedColumns = """
-        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.IsPrivate, b.Plays, b.Passes,
+        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.Plays, b.Passes,
         b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr,
-        m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt
+        m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
         """;
 
     public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
@@ -47,7 +47,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
             parameters.Add("MapsetId", setId);
         }
 
-        if (!includePrivate) conditions.Add("b.IsPrivate = 0");
+        if (!includePrivate) conditions.Add("m.IsPrivate = 0");
 
         await using var connection = Connect();
         // Dapper has no multi-map QueryFirstOrDefaultAsync overload — QueryAsync + FirstOrDefault.
@@ -78,10 +78,10 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         await connection.ExecuteAsync(
             """
             REPLACE INTO Beatmaps (
-                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, IsPrivate, Plays, Passes,
+                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, Plays, Passes,
                 Mode, Bpm, Cs, Od, Ar, Hp, Sr
             ) VALUES (
-                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @IsPrivate, @Plays, @Passes,
+                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @Plays, @Passes,
                 @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr
             )
             """,
@@ -94,7 +94,6 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
                 resolved.Filename,
                 TotalLength = (int)resolved.TotalLength.TotalSeconds,
                 resolved.MaxCombo,
-                IsPrivate = resolved.IsPrivate,
                 resolved.Plays,
                 resolved.Passes,
                 Mode = (int)resolved.Difficulty.Mode,
@@ -119,7 +118,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         string? query, GameMode? mode, int offset, int amount,
         CancellationToken cancellationToken = default)
     {
-        var conditions = new List<string> { "b.IsPrivate = 0" };
+        var conditions = new List<string> { "m.IsPrivate = 0" };
         var parameters = new DynamicParameters();
 
         if (query is not null)
@@ -152,7 +151,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
             $"""
              SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
-             WHERE b.MapsetId IN @SetIds AND b.IsPrivate = 0
+             WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0
              ORDER BY b.Sr ASC
              """,
             (b, m) => b.ToBeatmap(m.ToMapset()),
@@ -189,7 +188,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var whereClause = includePrivate ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND b.IsPrivate = 0";
+        var whereClause = includePrivate ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
         var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
             $"""
              SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
@@ -216,7 +215,6 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public string Filename { get; set; } = "";
         public int TotalLength { get; set; }
         public int MaxCombo { get; set; }
-        public bool IsPrivate { get; set; }
         public int Plays { get; set; }
         public int Passes { get; set; }
         public int Mode { get; set; }
@@ -231,7 +229,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         {
             return new Beatmap(
                 Md5, Id, mapset, Version, Filename,
-                TimeSpan.FromSeconds(TotalLength), MaxCombo, IsPrivate, Plays, Passes,
+                TimeSpan.FromSeconds(TotalLength), MaxCombo, Plays, Passes,
                 new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr));
         }
     }
@@ -244,10 +242,12 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public string Creator { get; set; } = "";
         public DateTime LastUpdate { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsFrozen { get; set; }
+        public bool IsPrivate { get; set; }
 
         public Mapset ToMapset()
         {
-            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt);
+            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
         }
     }
 }

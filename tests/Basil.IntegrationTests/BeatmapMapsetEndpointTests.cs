@@ -79,7 +79,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
     private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
     {
         return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
-            TimeSpan.FromSeconds(100), 500, false, 0, 0,
+            TimeSpan.FromSeconds(100), 500, 0, 0,
             new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5));
     }
 
@@ -353,6 +353,12 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         public Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
         {
             if (Mapset?.Id == id) Mapset = Mapset with { IsFrozen = frozen };
+            return Task.CompletedTask;
+        }
+
+        public Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
+        {
+            if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
             return Task.CompletedTask;
         }
     }

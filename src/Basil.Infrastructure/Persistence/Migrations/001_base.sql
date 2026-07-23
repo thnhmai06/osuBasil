@@ -39,14 +39,21 @@ create table UserStats
 -- Artist/Title/Creator/Status/LastUpdate are shared by every difficulty in the set, so they
 -- live here instead of being duplicated onto each Beatmaps row. CreatedAt is first-ingestion
 -- time, distinct from LastUpdate.
+-- IsFrozen: an admin-set write-lock toggled via PATCH /beatmapsets/{id} on the api. host — blocks
+-- PUT/DELETE on the mapset (409) regardless of admin role, while the freeze toggle itself stays
+-- exempt from its own lock. IsPrivate: hides every beatmap under this set from non-admin listings —
+-- a set-level flag (not per-difficulty) since a single beatmapset is always released/curated as a
+-- whole for this server's purposes.
 create table Mapsets
 (
-    Id         int          not null primary key,
-    Artist     varchar(128) not null,
-    Title      varchar(128) not null,
-    Creator    varchar(19)  not null,
-    LastUpdate datetime     not null,
-    CreatedAt  datetime     not null
+    Id         int                   not null primary key,
+    Artist     varchar(128)          not null,
+    Title      varchar(128)          not null,
+    Creator    varchar(19)           not null,
+    LastUpdate datetime              not null,
+    CreatedAt  datetime              not null,
+    IsFrozen   boolean default false not null,
+    IsPrivate  boolean default false not null
 );
 
 create table Beatmaps
@@ -58,7 +65,6 @@ create table Beatmaps
     Filename    varchar(256)          not null,
     TotalLength int                   not null,
     MaxCombo    int                   not null,
-    Frozen      boolean default false not null,
     Plays       int     default 0     not null,
     Passes      int     default 0     not null,
     Mode        int                   not null,
@@ -169,7 +175,11 @@ create index Rounds_MatchId_index on Rounds (MatchId);
 
 -- MapMd5/Mode kept denormalised (not just via Round) so the solo-leaderboard-shaped read paths
 -- (osu-osz2-getscores.php) can keep querying by map without joining through Rounds. RoundId/Team
--- are null for a score submitted outside any match (not linked to a Round).
+-- are null for a score submitted outside any match (not linked to a Round). A score row is never
+-- hard-deleted when its beatmap changes or disappears — it's flagged via IsInvalidated instead
+-- (destructive to wipe a player's own historical record over a metadata fix or a removed
+-- difficulty); an invalidated score stays fully readable (including its .osr replay) everywhere,
+-- only the ingestion cascade (BeatmapIngestionService) ever sets it.
 create table Scores
 (
     Id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,6 +205,7 @@ create table Scores
     Perfect         boolean  not null,
     OnlineChecksum  char(32) not null,
     SubmittedAt     datetime not null,
+    IsInvalidated   boolean default false not null,
     constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
 create index Scores_MapMd5_index on Scores (MapMd5);

@@ -26,7 +26,6 @@ public sealed record Beatmap(
 
     TimeSpan TotalLength,
     int MaxCombo,
-    bool IsPrivate,
     int Plays,
     int Passes,
     Difficulty Difficulty
