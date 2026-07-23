@@ -1,8 +1,12 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -39,7 +43,13 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
                 });
             });
             builder.ConfigureServices(services =>
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" })));
+            {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+                // The "main" SSE route now checks whether a match has actually closed (persisted with
+                // EndedAt set) before opening a stream — a stub avoids needing a real SQLite file
+                // just to answer "no, nothing here has ever been persisted" for these plumbing tests.
+                services.AddSingleton<IMatchPersistenceRepository>(new NeverPersistedMatchRepository());
+            });
         });
     }
 
@@ -163,5 +173,45 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
             else if (line.StartsWith("data: ", StringComparison.Ordinal))
                 return (eventType, line["data: ".Length..]);
         }
+    }
+
+    /// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
+    private sealed class NeverPersistedMatchRepository : IMatchPersistenceRepository
+    {
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<MatchRow?>(null);
+
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 }

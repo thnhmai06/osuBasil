@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Security.Cryptography;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
@@ -963,12 +964,28 @@ public static class BanchoHostGroups
 
         // GET (JSON snapshot) and SSE (live "main" channel — meta/map/state, no per-player data,
         // see MatchLiveSnapshotBuilder's doc comment) share this one path, branched on the client's
-        // Accept header (EventSource always sends "text/event-stream").
+        // Accept header (EventSource always sends "text/event-stream"). A match that has actually
+        // closed (persisted with EndedAt set) has nothing left to push, so an SSE request against
+        // one falls back to the one-shot JSON report instead of opening a stream that would never
+        // receive a frame — a match that's still live, or one that has simply never existed at all,
+        // still gets a stream (a nonexistent id just never receives any frames).
         group.MapGet("/match/{id:int}", async (int id, HttpContext context, MatchReportService reportService,
+            IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
             IMatchLiveEvents events, CancellationToken cancellationToken) =>
         {
             if (context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream") == true))
-                return LiveSseRoutes.HandleMain(id, events, cancellationToken);
+            {
+                var match = matchRegistry.GetByDbId(id);
+                var isClosed = match is null &&
+                    (await matchPersistence.FetchMatchAsync(id, cancellationToken))?.EndedAt is not null;
+
+                if (!isClosed)
+                    return LiveSseRoutes.HandleMain(context, id, events,
+                        () => match?.MainSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot)
+                            : null,
+                        cancellationToken);
+            }
 
             var report = await reportService.BuildAsync(id, cancellationToken);
             return report is null ? Results.NotFound() : Results.Json(report);
@@ -980,10 +997,12 @@ public static class BanchoHostGroups
                 "rounds, per-round scores, and, if the match is still open, its live state (host, referees, " +
                 "slots, current map, win condition, team type, mods, in-progress flag). Sending " +
                 "`Accept: text/event-stream` instead opens a persistent Server-Sent Events stream on the same " +
-                "path (event name `main`) that pushes the live state on every slot/map/status change — no " +
-                "per-player score data on this channel, see `GET /match/{id}/{playerName}` for that. 404 " +
-                "(one-shot mode only) if no match with this id has ever existed; a nonexistent id in SSE mode " +
-                "opens a connection that simply never receives any frames. Public, no authentication.")
+                "path (event name `main`) — the first event is the full current state, every event after that " +
+                "is an RFC 7396 JSON Merge Patch against the previous one — no per-player score data on this " +
+                "channel, see `GET /match/{id}/{playerName}` for that. 404 (one-shot mode only) if no match " +
+                "with this id has ever existed. A closed match always falls back to the one-shot JSON report, " +
+                "even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, no " +
+                "authentication.")
             .WithTags("Match Reports", "Live Channels (SSE)");
 
         // GET — read a match's privacy status. Public (no auth). Returns the current runtime
@@ -1013,9 +1032,9 @@ public static class BanchoHostGroups
         // SSE — one player's live score, decoded from MatchScoreUpdate frames (see
         // MatchScoreUpdateHandler). Player name matches how the client's own name is used elsewhere
         // (e.g. #multi_ channel membership), not a numeric id.
-        group.MapGet("/match/{id:int}/{playerName}", (int id, string playerName, IMatchLiveEvents events,
-            CancellationToken cancellationToken) =>
-            LiveSseRoutes.HandlePlayer(id, playerName, events, cancellationToken))
+        group.MapGet("/match/{id:int}/{playerName}", (int id, string playerName, HttpContext context,
+            IMatchLiveEvents events, CancellationToken cancellationToken) =>
+            LiveSseRoutes.HandlePlayer(context, id, playerName, events, cancellationToken))
             .WithGroupName("basilapi")
             .WithSummary("Live per-player score stream (SSE) for one match.")
             .WithDescription("Server-Sent Events stream (event name `playerScore`) of one player's in-progress " +
@@ -1027,8 +1046,9 @@ public static class BanchoHostGroups
 
         // SSE — raw spectator input frames for a player, keyed by player id (Users.Id), populated any
         // time that player is logged in regardless of match membership (see SpectateFramesHandler).
-        group.MapGet("/spec/{id:int}", (int id, IPlayerInputEvents events, CancellationToken cancellationToken) =>
-            LiveSseRoutes.HandleInput(id, events, cancellationToken))
+        group.MapGet("/spec/{id:int}", (int id, HttpContext context, IPlayerInputEvents events,
+            CancellationToken cancellationToken) =>
+            LiveSseRoutes.HandleInput(context, id, events, cancellationToken))
             .WithGroupName("basilapi")
             .WithSummary("Live raw spectator-input stream (SSE) for one player, by player id.")
             .WithDescription("Server-Sent Events stream (event name `input`) of one player's raw replay-frame " +

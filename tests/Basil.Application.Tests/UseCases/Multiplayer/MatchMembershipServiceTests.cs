@@ -292,6 +292,42 @@ public class MatchMembershipServiceTests
     }
 
     /// <summary>
+    ///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.Join" />
+    ///     (which itself calls <see cref="MatchMembershipService.EnqueueState" />) for the host, so
+    ///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
+    ///     <c>Create</c> returns — <see cref="Services.Multiplayer.SnapshotChannelTests" /> covers that
+    ///     "first publish is full" behavior standalone. This test covers what happens after that: a
+    ///     call with no changes publishes an empty patch, and a call after an actual change publishes
+    ///     only the changed field.
+    /// </summary>
+    [Fact]
+    public void EnqueueState_CalledAgainAfterAChange_PublishesDeltaOnly()
+    {
+        var host = MakePlayer(1, "host");
+        RegisterAll(host);
+        var events = Substitute.For<IMatchLiveEvents>();
+        var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
+            new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
+            _mapRepository);
+        var match = Create(service, host, MakeMatchData(host.Id))!;
+
+        var payloads = new List<byte[]>();
+        events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
+            .Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
+
+        service.EnqueueState(match);
+        match.Name = "Renamed";
+        service.EnqueueState(match);
+
+        Assert.Equal(2, payloads.Count);
+        Assert.Equal("{}", System.Text.Encoding.UTF8.GetString(payloads[0]));
+
+        var secondJson = System.Text.Encoding.UTF8.GetString(payloads[1]);
+        Assert.Contains("\"name\":\"Renamed\"", secondJson);
+        Assert.DoesNotContain("\"referees\"", secondJson);
+    }
+
+    /// <summary>
     ///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the exact same
     ///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
     ///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead

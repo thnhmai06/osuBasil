@@ -39,6 +39,13 @@ public sealed class MatchSession(
     /// <summary>Held for the duration of any read-then-mutate-then-broadcast sequence on this match's slots or settings.</summary>
     public SemaphoreSlim Lock { get; } = new(1, 1);
 
+    /// <summary>
+    ///     Lock-free full-snapshot/delta state for the `api.` host's `GET /match/{id}` live SSE
+    ///     channel — see <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded
+    ///     by <see cref="Lock" />.
+    /// </summary>
+    public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new();
+
     public int Id { get; } = id;
     public string Name { get; set; } = name;
     public string Password { get; set; } = password;

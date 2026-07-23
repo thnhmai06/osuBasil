@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Services.Bot;
@@ -347,8 +346,8 @@ public sealed class MatchMembershipService(
             BroadcastToNonEmptyLobby(
                 ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
 
-        eventBus.PublishMain(match.DbId,
-            JsonSerializer.SerializeToUtf8Bytes(MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry)));
+        var deltaPayload = match.MainSnapshot.Publish(MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry));
+        eventBus.PublishMain(match.DbId, deltaPayload);
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)
