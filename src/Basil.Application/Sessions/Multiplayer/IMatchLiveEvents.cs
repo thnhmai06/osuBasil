@@ -19,7 +19,15 @@ public interface IMatchLiveEvents
     /// <summary>Fires for a match's settings channel (SSE GET /match/{id}/settings). (matchDbId, payload)</summary>
     event Action<int, byte[]> SettingsPublished;
 
+    /// <summary>Fires for one slot's state (SSE GET /match/{id}/live/{slotIndex}, "slot" sub-event). (matchDbId, slotIndex, payload)</summary>
+    event Action<int, int, byte[]> SlotPublished;
+
+    /// <summary>Fires for a match's room-wide "currently playing" channel (SSE GET /match/{id}/live). (matchDbId, payload)</summary>
+    event Action<int, byte[]> LivePublished;
+
     void PublishMain(int matchDbId, byte[] payload);
     void PublishPlayer(int matchDbId, string playerName, byte[] payload);
     void PublishSettings(int matchDbId, byte[] payload);
+    void PublishSlot(int matchDbId, int slotIndex, byte[] payload);
+    void PublishLive(int matchDbId, byte[] payload);
 }

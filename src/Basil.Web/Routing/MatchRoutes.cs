@@ -4,6 +4,7 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
@@ -68,6 +69,29 @@ internal static class MatchRoutes
                 "currently live; 400 if `mapId` doesn't resolve to a known beatmap. Returns the updated " +
                 "settings representation." + AdminKeyNote)
             .WithTags("Match Reports");
+
+        group.MapGet("/match/{id:int}/live", HandleLiveStream)
+            .WithGroupName("basilapi")
+            .WithSummary("Live room-wide \"currently playing\" status (SSE only).")
+            .WithDescription("Server-Sent Events stream (event name `live`) of `{ inProgress, " +
+                "currentRoundId, mapId, mode }` — no per-player data, see `GET /match/{id}/live/{slotIndex}` " +
+                "for that. First event is the full current status, every event after is an RFC 7396 JSON " +
+                "Merge Patch. Idle (no events) outside of an active round — that's expected. Public, no " +
+                "authentication.")
+            .WithTags("Live Channels (SSE)");
+
+        group.MapGet("/match/{id:int}/live/{slotIndex:int}", HandleLiveSlotStream)
+            .WithGroupName("basilapi")
+            .WithSummary("Merged live slot/score/spectator-input stream for one slot (SSE only).")
+            .WithDescription("`{slotIndex}` is 1-16 (matching `!mp move`'s convention). One SSE stream " +
+                "tagging three feeds by event name: `slot` (that slot's membership/status/team/mods, " +
+                "full-then-delta), `score` (the current occupant's live score frames during a round, " +
+                "forwarded as-is), and `input` (the current occupant's raw spectator-input frames, " +
+                "forwarded as-is). Follows whoever currently occupies the slot — if the occupant changes, " +
+                "the next `slot` event reflects that, and `score`/`input` start matching the new occupant " +
+                "automatically. 404 if the match isn't currently live or `slotIndex` is out of range. " +
+                "Public, no authentication.")
+            .WithTags("Live Channels (SSE)");
 
         group.MapPost("/match/{id:int}/{action}", HandleAction)
             .RequireAuthorization(AdminKeyDefaults.Policy)
@@ -157,6 +181,32 @@ internal static class MatchRoutes
         var match = matchRegistry.GetByDbId(id);
         return LiveSseRoutes.HandleSettings(context, id, events,
             () => match?.SettingsSnapshot.Latest is { } snapshot
+                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                : null,
+            cancellationToken);
+    }
+
+    private static IResult HandleLiveStream(int id, HttpContext context, IMatchRegistry matchRegistry,
+        IMatchLiveEvents events, CancellationToken cancellationToken)
+    {
+        var match = matchRegistry.GetByDbId(id);
+        return LiveSseRoutes.HandleLive(context, id, events,
+            () => match?.LiveSnapshot.Latest is { } snapshot
+                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                : null,
+            cancellationToken);
+    }
+
+    private static IResult HandleLiveSlotStream(int id, int slotIndex, HttpContext context,
+        IMatchRegistry matchRegistry, IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents,
+        IPlayerSessionRegistry sessionRegistry, CancellationToken cancellationToken)
+    {
+        var match = matchRegistry.GetByDbId(id);
+        if (match is null || slotIndex is < 1 or > 16) return Results.NotFound();
+
+        var index = slotIndex - 1;
+        return LiveSseRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, sessionRegistry,
+            () => match.SlotSnapshots[index].Latest is { } snapshot
                 ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
                 : null,
             cancellationToken);

@@ -57,6 +57,12 @@ public static class MatchLiveSnapshotBuilder
     ///     only whether one is set, even for an admin-elevated caller (a public, unauthenticated SSE
     ///     channel is not the place to leak it).
     /// </summary>
+    /// <summary>The `api.` host's `/match/{id}/live` payload — room-wide "currently playing" info, no per-player data.</summary>
+    public static MatchLiveStatus BuildLiveStatus(MatchSession match)
+    {
+        return new MatchLiveStatus(match.InProgress, match.CurrentRoundId, match.MapId, match.Mode);
+    }
+
     public static MatchSettingsView BuildSettings(MatchSession match)
     {
         var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
@@ -67,6 +73,9 @@ public static class MatchLiveSnapshotBuilder
             match.HostId == 0 ? null : match.HostId, match.Referees.ToArray());
     }
 }
+
+/// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round.</summary>
+public sealed record MatchLiveStatus(bool InProgress, int? CurrentRoundId, int MapId, GameMode Mode);
 
 /// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write.</summary>
 public sealed record MatchSettingsView(

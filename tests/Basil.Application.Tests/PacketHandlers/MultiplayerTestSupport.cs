@@ -222,10 +222,14 @@ internal static class MultiplayerTestSupport
         public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
         public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
         public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
+        public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
 
         public event Action<int, byte[]>? MainPublished;
         public event Action<int, string, byte[]>? PlayerScorePublished;
         public event Action<int, byte[]>? SettingsPublished;
+        public event Action<int, int, byte[]>? SlotPublished;
+        public event Action<int, byte[]>? LivePublished;
 
         public void PublishMain(int matchDbId, byte[] payload)
         {
@@ -243,6 +247,18 @@ internal static class MultiplayerTestSupport
         {
             SettingsPublishes.Add((matchDbId, payload));
             SettingsPublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
+        {
+            SlotPublishes.Add((matchDbId, slotIndex, payload));
+            SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+        }
+
+        public void PublishLive(int matchDbId, byte[] payload)
+        {
+            LivePublishes.Add((matchDbId, payload));
+            LivePublished?.Invoke(matchDbId, payload);
         }
     }
 

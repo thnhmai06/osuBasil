@@ -49,6 +49,16 @@ public sealed class MatchSession(
     /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/settings` channel.</summary>
     public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
 
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/live` channel.</summary>
+    public SnapshotChannel<MatchLiveStatus> LiveSnapshot { get; } = new();
+
+    /// <summary>
+    ///     One <see cref="SnapshotChannel{T}" /> per slot (0-based, matching <see cref="Slots" />), for
+    ///     the `GET /match/{id}/live/{slotIndex}` channel's "slot" sub-event.
+    /// </summary>
+    public IReadOnlyList<SnapshotChannel<MatchLiveSlot>> SlotSnapshots { get; } =
+        [.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchLiveSlot>())];
+
     public int Id { get; } = id;
     public string Name { get; set; } = name;
     public string Password { get; set; } = password;

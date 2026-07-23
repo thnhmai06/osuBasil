@@ -377,11 +377,20 @@ public sealed class MatchMembershipService(
             BroadcastToNonEmptyLobby(
                 ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
 
-        var deltaPayload = match.MainSnapshot.Publish(MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry));
-        eventBus.PublishMain(match.DbId, deltaPayload);
+        var mainSnapshot = MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry);
+        eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
 
         var settingsDelta = match.SettingsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildSettings(match));
         eventBus.PublishSettings(match.DbId, settingsDelta);
+
+        var liveDelta = match.LiveSnapshot.Publish(MatchLiveSnapshotBuilder.BuildLiveStatus(match));
+        eventBus.PublishLive(match.DbId, liveDelta);
+
+        for (var i = 0; i < mainSnapshot.Slots.Length; i++)
+        {
+            var slotDelta = match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]);
+            eventBus.PublishSlot(match.DbId, i, slotDelta);
+        }
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)

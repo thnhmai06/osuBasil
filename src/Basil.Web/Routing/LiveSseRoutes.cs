@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 
@@ -67,6 +68,73 @@ internal static class LiveSseRoutes
                 return () => events.SettingsPublished -= Handler;
             },
             readLatestSnapshot));
+    }
+
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to the room-wide "currently playing" fields.</summary>
+    public static IResult HandleLive(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "live",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.LivePublished += Handler;
+                return () => events.LivePublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
+    /// <summary>
+    ///     Merges three feeds that are separate elsewhere into one stream, tagged by event name: the
+    ///     slot's own state (full-then-delta, "slot"), the current occupant's live score frames
+    ///     ("score", forwarded as-is), and their raw spectator input frames ("input", forwarded as-is).
+    ///     Score/input are matched against whoever currently occupies the slot at the moment each frame
+    ///     arrives (read fresh off <paramref name="match" /> per event) — if the occupant changes, later
+    ///     frames simply start matching the new occupant instead, with no separate re-subscribe step.
+    /// </summary>
+    public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
+        IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, IPlayerSessionRegistry sessionRegistry,
+        Func<byte[]?> readLatestSlotSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeMultiWithSnapshot(cancellationToken,
+            publish =>
+            {
+                void SlotHandler(int id, int idx, byte[] payload)
+                {
+                    if (id == match.DbId && idx == slotIndex) publish("slot", payload);
+                }
+
+                void ScoreHandler(int id, string playerName, byte[] payload)
+                {
+                    if (id != match.DbId) return;
+                    var occupantName = match.Slots[slotIndex].PlayerId is { } occupantId
+                        ? sessionRegistry.GetById(occupantId)?.Name
+                        : null;
+                    if (occupantName is not null && occupantName == playerName) publish("score", payload);
+                }
+
+                void InputHandler(int playerId, byte[] payload)
+                {
+                    if (match.Slots[slotIndex].PlayerId == playerId) publish("input", payload);
+                }
+
+                matchEvents.SlotPublished += SlotHandler;
+                matchEvents.PlayerScorePublished += ScoreHandler;
+                inputEvents.InputPublished += InputHandler;
+                return () =>
+                {
+                    matchEvents.SlotPublished -= SlotHandler;
+                    matchEvents.PlayerScorePublished -= ScoreHandler;
+                    inputEvents.InputPublished -= InputHandler;
+                };
+            },
+            "slot", readLatestSlotSnapshot));
     }
 
     public static IResult HandlePlayer(HttpContext context, int matchId, string playerName, IMatchLiveEvents events,
@@ -148,6 +216,32 @@ internal static class LiveSseRoutes
 
         if (readLatestSnapshot() is { } snapshotBytes)
             yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), eventType);
+
+        await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
+            yield return item;
+    }
+
+    /// <summary>
+    ///     Same subscribe-drain-read-resume sequence as <see cref="SubscribeWithSnapshot" />, but for a
+    ///     stream fed by more than one event source at once (each publish carrying its own event-type
+    ///     tag) — only <paramref name="snapshotEventType" />'s source gets the initial full-state read.
+    /// </summary>
+    private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(
+        [EnumeratorCancellation] CancellationToken cancellationToken,
+        Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType, Func<byte[]?> readLatestSnapshot)
+    {
+        var channel = Channel.CreateUnbounded<SseItem<string>>();
+        var unsubscribe = subscribe((eventType, payload) =>
+            channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)));
+        cancellationToken.Register(unsubscribe);
+
+        while (channel.Reader.TryRead(out _))
+        {
+            // discard — already reflected in the fresh snapshot read below
+        }
+
+        if (readLatestSnapshot() is { } snapshotBytes)
+            yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), snapshotEventType);
 
         await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
             yield return item;

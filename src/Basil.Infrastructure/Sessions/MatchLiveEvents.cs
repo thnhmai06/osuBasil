@@ -8,6 +8,8 @@ public sealed class MatchLiveEvents : IMatchLiveEvents
     public event Action<int, byte[]>? MainPublished;
     public event Action<int, string, byte[]>? PlayerScorePublished;
     public event Action<int, byte[]>? SettingsPublished;
+    public event Action<int, int, byte[]>? SlotPublished;
+    public event Action<int, byte[]>? LivePublished;
 
     public void PublishMain(int matchDbId, byte[] payload)
     {
@@ -22,5 +24,15 @@ public sealed class MatchLiveEvents : IMatchLiveEvents
     public void PublishSettings(int matchDbId, byte[] payload)
     {
         SettingsPublished?.Invoke(matchDbId, payload);
+    }
+
+    public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
+    {
+        SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+    }
+
+    public void PublishLive(int matchDbId, byte[] payload)
+    {
+        LivePublished?.Invoke(matchDbId, payload);
     }
 }
