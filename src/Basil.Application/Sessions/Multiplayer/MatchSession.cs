@@ -59,6 +59,25 @@ public sealed class MatchSession(
     public IReadOnlyList<SnapshotChannel<MatchLiveSlot>> SlotSnapshots { get; } =
         [.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchLiveSlot>())];
 
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/hosts` channel.</summary>
+    public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new();
+
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/refs` channel.</summary>
+    public SnapshotChannel<MatchRefereesView> RefsSnapshot { get; } = new();
+
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/ban` channel.</summary>
+    public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new();
+
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/timer` channel.</summary>
+    public SnapshotChannel<MatchTimerView> TimerSnapshot { get; } = new();
+
+    /// <summary>
+    ///     Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/slots`
+    ///     channel — a whole-arrangement dict view, distinct from <see cref="SlotSnapshots" />'s
+    ///     per-index list (which still backs `/matches/{matchId}/live/{slotIndex}`'s "slot" sub-event).
+    /// </summary>
+    public SnapshotChannel<MatchSlotsView> SlotsSnapshot { get; } = new();
+
     public int Id { get; } = id;
     public string Name { get; set; } = name;
     public string Password { get; set; } = password;

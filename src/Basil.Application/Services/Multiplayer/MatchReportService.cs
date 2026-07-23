@@ -50,10 +50,10 @@ public sealed class MatchReportService(
                 .Select((slot, index) =>
                 {
                     var s = slot.PlayerId is { } pid ? sessionRegistry.GetById(pid) : null;
-                    return new MatchLiveSlot(index, slot.PlayerId, s?.Name, s?.Geoloc.Country.ToAcronym(),
-                        slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods);
+                    return (Index: index, Slot: new MatchLiveSlot(slot.PlayerId, s?.Name,
+                        s?.Geoloc.Country.ToAcronym(), slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods));
                 })
-                .ToArray();
+                .ToDictionary(t => t.Index, t => t.Slot);
 
             liveInfo = new MatchReportLiveInfo(
                 host is not null ? new UserBrief(host.Id, host.Name, host.Geoloc.Country.ToAcronym()) : null,
@@ -203,7 +203,7 @@ public sealed record MatchReport(
 public sealed record MatchReportLiveInfo(
     UserBrief? Host,
     UserBrief[] Referees,
-    MatchLiveSlot[] Slots,
+    IReadOnlyDictionary<int, MatchLiveSlot> Slots,
     int CurrentMapId,
     string CurrentMapMd5,
     GameMode Mode,

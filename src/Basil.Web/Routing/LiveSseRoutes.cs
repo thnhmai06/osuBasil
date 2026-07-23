@@ -89,6 +89,101 @@ internal static class LiveSseRoutes
             readLatestSnapshot));
     }
 
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/hosts`.</summary>
+    public static IResult HandleHost(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "hosts",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.HostPublished += Handler;
+                return () => events.HostPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/refs`.</summary>
+    public static IResult HandleRefs(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "refs",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.RefsPublished += Handler;
+                return () => events.RefsPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/ban`.</summary>
+    public static IResult HandleBans(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "ban",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.BansPublished += Handler;
+                return () => events.BansPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/timer`.</summary>
+    public static IResult HandleTimer(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "timer",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.TimerPublished += Handler;
+                return () => events.TimerPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/slots`.</summary>
+    public static IResult HandleSlots(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "slots",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.SlotsPublished += Handler;
+                return () => events.SlotsPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
     /// <summary>
     ///     Merges three feeds that are separate elsewhere into one stream, tagged by event name: the
     ///     slot's own state (full-then-delta, "slot"), the current occupant's live score frames

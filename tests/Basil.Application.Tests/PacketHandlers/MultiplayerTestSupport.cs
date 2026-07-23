@@ -224,12 +224,22 @@ internal static class MultiplayerTestSupport
         public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
         public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
         public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> HostPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> RefsPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> BansPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> TimerPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> SlotsPublishes { get; } = [];
 
         public event Action<int, byte[]>? MainPublished;
         public event Action<int, string, byte[]>? PlayerScorePublished;
         public event Action<int, byte[]>? SettingsPublished;
         public event Action<int, int, byte[]>? SlotPublished;
         public event Action<int, byte[]>? LivePublished;
+        public event Action<int, byte[]>? HostPublished;
+        public event Action<int, byte[]>? RefsPublished;
+        public event Action<int, byte[]>? BansPublished;
+        public event Action<int, byte[]>? TimerPublished;
+        public event Action<int, byte[]>? SlotsPublished;
 
         public void PublishMain(int matchDbId, byte[] payload)
         {
@@ -259,6 +269,36 @@ internal static class MultiplayerTestSupport
         {
             LivePublishes.Add((matchDbId, payload));
             LivePublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishHost(int matchDbId, byte[] payload)
+        {
+            HostPublishes.Add((matchDbId, payload));
+            HostPublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishRefs(int matchDbId, byte[] payload)
+        {
+            RefsPublishes.Add((matchDbId, payload));
+            RefsPublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishBans(int matchDbId, byte[] payload)
+        {
+            BansPublishes.Add((matchDbId, payload));
+            BansPublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishTimer(int matchDbId, byte[] payload)
+        {
+            TimerPublishes.Add((matchDbId, payload));
+            TimerPublished?.Invoke(matchDbId, payload);
+        }
+
+        public void PublishSlots(int matchDbId, byte[] payload)
+        {
+            SlotsPublishes.Add((matchDbId, payload));
+            SlotsPublished?.Invoke(matchDbId, payload);
         }
     }
 

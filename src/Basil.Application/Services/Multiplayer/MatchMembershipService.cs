@@ -409,11 +409,41 @@ public sealed class MatchMembershipService(
         var liveDelta = match.LiveSnapshot.Publish(MatchLiveSnapshotBuilder.BuildLiveStatus(match));
         eventBus.PublishLive(match.DbId, liveDelta);
 
-        for (var i = 0; i < mainSnapshot.Slots.Length; i++)
+        for (var i = 0; i < match.SlotSnapshots.Count; i++)
         {
             var slotDelta = match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]);
             eventBus.PublishSlot(match.DbId, i, slotDelta);
         }
+    }
+
+    public void PublishHost(MatchSession match)
+    {
+        var delta = match.HostSnapshot.Publish(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+        eventBus.PublishHost(match.DbId, delta);
+    }
+
+    public void PublishRefs(MatchSession match)
+    {
+        var delta = match.RefsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+        eventBus.PublishRefs(match.DbId, delta);
+    }
+
+    public void PublishBans(MatchSession match)
+    {
+        var delta = match.BansSnapshot.Publish(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+        eventBus.PublishBans(match.DbId, delta);
+    }
+
+    public void PublishTimer(MatchSession match)
+    {
+        var delta = match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match));
+        eventBus.PublishTimer(match.DbId, delta);
+    }
+
+    public void PublishSlots(MatchSession match)
+    {
+        var delta = match.SlotsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
+        eventBus.PublishSlots(match.DbId, delta);
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)

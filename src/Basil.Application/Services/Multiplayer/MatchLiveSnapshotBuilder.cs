@@ -32,11 +32,11 @@ public static class MatchLiveSnapshotBuilder
             .Select((slot, index) =>
             {
                 var s = slot.PlayerId is { } pid ? sessionRegistry.GetById(pid) : null;
-                return new MatchLiveSlot(
-                    index, slot.PlayerId, s?.Name, s?.Geoloc.Country.ToAcronym(),
-                    slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods);
+                return (Index: index, Slot: new MatchLiveSlot(
+                    slot.PlayerId, s?.Name, s?.Geoloc.Country.ToAcronym(),
+                    slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods));
             })
-            .ToArray();
+            .ToDictionary(t => t.Index, t => t.Slot);
 
         return new MatchLiveSnapshot(
             match.DbId, match.Name, match.MapId, match.MapMd5, match.InProgress,
@@ -160,10 +160,9 @@ public sealed record MatchLiveSnapshot(
     bool Freemods,
     UserBrief? Host,
     UserBrief[] Referees,
-    MatchLiveSlot[] Slots);
+    IReadOnlyDictionary<int, MatchLiveSlot> Slots);
 
 public sealed record MatchLiveSlot(
-    int SlotIndex,
     int? UserId,
     string? UserName,
     string? Country,

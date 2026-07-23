@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
@@ -19,6 +20,13 @@ namespace Basil.Web.Routing;
 internal static class MatchSubResourceRoutes
 {
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
+    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>EventSource always sends this — the same content-negotiation convention `GET /matches/{matchId}` itself uses.</summary>
+    private static bool WantsSse(HttpContext context)
+    {
+        return context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream") == true);
+    }
 
     public static void MapMatchSubResourceRoutes(this RouteGroupBuilder group)
     {
@@ -49,19 +57,28 @@ internal static class MatchSubResourceRoutes
 
     private static void MapHosts(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/hosts", (int matchId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry) =>
+        group.MapGet("/matches/{matchId:int}/hosts", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
-                return match is null
-                    ? Results.NotFound()
-                    : Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+                if (match is null) return Results.NotFound();
+
+                if (WantsSse(context))
+                    return LiveSseRoutes.HandleHost(context, matchId, events,
+                        () => match.HostSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                            : null,
+                        cancellationToken);
+
+                return Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get the match's current host.")
-            .WithDescription("Returns `{ hostId, hostName }` — both null when the room has no host (id 0). " +
-                "404 if the match isn't currently live. Public, no authentication.")
-            .WithTags("Match Actions");
+            .WithSummary("Get the match's current host — one-shot JSON snapshot, or a live SSE stream.")
+            .WithDescription("Content-negotiated on the `Accept` header, same convention as `GET /matches/" +
+                "{matchId}`: a plain `GET` returns `{ hostId, hostName }` (both null when the room has no " +
+                "host); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `hosts`) " +
+                "instead. 404 if the match isn't currently live. Public, no authentication.")
+            .WithTags("Match Actions", "Live Channels (SSE)");
 
         group.MapPut("/matches/{matchId:int}/hosts", async (int matchId, TargetUserIdBody body,
                 IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -121,19 +138,27 @@ internal static class MatchSubResourceRoutes
 
     private static void MapRefs(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/refs", (int matchId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry) =>
+        group.MapGet("/matches/{matchId:int}/refs", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
-                return match is null
-                    ? Results.NotFound()
-                    : Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+                if (match is null) return Results.NotFound();
+
+                if (WantsSse(context))
+                    return LiveSseRoutes.HandleRefs(context, matchId, events,
+                        () => match.RefsSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                            : null,
+                        cancellationToken);
+
+                return Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("List the match's referees.")
-            .WithDescription("Returns `{ referees: [{ userId, userName }] }`. 404 if the match isn't currently " +
-                "live. Public, no authentication.")
-            .WithTags("Match Actions");
+            .WithSummary("List the match's referees — one-shot JSON snapshot, or a live SSE stream.")
+            .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ referees: " +
+                "[{ userId, userName }] }`; `Accept: text/event-stream` opens a full-then-delta SSE stream " +
+                "(event name `refs`) instead. 404 if the match isn't currently live. Public, no authentication.")
+            .WithTags("Match Actions", "Live Channels (SSE)");
 
         group.MapPut("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
                 IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -237,19 +262,28 @@ internal static class MatchSubResourceRoutes
 
     private static void MapBans(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/ban", (int matchId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry) =>
+        group.MapGet("/matches/{matchId:int}/ban", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
-                return match is null
-                    ? Results.NotFound()
-                    : Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+                if (match is null) return Results.NotFound();
+
+                if (WantsSse(context))
+                    return LiveSseRoutes.HandleBans(context, matchId, events,
+                        () => match.BansSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                            : null,
+                        cancellationToken);
+
+                return Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("List players banned from this match.")
-            .WithDescription("Returns `{ bannedUsers: [{ userId, userName }] }` — `userName` is null for a " +
-                "currently-offline banned id. 404 if the match isn't currently live. Public, no authentication.")
-            .WithTags("Match Actions");
+            .WithSummary("List players banned from this match — one-shot JSON snapshot, or a live SSE stream.")
+            .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns " +
+                "`{ bannedUsers: [{ userId, userName }] }` (`userName` null for a currently-offline banned " +
+                "id); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `ban`) " +
+                "instead. 404 if the match isn't currently live. Public, no authentication.")
+            .WithTags("Match Actions", "Live Channels (SSE)");
 
         group.MapPut("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
                 IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -448,20 +482,29 @@ internal static class MatchSubResourceRoutes
 
     private static void MapSlots(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/slots", (int matchId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry) =>
+        group.MapGet("/matches/{matchId:int}/slots", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
-                return match is null
-                    ? Results.NotFound()
-                    : Results.Json(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
+                if (match is null) return Results.NotFound();
+
+                if (WantsSse(context))
+                    return LiveSseRoutes.HandleSlots(context, matchId, events,
+                        () => match.SlotsSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                            : null,
+                        cancellationToken);
+
+                return Results.Json(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get every slot's current occupant/team/lock state.")
-            .WithDescription("Returns `{ slots: { \"0\": { userId, userName, team, locked }, ..., \"15\": " +
-                "{...} } }` — every slot 0-15 always present as a dict key. 404 if the match isn't currently " +
-                "live. Public, no authentication.")
-            .WithTags("Match Actions");
+            .WithSummary("Get every slot's current occupant/team/lock state — one-shot JSON snapshot, or a live SSE stream.")
+            .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ slots: " +
+                "{ \"0\": { userId, userName, team, locked }, ..., \"15\": {...} } }` — every slot 0-15 " +
+                "always present as a dict key; `Accept: text/event-stream` opens a full-then-delta SSE " +
+                "stream (event name `slots`) instead. 404 if the match isn't currently live. Public, no " +
+                "authentication.")
+            .WithTags("Match Actions", "Live Channels (SSE)");
 
         group.MapPut("/matches/{matchId:int}/slots", (int matchId, SlotsBody body, IMatchRegistry matchRegistry,
                 IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -531,18 +574,30 @@ internal static class MatchSubResourceRoutes
 
     private static void MapTimer(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/timer", (int matchId, IMatchRegistry matchRegistry) =>
+        group.MapGet("/matches/{matchId:int}/timer", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IMatchLiveEvents events, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
-                return match is null
-                    ? Results.NotFound()
-                    : Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
+                if (match is null) return Results.NotFound();
+
+                if (WantsSse(context))
+                    return LiveSseRoutes.HandleTimer(context, matchId, events,
+                        () => match.TimerSnapshot.Latest is { } snapshot
+                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                            : null,
+                        cancellationToken);
+
+                return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get the match's countdown timer state.")
-            .WithDescription("Returns `{ running, secondsRemaining, autoStart }`. 404 if the match isn't " +
-                "currently live. Public, no authentication.")
-            .WithTags("Match Actions");
+            .WithSummary("Get the match's countdown timer state — one-shot JSON snapshot, or a live SSE stream.")
+            .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ running, " +
+                "secondsRemaining, autoStart }`; `Accept: text/event-stream` opens a full-then-delta SSE " +
+                "stream (event name `timer`) instead — a delta fires at each of the same announcement " +
+                "checkpoints `!mp timer`/`!mp start` chat announcements use, plus once more when the " +
+                "countdown finishes or is aborted. 404 if the match isn't currently live. Public, no " +
+                "authentication.")
+            .WithTags("Match Actions", "Live Channels (SSE)");
 
         group.MapPost("/matches/{matchId:int}/timer", async (int matchId, TimerBody body,
                 IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>

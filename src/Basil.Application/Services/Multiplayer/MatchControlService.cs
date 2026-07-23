@@ -100,12 +100,15 @@ public sealed class MatchControlService(
             match.DbId, (int)MatchEventType.HostGranted,
             prevHostId, prevHostName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null));
+
+        matchMembership.PublishHost(match);
     }
 
     public void ClearHost(MatchSession match)
     {
         match.HostId = 0;
         matchMembership.EnqueueState(match);
+        matchMembership.PublishHost(match);
     }
 
     public void SetName(MatchSession match, string name)
@@ -147,6 +150,8 @@ public sealed class MatchControlService(
             match.DbId, (int)MatchEventType.RefAdded,
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+
+        matchMembership.PublishRefs(match);
     }
 
     public enum SetRefereesResult
@@ -182,6 +187,7 @@ public sealed class MatchControlService(
                 null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
         }
 
+        matchMembership.PublishRefs(match);
         return SetRefereesResult.Ok;
     }
 
@@ -198,6 +204,8 @@ public sealed class MatchControlService(
                 match.DbId, (int)MatchEventType.RefAdded,
                 null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
         }
+
+        matchMembership.PublishRefs(match);
     }
 
     public enum RemoveRefereeResult
@@ -226,6 +234,7 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
+        matchMembership.PublishRefs(match);
         return RemoveRefereeResult.Ok;
     }
 
@@ -410,6 +419,7 @@ public sealed class MatchControlService(
         match.PendingTimerIsAutoStart = autoStart;
         match.TimerStartedAt = DateTimeOffset.UtcNow;
         match.TimerTotalSeconds = totalSeconds;
+        matchMembership.PublishTimer(match);
 
         _ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
     }
@@ -426,6 +436,7 @@ public sealed class MatchControlService(
             if (!await DelayAsync(remaining - checkpoint, token)) return;
 
             Announce(match, $"Match starts in {checkpoint} seconds");
+            matchMembership.PublishTimer(match);
             remaining = checkpoint;
         }
 
@@ -449,6 +460,8 @@ public sealed class MatchControlService(
             {
                 Announce(match, "Countdown finished");
             }
+
+            matchMembership.PublishTimer(match);
         }
         finally
         {
@@ -495,6 +508,7 @@ public sealed class MatchControlService(
         match.PendingTimerIsAutoStart = false;
         match.TimerStartedAt = null;
         match.TimerTotalSeconds = null;
+        matchMembership.PublishTimer(match);
         return AbortTimerResult.Ok;
     }
 
@@ -559,6 +573,7 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
+        matchMembership.PublishBans(match);
         return KickResult.Ok;
     }
 
@@ -573,6 +588,7 @@ public sealed class MatchControlService(
         if (!match.BannedIds.Contains(targetUserId)) return UnbanResult.NotBanned;
 
         match.RemoveBan(targetUserId);
+        matchMembership.PublishBans(match);
         return UnbanResult.Ok;
     }
 
@@ -585,6 +601,8 @@ public sealed class MatchControlService(
 
         foreach (var id in toRemove) match.RemoveBan(id);
         foreach (var id in toAdd) AddBanAndKickIfSeated(match, id);
+
+        matchMembership.PublishBans(match);
     }
 
     /// <summary>PATCH — add a batch of bans, each newly-banned id who is currently seated is also kicked.</summary>
@@ -595,6 +613,8 @@ public sealed class MatchControlService(
             if (match.BannedIds.Contains(id)) continue;
             AddBanAndKickIfSeated(match, id);
         }
+
+        matchMembership.PublishBans(match);
     }
 
     private void AddBanAndKickIfSeated(MatchSession match, int userId)
@@ -716,6 +736,7 @@ public sealed class MatchControlService(
                 slot.Status = locked ? SlotStatus.Locked : SlotStatus.Open;
         }
 
+        matchMembership.PublishSlots(match);
         return Task.FromResult(SetSlotsResult.Ok);
     }
 
