@@ -3,6 +3,7 @@ using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions.Spectating;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
@@ -36,9 +37,12 @@ internal static class UserRoutes
         admin.MapGet("", async (IUserRepository users, CancellationToken cancellationToken) =>
             Results.Json(await users.FetchAllAsync(cancellationToken)))
             .WithGroupName("basilapi")
-            .WithSummary("List every user.")
+            .WithName("listUsers")
+            .WithSummary("List Users")
             .WithDescription("Returns every user row as a JSON array, unfiltered and unpaged." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces<IReadOnlyList<User>>()
+            .WithExample(StatusCodes.Status200OK, new List<User> { SampleUser() });
 
         // Public outer route so a non-numeric {idOrName} can be accepted at all — the numeric branch
         // still enforces the admin policy manually (RequireAuthorization can't attach to a route
@@ -48,11 +52,16 @@ internal static class UserRoutes
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}",
                 id => HandleGetUser(id, context, users, cancellationToken), cancellationToken))
             .WithGroupName("basilapi")
-            .WithSummary("Get one user, by user id or username.")
+            .WithName("getUser")
+            .WithSummary("Get User")
             .WithDescription("A non-numeric `{idOrName}` is resolved via username lookup and 302-redirected " +
                 "to the canonical `/users/{id}` form; a numeric value is served directly. 404 if no user " +
                 "with this id/name exists." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces<User>()
+            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         admin.MapPost("", async (CreateUserRequest body, IUserRepository users,
             IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
@@ -72,15 +81,22 @@ internal static class UserRoutes
                 : Results.Json(user);
         })
             .WithGroupName("basilapi")
-            .WithSummary("Create a user directly (bypassing in-game registration).")
+            .WithName("createUser")
+            .WithSummary("Create User")
             .WithDescription("Body: `{ name, password, country?, priv? }` (`country` defaults to `\"xx\"`, " +
                 "`priv` to the server's default privileges if omitted). The plaintext `password` is MD5'd then " +
                 "bcrypt-hashed server-side, matching the real client's own hashing convention. 400 on an " +
                 "invalid username, 409 if the name is already taken." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces<User>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Username must be between 3 and 15 characters."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."));
 
-        admin.MapMethods("/{userId:int}", ["PUT", "PATCH"], async (int userId, UpdateUserRequest body,
-            IUserRepository users, CancellationToken cancellationToken) =>
+        Func<int, UpdateUserRequest, IUserRepository, CancellationToken, Task<IResult>> updateUserHandler =
+            async (userId, body, users, cancellationToken) =>
         {
             if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
             if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
@@ -99,23 +115,45 @@ internal static class UserRoutes
                 await users.UpdatePrivilegesAsync(userId, (UserPrivileges)body.Priv.Value, cancellationToken);
 
             return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
-        })
+        };
+
+        const string updateUserDescription = "Body: `{ name?, country?, priv? }` — each field is updated only if present; " +
+            "omitted fields are left unchanged. Deliberately limited to these three fields (no full " +
+            "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
+            "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot).";
+
+        admin.MapPut("/{userId:int}", updateUserHandler)
             .WithGroupName("basilapi")
-            .WithSummary("Partially update a user (name/country/privileges).")
-            .WithDescription("Body: `{ name?, country?, priv? }` — each field is updated only if present; " +
-                "omitted fields are left unchanged. Deliberately limited to these three fields (no full " +
-                "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
-                "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
-            .WithTags("Users");
+            .WithName("replaceUser")
+            .WithSummary("Replace User")
+            .WithDescription(updateUserDescription + AdminKeyNote)
+            .WithTags("Users")
+            .Produces<User>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        admin.MapPatch("/{userId:int}", updateUserHandler)
+            .WithGroupName("basilapi")
+            .WithName("updateUser")
+            .WithSummary("Update User")
+            .WithDescription(updateUserDescription + AdminKeyNote)
+            .WithTags("Users")
+            .Produces<User>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
             CancellationToken cancellationToken) =>
         {
-            if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
+            if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
             var form = await context.Request.ReadFormAsync(cancellationToken);
             var file = form.Files.GetFile("file");
-            if (file is null) return Results.BadRequest("Missing 'file' form field.");
+            if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
             var extension = Path.GetExtension(file.FileName);
             Directory.CreateDirectory(storage.Value.AvatarsPath);
@@ -129,10 +167,14 @@ internal static class UserRoutes
             return Results.NoContent();
         })
             .WithGroupName("basilapi")
-            .WithSummary("Upload a user's avatar image.")
+            .WithName("uploadUserAvatar")
+            .WithSummary("Upload User Avatar")
             .WithDescription("Multipart upload, field name `file`. Replaces any existing avatar for this user id " +
                 "(any prior file with a different extension is deleted first). 204 on success." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
         admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage) =>
         {
@@ -143,26 +185,31 @@ internal static class UserRoutes
             return Results.NoContent();
         })
             .WithGroupName("basilapi")
-            .WithSummary("Reset a user's avatar to the default.")
+            .WithName("resetUserAvatar")
+            .WithSummary("Reset User Avatar")
             .WithDescription("Deletes every uploaded avatar file for this user id, if any. Always 204, even if " +
                 "no avatar was ever uploaded (idempotent-delete convention). The `a.<domain>` host's own avatar " +
                 "route re-checks the filesystem per request, so its default-avatar fallback reappears " +
                 "immediately." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces(StatusCodes.Status204NoContent);
 
         group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users, HttpContext context,
             IOptions<StorageOptions> storage, CancellationToken cancellationToken) =>
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/avatar",
                 id => Task.FromResult(HandleGetAvatar(id, context, storage)), cancellationToken))
             .WithGroupName("basilapi")
-            .WithSummary("Download a user's avatar image, by user id or username.")
+            .WithName("getUserAvatar")
+            .WithSummary("Get User Avatar")
             .WithDescription("Serves the raw avatar file uploaded via `POST /users/{id}/avatar`, if any. Unlike " +
                 "the `a.<domain>` host's client-facing avatar route, this never falls back to a default image — " +
                 "404 if no avatar was ever uploaded for this id. Content-Type is inferred from the file " +
                 "extension. A non-numeric `{idOrName}` is resolved via username lookup and 302-redirected to " +
                 "the canonical form." + AdminKeyNote + " (Enforced manually in the handler, same deviation as " +
                 "`GET /users/{idOrName}`.)")
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
         // history referencing this user's id stays intact — matches how restriction/ban already
@@ -176,19 +223,25 @@ internal static class UserRoutes
             return Results.NoContent();
         })
             .WithGroupName("basilapi")
-            .WithSummary("Soft-delete a user.")
+            .WithName("deleteUser")
+            .WithSummary("Delete User")
             .WithDescription("Zeroes the user's privilege bits rather than removing the row, so score/social/" +
                 "anticheat history referencing this user id stays intact — the same convention this server " +
                 "already uses for restriction/ban. 204 on success, 404 if no user with this id exists, 400 if " +
                 "targeting user id 0 (BasilBot)." + AdminKeyNote)
-            .WithTags("Users");
+            .WithTags("Users")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/users/{idOrName}/live", (string idOrName, IUserRepository users, HttpContext context,
             IPlayerInputEvents events, CancellationToken cancellationToken) =>
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/live",
                 id => Task.FromResult(HandleGetLive(id, context, events, cancellationToken)), cancellationToken))
             .WithGroupName("basilapi")
-            .WithSummary("Live raw spectator-input stream (SSE) for one player, by player id or username.")
+            .WithName("getUserLiveStream")
+            .WithSummary("Get User Live Stream")
             .WithDescription("Server-Sent Events stream (event name `input`) of one player's raw replay-frame " +
                 "bytes (base64-encoded), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
                 "BasilBot automatically spectates every player from the moment they log in, so this stream is " +
@@ -196,7 +249,14 @@ internal static class UserRoutes
                 "(BasilBot itself has no gameplay stream to expose). A nonexistent or offline player id simply " +
                 "never receives any frames. A non-numeric `{idOrName}` is resolved via username lookup and " +
                 "302-redirected to the canonical form. Public, no authentication.")
-            .WithTags("Live Channels (SSE)");
+            .WithTags("Users")
+            .Produces(StatusCodes.Status400BadRequest);
+    }
+
+    private static User SampleUser()
+    {
+        return new User(7, "Alice", Country.Vn, UserPrivileges.Unrestricted | UserPrivileges.Verified,
+            DateTimeOffset.UnixEpoch);
     }
 
     private static async Task<IResult> HandleGetUser(int userId, HttpContext context, IUserRepository users,

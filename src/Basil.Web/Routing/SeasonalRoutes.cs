@@ -20,20 +20,29 @@ internal static class SeasonalRoutes
     {
         group.MapGet("/seasonals/", (SeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))
             .WithGroupName("basilapi")
-            .WithSummary("List seasonal background image filenames.")
+            .WithName("listSeasonalBackgrounds")
+            .WithSummary("List Seasonal Backgrounds")
             .WithDescription("Bare filenames (unlike the osu! client-facing " +
                 "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same folder). " +
                 "Public.")
-            .WithTags("Seasonal Backgrounds");
+            .WithTags("Seasonal Backgrounds")
+            .Produces<IReadOnlyList<string>>()
+            .WithExample(StatusCodes.Status200OK, new List<string> { "winter-2026.png", "summer-2026.jpg" });
 
         group.MapPost("/seasonals/", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Upload a new seasonal background image.")
+            .WithName("createSeasonalBackground")
+            .WithSummary("Create Seasonal Background")
             .WithDescription("Multipart upload, field name `file`, saved under its own uploaded filename " +
                 "(path-traversal-filtered). 409 if a file with that name already exists — use " +
                 "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
-            .WithTags("Seasonal Backgrounds");
+            .WithTags("Seasonal Backgrounds")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-2026.png' already exists."));
 
         group.MapGet("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
         {
@@ -50,36 +59,46 @@ internal static class SeasonalRoutes
             return Results.File(path, contentType);
         })
             .WithGroupName("basilapi")
-            .WithSummary("Download a seasonal background image, by filename.")
+            .WithName("downloadSeasonalBackground")
+            .WithSummary("Download Seasonal Background")
             .WithDescription("`{fileName}` is the full filename including extension. 404 if it doesn't exist. " +
                 "Content-Type is inferred from the file extension. Public.")
-            .WithTags("Seasonal Backgrounds");
+            .WithTags("Seasonal Backgrounds")
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/seasonals/{fileName}", HandleReplace)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Replace an existing seasonal background image.")
+            .WithName("replaceSeasonalBackground")
+            .WithSummary("Replace Seasonal Background")
             .WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
                 "— use `POST /seasonals/` to create one." + AdminKeyNote)
-            .WithTags("Seasonal Backgrounds");
+            .WithTags("Seasonal Backgrounds")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
             seasonal.Delete(fileName) ? Results.NoContent() : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Delete a seasonal background image.")
+            .WithName("deleteSeasonalBackground")
+            .WithSummary("Delete Seasonal Background")
             .WithDescription("204 on success, 404 if the file doesn't exist." + AdminKeyNote)
-            .WithTags("Seasonal Backgrounds");
+            .WithTags("Seasonal Backgrounds")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> HandleCreate(HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
+        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
-        if (file is null) return Results.BadRequest("Missing 'file' form field.");
+        if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
         await using var stream = file.OpenReadStream();
         var result = await seasonal.CreateAsync(file.FileName, stream, cancellationToken);
@@ -91,11 +110,11 @@ internal static class SeasonalRoutes
     private static async Task<IResult> HandleReplace(string fileName, HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
+        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
-        if (file is null) return Results.BadRequest("Missing 'file' form field.");
+        if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
         await using var stream = file.OpenReadStream();
         var result = await seasonal.ReplaceAsync(fileName, stream, cancellationToken);

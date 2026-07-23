@@ -73,13 +73,15 @@ internal static class MatchSubResourceRoutes
                 return Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get the match's current host — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("getMatchHost")
+            .WithSummary("Get Match Host")
             .WithDescription("Content-negotiated on the `Accept` header, same convention as `GET /matches/" +
                 "{matchId}`: a plain `GET` returns `{ hostId, hostName }` (both null when the room has no " +
                 "host); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `hosts`) " +
                 "instead. 404 if the match isn't currently live. Public, no authentication.")
-            .WithTags("Match Actions", "Live Channels (SSE)")
+            .WithTags("Match Hosts")
             .Produces<MatchHostView>()
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(7, "Alice"))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/hosts", async (int matchId, TargetUserIdBody body,
@@ -106,12 +108,15 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Set the match host.")
+            .WithName("setMatchHost")
+            .WithSummary("Set Match Host")
             .WithDescription("Body: `{ userId }`. 404 if the match isn't currently live; 400 if `userId` is " +
                 "missing or not online." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Hosts")
             .Produces<MatchHostView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(7, "Alice"))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/hosts", async (int matchId, IMatchRegistry matchRegistry,
@@ -134,10 +139,12 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Clear the match host.")
+            .WithName("clearMatchHost")
+            .WithSummary("Clear Match Host")
             .WithDescription("Sets the host back to id 0. 404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Hosts")
             .Produces<MatchHostView>()
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(null, null))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
@@ -161,12 +168,14 @@ internal static class MatchSubResourceRoutes
                 return Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("List the match's referees — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("listMatchReferees")
+            .WithSummary("List Match Referees")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ referees: " +
                 "[{ userId, userName }] }`; `Accept: text/event-stream` opens a full-then-delta SSE stream " +
                 "(event name `refs`) instead. 404 if the match isn't currently live. Public, no authentication.")
-            .WithTags("Match Actions", "Live Channels (SSE)")
+            .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
@@ -194,15 +203,19 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Replace the match's referee list.")
+            .WithName("replaceMatchReferees")
+            .WithSummary("Replace Match Referees")
             .WithDescription("Body: `{ userIds: int[] }` — full replace, every id must be online. 409 if the " +
                 "result would leave the match with zero referees. 404 if the match isn't currently live; 400 " +
                 "if any `userId` isn't online." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin")]))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
                 IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -227,13 +240,16 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Add a batch of referees.")
+            .WithName("addMatchReferees")
+            .WithSummary("Add Match Referees")
             .WithDescription("Body: `{ userIds: int[] }` — adds to the existing referee list, every id must " +
                 "be online. Never rejected for leaving the list empty (it only ever adds). 404 if the match " +
                 "isn't currently live; 400 if any `userId` isn't online." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin"), new UserBrief(9, "Carol")]))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/refs", async (int matchId, int? userId, IMatchRegistry matchRegistry,
@@ -267,15 +283,19 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Remove one referee.")
+            .WithName("removeMatchReferee")
+            .WithSummary("Remove Match Referee")
             .WithDescription("Query param `userId` (required, must be online). 409 if this would leave the " +
                 "match with zero referees; 400 if `userId` isn't a referee or isn't online. 404 if the match " +
                 "isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin")]))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not a referee of this match."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // ---- /ban ----
@@ -298,13 +318,15 @@ internal static class MatchSubResourceRoutes
                 return Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("List players banned from this match — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("listMatchBans")
+            .WithSummary("List Match Bans")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns " +
                 "`{ bannedUsers: [{ userId, userName }] }` (`userName` null for a currently-offline banned " +
                 "id); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `ban`) " +
                 "instead. 404 if the match isn't currently live. Public, no authentication.")
-            .WithTags("Match Actions", "Live Channels (SSE)")
+            .WithTags("Match Bans")
             .Produces<MatchBansView>()
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
@@ -327,12 +349,14 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Replace the match's ban list.")
+            .WithName("replaceMatchBans")
+            .WithSummary("Replace Match Bans")
             .WithDescription("Body: `{ userIds: int[] }` — full replace, ids need not be online. No empty " +
                 "guard (banning down to zero is fine). Any newly-banned id currently seated is also kicked. " +
                 "404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Bans")
             .Produces<MatchBansView>()
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
@@ -355,12 +379,14 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Add a batch of bans.")
+            .WithName("addMatchBans")
+            .WithSummary("Add Match Bans")
             .WithDescription("Body: `{ userIds: int[] }` — adds to the existing ban list, ids need not be " +
                 "online. Any newly-banned id currently seated is also kicked. 404 if the match isn't " +
                 "currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Bans")
             .Produces<MatchBansView>()
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory"), new UserBrief(22, "Trent")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, int? userId, IMatchRegistry matchRegistry,
@@ -387,12 +413,15 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Unban one player.")
+            .WithName("removeMatchBan")
+            .WithSummary("Remove Match Ban")
             .WithDescription("Query param `userId` (required). 400 if `userId` isn't banned from this match. " +
                 "404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([]))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not banned from this match."))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
@@ -426,12 +455,14 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Kick a player from the match.")
+            .WithName("kickMatchPlayer")
+            .WithSummary("Kick Match Player")
             .WithDescription("Body: `{ userId }`. 204 on success. 404 if the match isn't currently live; 400 " +
                 "if `userId` is missing/not online, or isn't currently seated in this match." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Kick")
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not in this match."))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
@@ -500,16 +531,23 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Invite one or more players.")
+            .WithName("inviteMatchPlayers")
+            .WithSummary("Invite Match Players")
             .WithDescription("Body: `{ userIds: int[], force? }`. Without `force`, sends a standing invite " +
                 "(same as `!mp invite`) — the target still needs to join themselves, subject to the room's " +
                 "password/private/lock gating. With `force: true`, bypasses password/private/lock and seats " +
                 "the target directly — a banned target is still rejected regardless of `force`. Partial-" +
                 "failure-safe: returns one `{ userId, ok, error }` result per target, 200 even if some " +
                 "targets failed. 404 if the match isn't currently live; 400 if `userIds` is empty." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Invites")
             .Produces<IReadOnlyList<InviteTargetResult>>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new List<InviteTargetResult>
+            {
+                new(9, true, null),
+                new(21, false, "Banned from this match.")
+            })
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userIds is required."))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
@@ -533,14 +571,16 @@ internal static class MatchSubResourceRoutes
                 return Results.Json(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get every slot's current occupant/team/lock state — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("getMatchSlots")
+            .WithSummary("Get Match Slots")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ slots: " +
                 "{ \"0\": { userId, userName, team, locked }, ..., \"15\": {...} } }` — every slot 0-15 " +
                 "always present as a dict key; `Accept: text/event-stream` opens a full-then-delta SSE " +
                 "stream (event name `slots`) instead. 404 if the match isn't currently live. Public, no " +
                 "authentication.")
-            .WithTags("Match Actions", "Live Channels (SSE)")
+            .WithTags("Match Slots")
             .Produces<MatchSlotsView>()
+            .WithExample(StatusCodes.Status200OK, SampleSlots())
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/slots", (int matchId, SlotsBody body, IMatchRegistry matchRegistry,
@@ -550,7 +590,8 @@ internal static class MatchSubResourceRoutes
                     cancellationToken))
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Replace the full slot arrangement.")
+            .WithName("replaceMatchSlots")
+            .WithSummary("Replace Match Slots")
             .WithDescription("Body: `{ slots: { \"<index>\": { userId?, team?, locked? } } }` — every " +
                 "currently-seated player's id must appear exactly once across the payload (reassignment/" +
                 "team/lock only, nobody may be silently added or dropped). A `team` value other than the " +
@@ -559,11 +600,14 @@ internal static class MatchSubResourceRoutes
                 "occupants exactly, or (`UnknownUserId`) if any `userId` isn't currently seated somewhere in " +
                 "this match; 400 (`SlotOccupiedAndLocked`) if an entry sets both `userId` and `locked: true`. " +
                 "404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Slots")
             .Produces<MatchSlotsView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, SampleSlots())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("An entry cannot set both userId and locked: true."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("The payload's player set doesn't match this match's current occupants."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/slots", (int matchId, SlotsBody body, IMatchRegistry matchRegistry,
                 IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
@@ -572,14 +616,28 @@ internal static class MatchSubResourceRoutes
                     cancellationToken))
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Patch a subset of slots.")
+            .WithName("updateMatchSlots")
+            .WithSummary("Update Match Slots")
             .WithDescription("Same body/rules as `PUT`, but only validates/touches the slots actually given — " +
                 "does not require every current occupant to be listed." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Slots")
             .Produces<MatchSlotsView>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, SampleSlots())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("An entry cannot set both userId and locked: true."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("A referenced userId is not currently seated in this match."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
+    }
+
+    private static MatchSlotsView SampleSlots()
+    {
+        var views = new Dictionary<int, SlotView>();
+        for (var i = 0; i < 16; i++) views[i] = new SlotView(null, null, null, false);
+        views[0] = new SlotView(7, "Alice", "Red", false);
+        views[1] = new SlotView(9, "Carol", "Blue", false);
+        views[15] = new SlotView(null, null, null, true);
+        return new MatchSlotsView(views);
     }
 
     private static async Task<IResult> HandleSlotsWrite(int matchId, SlotsBody body, bool isFullReplace,
@@ -635,15 +693,17 @@ internal static class MatchSubResourceRoutes
                 return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
             })
             .WithGroupName("basilapi")
-            .WithSummary("Get the match's countdown timer state — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("getMatchTimer")
+            .WithSummary("Get Match Timer")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ running, " +
                 "secondsRemaining, autoStart }`; `Accept: text/event-stream` opens a full-then-delta SSE " +
                 "stream (event name `timer`) instead — a delta fires at each of the same announcement " +
                 "checkpoints `!mp timer`/`!mp start` chat announcements use, plus once more when the " +
                 "countdown finishes or is aborted. 404 if the match isn't currently live. Public, no " +
                 "authentication.")
-            .WithTags("Match Actions", "Live Channels (SSE)")
+            .WithTags("Match Timer")
             .Produces<MatchTimerView>()
+            .WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 25, true))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/matches/{matchId:int}/timer", async (int matchId, TimerBody body,
@@ -678,17 +738,20 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Start a countdown, or start the match immediately.")
+            .WithName("startMatchTimer")
+            .WithSummary("Start Match Timer")
             .WithDescription("Body: `{ seconds?, start? }`. `start: true` forwards to the same logic as " +
                 "`!mp start [seconds]` — no/non-positive `seconds` starts immediately, a positive value " +
                 "queues a countdown that starts the match when it finishes. `start` false/omitted forwards " +
                 "to `!mp timer` — a countdown that never auto-starts (`seconds` defaults to 30). 409 if the " +
                 "match is already in progress or has no beatmap set. 404 if the match isn't currently live." +
                 AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Timer")
             .Produces<MatchTimerView>()
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 30, true))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is already in progress."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/timer", async (int matchId, IMatchRegistry matchRegistry,
                 MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -711,12 +774,15 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Abort a running countdown.")
+            .WithName("abortMatchTimer")
+            .WithSummary("Abort Match Timer")
             .WithDescription("409 if no countdown is running. 404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Timer")
             .Produces<MatchTimerView>()
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, new MatchTimerView(false, null, false))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("No countdown is running."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // ---- /abort ----
@@ -744,13 +810,15 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Abort the match in progress.")
+            .WithName("abortMatch")
+            .WithSummary("Abort Match")
             .WithDescription("204 on success. 409 if the match is not in progress. 404 if the match isn't " +
                 "currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Abort")
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not in progress."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     // ---- /close ----
@@ -776,9 +844,10 @@ internal static class MatchSubResourceRoutes
             })
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Close the match immediately.")
+            .WithName("closeMatch")
+            .WithSummary("Close Match")
             .WithDescription("204 on success. 404 if the match isn't currently live." + AdminKeyNote)
-            .WithTags("Match Actions")
+            .WithTags("Match Close")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }

@@ -19,10 +19,12 @@ using Basil.Application.Services.Scores;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Protocol.Packets;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -940,16 +942,21 @@ public static class BanchoHostGroups
 
         group.MapGet("/", () => Results.Redirect("/docs/"))
             .WithGroupName("basilapi")
-            .WithSummary("Redirects to the documentation site.")
+            .WithName("redirectToDocs")
+            .WithSummary("Redirect To Docs")
             .WithDescription("302 redirect to `/docs/`.")
-            .WithTags("Health");
+            .WithTags("Health")
+            .Produces(StatusCodes.Status302Found);
 
-        group.MapGet("/health", () => Results.Json(new { status = "ok" }))
+        group.MapGet("/health", () => Results.Json(new HealthStatus("ok")))
             .WithGroupName("basilapi")
-            .WithSummary("Liveness probe.")
+            .WithName("getHealth")
+            .WithSummary("Get Health")
             .WithDescription("Trivial `{ status: \"ok\" }` — no dependency checks (the database is an " +
                 "embedded SQLite file, always available once the process is up). Public, no authentication.")
-            .WithTags("Health");
+            .WithTags("Health")
+            .Produces<HealthStatus>()
+            .WithExample(StatusCodes.Status200OK, new HealthStatus("ok"));
 
         var docsSiteRoot = Path.Combine(AppContext.BaseDirectory, "docs-site");
         var docs = group.MapGroup("/docs");
@@ -1005,7 +1012,8 @@ public static class BanchoHostGroups
             return report is null ? Results.NotFound() : Results.Json(report);
         })
             .WithGroupName("basilapi")
-            .WithSummary("Tournament match report — one-shot JSON snapshot, or a live SSE stream.")
+            .WithName("getMatchReport")
+            .WithSummary("Get Match Report")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` (or any `Accept` not " +
                 "containing `text/event-stream`) returns a full JSON snapshot built at read time — events, " +
                 "rounds, per-round scores, and, if the match is still open, its live state (host, referees, " +
@@ -1017,7 +1025,10 @@ public static class BanchoHostGroups
                 "no match with this id has ever existed. A closed match always falls back to the one-shot JSON " +
                 "report, even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, " +
                 "no authentication.")
-            .WithTags("Match Reports", "Live Channels (SSE)");
+            .WithTags("Match Report")
+            .Produces<MatchReport>()
+            .WithExample(StatusCodes.Status200OK, SampleMatchReport())
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapMatchRoutes();
 
@@ -1032,5 +1043,31 @@ public static class BanchoHostGroups
         group.MapSeasonalRoutes();
 
         group.MapAbbreviationRedirects();
+    }
+
+    private sealed record HealthStatus(string Status);
+
+    private static MatchReport SampleMatchReport()
+    {
+        var started = DateTime.Parse("2026-07-20T12:00:00Z");
+        var ended = DateTime.Parse("2026-07-20T12:04:30Z");
+        var live = new MatchReportLiveInfo(
+            new UserBrief(7, "Alice"), [new UserBrief(8, "Bob")],
+            new Dictionary<int, MatchLiveSlot>
+            {
+                [0] = new MatchLiveSlot(7, "Alice", "VN", "NotReady", "Red", 0),
+                [1] = new MatchLiveSlot(9, "Carol", "US", "NotReady", "Blue", 0)
+            },
+            654, "d41d8cd98f00b204e9800998ecf8427e", GameMode.Standard, MatchWinCondition.ScoreV2,
+            MatchTeamType.TeamVs, 0, false, false);
+
+        var score = new MatchReportScore(7, "Alice", "Red", 0, 4_850_213, 98.42, 1234, 720, 45, 3, 2, 12, 5,
+            "A", false, ended);
+        var round = new MatchReportRound(0, 654, "d41d8cd98f00b204e9800998ecf8427e", "Camellia",
+            "Exit This Earth's Atmosphere", "Extreme", "RLC", 0, 3, 2, 0, false, started, ended,
+            7, "Alice", "Red", "score", 1_200_000, [score]);
+        var evt = new MatchReportEvent(0, "Created", 7, "Alice", null, null, started, null);
+
+        return new MatchReport(42, "Grand Finals: Alpha vs Bravo", started, null, live, [evt], [round]);
     }
 }

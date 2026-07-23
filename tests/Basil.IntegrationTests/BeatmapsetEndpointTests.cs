@@ -13,10 +13,10 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Covers the public `/beatmapsets` routes (info + downloads) — the old singular `/beatmap/{id}`
-///     and `/beatmap/{id}/download` routes were dropped in favor of `GET /beatmapsets/{beatmapsetId}`
+///     and `/beatmap/{id}/download` routes were dropped in favor of `GET /beatmapsets/{mapsetId}`
 ///     (which now embeds each beatmap's id/version/mode inline), `GET
-///     /beatmapsets/{beatmapsetId}/{beatmapId}` (a single difficulty's JSON metadata), and `GET
-///     /beatmapsets/{beatmapsetId}/{beatmapId}/download` (the raw `.osu` file, moved off the bare
+///     /beatmapsets/{mapsetId}/{beatmapId}` (a single difficulty's JSON metadata), and `GET
+///     /beatmapsets/{mapsetId}/{beatmapId}/download` (the raw `.osu` file, moved off the bare
 ///     path). Also covers the MIME-type correctness pass across every download route (osu!'s real
 ///     per-extension types instead of generic ones).
 /// </summary>
@@ -92,7 +92,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         return folder;
     }
 
-    // ---- GET /beatmapsets/{beatmapsetId} ----
+    // ---- GET /beatmapsets/{mapsetId} ----
 
     [Fact]
     public async Task GetBeatmapset_UnknownId_ReturnsNotFound()
@@ -129,7 +129,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ---- GET /beatmapsets/{beatmapsetId}/{beatmapId} (info) ----
+    // ---- GET /beatmapsets/{mapsetId}/{beatmapId} (info) ----
 
     [Fact]
     public async Task BeatmapInfo_UnknownId_ReturnsNotFound()
@@ -153,7 +153,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Contains("\"filename\":\"diff.osu\"", body);
     }
 
-    // ---- GET /beatmapsets/{beatmapsetId}/{beatmapId}/download ----
+    // ---- GET /beatmapsets/{mapsetId}/{beatmapId}/download ----
 
     [Fact]
     public async Task DownloadBeatmap_UnknownId_ReturnsNotFound()
@@ -191,7 +191,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
     }
 
-    // ---- GET /beatmapsets/{beatmapsetId}/download ----
+    // ---- GET /beatmapsets/{mapsetId}/download ----
 
     [Fact]
     public async Task DownloadBeatmapset_NoFolder_ReturnsNotFound()
@@ -218,7 +218,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
     }
 
-    // ---- GET /beatmapsets/{beatmapsetId}/storyboard ----
+    // ---- GET /beatmapsets/{mapsetId}/storyboard ----
 
     [Fact]
     public async Task Storyboard_NoFolder_ReturnsNotFound()

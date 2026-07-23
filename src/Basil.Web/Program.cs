@@ -133,26 +133,68 @@ public sealed class Program
             "Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
             "beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
             "api. subdomain.",
-            BasilApiTagDescriptions);
+            BasilApiTagGroups);
     }
 
-    /// <summary>One line per `.WithTags(...)` string actually used on the `basilapi` document's routes — this is what labels the Scalar sidebar groups (grouping itself is already mechanical via `.WithTags`; this only adds the missing descriptions).</summary>
-    private static readonly Dictionary<string, string> BasilApiTagDescriptions = new()
-    {
-        ["Match Reports"] = "Tournament match report (TRT), match list/create, and settings.",
-        ["Match Actions"] = "Per-resource match sub-routes: hosts, referees, bans, kick, invite, slots, timer, abort, close.",
-        ["Live Channels (SSE)"] = "Server-Sent Events streams — full snapshot on connect, RFC 7396 JSON Merge Patch deltas after.",
-        ["Beatmapsets"] = "Beatmapset/beatmap CRUD, downloads, and freeze/private management.",
-        ["Users"] = "User CRUD, avatar management, and live spectator-input streams.",
-        ["Scores"] = "Individual score lookups, replay downloads, and the paginated score list.",
-        ["FAQ"] = "Public FAQ entry storage.",
-        ["Seasonal Backgrounds"] = "Public seasonal background image storage.",
-        ["Abbreviation Redirects"] = "Short-prefix 302 redirects to the canonical plural resource paths.",
-        ["Health"] = "Liveness check."
-    };
+    /// <summary>
+    ///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
+    ///     sidebar's collapsible sections in this exact order — every route under one resource (e.g.
+    ///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
+    ///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
+    ///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
+    ///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
+    ///     group order (see <see cref="AddOpenApiDocument" />).
+    /// </summary>
+    private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
+    [
+        ("Matches",
+        [
+            ("Matches", "List and create matches."),
+            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot or a live SSE stream."),
+            ("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
+            ("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
+            ("Match Hosts", "Get/set/clear the match host."),
+            ("Match Referees", "List/replace/add/remove the match's referees."),
+            ("Match Bans", "List/replace/add players banned from the match, and unban."),
+            ("Match Kick", "Remove a player from the match."),
+            ("Match Invites", "Invite one or more players, optionally bypassing join gating."),
+            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots as one dict-keyed operation."),
+            ("Match Timer", "Read, start, or abort the match's countdown timer."),
+            ("Match Abort", "Abort the match currently in progress."),
+            ("Match Close", "Close the match immediately.")
+        ]),
+        ("Users",
+        [
+            ("Users", "User CRUD, avatar management, and live spectator-input streams.")
+        ]),
+        ("Beatmapsets",
+        [
+            ("Beatmapsets", "Beatmapset/beatmap CRUD, downloads, and freeze/private management.")
+        ]),
+        ("Scores",
+        [
+            ("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
+        ]),
+        ("FAQ",
+        [
+            ("FAQ", "Public FAQ entry storage.")
+        ]),
+        ("Seasonal Backgrounds",
+        [
+            ("Seasonal Backgrounds", "Public seasonal background image storage.")
+        ]),
+        ("Abbreviation Redirects",
+        [
+            ("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
+        ]),
+        ("Health",
+        [
+            ("Health", "Liveness check.")
+        ])
+    ];
 
     private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
-        string description, IReadOnlyDictionary<string, string>? tagDescriptions = null)
+        string description, (string Group, (string Tag, string Description)[] Tags)[]? tagGroups = null)
     {
         builder.Services.AddOpenApi(documentName, options =>
         {
@@ -162,10 +204,23 @@ public sealed class Program
                 document.Info.Description = description;
                 document.Info.Version = "v1";
 
-                if (tagDescriptions is not null)
-                    document.Tags = tagDescriptions
-                        .Select(kv => new Microsoft.OpenApi.OpenApiTag { Name = kv.Key, Description = kv.Value })
+                if (tagGroups is not null)
+                {
+                    document.Tags = tagGroups
+                        .SelectMany(g => g.Tags)
+                        .Select(t => new Microsoft.OpenApi.OpenApiTag { Name = t.Tag, Description = t.Description })
                         .ToHashSet();
+
+                    var tagGroupsJson = new System.Text.Json.Nodes.JsonArray(tagGroups.Select(g =>
+                        (System.Text.Json.Nodes.JsonNode)new System.Text.Json.Nodes.JsonObject
+                        {
+                            ["name"] = g.Group,
+                            ["tags"] = new System.Text.Json.Nodes.JsonArray(
+                                g.Tags.Select(t => (System.Text.Json.Nodes.JsonNode)t.Tag).ToArray())
+                        }).ToArray());
+                    document.Extensions ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiExtension>();
+                    document.Extensions["x-tagGroups"] = new Microsoft.OpenApi.JsonNodeExtension(tagGroupsJson);
+                }
 
                 return Task.CompletedTask;
             });

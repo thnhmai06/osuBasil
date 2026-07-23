@@ -25,102 +25,162 @@ internal static class BeatmapsetRoutes
     {
         group.MapGet("/beatmapsets", HandleList)
             .WithGroupName("basilapi")
-            .WithSummary("List beatmapsets, paged.")
+            .WithName("listBeatmapsets")
+            .WithSummary("List Beatmapsets")
             .WithDescription("Query params: `page` (default 1), `pageSize` (default 50). A private mapset " +
                 "is excluded entirely unless the caller carries a valid `X-Admin-Key`. Response: " +
                 "`{ page, pageSize, count, hasMore, items }`. Public.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces<PagedResult<BeatmapsetSummary>>()
+            .WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, false,
+                [SampleSummary()]));
 
         group.MapPost("/beatmapsets", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Upload a beatmap set (.osz).")
+            .WithName("createBeatmapset")
+            .WithSummary("Create Beatmapset")
             .WithDescription("Multipart upload, field name `file`, must be a `.osz` archive — a lone `.osu` " +
                 "file has no set context under this server's folder-per-mapset storage model. Runs a full " +
                 "ingestion reconciliation pass synchronously and returns `{ ingested }` (the number of " +
                 "beatmaps added/updated)." + AdminKeyNote)
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces<IngestResult>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new IngestResult(5))
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Only .osz uploads are accepted — a single .osu file has no set context."));
 
-        group.MapGet("/beatmapsets/{beatmapsetId:int}", HandleGet)
+        group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
             .WithGroupName("basilapi")
-            .WithSummary("Get one beatmapset's info, by beatmapset id.")
+            .WithName("getBeatmapset")
+            .WithSummary("Get Beatmapset")
             .WithDescription("Returns `{ id, artist, title, creator, createdAt, lastUpdate, isFrozen, " +
                 "isPrivate, beatmaps: [{ id, version, mode }] }` — beatmap ids are included inline so a " +
                 "client doesn't need a second call to discover them. 404 if the mapset doesn't exist, or " +
                 "(for a non-admin caller) it's private. Public, with a soft admin elevation.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces<BeatmapsetDetail>()
+            .WithExample(StatusCodes.Status200OK, SampleDetail())
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/beatmapsets/{beatmapsetId:int}", HandleReplace)
+        group.MapPut("/beatmapsets/{mapsetId:int}", HandleReplace)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Replace a beatmapset's archive (re-ingest), asynchronously.")
+            .WithName("replaceBeatmapset")
+            .WithSummary("Replace Beatmapset")
             .WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. Filesystem-only " +
                 "and asynchronous: extracts the new archive's contents directly into the mapset's existing " +
                 "storage folder (overwriting files), then returns `202 Accepted` immediately — the database " +
                 "catches up shortly after via the same live reconciliation the filesystem watcher already " +
                 "runs, not synchronously in this request. 404 if the mapset doesn't exist; 409 if it's " +
-                "frozen (see `PATCH /beatmapsets/{beatmapsetId}`)." + AdminKeyNote)
-            .WithTags("Beatmapsets");
+                "frozen (see `PATCH /beatmapsets/{mapsetId}`)." + AdminKeyNote)
+            .WithTags("Beatmapsets")
+            .Produces(StatusCodes.Status202Accepted)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Only .osz uploads are accepted."))
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("This mapset is frozen and cannot be modified."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/beatmapsets/{beatmapsetId:int}", HandleDelete)
+        group.MapDelete("/beatmapsets/{mapsetId:int}", HandleDelete)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Delete a beatmapset, asynchronously.")
+            .WithName("deleteBeatmapset")
+            .WithSummary("Delete Beatmapset")
             .WithDescription("Filesystem-only and asynchronous: atomically renames the mapset's storage " +
                 "folder in place (a TOCTOU-safe marker the live reconciliation and a background garbage " +
                 "collector both recognize as \"gone\"), then returns `202 Accepted` — the database row and " +
                 "the physical folder are both cleaned up shortly after, not synchronously in this request. " +
                 "404 if the mapset doesn't exist; 409 (folder left untouched) if the rename itself fails " +
-                "(e.g. a locked file) or if the mapset is frozen (see `PATCH /beatmapsets/{beatmapsetId}`)." +
+                "(e.g. a locked file) or if the mapset is frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
                 AdminKeyNote)
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces(StatusCodes.Status202Accepted)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("This mapset is frozen and cannot be deleted."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPatch("/beatmapsets/{beatmapsetId:int}", HandlePatch)
+        group.MapPatch("/beatmapsets/{mapsetId:int}", HandlePatch)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
-            .WithSummary("Change a beatmapset's freeze and/or private flags.")
+            .WithName("updateBeatmapset")
+            .WithSummary("Update Beatmapset")
             .WithDescription("Body: `{ frozen?, private? }` — each field is applied only if present. " +
-                "`frozen` is a write-lock: while set, `PUT`/`DELETE /beatmapsets/{beatmapsetId}` are " +
+                "`frozen` is a write-lock: while set, `PUT`/`DELETE /beatmapsets/{mapsetId}` are " +
                 "rejected with 409 regardless of admin role (this route itself is exempt, so unfreezing is " +
                 "always possible). `private` hides the mapset (and every beatmap under it) from non-admin " +
                 "listings/lookups. Returns the updated beatmapset info (same shape as `GET`). 404 if the " +
                 "mapset doesn't exist." + AdminKeyNote)
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces<BeatmapsetDetail>()
+            .WithExample(StatusCodes.Status200OK, SampleDetail() with { IsFrozen = true })
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}", HandleBeatmapInfo)
+        group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}", HandleBeatmapInfo)
             .WithGroupName("basilapi")
-            .WithSummary("Get one difficulty's metadata, by beatmapset id and beatmap id.")
+            .WithName("getBeatmap")
+            .WithSummary("Get Beatmap")
             .WithDescription("Returns `{ id, version, mode, filename, totalLength, maxCombo, plays, " +
                 "passes }`. 404 if the beatmap doesn't exist, doesn't belong to this mapset, or the parent " +
                 "mapset is private and the caller isn't admin. Public, with a soft admin elevation.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .Produces<BeatmapDetail>()
+            .WithExample(StatusCodes.Status200OK, SampleBeatmapDetail())
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
+        group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
             .WithGroupName("basilapi")
-            .WithSummary("Download one difficulty's .osu file, by beatmapset id and beatmap id.")
+            .WithName("downloadBeatmap")
+            .WithSummary("Download Beatmap")
             .WithDescription("Serves the raw `.osu` difficulty file. 404 if the beatmap doesn't exist, " +
                 "doesn't belong to this mapset, its file is missing on disk, or the parent mapset is " +
                 "private and the caller isn't admin. Content-Type `application/x-osu-beatmap`. Public, " +
                 "with a soft admin elevation.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/beatmapsets/{beatmapsetId:int}/storyboard", HandleDownloadStoryboard)
+        group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)
             .WithGroupName("basilapi")
-            .WithSummary("Download a beatmapset's storyboard file, by beatmapset id.")
+            .WithName("downloadBeatmapsetStoryboard")
+            .WithSummary("Download Beatmapset Storyboard")
             .WithDescription("Serves the mapset folder's `.osb` storyboard file. A mapset is expected to " +
                 "carry at most one; if more than one is somehow present, the first in filename order is " +
                 "served. 404 if the mapset has no local folder, or the folder has no `.osb` file at all. " +
                 "Content-Type `application/x-osu-storyboard`. Public, no admin key.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/beatmapsets/{beatmapsetId:int}/download", HandleDownloadArchive)
+        group.MapGet("/beatmapsets/{mapsetId:int}/download", HandleDownloadArchive)
             .WithGroupName("basilapi")
-            .WithSummary("Download a beatmapset as a .osz archive, by beatmapset id.")
+            .WithName("downloadBeatmapset")
+            .WithSummary("Download Beatmapset")
             .WithDescription("Builds a fresh `.osz` on the fly from the mapset's local storage folder (every " +
                 "file in the folder — audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
                 "mapset has no local folder, or the folder is empty. Content-Type " +
                 "`application/x-osu-beatmap-archive`. Public, no admin key.")
-            .WithTags("Beatmapsets");
+            .WithTags("Beatmapsets")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+    }
+
+    private static BeatmapsetSummary SampleSummary()
+    {
+        var created = DateTime.Parse("2026-06-01T10:00:00Z");
+        return new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created,
+            false, false);
+    }
+
+    private static BeatmapsetDetail SampleDetail()
+    {
+        var s = SampleSummary();
+        return new BeatmapsetDetail(s.Id, s.Artist, s.Title, s.Creator, s.CreatedAt, s.LastUpdate, s.IsFrozen,
+            s.IsPrivate, [new BeatmapBrief(654, "Extreme", GameMode.Standard)]);
+    }
+
+    private static BeatmapDetail SampleBeatmapDetail()
+    {
+        return new BeatmapDetail(654, "Extreme", GameMode.Standard,
+            "camellia - exit this earth's atmosphere (rlc) [extreme].osu",
+            TimeSpan.FromSeconds(225), 1234, 57, 12);
     }
 
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -137,6 +197,8 @@ internal static class BeatmapsetRoutes
         TimeSpan TotalLength, int MaxCombo, int Plays, int Passes);
 
     public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
+
+    private sealed record IngestResult(int Ingested);
 
     private static async Task<IResult> HandleList([FromQuery] int? page, [FromQuery] int? pageSize,
         HttpContext context, IMapsetRepository mapsets, CancellationToken cancellationToken)
@@ -156,15 +218,15 @@ internal static class BeatmapsetRoutes
     private static async Task<IResult> HandleCreate(HttpContext context, IOptions<StorageOptions> storage,
         BeatmapIngestionService ingestion, CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
+        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
-        if (file is null) return Results.BadRequest("Missing 'file' form field.");
+        if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
         var extension = Path.GetExtension(file.FileName);
         if (!string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
-            return Results.BadRequest("Only .osz uploads are accepted — a single .osu file has no set context.");
+            return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted — a single .osu file has no set context."));
 
         Directory.CreateDirectory(storage.Value.MapsetsPath);
         var destinationName = $"{Guid.NewGuid():N}{extension}";
@@ -175,19 +237,19 @@ internal static class BeatmapsetRoutes
         }
 
         var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
-        return Results.Json(new { ingested });
+        return Results.Json(new IngestResult(ingested));
     }
 
-    private static async Task<IResult> HandleGet(int beatmapsetId, HttpContext context, IMapsetRepository mapsets,
+    private static async Task<IResult> HandleGet(int mapsetId, HttpContext context, IMapsetRepository mapsets,
         IMapRepository maps, CancellationToken cancellationToken)
     {
-        var mapset = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
+        var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
         if (mapset is null) return Results.NotFound();
 
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
         if (mapset.IsPrivate && !isAdmin) return Results.NotFound();
 
-        var beatmaps = await maps.FetchAllBySetIdAsync(beatmapsetId, isAdmin, cancellationToken);
+        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
         return Results.Json(BuildDetail(mapset, beatmaps));
     }
 
@@ -198,21 +260,21 @@ internal static class BeatmapsetRoutes
             beatmaps.Select(b => new BeatmapBrief(b.Id, b.Version, b.Difficulty.Mode)).ToList());
     }
 
-    private static async Task<IResult> HandleReplace(int beatmapsetId, HttpContext context, IMapsetRepository mapsets,
+    private static async Task<IResult> HandleReplace(int mapsetId, HttpContext context, IMapsetRepository mapsets,
         IOptions<StorageOptions> storage, CancellationToken cancellationToken)
     {
-        var mapset = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
+        var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
         if (mapset is null) return Results.NotFound();
         if (mapset.IsFrozen) return Results.Conflict(new ErrorResponse("This mapset is frozen and cannot be modified."));
 
-        if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
+        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
-        if (file is null) return Results.BadRequest("Missing 'file' form field.");
+        if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
         if (!string.Equals(Path.GetExtension(file.FileName), ".osz", StringComparison.OrdinalIgnoreCase))
-            return Results.BadRequest("Only .osz uploads are accepted.");
+            return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted."));
 
-        var targetFolder = BeatmapIngestionService.FindMapsetFolder(storage.Value, beatmapsetId);
+        var targetFolder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
         if (targetFolder is null) return Results.NotFound();
 
         var tempOszPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.osz");
@@ -233,14 +295,14 @@ internal static class BeatmapsetRoutes
         return Results.Accepted();
     }
 
-    private static async Task<IResult> HandleDelete(int beatmapsetId, IMapsetRepository mapsets,
+    private static async Task<IResult> HandleDelete(int mapsetId, IMapsetRepository mapsets,
         IOptions<StorageOptions> storage, CancellationToken cancellationToken)
     {
-        var mapset = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
+        var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
         if (mapset is null) return Results.NotFound();
         if (mapset.IsFrozen) return Results.Conflict(new ErrorResponse("This mapset is frozen and cannot be deleted."));
 
-        var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, beatmapsetId);
+        var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
         if (folder is null) return Results.NotFound();
 
         var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
@@ -256,57 +318,57 @@ internal static class BeatmapsetRoutes
         return Results.Accepted();
     }
 
-    private static async Task<IResult> HandlePatch(int beatmapsetId, BeatmapsetPatchBody body,
+    private static async Task<IResult> HandlePatch(int mapsetId, BeatmapsetPatchBody body,
         IMapsetRepository mapsets, IMapRepository maps, CancellationToken cancellationToken)
     {
-        if (await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken) is null) return Results.NotFound();
+        if (await mapsets.FetchByIdAsync(mapsetId, cancellationToken) is null) return Results.NotFound();
 
-        if (body.Frozen is not null) await mapsets.SetFrozenAsync(beatmapsetId, body.Frozen.Value, cancellationToken);
-        if (body.Private is not null) await mapsets.SetPrivateAsync(beatmapsetId, body.Private.Value, cancellationToken);
+        if (body.Frozen is not null) await mapsets.SetFrozenAsync(mapsetId, body.Frozen.Value, cancellationToken);
+        if (body.Private is not null) await mapsets.SetPrivateAsync(mapsetId, body.Private.Value, cancellationToken);
 
-        var updated = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
-        var beatmaps = await maps.FetchAllBySetIdAsync(beatmapsetId, includePrivate: true,
+        var updated = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
+        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includePrivate: true,
             cancellationToken: cancellationToken);
         return Results.Json(BuildDetail(updated!, beatmaps));
     }
 
-    private static async Task<IResult> HandleBeatmapInfo(int beatmapsetId, int beatmapId, HttpContext context,
+    private static async Task<IResult> HandleBeatmapInfo(int mapsetId, int beatmapId, HttpContext context,
         IMapRepository maps, CancellationToken cancellationToken)
     {
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-        var bmap = await maps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
+        var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
             cancellationToken: cancellationToken);
-        if (bmap is null || bmap.Mapset.Id != beatmapsetId) return Results.NotFound();
+        if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
         return Results.Json(new BeatmapDetail(bmap.Id, bmap.Version, bmap.Difficulty.Mode, bmap.Filename,
             bmap.TotalLength, bmap.MaxCombo, bmap.Plays, bmap.Passes));
     }
 
-    private static async Task<IResult> HandleDownloadBeatmap(int beatmapsetId, int beatmapId, HttpContext context,
+    private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,
         IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
     {
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-        var bmap = await maps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
+        var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
             cancellationToken: cancellationToken);
-        if (bmap is null || bmap.Mapset.Id != beatmapsetId) return Results.NotFound();
+        if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
         var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
         return File.Exists(osuPath) ? Results.File(osuPath, "application/x-osu-beatmap") : Results.NotFound();
     }
 
-    private static IResult HandleDownloadStoryboard(int beatmapsetId, IOptions<StorageOptions> storage)
+    private static IResult HandleDownloadStoryboard(int mapsetId, IOptions<StorageOptions> storage)
     {
-        var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, beatmapsetId);
+        var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
         if (folder is null) return Results.NotFound();
 
         var osbPath = Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault();
         return osbPath is null ? Results.NotFound() : Results.File(osbPath, "application/x-osu-storyboard");
     }
 
-    private static async Task<IResult> HandleDownloadArchive(int beatmapsetId, IMapRepository maps,
+    private static async Task<IResult> HandleDownloadArchive(int mapsetId, IMapRepository maps,
         IOptions<StorageOptions> storage, CancellationToken cancellationToken)
     {
-        var osz = await BanchoHostGroups.BuildOszArchiveAsync(maps, storage.Value, beatmapsetId, false, cancellationToken);
+        var osz = await BanchoHostGroups.BuildOszArchiveAsync(maps, storage.Value, mapsetId, false, cancellationToken);
         return osz is null
             ? Results.NotFound()
             : Results.File(osz.Value.Bytes, "application/x-osu-beatmap-archive", osz.Value.FileName);

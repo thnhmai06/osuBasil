@@ -93,7 +93,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
         return stream.ToArray();
     }
 
-    // ---- PUT /beatmapsets/{beatmapsetId} ----
+    // ---- PUT /beatmapsets/{mapsetId} ----
 
     [Fact]
     public async Task PutBeatmapset_UnknownId_ReturnsNotFound()
@@ -137,7 +137,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
         Assert.True(File.Exists(Path.Combine(folder, "old.osu")));
     }
 
-    // ---- DELETE /beatmapsets/{beatmapsetId} ----
+    // ---- DELETE /beatmapsets/{mapsetId} ----
 
     [Fact]
     public async Task DeleteBeatmapset_UnknownId_ReturnsNotFound()
@@ -174,7 +174,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
         Assert.NotNull(renamed);
     }
 
-    // ---- PATCH /beatmapsets/{beatmapsetId} ----
+    // ---- PATCH /beatmapsets/{mapsetId} ----
 
     [Fact]
     public async Task PatchBeatmapset_UnknownId_ReturnsNotFound()
