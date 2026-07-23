@@ -1013,28 +1013,13 @@ public static class BanchoHostGroups
                 "`Accept: text/event-stream` instead opens a persistent Server-Sent Events stream on the same " +
                 "path (event name `main`) — the first event is the full current state, every event after that " +
                 "is an RFC 7396 JSON Merge Patch against the previous one — no per-player score data on this " +
-                "channel, see `GET /match/{id}/{playerName}` for that. 404 (one-shot mode only) if no match " +
+                "channel, see `GET /match/{id}/live/{slotIndex}` for that. 404 (one-shot mode only) if no match " +
                 "with this id has ever existed. A closed match always falls back to the one-shot JSON report, " +
                 "even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, no " +
                 "authentication.")
             .WithTags("Match Reports", "Live Channels (SSE)");
 
         group.MapMatchRoutes();
-
-        // SSE — one player's live score, decoded from MatchScoreUpdate frames (see
-        // MatchScoreUpdateHandler). Player name matches how the client's own name is used elsewhere
-        // (e.g. #multi_ channel membership), not a numeric id.
-        group.MapGet("/match/{id:int}/{playerName}", (int id, string playerName, HttpContext context,
-            IMatchLiveEvents events, CancellationToken cancellationToken) =>
-            LiveSseRoutes.HandlePlayer(context, id, playerName, events, cancellationToken))
-            .WithGroupName("basilapi")
-            .WithSummary("Live per-player score stream (SSE) for one match.")
-            .WithDescription("Server-Sent Events stream (event name `playerScore`) of one player's in-progress " +
-                "score frames (combo, HP, etc.) during a round in the given match. `{playerName}` matches the " +
-                "player's in-game username exactly, not a numeric id. A nonexistent match id or a player not " +
-                "currently in that match simply never receives any frames — the connection opens normally and " +
-                "stays open regardless. Public, no authentication.")
-            .WithTags("Live Channels (SSE)");
 
         group.MapUserRoutes();
 
@@ -1063,7 +1048,5 @@ public static class BanchoHostGroups
         group.MapFaqRoutes();
 
         group.MapSeasonalRoutes();
-
-        group.MapAdminManagement();
     }
 }

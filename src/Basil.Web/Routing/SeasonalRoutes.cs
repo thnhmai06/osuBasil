@@ -13,8 +13,7 @@ namespace Basil.Web.Routing;
 /// </summary>
 internal static class SeasonalRoutes
 {
-    private const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header matching the " +
-        "server's configured `Server:AdminKey`.";
+    private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
     public static void MapSeasonalRoutes(this RouteGroupBuilder group)
     {

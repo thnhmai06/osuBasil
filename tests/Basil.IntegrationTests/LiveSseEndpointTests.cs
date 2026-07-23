@@ -92,21 +92,6 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
-    public async Task PlayerChannel_OnlyReceivesPublishesForThatPlayerName()
-    {
-        var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
-
-        var (eventType, data) = await ReceiveAfterPublishAsync("/match/9/alice", () =>
-        {
-            events.PublishPlayer(9, "bob", "not for alice"u8.ToArray());
-            events.PublishPlayer(9, "alice", "for alice"u8.ToArray());
-        });
-
-        Assert.Equal("playerScore", eventType);
-        Assert.Equal("for alice", data);
-    }
-
-    [Fact]
     public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
     {
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();

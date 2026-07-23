@@ -109,8 +109,7 @@ internal static class MatchRoutes
             .WithTags("Match Reports");
     }
 
-    private const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header matching the " +
-        "server's configured `Server:AdminKey`.";
+    private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
     private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
 

@@ -102,8 +102,7 @@ internal static class MapsetRoutes
             .WithTags("Beatmap Downloads");
     }
 
-    private const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header matching the " +
-        "server's configured `Server:AdminKey`.";
+    private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
     private sealed record MapsetSummary(int Id, string Artist, string Title, string Creator, DateTime CreatedAt,
         DateTime LastUpdate, bool IsFrozen);

@@ -1,11 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.Routing;
@@ -44,7 +40,6 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IMatchPersistenceRepository>(new StubMatchPersistenceRepository());
                 services.AddSingleton<IUserRepository>(new StubUserRepository());
             });
         });
@@ -55,18 +50,6 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
         if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
         return request;
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("wrong-key")]
-    public async Task DeleteMatch_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
-    {
-        var client = _factory.CreateClient();
-
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/matches/1", adminKey));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Theory]
@@ -141,16 +124,6 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
-    public async Task DeleteMatch_CorrectAdminKey_UnknownId_ReturnsNotFound()
-    {
-        var client = _factory.CreateClient();
-
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/matches/999", "correct-key"));
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
     public async Task GetUserAvatar_MissingAdminKey_ReturnsUnauthorized()
     {
         var client = _factory.CreateClient();
@@ -201,58 +174,6 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/0/live"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    private sealed class StubMatchPersistenceRepository : IMatchPersistenceRepository
-    {
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<MatchRow?>(null);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
-
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
     }
 
     private sealed class StubUserRepository : IUserRepository

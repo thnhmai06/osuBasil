@@ -137,22 +137,6 @@ internal static class LiveSseRoutes
             "slot", readLatestSlotSnapshot));
     }
 
-    public static IResult HandlePlayer(HttpContext context, int matchId, string playerName, IMatchLiveEvents events,
-        CancellationToken cancellationToken)
-    {
-        SetSseHeaders(context);
-        return TypedResults.ServerSentEvents(Subscribe(cancellationToken, "playerScore", publish =>
-        {
-            void Handler(int id, string name, byte[] payload)
-            {
-                if (id == matchId && name == playerName) publish(payload);
-            }
-
-            events.PlayerScorePublished += Handler;
-            return () => events.PlayerScorePublished -= Handler;
-        }));
-    }
-
     public static IResult HandleInput(HttpContext context, int playerId, IPlayerInputEvents events,
         CancellationToken cancellationToken)
     {

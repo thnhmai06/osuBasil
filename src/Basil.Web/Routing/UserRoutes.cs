@@ -18,8 +18,7 @@ namespace Basil.Web.Routing;
 /// </summary>
 internal static class UserRoutes
 {
-    private const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header matching the " +
-        "server's configured `Server:AdminKey`.";
+    private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
     public static void MapUserRoutes(this RouteGroupBuilder group)
     {
