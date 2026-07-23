@@ -4,7 +4,7 @@ using Basil.Web.Auth;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/seasonal` — public read access to seasonal background images (already public via the osu!
+///     `/seasonals` — public read access to seasonal background images (already public via the osu!
 ///     client's own `GET osu.&lt;domain&gt;/web/osu-getseasonal.php`/`GET /seasonal/{fileName}` pair),
 ///     plus admin-key-gated writes with the same "no silent override" rule as `/faq`: `POST` only
 ///     creates a brand-new file (409 if the name is taken), `PUT` only replaces an existing one (404 if
@@ -17,7 +17,7 @@ internal static class SeasonalRoutes
 
     public static void MapSeasonalRoutes(this RouteGroupBuilder group)
     {
-        group.MapGet("/seasonal/", (SeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))
+        group.MapGet("/seasonals/", (SeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))
             .WithGroupName("basilapi")
             .WithSummary("List seasonal background image filenames.")
             .WithDescription("Bare filenames (unlike the osu! client-facing " +
@@ -25,16 +25,16 @@ internal static class SeasonalRoutes
                 "Public.")
             .WithTags("Seasonal Backgrounds");
 
-        group.MapPost("/seasonal/", HandleCreate)
+        group.MapPost("/seasonals/", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Upload a new seasonal background image.")
             .WithDescription("Multipart upload, field name `file`, saved under its own uploaded filename " +
                 "(path-traversal-filtered). 409 if a file with that name already exists — use " +
-                "`PUT /seasonal/{fileName}` to replace one." + AdminKeyNote)
+                "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds");
 
-        group.MapGet("/seasonal/{fileName}", (string fileName, SeasonalService seasonal) =>
+        group.MapGet("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
         {
             var path = seasonal.FindFilePath(fileName);
             if (path is null) return Results.NotFound();
@@ -54,15 +54,15 @@ internal static class SeasonalRoutes
                 "Content-Type is inferred from the file extension. Public.")
             .WithTags("Seasonal Backgrounds");
 
-        group.MapPut("/seasonal/{fileName}", HandleReplace)
+        group.MapPut("/seasonals/{fileName}", HandleReplace)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Replace an existing seasonal background image.")
             .WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
-                "— use `POST /seasonal/` to create one." + AdminKeyNote)
+                "— use `POST /seasonals/` to create one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds");
 
-        group.MapDelete("/seasonal/{fileName}", (string fileName, SeasonalService seasonal) =>
+        group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
             seasonal.Delete(fileName) ? Results.NoContent() : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")

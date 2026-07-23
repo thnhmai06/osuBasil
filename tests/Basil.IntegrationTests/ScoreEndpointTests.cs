@@ -14,8 +14,8 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the new public `/score` routes: `GET /score/{id}` (a score's full row, new — a score
-///     used to only be visible embedded in a match report) and `GET /score/{id}/replay` (a direct
+///     Covers the new public `/scores` routes: `GET /scores/{scoreId}` (a score's full row, new — a score
+///     used to only be visible embedded in a match report) and `GET /scores/{scoreId}/replay` (a direct
 ///     rename of the old bare `GET /replays/{scoreId}`).
 /// </summary>
 public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -55,7 +55,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetScore_UnknownId_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/999"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -68,7 +68,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             300, 10, 5, 0, 0, 0, "S", GameMode.Standard, DateTime.UtcNow, 120_000,
             ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow, IsInvalidated: false);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/42"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42"));
         var body = await response.Content.ReadFromJsonAsync<ScoreShape>();
 
         response.EnsureSuccessStatusCode();
@@ -87,7 +87,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             250, 40, 10, 0, 0, 0, "A", GameMode.Standard, DateTime.UtcNow, 100_000,
             ClientFlags.Clean, 8, false, "checksum2", DateTime.UtcNow, IsInvalidated: true);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/43"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/43"));
         var body = await response.Content.ReadFromJsonAsync<ScoreShape>();
 
         response.EnsureSuccessStatusCode();
@@ -98,7 +98,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetReplay_UnknownScore_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/999/replay"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999/replay"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -108,7 +108,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     {
         _scores.Owner = new ScoreOwnerRow(7, GameMode.Standard);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/42/replay"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -119,7 +119,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         _scores.Owner = new ScoreOwnerRow(7, GameMode.Standard);
         _replayStorage.Bytes = [1, 2, 3, 4];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/42/replay"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
         var bytes = await response.Content.ReadAsByteArrayAsync();
 
         response.EnsureSuccessStatusCode();

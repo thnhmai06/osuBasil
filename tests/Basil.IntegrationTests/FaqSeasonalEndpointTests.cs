@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the new `/faq` and `/seasonal` routes: public reads, admin-key-gated writes, and the
+///     Covers the new `/faqs` and `/seasonals` routes: public reads, admin-key-gated writes, and the
 ///     "no silent override" rule shared by both — `POST` only creates a brand-new entry/file (409 if
 ///     already taken), `PUT` only replaces an existing one (404 if it isn't). Real temp-directory
 ///     filesystem, no stubs — both resources are pure file storage with no database involvement.
@@ -66,12 +66,12 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     private string FaqsDir => Path.Combine(_dataDir, "Faqs");
     private string SeasonalsDir => Path.Combine(_dataDir, "Seasonals");
 
-    // ---- /faq ----
+    // ---- /faqs ----
 
     [Fact]
     public async Task GetFaqList_NoEntries_ReturnsEmptyArray()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faq/"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
         var body = await response.Content.ReadFromJsonAsync<string[]>();
 
         response.EnsureSuccessStatusCode();
@@ -85,7 +85,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "rules");
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "faq.txt"), "faq");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faq/"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
         var body = await response.Content.ReadFromJsonAsync<string[]>();
 
         Assert.Equal(["faq", "rules"], body);
@@ -94,7 +94,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task GetFaqEntry_UnknownEntry_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faq/nonexistent"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/nonexistent"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -105,7 +105,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(FaqsDir);
         await File.WriteAllLinesAsync(Path.Combine(FaqsDir, "rules.txt"), ["Line one", "Line two"]);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faq/rules"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/rules"));
         var body = await response.Content.ReadAsStringAsync();
 
         response.EnsureSuccessStatusCode();
@@ -117,7 +117,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [InlineData("wrong-key")]
     public async Task PostFaq_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
     {
-        var request = MakeRequest(HttpMethod.Post, "/faq/", adminKey);
+        var request = MakeRequest(HttpMethod.Post, "/faqs/", adminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("hi"u8.ToArray()), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -128,7 +128,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task PostFaq_NewEntry_CreatesFileAndReturnsNoContent()
     {
-        var request = MakeRequest(HttpMethod.Post, "/faq/", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("hello"u8.ToArray()), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -143,7 +143,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(FaqsDir);
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "original");
 
-        var request = MakeRequest(HttpMethod.Post, "/faq/", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("new"u8.ToArray()), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -155,7 +155,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task PutFaq_NotFound_ReturnsNotFound()
     {
-        var request = MakeRequest(HttpMethod.Put, "/faq/nonexistent", AdminKey);
+        var request = MakeRequest(HttpMethod.Put, "/faqs/nonexistent", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("new"u8.ToArray()), "file", "x.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -169,7 +169,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(FaqsDir);
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "old");
 
-        var request = MakeRequest(HttpMethod.Put, "/faq/rules", AdminKey);
+        var request = MakeRequest(HttpMethod.Put, "/faqs/rules", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("new"u8.ToArray()), "file", "x.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -181,7 +181,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task DeleteFaq_NotFound_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faq/nonexistent", AdminKey));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/nonexistent", AdminKey));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -192,13 +192,13 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(FaqsDir);
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "content");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faq/rules", AdminKey));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/rules", AdminKey));
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
     }
 
-    // ---- /seasonal ----
+    // ---- /seasonals ----
 
     [Fact]
     public async Task GetSeasonalList_ReturnsFileNames()
@@ -206,7 +206,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(SeasonalsDir);
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3]);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonal/"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/"));
         var body = await response.Content.ReadFromJsonAsync<string[]>();
 
         Assert.Equal(["winter.png"], body);
@@ -215,7 +215,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task GetSeasonalFile_UnknownFileName_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonal/nope.png"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/nope.png"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -226,7 +226,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(SeasonalsDir);
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3, 4]);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonal/winter.png"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/winter.png"));
         var bytes = await response.Content.ReadAsByteArrayAsync();
 
         response.EnsureSuccessStatusCode();
@@ -237,7 +237,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task PostSeasonal_New_CreatesFile()
     {
-        var request = MakeRequest(HttpMethod.Post, "/seasonal/", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, "/seasonals/", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -252,7 +252,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(SeasonalsDir);
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
 
-        var request = MakeRequest(HttpMethod.Post, "/seasonal/", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, "/seasonals/", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -264,7 +264,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task PutSeasonal_NotFound_ReturnsNotFound()
     {
-        var request = MakeRequest(HttpMethod.Put, "/seasonal/nope.png", AdminKey);
+        var request = MakeRequest(HttpMethod.Put, "/seasonals/nope.png", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "nope.png" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -278,7 +278,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(SeasonalsDir);
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
 
-        var request = MakeRequest(HttpMethod.Put, "/seasonal/spring.png", AdminKey);
+        var request = MakeRequest(HttpMethod.Put, "/seasonals/spring.png", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -290,7 +290,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task DeleteSeasonal_NotFound_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/seasonal/nope.png", AdminKey));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/seasonals/nope.png", AdminKey));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -301,7 +301,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         Directory.CreateDirectory(SeasonalsDir);
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/seasonal/spring.png", AdminKey));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/seasonals/spring.png", AdminKey));
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));

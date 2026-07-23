@@ -12,13 +12,15 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the public `/mapset` routes (info + downloads) — the old singular `/beatmap/{id}` and
-///     `/beatmap/{id}/download` routes were dropped in favor of `GET /mapset/{id}` (which now embeds
-///     each beatmap's id/version/mode inline) and `GET /mapset/{id}/{beatmapId}` respectively. Also
-///     covers the MIME-type correctness pass across every download route (osu!'s real per-extension
-///     types instead of generic ones).
+///     Covers the public `/beatmapsets` routes (info + downloads) — the old singular `/beatmap/{id}`
+///     and `/beatmap/{id}/download` routes were dropped in favor of `GET /beatmapsets/{beatmapsetId}`
+///     (which now embeds each beatmap's id/version/mode inline), `GET
+///     /beatmapsets/{beatmapsetId}/{beatmapId}` (a single difficulty's JSON metadata), and `GET
+///     /beatmapsets/{beatmapsetId}/{beatmapId}/download` (the raw `.osu` file, moved off the bare
+///     path). Also covers the MIME-type correctness pass across every download route (osu!'s real
+///     per-extension types instead of generic ones).
 /// </summary>
-public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
     private readonly WebApplicationFactory<Program> _factory;
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
@@ -27,7 +29,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
     private readonly StubScoreRepository _scores = new();
     private readonly StubReplayStorage _replayStorage = new();
 
-    public BeatmapMapsetEndpointTests(WebApplicationFactory<Program> factory)
+    public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
@@ -90,24 +92,24 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         return folder;
     }
 
-    // ---- GET /mapset/{id} ----
+    // ---- GET /beatmapsets/{beatmapsetId} ----
 
     [Fact]
-    public async Task GetMapset_UnknownId_ReturnsNotFound()
+    public async Task GetBeatmapset_UnknownId_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/999"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/999"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetMapset_KnownId_ReturnsInfoWithBeatmapsInline()
+    public async Task GetBeatmapset_KnownId_ReturnsInfoWithBeatmapsInline()
     {
         var mapset = MakeMapset(100);
         _mapsets.Mapset = mapset;
         _maps.SetBeatmaps = [MakeBeatmap(1, mapset, "diff1.osu"), MakeBeatmap(2, mapset, "diff2.osu")];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/100"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"));
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -116,22 +118,48 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public async Task GetMapset_NoVisibleBeatmaps_ReturnsNotFound()
+    public async Task GetBeatmapset_Private_NonAdmin_ReturnsNotFound()
     {
-        _mapsets.Mapset = MakeMapset(101);
-        _maps.SetBeatmaps = [];
+        var mapset = MakeMapset(101) with { IsPrivate = true };
+        _mapsets.Mapset = mapset;
+        _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/101"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ---- GET /mapset/{id}/{beatmapId} ----
+    // ---- GET /beatmapsets/{beatmapsetId}/{beatmapId} (info) ----
+
+    [Fact]
+    public async Task BeatmapInfo_UnknownId_ReturnsNotFound()
+    {
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BeatmapInfo_KnownId_ReturnsJson()
+    {
+        var mapset = MakeMapset(100);
+        _maps.OneBeatmap = MakeBeatmap(1, mapset, "diff.osu");
+
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("\"version\":\"Normal\"", body);
+        Assert.Contains("\"filename\":\"diff.osu\"", body);
+    }
+
+    // ---- GET /beatmapsets/{beatmapsetId}/{beatmapId}/download ----
 
     [Fact]
     public async Task DownloadBeatmap_UnknownId_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/100/999"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/download"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -142,7 +170,8 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         var mapset = MakeMapset(100);
         _maps.OneBeatmap = MakeBeatmap(1, mapset);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/100/1"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -155,45 +184,46 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         var folder = MapsetFolder(100);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/100/1"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
     }
 
-    // ---- GET /mapset/{id}/download ----
+    // ---- GET /beatmapsets/{beatmapsetId}/download ----
 
     [Fact]
-    public async Task DownloadMapset_NoFolder_ReturnsNotFound()
+    public async Task DownloadBeatmapset_NoFolder_ReturnsNotFound()
     {
         var mapset = MakeMapset(200);
         _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/200/download"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task DownloadMapset_FolderExists_ReturnsCorrectMimeType()
+    public async Task DownloadBeatmapset_FolderExists_ReturnsCorrectMimeType()
     {
         var mapset = MakeMapset(300);
         _maps.SetBeatmaps = [MakeBeatmap(1, mapset, "diff.osu")];
         var folder = MapsetFolder(300);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/300/download"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
     }
 
-    // ---- GET /mapset/{id}/sb ----
+    // ---- GET /beatmapsets/{beatmapsetId}/storyboard ----
 
     [Fact]
     public async Task Storyboard_NoFolder_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/400/sb"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -203,7 +233,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
     {
         MapsetFolder(500);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/500/sb"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -214,7 +244,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         var folder = MapsetFolder(600);
         await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/mapset/600/sb"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-storyboard", response.Content.Headers.ContentType?.MediaType);
@@ -257,7 +287,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         _scores.Owner = new ScoreOwnerRow(1, GameMode.Standard);
         _replayStorage.Bytes = [1, 2, 3];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/1/replay"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);

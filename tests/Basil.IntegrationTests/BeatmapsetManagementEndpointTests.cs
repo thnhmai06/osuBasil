@@ -14,20 +14,22 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the admin-key-gated `/mapset` write routes: `PUT`/`DELETE` (both filesystem-first and
-///     asynchronous — 202, never a synchronous DB touch) and `PATCH .../freeze` (the write-lock those
-///     two respect). A stub `IMapsetRepository` stands in for the database (this suite is about the
-///     route/filesystem behavior, not persistence), while the mapset's storage folder is a real temp
-///     directory so `Directory.Move`/zip-extraction actually run.
+///     Covers the admin-key-gated `/beatmapsets` write routes: `PUT`/`DELETE` (both filesystem-first
+///     and asynchronous — 202, never a synchronous DB touch) and `PATCH` (the combined frozen/private
+///     write-lock those two respect — frozen blocks `PUT`/`DELETE`, private hides the mapset and every
+///     beatmap under it from non-admin reads). A stub `IMapsetRepository` stands in for the database
+///     (this suite is about the route/filesystem behavior, not persistence), while the mapset's
+///     storage folder is a real temp directory so `Directory.Move`/zip-extraction actually run.
 /// </summary>
-public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
     private const string AdminKey = "correct-key";
     private readonly WebApplicationFactory<Program> _factory;
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-mapset-mgmt-tests-").FullName;
     private readonly StubMapsetRepository _mapsets = new();
+    private readonly StubMapRepository _maps = new();
 
-    public MapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
+    public BeatmapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
@@ -46,6 +48,7 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMapsetRepository>(_mapsets);
+                services.AddSingleton<IMapRepository>(_maps);
                 services.AddSingleton<IOptions<StorageOptions>>(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -90,12 +93,12 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
         return stream.ToArray();
     }
 
-    // ---- PUT /mapset/{id} ----
+    // ---- PUT /beatmapsets/{beatmapsetId} ----
 
     [Fact]
-    public async Task PutMapset_UnknownId_ReturnsNotFound()
+    public async Task PutBeatmapset_UnknownId_ReturnsNotFound()
     {
-        var request = MakeRequest(HttpMethod.Put, "/mapset/999999");
+        var request = MakeRequest(HttpMethod.Put, "/beatmapsets/999999");
         request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -104,12 +107,12 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task PutMapset_Frozen_ReturnsConflict()
+    public async Task PutBeatmapset_Frozen_ReturnsConflict()
     {
         _mapsets.Mapset = new Mapset(700, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, IsFrozen: true);
         MapsetFolder(700);
 
-        var request = MakeRequest(HttpMethod.Put, "/mapset/700");
+        var request = MakeRequest(HttpMethod.Put, "/beatmapsets/700");
         request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -118,13 +121,13 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task PutMapset_Valid_ExtractsIntoResolvedFolderAndReturns202()
+    public async Task PutBeatmapset_Valid_ExtractsIntoResolvedFolderAndReturns202()
     {
         _mapsets.Mapset = new Mapset(701, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
         var folder = MapsetFolder(701);
         await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content");
 
-        var request = MakeRequest(HttpMethod.Put, "/mapset/701");
+        var request = MakeRequest(HttpMethod.Put, "/beatmapsets/701");
         request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -134,35 +137,35 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
         Assert.True(File.Exists(Path.Combine(folder, "old.osu")));
     }
 
-    // ---- DELETE /mapset/{id} ----
+    // ---- DELETE /beatmapsets/{beatmapsetId} ----
 
     [Fact]
-    public async Task DeleteMapset_UnknownId_ReturnsNotFound()
+    public async Task DeleteBeatmapset_UnknownId_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/999999"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/999999"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task DeleteMapset_Frozen_ReturnsConflict_FolderUntouched()
+    public async Task DeleteBeatmapset_Frozen_ReturnsConflict_FolderUntouched()
     {
         _mapsets.Mapset = new Mapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, IsFrozen: true);
         var folder = MapsetFolder(800);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/800"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"));
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.True(Directory.Exists(folder));
     }
 
     [Fact]
-    public async Task DeleteMapset_Valid_RenamesToDeletedMarkerAndReturns202()
+    public async Task DeleteBeatmapset_Valid_RenamesToDeletedMarkerAndReturns202()
     {
         _mapsets.Mapset = new Mapset(801, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
         var folder = MapsetFolder(801);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/801"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/801"));
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         Assert.False(Directory.Exists(folder));
@@ -171,12 +174,12 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
         Assert.NotNull(renamed);
     }
 
-    // ---- PATCH /mapset/{id}/freeze ----
+    // ---- PATCH /beatmapsets/{beatmapsetId} ----
 
     [Fact]
-    public async Task PatchFreeze_UnknownId_ReturnsNotFound()
+    public async Task PatchBeatmapset_UnknownId_ReturnsNotFound()
     {
-        var request = MakeRequest(HttpMethod.Patch, "/mapset/999999/freeze");
+        var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/999999");
         request.Content = JsonContent.Create(new { frozen = true });
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -185,30 +188,46 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task PatchFreeze_TogglesFrozenState()
+    public async Task PatchBeatmapset_TogglesFrozenAndPrivateTogether()
     {
         _mapsets.Mapset = new Mapset(900, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 
-        var freezeRequest = MakeRequest(HttpMethod.Patch, "/mapset/900/freeze");
-        freezeRequest.Content = JsonContent.Create(new { frozen = true });
-        var freezeResponse = await _factory.CreateClient().SendAsync(freezeRequest);
+        var setRequest = MakeRequest(HttpMethod.Patch, "/beatmapsets/900");
+        setRequest.Content = JsonContent.Create(new { frozen = true, @private = true });
+        var setResponse = await _factory.CreateClient().SendAsync(setRequest);
 
-        Assert.True(freezeResponse.IsSuccessStatusCode);
+        Assert.True(setResponse.IsSuccessStatusCode);
         Assert.True(_mapsets.Mapset!.IsFrozen);
+        Assert.True(_mapsets.Mapset!.IsPrivate);
 
-        var unfreezeRequest = MakeRequest(HttpMethod.Patch, "/mapset/900/freeze");
-        unfreezeRequest.Content = JsonContent.Create(new { frozen = false });
-        await _factory.CreateClient().SendAsync(unfreezeRequest);
+        var clearRequest = MakeRequest(HttpMethod.Patch, "/beatmapsets/900");
+        clearRequest.Content = JsonContent.Create(new { frozen = false, @private = false });
+        await _factory.CreateClient().SendAsync(clearRequest);
 
         Assert.False(_mapsets.Mapset!.IsFrozen);
+        Assert.False(_mapsets.Mapset!.IsPrivate);
     }
 
     [Fact]
-    public async Task PatchFreeze_MissingAdminKey_ReturnsUnauthorized()
+    public async Task PatchBeatmapset_OmittedField_LeavesItUnchanged()
+    {
+        _mapsets.Mapset = new Mapset(902, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow,
+            IsPrivate: true);
+
+        var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/902");
+        request.Content = JsonContent.Create(new { frozen = true });
+        await _factory.CreateClient().SendAsync(request);
+
+        Assert.True(_mapsets.Mapset!.IsFrozen);
+        Assert.True(_mapsets.Mapset!.IsPrivate);
+    }
+
+    [Fact]
+    public async Task PatchBeatmapset_MissingAdminKey_ReturnsUnauthorized()
     {
         _mapsets.Mapset = new Mapset(901, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 
-        var request = MakeRequest(HttpMethod.Patch, "/mapset/901/freeze", adminKey: null);
+        var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/901", adminKey: null);
         request.Content = JsonContent.Create(new { frozen = true });
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -261,6 +280,52 @@ public class MapsetManagementEndpointTests : IClassFixture<WebApplicationFactory
         {
             if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubMapRepository : IMapRepository
+    {
+        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Beatmap?>(null);
+        }
+
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(beatmap);
+        }
+
+        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
+            int offset, int amount, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+        }
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
+        }
+
+        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
         }
     }
 }

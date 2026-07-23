@@ -58,7 +58,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/match/5",
+        var (eventType, data) = await ReceiveAfterPublishAsync("/matches/5",
             () => events.PublishMain(5, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
 
         Assert.Equal("main", eventType);
@@ -70,7 +70,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/user/7/live",
+        var (eventType, data) = await ReceiveAfterPublishAsync("/users/7/live",
             () => events.PublishInput(7, "frame-data"u8.ToArray()));
 
         Assert.Equal("input", eventType);
@@ -82,7 +82,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync("/user/7/live", () =>
+        var (_, data) = await ReceiveAfterPublishAsync("/users/7/live", () =>
         {
             events.PublishInput(8, "not for player 7"u8.ToArray());
             events.PublishInput(7, "for player 7"u8.ToArray());
@@ -96,7 +96,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     {
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync("/match/11", () =>
+        var (_, data) = await ReceiveAfterPublishAsync("/matches/11", () =>
         {
             events.PublishMain(12, "wrong match"u8.ToArray());
             events.PublishMain(11, "right match"u8.ToArray());

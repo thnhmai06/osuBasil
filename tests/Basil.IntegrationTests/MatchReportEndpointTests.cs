@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
-/// <summary>Covers the read-only slice of the api. host's TRT endpoint, GET /match/{id}.</summary>
+/// <summary>Covers the read-only slice of the api. host's TRT endpoint, GET /matches/{matchId}.</summary>
 public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
@@ -55,7 +55,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest("/match/999"));
+        var response = await client.SendAsync(MakeRequest("/matches/999"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -67,7 +67,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest("/match/5"));
+        var response = await client.SendAsync(MakeRequest("/matches/5"));
         var body = await response.Content.ReadAsStringAsync();
 
         response.EnsureSuccessStatusCode();

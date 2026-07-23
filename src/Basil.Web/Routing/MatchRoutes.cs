@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/match` — resource-oriented routes replacing the old admin-key-only `/matches` listing plus
+///     `/matches` — resource-oriented routes replacing the old admin-key-only `/matches` listing plus
 ///     the bare TRT report/SSE routes. Reads (list/report/live channels) are public, with a soft
 ///     admin-only elevation for private-match visibility; every write (create/settings/actions) is
 ///     admin-key gated. Settings/action mutation logic lives in <see cref="MatchControlService" />,
@@ -25,7 +25,7 @@ internal static class MatchRoutes
 {
     public static void MapMatchRoutes(this RouteGroupBuilder group)
     {
-        group.MapGet("/match", HandleList)
+        group.MapGet("/matches", HandleList)
             .WithGroupName("basilapi")
             .WithSummary("List matches, paged.")
             .WithDescription("Query params: `status` (`online` (default) | `offline` | `all`), `page` " +
@@ -36,19 +36,19 @@ internal static class MatchRoutes
                 "no `total`/`totalPages`; `hasMore` just reports whether another page exists. Public.")
             .WithTags("Match Reports");
 
-        group.MapPost("/match", HandleCreate)
+        group.MapPost("/matches", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Create a match (`!mp make` equivalent).")
             .WithDescription("Body: any subset of `{ name, password, isPrivate, isLocked, size, mapId, " +
-                "mods, freemod, teamType, winCondition }` — same shape `PATCH /match/{id}/settings` " +
+                "mods, freemod, teamType, winCondition }` — same shape `PATCH /matches/{matchId}/settings` " +
                 "accepts, all optional (each defaults to `!mp make`'s own defaults when omitted). No chat " +
                 "\"sender\" exists over HTTP, so the new match starts with host id 0 and no referees — " +
                 "assign both via the `host`/`addref` actions afterward. Returns the full settings " +
                 "representation (not a bare id)." + AdminKeyNote)
             .WithTags("Match Reports");
 
-        group.MapGet("/match/{id:int}/settings", HandleSettingsStream)
+        group.MapGet("/matches/{matchId:int}/settings", HandleSettingsStream)
             .WithGroupName("basilapi")
             .WithSummary("Live match settings (SSE only).")
             .WithDescription("Server-Sent Events stream (event name `settings`) scoped to just the " +
@@ -57,7 +57,7 @@ internal static class MatchRoutes
                 "password, only `hasPassword`. Public, no authentication.")
             .WithTags("Live Channels (SSE)");
 
-        group.MapMethods("/match/{id:int}/settings", ["PUT", "PATCH"], HandleSettingsUpdate)
+        group.MapMethods("/matches/{matchId:int}/settings", ["PUT", "PATCH"], HandleSettingsUpdate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Update a match's settings (partial).")
@@ -70,17 +70,17 @@ internal static class MatchRoutes
                 "settings representation." + AdminKeyNote)
             .WithTags("Match Reports");
 
-        group.MapGet("/match/{id:int}/live", HandleLiveStream)
+        group.MapGet("/matches/{matchId:int}/live", HandleLiveStream)
             .WithGroupName("basilapi")
             .WithSummary("Live room-wide \"currently playing\" status (SSE only).")
             .WithDescription("Server-Sent Events stream (event name `live`) of `{ inProgress, " +
-                "currentRoundId, mapId, mode }` — no per-player data, see `GET /match/{id}/live/{slotIndex}` " +
-                "for that. First event is the full current status, every event after is an RFC 7396 JSON " +
-                "Merge Patch. Idle (no events) outside of an active round — that's expected. Public, no " +
-                "authentication.")
+                "currentRoundId, mapId, mode }` — no per-player data, see " +
+                "`GET /matches/{matchId}/live/{slotIndex}` for that. First event is the full current " +
+                "status, every event after is an RFC 7396 JSON Merge Patch. Idle (no events) outside of " +
+                "an active round — that's expected. Public, no authentication.")
             .WithTags("Live Channels (SSE)");
 
-        group.MapGet("/match/{id:int}/live/{slotIndex:int}", HandleLiveSlotStream)
+        group.MapGet("/matches/{matchId:int}/live/{slotIndex:int}", HandleLiveSlotStream)
             .WithGroupName("basilapi")
             .WithSummary("Merged live slot/score/spectator-input stream for one slot (SSE only).")
             .WithDescription("`{slotIndex}` is 1-16 (matching `!mp move`'s convention). One SSE stream " +
@@ -93,7 +93,7 @@ internal static class MatchRoutes
                 "Public, no authentication.")
             .WithTags("Live Channels (SSE)");
 
-        group.MapPost("/match/{id:int}/{action}", HandleAction)
+        group.MapPost("/matches/{matchId:int}/{action}", HandleAction)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Perform a one-shot room action.")
@@ -174,33 +174,33 @@ internal static class MatchRoutes
         return Results.Json(MatchLiveSnapshotBuilder.BuildSettings(match));
     }
 
-    private static IResult HandleSettingsStream(int id, HttpContext context, IMatchRegistry matchRegistry,
+    private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
         IMatchLiveEvents events, CancellationToken cancellationToken)
     {
-        var match = matchRegistry.GetByDbId(id);
-        return LiveSseRoutes.HandleSettings(context, id, events,
+        var match = matchRegistry.GetByDbId(matchId);
+        return LiveSseRoutes.HandleSettings(context, matchId, events,
             () => match?.SettingsSnapshot.Latest is { } snapshot
                 ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
                 : null,
             cancellationToken);
     }
 
-    private static IResult HandleLiveStream(int id, HttpContext context, IMatchRegistry matchRegistry,
+    private static IResult HandleLiveStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
         IMatchLiveEvents events, CancellationToken cancellationToken)
     {
-        var match = matchRegistry.GetByDbId(id);
-        return LiveSseRoutes.HandleLive(context, id, events,
+        var match = matchRegistry.GetByDbId(matchId);
+        return LiveSseRoutes.HandleLive(context, matchId, events,
             () => match?.LiveSnapshot.Latest is { } snapshot
                 ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
                 : null,
             cancellationToken);
     }
 
-    private static IResult HandleLiveSlotStream(int id, int slotIndex, HttpContext context,
+    private static IResult HandleLiveSlotStream(int matchId, int slotIndex, HttpContext context,
         IMatchRegistry matchRegistry, IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents,
         IPlayerSessionRegistry sessionRegistry, CancellationToken cancellationToken)
     {
-        var match = matchRegistry.GetByDbId(id);
+        var match = matchRegistry.GetByDbId(matchId);
         if (match is null || slotIndex is < 1 or > 16) return Results.NotFound();
 
         var index = slotIndex - 1;
@@ -211,10 +211,10 @@ internal static class MatchRoutes
             cancellationToken);
     }
 
-    private static async Task<IResult> HandleSettingsUpdate(int id, MatchSettingsBody body,
+    private static async Task<IResult> HandleSettingsUpdate(int matchId, MatchSettingsBody body,
         IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken)
     {
-        var match = matchRegistry.GetByDbId(id);
+        var match = matchRegistry.GetByDbId(matchId);
         if (match is null) return Results.NotFound();
 
         await match.Lock.WaitAsync(cancellationToken);
@@ -261,11 +261,11 @@ internal static class MatchRoutes
         return null;
     }
 
-    private static async Task<IResult> HandleAction(int id, string action, MatchActionBody body,
+    private static async Task<IResult> HandleAction(int matchId, string action, MatchActionBody body,
         IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
         CancellationToken cancellationToken)
     {
-        var match = matchRegistry.GetByDbId(id);
+        var match = matchRegistry.GetByDbId(matchId);
         if (match is null) return Results.NotFound();
 
         await match.Lock.WaitAsync(cancellationToken);
@@ -418,10 +418,10 @@ internal static class MatchRoutes
     }
 }
 
-/// <summary>Body for `POST /match` and `PUT`/`PATCH /match/{id}/settings` — every field optional, only present ones are applied.</summary>
+/// <summary>Body for `POST /matches` and `PUT`/`PATCH /matches/{matchId}/settings` — every field optional, only present ones are applied.</summary>
 public sealed record MatchSettingsBody(
     string? Name, string? Password, bool? IsPrivate, bool? IsLocked, int? Size,
     int? MapId, int? Mods, bool? Freemod, int? TeamType, int? WinCondition);
 
-/// <summary>Body for `POST /match/{id}/{action}` — a superset covering every action's own fields; unused ones are ignored.</summary>
+/// <summary>Body for `POST /matches/{matchId}/{action}` — a superset covering every action's own fields; unused ones are ignored.</summary>
 public sealed record MatchActionBody(int? UserId, int? SlotIndex, int? Team, int? Seconds);

@@ -13,7 +13,7 @@ namespace Basil.IntegrationTests;
 ///     Confirms the 5 host-group OpenAPI documents (bancho/osuweb/beatmapassets/avatar/basilapi) are
 ///     actually reachable and correctly partitioned — each one only carries routes from its own host
 ///     group (see <c>ConfigureOpenApi</c> in <c>Program.cs</c> and every <c>.WithGroupName(...)</c> in
-///     <c>BanchoHostGroups.cs</c>/<c>AdminManagementRoutes.cs</c>). Also confirms the Scalar UI mounts
+///     <c>BanchoHostGroups.cs</c> and the other <c>Routing/</c> files). Also confirms the Scalar UI mounts
 ///     and the static docs pages actually respond.
 /// </summary>
 public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -51,8 +51,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
     [InlineData("avatar", "osu! Client API — Avatar Files", new[] { "/{userId}" })]
     [InlineData("basilapi", "Basil API", new[]
     {
-        "/match/{id}", "/match", "/mapset/{id}", "/user", "/score/{id}", "/faq/{entry}", "/seasonal/{fileName}",
-        "/health"
+        "/matches/{matchId}", "/matches", "/beatmapsets/{beatmapsetId}", "/users", "/scores/{scoreId}",
+        "/faqs/{entry}", "/seasonals/{fileName}", "/health"
     })]
     public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,
         string[] expectedPaths)

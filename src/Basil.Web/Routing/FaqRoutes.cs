@@ -4,7 +4,7 @@ using Basil.Web.Auth;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/faq` — public read access to the same FAQ entries `!faq` serves in chat, plus admin-key-gated
+///     `/faqs` — public read access to the same FAQ entries `!faq` serves in chat, plus admin-key-gated
 ///     writes with a "no silent override" rule: `POST` only creates a brand-new entry (409 if the name
 ///     is already taken), `PUT` only replaces an existing one (404 if it isn't). Backed by
 ///     <see cref="FaqService" />, shared with <see cref="Basil.Application.Services.Bot.CommandDispatcher" />.
@@ -15,23 +15,23 @@ internal static class FaqRoutes
 
     public static void MapFaqRoutes(this RouteGroupBuilder group)
     {
-        group.MapGet("/faq/", (FaqService faq) => Results.Json(faq.ListEntries()))
+        group.MapGet("/faqs/", (FaqService faq) => Results.Json(faq.ListEntries()))
             .WithGroupName("basilapi")
             .WithSummary("List FAQ entry names.")
             .WithDescription("Bare entry names (no `.txt` suffix), matching `!faq list`'s own identifier " +
                 "space. Public.")
             .WithTags("FAQ");
 
-        group.MapPost("/faq/", HandleCreate)
+        group.MapPost("/faqs/", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Create a new FAQ entry.")
             .WithDescription("Multipart upload, field name `file`, must be a `.txt` file — its name (minus " +
                 "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
-                "`PUT /faq/{entry}` to replace one." + AdminKeyNote)
+                "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
             .WithTags("FAQ");
 
-        group.MapGet("/faq/{entry}", async (string entry, FaqService faq, CancellationToken cancellationToken) =>
+        group.MapGet("/faqs/{entry}", async (string entry, FaqService faq, CancellationToken cancellationToken) =>
         {
             var content = await faq.ReadEntryAsync(entry, cancellationToken);
             return content is null ? Results.NotFound() : Results.Text(content);
@@ -42,15 +42,15 @@ internal static class FaqRoutes
                 "entry with this name exists. Public.")
             .WithTags("FAQ");
 
-        group.MapPut("/faq/{entry}", HandleReplace)
+        group.MapPut("/faqs/{entry}", HandleReplace)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithSummary("Replace an existing FAQ entry's content.")
             .WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet " +
-                "— use `POST /faq/` to create one." + AdminKeyNote)
+                "— use `POST /faqs/` to create one." + AdminKeyNote)
             .WithTags("FAQ");
 
-        group.MapDelete("/faq/{entry}", (string entry, FaqService faq) =>
+        group.MapDelete("/faqs/{entry}", (string entry, FaqService faq) =>
             faq.DeleteEntry(entry) ? Results.NoContent() : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")

@@ -52,13 +52,13 @@ public static class BanchoHostGroups
         ToggleBlockNonFriendDms.
 
         Spectating: StartSpectating, StopSpectating, SpectateFrames (raw replay-frame bytes — also
-        published live to the Basil API's `GET /user/{id}/live` SSE channel), CantSpectate.
+        published live to the Basil API's `GET /users/{id}/live` SSE channel), CantSpectate.
 
         Multiplayer: CreateMatch, JoinMatch, PartMatch, MatchChangeSlot, MatchChangeSettings,
         MatchChangePassword, MatchChangeMods, MatchChangeTeam, MatchLock, MatchTransferHost,
         MatchReady, MatchNotReady, MatchStart, MatchLoadComplete, MatchSkipRequest, MatchNoBeatmap,
         MatchHasBeatmap, MatchFailed, MatchScoreUpdate (also published live to the Basil API's
-        `GET /match/{id}/{playerName}` SSE channel), MatchComplete, MatchInvite,
+        `GET /matches/{id}/live/{slotIndex}` SSE channel), MatchComplete, MatchInvite,
         TournamentMatchInfoRequest, TournamentJoinMatchChannel, TournamentLeaveMatchChannel.
 
         The response body is the same wire format: zero or more queued packets addressed back to
@@ -366,7 +366,7 @@ public static class BanchoHostGroups
                     "was ingested locally, a fresh `.osz` (`application/x-osu-beatmap-archive`) is built on the fly " +
                     "from its storage folder. Otherwise, falls back to redirecting to a configured mirror " +
                     "(`Mirror:DownloadEndpoint`), or returns a plain-text \"not available\" message if no mirror " +
-                    "is configured. Prefer `GET /mapset/{id}/download` on the Basil API for external tooling — " +
+                    "is configured. Prefer `GET /beatmapsets/{id}/download` on the Basil API for external tooling — " +
                     "this route exists for the in-game client specifically.")
                 .WithTags("Beatmaps");
 
@@ -802,11 +802,11 @@ public static class BanchoHostGroups
     /// <summary>
     ///     Packages a locally-ingested mapset's whole storage folder (audio/images/video/.osu, as
     ///     extracted) into a fresh .osz on the fly (shared by /d/{setId} and the api. host's
-    ///     /mapset/{id}/download). <paramref name="noVideo" /> skips any video file and appends
-    ///     " [no video]" to the returned filename. Returns null when the set has no local folder or
-    ///     the folder is empty.
+    ///     /beatmapsets/{id}/download, see BeatmapsetRoutes.cs). <paramref name="noVideo" /> skips any
+    ///     video file and appends " [no video]" to the returned filename. Returns null when the set
+    ///     has no local folder or the folder is empty.
     /// </summary>
-    private static async Task<(byte[] Bytes, string FileName)?> BuildOszArchiveAsync(IMapRepository maps,
+    internal static async Task<(byte[] Bytes, string FileName)?> BuildOszArchiveAsync(IMapRepository maps,
         StorageOptions storage, int setId, bool noVideo, CancellationToken cancellationToken)
     {
         var beatmaps = await maps.FetchAllBySetIdAsync(setId, cancellationToken: cancellationToken);
@@ -983,25 +983,25 @@ public static class BanchoHostGroups
         // one falls back to the one-shot JSON report instead of opening a stream that would never
         // receive a frame — a match that's still live, or one that has simply never existed at all,
         // still gets a stream (a nonexistent id just never receives any frames).
-        group.MapGet("/match/{id:int}", async (int id, HttpContext context, MatchReportService reportService,
+        group.MapGet("/matches/{matchId:int}", async (int matchId, HttpContext context, MatchReportService reportService,
             IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
             IMatchLiveEvents events, CancellationToken cancellationToken) =>
         {
             if (context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream") == true))
             {
-                var match = matchRegistry.GetByDbId(id);
+                var match = matchRegistry.GetByDbId(matchId);
                 var isClosed = match is null &&
-                    (await matchPersistence.FetchMatchAsync(id, cancellationToken))?.EndedAt is not null;
+                    (await matchPersistence.FetchMatchAsync(matchId, cancellationToken))?.EndedAt is not null;
 
                 if (!isClosed)
-                    return LiveSseRoutes.HandleMain(context, id, events,
+                    return LiveSseRoutes.HandleMain(context, matchId, events,
                         () => match?.MainSnapshot.Latest is { } snapshot
                             ? JsonSerializer.SerializeToUtf8Bytes(snapshot)
                             : null,
                         cancellationToken);
             }
 
-            var report = await reportService.BuildAsync(id, cancellationToken);
+            var report = await reportService.BuildAsync(matchId, cancellationToken);
             return report is null ? Results.NotFound() : Results.Json(report);
         })
             .WithGroupName("basilapi")
@@ -1013,10 +1013,10 @@ public static class BanchoHostGroups
                 "`Accept: text/event-stream` instead opens a persistent Server-Sent Events stream on the same " +
                 "path (event name `main`) — the first event is the full current state, every event after that " +
                 "is an RFC 7396 JSON Merge Patch against the previous one — no per-player score data on this " +
-                "channel, see `GET /match/{id}/live/{slotIndex}` for that. 404 (one-shot mode only) if no match " +
-                "with this id has ever existed. A closed match always falls back to the one-shot JSON report, " +
-                "even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, no " +
-                "authentication.")
+                "channel, see `GET /matches/{matchId}/live/{slotIndex}` for that. 404 (one-shot mode only) if " +
+                "no match with this id has ever existed. A closed match always falls back to the one-shot JSON " +
+                "report, even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, " +
+                "no authentication.")
             .WithTags("Match Reports", "Live Channels (SSE)");
 
         group.MapMatchRoutes();
@@ -1025,28 +1025,12 @@ public static class BanchoHostGroups
 
         group.MapScoreRoutes();
 
-        group.MapMapsetRoutes();
-
-        group.MapGet("/mapset/{id:int}/download", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-            var osz = await BuildOszArchiveAsync(maps, storage, id, false, cancellationToken);
-            return osz is null
-                ? Results.NotFound()
-                : Results.File(osz.Value.Bytes, "application/x-osu-beatmap-archive", osz.Value.FileName);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Download a mapset as a .osz archive, by mapset id.")
-            .WithDescription("Builds a fresh `.osz` on the fly from the mapset's local storage folder (every " +
-                "file in the folder — audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
-                "mapset has no local folder, or the folder is empty. Content-Type " +
-                "`application/x-osu-beatmap-archive`. Public, no admin key.")
-            .WithTags("Beatmap Downloads");
+        group.MapBeatmapsetRoutes();
 
         group.MapFaqRoutes();
 
         group.MapSeasonalRoutes();
+
+        group.MapAbbreviationRedirects();
     }
 }

@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.IntegrationTests;
 
-/// <summary>Covers the two newest SSE channels: GET /match/{id}/live and GET /match/{id}/live/{slotIndex}.</summary>
+/// <summary>Covers the two newest SSE channels: GET /matches/{matchId}/live and GET /matches/{matchId}/live/{slotIndex}.</summary>
 public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private const string AdminKey = "correct-key";
@@ -50,7 +50,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     {
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/match/5/live",
+        var (eventType, data) = await ReceiveAfterPublishAsync("/matches/5/live",
             () => events.PublishLive(5, JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })));
 
         Assert.Equal("live", eventType);
@@ -61,7 +61,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     public async Task LiveSlotChannel_UnknownMatch_ReturnsNotFound()
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "/match/999999/live/1") { Headers = { Host = "api.test.local" } };
+        var request = new HttpRequestMessage(HttpMethod.Get, "/matches/999999/live/1") { Headers = { Host = "api.test.local" } };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
         var response = await client.SendAsync(request);
@@ -73,7 +73,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     public async Task LiveSlotChannel_ReceivesSlotEventsForItsOwnSlotOnly()
     {
         var client = _factory.CreateClient();
-        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/match") { Headers = { Host = "api.test.local" } };
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches") { Headers = { Host = "api.test.local" } };
         createRequest.Headers.Add("X-Admin-Key", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
@@ -82,7 +82,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync($"/match/{matchId}/live/1", () =>
+        var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
         {
             events.PublishSlot(matchId, 5, "wrong slot"u8.ToArray());
             events.PublishSlot(matchId, 0, "right slot"u8.ToArray());

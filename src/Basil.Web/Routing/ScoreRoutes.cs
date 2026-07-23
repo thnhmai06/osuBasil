@@ -4,7 +4,7 @@ using Basil.Application.Services.Scores;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/score` — new public read surface for individual score rows, plus a rename of the old bare
+///     `/scores` — public read surface for individual score rows, plus a rename of the old bare
 ///     `GET /replays/{scoreId}` download. No POST/PUT/DELETE: scores only ever come from the existing
 ///     in-game score-submission pipeline, never through this API.
 /// </summary>
@@ -12,10 +12,10 @@ internal static class ScoreRoutes
 {
     public static void MapScoreRoutes(this RouteGroupBuilder group)
     {
-        group.MapGet("/score/{id:long}", async (long id, IScoreRepository scores,
+        group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
             CancellationToken cancellationToken) =>
         {
-            var score = await scores.FetchByIdAsync(id, cancellationToken);
+            var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
             return score is null ? Results.NotFound() : Results.Json(score);
         })
             .WithGroupName("basilapi")
@@ -26,10 +26,10 @@ internal static class ScoreRoutes
                 "erase the player's history. 404 if no score with this id exists. Public, no authentication.")
             .WithTags("Scores");
 
-        group.MapGet("/score/{id:long}/replay", async (long id, ReplayService replayService,
+        group.MapGet("/scores/{scoreId:long}/replay", async (long scoreId, ReplayService replayService,
             CancellationToken cancellationToken) =>
         {
-            var result = await replayService.FetchReplayFileAsync(id, cancellationToken);
+            var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);
             return result.Code == ReplayFetchResultCode.NotFound
                 ? Results.NotFound()
                 : Results.Bytes(result.Data!, "application/x-osu-replay");

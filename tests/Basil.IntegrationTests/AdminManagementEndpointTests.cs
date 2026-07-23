@@ -59,7 +59,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/user/1", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -71,7 +71,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/1", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/1", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -83,7 +83,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/user/1/block/2", "correct-key"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", "correct-key"));
 
         Assert.False(response.IsSuccessStatusCode);
     }
@@ -93,7 +93,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -103,7 +103,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user", "correct-key"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"));
 
         response.EnsureSuccessStatusCode();
     }
@@ -113,7 +113,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var request = MakeRequest(HttpMethod.Post, "/user", "correct-key");
+        var request = MakeRequest(HttpMethod.Post, "/users", "correct-key");
         request.Content = JsonContent.Create(new CreateUserRequest("ab", "hunter2", null, null));
 
         var response = await client.SendAsync(request);
@@ -128,7 +128,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/1/avatar"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -138,7 +138,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/1/avatar", "correct-key"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar", "correct-key"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -148,7 +148,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/user/0", "correct-key"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/0", "correct-key"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -158,7 +158,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var request = MakeRequest(HttpMethod.Patch, "/user/0", "correct-key");
+        var request = MakeRequest(HttpMethod.Patch, "/users/0", "correct-key");
         request.Content = JsonContent.Create(new UpdateUserRequest("newname", null, null));
 
         var response = await client.SendAsync(request);
@@ -171,7 +171,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/0/live"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

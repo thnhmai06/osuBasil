@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the new `/match` list/create/settings/action routes end to end — in particular, this is
+///     Covers the new `/matches` list/create/settings/action routes end to end — in particular, this is
 ///     the first real endpoint <see cref="Basil.Web.Auth.AdminKeyAuthenticationHandler" />'s
 ///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
 ///     is verified through the full middleware pipeline here, not just the handler in isolation.
@@ -63,7 +63,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PostMatch_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
     {
         var client = _factory.CreateClient();
-        var request = MakeRequest(HttpMethod.Post, "/match", adminKey);
+        var request = MakeRequest(HttpMethod.Post, "/matches", adminKey);
         request.Content = JsonContent.Create(new { name = "Test" });
 
         var response = await client.SendAsync(request);
@@ -75,7 +75,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PostMatch_ValidAdminKey_CreatesEmptyMatchWithHostZero()
     {
         var client = _factory.CreateClient();
-        var request = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         request.Content = JsonContent.Create(new { name = "Grand Finals" });
 
         var response = await client.SendAsync(request);
@@ -92,13 +92,13 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task GetMatch_ListsCreatedMatchByDefault_OnlineStatus()
     {
         var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { name = "Listed Match" });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetInt32();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/match"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
 
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -110,13 +110,13 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PatchSettings_UpdatesNameAndSize()
     {
         var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetInt32();
 
-        var patchRequest = MakeRequest(HttpMethod.Patch, $"/match/{id}/settings", AdminKey);
+        var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{id}/settings", AdminKey);
         patchRequest.Content = JsonContent.Create(new { name = "Renamed", size = 4 });
         var patchResponse = await client.SendAsync(patchRequest);
 
@@ -130,7 +130,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PatchSettings_UnknownMatchId_ReturnsNotFound()
     {
         var client = _factory.CreateClient();
-        var request = MakeRequest(HttpMethod.Patch, "/match/999999/settings", AdminKey);
+        var request = MakeRequest(HttpMethod.Patch, "/matches/999999/settings", AdminKey);
         request.Content = JsonContent.Create(new { name = "Nope" });
 
         var response = await client.SendAsync(request);
@@ -142,13 +142,13 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PostAction_UnknownAction_ReturnsNotFound()
     {
         var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetInt32();
 
-        var request = MakeRequest(HttpMethod.Post, $"/match/{id}/notarealaction", AdminKey);
+        var request = MakeRequest(HttpMethod.Post, $"/matches/{id}/notarealaction", AdminKey);
         request.Content = JsonContent.Create(new { });
 
         var response = await client.SendAsync(request);
@@ -160,18 +160,18 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task PostAction_Close_RemovesMatchFromOnlineListing()
     {
         var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetInt32();
 
-        var closeRequest = MakeRequest(HttpMethod.Post, $"/match/{id}/close", AdminKey);
+        var closeRequest = MakeRequest(HttpMethod.Post, $"/matches/{id}/close", AdminKey);
         closeRequest.Content = JsonContent.Create(new { });
         var closeResponse = await client.SendAsync(closeRequest);
         closeResponse.EnsureSuccessStatusCode();
 
-        var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/match"));
+        var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
         var json = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
         var items = json.GetProperty("items").EnumerateArray().ToList();
         Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == id);
@@ -187,14 +187,14 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task Smoke_CreateMatch_OpenSettingsSse_FirstEventFull_ThenPatchProducesDeltaWithoutPassword()
     {
         var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { name = "Smoke Test", password = "hunter2" });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetInt32();
 
         var streamClient = _factory.CreateClient();
-        var streamRequest = new HttpRequestMessage(HttpMethod.Get, $"/match/{id}/settings")
+        var streamRequest = new HttpRequestMessage(HttpMethod.Get, $"/matches/{id}/settings")
             { Headers = { Host = "api.test.local" } };
         streamRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
@@ -210,7 +210,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         Assert.Contains("\"name\":\"Smoke Test\"", firstData);
         Assert.DoesNotContain("hunter2", firstData);
 
-        var patchRequest = MakeRequest(HttpMethod.Patch, $"/match/{id}/settings", AdminKey);
+        var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{id}/settings", AdminKey);
         patchRequest.Content = JsonContent.Create(new { name = "Renamed Smoke Test" });
         var patchResponseTask = client.SendAsync(patchRequest, cts.Token);
 
@@ -231,7 +231,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/user/0/live"));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"));
 
         // BasilBot (user id 0) has no gameplay stream of its own -- blocked rather than opening a
         // stream that would never receive a frame. Implemented as 400 (not the plan's literal "404"
