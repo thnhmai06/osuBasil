@@ -37,60 +37,11 @@ internal static class AdminManagementRoutes
         MapSeasonals(admin);
     }
 
+    // Search/list, upload, and delete are superseded by the public GET/POST /mapset routes (see
+    // MapsetRoutes.cs) — this redesign has no beatmap-level delete, only mapset-level. Only the
+    // rescan trigger has no public equivalent, so it stays here.
     private static void MapBeatmaps(RouteGroupBuilder admin)
     {
-        admin.MapGet("/beatmaps", async (
-            [FromQuery] string? query, [FromQuery] int? mode,
-            [FromQuery] int offset, [FromQuery] int amount,
-            IMapRepository maps, CancellationToken cancellationToken) =>
-        {
-            var sets = await maps.SearchAsync(query, (GameMode?)mode, offset,
-                amount == 0 ? 50 : amount, cancellationToken);
-            return Results.Json(sets);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: search/list beatmap sets.")
-            .WithDescription("Returns beatmap sets matching `query`/`mode`, paged by `offset`/`amount` " +
-                "(default page size 50). Response is an array of sets, each an array of that set's beatmaps." +
-                AdminKeyNote)
-            .WithTags("Admin: Beatmaps");
-
-        // Accepts a single .osz upload (field name "file"), drops it into MapsetsPath and runs a
-        // full reconciliation pass. A lone .osu has no set context under the folder-per-mapset
-        // model — only a full archive is accepted here.
-        admin.MapPost("/beatmaps", async (HttpContext context, IOptions<StorageOptions> storage,
-            BeatmapIngestionService ingestion, CancellationToken cancellationToken) =>
-        {
-            if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
-
-            var form = await context.Request.ReadFormAsync(cancellationToken);
-            var file = form.Files.GetFile("file");
-            if (file is null) return Results.BadRequest("Missing 'file' form field.");
-
-            var extension = Path.GetExtension(file.FileName);
-            if (!string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
-                return Results.BadRequest("Only .osz uploads are accepted — a single .osu file has no set context.");
-
-            Directory.CreateDirectory(storage.Value.MapsetsPath);
-            // Path.GetFileName strips any directory component a malicious filename could smuggle in.
-            var destinationName = $"{Guid.NewGuid():N}{extension}";
-            var destination = Path.Combine(storage.Value.MapsetsPath, Path.GetFileName(destinationName));
-            await using (var fileStream = File.Create(destination))
-            {
-                await file.CopyToAsync(fileStream, cancellationToken);
-            }
-
-            var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
-            return Results.Json(new { ingested });
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: upload a beatmap set (.osz).")
-            .WithDescription("Multipart upload, field name `file`, must be a `.osz` archive — a lone `.osu` file " +
-                "has no set context under this server's folder-per-mapset storage model. After saving the " +
-                "archive, runs a full ingestion reconciliation pass and returns `{ ingested }` (the number of " +
-                "beatmaps added/updated)." + AdminKeyNote)
-            .WithTags("Admin: Beatmaps");
-
         admin.MapPost("/beatmaps/rescan",
             async (BeatmapIngestionService ingestion, CancellationToken cancellationToken) =>
             {
@@ -104,24 +55,6 @@ internal static class AdminManagementRoutes
                 "mapsets whose folder no longer exists). Returns `{ ingested }`. Runs automatically at server " +
                 "startup too — this endpoint is for triggering it on demand (e.g. after manually copying files " +
                 "into the storage folder)." + AdminKeyNote)
-            .WithTags("Admin: Beatmaps");
-
-        admin.MapDelete("/beatmaps/{id:int}", async (int id, IMapRepository maps, IOptions<StorageOptions> storage,
-            CancellationToken cancellationToken) =>
-        {
-            var bmap = await maps.FetchOneAsync(id, includePrivate: true, cancellationToken: cancellationToken);
-            if (bmap is null) return Results.NotFound();
-
-            await maps.DeleteByMd5Async(bmap.Md5, cancellationToken);
-            var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
-            if (File.Exists(osuPath)) File.Delete(osuPath);
-
-            return Results.NoContent();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: delete one beatmap, by beatmap id.")
-            .WithDescription("Removes the beatmap's database row and, if present, its `.osu` file on disk. " +
-                "204 on success, 404 if no beatmap with this id exists (frozen beatmaps included)." + AdminKeyNote)
             .WithTags("Admin: Beatmaps");
     }
 

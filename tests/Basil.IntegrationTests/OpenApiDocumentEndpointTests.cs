@@ -49,7 +49,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
     [InlineData("osuweb", "osu! Client API — osu! Web", new[] { "/web/osu-search.php", "/difficulty-rating" })]
     [InlineData("beatmapassets", "osu! Client API — Beatmap Assets", new[] { "/{path}" })]
     [InlineData("avatar", "osu! Client API — Avatar Files", new[] { "/{userId}" })]
-    [InlineData("basilapi", "Basil API", new[] { "/match/{id}", "/beatmap/{id}", "/mapset/{id}", "/users" })]
+    [InlineData("basilapi", "Basil API", new[] { "/match/{id}", "/match", "/mapset/{id}", "/users" })]
     public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,
         string[] expectedPaths)
     {

@@ -84,11 +84,11 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     [Theory]
     [InlineData(null)]
     [InlineData("wrong-key")]
-    public async Task DeleteBeatmap_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    public async Task DeleteMapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
     {
         var client = _factory.CreateClient();
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmaps/1", adminKey));
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/mapset/1", adminKey));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

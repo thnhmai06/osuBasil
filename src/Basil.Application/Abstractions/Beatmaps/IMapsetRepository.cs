@@ -24,6 +24,15 @@ public interface IMapsetRepository
     Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    ///     Newest-first page of mapsets, for the `api.` host's `GET /mapset` list. When
+    ///     <paramref name="onlyWithVisibleBeatmaps" /> is true, a mapset whose every beatmap is
+    ///     <see cref="Beatmap.IsPrivate" /> is excluded entirely (the public, non-admin view) — pass
+    ///     false for an admin-elevated caller, who sees every mapset regardless.
+    /// </summary>
+    Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     ///     Toggles the write-lock the `api.` host's `PATCH /mapset/{id}/freeze` route sets — blocks
     ///     `PUT`/`DELETE /mapset/{id}` (409) regardless of admin role until unfrozen again.
     /// </summary>

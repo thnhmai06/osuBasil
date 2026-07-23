@@ -158,27 +158,37 @@ public sealed partial class BeatmapIngestionService(
 
         var mapset = await ResolveMapsetAsync(decoded, Path.GetFileNameWithoutExtension(oszPath), cancellationToken);
         var targetFolder = MapsetFolderPath(options.Value, mapset);
-        Directory.CreateDirectory(targetFolder);
-
-        await using (var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken))
-        {
-            foreach (var entry in archive.Entries)
-            {
-                if (entry.Name.Length == 0) continue; // directory entry
-
-                var destination = Path.GetFullPath(Path.Combine(targetFolder, entry.FullName));
-                if (!destination.StartsWith(targetFolder, StringComparison.OrdinalIgnoreCase))
-                    continue; // zip-slip guard
-
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                await entry.ExtractToFileAsync(destination, true, cancellationToken);
-            }
-        }
+        await ExtractOszIntoFolderAsync(oszPath, targetFolder, cancellationToken);
 
         File.Delete(oszPath);
 
         var (count, _) = await ReconcileFolderAsync(targetFolder, cancellationToken);
         return (count, mapset.Id);
+    }
+
+    /// <summary>
+    ///     Extracts every entry of a `.osz` archive into <paramref name="targetFolder" /> (overwriting
+    ///     existing files), creating the folder if needed. Filesystem-only — never touches the
+    ///     database; the caller (or the live <see cref="BeatmapWatcherService" />) is responsible for
+    ///     any DB reconciliation that should follow.
+    /// </summary>
+    public static async Task ExtractOszIntoFolderAsync(string oszPath, string targetFolder,
+        CancellationToken cancellationToken = default)
+    {
+        Directory.CreateDirectory(targetFolder);
+
+        await using var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken);
+        foreach (var entry in archive.Entries)
+        {
+            if (entry.Name.Length == 0) continue; // directory entry
+
+            var destination = Path.GetFullPath(Path.Combine(targetFolder, entry.FullName));
+            if (!destination.StartsWith(targetFolder, StringComparison.OrdinalIgnoreCase))
+                continue; // zip-slip guard
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            await entry.ExtractToFileAsync(destination, true, cancellationToken);
+        }
     }
 
     /// <summary>

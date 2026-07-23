@@ -98,6 +98,29 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
     }
 
     [Fact]
+    public async Task FetchPageAsync_OnlyWithVisibleBeatmaps_ExcludesMapsetsWithNoPublicBeatmap()
+    {
+        var visible = MakeMapset(9040);
+        var privateOnly = MakeMapset(9041);
+        await _mapsetRepository.UpsertAsync(visible);
+        await _mapsetRepository.UpsertAsync(privateOnly);
+        await _mapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
+            TimeSpan.FromSeconds(120), 500, false, 0, 0,
+            new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5)));
+        await _mapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
+            TimeSpan.FromSeconds(120), 500, true, 0, 0,
+            new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5)));
+
+        var visibleOnly = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: true);
+        var everything = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: false);
+
+        Assert.Contains(visibleOnly, m => m.Id == 9040);
+        Assert.DoesNotContain(visibleOnly, m => m.Id == 9041);
+        Assert.Contains(everything, m => m.Id == 9040);
+        Assert.Contains(everything, m => m.Id == 9041);
+    }
+
+    [Fact]
     public async Task Upsert_ExistingFrozenMapset_ReingestionDoesNotClearFreeze()
     {
         var mapset = MakeMapset(9031);

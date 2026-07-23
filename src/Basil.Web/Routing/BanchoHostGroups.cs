@@ -1053,55 +1053,7 @@ public static class BanchoHostGroups
                 "credentials.")
             .WithTags("Replay Downloads");
 
-        // Public, no admin key — beatmap info + .osu download, singular path (kept distinct from the
-        // plural admin CRUD surface at /beatmaps below so the two never collide on path+verb).
-        group.MapGet("/beatmap/{id:int}", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-            var bmap = await maps.FetchOneAsync(id, cancellationToken: cancellationToken);
-            return bmap is null ? Results.NotFound() : Results.Json(bmap);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Get one beatmap's info, by beatmap id.")
-            .WithDescription("Returns the beatmap row as JSON (identity, metadata, stats, embedded mapset " +
-                "info, difficulty). 404 if no non-frozen beatmap with this id exists. Public, no admin key — " +
-                "for the admin-key-gated variant that can also see frozen (soft-deleted) beatmaps, see the " +
-                "management CRUD section below.")
-            .WithTags("Beatmap Downloads");
-
-        group.MapGet("/beatmap/{id:int}/download", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-            var bmap = await maps.FetchOneAsync(id, cancellationToken: cancellationToken);
-            if (bmap is null) return Results.NotFound();
-
-            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-            var osuPath = BeatmapIngestionService.OsuFilePath(storage, bmap);
-            return File.Exists(osuPath) ? Results.File(osuPath, "application/x-osu-beatmap") : Results.NotFound();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Download one beatmap's .osu file, by beatmap id.")
-            .WithDescription("Serves the raw `.osu` difficulty file. 404 if the beatmap row or its file on disk " +
-                "doesn't exist. Content-Type `application/x-osu-beatmap`. Public, no admin key.")
-            .WithTags("Beatmap Downloads");
-
-        // Public, no admin key — mapset info + .osz download + storyboard download.
-        group.MapGet("/mapset/{id:int}", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var maps = context.RequestServices.GetRequiredService<IMapRepository>();
-            var beatmaps = await maps.FetchAllBySetIdAsync(id, cancellationToken: cancellationToken);
-            return beatmaps.Count == 0 ? Results.NotFound() : Results.Json(beatmaps);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Get one mapset's info, by mapset id.")
-            .WithDescription("Returns every non-frozen beatmap (difficulty) belonging to this mapset, as a JSON " +
-                "array — each element carries its own embedded mapset metadata (artist/title/creator/status), " +
-                "since a mapset itself has no separate row. 404 if the mapset has no beatmaps (i.e. doesn't " +
-                "exist, or every difficulty in it is frozen). Public, no admin key.")
-            .WithTags("Beatmap Downloads");
+        group.MapMapsetRoutes();
 
         group.MapGet("/mapset/{id:int}/download", async (int id, HttpContext context,
             CancellationToken cancellationToken) =>
@@ -1119,23 +1071,6 @@ public static class BanchoHostGroups
                 "file in the folder — audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
                 "mapset has no local folder, or the folder is empty. Content-Type " +
                 "`application/x-osu-beatmap-archive`. Public, no admin key.")
-            .WithTags("Beatmap Downloads");
-
-        group.MapGet("/mapset/{id:int}/storyboard", (int id, HttpContext context) =>
-        {
-            var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-            var folder = BeatmapIngestionService.FindMapsetFolder(storage, id);
-            if (folder is null) return Results.NotFound();
-
-            var osbPath = Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault();
-            return osbPath is null ? Results.NotFound() : Results.File(osbPath, "application/x-osu-storyboard");
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Download a mapset's storyboard file, by mapset id.")
-            .WithDescription("Serves the mapset folder's `.osb` storyboard file. A mapset is expected to carry " +
-                "at most one; if more than one is somehow present, the first in filename order is served. " +
-                "404 if the mapset has no local folder, or the folder has no `.osb` file at all. Content-Type " +
-                "`application/x-osu-storyboard`. Public, no admin key.")
             .WithTags("Beatmap Downloads");
 
         group.MapAdminManagement();

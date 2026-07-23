@@ -73,6 +73,23 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         return ids.ToList();
     }
 
+    public async Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var whereClause = onlyWithVisibleBeatmaps
+            ? "WHERE EXISTS(SELECT 1 FROM Beatmaps b WHERE b.MapsetId = m.Id AND b.IsPrivate = 0)"
+            : "";
+        var rows = await connection.QueryAsync<MapsetRow>(
+            $"""
+             SELECT m.* FROM Mapsets m
+             {whereClause}
+             ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
+             """,
+            new { Limit = limit, Offset = offset });
+        return rows.Select(r => r.ToMapset()).ToList();
+    }
+
     private SqliteConnection Connect()
     {
         return new SqliteConnection(connectionString);
