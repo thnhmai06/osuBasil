@@ -5,6 +5,7 @@ using Basil.Application.Configuration;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Users;
 using Basil.Web.Auth;
+using Basil.Web.OpenApi;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing;
@@ -57,17 +58,17 @@ internal static class UserRoutes
             IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
         {
             if (!User.ValidateUsername(body.Name, out var usernameError))
-                return Results.BadRequest(new { error = usernameError });
+                return Results.BadRequest(new ErrorResponse(usernameError));
 
             if (await users.FetchByNameAsync(body.Name, cancellationToken) is not null)
-                return Results.Conflict(new { error = "Username already exists." });
+                return Results.Conflict(new ErrorResponse("Username already exists."));
 
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(body.Password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
             var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx",
                 (UserPrivileges?)body.Priv, cancellationToken);
             return user is null
-                ? Results.Conflict(new { error = "Username already exists." })
+                ? Results.Conflict(new ErrorResponse("Username already exists."))
                 : Results.Json(user);
         })
             .WithGroupName("basilapi")
@@ -81,13 +82,13 @@ internal static class UserRoutes
         admin.MapMethods("/{userId:int}", ["PUT", "PATCH"], async (int userId, UpdateUserRequest body,
             IUserRepository users, CancellationToken cancellationToken) =>
         {
-            if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new { error = "Cannot modify BasilBot." });
+            if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
             if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
 
             if (body.Name is not null)
             {
                 if (!User.ValidateUsername(body.Name, out var usernameError))
-                    return Results.BadRequest(new { error = usernameError });
+                    return Results.BadRequest(new ErrorResponse(usernameError));
 
                 await users.UpdateNameAsync(userId, body.Name, User.MakeSafeName(body.Name), cancellationToken);
             }
@@ -168,7 +169,7 @@ internal static class UserRoutes
         // works in this server (a privilege bit, never a hard delete).
         admin.MapDelete("/{userId:int}", async (int userId, IUserRepository users, CancellationToken cancellationToken) =>
         {
-            if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new { error = "Cannot delete BasilBot." });
+            if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new ErrorResponse("Cannot delete BasilBot."));
             if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
 
             await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);

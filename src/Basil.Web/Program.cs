@@ -132,11 +132,27 @@ public sealed class Program
         AddOpenApiDocument(builder, "basilapi", "Basil API",
             "Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
             "beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
-            "api. subdomain.");
+            "api. subdomain.",
+            BasilApiTagDescriptions);
     }
 
+    /// <summary>One line per `.WithTags(...)` string actually used on the `basilapi` document's routes — this is what labels the Scalar sidebar groups (grouping itself is already mechanical via `.WithTags`; this only adds the missing descriptions).</summary>
+    private static readonly Dictionary<string, string> BasilApiTagDescriptions = new()
+    {
+        ["Match Reports"] = "Tournament match report (TRT), match list/create, and settings.",
+        ["Match Actions"] = "Per-resource match sub-routes: hosts, referees, bans, kick, invite, slots, timer, abort, close.",
+        ["Live Channels (SSE)"] = "Server-Sent Events streams — full snapshot on connect, RFC 7396 JSON Merge Patch deltas after.",
+        ["Beatmapsets"] = "Beatmapset/beatmap CRUD, downloads, and freeze/private management.",
+        ["Users"] = "User CRUD, avatar management, and live spectator-input streams.",
+        ["Scores"] = "Individual score lookups, replay downloads, and the paginated score list.",
+        ["FAQ"] = "Public FAQ entry storage.",
+        ["Seasonal Backgrounds"] = "Public seasonal background image storage.",
+        ["Abbreviation Redirects"] = "Short-prefix 302 redirects to the canonical plural resource paths.",
+        ["Health"] = "Liveness check."
+    };
+
     private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
-        string description)
+        string description, IReadOnlyDictionary<string, string>? tagDescriptions = null)
     {
         builder.Services.AddOpenApi(documentName, options =>
         {
@@ -145,6 +161,12 @@ public sealed class Program
                 document.Info.Title = title;
                 document.Info.Description = description;
                 document.Info.Version = "v1";
+
+                if (tagDescriptions is not null)
+                    document.Tags = tagDescriptions
+                        .Select(kv => new Microsoft.OpenApi.OpenApiTag { Name = kv.Key, Description = kv.Value })
+                        .ToHashSet();
+
                 return Task.CompletedTask;
             });
         });

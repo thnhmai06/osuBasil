@@ -3,6 +3,7 @@ using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -202,7 +203,7 @@ internal static class BeatmapsetRoutes
     {
         var mapset = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
         if (mapset is null) return Results.NotFound();
-        if (mapset.IsFrozen) return Results.Conflict(new { error = "This mapset is frozen and cannot be modified." });
+        if (mapset.IsFrozen) return Results.Conflict(new ErrorResponse("This mapset is frozen and cannot be modified."));
 
         if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
         var form = await context.Request.ReadFormAsync(cancellationToken);
@@ -237,7 +238,7 @@ internal static class BeatmapsetRoutes
     {
         var mapset = await mapsets.FetchByIdAsync(beatmapsetId, cancellationToken);
         if (mapset is null) return Results.NotFound();
-        if (mapset.IsFrozen) return Results.Conflict(new { error = "This mapset is frozen and cannot be deleted." });
+        if (mapset.IsFrozen) return Results.Conflict(new ErrorResponse("This mapset is frozen and cannot be deleted."));
 
         var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, beatmapsetId);
         if (folder is null) return Results.NotFound();
@@ -249,7 +250,7 @@ internal static class BeatmapsetRoutes
         }
         catch (IOException)
         {
-            return Results.Conflict(new { error = "The mapset's files are currently in use; try again shortly." });
+            return Results.Conflict(new ErrorResponse("The mapset's files are currently in use; try again shortly."));
         }
 
         return Results.Accepted();

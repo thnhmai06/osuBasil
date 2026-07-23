@@ -1,5 +1,6 @@
 using Basil.Application.Services.Content;
 using Basil.Web.Auth;
+using Basil.Web.OpenApi;
 
 namespace Basil.Web.Routing;
 
@@ -75,8 +76,8 @@ internal static class FaqRoutes
         var result = await faq.CreateEntryAsync(entry, stream, cancellationToken);
         return result switch
         {
-            FaqService.CreateResult.AlreadyExists => Results.Conflict(new { error = $"'{entry}' already exists." }),
-            FaqService.CreateResult.InvalidName => Results.BadRequest(new { error = "Invalid entry name." }),
+            FaqService.CreateResult.AlreadyExists => Results.Conflict(new ErrorResponse($"'{entry}' already exists.")),
+            FaqService.CreateResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
             _ => Results.NoContent()
         };
     }
@@ -95,7 +96,7 @@ internal static class FaqRoutes
         return result switch
         {
             FaqService.ReplaceResult.NotFound => Results.NotFound(),
-            FaqService.ReplaceResult.InvalidName => Results.BadRequest(new { error = "Invalid entry name." }),
+            FaqService.ReplaceResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
             _ => Results.NoContent()
         };
     }

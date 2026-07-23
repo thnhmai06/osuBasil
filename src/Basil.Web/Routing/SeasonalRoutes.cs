@@ -1,5 +1,6 @@
 using Basil.Application.Services.Content;
 using Basil.Web.Auth;
+using Basil.Web.OpenApi;
 
 namespace Basil.Web.Routing;
 
@@ -83,7 +84,7 @@ internal static class SeasonalRoutes
         await using var stream = file.OpenReadStream();
         var result = await seasonal.CreateAsync(file.FileName, stream, cancellationToken);
         return result == SeasonalService.CreateResult.AlreadyExists
-            ? Results.Conflict(new { error = $"'{Path.GetFileName(file.FileName)}' already exists." })
+            ? Results.Conflict(new ErrorResponse($"'{Path.GetFileName(file.FileName)}' already exists."))
             : Results.NoContent();
     }
 

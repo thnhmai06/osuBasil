@@ -70,6 +70,18 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task BasilApiDocument_NoRoutePathHasABareIdSegment()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+        var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
+
+        Assert.NotNull(document);
+        Assert.DoesNotContain(document!.Paths.Keys, path => path.Contains("{id}") || path.Contains("{id:"));
+    }
+
+    [Fact]
     public async Task BanchoDocument_DoesNotContainOsuWebRoutes()
     {
         var client = _factory.CreateClient();

@@ -9,6 +9,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Auth;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Basil.Web.Routing;
@@ -232,7 +233,7 @@ internal static class MatchRoutes
         {
             var (result, _) = await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken);
             if (result == MatchControlService.SetMapResult.BeatmapNotFound)
-                return Results.BadRequest(new { error = $"No beatmap with id {body.MapId.Value} found locally." });
+                return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId.Value} found locally."));
         }
 
         if (body.Freemod == true)
