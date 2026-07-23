@@ -8,7 +8,10 @@ using Basil.Application.Sessions.Channels;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
+using Basil.Web.Auth;
 using Basil.Web.Routing;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Web;
@@ -26,9 +29,14 @@ public sealed class Program
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddApplication();
         ConfigureOpenApi(builder);
+        ConfigureAuth(builder);
+        ConfigureCors(builder);
 
         var app = builder.Build();
         app.UseWebSockets();
+        app.UseCors(CorsPolicyName);
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
         BanchoHostGroups.MapAll(app, domain);
@@ -51,6 +59,9 @@ public sealed class Program
     // Kestrel endpoint and HTTPS cert configured from appsettings.json Basil:Server section (Port,
     // CertPath, CertPassword). Disables auto port selection — server binds exclusively on the
     // configured port. Leave CertPath/CertPassword unset to use the dev cert or OS-level TLS.
+    // Http1AndHttp2 lets a browser multiplex several SSE connections over one connection instead of
+    // hitting HTTP/1.1's ~6-per-origin ceiling — only takes effect over TLS, which every listener here
+    // already uses.
     private static void ConfigureKestrel(WebApplicationBuilder builder)
     {
         builder.WebHost.ConfigureKestrel((context, options) =>
@@ -60,6 +71,9 @@ public sealed class Program
             var certPath = serverSection["CertPath"];
             var certPassword = serverSection["CertPassword"];
 
+            options.ConfigureEndpointDefaults(listenOptions =>
+                listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
+
             options.Listen(IPAddress.Any, port, listenOptions =>
             {
                 if (!string.IsNullOrEmpty(certPath))
@@ -68,6 +82,33 @@ public sealed class Program
                     listenOptions.UseHttps();
             });
         });
+    }
+
+    // Custom scheme reading X-Admin-Key (see AdminKeyAuthenticationHandler) instead of the old
+    // AdminKeyFilter endpoint filter — lets both the hard admin-only gate (RequireAuthorization) and
+    // the soft private/frozen-visibility elevation (User.IsInRole) share one mechanism.
+    private static void ConfigureAuth(WebApplicationBuilder builder)
+    {
+        builder.Services
+            .AddAuthentication(AdminKeyDefaults.Scheme)
+            .AddScheme<AuthenticationSchemeOptions, AdminKeyAuthenticationHandler>(AdminKeyDefaults.Scheme, null);
+
+        builder.Services.AddAuthorization(options =>
+            options.AddPolicy(AdminKeyDefaults.Policy, policy => policy.RequireRole(AdminKeyDefaults.Role)));
+    }
+
+    private const string CorsPolicyName = "ApiCors";
+
+    // Permissive by design: the api. host is meant to be called directly from arbitrary browser-based
+    // tooling (tournament overlays, dashboards, OBS browser sources). No credentials are ever sent
+    // (X-Admin-Key is a plain header, not a cookie), so AllowAnyOrigin is safe here.
+    private static void ConfigureCors(WebApplicationBuilder builder)
+    {
+        builder.Services.AddCors(options =>
+            options.AddPolicy(CorsPolicyName, policy => policy
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader()));
     }
 
     // One OpenAPI document per host group (bancho/osuweb/beatmapassets/avatar/basilapi) rather than
