@@ -16,6 +16,10 @@ public interface IMatchLiveEvents
     /// <summary>Fires for one player's live score channel (SSE GET /match/{id}/{playerName}). (matchDbId, playerName, payload)</summary>
     event Action<int, string, byte[]> PlayerScorePublished;
 
+    /// <summary>Fires for a match's settings channel (SSE GET /match/{id}/settings). (matchDbId, payload)</summary>
+    event Action<int, byte[]> SettingsPublished;
+
     void PublishMain(int matchDbId, byte[] payload);
     void PublishPlayer(int matchDbId, string playerName, byte[] payload);
+    void PublishSettings(int matchDbId, byte[] payload);
 }

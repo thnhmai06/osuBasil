@@ -1,0 +1,234 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Configuration;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Web;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace Basil.IntegrationTests;
+
+/// <summary>
+///     Covers the new `/match` list/create/settings/action routes end to end — in particular, this is
+///     the first real endpoint <see cref="Basil.Web.Auth.AdminKeyAuthenticationHandler" />'s
+///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
+///     is verified through the full middleware pipeline here, not just the handler in isolation.
+/// </summary>
+public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private const string AdminKey = "correct-key";
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
+
+    public MatchManagementEndpointTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Basil:Server:Domain"] = "test.local",
+                    ["Basil:Bot:CommandPrefix"] = "!",
+                    ["Basil:Server:MenuIconPath"] = "icon.png",
+                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+                    ["Basil:Server:AdminKey"] = AdminKey
+                });
+            });
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+                services.AddSingleton<IMatchPersistenceRepository>(_matchPersistence);
+            });
+        });
+    }
+
+    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = null)
+    {
+        var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
+        if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+        return request;
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("wrong-key")]
+    public async Task PostMatch_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+    {
+        var client = _factory.CreateClient();
+        var request = MakeRequest(HttpMethod.Post, "/match", adminKey);
+        request.Content = JsonContent.Create(new { name = "Test" });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostMatch_ValidAdminKey_CreatesEmptyMatchWithHostZero()
+    {
+        var client = _factory.CreateClient();
+        var request = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        request.Content = JsonContent.Create(new { name = "Grand Finals" });
+
+        var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Grand Finals", json.GetProperty("name").GetString());
+        Assert.False(json.GetProperty("hasPassword").GetBoolean());
+        Assert.False(json.GetProperty("isPrivate").GetBoolean());
+        Assert.True(json.GetProperty("hostId").ValueKind is JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task GetMatch_ListsCreatedMatchByDefault_OnlineStatus()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        createRequest.Content = JsonContent.Create(new { name = "Listed Match" });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/match"));
+
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var items = json.GetProperty("items").EnumerateArray().ToList();
+        Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id && item.GetProperty("isOpen").GetBoolean());
+    }
+
+    [Fact]
+    public async Task PatchSettings_UpdatesNameAndSize()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        createRequest.Content = JsonContent.Create(new { });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        var patchRequest = MakeRequest(HttpMethod.Patch, $"/match/{id}/settings", AdminKey);
+        patchRequest.Content = JsonContent.Create(new { name = "Renamed", size = 4 });
+        var patchResponse = await client.SendAsync(patchRequest);
+
+        patchResponse.EnsureSuccessStatusCode();
+        var json = await patchResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Renamed", json.GetProperty("name").GetString());
+        Assert.Equal(4, json.GetProperty("size").GetInt32());
+    }
+
+    [Fact]
+    public async Task PatchSettings_UnknownMatchId_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+        var request = MakeRequest(HttpMethod.Patch, "/match/999999/settings", AdminKey);
+        request.Content = JsonContent.Create(new { name = "Nope" });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostAction_UnknownAction_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        createRequest.Content = JsonContent.Create(new { });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        var request = MakeRequest(HttpMethod.Post, $"/match/{id}/notarealaction", AdminKey);
+        request.Content = JsonContent.Create(new { });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostAction_Close_RemovesMatchFromOnlineListing()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = MakeRequest(HttpMethod.Post, "/match", AdminKey);
+        createRequest.Content = JsonContent.Create(new { });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        var closeRequest = MakeRequest(HttpMethod.Post, $"/match/{id}/close", AdminKey);
+        closeRequest.Content = JsonContent.Create(new { });
+        var closeResponse = await client.SendAsync(closeRequest);
+        closeResponse.EnsureSuccessStatusCode();
+
+        var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/match"));
+        var json = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var items = json.GetProperty("items").EnumerateArray().ToList();
+        Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == id);
+    }
+
+    /// <summary>Minimal in-memory fake so CreateEmptyAsync/FetchAllMatchesAsync/DeleteMatchAsync behave realistically without a real SQLite file.</summary>
+    private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+    {
+        private readonly Dictionary<int, MatchRow> _matches = [];
+        private int _nextId = 1;
+
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
+        {
+            var id = _nextId++;
+            _matches[id] = new MatchRow(id, name, createdAt, null);
+            return Task.FromResult(id);
+        }
+
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            if (_matches.TryGetValue(matchId, out var row))
+                _matches[matchId] = row with { EndedAt = endedAt };
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_matches.GetValueOrDefault(matchId));
+
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchRow>>(_matches.Values.OrderByDescending(m => m.Id).ToList());
+
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            _matches.Remove(matchId);
+            return Task.CompletedTask;
+        }
+
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+    }
+}

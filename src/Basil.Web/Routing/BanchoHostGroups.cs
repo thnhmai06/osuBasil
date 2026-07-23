@@ -1005,29 +1005,7 @@ public static class BanchoHostGroups
                 "authentication.")
             .WithTags("Match Reports", "Live Channels (SSE)");
 
-        // GET — read a match's privacy status. Public (no auth). Returns the current runtime
-        // IsPrivate flag for live matches; closed matches default to false.
-        group.MapGet("/match/{id:int}/privacy", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var matchRegistry = context.RequestServices.GetRequiredService<IMatchRegistry>();
-            var match = matchRegistry.GetByDbId(id);
-            if (match is not null)
-                return Results.Json(new { isPrivate = match.IsPrivate });
-
-            var matchPersistence = context.RequestServices.GetRequiredService<IMatchPersistenceRepository>();
-            var row = await matchPersistence.FetchMatchAsync(id, cancellationToken);
-            return row is not null
-                ? Results.Json(new { isPrivate = false })
-                : Results.NotFound();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Read a match's current privacy flag.")
-            .WithDescription("Returns `{ isPrivate }`. For a match still in progress, reflects the live, " +
-                "in-memory flag (toggleable via the admin-key-gated `PUT /match/{id}/privacy`). For a match that " +
-                "has already ended, always reports `false` — privacy is a live-match-only concept and is never " +
-                "persisted. 404 if no match with this id has ever existed. Public, no authentication.")
-            .WithTags("Match Reports");
+        group.MapMatchRoutes();
 
         // SSE — one player's live score, decoded from MatchScoreUpdate frames (see
         // MatchScoreUpdateHandler). Player name matches how the client's own name is used elsewhere

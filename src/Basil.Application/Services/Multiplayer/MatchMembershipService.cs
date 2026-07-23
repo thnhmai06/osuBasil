@@ -100,6 +100,37 @@ public sealed class MatchMembershipService(
         return match;
     }
 
+    /// <summary>
+    ///     Backs the `api.` host's `POST /match` — creates a room with nobody in it (no chat "sender"
+    ///     exists over HTTP, so there's no player to auto-join into slot 0 the way <see cref="CreateAsync" />
+    ///     does for `!mp make`). <see cref="MatchSession.HostId" /> stays 0 and the referee list stays
+    ///     empty until a caller assigns them via <c>PATCH /match/{id}/settings</c>/`host` and `addref`
+    ///     actions. Marked <see cref="MatchSession.CreatedViaMakeCommand" /> for the same reason
+    ///     `!mp make` rooms are — it should persist until explicitly closed, not auto-teardown the
+    ///     moment a client briefly joins and leaves it.
+    /// </summary>
+    public async Task<MatchSession?> CreateEmptyAsync(ReadMatchResult data,
+        CancellationToken cancellationToken = default)
+    {
+        var match = matchRegistry.TryCreate(id =>
+        {
+            var created = BuildNew(id, data, hostId: 0, createdViaMakeCommand: true);
+            RegisterChannel(created);
+            return created;
+        });
+
+        if (match is null) return null;
+
+        match.DbId = await matchPersistence.CreateMatchAsync(
+            match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
+
+        await matchPersistence.CreateEventAsync(new MatchEventRow(
+            match.DbId, (int)MatchEventType.Created,
+            null, null, null, null, DateTimeOffset.UtcNow.UtcDateTime, "Created via HTTP API"), cancellationToken);
+
+        return match;
+    }
+
     public bool Join(PlayerSession player, MatchSession match, string password)
     {
         if (player.Match is not null || match.TourneyClients.Contains(player.Id) ||
@@ -348,6 +379,9 @@ public sealed class MatchMembershipService(
 
         var deltaPayload = match.MainSnapshot.Publish(MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry));
         eventBus.PublishMain(match.DbId, deltaPayload);
+
+        var settingsDelta = match.SettingsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildSettings(match));
+        eventBus.PublishSettings(match.DbId, settingsDelta);
     }
 
     private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)

@@ -50,6 +50,25 @@ internal static class LiveSseRoutes
             readLatestSnapshot));
     }
 
+    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to the settings field set.</summary>
+    public static IResult HandleSettings(HttpContext context, int matchId, IMatchLiveEvents events,
+        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+    {
+        SetSseHeaders(context);
+        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "settings",
+            publish =>
+            {
+                void Handler(int id, byte[] payload)
+                {
+                    if (id == matchId) publish(payload);
+                }
+
+                events.SettingsPublished += Handler;
+                return () => events.SettingsPublished -= Handler;
+            },
+            readLatestSnapshot));
+    }
+
     public static IResult HandlePlayer(HttpContext context, int matchId, string playerName, IMatchLiveEvents events,
         CancellationToken cancellationToken)
     {

@@ -221,9 +221,11 @@ internal static class MultiplayerTestSupport
     {
         public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
         public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
+        public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
 
         public event Action<int, byte[]>? MainPublished;
         public event Action<int, string, byte[]>? PlayerScorePublished;
+        public event Action<int, byte[]>? SettingsPublished;
 
         public void PublishMain(int matchDbId, byte[] payload)
         {
@@ -235,6 +237,12 @@ internal static class MultiplayerTestSupport
         {
             PlayerPublishes.Add((matchDbId, playerName, payload));
             PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+        }
+
+        public void PublishSettings(int matchDbId, byte[] payload)
+        {
+            SettingsPublishes.Add((matchDbId, payload));
+            SettingsPublished?.Invoke(matchDbId, payload);
         }
     }
 

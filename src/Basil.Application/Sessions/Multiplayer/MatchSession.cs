@@ -46,6 +46,9 @@ public sealed class MatchSession(
     /// </summary>
     public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new();
 
+    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/settings` channel.</summary>
+    public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
+
     public int Id { get; } = id;
     public string Name { get; set; } = name;
     public string Password { get; set; } = password;

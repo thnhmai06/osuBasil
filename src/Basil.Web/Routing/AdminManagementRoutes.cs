@@ -309,17 +309,11 @@ internal static class AdminManagementRoutes
             .WithTags("Admin: Replays");
     }
 
+    // List/create/settings/actions moved to the public-facing MatchRoutes.MapMatchRoutes (GET/POST
+    // /match, GET+PUT+PATCH /match/{id}/settings, POST /match/{id}/{action}) — this admin-prefixed
+    // surface now only keeps historical-record deletion, which has no public equivalent.
     private static void MapMatches(RouteGroupBuilder admin)
     {
-        admin.MapGet("/matches", async (IMatchPersistenceRepository matchPersistence,
-                CancellationToken cancellationToken) =>
-            Results.Json(await matchPersistence.FetchAllMatchesAsync(cancellationToken)))
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: list every stored match.")
-            .WithDescription("Returns every match ever created, as a JSON array of `{ id, name, createdAt, " +
-                "endedAt }` — unpaged, and including matches still in progress." + AdminKeyNote)
-            .WithTags("Admin: Matches");
-
         admin.MapDelete("/matches/{id:int}", async (int id, IMatchPersistenceRepository matchPersistence,
             CancellationToken cancellationToken) =>
         {
@@ -333,40 +327,6 @@ internal static class AdminManagementRoutes
             .WithDescription("Cascading delete: the match row plus every round and score linked to it. Does not " +
                 "affect a match still in progress at the protocol level — this only removes persisted history. " +
                 "204 on success, 404 if no match with this id exists." + AdminKeyNote)
-            .WithTags("Admin: Matches");
-
-        admin.MapPut("/match/{id:int}/privacy", async (int id, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var body = await context.Request.ReadFromJsonAsync<PrivacyBody>(cancellationToken);
-            if (body is null) return Results.BadRequest();
-
-            var matchRegistry = context.RequestServices.GetRequiredService<IMatchRegistry>();
-            var match = matchRegistry.GetByDbId(id);
-            if (match is null) return Results.NotFound();
-
-            await match.Lock.WaitAsync(cancellationToken);
-            try
-            {
-                match.IsPrivate = body.IsPrivate;
-            }
-            finally
-            {
-                match.Lock.Release();
-            }
-
-            var membership = context.RequestServices.GetRequiredService<MatchMembershipService>();
-            membership.EnqueueState(match);
-
-            return Results.Json(new { isPrivate = match.IsPrivate });
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: set a live match's privacy flag.")
-            .WithDescription("Body: `{ isPrivate }`. Only affects a match still in progress (privacy is a " +
-                "live, in-memory flag, never persisted) — 404 if the match id isn't currently live, even if it " +
-                "exists in history. Broadcasts the updated state to everyone currently viewing the match's " +
-                "live channels. Returns `{ isPrivate }`. 400 if the request body is missing/invalid." +
-                AdminKeyNote)
             .WithTags("Admin: Matches");
     }
 
@@ -426,5 +386,3 @@ internal static class AdminManagementRoutes
 public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Priv);
 
 public sealed record UpdateUserRequest(string? Name, string? Country, int? Priv);
-
-public sealed record PrivacyBody(bool IsPrivate);

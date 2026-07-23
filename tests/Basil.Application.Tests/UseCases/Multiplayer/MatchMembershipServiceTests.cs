@@ -97,6 +97,21 @@ public class MatchMembershipServiceTests
     }
 
     [Fact]
+    public async Task CreateEmptyAsync_CreatesMatchWithNoHostAndNoOccupants()
+    {
+        var service = MakeService();
+
+        var match = await service.CreateEmptyAsync(MakeMatchData(0));
+
+        Assert.NotNull(match);
+        Assert.Equal(0, match!.HostId);
+        Assert.Empty(match.Referees);
+        Assert.All(match.Slots, slot => Assert.True(slot.Empty));
+        Assert.True(match.CreatedViaMakeCommand);
+        Assert.True(match.DbId > 0);
+    }
+
+    [Fact]
     public void Create_RegistryFull_ReturnsNull()
     {
         var service = MakeService();

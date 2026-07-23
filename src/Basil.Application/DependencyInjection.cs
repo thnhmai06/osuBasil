@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddSingleton<ChannelMembershipService>();
         services.AddSingleton<SpectatorService>();
         services.AddSingleton<MatchMembershipService>();
+        services.AddSingleton<MatchControlService>();
         services.AddSingleton<MatchReportService>();
         services.AddSingleton<MatchRecoveryService>();
         services.AddSingleton<ClientIntegrityService>();

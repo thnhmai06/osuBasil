@@ -51,7 +51,39 @@ public static class MatchLiveSnapshotBuilder
             playerName, frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
             frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp);
     }
+
+    /// <summary>
+    ///     The `api.` host's `/match/{id}/settings` payload shape — never the raw <see cref="MatchSession.Password" />,
+    ///     only whether one is set, even for an admin-elevated caller (a public, unauthenticated SSE
+    ///     channel is not the place to leak it).
+    /// </summary>
+    public static MatchSettingsView BuildSettings(MatchSession match)
+    {
+        var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+        return new MatchSettingsView(
+            match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+            match.MapId, match.MapName, (int)match.Mods, match.Freemods,
+            match.TeamType, match.WinCondition,
+            match.HostId == 0 ? null : match.HostId, match.Referees.ToArray());
+    }
 }
+
+/// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write.</summary>
+public sealed record MatchSettingsView(
+    int Id,
+    string Name,
+    bool HasPassword,
+    bool IsPrivate,
+    bool IsLocked,
+    int Size,
+    int MapId,
+    string MapName,
+    int Mods,
+    bool Freemod,
+    MatchTeamType TeamType,
+    MatchWinCondition WinCondition,
+    int? HostId,
+    IReadOnlyCollection<int> RefereeIds);
 
 /// <summary>Brief user info for embedded references (host, referees, slots).</summary>
 public sealed record UserBrief(int? UserId, string? UserName, string? Country = null);
