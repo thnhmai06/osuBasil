@@ -127,6 +127,12 @@ public sealed class MatchSession(
     /// </summary>
     public bool PendingTimerIsAutoStart { get; set; }
 
+    /// <summary>Set alongside <see cref="PendingTimer" />, cleared alongside it — backs `GET /matches/{matchId}/timer`'s remaining-seconds computation.</summary>
+    public DateTimeOffset? TimerStartedAt { get; set; }
+
+    /// <summary>Set alongside <see cref="PendingTimer" />, cleared alongside it.</summary>
+    public int? TimerTotalSeconds { get; set; }
+
     /// <summary>
     ///     The persistent database Matches.Id for this room, distinct from <see cref="Id" /> (the
     ///     0-63 in-memory registry slot, which is what the bancho wire protocol actually uses as a

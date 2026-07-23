@@ -139,24 +139,6 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
-    public async Task PostAction_UnknownAction_ReturnsNotFound()
-    {
-        var client = _factory.CreateClient();
-        var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
-        createRequest.Content = JsonContent.Create(new { });
-        var createResponse = await client.SendAsync(createRequest);
-        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var id = created.GetProperty("id").GetInt32();
-
-        var request = MakeRequest(HttpMethod.Post, $"/matches/{id}/notarealaction", AdminKey);
-        request.Content = JsonContent.Create(new { });
-
-        var response = await client.SendAsync(request);
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
     public async Task PostAction_Close_RemovesMatchFromOnlineListing()
     {
         var client = _factory.CreateClient();

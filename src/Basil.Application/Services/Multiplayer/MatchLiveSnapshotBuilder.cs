@@ -72,6 +72,55 @@ public static class MatchLiveSnapshotBuilder
             match.TeamType, match.WinCondition,
             match.HostId == 0 ? null : match.HostId, match.Referees.ToArray());
     }
+
+    public static MatchHostView BuildHost(MatchSession match, IPlayerSessionRegistry sessionRegistry)
+    {
+        if (match.HostId == 0) return new MatchHostView(null, null);
+
+        var host = sessionRegistry.GetById(match.HostId);
+        return new MatchHostView(match.HostId, host?.Name);
+    }
+
+    public static MatchRefereesView BuildRefs(MatchSession match, IPlayerSessionRegistry sessionRegistry)
+    {
+        var referees = match.Referees
+            .Select(id => new UserBrief(id, sessionRegistry.GetById(id)?.Name))
+            .ToArray();
+        return new MatchRefereesView(referees);
+    }
+
+    public static MatchBansView BuildBans(MatchSession match, IPlayerSessionRegistry sessionRegistry)
+    {
+        var banned = match.BannedIds
+            .Select(id => new UserBrief(id, sessionRegistry.GetById(id)?.Name))
+            .ToArray();
+        return new MatchBansView(banned);
+    }
+
+    public static MatchTimerView BuildTimer(MatchSession match)
+    {
+        if (match.PendingTimer is null || match.TimerStartedAt is null || match.TimerTotalSeconds is null)
+            return new MatchTimerView(false, null, false);
+
+        var elapsed = (DateTimeOffset.UtcNow - match.TimerStartedAt.Value).TotalSeconds;
+        var remaining = Math.Max(0, match.TimerTotalSeconds.Value - (int)elapsed);
+        return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart);
+    }
+
+    public static MatchSlotsView BuildSlots(MatchSession match, IPlayerSessionRegistry sessionRegistry)
+    {
+        var slots = new Dictionary<int, SlotView>();
+        for (var i = 0; i < match.Slots.Count; i++)
+        {
+            var slot = match.Slots[i];
+            var user = slot.PlayerId is { } pid ? sessionRegistry.GetById(pid) : null;
+            slots[i] = new SlotView(slot.PlayerId, user?.Name,
+                slot.PlayerId is not null ? slot.Team.ToString() : null,
+                slot.Status == SlotStatus.Locked);
+        }
+
+        return new MatchSlotsView(slots);
+    }
 }
 
 /// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round.</summary>
@@ -140,3 +189,29 @@ public sealed record PlayerLiveScore(
 
 /// <summary>Payload for the SSE /spec/{id} channel.</summary>
 public sealed record PlayerInputFrame(string PlayerName, string DataBase64);
+
+/// <summary>Payload for `GET /matches/{matchId}/hosts` — null fields when the room has no host (id 0).</summary>
+public sealed record MatchHostView(int? HostId, string? HostName);
+
+/// <summary>Payload for `GET /matches/{matchId}/refs`.</summary>
+public sealed record MatchRefereesView(IReadOnlyList<UserBrief> Referees);
+
+/// <summary>Payload for `GET /matches/{matchId}/ban`.</summary>
+public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
+
+/// <summary>Payload for `GET /matches/{matchId}/timer`. <c>AutoStart</c> mirrors <see cref="MatchSession.PendingTimerIsAutoStart" />.</summary>
+public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
+
+/// <summary>
+///     One slot in `GET /matches/{matchId}/slots`'s dict response — <see cref="Locked" /> is always
+///     `false` for an occupied slot (an occupied slot's underlying <see cref="SlotStatus" /> can never
+///     also be <see cref="SlotStatus.Locked" />).
+/// </summary>
+public sealed record SlotView(int? UserId, string? UserName, string? Team, bool Locked);
+
+/// <summary>
+///     Payload for `GET/PUT/PATCH /matches/{matchId}/slots` — every slot 0-15 always present as a
+///     dict key (JSON-serializes as string keys), per the owner's RFC 7396-friendly dict-over-array
+///     design for every multiplayer slots representation.
+/// </summary>
+public sealed record MatchSlotsView(IReadOnlyDictionary<int, SlotView> Slots);

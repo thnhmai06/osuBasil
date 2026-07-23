@@ -121,8 +121,8 @@ public sealed class MpCommandService(
             "clearhost" => await RunLockedAsync(match, () => Task.FromResult((true, ClearHost(match)))),
             "name" => await RunLockedAsync(match, () => Task.FromResult(SetName(match, args))),
             "password" => await RunLockedAsync(match, () => Task.FromResult((true, SetPassword(match, args)))),
-            "invite" => Invite(sender, match, args),
-            "addref" => await AddRefereeAsync(sender, match, args, cancellationToken),
+            "invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args))),
+            "addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, cancellationToken)),
             "removeref" => await RunLockedAsync(match, () => RemoveRefereeAsync(sender, match, args, cancellationToken)),
             "listrefs" => (true, ListReferees(match)),
             "banlist" => (true, await BanListAsync(match, cancellationToken)),
@@ -428,9 +428,8 @@ public sealed class MpCommandService(
     }
 
     /// <summary>
-    ///     Removing the last referee from a `!mp make`-created room disbands it immediately (see
-    ///     <see cref="MatchSession.CreatedViaMakeCommand" />'s doc comment) — normal client-created
-    ///     rooms are unaffected, they keep tearing down only once every slot empties.
+    ///     At least one referee must always remain — removing the last one is rejected instead of
+    ///     disbanding the room (see <see cref="MatchControlService.RemoveOneRefereeAsync" />).
     /// </summary>
     private async Task<(bool Success, string? Reply)> RemoveRefereeAsync(PlayerSession sender, MatchSession match,
         IReadOnlyList<string> args, CancellationToken cancellationToken)
@@ -441,10 +440,15 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null) return (false, $"User not found: {targetName}");
 
-        var closed = await _matchControl.RemoveRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
-        return closed
-            ? (true, $"Removed {target.Name} from the match referees. No referees remain — match closed")
-            : (true, $"Removed {target.Name} from the match referees");
+        var result = await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+        return result switch
+        {
+            MatchControlService.RemoveRefereeResult.WouldLeaveEmpty =>
+                (false, $"Cannot remove {target.Name} — at least one referee must remain."),
+            MatchControlService.RemoveRefereeResult.NotAReferee =>
+                (false, $"{target.Name} is not a referee of this match."),
+            _ => (true, $"Removed {target.Name} from the match referees")
+        };
     }
 
     private string ListReferees(MatchSession match)

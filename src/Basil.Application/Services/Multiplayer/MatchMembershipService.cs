@@ -170,6 +170,29 @@ public sealed class MatchMembershipService(
             slotId = 0;
         }
 
+        return OccupySlot(player, match, slotId);
+    }
+
+    /// <summary>
+    ///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInvite" />) —
+    ///     bypasses every join gate (password/private/locked/ban aren't re-checked here; the caller
+    ///     already did). Fails only if the player is already in a match or the room is full.
+    /// </summary>
+    public bool ForceJoin(PlayerSession player, MatchSession match)
+    {
+        if (player.Match is not null) return false;
+
+        var free = match.GetFreeSlotId();
+        return free is not null && OccupySlot(player, match, free.Value);
+    }
+
+    /// <summary>
+    ///     The slot-occupation tail shared by <see cref="Join" /> and <see cref="ForceJoin" />: channel
+    ///     join, team default, slot fields, the <c>MatchJoinSuccess</c> packet, state broadcast, and the
+    ///     <c>PlayerJoined</c> event.
+    /// </summary>
+    private bool OccupySlot(PlayerSession player, MatchSession match, int slotId)
+    {
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is null || !channelMembership.Join(player, channel)) return false;
 

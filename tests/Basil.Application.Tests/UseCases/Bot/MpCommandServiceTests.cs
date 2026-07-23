@@ -954,7 +954,7 @@ public class MpCommandServiceTests
     }
 
     [Fact]
-    public async Task RemoveRef_LastRefereeOnMakeRoom_ClosesMatch()
+    public async Task RemoveRef_LastReferee_RejectedAndMatchStaysOpen()
     {
         var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
         _fixture.RegisterAll(sender);
@@ -964,23 +964,26 @@ public class MpCommandServiceTests
 
         var reply = await service.HandleAsync(sender, match, "removeref", ["creator"]);
 
-        Assert.Null(_fixture.MatchRegistry.GetById(match.Id));
-        Assert.Contains("match closed", reply);
+        Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
+        Assert.Contains(sender.Id, match.Referees);
+        Assert.Contains("at least one referee must remain", reply);
     }
 
     [Fact]
-    public async Task RemoveRef_LastRefereeOnNormalRoom_DoesNotClose()
+    public async Task RemoveRef_NotLastReferee_Removes()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
         _fixture.RegisterAll(host, referee);
         var match = _fixture.CreateMatch(host, hostIsReferee: false);
+        match.AddReferee(host.Id);
         match.AddReferee(referee.Id);
         var service = MakeService();
 
-        await service.HandleAsync(referee, match, "removeref", ["referee"]);
+        await service.HandleAsync(host, match, "removeref", ["referee"]);
 
         Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
+        Assert.DoesNotContain(referee.Id, match.Referees);
     }
 
     [Fact]

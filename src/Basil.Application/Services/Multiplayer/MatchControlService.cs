@@ -149,14 +149,76 @@ public sealed class MatchControlService(
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
     }
 
+    public enum SetRefereesResult
+    {
+        Ok,
+        WouldLeaveEmpty
+    }
+
+    /// <summary>PUT — full replace. 409 (<see cref="SetRefereesResult.WouldLeaveEmpty" />) if it would end up empty.</summary>
+    public async Task<SetRefereesResult> SetRefereesAsync(MatchSession match, IReadOnlyCollection<PlayerSession> targets,
+        CancellationToken cancellationToken = default)
+    {
+        if (targets.Count == 0) return SetRefereesResult.WouldLeaveEmpty;
+
+        var newIds = targets.Select(t => t.Id).ToHashSet();
+        var toRemove = match.Referees.Where(id => !newIds.Contains(id)).ToList();
+        var toAdd = targets.Where(t => !match.Referees.Contains(t.Id)).ToList();
+
+        foreach (var id in toRemove)
+        {
+            var removedName = sessionRegistry.GetById(id)?.Name;
+            match.RemoveReferee(id);
+            await matchPersistence.CreateEventAsync(new MatchEventRow(
+                match.DbId, (int)MatchEventType.RefRemoved,
+                null, null, id, removedName, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+        }
+
+        foreach (var target in toAdd)
+        {
+            match.AddReferee(target.Id);
+            await matchPersistence.CreateEventAsync(new MatchEventRow(
+                match.DbId, (int)MatchEventType.RefAdded,
+                null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+        }
+
+        return SetRefereesResult.Ok;
+    }
+
+    /// <summary>PATCH — add a batch. Never triggers the empty guard (it only ever adds referees).</summary>
+    public async Task AddRefereesAsync(MatchSession match, IReadOnlyCollection<PlayerSession> targets,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var target in targets)
+        {
+            if (match.Referees.Contains(target.Id)) continue;
+
+            match.AddReferee(target.Id);
+            await matchPersistence.CreateEventAsync(new MatchEventRow(
+                match.DbId, (int)MatchEventType.RefAdded,
+                null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+        }
+    }
+
+    public enum RemoveRefereeResult
+    {
+        Ok,
+        NotAReferee,
+        WouldLeaveEmpty
+    }
+
     /// <summary>
-    ///     Removing the last referee from a `!mp make`-created room disbands it immediately (see
-    ///     <see cref="MatchSession.CreatedViaMakeCommand" />'s doc comment) — normal client-created rooms
-    ///     are unaffected. Returns whether the match was closed as a result.
+    ///     Replaces the old bool-returning "auto-close a `!mp make` room when its last referee is
+    ///     removed" behavior with a guard that blocks removing the last referee at all — the auto-close
+    ///     branch is now unreachable dead code, since a match can never actually reach zero referees
+    ///     through this path anymore.
     /// </summary>
-    public async Task<bool> RemoveRefereeAsync(int? actorId, string? actorName, MatchSession match,
+    public async Task<RemoveRefereeResult> RemoveOneRefereeAsync(int? actorId, string? actorName, MatchSession match,
         PlayerSession target, CancellationToken cancellationToken = default)
     {
+        if (!match.Referees.Contains(target.Id)) return RemoveRefereeResult.NotAReferee;
+        if (match.Referees.Count == 1) return RemoveRefereeResult.WouldLeaveEmpty;
+
         match.RemoveReferee(target.Id);
 
         await matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -164,10 +226,7 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-        if (match is not { CreatedViaMakeCommand: true, Referees.Count: 0 }) return false;
-
-        await matchMembership.CloseAsync(match, cancellationToken: cancellationToken);
-        return true;
+        return RemoveRefereeResult.Ok;
     }
 
     public enum TeamResult
@@ -349,6 +408,8 @@ public sealed class MatchControlService(
         var cts = new CancellationTokenSource();
         match.PendingTimer = cts;
         match.PendingTimerIsAutoStart = autoStart;
+        match.TimerStartedAt = DateTimeOffset.UtcNow;
+        match.TimerTotalSeconds = totalSeconds;
 
         _ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
     }
@@ -376,6 +437,8 @@ public sealed class MatchControlService(
             if (token.IsCancellationRequested) return;
             match.PendingTimer = null;
             match.PendingTimerIsAutoStart = false;
+            match.TimerStartedAt = null;
+            match.TimerTotalSeconds = null;
 
             if (autoStart)
             {
@@ -430,6 +493,8 @@ public sealed class MatchControlService(
         match.PendingTimer.Cancel();
         match.PendingTimer = null;
         match.PendingTimerIsAutoStart = false;
+        match.TimerStartedAt = null;
+        match.TimerTotalSeconds = null;
         return AbortTimerResult.Ok;
     }
 
@@ -509,6 +574,149 @@ public sealed class MatchControlService(
 
         match.RemoveBan(targetUserId);
         return UnbanResult.Ok;
+    }
+
+    /// <summary>PUT — full replace of the ban list. No empty guard: banning down to zero is fine.</summary>
+    public void SetBans(MatchSession match, IReadOnlyCollection<int> userIds)
+    {
+        var newIds = userIds.ToHashSet();
+        var toRemove = match.BannedIds.Where(id => !newIds.Contains(id)).ToList();
+        var toAdd = newIds.Where(id => !match.BannedIds.Contains(id)).ToList();
+
+        foreach (var id in toRemove) match.RemoveBan(id);
+        foreach (var id in toAdd) AddBanAndKickIfSeated(match, id);
+    }
+
+    /// <summary>PATCH — add a batch of bans, each newly-banned id who is currently seated is also kicked.</summary>
+    public void AddBans(MatchSession match, IReadOnlyCollection<int> userIds)
+    {
+        foreach (var id in userIds)
+        {
+            if (match.BannedIds.Contains(id)) continue;
+            AddBanAndKickIfSeated(match, id);
+        }
+    }
+
+    private void AddBanAndKickIfSeated(MatchSession match, int userId)
+    {
+        match.AddBan(userId);
+
+        var seated = sessionRegistry.GetById(userId);
+        if (seated is null || seated.Match != match) return;
+
+        matchMembership.Leave(seated, match);
+        seated.Enqueue(ServerPacketWriter.MatchJoinFail());
+    }
+
+    public enum ForceInviteResult
+    {
+        Ok,
+        NoFreeSlot,
+        TargetBanned,
+        TargetInAnotherMatch
+    }
+
+    /// <summary>
+    ///     `force: true` on `POST /matches/{matchId}/invite` — bypasses password/private/locked gating
+    ///     and seats the target directly, but a banned target is still rejected (the one gate force does
+    ///     not cross).
+    /// </summary>
+    public ForceInviteResult ForceInvite(MatchSession match, PlayerSession target)
+    {
+        if (match.BannedIds.Contains(target.Id)) return ForceInviteResult.TargetBanned;
+        if (target.Match == match) return ForceInviteResult.Ok;
+        if (target.Match is not null) return ForceInviteResult.TargetInAnotherMatch;
+
+        return matchMembership.ForceJoin(target, match) ? ForceInviteResult.Ok : ForceInviteResult.NoFreeSlot;
+    }
+
+    /// <summary>One entry in a `PUT`/`PATCH /matches/{matchId}/slots` request, keyed by slot index (0-based).</summary>
+    public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
+
+    public enum SetSlotsResult
+    {
+        Ok,
+        PlayerCountMismatch,
+        UnknownUserId,
+        SlotOccupiedAndLocked
+    }
+
+    /// <summary>
+    ///     Reassigns/re-teams/locks slots in one atomic pass. Every <see cref="SlotPatchEntry.UserId" />
+    ///     referenced anywhere in <paramref name="entries" /> must already occupy some slot in this
+    ///     match (<see cref="SetSlotsResult.UnknownUserId" /> otherwise) — this never seats a new
+    ///     player, only rearranges existing occupants. <paramref name="isFullReplace" /> (PUT) also
+    ///     requires the referenced user ids to exactly match the match's current full occupant set
+    ///     (<see cref="SetSlotsResult.PlayerCountMismatch" /> otherwise); PATCH only touches the slots
+    ///     actually given. A <see cref="SlotPatchEntry.Team" /> value other than the literal strings
+    ///     `"Red"`/`"Blue"` is a no-op — the destination slot's existing team is preserved, never reset
+    ///     to neutral, and never inherited from the moving player's previous slot.
+    /// </summary>
+    public Task<SetSlotsResult> SetSlotsAsync(MatchSession match, IReadOnlyDictionary<int, SlotPatchEntry> entries,
+        bool isFullReplace, CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in entries.Values)
+            if (entry.UserId is not null && entry.Locked == true)
+                return Task.FromResult(SetSlotsResult.SlotOccupiedAndLocked);
+
+        var currentOccupantIds = match.Slots
+            .Where(s => s.PlayerId is not null)
+            .Select(s => s.PlayerId!.Value)
+            .ToHashSet();
+
+        var referencedUserIds = entries.Values
+            .Where(e => e.UserId is not null)
+            .Select(e => e.UserId!.Value)
+            .ToList();
+
+        foreach (var uid in referencedUserIds)
+            if (!currentOccupantIds.Contains(uid))
+                return Task.FromResult(SetSlotsResult.UnknownUserId);
+
+        if (isFullReplace)
+        {
+            var referencedSet = referencedUserIds.ToHashSet();
+            if (referencedSet.Count != currentOccupantIds.Count || !referencedSet.SetEquals(currentOccupantIds))
+                return Task.FromResult(SetSlotsResult.PlayerCountMismatch);
+        }
+
+        // Snapshot every slot's pre-mutation state so a swap (A<->B) can look up each player's
+        // origin slot without being affected by the other entry's own mutation.
+        var original = match.Slots.Select(s => (s.PlayerId, s.Status, s.Team, s.Mods)).ToArray();
+        var destinationSlots = entries.Where(kv => kv.Value.UserId is not null).Select(kv => kv.Key).ToHashSet();
+
+        // Vacate the previous slot of every moved player, unless that slot is itself a destination
+        // in this same payload (a direct swap doesn't need clearing — it gets overwritten below).
+        foreach (var (slotIndex, entry) in entries)
+        {
+            if (entry.UserId is not { } uid) continue;
+
+            var oldIndex = Array.FindIndex(original, o => o.PlayerId == uid);
+            if (oldIndex >= 0 && oldIndex != slotIndex && !destinationSlots.Contains(oldIndex))
+                match.Slots[oldIndex].Reset();
+        }
+
+        foreach (var (slotIndex, entry) in entries)
+        {
+            var slot = match.Slots[slotIndex];
+
+            if (entry.UserId is { } uid)
+            {
+                var oldIndex = Array.FindIndex(original, o => o.PlayerId == uid);
+                var source = original[oldIndex];
+                slot.PlayerId = uid;
+                slot.Status = source.Status;
+                slot.Mods = source.Mods;
+            }
+
+            if (entry.Team is "Red" or "Blue")
+                slot.Team = entry.Team == "Red" ? MatchTeam.Red : MatchTeam.Blue;
+
+            if (entry.Locked is { } locked && slot.PlayerId is null)
+                slot.Status = locked ? SlotStatus.Locked : SlotStatus.Open;
+        }
+
+        return Task.FromResult(SetSlotsResult.Ok);
     }
 
     public async Task CloseAsync(int? actorId, string? actorName, MatchSession match,
