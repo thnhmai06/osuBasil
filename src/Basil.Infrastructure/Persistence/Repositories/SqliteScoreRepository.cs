@@ -82,6 +82,23 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         return row?.ToRow();
     }
 
+    public async Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        var rows = await connection.QueryAsync<ScoreRowDto>(
+            """
+            SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
+                   NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
+                   OnlineChecksum, SubmittedAt, IsInvalidated
+            FROM Scores
+            ORDER BY Id DESC
+            LIMIT @Limit OFFSET @Offset
+            """,
+            new { Limit = limit, Offset = offset });
+        return rows.Select(r => r.ToRow()).ToList();
+    }
+
     public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
         CancellationToken cancellationToken = default)
     {

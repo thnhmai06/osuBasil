@@ -111,6 +111,9 @@ public interface IScoreRepository
     /// <summary>One score's full row, for the public `GET /score/{id}` route. Null if no score with this id exists.</summary>
     Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default);
 
+    /// <summary>Newest-first page of every score row, for the public `GET /scores` list route.</summary>
+    Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit, CancellationToken cancellationToken = default);
+
     /// <summary>For MatchReportService (the TRT builder) — every score linked to one Round.</summary>
     Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
 

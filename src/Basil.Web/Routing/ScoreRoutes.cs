@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Services.Scores;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Basil.Web.Routing;
 
@@ -12,6 +13,20 @@ internal static class ScoreRoutes
 {
     public static void MapScoreRoutes(this RouteGroupBuilder group)
     {
+        group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
+            CancellationToken cancellationToken) =>
+        {
+            var (p, ps) = Pagination.Normalize(page, pageSize);
+            var overqueried = await scores.FetchPageAsync((p - 1) * ps, ps + 1, cancellationToken);
+            return Results.Json(Pagination.Trim(overqueried, p, ps));
+        })
+            .WithGroupName("basilapi")
+            .WithSummary("List scores, newest first, paged.")
+            .WithDescription("Query params: `page` (default 1), `pageSize` (default 50). Response: " +
+                "`{ page, pageSize, count, hasMore, items }`, each item the same full row shape as " +
+                "`GET /scores/{scoreId}`. Public, no authentication.")
+            .WithTags("Scores");
+
         group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
             CancellationToken cancellationToken) =>
         {

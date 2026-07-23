@@ -158,6 +158,12 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             throw new NotSupportedException();
         }
 
+        public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
             CancellationToken cancellationToken = default)
         {

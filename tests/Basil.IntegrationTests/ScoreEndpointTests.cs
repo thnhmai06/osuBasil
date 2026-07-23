@@ -161,6 +161,12 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             return Task.FromResult(Row);
         }
 
+        public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<ScoreRow>>([]);
+        }
+
         public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
             CancellationToken cancellationToken = default)
         {

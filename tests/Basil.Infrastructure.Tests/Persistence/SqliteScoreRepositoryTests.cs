@@ -3,6 +3,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -176,6 +177,71 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     public async Task FetchById_NotFound_ReturnsNull()
     {
         Assert.Null(await _repository.FetchByIdAsync(999_999));
+    }
+
+    [Fact]
+    public async Task FetchPage_ReturnsNewestFirst_RespectingOffsetAndLimit()
+    {
+        // FetchPageAsync has no per-mapset/round scoping to filter by (it lists every score, matching
+        // GET /scores), so this uses its own dedicated database rather than the class-shared fixture
+        // — otherwise this test's absolute offset/limit assertions would race against every other
+        // test method's inserts into the same Scores table.
+        var dbPath = Path.Combine(Path.GetTempPath(), $"basil-scorepage-test-{Guid.NewGuid():N}.db");
+        var connectionString = $"Data Source={dbPath};Foreign Keys=True;Default Timeout=5";
+        try
+        {
+            SqlMigrationRunner.RunMigrations(connectionString);
+            var repository = new SqliteScoreRepository(connectionString);
+
+            await using (var connection = new SqliteConnection(connectionString))
+            {
+                await connection.ExecuteAsync(
+                    "INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country) " +
+                    "VALUES (500, 'pager', 'pager', 'unused', 0, 'xx')");
+            }
+
+            var mapMd5 = new string('m', 32);
+            var first = await InsertScoreIntoAsync(connectionString, mapMd5, 100_000);
+            var second = await InsertScoreIntoAsync(connectionString, mapMd5, 200_000);
+            var third = await InsertScoreIntoAsync(connectionString, mapMd5, 300_000);
+
+            var page = await repository.FetchPageAsync(0, 2);
+
+            Assert.Equal(2, page.Count);
+            Assert.Equal(third, page[0].Id);
+            Assert.Equal(second, page[1].Id);
+
+            var nextPage = await repository.FetchPageAsync(2, 1);
+
+            Assert.Single(nextPage);
+            Assert.Equal(first, nextPage[0].Id);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+            File.Delete(dbPath + "-wal");
+            File.Delete(dbPath + "-shm");
+        }
+    }
+
+    private static async Task<long> InsertScoreIntoAsync(string connectionString, string mapMd5, long score)
+    {
+        await using var connection = new SqliteConnection(connectionString);
+        return await connection.ExecuteScalarAsync<long>(
+            """
+            INSERT INTO Scores (
+                MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+                Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
+                SubmittedAt
+            ) VALUES (
+                @MapMd5, @Score, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
+                'S', 0, datetime('now'), 120000, 0, 500, 0, @Checksum,
+                datetime('now')
+            );
+            SELECT last_insert_rowid();
+            """,
+            new { MapMd5 = mapMd5, Score = score, Checksum = Guid.NewGuid().ToString("N") });
     }
 
     [Fact]
