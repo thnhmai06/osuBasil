@@ -1,15 +1,13 @@
 using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing;
 
 /// <summary>
 ///     What's left of the old admin-key-gated CRUD block after most of it was folded into the
-///     resource-oriented `/mapset`, `/user`, `/match`, and `/score` route files: beatmap rescan,
-///     match deletion, and seasonals (soon to move to `/seasonal` too). Every route here sits behind
-///     <see cref="AdminKeyFilter" />.
+///     resource-oriented `/mapset`, `/user`, `/match`, `/score`, `/faq`, and `/seasonal` route files:
+///     just beatmap rescan and match deletion, neither of which has a public equivalent. Every route
+///     here sits behind <see cref="AdminKeyFilter" />.
 /// </summary>
 internal static class AdminManagementRoutes
 {
@@ -23,7 +21,6 @@ internal static class AdminManagementRoutes
 
         MapBeatmaps(admin);
         MapMatches(admin);
-        MapSeasonals(admin);
     }
 
     // Search/list, upload, and delete are superseded by the public GET/POST /mapset routes (see
@@ -66,57 +63,5 @@ internal static class AdminManagementRoutes
                 "affect a match still in progress at the protocol level — this only removes persisted history. " +
                 "204 on success, 404 if no match with this id exists." + AdminKeyNote)
             .WithTags("Admin: Matches");
-    }
-
-    private static void MapSeasonals(RouteGroupBuilder admin)
-    {
-        admin.MapGet("/seasonals", (IOptions<StorageOptions> storage) =>
-        {
-            Directory.CreateDirectory(storage.Value.SeasonalsPath);
-            var files = Directory.EnumerateFiles(storage.Value.SeasonalsPath).Select(Path.GetFileName).ToArray();
-            return Results.Json(files);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: list seasonal background image filenames.")
-            .WithDescription("Returns bare filenames (unlike the osu! client-facing " +
-                "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same folder)." +
-                AdminKeyNote)
-            .WithTags("Admin: Seasonals");
-
-        admin.MapPost("/seasonals", async (HttpContext context, IOptions<StorageOptions> storage,
-            CancellationToken cancellationToken) =>
-        {
-            if (!context.Request.HasFormContentType) return Results.BadRequest("Expected a multipart file upload.");
-
-            var form = await context.Request.ReadFormAsync(cancellationToken);
-            var file = form.Files.GetFile("file");
-            if (file is null) return Results.BadRequest("Missing 'file' form field.");
-
-            Directory.CreateDirectory(storage.Value.SeasonalsPath);
-            // Path.GetFileName strips any directory component a malicious filename could smuggle in.
-            var destination = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(file.FileName));
-            await using var fileStream = File.Create(destination);
-            await file.CopyToAsync(fileStream, cancellationToken);
-
-            return Results.NoContent();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: upload a seasonal background image.")
-            .WithDescription("Multipart upload, field name `file`. Saved under its own uploaded filename " +
-                "(path-traversal-filtered). 204 on success." + AdminKeyNote)
-            .WithTags("Admin: Seasonals");
-
-        admin.MapDelete("/seasonals/{fileName}", (string fileName, IOptions<StorageOptions> storage) =>
-        {
-            var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
-            if (!File.Exists(path)) return Results.NotFound();
-
-            File.Delete(path);
-            return Results.NoContent();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: delete one seasonal background image, by filename.")
-            .WithDescription("204 on success, 404 if the file doesn't exist." + AdminKeyNote)
-            .WithTags("Admin: Seasonals");
     }
 }

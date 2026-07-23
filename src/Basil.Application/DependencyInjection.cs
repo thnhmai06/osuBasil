@@ -8,6 +8,7 @@ using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Chat;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Scores;
@@ -45,6 +46,8 @@ public static class DependencyInjection
         services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
         services.AddSingleton<ChatDispatchService>();
         services.AddSingleton<IrcAuthenticationService>();
+        services.AddSingleton<FaqService>();
+        services.AddSingleton<SeasonalService>();
 
         services.AddSingleton<IBanchoPacketHandler, PingHandler>();
         services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

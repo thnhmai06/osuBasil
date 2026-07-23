@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Services.Content;
 using Basil.Domain.Login;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,8 @@ public sealed class CommandDispatcher(
     IMatchRegistry matchRegistry)
     : ICommandDispatcher
 {
+    private readonly FaqService _faq = new(storageOptions);
+
     private const int RollMaxCap = int.MaxValue; // highest value int.TryParse can produce
 
     /// <summary>
@@ -227,35 +230,15 @@ public sealed class CommandDispatcher(
 
         var requested = string.Join(' ', args);
         var entry = Path.GetFileName(requested);
-        if (!IsSafeFaqEntry(entry)) return $"No FAQ entry found for '{requested}'.";
-
-        var path = Path.Combine(storageOptions.Value.FaqsPath, $"{entry}.txt");
-        if (!File.Exists(path)) return $"No FAQ entry found for '{entry}'.";
-
-        var lines = await File.ReadAllLinesAsync(path, cancellationToken);
-        return string.Join('\n', lines);
-    }
-
-    /// <summary>
-    ///     Entry names behave like normal filenames — spaces and most punctuation are fine. `Path.GetFileName`
-    ///     already strips `/`-based traversal on every OS; `\` is explicitly rejected too since .NET only
-    ///     treats it as a separator on Windows (a Linux deployment would otherwise let `..\..\secret`
-    ///     through untouched), and a literal `..` is rejected outright as defense in depth.
-    /// </summary>
-    private static bool IsSafeFaqEntry(string entry)
-    {
-        return entry.Length > 0 && !entry.Contains('\\') && !entry.Contains("..");
+        var content = await _faq.ReadEntryAsync(entry, cancellationToken);
+        return content ?? $"No FAQ entry found for '{entry}'.";
     }
 
     private string ListFaqEntries()
     {
-        if (!Directory.Exists(storageOptions.Value.FaqsPath)) return "No FAQ entries available.";
-
         // "list" is the subcommand keyword itself — a stray list.txt in the folder isn't a real entry.
-        var entries = Directory.EnumerateFiles(storageOptions.Value.FaqsPath, "*.txt")
-            .Select(Path.GetFileNameWithoutExtension)
+        var entries = _faq.ListEntries()
             .Where(name => !string.Equals(name, "list", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return entries.Count == 0

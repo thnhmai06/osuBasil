@@ -1046,6 +1046,10 @@ public static class BanchoHostGroups
                 "`application/x-osu-beatmap-archive`. Public, no admin key.")
             .WithTags("Beatmap Downloads");
 
+        group.MapFaqRoutes();
+
+        group.MapSeasonalRoutes();
+
         group.MapAdminManagement();
     }
 }
