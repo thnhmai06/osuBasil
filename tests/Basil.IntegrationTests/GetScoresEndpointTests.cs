@@ -286,6 +286,11 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             return Task.FromResult<ScoreOwnerRow?>(null);
         }
 
+        public Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<ScoreRow?>(null);
+        }
+
         public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
             CancellationToken cancellationToken = default)
         {

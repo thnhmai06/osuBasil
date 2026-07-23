@@ -257,7 +257,7 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         _scores.Owner = new ScoreOwnerRow(1, GameMode.Standard);
         _replayStorage.Bytes = [1, 2, 3];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/replays/1"));
+        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/score/1/replay"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
@@ -381,6 +381,11 @@ public class BeatmapMapsetEndpointTests : IClassFixture<WebApplicationFactory<Pr
         public Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Owner);
+        }
+
+        public Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<ScoreRow?>(null);
         }
 
         public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,

@@ -6,8 +6,9 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     Admin-key-gated CRUD for beatmaps/users/replays/matches/seasonals —
-///     bancho.py has no equivalent admin surface. Every route here sits behind
+///     What's left of the old admin-key-gated CRUD block after most of it was folded into the
+///     resource-oriented `/mapset`, `/user`, `/match`, and `/score` route files: beatmap rescan,
+///     match deletion, and seasonals (soon to move to `/seasonal` too). Every route here sits behind
 ///     <see cref="AdminKeyFilter" />.
 /// </summary>
 internal static class AdminManagementRoutes
@@ -21,7 +22,6 @@ internal static class AdminManagementRoutes
         var admin = group.MapGroup("").AddEndpointFilter<AdminKeyFilter>();
 
         MapBeatmaps(admin);
-        MapReplays(admin);
         MapMatches(admin);
         MapSeasonals(admin);
     }
@@ -45,39 +45,6 @@ internal static class AdminManagementRoutes
                 "startup too — this endpoint is for triggering it on demand (e.g. after manually copying files " +
                 "into the storage folder)." + AdminKeyNote)
             .WithTags("Admin: Beatmaps");
-    }
-
-    private static void MapReplays(RouteGroupBuilder admin)
-    {
-        admin.MapGet("/replays", (IOptions<StorageOptions> storage) =>
-        {
-            Directory.CreateDirectory(storage.Value.ReplaysPath);
-            var scoreIds = Directory.EnumerateFiles(storage.Value.ReplaysPath, "*.osr")
-                .Select(path => Path.GetFileNameWithoutExtension(path))
-                .Where(name => long.TryParse(name, out _))
-                .Select(long.Parse)
-                .ToArray();
-            return Results.Json(scoreIds);
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: list every score id that has a stored replay file.")
-            .WithDescription("Derived from the replay storage folder's filenames (`{scoreId}.osr`), not the " +
-                "database — a score without an uploaded replay simply won't appear here." + AdminKeyNote)
-            .WithTags("Admin: Replays");
-
-        admin.MapDelete("/replays/{scoreId:long}", (long scoreId, IOptions<StorageOptions> storage) =>
-        {
-            var path = Path.Combine(storage.Value.ReplaysPath, $"{scoreId}.osr");
-            if (!File.Exists(path)) return Results.NotFound();
-
-            File.Delete(path);
-            return Results.NoContent();
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Admin: delete one replay file, by score id.")
-            .WithDescription("Deletes the `.osr` file only — the score row itself is untouched. 204 on success, " +
-                "404 if no replay file exists for this score id." + AdminKeyNote)
-            .WithTags("Admin: Replays");
     }
 
     // List/create/settings/actions moved to the public-facing MatchRoutes.MapMatchRoutes (GET/POST

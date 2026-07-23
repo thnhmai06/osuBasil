@@ -476,7 +476,7 @@ public static class BanchoHostGroups
                 .WithSummary("Download a replay by score id (in-game \"View Replay\").")
                 .WithDescription("Authenticates via `u`/`h` (username/password MD5), then serves the `.osr` " +
                     "replay for the score identified by `c`. 404 if the score has no stored replay. " +
-                    "Content-Type `application/x-osu-replay`. Prefer `GET /replays/{scoreId}` on the Basil API " +
+                    "Content-Type `application/x-osu-replay`. Prefer `GET /score/{scoreId}/replay` on the Basil API " +
                     "for external tooling — this route requires client-style authentication.")
                 .WithTags("Replays");
 
@@ -1024,22 +1024,7 @@ public static class BanchoHostGroups
 
         group.MapUserRoutes();
 
-        group.MapGet("/replays/{scoreId:long}", async (long scoreId, HttpContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var replayService = context.RequestServices.GetRequiredService<ReplayService>();
-            var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);
-            return result.Code == ReplayFetchResultCode.NotFound
-                ? Results.NotFound()
-                : Results.Bytes(result.Data!, "application/x-osu-replay");
-        })
-            .WithGroupName("basilapi")
-            .WithSummary("Download a replay file, by score id.")
-            .WithDescription("Serves the `.osr` replay for the given score id. 404 if the score doesn't exist or " +
-                "has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication — " +
-                "unlike the osu! client's own `GET /web/osu-getreplay.php`, which requires client-style login " +
-                "credentials.")
-            .WithTags("Replay Downloads");
+        group.MapScoreRoutes();
 
         group.MapMapsetRoutes();
 

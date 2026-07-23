@@ -141,6 +141,44 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     }
 
     [Fact]
+    public async Task FetchById_ReturnsFullRow()
+    {
+        var mapMd5 = new string('k', 32);
+        await InsertUserAsync(322, "tara");
+        var scoreId = await InsertScoreAsync(mapMd5, 322, 850_000, mode: GameMode.Mania);
+
+        var row = await _repository.FetchByIdAsync(scoreId);
+
+        Assert.NotNull(row);
+        Assert.Equal(scoreId, row.Id);
+        Assert.Equal(322, row.UserId);
+        Assert.Equal(mapMd5, row.MapMd5);
+        Assert.Equal(850_000, row.Score);
+        Assert.Equal(GameMode.Mania, row.Mode);
+        Assert.False(row.IsInvalidated);
+    }
+
+    [Fact]
+    public async Task FetchById_AfterInvalidation_ReportsIsInvalidatedTrue()
+    {
+        var mapMd5 = new string('l', 32);
+        await InsertUserAsync(323, "uma");
+        var scoreId = await InsertScoreAsync(mapMd5, 323, 850_000);
+
+        await _repository.InvalidateByMapMd5Async(mapMd5);
+        var row = await _repository.FetchByIdAsync(scoreId);
+
+        Assert.NotNull(row);
+        Assert.True(row.IsInvalidated);
+    }
+
+    [Fact]
+    public async Task FetchById_NotFound_ReturnsNull()
+    {
+        Assert.Null(await _repository.FetchByIdAsync(999_999));
+    }
+
+    [Fact]
     public async Task FetchByRoundId_ReturnsScoresOrderedByScoreDescending_WithUserNameJoined()
     {
         await InsertUserAsync(401, "roundwinner");
