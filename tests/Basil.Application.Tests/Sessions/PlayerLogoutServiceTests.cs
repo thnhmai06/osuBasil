@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
@@ -28,7 +29,7 @@ public class PlayerLogoutServiceTests
         Substitute.For<IPlayerSessionRegistry>(),
         new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
         Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
-        Substitute.For<IMapRepository>());
+        Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>());
 
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
@@ -41,17 +42,17 @@ public class PlayerLogoutServiceTests
     }
 
     [Fact]
-    public void Logout_RemovesFromSessionRegistry()
+    public async Task Logout_RemovesFromSessionRegistry()
     {
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         _sessionRegistry.Received(1).Remove(player);
     }
 
     [Fact]
-    public void Logout_LeavesAllJoinedChannels()
+    public async Task Logout_LeavesAllJoinedChannels()
     {
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
@@ -59,52 +60,52 @@ public class PlayerLogoutServiceTests
         player.JoinChannel("#osu");
         _channelRegistry.GetByName("#osu").Returns(channel);
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         Assert.False(channel.Contains(1));
         Assert.False(player.InChannel("#osu"));
     }
 
     [Fact]
-    public void Logout_UnrestrictedPlayer_BroadcastsLogoutPacket()
+    public async Task Logout_UnrestrictedPlayer_BroadcastsLogoutPacket()
     {
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([other]);
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         Assert.Equal(ServerPacketWriter.Logout(1), other.Dequeue());
     }
 
     [Fact]
-    public void Logout_RestrictedPlayer_DoesNotBroadcastLogoutPacket()
+    public async Task Logout_RestrictedPlayer_DoesNotBroadcastLogoutPacket()
     {
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([other]);
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         Assert.Empty(other.Dequeue());
     }
 
     [Fact]
-    public void Logout_WhileSpectating_StopsSpectatingAndClearsHostSpectatorList()
+    public async Task Logout_WhileSpectating_StopsSpectatingAndClearsHostSpectatorList()
     {
         var host = new PlayerSession(2, "host", "host-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         host.AddSpectator(player);
         player.Spectating = host;
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         Assert.Null(player.Spectating);
         Assert.DoesNotContain(player, host.Spectators);
     }
 
     [Fact]
-    public void Logout_PlayerWhoseOnlySpectatorIsTheBot_RemovesBotSpectateRelationship()
+    public async Task Logout_PlayerWhoseOnlySpectatorIsTheBot_RemovesBotSpectateRelationship()
     {
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
             UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
@@ -113,14 +114,14 @@ public class PlayerLogoutServiceTests
         player.AddSpectator(bot);
         bot.Spectating = player;
 
-        MakeService().Logout(player);
+        await MakeService().LogoutAsync(player);
 
         Assert.Empty(player.Spectators);
         Assert.Null(bot.Spectating);
     }
 
     [Fact]
-    public void Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
+    public async Task Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
     {
         var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
         var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry();
@@ -129,15 +130,14 @@ public class PlayerLogoutServiceTests
             new ChannelMembershipService(sessionRegistry, channelRegistry),
             new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
             new MultiplayerTestSupport.FakeMatchLiveEvents(),
-            Substitute.For<IMapRepository>());
+            Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>());
         var host = new PlayerSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         sessionRegistry.All.Returns([host]);
         sessionRegistry.GetById(1).Returns(host);
-        var match = matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id))
-            .GetAwaiter().GetResult()!;
+        var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
         var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
 
-        service.Logout(host);
+        await service.LogoutAsync(host);
 
         Assert.Null(host.Match);
         Assert.Null(matchRegistry.GetById(match.Id)); // last player left -> match disposed, not a ghost slot

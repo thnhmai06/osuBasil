@@ -15,7 +15,7 @@ public class MatchFailedHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         host.Dequeue();
         var handler = new MatchFailedHandler(fixture.MatchMembership);
 

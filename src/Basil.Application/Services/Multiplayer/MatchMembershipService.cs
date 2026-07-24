@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -27,7 +28,8 @@ public sealed class MatchMembershipService(
     ChannelMembershipService channelMembership,
     IMatchPersistenceRepository matchPersistence,
     IMatchLiveEvents eventBus,
-    IMapRepository mapRepo)
+    IMapRepository mapRepo,
+    IUserRepository userRepo)
 {
     private const int MaxMatchNameLength = 50;
 
@@ -90,7 +92,7 @@ public sealed class MatchMembershipService(
         await match.Lock.WaitAsync(cancellationToken);
         try
         {
-            Join(host, match, data.Password);
+            await Join(host, match, data.Password);
         }
         finally
         {
@@ -131,7 +133,7 @@ public sealed class MatchMembershipService(
         return match;
     }
 
-    public bool Join(PlayerSession player, MatchSession match, string password)
+    public async Task<bool> Join(PlayerSession player, MatchSession match, string password)
     {
         if (player.Match is not null || match.TourneyClients.Contains(player.Id) ||
             match.BannedIds.Contains(player.Id) ||
@@ -170,7 +172,7 @@ public sealed class MatchMembershipService(
             slotId = 0;
         }
 
-        return OccupySlot(player, match, slotId);
+        return await OccupySlot(player, match, slotId);
     }
 
     /// <summary>
@@ -178,12 +180,12 @@ public sealed class MatchMembershipService(
     ///     bypasses every join gate (password/private/locked/ban aren't re-checked here; the caller
     ///     already did). Fails only if the player is already in a match or the room is full.
     /// </summary>
-    public bool ForceJoin(PlayerSession player, MatchSession match)
+    public async Task<bool> ForceJoin(PlayerSession player, MatchSession match)
     {
         if (player.Match is not null) return false;
 
         var free = match.GetFreeSlotId();
-        return free is not null && OccupySlot(player, match, free.Value);
+        return free is not null && await OccupySlot(player, match, free.Value);
     }
 
     /// <summary>
@@ -191,7 +193,7 @@ public sealed class MatchMembershipService(
     ///     join, team default, slot fields, the <c>MatchJoinSuccess</c> packet, state broadcast, and the
     ///     <c>PlayerJoined</c> event.
     /// </summary>
-    private bool OccupySlot(PlayerSession player, MatchSession match, int slotId)
+    private async Task<bool> OccupySlot(PlayerSession player, MatchSession match, int slotId)
     {
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is null || !channelMembership.Join(player, channel)) return false;
@@ -207,7 +209,7 @@ public sealed class MatchMembershipService(
         player.Match = match;
 
         player.Enqueue(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)));
-        EnqueueState(match);
+        await EnqueueState(match);
 
         _ = matchPersistence.CreateEventAsync(new MatchEventRow(
             match.DbId, (int)MatchEventType.PlayerJoined,
@@ -216,7 +218,7 @@ public sealed class MatchMembershipService(
         return true;
     }
 
-    public void Leave(PlayerSession player, MatchSession match)
+    public async Task Leave(PlayerSession player, MatchSession match)
     {
         var slot = match.GetSlot(player.Id);
         if (slot is null)
@@ -253,7 +255,7 @@ public sealed class MatchMembershipService(
                 }
             }
 
-            EnqueueState(match);
+            await EnqueueState(match);
         }
 
         player.Match = null;
@@ -367,7 +369,7 @@ public sealed class MatchMembershipService(
             match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
         Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
-        EnqueueState(match);
+        await EnqueueState(match);
         return true;
     }
 
@@ -388,7 +390,7 @@ public sealed class MatchMembershipService(
         channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
     }
 
-    public void EnqueueState(MatchSession match, bool lobby = true)
+    public async Task EnqueueState(MatchSession match, bool lobby = true)
     {
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is not null)
@@ -399,10 +401,11 @@ public sealed class MatchMembershipService(
             BroadcastToNonEmptyLobby(
                 ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
 
-        var mainSnapshot = MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry);
+        var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, userRepo, mapRepo);
         eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
 
-        var settingsDelta = match.SettingsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildSettings(match));
+        var settings = await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, userRepo, mapRepo);
+        var settingsDelta = match.SettingsSnapshot.Publish(settings);
         eventBus.PublishSettings(match.DbId, settingsDelta);
 
         var liveDelta = match.LiveSnapshot.Publish(MatchLiveSnapshotBuilder.BuildLiveStatus(match));
@@ -415,21 +418,24 @@ public sealed class MatchMembershipService(
         }
     }
 
-    public void PublishHost(MatchSession match)
+    public async Task PublishHost(MatchSession match)
     {
-        var delta = match.HostSnapshot.Publish(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+        var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo);
+        var delta = match.HostSnapshot.Publish(host);
         eventBus.PublishHost(match.DbId, delta);
     }
 
-    public void PublishRefs(MatchSession match)
+    public async Task PublishRefs(MatchSession match)
     {
-        var delta = match.RefsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+        var refs = await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, userRepo);
+        var delta = match.RefsSnapshot.Publish(refs);
         eventBus.PublishRefs(match.DbId, delta);
     }
 
-    public void PublishBans(MatchSession match)
+    public async Task PublishBans(MatchSession match)
     {
-        var delta = match.BansSnapshot.Publish(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+        var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo);
+        var delta = match.BansSnapshot.Publish(bans);
         eventBus.PublishBans(match.DbId, delta);
     }
 
@@ -439,9 +445,10 @@ public sealed class MatchMembershipService(
         eventBus.PublishTimer(match.DbId, delta);
     }
 
-    public void PublishSlots(MatchSession match)
+    public async Task PublishSlots(MatchSession match)
     {
-        var delta = match.SlotsSnapshot.Publish(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
+        var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo);
+        var delta = match.SlotsSnapshot.Publish(slots);
         eventBus.PublishSlots(match.DbId, delta);
     }
 

@@ -1,11 +1,15 @@
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Multiplayer;
@@ -16,10 +20,21 @@ public class MatchReportServiceTests
     private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
     private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+    private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+    private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
+
+    public MatchReportServiceTests()
+    {
+        // No session-registry setup in these tests means every player is "offline" — fall back to a
+        // generic resolvable user so UserBriefResolver never returns null for the ids exercised here.
+        _users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => new User(call.Arg<int>(), $"player{call.Arg<int>()}", Country.Xx,
+                UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+    }
 
     private MatchReportService MakeService()
     {
-        return new MatchReportService(_matchRegistry, _matchPersistence, _scores, _sessionRegistry);
+        return new MatchReportService(_matchRegistry, _matchPersistence, _scores, _sessionRegistry, _users, _maps);
     }
 
     private static MatchRow MakeMatchRow(int id = 5)
@@ -73,7 +88,7 @@ public class MatchReportServiceTests
         Assert.NotNull(report);
         Assert.NotNull(report.Live);
         Assert.Equal(42, report.Live.CurrentMapId);
-        Assert.Equal(7, report.Live.Slots[0].UserId);
+        Assert.Equal(7, report.Live.Slots[0].User!.Id);
     }
 
     [Fact]
@@ -102,7 +117,7 @@ public class MatchReportServiceTests
         Assert.NotNull(report);
         var builtRound = Assert.Single(report.Rounds);
         Assert.Equal(MatchTeam.Red.ToString(), builtRound.WinnerTeam);
-        Assert.Null(builtRound.WinnerUserId);
+        Assert.Null(builtRound.Winner);
         Assert.Equal(2, builtRound.Scores.Length);
     }
 
@@ -130,7 +145,7 @@ public class MatchReportServiceTests
         var report = await MakeService().BuildAsync(5);
 
         var builtRound = Assert.Single(report!.Rounds);
-        Assert.Equal(8, builtRound.WinnerUserId);
+        Assert.Equal(8, builtRound.Winner!.Id);
         Assert.Null(builtRound.WinnerTeam);
     }
 }

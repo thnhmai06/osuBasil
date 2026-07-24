@@ -16,7 +16,7 @@ public class MatchLoadCompleteHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         host.Dequeue();
@@ -37,7 +37,7 @@ public class MatchLoadCompleteHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         match.Slots[1].Loaded = true;

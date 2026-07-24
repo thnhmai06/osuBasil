@@ -14,7 +14,7 @@ public class MatchChangePasswordHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchChangePasswordHandler(fixture.MatchMembership);
 
         await handler.HandleAsync(guest,

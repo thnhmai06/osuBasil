@@ -1,9 +1,12 @@
 using System.Net.Http.Json;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -41,6 +44,8 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IScoreRepository>(_scores);
+                services.AddSingleton<IUserRepository>(new NoopUserRepository());
+                services.AddSingleton<IMapRepository>(new NoopMapRepository());
             });
         });
     }
@@ -152,5 +157,70 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
         {
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>
+    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
+    ///     referenced by these tests resolves to "no account" instead of hitting the real SQLite path
+    ///     these tests otherwise never need a working database connection for.
+    /// </summary>
+    private sealed class NoopUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<User>>([]);
+    }
+
+    /// <summary>
+    ///     Stands in for the real DB-backed <see cref="IMapRepository" /> so a score's stored `mapMd5`
+    ///     resolves to "beatmap gone" (null) instead of hitting the real SQLite path these tests
+    ///     otherwise never need a working database connection for.
+    /// </summary>
+    private sealed class NoopMapRepository : IMapRepository
+    {
+        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Beatmap?>(null);
+
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
+            int amount, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+
+        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+
+        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+            CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Beatmap>>([]);
     }
 }

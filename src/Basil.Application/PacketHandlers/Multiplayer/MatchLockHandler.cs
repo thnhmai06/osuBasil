@@ -38,7 +38,7 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
                 slot.Status = SlotStatus.Locked;
             }
 
-            matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueState(match);
         }
         finally
         {

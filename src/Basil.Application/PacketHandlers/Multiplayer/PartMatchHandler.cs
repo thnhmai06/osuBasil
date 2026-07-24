@@ -20,7 +20,7 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
         await match.Lock.WaitAsync();
         try
         {
-            matchMembership.Leave(player, match);
+            await matchMembership.Leave(player, match);
         }
         finally
         {

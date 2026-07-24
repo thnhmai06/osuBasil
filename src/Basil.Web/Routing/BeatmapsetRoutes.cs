@@ -55,8 +55,9 @@ internal static class BeatmapsetRoutes
             .WithName("getBeatmapset")
             .WithSummary("Get Beatmapset")
             .WithDescription("Returns `{ id, artist, title, creator, createdAt, lastUpdate, isFrozen, " +
-                "isPrivate, beatmaps: [{ id, version, mode }] }` — beatmap ids are included inline so a " +
-                "client doesn't need a second call to discover them. 404 if the mapset doesn't exist, or " +
+                "isPrivate, beatmaps }` — `beatmaps` is the full list of difficulties under this set, each " +
+                "the real domain `Beatmap` object (nested `Mapset`/`Difficulty`, same shape `GET " +
+                "/beatmapsets/{mapsetId}/{beatmapId}` returns for one). 404 if the mapset doesn't exist, or " +
                 "(for a non-admin caller) it's private. Public, with a soft admin elevation.")
             .WithTags("Beatmapsets")
             .Produces<BeatmapsetDetail>()
@@ -120,12 +121,15 @@ internal static class BeatmapsetRoutes
             .WithGroupName("basilapi")
             .WithName("getBeatmap")
             .WithSummary("Get Beatmap")
-            .WithDescription("Returns `{ id, version, mode, filename, totalLength, maxCombo, plays, " +
-                "passes }`. 404 if the beatmap doesn't exist, doesn't belong to this mapset, or the parent " +
-                "mapset is private and the caller isn't admin. Public, with a soft admin elevation.")
+            .WithDescription("Returns the real domain `Beatmap` object directly (nested `Mapset`/`Difficulty`, " +
+                "per-mode `objectCounts`, `length`) — the same shape each entry of `GET " +
+                "/beatmapsets/{mapsetId}`'s `beatmaps` list uses. Never includes the internal background-" +
+                "image filename (see `GET .../background` instead). 404 if the beatmap doesn't exist, " +
+                "doesn't belong to this mapset, or the parent mapset is private and the caller isn't admin. " +
+                "Public, with a soft admin elevation.")
             .WithTags("Beatmapsets")
-            .Produces<BeatmapDetail>()
-            .WithExample(StatusCodes.Status200OK, SampleBeatmapDetail())
+            .Produces<Beatmap>()
+            .WithExample(StatusCodes.Status200OK, SampleBeatmap())
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
@@ -136,6 +140,17 @@ internal static class BeatmapsetRoutes
                 "doesn't belong to this mapset, its file is missing on disk, or the parent mapset is " +
                 "private and the caller isn't admin. Content-Type `application/x-osu-beatmap`. Public, " +
                 "with a soft admin elevation.")
+            .WithTags("Beatmapsets")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/background", HandleDownloadBackground)
+            .WithGroupName("basilapi")
+            .WithName("downloadBeatmapBackground")
+            .WithSummary("Download Beatmap Background")
+            .WithDescription("Serves the beatmap's background image file. 404 if the beatmap doesn't exist, " +
+                "doesn't belong to this mapset, has no recorded background image, its file is missing on " +
+                "disk, or the parent mapset is private and the caller isn't admin. Content-Type inferred " +
+                "from the file extension. Public, with a soft admin elevation.")
             .WithTags("Beatmapsets")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -173,14 +188,17 @@ internal static class BeatmapsetRoutes
     {
         var s = SampleSummary();
         return new BeatmapsetDetail(s.Id, s.Artist, s.Title, s.Creator, s.CreatedAt, s.LastUpdate, s.IsFrozen,
-            s.IsPrivate, [new BeatmapBrief(654, "Extreme", GameMode.Standard)]);
+            s.IsPrivate, [SampleBeatmap()]);
     }
 
-    private static BeatmapDetail SampleBeatmapDetail()
+    private static Beatmap SampleBeatmap()
     {
-        return new BeatmapDetail(654, "Extreme", GameMode.Standard,
-            "camellia - exit this earth's atmosphere (rlc) [extreme].osu",
-            TimeSpan.FromSeconds(225), 1234, 57, 12);
+        var created = DateTime.Parse("2026-06-01T10:00:00Z");
+        var mapset = new Mapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
+        var difficulty = new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42);
+        return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
+            "camellia - exit this earth's atmosphere (rlc) [extreme].osu", TimeSpan.FromSeconds(225), 1234, 57, 12,
+            difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 });
     }
 
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -188,13 +206,8 @@ internal static class BeatmapsetRoutes
     private sealed record BeatmapsetSummary(int Id, string Artist, string Title, string Creator, DateTime CreatedAt,
         DateTime LastUpdate, bool IsFrozen, bool IsPrivate);
 
-    private sealed record BeatmapBrief(int Id, string Version, GameMode Mode);
-
     private sealed record BeatmapsetDetail(int Id, string Artist, string Title, string Creator, DateTime CreatedAt,
-        DateTime LastUpdate, bool IsFrozen, bool IsPrivate, IReadOnlyList<BeatmapBrief> Beatmaps);
-
-    private sealed record BeatmapDetail(int Id, string Version, GameMode Mode, string Filename,
-        TimeSpan TotalLength, int MaxCombo, int Plays, int Passes);
+        DateTime LastUpdate, bool IsFrozen, bool IsPrivate, IReadOnlyList<Beatmap> Beatmaps);
 
     public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
 
@@ -256,8 +269,7 @@ internal static class BeatmapsetRoutes
     private static BeatmapsetDetail BuildDetail(Mapset mapset, IReadOnlyList<Beatmap> beatmaps)
     {
         return new BeatmapsetDetail(mapset.Id, mapset.Artist, mapset.Title, mapset.Creator, mapset.CreatedAt,
-            mapset.LastUpdate, mapset.IsFrozen, mapset.IsPrivate,
-            beatmaps.Select(b => new BeatmapBrief(b.Id, b.Version, b.Difficulty.Mode)).ToList());
+            mapset.LastUpdate, mapset.IsFrozen, mapset.IsPrivate, beatmaps);
     }
 
     private static async Task<IResult> HandleReplace(int mapsetId, HttpContext context, IMapsetRepository mapsets,
@@ -340,8 +352,7 @@ internal static class BeatmapsetRoutes
             cancellationToken: cancellationToken);
         if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
-        return Results.Json(new BeatmapDetail(bmap.Id, bmap.Version, bmap.Difficulty.Mode, bmap.Filename,
-            bmap.TotalLength, bmap.MaxCombo, bmap.Plays, bmap.Passes));
+        return Results.Json(bmap);
     }
 
     private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,
@@ -354,6 +365,31 @@ internal static class BeatmapsetRoutes
 
         var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
         return File.Exists(osuPath) ? Results.File(osuPath, "application/x-osu-beatmap") : Results.NotFound();
+    }
+
+    private static async Task<IResult> HandleDownloadBackground(int mapsetId, int beatmapId, HttpContext context,
+        IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+    {
+        var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+        var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+            cancellationToken: cancellationToken);
+        if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
+
+        var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, bmap);
+        if (backgroundPath is null || !File.Exists(backgroundPath)) return Results.NotFound();
+
+        return Results.File(backgroundPath, BackgroundContentType(backgroundPath));
+    }
+
+    private static string BackgroundContentType(string path)
+    {
+        return Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            _ => "image/jpeg"
+        };
     }
 
     private static IResult HandleDownloadStoryboard(int mapsetId, IOptions<StorageOptions> storage)

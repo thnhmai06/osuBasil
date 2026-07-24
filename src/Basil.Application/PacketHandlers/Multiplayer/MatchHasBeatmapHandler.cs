@@ -25,7 +25,7 @@ public sealed class MatchHasBeatmapHandler(MatchMembershipService matchMembershi
             if (slot is null) return;
 
             slot.Status = SlotStatus.NotReady;
-            matchMembership.EnqueueState(match, false);
+            await matchMembership.EnqueueState(match, false);
         }
         finally
         {

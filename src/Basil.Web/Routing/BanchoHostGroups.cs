@@ -1052,21 +1052,22 @@ public static class BanchoHostGroups
         var started = DateTime.Parse("2026-07-20T12:00:00Z");
         var ended = DateTime.Parse("2026-07-20T12:04:30Z");
         var live = new MatchReportLiveInfo(
-            new UserBrief(7, "Alice"), [new UserBrief(8, "Bob")],
+            new UserBrief(7, "Alice", "vn"), [new UserBrief(8, "Bob", "gb")],
             new Dictionary<int, MatchLiveSlot>
             {
-                [0] = new MatchLiveSlot(7, "Alice", "VN", "NotReady", "Red", 0),
-                [1] = new MatchLiveSlot(9, "Carol", "US", "NotReady", "Blue", 0)
+                [0] = new MatchLiveSlot(new UserBrief(7, "Alice", "vn"), "NotReady", "Red", 0),
+                [1] = new MatchLiveSlot(new UserBrief(9, "Carol", "us"), "NotReady", "Blue", 0)
             },
+            null,
             654, "d41d8cd98f00b204e9800998ecf8427e", GameMode.Standard, MatchWinCondition.ScoreV2,
             MatchTeamType.TeamVs, 0, false, false);
 
-        var score = new MatchReportScore(7, "Alice", "Red", 0, 4_850_213, 98.42, 1234, 720, 45, 3, 2, 12, 5,
+        var score = new MatchReportScore(new UserBrief(7, "Alice", "vn"), "Red", 0, 4_850_213, 98.42, 1234, 720, 45, 3, 2, 12, 5,
             "A", false, ended);
-        var round = new MatchReportRound(0, "d41d8cd98f00b204e9800998ecf8427e",
+        var round = new MatchReportRound(0, "d41d8cd98f00b204e9800998ecf8427e", null,
             0, 3, 2, 0, false, started, ended,
-            7, "Alice", "Red", "score", 1_200_000, [score]);
-        var evt = new MatchReportEvent(0, "Created", 7, "Alice", null, null, started, null);
+            new UserBrief(7, "Alice", "vn"), "Red", "score", 1_200_000, [score]);
+        var evt = new MatchReportEvent(0, "Created", new UserBrief(7, "Alice", "vn"), null, started, null);
 
         return new MatchReport(42, "Grand Finals: Alpha vs Bravo", started, null, live, [evt], [round]);
     }

@@ -15,7 +15,7 @@ public class MatchScoreUpdateHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         host.Dequeue();
         var handler = new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus);
         var frame = new byte[] { 1, 2, 3, 4, 5, 6 };
@@ -38,7 +38,7 @@ public class MatchScoreUpdateHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus);
 
         await handler.HandleAsync(guest, new BanchoPacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }));
@@ -54,7 +54,7 @@ public class MatchScoreUpdateHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus);
 
         // Matches SCOREFRAME_FMT = "<iBHHHHHHiHH?BB?" (29 bytes), scoreV2 = false (last byte 0).

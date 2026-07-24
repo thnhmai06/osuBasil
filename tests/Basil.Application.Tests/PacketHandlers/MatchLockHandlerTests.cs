@@ -21,7 +21,7 @@ public class MatchLockHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchLockHandler(fixture.MatchMembership);
 
         await handler.HandleAsync(guest, ReaderFor(3));

@@ -46,7 +46,7 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
             {
                 var frame = new BanchoPacketReader(playData).ReadScoreFrame();
                 var payload = JsonSerializer.SerializeToUtf8Bytes(
-                    MatchLiveSnapshotBuilder.BuildPlayerScore(player.Name, frame));
+                    MatchLiveSnapshotBuilder.BuildPlayerScore(player, frame));
                 eventBus.PublishPlayer(match.DbId, player.Name, payload);
             }
             catch (Exception)

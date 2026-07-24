@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -174,7 +176,8 @@ internal static class MatchRoutes
     }
 
     private static async Task<IResult> HandleCreate(MatchSettingsBody body, MatchMembershipService matchMembership,
-        MatchControlService matchControl, CancellationToken cancellationToken)
+        MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+        IMapRepository maps, CancellationToken cancellationToken)
     {
         var name = body.Name ?? "New match";
         if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
@@ -199,7 +202,7 @@ internal static class MatchRoutes
             match.Lock.Release();
         }
 
-        return Results.Json(MatchLiveSnapshotBuilder.BuildSettings(match));
+        return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
     }
 
     private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
@@ -240,7 +243,8 @@ internal static class MatchRoutes
     }
 
     private static async Task<IResult> HandleSettingsUpdate(int matchId, MatchSettingsBody body,
-        IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken)
+        IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
+        IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
     {
         var match = matchRegistry.GetByDbId(matchId);
         if (match is null) return Results.NotFound();
@@ -256,18 +260,18 @@ internal static class MatchRoutes
             match.Lock.Release();
         }
 
-        return Results.Json(MatchLiveSnapshotBuilder.BuildSettings(match));
+        return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
     }
 
     /// <summary>Caller must hold <paramref name="match" />'s Lock. Returns a non-null error IResult on failure.</summary>
     private static async Task<IResult?> ApplySettingsAsync(MatchSession match, MatchSettingsBody body,
         MatchControlService matchControl, CancellationToken cancellationToken)
     {
-        if (body.Name is not null) matchControl.SetName(match, body.Name);
-        if (body.Password is not null) matchControl.SetPassword(match, body.Password);
-        if (body.IsPrivate is not null) matchControl.SetPrivate(match, body.IsPrivate.Value);
+        if (body.Name is not null) await matchControl.SetName(match, body.Name);
+        if (body.Password is not null) await matchControl.SetPassword(match, body.Password);
+        if (body.IsPrivate is not null) await matchControl.SetPrivate(match, body.IsPrivate.Value);
         if (body.IsLocked is not null) matchControl.SetLocked(match, body.IsLocked.Value);
-        if (body.Size is not null) matchControl.SetSize(match, body.Size.Value);
+        if (body.Size is not null) await matchControl.SetSize(match, body.Size.Value);
 
         if (body.MapId is not null)
         {
@@ -277,12 +281,12 @@ internal static class MatchRoutes
         }
 
         if (body.Freemod == true)
-            matchControl.SetMods(match, Mods.NoMod, true);
+            await matchControl.SetMods(match, Mods.NoMod, true);
         else if (body.Mods is not null)
-            matchControl.SetMods(match, (Mods)body.Mods.Value, false);
+            await matchControl.SetMods(match, (Mods)body.Mods.Value, false);
 
         if (body.TeamType is not null || body.WinCondition is not null)
-            matchControl.SetTeamTypeWinConditionAndSize(match,
+            await matchControl.SetTeamTypeWinConditionAndSize(match,
                 body.TeamType is not null ? (MatchTeamType)body.TeamType.Value : match.TeamType,
                 body.WinCondition is not null ? (MatchWinCondition)body.WinCondition.Value : null, null);
 
@@ -293,7 +297,8 @@ internal static class MatchRoutes
     {
         return new MatchSettingsView(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
             "Camellia - Exit This Earth's Atmosphere [Extreme]", 0, false,
-            MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, 7, [8, 13]);
+            MatchTeamType.TeamVs, MatchWinCondition.ScoreV2,
+            new UserBrief(7, "Alice", "us"), [new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")], null);
     }
 }
 
