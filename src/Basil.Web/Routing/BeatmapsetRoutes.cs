@@ -29,11 +29,11 @@ internal static class BeatmapsetRoutes
             .WithSummary("List Beatmapsets")
             .WithDescription("Query params: `page` (default 1), `pageSize` (default 50). A private mapset " +
                 "is excluded entirely unless the caller carries a valid `X-Admin-Key`. Response: " +
-                "`{ page, pageSize, count, hasMore, items }`. Public.")
+                "`{ page, pageSize, totalRecords, items }`, wrapped in the enveloped `meta` object at the " +
+                "top level. Public.")
             .WithTags("Beatmapsets")
             .Produces<PagedResult<BeatmapsetSummary>>()
-            .WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, false,
-                [SampleSummary()]));
+            .WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, [SampleSummary()]));
 
         group.MapPost("/beatmapsets", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
@@ -220,12 +220,13 @@ internal static class BeatmapsetRoutes
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
         var overqueried = await mapsets.FetchPageAsync((p - 1) * ps, ps + 1, !isAdmin, cancellationToken);
+        var totalRecords = await mapsets.FetchCountAsync(isAdmin, cancellationToken);
         var items = overqueried
             .Select(m => new BeatmapsetSummary(m.Id, m.Artist, m.Title, m.Creator, m.CreatedAt, m.LastUpdate,
                 m.IsFrozen, m.IsPrivate))
             .ToList();
 
-        return Results.Json(Pagination.Trim(items, p, ps));
+        return Results.Json(Pagination.Trim(items, p, ps, totalRecords));
     }
 
     private static async Task<IResult> HandleCreate(HttpContext context, IOptions<StorageOptions> storage,

@@ -9,6 +9,7 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
+using Basil.Web.Middleware;
 using Basil.Web.Routing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -37,6 +38,7 @@ public sealed class Program
         app.UseCors(CorsPolicyName);
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<EnvelopeMiddleware>();
 
         var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
         BanchoHostGroups.MapAll(app, domain);
@@ -220,6 +222,20 @@ public sealed class Program
                         }).ToArray());
                     document.Extensions ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiExtension>();
                     document.Extensions["x-tagGroups"] = new Microsoft.OpenApi.JsonNodeExtension(tagGroupsJson);
+
+                    // Scalar's sidebar buckets each tag's operations by their position in the document,
+                    // not alphabetically — reorder Paths (shortest/most general route first per tag
+                    // section) without touching the actual C# route-registration order in Routing/*.cs.
+                    if (document.Paths is not null)
+                    {
+                        var reordered = new Microsoft.OpenApi.OpenApiPaths();
+                        foreach (var (path, item) in document.Paths
+                                     .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
+                                     .ThenBy(kvp => kvp.Key.Length)
+                                     .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
+                            reordered[path] = item;
+                        document.Paths = reordered;
+                    }
                 }
 
                 return Task.CompletedTask;

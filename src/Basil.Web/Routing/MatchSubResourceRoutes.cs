@@ -6,6 +6,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Web.Auth;
+using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
 
 namespace Basil.Web.Routing;

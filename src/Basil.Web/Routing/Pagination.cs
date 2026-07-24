@@ -1,14 +1,30 @@
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     Response shape for every paginated list route on the `api.` host: `{ page, pageSize, count,
-///     hasMore, items }` — deliberately no `total`/`totalPages` (a separate COUNT query per request
-///     isn't worth it for a private tournament server's data volumes). <see cref="HasMore" /> is
-///     computed via the "overquery by one" trick: a caller fetches <see cref="PageSize" /> + 1 rows
-///     and passes them to <see cref="Pagination.Trim{T}" />, which trims the extra row off and uses
-///     its mere presence as the "is there another page" signal.
+///     Non-generic marker <see cref="PagedResult{T}" /> implements, so the enveloping layer (both the
+///     runtime <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> and the OpenAPI example wrapper
+///     in <see cref="Basil.Web.OpenApi.OpenApiExampleExtensions" />) can recognize a paginated body and
+///     split it into `data`/`meta` without needing to know the item type <c>T</c>.
 /// </summary>
-public sealed record PagedResult<T>(int Page, int PageSize, int Count, bool HasMore, IReadOnlyList<T> Items);
+public interface IPagedResult
+{
+    int Page { get; }
+    int PageSize { get; }
+    int TotalRecords { get; }
+    IEnumerable<object?> ItemsUntyped { get; }
+}
+
+/// <summary>
+///     Response shape for every paginated list route on the `api.` host. <see cref="TotalRecords" />
+///     backs the Enveloped Response Standard's `meta.totalRecords`/`meta.totalPages` — for `GET /scores`
+///     and `GET /beatmapsets` it comes from the cached `Counters` table (see each repository's
+///     `FetchCountAsync`); for `GET /matches` (no counter table — see that route) it's simply the
+///     count of the already-fully-materialized, already-filtered in-memory list before paging.
+/// </summary>
+public sealed record PagedResult<T>(int Page, int PageSize, int TotalRecords, IReadOnlyList<T> Items) : IPagedResult
+{
+    IEnumerable<object?> IPagedResult.ItemsUntyped => Items.Cast<object?>();
+}
 
 public static class Pagination
 {
@@ -22,13 +38,12 @@ public static class Pagination
 
     /// <summary>
     ///     Trims an "overqueried by one" source (fetched with <c>LIMIT pageSize + 1</c>) down to at
-    ///     most <paramref name="pageSize" /> items, using the presence of that extra row as
-    ///     <see cref="PagedResult{T}.HasMore" /> instead of a separate COUNT query.
+    ///     most <paramref name="pageSize" /> items — the extra row is discarded now that
+    ///     <paramref name="totalRecords" /> (a real count) makes it unnecessary for anything.
     /// </summary>
-    public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize)
+    public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize, int totalRecords)
     {
-        var hasMore = overqueried.Count > pageSize;
-        var items = hasMore ? overqueried.Take(pageSize).ToList() : overqueried;
-        return new PagedResult<T>(page, pageSize, items.Count, hasMore, items);
+        var items = overqueried.Count > pageSize ? overqueried.Take(pageSize).ToList() : overqueried;
+        return new PagedResult<T>(page, pageSize, totalRecords, items);
     }
 }

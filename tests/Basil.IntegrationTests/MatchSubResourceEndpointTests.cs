@@ -69,7 +69,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         request.Content = JsonContent.Create(new { });
         var response = await client.SendAsync(request);
         var created = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return created.GetProperty("id").GetInt32();
+        return created.GetProperty("data").GetProperty("id").GetInt32();
     }
 
     private async Task<PlayerSession> SeatNewPlayer(int id, string name, int matchId)
@@ -128,14 +128,14 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/hosts"));
         var view = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(player.Id, view.GetProperty("host").GetProperty("id").GetInt32());
+        Assert.Equal(player.Id, view.GetProperty("data").GetProperty("host").GetProperty("id").GetInt32());
 
         var deleteResponse = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/hosts"));
         deleteResponse.EnsureSuccessStatusCode();
 
         var afterClear = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/hosts"));
         var clearedView = await afterClear.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(clearedView.GetProperty("host").ValueKind is JsonValueKind.Null);
+        Assert.True(clearedView.GetProperty("data").GetProperty("host").ValueKind is JsonValueKind.Null);
     }
 
     // ---- /refs ----
@@ -183,7 +183,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         response.EnsureSuccessStatusCode();
         var view = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains(view.GetProperty("referees").EnumerateArray(),
+        Assert.Contains(view.GetProperty("data").GetProperty("referees").EnumerateArray(),
             r => r.GetProperty("id").GetInt32() == referee.Id);
     }
 
@@ -214,7 +214,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         var afterBan = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/ban"));
         var bannedView = await afterBan.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains(bannedView.GetProperty("bannedUsers").EnumerateArray(),
+        Assert.Contains(bannedView.GetProperty("data").GetProperty("bannedUsers").EnumerateArray(),
             u => u.GetProperty("id").GetInt32() == 555);
 
         var unbanResponse = await client.SendAsync(
@@ -239,7 +239,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         request.Content = JsonContent.Create(new { userId = player.Id });
         var response = await client.SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Null(player.Match);
     }
 
@@ -284,8 +284,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var response = await client.SendAsync(inviteRequest);
         response.EnsureSuccessStatusCode();
 
-        var results = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var byUserId = results.EnumerateArray().ToDictionary(r => r.GetProperty("userId").GetInt32());
+        var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var byUserId = envelope.GetProperty("data").EnumerateArray().ToDictionary(r => r.GetProperty("userId").GetInt32());
 
         Assert.False(byUserId[banned.Id].GetProperty("ok").GetBoolean());
         Assert.True(byUserId[free.Id].GetProperty("ok").GetBoolean());
@@ -305,7 +305,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        var slots = body.GetProperty("slots");
+        var slots = body.GetProperty("data").GetProperty("slots");
         for (var i = 0; i < 16; i++) Assert.True(slots.TryGetProperty(i.ToString(), out _));
     }
 
@@ -386,8 +386,9 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var startResponse = await client.SendAsync(startRequest);
         startResponse.EnsureSuccessStatusCode();
         var afterStart = await startResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(afterStart.GetProperty("running").GetBoolean());
-        Assert.False(afterStart.GetProperty("autoStart").GetBoolean());
+        var afterStartData = afterStart.GetProperty("data");
+        Assert.True(afterStartData.GetProperty("running").GetBoolean());
+        Assert.False(afterStartData.GetProperty("autoStart").GetBoolean());
 
         var abortResponse = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer"));
         abortResponse.EnsureSuccessStatusCode();
@@ -417,7 +418,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Post, $"/matches/{matchId}/close"));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
         Assert.Null(matchRegistry.GetByDbId(matchId));
     }

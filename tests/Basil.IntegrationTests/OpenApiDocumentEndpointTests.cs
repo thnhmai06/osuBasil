@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Configuration;
 using Basil.Web;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,10 +125,10 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
         var client = _factory.CreateClient();
 
         var response = await client.SendAsync(MakeRequest("/health"));
-        var body = await response.Content.ReadFromJsonAsync<HealthShape>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<HealthShape>>();
 
         response.EnsureSuccessStatusCode();
-        Assert.Equal("ok", body!.Status);
+        Assert.Equal("ok", body!.Data!.Status);
     }
 
     private sealed record HealthShape(string Status);
