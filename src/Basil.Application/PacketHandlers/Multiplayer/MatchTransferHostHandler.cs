@@ -33,7 +33,7 @@ public sealed class MatchTransferHostHandler(
 
             var targetPlayer = sessionRegistry.GetById(targetId.Value);
             targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
-            matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueState(match);
 
             var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
             _ = matchPersistence.CreateEventAsync(new MatchEventRow(

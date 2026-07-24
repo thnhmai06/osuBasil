@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -49,6 +50,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMatchPersistenceRepository>(new NoopMatchPersistenceRepository());
+                services.AddSingleton<IUserRepository>(new NoopUserRepository());
             });
         });
     }
@@ -69,7 +71,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         return created.GetProperty("id").GetInt32();
     }
 
-    private PlayerSession SeatNewPlayer(int id, string name, int matchId)
+    private async Task<PlayerSession> SeatNewPlayer(int id, string name, int matchId)
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
@@ -79,7 +81,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         sessionRegistry.Add(session);
 
         var match = matchRegistry.GetByDbId(matchId)!;
-        Assert.True(matchMembership.Join(session, match, ""));
+        Assert.True(await matchMembership.Join(session, match, ""));
         return session;
     }
 
@@ -132,8 +134,8 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var warmHost = SeatNewPlayer(3000, "warmhost", matchId);
-        var player = SeatNewPlayer(3001, "hostcandidate", matchId);
+        var warmHost = await SeatNewPlayer(3000, "warmhost", matchId);
+        var player = await SeatNewPlayer(3001, "hostcandidate", matchId);
 
         // Warm HostSnapshot.Latest so the SSE connect below has an immediate full snapshot to write —
         // see ReceiveAfterTriggerAsync's doc comment for why an unwarmed channel would deadlock.
@@ -157,8 +159,8 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var warmRef = SeatNewPlayer(3010, "warmref", matchId);
-        var referee = SeatNewPlayer(3002, "newref", matchId);
+        var warmRef = await SeatNewPlayer(3010, "warmref", matchId);
+        var referee = await SeatNewPlayer(3002, "newref", matchId);
 
         var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
         warmRequest.Content = JsonContent.Create(new { userIds = new[] { warmRef.Id } });
@@ -201,7 +203,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var player = SeatNewPlayer(3003, "mover", matchId);
+        var player = await SeatNewPlayer(3003, "mover", matchId);
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
         var match = matchRegistry.GetByDbId(matchId)!;
         var currentSlot = match.GetSlotId(player.Id)!.Value;
@@ -288,5 +290,38 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
         public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<RoundRow>>([]);
+    }
+
+    /// <summary>
+    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
+    ///     referenced by these tests resolves to "no account" — UserBriefResolver's documented fallback —
+    ///     instead of hitting the real SQLite path these tests otherwise never need a working database
+    ///     connection for.
+    /// </summary>
+    private sealed class NoopUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<User>>([]);
     }
 }

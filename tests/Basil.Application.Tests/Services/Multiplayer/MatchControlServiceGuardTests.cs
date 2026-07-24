@@ -113,39 +113,39 @@ public class MatchControlServiceGuardTests
     }
 
     [Fact]
-    public void SetBans_NewlyBannedSeatedPlayer_IsKickedFromMatch()
+    public async Task SetBans_NewlyBannedSeatedPlayer_IsKickedFromMatch()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var target = MultiplayerTestSupport.MakePlayer(2, "target");
         _fixture.RegisterAll(host, target);
         var match = _fixture.CreateMatch(host);
-        Assert.True(_fixture.MatchMembership.Join(target, match, ""));
+        Assert.True(await _fixture.MatchMembership.Join(target, match, ""));
         var control = MakeService();
 
-        control.SetBans(match, [target.Id]);
+        await control.SetBans(match, [target.Id]);
 
         Assert.Contains(target.Id, match.BannedIds);
         Assert.Null(target.Match);
     }
 
     [Fact]
-    public void AddBans_KicksNewlySeatedPlayer_SkipsAlreadyBanned()
+    public async Task AddBans_KicksNewlySeatedPlayer_SkipsAlreadyBanned()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var target = MultiplayerTestSupport.MakePlayer(2, "target");
         _fixture.RegisterAll(host, target);
         var match = _fixture.CreateMatch(host);
-        Assert.True(_fixture.MatchMembership.Join(target, match, ""));
+        Assert.True(await _fixture.MatchMembership.Join(target, match, ""));
         var control = MakeService();
 
-        control.AddBans(match, [target.Id]);
+        await control.AddBans(match, [target.Id]);
 
         Assert.Contains(target.Id, match.BannedIds);
         Assert.Null(target.Match);
     }
 
     [Fact]
-    public void ForceInvite_TargetBanned_Rejected()
+    public async Task ForceInvite_TargetBanned_Rejected()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var target = MultiplayerTestSupport.MakePlayer(2, "target");
@@ -154,14 +154,14 @@ public class MatchControlServiceGuardTests
         match.AddBan(target.Id);
         var control = MakeService();
 
-        var result = control.ForceInvite(match, target);
+        var result = await control.ForceInvite(match, target);
 
         Assert.Equal(MatchControlService.ForceInviteResult.TargetBanned, result);
         Assert.Null(target.Match);
     }
 
     [Fact]
-    public void ForceInvite_TargetInAnotherMatch_Rejected()
+    public async Task ForceInvite_TargetInAnotherMatch_Rejected()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var otherHost = MultiplayerTestSupport.MakePlayer(2, "otherhost");
@@ -169,29 +169,29 @@ public class MatchControlServiceGuardTests
         _fixture.RegisterAll(host, otherHost, target);
         var match = _fixture.CreateMatch(host);
         var otherMatch = _fixture.CreateMatch(otherHost);
-        Assert.True(_fixture.MatchMembership.Join(target, otherMatch, ""));
+        Assert.True(await _fixture.MatchMembership.Join(target, otherMatch, ""));
         var control = MakeService();
 
-        var result = control.ForceInvite(match, target);
+        var result = await control.ForceInvite(match, target);
 
         Assert.Equal(MatchControlService.ForceInviteResult.TargetInAnotherMatch, result);
     }
 
     [Fact]
-    public void ForceInvite_AlreadyInThisMatch_ReturnsOk()
+    public async Task ForceInvite_AlreadyInThisMatch_ReturnsOk()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         _fixture.RegisterAll(host);
         var match = _fixture.CreateMatch(host);
         var control = MakeService();
 
-        var result = control.ForceInvite(match, host);
+        var result = await control.ForceInvite(match, host);
 
         Assert.Equal(MatchControlService.ForceInviteResult.Ok, result);
     }
 
     [Fact]
-    public void ForceInvite_BypassesPasswordPrivateAndLock_SeatsPlayer()
+    public async Task ForceInvite_BypassesPasswordPrivateAndLock_SeatsPlayer()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var target = MultiplayerTestSupport.MakePlayer(2, "target");
@@ -201,14 +201,14 @@ public class MatchControlServiceGuardTests
         match.IsLocked = true;
         var control = MakeService();
 
-        var result = control.ForceInvite(match, target);
+        var result = await control.ForceInvite(match, target);
 
         Assert.Equal(MatchControlService.ForceInviteResult.Ok, result);
         Assert.Equal(match, target.Match);
     }
 
     [Fact]
-    public void ForceInvite_NoFreeSlot_ReturnsNoFreeSlot()
+    public async Task ForceInvite_NoFreeSlot_ReturnsNoFreeSlot()
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var target = MultiplayerTestSupport.MakePlayer(2, "target");
@@ -217,7 +217,7 @@ public class MatchControlServiceGuardTests
         for (var i = 0; i < 16; i++) match.Slots[i].Status = SlotStatus.Locked;
         var control = MakeService();
 
-        var result = control.ForceInvite(match, target);
+        var result = await control.ForceInvite(match, target);
 
         Assert.Equal(MatchControlService.ForceInviteResult.NoFreeSlot, result);
     }
@@ -248,7 +248,7 @@ public class MatchControlServiceGuardTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        Assert.True(_fixture.MatchMembership.Join(other, match, ""));
+        Assert.True(await _fixture.MatchMembership.Join(other, match, ""));
         var control = MakeService();
 
         // Only re-teams host's slot — doesn't mention `other`, who is also currently seated.
@@ -270,7 +270,7 @@ public class MatchControlServiceGuardTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        Assert.True(_fixture.MatchMembership.Join(other, match, ""));
+        Assert.True(await _fixture.MatchMembership.Join(other, match, ""));
         var control = MakeService();
 
         var hostSlot = match.GetSlotId(host.Id)!.Value;
@@ -311,7 +311,7 @@ public class MatchControlServiceGuardTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        Assert.True(_fixture.MatchMembership.Join(other, match, ""));
+        Assert.True(await _fixture.MatchMembership.Join(other, match, ""));
         var control = MakeService();
 
         var hostSlot = match.GetSlotId(host.Id)!.Value;

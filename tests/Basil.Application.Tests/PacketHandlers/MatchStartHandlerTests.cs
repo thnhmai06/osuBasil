@@ -16,7 +16,7 @@ public class MatchStartHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchStartHandler(fixture.MatchMembership);
 
         await handler.HandleAsync(guest, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
@@ -32,7 +32,7 @@ public class MatchStartHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Slots[1].Status = SlotStatus.NoMap;
         var handler = new MatchStartHandler(fixture.MatchMembership);
 

@@ -113,23 +113,23 @@ public sealed class MpCommandService(
             "settings" => (true, await SettingsAsync(match, cancellationToken)),
             "lock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, true)))),
             "unlock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, false)))),
-            "private" => (true, SetPrivate(match, args)),
-            "makeprivate" => (true, SetPrivate(match, ["1"])),
-            "size" => await RunLockedAsync(match, () => Task.FromResult(SetSize(match, args))),
-            "move" => await RunLockedAsync(match, () => Task.FromResult(MoveSlot(match, args))),
-            "host" => await RunLockedAsync(match, () => Task.FromResult(SetHost(match, args))),
-            "clearhost" => await RunLockedAsync(match, () => Task.FromResult((true, ClearHost(match)))),
-            "name" => await RunLockedAsync(match, () => Task.FromResult(SetName(match, args))),
-            "password" => await RunLockedAsync(match, () => Task.FromResult((true, SetPassword(match, args)))),
+            "private" => (true, await SetPrivate(match, args)),
+            "makeprivate" => (true, await SetPrivate(match, ["1"])),
+            "size" => await RunLockedAsync(match, () => SetSize(match, args)),
+            "move" => await RunLockedAsync(match, () => MoveSlot(match, args)),
+            "host" => await RunLockedAsync(match, () => SetHost(match, args)),
+            "clearhost" => await RunLockedAsync(match, () => AlwaysSucceeds(ClearHost(match))),
+            "name" => await RunLockedAsync(match, () => SetName(match, args)),
+            "password" => await RunLockedAsync(match, () => AlwaysSucceeds(SetPassword(match, args))),
             "invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args))),
             "addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, cancellationToken)),
             "removeref" => await RunLockedAsync(match, () => RemoveRefereeAsync(sender, match, args, cancellationToken)),
             "listrefs" => (true, ListReferees(match)),
             "banlist" => (true, await BanListAsync(match, cancellationToken)),
-            "team" => await RunLockedAsync(match, () => Task.FromResult(SetTeam(match, args))),
-            "set" => await RunLockedAsync(match, () => Task.FromResult(Set(match, args))),
+            "team" => await RunLockedAsync(match, () => SetTeam(match, args)),
+            "set" => await RunLockedAsync(match, () => Set(match, args)),
             "map" => await RunLockedAsync(match, () => SetMapAsync(match, args, cancellationToken)),
-            "mods" => await RunLockedAsync(match, () => Task.FromResult(SetMods(match, args))),
+            "mods" => await RunLockedAsync(match, () => SetMods(match, args)),
             "start" => await RunLockedAsync(match, () => StartAsync(match, args, cancellationToken)),
             "timer" => await RunLockedAsync(match, () => Task.FromResult(Timer(match, args))),
             "aborttimer" => await RunLockedAsync(match, () => Task.FromResult(AbortTimer(match))),
@@ -199,7 +199,7 @@ public sealed class MpCommandService(
         try
         {
             var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-            return matchMembership.Join(sender, match, password)
+            return await matchMembership.Join(sender, match, password)
                 ? $"Joined match #{matchId} {match.Name}"
                 : "Failed to join the match.";
         }
@@ -321,17 +321,17 @@ public sealed class MpCommandService(
         return locked ? "Locked the match" : "Unlocked the match";
     }
 
-    private (bool Success, string? Reply) SetSize(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> SetSize(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 1 || !int.TryParse(args[0], out var size))
             return (false, "Usage: !mp size <1-16>");
 
         size = Math.Clamp(size, 1, 16);
-        _matchControl.SetSize(match, size);
+        await _matchControl.SetSize(match, size);
         return (true, $"Changed match to size {size}");
     }
 
-    private (bool Success, string? Reply) MoveSlot(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> MoveSlot(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 2 || !int.TryParse(args[^1], out var destSlotId))
             return (false, "Usage: !mp move <name> <slot 1-16>");
@@ -342,7 +342,7 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        var result = _matchControl.MoveSlot(match, target, destSlotId - 1);
+        var result = await _matchControl.MoveSlot(match, target, destSlotId - 1);
         return result switch
         {
             MatchControlService.MoveResult.DestinationNotOpen => (false, "Destination slot is not open."),
@@ -351,7 +351,7 @@ public sealed class MpCommandService(
         };
     }
 
-    private (bool Success, string? Reply) SetHost(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> SetHost(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 1) return (false, "Usage: !mp host <name>");
 
@@ -359,39 +359,39 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
 
-        _matchControl.SetHost(match, target);
+        await _matchControl.SetHost(match, target);
         return (true, $"Changed match host to {target.Name}");
     }
 
-    private string? ClearHost(MatchSession match)
+    private async Task<string?> ClearHost(MatchSession match)
     {
-        _matchControl.ClearHost(match);
+        await _matchControl.ClearHost(match);
         return "Cleared match host";
     }
 
-    private (bool Success, string? Reply) SetName(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> SetName(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 1) return (false, "Usage: !mp name <text>");
 
-        _matchControl.SetName(match, string.Join(' ', args));
+        await _matchControl.SetName(match, string.Join(' ', args));
         return (true, $"Room name updated to \"{match.Name}\"");
     }
 
-    private string? SetPassword(MatchSession match, IReadOnlyList<string> args)
+    private async Task<string?> SetPassword(MatchSession match, IReadOnlyList<string> args)
     {
         var password = args.Count == 0 ? "" : string.Join(' ', args);
-        _matchControl.SetPassword(match, password);
+        await _matchControl.SetPassword(match, password);
         return args.Count == 0 ? "Removed the match password" : "Changed the match password";
     }
 
-    private string? SetPrivate(MatchSession match, IReadOnlyList<string> args)
+    private async Task<string?> SetPrivate(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count == 0)
             return $"This match is {(match.IsPrivate ? "private" : "not private")}.";
 
         if (args[0] is "0" or "1")
         {
-            _matchControl.SetPrivate(match, args[0] == "1");
+            await _matchControl.SetPrivate(match, args[0] == "1");
             return match.IsPrivate
                 ? "The match is now private. It will be hidden from the lobby."
                 : "The match is now public.";
@@ -475,7 +475,7 @@ public sealed class MpCommandService(
         return "Match bans:\n" + string.Join('\n', names);
     }
 
-    private (bool Success, string? Reply) SetTeam(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> SetTeam(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 2) return (false, "Usage: !mp team <name> <red|blue>");
 
@@ -487,7 +487,7 @@ public sealed class MpCommandService(
         if (target is null) return (false, $"{targetName} is not in this match.");
 
         var team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
-        var result = _matchControl.SetTeam(match, target, team);
+        var result = await _matchControl.SetTeam(match, target, team);
         if (result == MatchControlService.TeamResult.TargetNotInMatch)
             return (false, $"{targetName} is not in this match.");
 
@@ -495,7 +495,7 @@ public sealed class MpCommandService(
         return (true, $"Moved {target.Name} to team {teamDisplay}");
     }
 
-    private (bool Success, string? Reply) Set(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> Set(MatchSession match, IReadOnlyList<string> args)
     {
         const string usage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
 
@@ -515,7 +515,7 @@ public sealed class MpCommandService(
             size = Math.Clamp(parsedSize, 1, 16);
         }
 
-        _matchControl.SetTeamTypeWinConditionAndSize(match, teamType, winCondition, size);
+        await _matchControl.SetTeamTypeWinConditionAndSize(match, teamType, winCondition, size);
         return (true, $"Changed match settings to {match.TeamType}, {match.WinCondition}" +
                       (size is { } sz ? $", {sz} slots." : "."));
     }
@@ -554,13 +554,13 @@ public sealed class MpCommandService(
     ///     just one of the values it accepts (`!mp mods Freemod`), not a separate `!mp freemods` toggle.
     ///     `None` clears the mods (and freemod, if on).
     /// </summary>
-    private (bool Success, string? Reply) SetMods(MatchSession match, IReadOnlyList<string> args)
+    private async Task<(bool Success, string? Reply)> SetMods(MatchSession match, IReadOnlyList<string> args)
     {
         if (args.Count < 1) return (false, "Usage: !mp mods <mods>|Freemod|None");
 
         if (args.Any(a => a.Equals("Freemod", StringComparison.OrdinalIgnoreCase)))
         {
-            _matchControl.SetMods(match, Mods.NoMod, true);
+            await _matchControl.SetMods(match, Mods.NoMod, true);
             return (true, "Enabled FreeMod");
         }
 
@@ -574,7 +574,7 @@ public sealed class MpCommandService(
             mods |= ModsExtensions.FromModString(token);
         }
 
-        _matchControl.SetMods(match, mods, false);
+        await _matchControl.SetMods(match, mods, false);
         return (true, DescribeModChange(before, mods, wasFreemod));
     }
 
@@ -677,7 +677,7 @@ public sealed class MpCommandService(
         var targetUser = await userRepository.FetchByNameAsync(targetName, cancellationToken);
         if (targetUser is null) return (false, $"{targetName} is not registered.");
 
-        var result = _matchControl.Unban(match, targetUser.Id);
+        var result = await _matchControl.Unban(match, targetUser.Id);
         return result == MatchControlService.UnbanResult.NotBanned
             ? (false, $"{targetUser.Name} is not banned from this match.")
             : (true, $"Unbanned {targetUser.Name} from the match");

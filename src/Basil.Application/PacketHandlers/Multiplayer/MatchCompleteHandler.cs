@@ -52,7 +52,7 @@ public sealed class MatchCompleteHandler(
             }
 
             matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
-            matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueState(match);
         }
         finally
         {

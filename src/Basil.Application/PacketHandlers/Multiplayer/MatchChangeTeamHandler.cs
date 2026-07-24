@@ -25,7 +25,7 @@ public sealed class MatchChangeTeamHandler(MatchMembershipService matchMembershi
             if (slot is null) return;
 
             slot.Team = slot.Team == MatchTeam.Blue ? MatchTeam.Red : MatchTeam.Blue;
-            matchMembership.EnqueueState(match, false);
+            await matchMembership.EnqueueState(match, false);
         }
         finally
         {

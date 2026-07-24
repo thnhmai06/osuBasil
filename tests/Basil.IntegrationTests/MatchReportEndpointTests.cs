@@ -1,11 +1,13 @@
 using System.Net;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +43,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
                 services.AddSingleton<IMatchPersistenceRepository>(_matchPersistence);
                 services.AddSingleton<IScoreRepository>(_scores);
                 services.AddSingleton<IMatchRegistry>(new StubMatchRegistry());
+                services.AddSingleton<IUserRepository>(new NoopUserRepository());
             });
         });
     }
@@ -202,5 +205,38 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
         public void Remove(int id)
         {
         }
+    }
+
+    /// <summary>
+    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
+    ///     referenced by these tests resolves to "no account" — UserBriefResolver's documented fallback —
+    ///     instead of hitting the real SQLite path these tests otherwise never need a working database
+    ///     connection for.
+    /// </summary>
+    private sealed class NoopUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<User>>([]);
     }
 }

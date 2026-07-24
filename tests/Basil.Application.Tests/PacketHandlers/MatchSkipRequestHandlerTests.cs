@@ -16,7 +16,7 @@ public class MatchSkipRequestHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         host.Dequeue();
@@ -38,7 +38,7 @@ public class MatchSkipRequestHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         match.Slots[1].Skipped = true;

@@ -113,7 +113,7 @@ public class JoinMatchHandlerTests
         var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
             .GetAwaiter().GetResult()!;
         match.IsPrivate = true;
-        fixture.MatchMembership.Leave(host, match);
+        await fixture.MatchMembership.Leave(host, match);
         var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 
         await handler.HandleAsync(host, ReaderFor(match.Id, ""));
@@ -131,7 +131,7 @@ public class JoinMatchHandlerTests
         var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
             .GetAwaiter().GetResult()!;
         match.IsPrivate = true;
-        fixture.MatchMembership.Leave(host, match);
+        await fixture.MatchMembership.Leave(host, match);
         match.AddInvite(host.Id);
         var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 

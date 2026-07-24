@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -57,8 +58,9 @@ internal static class MatchSubResourceRoutes
 
     private static void MapHosts(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/hosts", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
+        group.MapGet("/matches/{matchId:int}/hosts", async (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMatchLiveEvents events,
+                CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -70,23 +72,24 @@ internal static class MatchSubResourceRoutes
                             : null,
                         cancellationToken);
 
-                return Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+                return Results.Json(await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, users, cancellationToken));
             })
             .WithGroupName("basilapi")
             .WithName("getMatchHost")
             .WithSummary("Get Match Host")
             .WithDescription("Content-negotiated on the `Accept` header, same convention as `GET /matches/" +
-                "{matchId}`: a plain `GET` returns `{ hostId, hostName }` (both null when the room has no " +
-                "host); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `hosts`) " +
-                "instead. 404 if the match isn't currently live. Public, no authentication.")
+                "{matchId}`: a plain `GET` returns `{ host }` (`host` null when the room has no host, else " +
+                "the full `{ id, name, country }` embed); `Accept: text/event-stream` opens a full-then-delta " +
+                "SSE stream (event name `hosts`) instead. 404 if the match isn't currently live. Public, no " +
+                "authentication.")
             .WithTags("Match Hosts")
             .Produces<MatchHostView>()
-            .WithExample(StatusCodes.Status200OK, new MatchHostView(7, "Alice"))
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", "us")))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/hosts", async (int matchId, TargetUserIdBody body,
-                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-                CancellationToken cancellationToken) =>
+                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+                MatchControlService matchControl, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -98,8 +101,8 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    matchControl.SetHost(match, target);
-                    return Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+                    await matchControl.SetHost(match, target);
+                    return Results.Json(await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -115,12 +118,12 @@ internal static class MatchSubResourceRoutes
             .WithTags("Match Hosts")
             .Produces<MatchHostView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, new MatchHostView(7, "Alice"))
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", "us")))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/hosts", async (int matchId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, MatchControlService matchControl,
                 CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
@@ -129,8 +132,8 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    matchControl.ClearHost(match);
-                    return Results.Json(MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry));
+                    await matchControl.ClearHost(match);
+                    return Results.Json(await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -144,7 +147,7 @@ internal static class MatchSubResourceRoutes
             .WithDescription("Sets the host back to id 0. 404 if the match isn't currently live." + AdminKeyNote)
             .WithTags("Match Hosts")
             .Produces<MatchHostView>()
-            .WithExample(StatusCodes.Status200OK, new MatchHostView(null, null))
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(null))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
@@ -152,8 +155,9 @@ internal static class MatchSubResourceRoutes
 
     private static void MapRefs(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/refs", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
+        group.MapGet("/matches/{matchId:int}/refs", async (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMatchLiveEvents events,
+                CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -165,22 +169,22 @@ internal static class MatchSubResourceRoutes
                             : null,
                         cancellationToken);
 
-                return Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+                return Results.Json(await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, users, cancellationToken));
             })
             .WithGroupName("basilapi")
             .WithName("listMatchReferees")
             .WithSummary("List Match Referees")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ referees: " +
-                "[{ userId, userName }] }`; `Accept: text/event-stream` opens a full-then-delta SSE stream " +
+                "[{ id, name, country }] }`; `Accept: text/event-stream` opens a full-then-delta SSE stream " +
                 "(event name `refs`) instead. 404 if the match isn't currently live. Public, no authentication.")
             .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
-                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-                CancellationToken cancellationToken) =>
+                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+                MatchControlService matchControl, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -194,7 +198,7 @@ internal static class MatchSubResourceRoutes
                     var result = await matchControl.SetRefereesAsync(match, targets, cancellationToken);
                     return result == MatchControlService.SetRefereesResult.WouldLeaveEmpty
                         ? Results.Conflict(new ErrorResponse("Refusing to leave the match with no referees."))
-                        : Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+                        : Results.Json(await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -212,14 +216,14 @@ internal static class MatchSubResourceRoutes
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
-                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-                CancellationToken cancellationToken) =>
+                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+                MatchControlService matchControl, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -231,7 +235,7 @@ internal static class MatchSubResourceRoutes
                 try
                 {
                     await matchControl.AddRefereesAsync(match, targets, cancellationToken);
-                    return Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry));
+                    return Results.Json(await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -248,12 +252,12 @@ internal static class MatchSubResourceRoutes
             .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob"), new UserBrief(13, "Erin"), new UserBrief(9, "Carol")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie"), new UserBrief(9, "Carol", "us")]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/refs", async (int matchId, int? userId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, MatchControlService matchControl,
                 CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
@@ -273,7 +277,7 @@ internal static class MatchSubResourceRoutes
                             Results.Conflict(new ErrorResponse("Refusing to leave the match with no referees.")),
                         MatchControlService.RemoveRefereeResult.NotAReferee =>
                             Results.BadRequest(new ErrorResponse("userId is not a referee of this match.")),
-                        _ => Results.Json(MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry))
+                        _ => Results.Json(await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, users, cancellationToken))
                     };
                 }
                 finally
@@ -292,7 +296,7 @@ internal static class MatchSubResourceRoutes
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin", "ie")]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not a referee of this match."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -302,8 +306,9 @@ internal static class MatchSubResourceRoutes
 
     private static void MapBans(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/ban", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
+        group.MapGet("/matches/{matchId:int}/ban", async (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMatchLiveEvents events,
+                CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -315,23 +320,24 @@ internal static class MatchSubResourceRoutes
                             : null,
                         cancellationToken);
 
-                return Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+                return Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
             })
             .WithGroupName("basilapi")
             .WithName("listMatchBans")
             .WithSummary("List Match Bans")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns " +
-                "`{ bannedUsers: [{ userId, userName }] }` (`userName` null for a currently-offline banned " +
-                "id); `Accept: text/event-stream` opens a full-then-delta SSE stream (event name `ban`) " +
-                "instead. 404 if the match isn't currently live. Public, no authentication.")
+                "`{ bannedUsers: [{ id, name, country }] }` (a currently-offline banned id that has no " +
+                "registered account is simply omitted); `Accept: text/event-stream` opens a full-then-delta " +
+                "SSE stream (event name `ban`) instead. 404 if the match isn't currently live. Public, no " +
+                "authentication.")
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
-                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-                CancellationToken cancellationToken) =>
+                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+                MatchControlService matchControl, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -339,8 +345,8 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    matchControl.SetBans(match, body.UserIds ?? []);
-                    return Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+                    await matchControl.SetBans(match, body.UserIds ?? []);
+                    return Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -356,12 +362,12 @@ internal static class MatchSubResourceRoutes
                 "404 if the match isn't currently live." + AdminKeyNote)
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
-                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-                CancellationToken cancellationToken) =>
+                IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+                MatchControlService matchControl, CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -369,8 +375,8 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    matchControl.AddBans(match, body.UserIds ?? []);
-                    return Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+                    await matchControl.AddBans(match, body.UserIds ?? []);
+                    return Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -386,11 +392,11 @@ internal static class MatchSubResourceRoutes
                 "currently live." + AdminKeyNote)
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory"), new UserBrief(22, "Trent")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca"), new UserBrief(22, "Trent", "au")]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, int? userId, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, MatchControlService matchControl,
                 CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
@@ -401,10 +407,10 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    var result = matchControl.Unban(match, uid);
+                    var result = await matchControl.Unban(match, uid);
                     return result == MatchControlService.UnbanResult.NotBanned
                         ? Results.BadRequest(new ErrorResponse("userId is not banned from this match."))
-                        : Results.Json(MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry));
+                        : Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
                 }
                 finally
                 {
@@ -497,7 +503,7 @@ internal static class MatchSubResourceRoutes
 
                         if (body.Force == true)
                         {
-                            var forceResult = matchControl.ForceInvite(match, target);
+                            var forceResult = await matchControl.ForceInvite(match, target);
                             results.Add(forceResult switch
                             {
                                 MatchControlService.ForceInviteResult.Ok => new InviteTargetResult(userId, true, null),
@@ -555,8 +561,9 @@ internal static class MatchSubResourceRoutes
 
     private static void MapSlots(RouteGroupBuilder group)
     {
-        group.MapGet("/matches/{matchId:int}/slots", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
+        group.MapGet("/matches/{matchId:int}/slots", async (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMatchLiveEvents events,
+                CancellationToken cancellationToken) =>
             {
                 var match = matchRegistry.GetByDbId(matchId);
                 if (match is null) return Results.NotFound();
@@ -568,25 +575,25 @@ internal static class MatchSubResourceRoutes
                             : null,
                         cancellationToken);
 
-                return Results.Json(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry));
+                return Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, users, cancellationToken));
             })
             .WithGroupName("basilapi")
             .WithName("getMatchSlots")
             .WithSummary("Get Match Slots")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ slots: " +
-                "{ \"0\": { userId, userName, team, locked }, ..., \"15\": {...} } }` — every slot 0-15 " +
-                "always present as a dict key; `Accept: text/event-stream` opens a full-then-delta SSE " +
-                "stream (event name `slots`) instead. 404 if the match isn't currently live. Public, no " +
-                "authentication.")
+                "{ \"0\": { user, team, locked }, ..., \"15\": {...} } }` — every slot 0-15 always present " +
+                "as a dict key, `user` a `{ id, name, country }` embed or null when empty; `Accept: " +
+                "text/event-stream` opens a full-then-delta SSE stream (event name `slots`) instead. 404 if " +
+                "the match isn't currently live. Public, no authentication.")
             .WithTags("Match Slots")
             .Produces<MatchSlotsView>()
             .WithExample(StatusCodes.Status200OK, SampleSlots())
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/slots", (int matchId, SlotsBody body, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, MatchControlService matchControl,
                 CancellationToken cancellationToken) =>
-                HandleSlotsWrite(matchId, body, isFullReplace: true, matchRegistry, sessionRegistry, matchControl,
+                HandleSlotsWrite(matchId, body, isFullReplace: true, matchRegistry, sessionRegistry, users, matchControl,
                     cancellationToken))
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
@@ -610,9 +617,9 @@ internal static class MatchSubResourceRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/slots", (int matchId, SlotsBody body, IMatchRegistry matchRegistry,
-                IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
+                IPlayerSessionRegistry sessionRegistry, IUserRepository users, MatchControlService matchControl,
                 CancellationToken cancellationToken) =>
-                HandleSlotsWrite(matchId, body, isFullReplace: false, matchRegistry, sessionRegistry, matchControl,
+                HandleSlotsWrite(matchId, body, isFullReplace: false, matchRegistry, sessionRegistry, users, matchControl,
                     cancellationToken))
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
@@ -633,16 +640,16 @@ internal static class MatchSubResourceRoutes
     private static MatchSlotsView SampleSlots()
     {
         var views = new Dictionary<int, SlotView>();
-        for (var i = 0; i < 16; i++) views[i] = new SlotView(null, null, null, false);
-        views[0] = new SlotView(7, "Alice", "Red", false);
-        views[1] = new SlotView(9, "Carol", "Blue", false);
-        views[15] = new SlotView(null, null, null, true);
+        for (var i = 0; i < 16; i++) views[i] = new SlotView(null, null, false);
+        views[0] = new SlotView(new UserBrief(7, "Alice", "us"), "Red", false);
+        views[1] = new SlotView(new UserBrief(9, "Carol", "ca"), "Blue", false);
+        views[15] = new SlotView(null, null, true);
         return new MatchSlotsView(views);
     }
 
     private static async Task<IResult> HandleSlotsWrite(int matchId, SlotsBody body, bool isFullReplace,
-        IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, MatchControlService matchControl,
-        CancellationToken cancellationToken)
+        IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+        MatchControlService matchControl, CancellationToken cancellationToken)
     {
         var match = matchRegistry.GetByDbId(matchId);
         if (match is null) return Results.NotFound();
@@ -664,7 +671,7 @@ internal static class MatchSubResourceRoutes
                     Results.Conflict(new ErrorResponse("A referenced userId is not currently seated in this match.")),
                 MatchControlService.SetSlotsResult.SlotOccupiedAndLocked =>
                     Results.BadRequest(new ErrorResponse("An entry cannot set both userId and locked: true.")),
-                _ => Results.Json(MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry))
+                _ => Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, users, cancellationToken))
             };
         }
         finally

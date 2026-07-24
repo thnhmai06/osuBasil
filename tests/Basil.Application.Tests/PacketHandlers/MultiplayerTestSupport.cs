@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -325,7 +326,7 @@ internal static class MultiplayerTestSupport
 
             MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
                 new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
-                MapRepository);
+                MapRepository, UserRepository);
         }
 
         public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -333,6 +334,7 @@ internal static class MultiplayerTestSupport
         public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
         public FakeMatchLiveEvents EventBus { get; } = new();
         public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
+        public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
         /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
         public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();

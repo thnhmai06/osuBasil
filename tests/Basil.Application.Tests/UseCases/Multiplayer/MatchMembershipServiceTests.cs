@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -28,6 +29,8 @@ public class MatchMembershipServiceTests
     /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
     private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
 
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+
     public MatchMembershipServiceTests()
     {
         _mapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
@@ -38,7 +41,7 @@ public class MatchMembershipServiceTests
     {
         return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
             new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-            Substitute.For<IMatchLiveEvents>(), _mapRepository);
+            Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository);
     }
 
     /// <summary>
@@ -129,7 +132,7 @@ public class MatchMembershipServiceTests
     }
 
     [Fact]
-    public void Join_CorrectPassword_OccupiesFreeSlotAndSendsMatchJoinSuccess()
+    public async Task Join_CorrectPassword_OccupiesFreeSlotAndSendsMatchJoinSuccess()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
@@ -138,7 +141,7 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
         host.Dequeue();
 
-        var joined = service.Join(guest, match, "pw");
+        var joined = await service.Join(guest, match, "pw");
 
         Assert.True(joined);
         Assert.Same(match, guest.Match);
@@ -148,7 +151,7 @@ public class MatchMembershipServiceTests
     }
 
     [Fact]
-    public void Join_WrongPassword_FailsAndSendsMatchJoinFail()
+    public async Task Join_WrongPassword_FailsAndSendsMatchJoinFail()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
@@ -156,7 +159,7 @@ public class MatchMembershipServiceTests
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
-        var joined = service.Join(guest, match, "wrong");
+        var joined = await service.Join(guest, match, "wrong");
 
         Assert.False(joined);
         Assert.Null(guest.Match);
@@ -164,7 +167,7 @@ public class MatchMembershipServiceTests
     }
 
     [Fact]
-    public void Join_StaffBypassesWrongPassword()
+    public async Task Join_StaffBypassesWrongPassword()
     {
         var host = MakePlayer(1, "host");
         var staff = MakePlayer(2, "mod");
@@ -173,11 +176,11 @@ public class MatchMembershipServiceTests
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
-        Assert.True(service.Join(staff, match, "wrong"));
+        Assert.True(await service.Join(staff, match, "wrong"));
     }
 
     [Fact]
-    public void Join_AlreadyInAnotherMatch_Fails()
+    public async Task Join_AlreadyInAnotherMatch_Fails()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
@@ -187,13 +190,13 @@ public class MatchMembershipServiceTests
         var otherHost = MakePlayer(3, "other");
         RegisterAll(host, guest, otherHost);
         var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
-        service.Join(guest, matchA, "");
+        await service.Join(guest, matchA, "");
 
-        Assert.False(service.Join(guest, matchB, ""));
+        Assert.False(await service.Join(guest, matchB, ""));
     }
 
     [Fact]
-    public void Join_MatchFull_FailsAndSendsMatchJoinFail()
+    public async Task Join_MatchFull_FailsAndSendsMatchJoinFail()
     {
         var host = MakePlayer(1, "host");
         RegisterAll(host);
@@ -208,12 +211,12 @@ public class MatchMembershipServiceTests
         var overflow = MakePlayer(2, "overflow");
         RegisterAll(host, overflow);
 
-        Assert.False(service.Join(overflow, match, ""));
+        Assert.False(await service.Join(overflow, match, ""));
         Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
     }
 
     [Fact]
-    public void Join_TeamVsMode_AssignsRedTeamToJoiningPlayer()
+    public async Task Join_TeamVsMode_AssignsRedTeamToJoiningPlayer()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
@@ -222,13 +225,13 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id))!;
         match.TeamType = MatchTeamType.TeamVs;
 
-        service.Join(guest, match, "");
+        await service.Join(guest, match, "");
 
         Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
     }
 
     [Fact]
-    public void Leave_LastPlayer_RemovesMatchAndChannelAndDisposesToLobby()
+    public async Task Leave_LastPlayer_RemovesMatchAndChannelAndDisposesToLobby()
     {
         var host = MakePlayer(1, "host");
         var lobbyMember = MakePlayer(2, "lobbyguy");
@@ -241,7 +244,7 @@ public class MatchMembershipServiceTests
         membership.Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
-        service.Leave(host, match);
+        await service.Leave(host, match);
 
         Assert.Null(_matchRegistry.GetById(match.Id));
         Assert.Null(_channelRegistry.GetByName("#multi_0"));
@@ -251,41 +254,41 @@ public class MatchMembershipServiceTests
     }
 
     [Fact]
-    public void Leave_HostLeaves_TransfersHostToFirstOccupiedSlot()
+    public async Task Leave_HostLeaves_TransfersHostToFirstOccupiedSlot()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        service.Join(guest, match, "");
+        await service.Join(guest, match, "");
         guest.Dequeue();
 
-        service.Leave(host, match);
+        await service.Leave(host, match);
 
         Assert.Equal(guest.Id, match.HostId);
         Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
     }
 
     [Fact]
-    public void Leave_SlotWasLocked_StaysLockedAfterReset()
+    public async Task Leave_SlotWasLocked_StaysLockedAfterReset()
     {
         var host = MakePlayer(1, "host");
         var guest = MakePlayer(2, "guest");
         RegisterAll(host, guest);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        service.Join(guest, match, "");
+        await service.Join(guest, match, "");
         match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
 
-        service.Leave(guest, match);
+        await service.Leave(guest, match);
 
         Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
         Assert.True(match.Slots[1].Empty);
     }
 
     [Fact]
-    public void EnqueueState_BroadcastsToLobbyOnlyWhenLobbyHasMembers()
+    public async Task EnqueueState_BroadcastsToLobbyOnlyWhenLobbyHasMembers()
     {
         var host = MakePlayer(1, "host");
         var lobbyMember = MakePlayer(2, "lobbyguy");
@@ -295,14 +298,14 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id))!;
         host.Dequeue();
 
-        service.EnqueueState(match);
+        await service.EnqueueState(match);
         Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
         var lobby = _channelRegistry.GetByName("#lobby")!;
         new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
-        service.EnqueueState(match);
+        await service.EnqueueState(match);
         Assert.NotEmpty(lobbyMember.Dequeue());
     }
 
@@ -316,23 +319,23 @@ public class MatchMembershipServiceTests
     ///     only the changed field.
     /// </summary>
     [Fact]
-    public void EnqueueState_CalledAgainAfterAChange_PublishesDeltaOnly()
+    public async Task EnqueueState_CalledAgainAfterAChange_PublishesDeltaOnly()
     {
         var host = MakePlayer(1, "host");
         RegisterAll(host);
         var events = Substitute.For<IMatchLiveEvents>();
         var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
             new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
-            _mapRepository);
+            _mapRepository, _userRepository);
         var match = Create(service, host, MakeMatchData(host.Id))!;
 
         var payloads = new List<byte[]>();
         events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
             .Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
 
-        service.EnqueueState(match);
+        await service.EnqueueState(match);
         match.Name = "Renamed";
-        service.EnqueueState(match);
+        await service.EnqueueState(match);
 
         Assert.Equal(2, payloads.Count);
         Assert.Equal("{}", System.Text.Encoding.UTF8.GetString(payloads[0]));

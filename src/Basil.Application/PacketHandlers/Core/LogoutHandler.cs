@@ -13,16 +13,14 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService) : IBanchoPa
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
     {
         reader.ReadI32(); // reserved
 
         // osu! has a weird tendency to log out immediately after login (300-800ms observed) —
         // block any logout request within 1 second from login.
-        if (DateTimeOffset.UtcNow - player.LoginTime < TimeSpan.FromSeconds(1)) return Task.CompletedTask;
+        if (DateTimeOffset.UtcNow - player.LoginTime < TimeSpan.FromSeconds(1)) return;
 
-        logoutService.Logout(player);
-
-        return Task.CompletedTask;
+        await logoutService.LogoutAsync(player);
     }
 }

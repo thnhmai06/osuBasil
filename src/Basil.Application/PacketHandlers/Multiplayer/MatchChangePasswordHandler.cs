@@ -24,7 +24,7 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
         try
         {
             match.Password = matchData.Password;
-            matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueState(match);
         }
         finally
         {

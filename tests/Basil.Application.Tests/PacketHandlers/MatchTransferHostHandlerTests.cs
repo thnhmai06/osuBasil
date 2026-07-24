@@ -20,7 +20,7 @@ public class MatchTransferHostHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
             fixture.MatchPersistence);
 
@@ -37,7 +37,7 @@ public class MatchTransferHostHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         guest.Dequeue();
         var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
             fixture.MatchPersistence);

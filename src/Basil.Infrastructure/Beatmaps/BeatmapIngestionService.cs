@@ -74,6 +74,14 @@ public sealed partial class BeatmapIngestionService(
         return folder is null ? null : Path.Combine(folder, beatmap.Filename);
     }
 
+    /// <summary>Null if the beatmap has no recorded background filename or its mapset folder can't be found.</summary>
+    public static string? BackgroundFilePath(StorageOptions storage, Beatmap beatmap)
+    {
+        if (beatmap.BackgroundFile is null) return null;
+        var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+        return folder is null ? null : Path.Combine(folder, beatmap.BackgroundFile);
+    }
+
     /// <summary>
     ///     Full pass: extracts every loose ".osz" at the storage root, reconciles every subfolder
     ///     that looks like a mapset (".osu" files at depth 1), then deletes any Mapset row whose

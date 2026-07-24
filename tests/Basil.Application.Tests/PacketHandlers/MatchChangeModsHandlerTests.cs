@@ -21,7 +21,7 @@ public class MatchChangeModsHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         var handler = new MatchChangeModsHandler(fixture.MatchMembership);
 
         await handler.HandleAsync(guest, ReaderFor(Mods.Hidden));
@@ -51,7 +51,7 @@ public class MatchChangeModsHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.Join(guest, match, "");
         match.Freemods = true;
         var handler = new MatchChangeModsHandler(fixture.MatchMembership);
 

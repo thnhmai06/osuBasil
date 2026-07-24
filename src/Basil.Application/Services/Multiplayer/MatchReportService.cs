@@ -1,5 +1,7 @@
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
@@ -12,7 +14,9 @@ public sealed class MatchReportService(
     IMatchRegistry matchRegistry,
     IMatchPersistenceRepository matchPersistence,
     IScoreRepository scores,
-    IPlayerSessionRegistry sessionRegistry)
+    IPlayerSessionRegistry sessionRegistry,
+    IUserRepository users,
+    IMapRepository maps)
 {
     public async Task<MatchReport?> BuildAsync(int matchId, CancellationToken cancellationToken = default)
     {
@@ -24,53 +28,62 @@ public sealed class MatchReportService(
         foreach (var round in roundRows)
         {
             var roundScores = await scores.FetchByRoundIdAsync(round.Id, cancellationToken);
-            rounds.Add(BuildRound(round, roundScores));
+            rounds.Add(await BuildRound(round, roundScores, cancellationToken));
         }
 
         var events = await matchPersistence.FetchEventsAsync(matchId, cancellationToken);
-        var reportEvents = events.Select(e => new MatchReportEvent(
-            e.EventType, ((MatchEventType)e.EventType).ToString(),
-            e.ActorUserId, e.ActorUserName,
-            e.TargetUserId, e.TargetUserName,
-            e.Timestamp, e.Detail)).ToArray();
+        var reportEvents = new List<MatchReportEvent>(events.Count);
+        foreach (var e in events)
+        {
+            var actor = e.ActorUserId is { } actorId
+                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, sessionRegistry, users, cancellationToken)
+                : null;
+            var target = e.TargetUserId is { } targetId
+                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, sessionRegistry, users, cancellationToken)
+                : null;
+            reportEvents.Add(new MatchReportEvent(
+                e.EventType, ((MatchEventType)e.EventType).ToString(), actor, target, e.Timestamp, e.Detail));
+        }
 
         var live = matchRegistry.GetByDbId(matchId);
         MatchReportLiveInfo? liveInfo = null;
         if (live is not null)
         {
-            var host = live.HostId > 0 ? sessionRegistry.GetById(live.HostId) : null;
-            var referees = live.Referees
-                .Select(id =>
-                {
-                    var s = sessionRegistry.GetById(id);
-                    return new UserBrief(id, s?.Name, s?.Geoloc.Country.ToAcronym());
-                })
-                .ToArray();
-            var liveSlots = live.Slots
-                .Select((slot, index) =>
-                {
-                    var s = slot.PlayerId is { } pid ? sessionRegistry.GetById(pid) : null;
-                    return (Index: index, Slot: new MatchLiveSlot(slot.PlayerId, s?.Name,
-                        s?.Geoloc.Country.ToAcronym(), slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods));
-                })
-                .ToDictionary(t => t.Index, t => t.Slot);
+            var host = live.HostId > 0
+                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(live.HostId, sessionRegistry, users, cancellationToken)
+                : null;
+
+            var referees = new List<UserBrief>();
+            foreach (var id in live.Referees)
+                referees.Add(await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
+
+            var liveSlots = new Dictionary<int, MatchLiveSlot>();
+            for (var index = 0; index < live.Slots.Count; index++)
+            {
+                var slot = live.Slots[index];
+                var user = slot.PlayerId is { } pid
+                    ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(pid, sessionRegistry, users, cancellationToken)
+                    : null;
+                liveSlots[index] = new MatchLiveSlot(user, slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods);
+            }
+
+            var liveBeatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(live.MapMd5, maps, cancellationToken);
 
             liveInfo = new MatchReportLiveInfo(
-                host is not null ? new UserBrief(host.Id, host.Name, host.Geoloc.Country.ToAcronym()) : null,
-                referees, liveSlots,
+                host, referees, liveSlots, liveBeatmap,
                 live.MapId, live.MapMd5, live.Mode, live.WinCondition, live.TeamType,
                 (int)live.Mods, live.Freemods, live.InProgress);
         }
 
         return new MatchReport(
             matchRow.Id, matchRow.Name, matchRow.CreatedAt, matchRow.EndedAt,
-            liveInfo, reportEvents, rounds.ToArray());
+            liveInfo, reportEvents.ToArray(), rounds.ToArray());
     }
 
-    private static MatchReportRound BuildRound(RoundRow round, IReadOnlyList<RoundScoreRow> roundScores)
+    private async Task<MatchReportRound> BuildRound(RoundRow round, IReadOnlyList<RoundScoreRow> roundScores,
+        CancellationToken cancellationToken)
     {
         int? winnerUserId = null;
-        string? winnerUserName = null;
         string? winnerTeam = null;
         var winMetric = round.WinCondition switch
         {
@@ -94,12 +107,10 @@ public sealed class MatchReportService(
             {
                 winnerTeam = (only.Team ?? MatchTeam.Neutral).ToString();
                 winnerUserId = only.UserId;
-                winnerUserName = only.UserName;
             }
             else
             {
                 winnerUserId = only.UserId;
-                winnerUserName = only.UserName;
             }
             winDiff = 0;
         }
@@ -145,7 +156,7 @@ public sealed class MatchReportService(
         {
             // Individual mode (≥2 players)
             var sorted = roundScores
-                .Select(s => new { s.UserId, s.UserName, Metric = GetMetric(s, round.WinCondition) })
+                .Select(s => new { s.UserId, Metric = GetMetric(s, round.WinCondition) })
                 .OrderByDescending(s => s.Metric)
                 .ToList();
 
@@ -157,24 +168,34 @@ public sealed class MatchReportService(
             else
             {
                 winnerUserId = sorted[0].UserId;
-                winnerUserName = sorted[0].UserName;
                 winDiff = sorted[0].Metric - sorted[1].Metric;
             }
         }
 
-        var reportScores = roundScores.Select(s => new MatchReportScore(
-                s.UserId, s.UserName, s.Team?.ToString(),
+        var winner = winnerUserId is { } wid
+            ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(wid, sessionRegistry, users, cancellationToken)
+            : null;
+
+        var reportScores = new List<MatchReportScore>(roundScores.Count);
+        foreach (var s in roundScores)
+        {
+            var user = await UserBriefResolver.ResolveAsync(s.UserId, sessionRegistry, users, cancellationToken)
+                       ?? new UserBrief(s.UserId, s.UserName, Country.Xx.ToAcronym());
+            reportScores.Add(new MatchReportScore(
+                user, s.Team?.ToString(),
                 (int)s.Mods, s.Score, s.Accuracy, s.MaxCombo,
                 s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu,
-                s.Grade, s.Perfect, s.SubmittedAt))
-            .ToArray();
+                s.Grade, s.Perfect, s.SubmittedAt));
+        }
+
+        var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(round.MapMd5, maps, cancellationToken);
 
         return new MatchReportRound(
-            round.RoundIndex, round.MapMd5,
+            round.RoundIndex, round.MapMd5, beatmap,
             (int)round.Mode, (int)round.WinCondition, (int)round.TeamType,
             (int)round.Mods, round.Aborted, round.StartedAt, round.EndedAt,
-            winnerUserId, winnerUserName, winnerTeam,
-            winMetric, winDiff, reportScores);
+            winner, winnerTeam,
+            winMetric, winDiff, reportScores.ToArray());
     }
 
     private static long GetMetric(RoundScoreRow s, MatchWinCondition winCondition)
@@ -201,8 +222,9 @@ public sealed record MatchReport(
 /// <summary>Live room state — null when match is closed.</summary>
 public sealed record MatchReportLiveInfo(
     UserBrief? Host,
-    UserBrief[] Referees,
+    IReadOnlyList<UserBrief> Referees,
     IReadOnlyDictionary<int, MatchLiveSlot> Slots,
+    Beatmap? Beatmap,
     int CurrentMapId,
     string CurrentMapMd5,
     GameMode Mode,
@@ -216,21 +238,20 @@ public sealed record MatchReportLiveInfo(
 public sealed record MatchReportEvent(
     int EventType,
     string EventTypeName,
-    int? ActorUserId,
-    string? ActorUserName,
-    int? TargetUserId,
-    string? TargetUserName,
+    UserBrief? Actor,
+    UserBrief? Target,
     DateTime Timestamp,
     string? Detail);
 
 /// <summary>
-///     One beatmap played within the match. Only `MapMd5` identifies the beatmap at this layer —
-///     Phase 3 adds a resolved `Beatmap?` embed at the Web edge, null once the md5 no longer
-///     resolves (content changed/removed since).
+///     One beatmap played within the match. Only `MapMd5` is stored on the underlying Round row —
+///     `Beatmap` is resolved live at report-build time via the cached `IMapRepository`, null once
+///     that md5 no longer resolves (content changed/removed since).
 /// </summary>
 public sealed record MatchReportRound(
     int RoundIndex,
     string MapMd5,
+    Beatmap? Beatmap,
     int Mode,
     int WinCondition,
     int TeamType,
@@ -238,16 +259,14 @@ public sealed record MatchReportRound(
     bool Aborted,
     DateTime StartedAt,
     DateTime? EndedAt,
-    int? WinnerUserId,
-    string? WinnerUserName,
+    UserBrief? Winner,
     string? WinnerTeam,
     string? WinMetric,
     long? WinDiff,
     MatchReportScore[] Scores);
 
 public sealed record MatchReportScore(
-    int UserId,
-    string UserName,
+    UserBrief User,
     string? Team,
     int Mods,
     long Score,

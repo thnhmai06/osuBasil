@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -50,6 +51,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMatchPersistenceRepository>(new NoopMatchPersistenceRepository());
+                services.AddSingleton<IUserRepository>(new NoopUserRepository());
             });
         });
     }
@@ -70,7 +72,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         return created.GetProperty("id").GetInt32();
     }
 
-    private PlayerSession SeatNewPlayer(int id, string name, int matchId)
+    private async Task<PlayerSession> SeatNewPlayer(int id, string name, int matchId)
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
@@ -80,7 +82,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         sessionRegistry.Add(session);
 
         var match = matchRegistry.GetByDbId(matchId)!;
-        Assert.True(matchMembership.Join(session, match, ""));
+        Assert.True(await matchMembership.Join(session, match, ""));
         return session;
     }
 
@@ -117,7 +119,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var player = SeatNewPlayer(2001, "hostcandidate", matchId);
+        var player = await SeatNewPlayer(2001, "hostcandidate", matchId);
 
         var putRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/hosts");
         putRequest.Content = JsonContent.Create(new { userId = player.Id });
@@ -126,14 +128,14 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/hosts"));
         var view = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(player.Id, view.GetProperty("hostId").GetInt32());
+        Assert.Equal(player.Id, view.GetProperty("host").GetProperty("id").GetInt32());
 
         var deleteResponse = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/hosts"));
         deleteResponse.EnsureSuccessStatusCode();
 
         var afterClear = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/hosts"));
         var clearedView = await afterClear.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(clearedView.GetProperty("hostId").ValueKind is JsonValueKind.Null);
+        Assert.True(clearedView.GetProperty("host").ValueKind is JsonValueKind.Null);
     }
 
     // ---- /refs ----
@@ -156,7 +158,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var referee = SeatNewPlayer(2002, "onlyref", matchId);
+        var referee = await SeatNewPlayer(2002, "onlyref", matchId);
 
         var putRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/refs");
         putRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
@@ -173,7 +175,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var referee = SeatNewPlayer(2003, "patchedref", matchId);
+        var referee = await SeatNewPlayer(2003, "patchedref", matchId);
 
         var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
         request.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
@@ -182,7 +184,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         response.EnsureSuccessStatusCode();
         var view = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(view.GetProperty("referees").EnumerateArray(),
-            r => r.GetProperty("userId").GetInt32() == referee.Id);
+            r => r.GetProperty("id").GetInt32() == referee.Id);
     }
 
     // ---- /ban ----
@@ -213,7 +215,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var afterBan = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/ban"));
         var bannedView = await afterBan.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(bannedView.GetProperty("bannedUsers").EnumerateArray(),
-            u => u.GetProperty("userId").GetInt32() == 555);
+            u => u.GetProperty("id").GetInt32() == 555);
 
         var unbanResponse = await client.SendAsync(
             MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban?userId=555"));
@@ -231,7 +233,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var player = SeatNewPlayer(2004, "kickme", matchId);
+        var player = await SeatNewPlayer(2004, "kickme", matchId);
 
         var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/kick");
         request.Content = JsonContent.Create(new { userId = player.Id });
@@ -246,11 +248,11 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var player = SeatNewPlayer(2005, "elsewhere", matchId);
+        var player = await SeatNewPlayer(2005, "elsewhere", matchId);
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
         var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-        matchMembership.Leave(player, matchRegistry.GetByDbId(matchId)!);
+        await matchMembership.Leave(player, matchRegistry.GetByDbId(matchId)!);
 
         var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/kick");
         request.Content = JsonContent.Create(new { userId = player.Id });
@@ -312,8 +314,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var a = SeatNewPlayer(2008, "playerA", matchId);
-        var b = SeatNewPlayer(2009, "playerB", matchId);
+        var a = await SeatNewPlayer(2008, "playerA", matchId);
+        var b = await SeatNewPlayer(2009, "playerB", matchId);
 
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
         var match = matchRegistry.GetByDbId(matchId)!;
@@ -357,7 +359,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
-        var player = SeatNewPlayer(2010, "lockedplayer", matchId);
+        var player = await SeatNewPlayer(2010, "lockedplayer", matchId);
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
         var slot = matchRegistry.GetByDbId(matchId)!.GetSlotId(player.Id)!.Value;
 
@@ -459,5 +461,38 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
         public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<RoundRow>>([]);
+    }
+
+    /// <summary>
+    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
+    ///     referenced by these tests (e.g. a banned id that was never seated) resolves to "no account" —
+    ///     UserBriefResolver's documented fallback — instead of hitting the real SQLite path these tests
+    ///     otherwise never need a working database connection for.
+    /// </summary>
+    private sealed class NoopUserRepository : IUserRepository
+    {
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<User>>([]);
     }
 }
