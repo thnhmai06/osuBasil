@@ -76,7 +76,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
     {
         var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Put, 1));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(Path.Combine(_dataDir, "Avatars", "1.png")));
     }
 
@@ -99,7 +99,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/2/avatar"));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(File.Exists(Path.Combine(_dataDir, "Avatars", "2.png")));
     }
 
@@ -108,7 +108,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
     {
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/users/999/avatar"));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

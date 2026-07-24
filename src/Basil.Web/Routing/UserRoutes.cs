@@ -2,10 +2,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web.Auth;
+using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
 using Microsoft.Extensions.Options;
 
@@ -240,6 +242,7 @@ internal static class UserRoutes
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/live",
                 id => Task.FromResult(HandleGetLive(id, context, events, cancellationToken)), cancellationToken))
             .WithGroupName("basilapi")
+            .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getUserLiveStream")
             .WithSummary("Get User Live Stream")
             .WithDescription("Server-Sent Events stream (event name `input`) of one player's raw replay-frame " +
@@ -250,6 +253,8 @@ internal static class UserRoutes
                 "never receives any frames. A non-numeric `{idOrName}` is resolved via username lookup and " +
                 "302-redirected to the canonical form. Public, no authentication.")
             .WithTags("Users")
+            .Produces<PlayerInputFrame>()
+            .WithExample(StatusCodes.Status200OK, new PlayerInputFrame(new UserBrief(7, "Alice", "us"), "QUJD"))
             .Produces(StatusCodes.Status400BadRequest);
     }
 

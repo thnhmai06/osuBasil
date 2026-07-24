@@ -84,7 +84,8 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var response = await client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var json = envelope.GetProperty("data");
         Assert.Equal("Grand Finals", json.GetProperty("name").GetString());
         Assert.False(json.GetProperty("hasPassword").GetBoolean());
         Assert.False(json.GetProperty("isPrivate").GetBoolean());
@@ -98,14 +99,14 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
         createRequest.Content = JsonContent.Create(new { name = "Listed Match" });
         var createResponse = await client.SendAsync(createRequest);
-        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var id = created.GetProperty("id").GetInt32();
+        var createdEnvelope = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = createdEnvelope.GetProperty("data").GetProperty("id").GetInt32();
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
 
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var items = json.GetProperty("items").EnumerateArray().ToList();
+        var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var items = envelope.GetProperty("data").EnumerateArray().ToList();
         Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id && item.GetProperty("isOpen").GetBoolean());
     }
 
@@ -117,14 +118,15 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var id = created.GetProperty("id").GetInt32();
+        var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
         var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{id}/settings", AdminKey);
         patchRequest.Content = JsonContent.Create(new { name = "Renamed", size = 4 });
         var patchResponse = await client.SendAsync(patchRequest);
 
         patchResponse.EnsureSuccessStatusCode();
-        var json = await patchResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var envelope = await patchResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var json = envelope.GetProperty("data");
         Assert.Equal("Renamed", json.GetProperty("name").GetString());
         Assert.Equal(4, json.GetProperty("size").GetInt32());
     }
@@ -149,7 +151,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var id = created.GetProperty("id").GetInt32();
+        var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
         var closeRequest = MakeRequest(HttpMethod.Post, $"/matches/{id}/close", AdminKey);
         closeRequest.Content = JsonContent.Create(new { });
@@ -157,8 +159,8 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         closeResponse.EnsureSuccessStatusCode();
 
         var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
-        var json = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var items = json.GetProperty("items").EnumerateArray().ToList();
+        var envelope = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var items = envelope.GetProperty("data").EnumerateArray().ToList();
         Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == id);
     }
 
@@ -176,7 +178,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         createRequest.Content = JsonContent.Create(new { name = "Smoke Test", password = "hunter2" });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var id = created.GetProperty("id").GetInt32();
+        var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
         var streamClient = _factory.CreateClient();
         var streamRequest = new HttpRequestMessage(HttpMethod.Get, $"/matches/{id}/settings")

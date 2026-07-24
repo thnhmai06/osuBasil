@@ -27,22 +27,24 @@ internal static class ScoreRoutes
         {
             var (p, ps) = Pagination.Normalize(page, pageSize);
             var overqueried = await scores.FetchPageAsync((p - 1) * ps, ps + 1, cancellationToken);
-            var trimmed = Pagination.Trim(overqueried, p, ps);
+            var totalRecords = await scores.FetchCountAsync(cancellationToken);
+            var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
             var views = new List<ScoreDetailView>(trimmed.Items.Count);
             foreach (var row in trimmed.Items)
                 views.Add(await BuildDetailView(row, sessionRegistry, users, maps, cancellationToken));
-            return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize, trimmed.Count,
-                trimmed.HasMore, views));
+            return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
+                trimmed.TotalRecords, views));
         })
             .WithGroupName("basilapi")
             .WithName("listScores")
             .WithSummary("List Scores")
             .WithDescription("Query params: `page` (default 1), `pageSize` (default 50). Response: " +
-                "`{ page, pageSize, count, hasMore, items }`, each item the same shape as " +
+                "`{ page, pageSize, totalRecords, items }` (wrapped in the enveloped `meta` object at the " +
+                "top level), each item the same shape as " +
                 "`GET /scores/{scoreId}`. Public, no authentication.")
             .WithTags("Scores")
             .Produces<PagedResult<ScoreDetailView>>()
-            .WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, false, [SampleScoreDetail()]));
+            .WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
         group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
             IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,

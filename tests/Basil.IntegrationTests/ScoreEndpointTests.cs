@@ -9,6 +9,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Web;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,9 +75,10 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42"));
-        var body = await response.Content.ReadFromJsonAsync<ScoreShape>();
+        var envelope = await response.Content.ReadFromJsonAsync<Envelope<ScoreShape>>();
 
         response.EnsureSuccessStatusCode();
+        var body = envelope!.Data;
         Assert.NotNull(body);
         Assert.Equal(42, body!.Id);
         Assert.Equal(900_000, body.Score);

@@ -12,6 +12,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Auth;
+using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,11 +38,11 @@ internal static class MatchRoutes
                 "(default 1), `pageSize` (default 50). `online` is currently-live matches (tracked in " +
                 "memory); `offline` is closed matches (persisted with `endedAt` set); `all` is both, " +
                 "newest first. A private live match is excluded from the list entirely unless the caller " +
-                "carries a valid `X-Admin-Key`. Response: `{ page, pageSize, count, hasMore, items }` — " +
-                "no `total`/`totalPages`; `hasMore` just reports whether another page exists. Public.")
+                "carries a valid `X-Admin-Key`. Response: `{ page, pageSize, totalRecords, items }`, wrapped " +
+                "in the enveloped `meta` object at the top level like every other paginated route. Public.")
             .WithTags("Matches")
             .Produces<PagedResult<MatchListItem>>()
-            .WithExample(StatusCodes.Status200OK, new PagedResult<MatchListItem>(1, 50, 1, false,
+            .WithExample(StatusCodes.Status200OK, new PagedResult<MatchListItem>(1, 50, 1,
                 [new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null, true, false)]));
 
         group.MapPost("/matches", HandleCreate)
@@ -64,6 +65,7 @@ internal static class MatchRoutes
 
         group.MapGet("/matches/{matchId:int}/settings", HandleSettingsStream)
             .WithGroupName("basilapi")
+            .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getMatchSettings")
             .WithSummary("Get Match Settings")
             .WithDescription("Server-Sent Events stream (event name `settings`) scoped to just the " +
@@ -110,6 +112,7 @@ internal static class MatchRoutes
 
         group.MapGet("/matches/{matchId:int}/live", HandleLiveStream)
             .WithGroupName("basilapi")
+            .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getMatchLiveStatus")
             .WithSummary("Get Match Live Status")
             .WithDescription("Server-Sent Events stream (event name `live`) of `{ inProgress, " +
@@ -123,6 +126,7 @@ internal static class MatchRoutes
 
         group.MapGet("/matches/{matchId:int}/live/{slotIndex:int}", HandleLiveSlotStream)
             .WithGroupName("basilapi")
+            .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getMatchSlotLiveStream")
             .WithSummary("Get Match Slot Live Stream")
             .WithDescription("`{slotIndex}` is 1-16 (matching `!mp move`'s convention). One SSE stream " +
@@ -131,9 +135,16 @@ internal static class MatchRoutes
                 "forwarded as-is), and `input` (the current occupant's raw spectator-input frames, " +
                 "forwarded as-is). Follows whoever currently occupies the slot — if the occupant changes, " +
                 "the next `slot` event reflects that, and `score`/`input` start matching the new occupant " +
-                "automatically. 404 if the match isn't currently live or `slotIndex` is out of range. " +
-                "Public, no authentication.")
+                "automatically. 404 if the match isn't currently live or `slotIndex` is out of range. The " +
+                "`slot` event's shape is documented below via its own schema/example; `score` is " +
+                "`PlayerLiveScore` (see `MatchScoreUpdateHandler`) and `input` is `PlayerInputFrame` (same " +
+                "shape as `GET /users/{idOrName}/live`'s single event) — both omitted from this operation's " +
+                "declared schema since OpenAPI has no way to represent \"one of three shapes depending on " +
+                "event name\" at a single 200 status without misrepresenting `slot` callers. Public, no " +
+                "authentication.")
             .WithTags("Match Live")
+            .Produces<MatchLiveSlot>()
+            .WithExample(StatusCodes.Status200OK, new MatchLiveSlot(new UserBrief(7, "Alice", "us"), "Playing", "Red", 0))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapMatchSubResourceRoutes();
@@ -172,7 +183,7 @@ internal static class MatchRoutes
             .ToList();
 
         var overqueried = items.Skip((p - 1) * ps).Take(ps + 1).ToList();
-        return Results.Json(Pagination.Trim(overqueried, p, ps));
+        return Results.Json(Pagination.Trim(overqueried, p, ps, items.Count));
     }
 
     private static async Task<IResult> HandleCreate(MatchSettingsBody body, MatchMembershipService matchMembership,

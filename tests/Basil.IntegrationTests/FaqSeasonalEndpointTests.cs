@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Configuration;
 using Basil.Web;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,10 +73,10 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     public async Task GetFaqList_NoEntries_ReturnsEmptyArray()
     {
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
-        var body = await response.Content.ReadFromJsonAsync<string[]>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
         response.EnsureSuccessStatusCode();
-        Assert.Empty(body!);
+        Assert.Empty(body!.Data!);
     }
 
     [Fact]
@@ -86,9 +87,9 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "faq.txt"), "faq");
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
-        var body = await response.Content.ReadFromJsonAsync<string[]>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
-        Assert.Equal(["faq", "rules"], body);
+        Assert.Equal(["faq", "rules"], body!.Data);
     }
 
     [Fact]
@@ -133,7 +134,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
     }
 
@@ -174,7 +175,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("new", await File.ReadAllTextAsync(Path.Combine(FaqsDir, "rules.txt")));
     }
 
@@ -194,7 +195,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/rules", AdminKey));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
     }
 
@@ -207,9 +208,9 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3]);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/"));
-        var body = await response.Content.ReadFromJsonAsync<string[]>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
-        Assert.Equal(["winter.png"], body);
+        Assert.Equal(["winter.png"], body!.Data);
     }
 
     [Fact]
@@ -242,7 +243,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
     }
 
@@ -283,7 +284,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png")));
     }
 
@@ -303,7 +304,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/seasonals/spring.png", AdminKey));
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
     }
 }

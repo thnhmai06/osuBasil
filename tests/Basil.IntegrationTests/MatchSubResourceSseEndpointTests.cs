@@ -68,7 +68,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         request.Content = JsonContent.Create(new { });
         var response = await client.SendAsync(request);
         var created = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return created.GetProperty("id").GetInt32();
+        return created.GetProperty("data").GetProperty("id").GetInt32();
     }
 
     private async Task<PlayerSession> SeatNewPlayer(int id, string name, int matchId)

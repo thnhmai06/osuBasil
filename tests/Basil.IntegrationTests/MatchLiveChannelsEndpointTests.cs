@@ -81,7 +81,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var matchId = created.GetProperty("id").GetInt32();
+        var matchId = created.GetProperty("data").GetProperty("id").GetInt32();
 
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 

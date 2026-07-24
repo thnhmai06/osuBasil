@@ -8,6 +8,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Web;
+using Basil.Web.OpenApi;
 using Basil.Web.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -67,43 +68,48 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task GetScores_NoRows_ReturnsEmptyPage()
     {
         var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"));
-        var body = await response.Content.ReadFromJsonAsync<PagedResult<ScoreRow>>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
 
         response.EnsureSuccessStatusCode();
         Assert.NotNull(body);
-        Assert.Equal(1, body!.Page);
-        Assert.Equal(Pagination.DefaultPageSize, body.PageSize);
-        Assert.Empty(body.Items);
-        Assert.False(body.HasMore);
+        Assert.NotNull(body!.Meta);
+        Assert.Equal(1, body.Meta!.Page);
+        Assert.Equal(Pagination.DefaultPageSize, body.Meta.PageSize);
+        Assert.Empty(body.Data!);
+        Assert.Equal(0, body.Meta.TotalRecords);
     }
 
     [Fact]
-    public async Task GetScores_FewerThanPageSize_ReturnsAllWithoutHasMore()
+    public async Task GetScores_FewerThanPageSize_ReturnsAllRows()
     {
         _scores.Rows = [MakeRow(3), MakeRow(2), MakeRow(1)];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"));
-        var body = await response.Content.ReadFromJsonAsync<PagedResult<ScoreRow>>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
 
         response.EnsureSuccessStatusCode();
-        Assert.Equal(3, body!.Count);
-        Assert.False(body.HasMore);
-        Assert.Equal([3L, 2L, 1L], body.Items.Select(r => r.Id));
+        Assert.Equal(3, body!.Meta!.TotalRecords);
+        Assert.Equal(1, body.Meta.TotalPages);
+        Assert.Equal([3L, 2L, 1L], body.Data!.Select(r => r.Id));
     }
 
     [Fact]
-    public async Task GetScores_PageSizeSmallerThanRows_SetsHasMoreTrue()
+    public async Task GetScores_PageSizeSmallerThanRows_ReportsMultiplePages()
     {
         _scores.Rows = [MakeRow(3), MakeRow(2), MakeRow(1)];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores?page=1&pageSize=2"));
-        var body = await response.Content.ReadFromJsonAsync<PagedResult<ScoreRow>>();
+        var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
 
         response.EnsureSuccessStatusCode();
-        Assert.Equal(2, body!.Count);
-        Assert.True(body.HasMore);
-        Assert.Equal([3L, 2L], body.Items.Select(r => r.Id));
+        Assert.Equal(3, body!.Meta!.TotalRecords);
+        Assert.Equal(2, body.Meta.TotalPages);
+        Assert.Equal([3L, 2L], body.Data!.Select(r => r.Id));
     }
+
+    /// <summary>Minimal local shape for `GET /scores` list items — the real <c>ScoreDetailView</c>
+    /// is an internal nested type of <c>ScoreRoutes</c>, not accessible from this test project.</summary>
+    private sealed record ScoreListItem(long Id);
 
     private sealed class StubScoreRepository : IScoreRepository
     {
