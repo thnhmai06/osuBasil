@@ -14,6 +14,7 @@
         <PackageReference Include="Dapper" Version="2.1.79" />
         <PackageReference Include="dbup-sqlite" Version="6.0.4" />
         <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
