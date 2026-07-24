@@ -73,7 +73,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
         services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
-        services.AddSingleton<IDifficultyCalculator, PpyDifficultyCalculator>();
+        services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
         services.AddSingleton<BeatmapIngestionService>();
         services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 

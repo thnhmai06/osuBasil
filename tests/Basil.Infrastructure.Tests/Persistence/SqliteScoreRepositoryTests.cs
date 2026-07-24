@@ -156,21 +156,6 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
         Assert.Equal(mapMd5, row.MapMd5);
         Assert.Equal(850_000, row.Score);
         Assert.Equal(GameMode.Mania, row.Mode);
-        Assert.False(row.IsInvalidated);
-    }
-
-    [Fact]
-    public async Task FetchById_AfterInvalidation_ReportsIsInvalidatedTrue()
-    {
-        var mapMd5 = new string('l', 32);
-        await InsertUserAsync(323, "uma");
-        var scoreId = await InsertScoreAsync(mapMd5, 323, 850_000);
-
-        await _repository.InvalidateByMapMd5Async(mapMd5);
-        var row = await _repository.FetchByIdAsync(scoreId);
-
-        Assert.NotNull(row);
-        Assert.True(row.IsInvalidated);
     }
 
     [Fact]
@@ -266,25 +251,29 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
     }
 
     [Fact]
-    public async Task InvalidateByMapMd5_FlagsMatchingScoresOnly()
+    public async Task FetchCountAsync_ReflectsCountersTable_IncrementedByInsertTrigger()
     {
-        var invalidatedMd5 = new string('i', 32);
-        var otherMd5 = new string('j', 32);
-        await InsertUserAsync(410, "invalidated-owner");
-        var invalidatedId = await InsertScoreAsync(invalidatedMd5, 410, 600_000);
-        var otherId = await InsertScoreAsync(otherMd5, 410, 600_000);
+        var dbPath = Path.Combine(Path.GetTempPath(), $"basil-scorecount-test-{Guid.NewGuid():N}.db");
+        var connectionString = $"Data Source={dbPath};Foreign Keys=True;Default Timeout=5";
+        try
+        {
+            SqlMigrationRunner.RunMigrations(connectionString);
+            var repository = new SqliteScoreRepository(connectionString);
 
-        await _repository.InvalidateByMapMd5Async(invalidatedMd5);
+            Assert.Equal(0, await repository.FetchCountAsync());
 
-        Assert.True(await FetchIsInvalidatedAsync(invalidatedId));
-        Assert.False(await FetchIsInvalidatedAsync(otherId));
-    }
+            await InsertScoreIntoAsync(connectionString, new string('q', 32), 100_000);
+            await InsertScoreIntoAsync(connectionString, new string('q', 32), 200_000);
 
-    private async Task<bool> FetchIsInvalidatedAsync(long scoreId)
-    {
-        await using var connection = new SqliteConnection(fixture.ConnectionString);
-        return await connection.ExecuteScalarAsync<bool>("SELECT IsInvalidated FROM Scores WHERE Id = @Id",
-            new { Id = scoreId });
+            Assert.Equal(2, await repository.FetchCountAsync());
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+            File.Delete(dbPath + "-wal");
+            File.Delete(dbPath + "-shm");
+        }
     }
 
     private async Task<int> InsertRoundAsync()
@@ -298,8 +287,8 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
             """);
         return await connection.ExecuteScalarAsync<int>(
             """
-            INSERT INTO Rounds (MatchId, RoundIndex, BeatmapId, MapMd5, Mode, WinCondition, TeamType, BeatmapArtist, BeatmapTitle, BeatmapVersion, BeatmapCreator, Mods, StartedAt)
-            VALUES (@MatchId, 1, 1, @MapMd5, 0, 0, 0, '', '', '', '', 0, datetime('now'));
+            INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
+            VALUES (@MatchId, 1, @MapMd5, 0, 0, 0, 0, datetime('now'));
             SELECT last_insert_rowid();
             """,
             new { MatchId = matchId, MapMd5 = new string('a', 32) });

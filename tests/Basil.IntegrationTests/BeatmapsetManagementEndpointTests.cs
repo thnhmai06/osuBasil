@@ -281,6 +281,11 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
             if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
             return Task.CompletedTask;
         }
+
+        public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Mapset is not null && (includePrivate || !Mapset.IsPrivate) ? 1 : 0);
+        }
     }
 
     private sealed class StubMapRepository : IMapRepository

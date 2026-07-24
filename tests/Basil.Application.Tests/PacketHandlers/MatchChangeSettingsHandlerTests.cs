@@ -78,7 +78,7 @@ public class MatchChangeSettingsHandlerTests
         var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
         var bmap = new Beatmap(
             newMd5, 500, mapset, "V", "map.osu", TimeSpan.FromSeconds(60), 100, 0, 0,
-            new Difficulty(GameMode.Standard, 120, 4, 9, 8, 5, 5.0));
+            new Difficulty(GameMode.Standard, 120, 4, 9, 8, 5, 5.0), new Dictionary<string, int>());
         _mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
@@ -160,7 +160,7 @@ public class MatchChangeSettingsHandlerTests
         var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
         var bmap = new Beatmap(
             newMd5, 500, mapset, "V", "map.osu", TimeSpan.FromSeconds(60), 100, 0, 0,
-            new Difficulty(GameMode.Standard, 120, 4, 9, 8, 5, 5.0));
+            new Difficulty(GameMode.Standard, 120, 4, 9, 8, 5, 5.0), new Dictionary<string, int>());
         _mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
         host.Dequeue();

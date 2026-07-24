@@ -30,8 +30,7 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
         {
             ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
         });
-        var scores = new SqliteScoreRepository(fixture.ConnectionString);
-        var ingestion = new BeatmapIngestionService(_maps, mapsets, scores, new FakeDifficultyCalculator(), options, _ingestionLog);
+        var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
         _watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
     }
 

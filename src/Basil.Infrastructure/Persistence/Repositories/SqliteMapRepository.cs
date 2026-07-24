@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Dapper;
@@ -10,7 +11,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 {
     private const string SharedColumns = """
         b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.Plays, b.Passes,
-        b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr,
+        b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.ObjectCounts,
         m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
         """;
 
@@ -79,10 +80,10 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
             """
             REPLACE INTO Beatmaps (
                 Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, Plays, Passes,
-                Mode, Bpm, Cs, Od, Ar, Hp, Sr
+                Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, ObjectCounts
             ) VALUES (
                 @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @Plays, @Passes,
-                @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr
+                @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @ObjectCounts
             )
             """,
             new
@@ -102,7 +103,9 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
                 resolved.Difficulty.Od,
                 resolved.Difficulty.Ar,
                 resolved.Difficulty.Hp,
-                resolved.Difficulty.Sr
+                resolved.Difficulty.Sr,
+                resolved.BackgroundFile,
+                ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
             });
 
         return resolved;
@@ -224,13 +227,18 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public double Od { get; set; }
         public double Hp { get; set; }
         public double Sr { get; set; }
+        public string? BackgroundFile { get; set; }
+        public string ObjectCounts { get; set; } = "{}";
 
         public Beatmap ToBeatmap(Mapset mapset)
         {
+            var objectCounts = JsonSerializer.Deserialize<Dictionary<string, int>>(ObjectCounts)
+                ?? new Dictionary<string, int>();
             return new Beatmap(
                 Md5, Id, mapset, Version, Filename,
                 TimeSpan.FromSeconds(TotalLength), MaxCombo, Plays, Passes,
-                new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr));
+                new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr),
+                objectCounts, BackgroundFile);
         }
     }
 

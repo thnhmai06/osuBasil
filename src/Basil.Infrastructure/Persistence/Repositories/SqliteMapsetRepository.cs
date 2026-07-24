@@ -96,6 +96,14 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
         return rows.Select(r => r.ToMapset()).ToList();
     }
 
+    public async Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Connect();
+        return await connection.ExecuteScalarAsync<int>(
+            "SELECT Value FROM Counters WHERE Name = @Name",
+            new { Name = includePrivate ? "Mapsets:Total" : "Mapsets:Public" });
+    }
+
     private SqliteConnection Connect()
     {
         return new SqliteConnection(connectionString);

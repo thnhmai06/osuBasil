@@ -747,7 +747,7 @@ public static class BanchoHostGroups
             // Ported from app/api/domains/osu.py's difficultyRatingHandler — the Python source
             // unconditionally redirects to osu.ppy.sh's difficulty-rating webpage (opened in the
             // user's system browser, not parsed by the client itself); this server has no such
-            // webpage, so it computes the star rating locally with IDifficultyCalculator
+            // webpage, so it computes the star rating locally with IOsuCalculator
             // instead and caches the NoMod result onto Beatmaps.Sr. `b` (beatmap id) and `mods`
             // (bitmask) are read from the query string since the real client sends neither a body nor
             // documented form fields for this endpoint.
@@ -777,8 +777,8 @@ public static class BanchoHostGroups
                 }
                 else
                 {
-                    var calculator = context.RequestServices.GetRequiredService<IDifficultyCalculator>();
-                    stars = calculator.CalculateStarRating(osuPath, bmap.Difficulty.Mode, requestedMods);
+                    var calculator = context.RequestServices.GetRequiredService<IOsuCalculator>();
+                    stars = calculator.Analyze(osuPath, bmap.Difficulty.Mode, requestedMods).StarRating;
                     if (requestedMods == Mods.NoMod)
                         await maps.UpdateDiffAsync(bmap.Id, stars, cancellationToken);
                 }
@@ -1063,8 +1063,8 @@ public static class BanchoHostGroups
 
         var score = new MatchReportScore(7, "Alice", "Red", 0, 4_850_213, 98.42, 1234, 720, 45, 3, 2, 12, 5,
             "A", false, ended);
-        var round = new MatchReportRound(0, 654, "d41d8cd98f00b204e9800998ecf8427e", "Camellia",
-            "Exit This Earth's Atmosphere", "Extreme", "RLC", 0, 3, 2, 0, false, started, ended,
+        var round = new MatchReportRound(0, "d41d8cd98f00b204e9800998ecf8427e",
+            0, 3, 2, 0, false, started, ended,
             7, "Alice", "Red", "score", 1_200_000, [score]);
         var evt = new MatchReportEvent(0, "Created", 7, "Alice", null, null, started, null);
 

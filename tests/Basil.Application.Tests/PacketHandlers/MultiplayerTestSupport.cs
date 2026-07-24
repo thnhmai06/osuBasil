@@ -80,7 +80,7 @@ internal static class MultiplayerTestSupport
         var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
         var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500, 0, 0,
-            new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0));
+            new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0), new Dictionary<string, int>());
     }
 
     public static List<byte[]> Chunk(byte[] data)
@@ -176,9 +176,8 @@ internal static class MultiplayerTestSupport
             return Task.CompletedTask;
         }
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
             GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
             Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextRoundId++);

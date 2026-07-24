@@ -74,7 +74,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             """
             SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
                    NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
-                   OnlineChecksum, SubmittedAt, IsInvalidated
+                   OnlineChecksum, SubmittedAt
             FROM Scores
             WHERE Id = @Id
             """,
@@ -90,7 +90,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             """
             SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
                    NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
-                   OnlineChecksum, SubmittedAt, IsInvalidated
+                   OnlineChecksum, SubmittedAt
             FROM Scores
             ORDER BY Id DESC
             LIMIT @Limit OFFSET @Offset
@@ -116,12 +116,11 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         return rows.Select(r => r.ToRow()).ToList();
     }
 
-    public async Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
+    public async Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        await connection.ExecuteAsync(
-            "UPDATE Scores SET IsInvalidated = 1 WHERE MapMd5 = @MapMd5",
-            new { MapMd5 = mapMd5 });
+        return await connection.ExecuteScalarAsync<int>(
+            "SELECT Value FROM Counters WHERE Name = 'Scores:Total'");
     }
 
     private SqliteConnection Connect()
@@ -204,14 +203,13 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
         public bool Perfect { get; set; }
         public string OnlineChecksum { get; set; } = "";
         public DateTime SubmittedAt { get; set; }
-        public bool IsInvalidated { get; set; }
 
         public ScoreRow ToRow()
         {
             return new ScoreRow(
                 Id, RoundId, (MatchTeam?)Team, MapMd5, Score, Accuracy, MaxCombo, (Mods)Mods, N300, N100, N50,
                 NMiss, NGeki, NKatu, Grade, (GameMode)Mode, PlayTime, TimeElapsed, (ClientFlags)ClientFlags,
-                UserId, Perfect, OnlineChecksum, SubmittedAt, IsInvalidated);
+                UserId, Perfect, OnlineChecksum, SubmittedAt);
         }
     }
 }

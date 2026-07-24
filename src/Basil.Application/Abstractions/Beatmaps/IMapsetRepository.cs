@@ -43,4 +43,12 @@ public interface IMapsetRepository
     ///     beatmap under this mapset from non-admin listings/lookups. Set via `PATCH /beatmapsets/{id}`.
     /// </summary>
     Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Total mapset count for the `api.` host's `GET /beatmapsets` list's `meta.totalRecords` —
+    ///     reads a cached counter row (kept in sync by DB triggers) instead of a live `COUNT(*)`.
+    ///     <paramref name="includePrivate" /> mirrors <see cref="FetchPageAsync" />'s
+    ///     <c>onlyWithVisibleBeatmaps</c> flag (inverted): false for a non-admin caller.
+    /// </summary>
+    Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default);
 }

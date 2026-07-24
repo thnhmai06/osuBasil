@@ -1,8 +1,6 @@
 using System.IO.Compression;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Scores;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
@@ -22,7 +20,7 @@ namespace Basil.Infrastructure.Beatmaps;
 ///     audio/images/backgrounds/video/.osu — as extracted, not renamed), or a loose ".osz" at the
 ///     root waiting to be extracted. A single loose ".osu" file has no set context on its own and
 ///     is never ingested. Uses ppy.osu.Game's own decoder (the same one
-///     <see cref="PpyDifficultyCalculator" /> uses) so metadata parsing matches the real client
+///     <see cref="PpyOsuCalculator" /> uses) so metadata parsing matches the real client
 ///     byte-for-byte. bancho.py has no equivalent — it always fetched beatmap metadata from osu!api.
 ///     <see cref="BeatmapWatcherService" /> is the live caller (per-folder reconciliation on every
 ///     filesystem change); <see cref="ReconcileAllAsync" /> is the full-pass caller (server startup,
@@ -31,8 +29,7 @@ namespace Basil.Infrastructure.Beatmaps;
 public sealed partial class BeatmapIngestionService(
     IMapRepository maps,
     IMapsetRepository mapsets,
-    IScoreRepository scores,
-    IDifficultyCalculator difficultyCalculator,
+    IOsuCalculator osuCalculator,
     IOptions<StorageOptions> options,
     ILogger<BeatmapIngestionService> logger)
 {
@@ -120,10 +117,7 @@ public sealed partial class BeatmapIngestionService(
 
         var known = await mapsets.FetchAllIdsAsync(cancellationToken);
         foreach (var orphanId in known.Where(id => !seenSetIds.Contains(id)))
-        {
-            await InvalidateScoresForMapsetAsync(orphanId, cancellationToken);
             await mapsets.DeleteAsync(orphanId, cancellationToken);
-        }
 
         return ingested;
     }
@@ -146,7 +140,7 @@ public sealed partial class BeatmapIngestionService(
                 var parsed = TryDecode(osuBytes);
                 if (parsed is null) continue;
 
-                decoded.Add(new DecodedFile(entry.Name, osuBytes, HashMd5(osuBytes), parsed));
+                decoded.Add(new DecodedFile(entry.Name, osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
             }
         }
 
@@ -206,7 +200,7 @@ public sealed partial class BeatmapIngestionService(
             var parsed = TryDecode(osuBytes);
             if (parsed is null) continue;
 
-            decoded.Add(new DecodedFile(Path.GetFileName(osuPath), osuBytes, HashMd5(osuBytes), parsed));
+            decoded.Add(new DecodedFile(Path.GetFileName(osuPath), osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
         }
 
         if (decoded.Count == 0) return (0, null);
@@ -220,21 +214,18 @@ public sealed partial class BeatmapIngestionService(
                 filename: file.OriginalFilename, setId: mapset.Id, includePrivate: true,
                 cancellationToken: cancellationToken);
 
-            // The .osu content changed under the same filename — UpsertAsync below moves this same
-            // beatmap row onto the new md5, so scores keyed to the old md5 would otherwise be
-            // orphaned. Flag them instead of silently losing them.
-            if (existingByPath is not null && existingByPath.Md5 != file.Md5)
-                await scores.InvalidateByMapMd5Async(existingByPath.Md5, cancellationToken);
-
             var info = file.Parsed.BeatmapInfo;
             var mode = (GameMode)info.Ruleset.OnlineID;
-            // Content unchanged (same md5) and already has a cached rating (matches the "Sr > 0
+            // Content unchanged (same md5) and already has a cached analysis (matches the "Sr > 0
             // means cached" convention /difficulty-rating already uses) -> skip recalculating on
             // every reconcile pass (server startup, watcher); otherwise compute it, which also
-            // backfills any pre-existing row still sitting at the old default of 0.
-            var sr = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5
-                ? existing.Difficulty.Sr
-                : TryCalculateStarRating(Path.Combine(folderPath, file.OriginalFilename), mode);
+            // backfills any pre-existing row still sitting at the old default of 0/empty.
+            var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
+            var analysis = cacheHit
+                ? new BeatmapAnalysis(existingByPath!.Difficulty.Sr, existingByPath.ObjectCounts)
+                : TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
+            var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
+
             var beatmap = new Beatmap(
                 file.Md5,
                 existingByPath?.Id ?? (info.OnlineID > 0 ? info.OnlineID : 0),
@@ -248,7 +239,9 @@ public sealed partial class BeatmapIngestionService(
                 new Difficulty(
                     mode, info.BPM, info.Difficulty.CircleSize,
                     info.Difficulty.ApproachRate, info.Difficulty.OverallDifficulty, info.Difficulty.DrainRate,
-                    sr));
+                    analysis.StarRating),
+                analysis.ObjectCounts,
+                backgroundFile);
 
             await maps.UpsertAsync(beatmap, cancellationToken);
             ingested++;
@@ -257,10 +250,7 @@ public sealed partial class BeatmapIngestionService(
         var onDisk = decoded.Select(f => f.OriginalFilename).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var known = await maps.FetchAllBySetIdAsync(mapset.Id, includePrivate: true, cancellationToken: cancellationToken);
         foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
-        {
-            await scores.InvalidateByMapMd5Async(gone.Md5, cancellationToken);
             await maps.DeleteByMd5Async(gone.Md5, cancellationToken);
-        }
 
         return (ingested, mapset.Id);
     }
@@ -273,21 +263,10 @@ public sealed partial class BeatmapIngestionService(
         if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
 
         if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
-        {
-            await InvalidateScoresForMapsetAsync(id, cancellationToken);
             await mapsets.DeleteAsync(id, cancellationToken);
-        }
         // ponytail: a manually-renamed-away-from-convention folder that's then deleted leaves an
         // orphan row until the next ReconcileAllAsync pass reclaims it — acceptable for a
         // human-admin server.
-    }
-
-    /// <summary>Flags every score on every beatmap under a mapset about to lose its DB row — the beatmaps/mapset row are hard-deleted, but a player's own score history is only ever flagged, never dropped.</summary>
-    private async Task InvalidateScoresForMapsetAsync(int mapsetId, CancellationToken cancellationToken)
-    {
-        var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includePrivate: true, cancellationToken: cancellationToken);
-        foreach (var beatmap in beatmaps)
-            await scores.InvalidateByMapMd5Async(beatmap.Md5, cancellationToken);
     }
 
     /// <summary>
@@ -336,23 +315,19 @@ public sealed partial class BeatmapIngestionService(
         return await mapsets.UpsertAsync(mapset, cancellationToken);
     }
 
-    private static string HashMd5(byte[] bytes)
-    {
-        return Convert.ToHexString(MD5.HashData(bytes)).ToLowerInvariant();
-    }
-
-    private double TryCalculateStarRating(string osuFilePath, GameMode mode)
+    private BeatmapAnalysis TryAnalyze(string osuFilePath, GameMode mode)
     {
         try
         {
-            return difficultyCalculator.CalculateStarRating(osuFilePath, mode, Mods.NoMod);
+            return osuCalculator.Analyze(osuFilePath, mode, Mods.NoMod);
         }
         catch (Exception e)
         {
             // ponytail: a map whose difficulty can't be calculated (unsupported ruleset content,
-            // corrupt hitobjects) still gets ingested — it just keeps Sr at 0 instead of aborting.
-            logger.LogWarning(e, "Failed to calculate star rating for {Path}.", osuFilePath);
-            return 0;
+            // corrupt hitobjects) still gets ingested — it just keeps Sr at 0/no object counts
+            // instead of aborting.
+            logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
+            return new BeatmapAnalysis(0, new Dictionary<string, int>());
         }
     }
 

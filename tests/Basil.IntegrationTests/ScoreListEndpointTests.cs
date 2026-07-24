@@ -55,7 +55,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
         return new ScoreRow(
             id, null, null, new string('a', 32), 900_000, 98.5, 500, Mods.NoMod,
             300, 10, 5, 0, 0, 0, "S", GameMode.Standard, DateTime.UtcNow, 120_000,
-            ClientFlags.Clean, 7, false, $"checksum-{id}", DateTime.UtcNow, IsInvalidated: false);
+            ClientFlags.Clean, 7, false, $"checksum-{id}", DateTime.UtcNow);
     }
 
     [Fact]
@@ -107,6 +107,11 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
         public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Rows.Count);
         }
 
         public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,

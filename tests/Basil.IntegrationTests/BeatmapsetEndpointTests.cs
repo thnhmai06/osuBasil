@@ -82,7 +82,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     {
         return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
             TimeSpan.FromSeconds(100), 500, 0, 0,
-            new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5));
+            new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
     }
 
     private string MapsetFolder(int setId)
@@ -391,6 +391,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
             if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
             return Task.CompletedTask;
         }
+
+        public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Mapset is not null && (includePrivate || !Mapset.IsPrivate) ? 1 : 0);
+        }
     }
 
     private sealed class StubScoreRepository : IScoreRepository
@@ -400,6 +405,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(0L);
+        }
+
+        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
         }
 
         public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,

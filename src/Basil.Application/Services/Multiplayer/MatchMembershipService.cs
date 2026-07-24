@@ -362,9 +362,8 @@ public sealed class MatchMembershipService(
         match.InProgress = true;
 
         match.CurrentRoundId = await matchPersistence.CreateRoundAsync(
-            match.DbId, match.NextRoundIndex++, match.MapId, match.MapMd5,
+            match.DbId, match.NextRoundIndex++, match.MapMd5,
             match.Mode, match.WinCondition, match.TeamType,
-            bmap?.Mapset.Artist ?? "", bmap?.Mapset.Title ?? "", bmap?.Version ?? "", bmap?.Mapset.Creator ?? "",
             match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
         Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);

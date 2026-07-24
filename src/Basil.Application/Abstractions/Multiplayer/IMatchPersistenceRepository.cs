@@ -18,11 +18,14 @@ public interface IMatchPersistenceRepository
 
     Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default);
 
-    /// <summary>Returns the newly created Rounds.Id.</summary>
+    /// <summary>
+    ///     Returns the newly created Rounds.Id. Only `mapMd5` identifies the beatmap played — every
+    ///     other beatmap fact is resolved live at TRT-build time by looking that md5 up through
+    ///     `IMapRepository`, never denormalized onto the round itself.
+    /// </summary>
     Task<int> CreateRoundAsync(
-        int matchId, int roundIndex, int beatmapId, string mapMd5,
+        int matchId, int roundIndex, string mapMd5,
         GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-        string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
         Mods mods, DateTime startedAt,
         CancellationToken cancellationToken = default);
 
@@ -61,20 +64,19 @@ public sealed record MatchRow(
     DateTime CreatedAt,
     DateTime? EndedAt);
 
-/// <summary>New for MatchReportService — a raw Rounds row.</summary>
+/// <summary>
+///     New for MatchReportService — a raw Rounds row. Only `MapMd5` identifies the beatmap; every
+///     other beatmap fact is resolved live at TRT-build time (see `MatchReportService`), not stored
+///     here.
+/// </summary>
 public sealed record RoundRow(
     int Id,
     int MatchId,
     int RoundIndex,
-    int BeatmapId,
     string MapMd5,
     GameMode Mode,
     MatchWinCondition WinCondition,
     MatchTeamType TeamType,
-    string BeatmapArtist,
-    string BeatmapTitle,
-    string BeatmapVersion,
-    string BeatmapCreator,
     bool Aborted,
     Mods Mods,
     DateTime StartedAt,

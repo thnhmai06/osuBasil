@@ -32,27 +32,22 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
     }
 
     public async Task<int> CreateRoundAsync(
-        int matchId, int roundIndex, int beatmapId, string mapMd5,
+        int matchId, int roundIndex, string mapMd5,
         GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-        string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
         Mods mods, DateTime startedAt,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         return await connection.QuerySingleAsync<int>(
             """
-            INSERT INTO Rounds (MatchId, RoundIndex, BeatmapId, MapMd5, Mode, WinCondition, TeamType,
-                                BeatmapArtist, BeatmapTitle, BeatmapVersion, BeatmapCreator, Mods, StartedAt)
-            VALUES (@MatchId, @RoundIndex, @BeatmapId, @MapMd5, @Mode, @WinCondition, @TeamType,
-                    @BeatmapArtist, @BeatmapTitle, @BeatmapVersion, @BeatmapCreator, @Mods, @StartedAt);
+            INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
+            VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @StartedAt);
             SELECT last_insert_rowid();
             """,
             new
             {
-                MatchId = matchId, RoundIndex = roundIndex, BeatmapId = beatmapId, MapMd5 = mapMd5,
+                MatchId = matchId, RoundIndex = roundIndex, MapMd5 = mapMd5,
                 Mode = mode, WinCondition = winCondition, TeamType = teamType,
-                BeatmapArtist = beatmapArtist, BeatmapTitle = beatmapTitle,
-                BeatmapVersion = beatmapVersion, BeatmapCreator = beatmapCreator,
                 Mods = mods, StartedAt = startedAt
             });
     }
@@ -174,15 +169,10 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         public int Id { get; set; }
         public int MatchId { get; set; }
         public int RoundIndex { get; set; }
-        public int BeatmapId { get; set; }
         public string MapMd5 { get; set; } = "";
         public int Mode { get; set; }
         public int WinCondition { get; set; }
         public int TeamType { get; set; }
-        public string BeatmapArtist { get; set; } = "";
-        public string BeatmapTitle { get; set; } = "";
-        public string BeatmapVersion { get; set; } = "";
-        public string BeatmapCreator { get; set; } = "";
         public bool Aborted { get; set; }
         public int Mods { get; set; }
         public DateTime StartedAt { get; set; }
@@ -190,9 +180,8 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 
         public RoundRow ToRow()
         {
-            return new RoundRow(Id, MatchId, RoundIndex, BeatmapId, MapMd5,
+            return new RoundRow(Id, MatchId, RoundIndex, MapMd5,
                 (GameMode)Mode, (MatchWinCondition)WinCondition, (MatchTeamType)TeamType,
-                BeatmapArtist, BeatmapTitle, BeatmapVersion, BeatmapCreator,
                 Aborted, (Mods)Mods, StartedAt, EndedAt);
         }
     }

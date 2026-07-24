@@ -59,8 +59,12 @@ public sealed record ScoreInsertRow(
     int? RoundId = null,
     MatchTeam? Team = null);
 
-/// <summary>One score's full row, for the public `GET /score/{id}` route — includes `IsInvalidated`,
-/// which the API surfaces as a flag rather than hiding the score entirely.</summary>
+/// <summary>
+///     One score's full row, for the public `GET /scores/{id}` route. Whether this score's beatmap
+///     is still the one actually played is a read-time fact (does `MapMd5` still resolve via
+///     `IMapRepository`?), not a stored flag — see the `ScoreDetailView`/`Beatmap?` embed built at
+///     the Web edge, not this row itself.
+/// </summary>
 public sealed record ScoreRow(
     long Id,
     int? RoundId,
@@ -84,8 +88,7 @@ public sealed record ScoreRow(
     int UserId,
     bool Perfect,
     string OnlineChecksum,
-    DateTime SubmittedAt,
-    bool IsInvalidated);
+    DateTime SubmittedAt);
 
 public interface IScoreRepository
 {
@@ -118,9 +121,8 @@ public interface IScoreRepository
     Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Flags every score on <paramref name="mapMd5" /> as invalidated — never a hard delete. Called
-    ///     by the beatmap ingestion cascade whenever a beatmap's content changes or its file/mapset
-    ///     disappears, so a player's own historical record survives a metadata fix or map removal.
+    ///     Total score count for the `api.` host's `GET /scores` list's `meta.totalRecords` — reads a
+    ///     cached counter row (kept in sync by a DB trigger) instead of a live `COUNT(*)`.
     /// </summary>
-    Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default);
+    Task<int> FetchCountAsync(CancellationToken cancellationToken = default);
 }

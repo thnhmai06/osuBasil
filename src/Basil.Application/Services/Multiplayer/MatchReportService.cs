@@ -170,8 +170,7 @@ public sealed class MatchReportService(
             .ToArray();
 
         return new MatchReportRound(
-            round.RoundIndex, round.BeatmapId, round.MapMd5,
-            round.BeatmapArtist, round.BeatmapTitle, round.BeatmapVersion, round.BeatmapCreator,
+            round.RoundIndex, round.MapMd5,
             (int)round.Mode, (int)round.WinCondition, (int)round.TeamType,
             (int)round.Mods, round.Aborted, round.StartedAt, round.EndedAt,
             winnerUserId, winnerUserName, winnerTeam,
@@ -224,15 +223,14 @@ public sealed record MatchReportEvent(
     DateTime Timestamp,
     string? Detail);
 
-/// <summary>One beatmap played within the match.</summary>
+/// <summary>
+///     One beatmap played within the match. Only `MapMd5` identifies the beatmap at this layer —
+///     Phase 3 adds a resolved `Beatmap?` embed at the Web edge, null once the md5 no longer
+///     resolves (content changed/removed since).
+/// </summary>
 public sealed record MatchReportRound(
     int RoundIndex,
-    int BeatmapId,
     string MapMd5,
-    string BeatmapArtist,
-    string BeatmapTitle,
-    string BeatmapVersion,
-    string BeatmapCreator,
     int Mode,
     int WinCondition,
     int TeamType,

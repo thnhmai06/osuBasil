@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Scores;
 using osu.Framework.Audio.Track;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
@@ -17,16 +18,16 @@ using GameMode = Basil.Domain.Beatmaps.GameMode;
 
 namespace Basil.Infrastructure.Performance;
 
-/// <inheritdoc cref="IDifficultyCalculator" />
+/// <inheritdoc cref="IOsuCalculator" />
 /// <remarks>
 ///     Uses ppy's own osu!lazer ruleset libraries (the same engine the real client/website run) —
 ///     see the sibling osu-difficulty-calculator repo for the reference pattern this is based on.
 ///     (That repo is a batch CLI orchestrator around the same NuGet packages, not a callable server,
 ///     so we reference the packages directly instead of shelling out to it.)
 /// </remarks>
-public sealed class PpyDifficultyCalculator : IDifficultyCalculator
+public sealed class PpyOsuCalculator : IOsuCalculator
 {
-    public double CalculateStarRating(string beatmapFilePath, GameMode mode, Mods mods)
+    public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
     {
         try
         {
@@ -43,13 +44,26 @@ public sealed class PpyDifficultyCalculator : IDifficultyCalculator
             var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)strippedMods).ToArray();
 
             var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
-            return attributes.StarRating;
+
+            var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
+            var objectCounts = new Dictionary<string, int>();
+            foreach (var statistic in playable.GetStatistics())
+                if (int.TryParse(statistic.Content, out var count))
+                    objectCounts[statistic.Name.ToString()] = count;
+
+            return new BeatmapAnalysis(attributes.StarRating, objectCounts);
         }
         catch (Exception e)
         {
             throw new InvalidOperationException(
-                $"Failed to calculate star rating for beatmap '{beatmapFilePath}'.", e);
+                $"Failed to analyze beatmap '{beatmapFilePath}'.", e);
         }
+    }
+
+    public string ComputeBeatmapMd5(byte[] beatmapBytes)
+    {
+        using var stream = new MemoryStream(beatmapBytes);
+        return stream.ComputeMD5Hash();
     }
 
     private static Ruleset CreateRuleset(GameMode mode)

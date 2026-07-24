@@ -3,8 +3,6 @@ using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
 using Basil.Infrastructure.Tests.Persistence;
-using Dapper;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -19,8 +17,6 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 {
     private readonly SqliteMapRepository _maps;
     private readonly SqliteMapsetRepository _mapsets;
-    private readonly SqliteScoreRepository _scores;
-    private readonly string _connectionString;
     private readonly string _mapsetsPath;
     private readonly BeatmapIngestionService _service;
 
@@ -28,11 +24,9 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
     {
         _maps = new SqliteMapRepository(fixture.ConnectionString);
         _mapsets = new SqliteMapsetRepository(fixture.ConnectionString);
-        _scores = new SqliteScoreRepository(fixture.ConnectionString);
-        _connectionString = fixture.ConnectionString;
         _mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
         Directory.CreateDirectory(_mapsetsPath);
-        _service = new BeatmapIngestionService(_maps, _mapsets, _scores, new FakeDifficultyCalculator(), Options.Create(new StorageOptions
+        _service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), Options.Create(new StorageOptions
         {
             ReplaysPath = "",
             AvatarsPath = "",
@@ -150,32 +144,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
     }
 
     [Fact]
-    public async Task ReconcileDeletedFolderAsync_InvalidatesScoresForRemovedBeatmaps()
-    {
-        var tempFolder = Path.Combine(_mapsetsPath, "unresolved3 FAIRY FORE - Vivid");
-        Directory.CreateDirectory(tempFolder);
-        File.Copy(FixtureSourcePath, Path.Combine(tempFolder, "vivid_osu_file.osu"));
-        var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
-        Assert.NotNull(setId);
-
-        var beatmap = await _maps.FetchOneAsync(setId: setId!.Value);
-        Assert.NotNull(beatmap);
-        var scoreId = await InsertScoreAsync(beatmap!.Md5);
-
-        var mapset = await _mapsets.FetchByIdAsync(setId.Value);
-        var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
-            new StorageOptions { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
-            mapset!);
-        Directory.Move(tempFolder, resolvedFolder);
-        Directory.Delete(resolvedFolder, true);
-
-        await _service.ReconcileDeletedFolderAsync(resolvedFolder);
-
-        Assert.True(await FetchIsInvalidatedAsync(scoreId));
-    }
-
-    [Fact]
-    public async Task ReconcileFolderAsync_DifficultyRemoved_InvalidatesItsScoresButKeepsOthers()
+    public async Task ReconcileFolderAsync_DifficultyRemoved_DeletesItButKeepsOthers()
     {
         var folder = Path.Combine(_mapsetsPath, "900000003 FAIRY FORE - Vivid");
         Directory.CreateDirectory(folder);
@@ -190,18 +159,16 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         var removedBeatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId);
         Assert.NotNull(keptBeatmap);
         Assert.NotNull(removedBeatmap);
-        var removedScoreId = await InsertScoreAsync(removedBeatmap!.Md5);
 
         File.Delete(removedPath);
         await _service.ReconcileFolderAsync(folder);
 
-        Assert.True(await FetchIsInvalidatedAsync(removedScoreId));
         Assert.Null(await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId, includePrivate: true));
         Assert.NotNull(await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId));
     }
 
     [Fact]
-    public async Task ReconcileFolderAsync_ContentChanged_InvalidatesScoresOnOldMd5()
+    public async Task ReconcileFolderAsync_ContentChanged_MovesOntoNewMd5ButKeepsId()
     {
         // Every file's content is about to change (there's only one), so the mapset resolver can't
         // match by content-hash on the second pass and falls back to the folder's own leading-id
@@ -223,12 +190,13 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         var original = await _maps.FetchOneAsync(setId: setId.Value);
         Assert.NotNull(original);
         var oldMd5 = original!.Md5;
-        var oldScoreId = await InsertScoreAsync(oldMd5);
 
         WriteVariant(osuPath, 4000);
         await _service.ReconcileFolderAsync(folder);
 
-        Assert.True(await FetchIsInvalidatedAsync(oldScoreId));
+        // This is the exact mechanism the api. host's nullable Beatmap embeds rely on: once content
+        // changes, the old md5 permanently stops resolving (a stale round/score's reference goes
+        // "null beatmap"), while the row's own Id is preserved across the content change.
         var updated = await _maps.FetchOneAsync(setId: setId.Value);
         Assert.NotNull(updated);
         Assert.NotEqual(oldMd5, updated!.Md5);
@@ -241,29 +209,5 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
     {
         var text = File.ReadAllText(FixtureSourcePath).Replace("AudioLeadIn: 2000", $"AudioLeadIn: {audioLeadIn}");
         File.WriteAllText(destPath, text);
-    }
-
-    private async Task<long> InsertScoreAsync(string mapMd5)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        return await connection.ExecuteScalarAsync<long>(
-            """
-            INSERT INTO Scores (
-                MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-                Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, SubmittedAt
-            ) VALUES (
-                @MapMd5, 500000, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
-                'S', 0, datetime('now'), 120000, 0, 1, 0, @Checksum, datetime('now')
-            );
-            SELECT last_insert_rowid();
-            """,
-            new { MapMd5 = mapMd5, Checksum = Guid.NewGuid().ToString("N") });
-    }
-
-    private async Task<bool> FetchIsInvalidatedAsync(long scoreId)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        return await connection.ExecuteScalarAsync<bool>(
-            "SELECT IsInvalidated FROM Scores WHERE Id = @Id", new { Id = scoreId });
     }
 }

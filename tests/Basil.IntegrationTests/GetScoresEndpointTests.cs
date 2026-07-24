@@ -216,7 +216,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 
         private static readonly Beatmap Beatmap = new(
             KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0, 0, 0,
-            new Difficulty(GameMode.Standard, 0, 0, 0, 0, 0, 0));
+            new Difficulty(GameMode.Standard, 0, 0, 0, 0, 0, 0), new Dictionary<string, int>());
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
             int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
@@ -267,6 +267,11 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(0L);
+        }
+
+        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
         }
 
         public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,

@@ -76,6 +76,6 @@ internal static class ScoreRoutes
         return new ScoreRow(999, 3, MatchTeam.Red, "d41d8cd98f00b204e9800998ecf8427e", 4_850_213, 98.42, 1234,
             Mods.HardRock | Mods.Hidden, 720, 45, 3, 2, 12, 5, "A", GameMode.Standard,
             DateTime.Parse("2026-07-20T12:34:56Z"), 185, ClientFlags.Clean, 9, false,
-            "3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"), false);
+            "3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"));
     }
 }

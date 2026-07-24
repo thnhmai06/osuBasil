@@ -66,7 +66,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         _scores.Row = new ScoreRow(
             42, null, null, new string('a', 32), 900_000, 98.5, 500, Mods.Hidden,
             300, 10, 5, 0, 0, 0, "S", GameMode.Standard, DateTime.UtcNow, 120_000,
-            ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow, IsInvalidated: false);
+            ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42"));
         var body = await response.Content.ReadFromJsonAsync<ScoreShape>();
@@ -76,23 +76,6 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(42, body!.Id);
         Assert.Equal(900_000, body.Score);
         Assert.Equal(7, body.UserId);
-        Assert.False(body.IsInvalidated);
-    }
-
-    [Fact]
-    public async Task GetScore_Invalidated_StillReturnsRowWithFlagSet()
-    {
-        _scores.Row = new ScoreRow(
-            43, null, null, new string('b', 32), 500_000, 90.0, 300, Mods.NoMod,
-            250, 40, 10, 0, 0, 0, "A", GameMode.Standard, DateTime.UtcNow, 100_000,
-            ClientFlags.Clean, 8, false, "checksum2", DateTime.UtcNow, IsInvalidated: true);
-
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/43"));
-        var body = await response.Content.ReadFromJsonAsync<ScoreShape>();
-
-        response.EnsureSuccessStatusCode();
-        Assert.NotNull(body);
-        Assert.True(body!.IsInvalidated);
     }
 
     [Fact]
@@ -127,7 +110,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
     }
 
-    private sealed record ScoreShape(long Id, long Score, int UserId, bool IsInvalidated);
+    private sealed record ScoreShape(long Id, long Score, int UserId);
 
     private sealed class StubScoreRepository : IScoreRepository
     {
@@ -137,6 +120,11 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Row is null ? 0 : 1);
         }
 
         public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,

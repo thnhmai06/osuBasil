@@ -56,24 +56,32 @@ create table Mapsets
     IsPrivate  boolean default false not null
 );
 
+-- BackgroundFile: the beatmap's background image filename (from its .osu metadata), resolved
+-- against the mapset's storage folder at request time — never serialized in any api. host response,
+-- only used to resolve GET /beatmapsets/{mapsetId}/{beatmapId}/background's file path.
+-- ObjectCounts: a JSON object of per-mode hit-object name -> count (e.g. {"circle":120,"slider":45,
+-- "spinner":2} for osu!std; Taiko/Catch/Mania have different named objects), from
+-- IBeatmap.GetStatistics() — mode-agnostic on purpose, not a fixed set of columns.
 create table Beatmaps
 (
-    Id          int                   not null primary key,
-    MapsetId    int                   not null,
-    Md5         char(32)              not null,
-    Version     varchar(128)          not null,
-    Filename    varchar(256)          not null,
-    TotalLength int                   not null,
-    MaxCombo    int                   not null,
-    Plays       int     default 0     not null,
-    Passes      int     default 0     not null,
-    Mode        int                   not null,
-    Bpm         float(12, 2) default 0.00 not null,
-    Cs          float(4, 2)  default 0.00 not null,
-    Ar          float(4, 2)  default 0.00 not null,
-    Od          float(4, 2)  default 0.00 not null,
-    Hp          float(4, 2)  default 0.00 not null,
-    Sr          float(6, 3)  default 0.000 not null,
+    Id            int                   not null primary key,
+    MapsetId      int                   not null,
+    Md5           char(32)              not null,
+    Version       varchar(128)          not null,
+    Filename      varchar(256)          not null,
+    TotalLength   int                   not null,
+    MaxCombo      int                   not null,
+    Plays         int     default 0     not null,
+    Passes        int     default 0     not null,
+    Mode          int                   not null,
+    Bpm           float(12, 2) default 0.00 not null,
+    Cs            float(4, 2)  default 0.00 not null,
+    Ar            float(4, 2)  default 0.00 not null,
+    Od            float(4, 2)  default 0.00 not null,
+    Hp            float(4, 2)  default 0.00 not null,
+    Sr            float(6, 3)  default 0.000 not null,
+    BackgroundFile varchar(256) null,
+    ObjectCounts  text default '{}' not null,
     constraint Beatmaps_Md5_uindex unique (Md5),
     constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
 );
@@ -150,21 +158,20 @@ create table Matches
 -- One beatmap played within a Match = one Round. WinningTeam is intentionally NOT stored here —
 -- it's computed on read (TRT generation) from whatever Scores rows exist for the round, since
 -- score submission and MatchComplete arrive on separate connections with no ordering guarantee.
--- Mode/WinCondition/TeamType/beatmap fields denormalized per round for self-contained TRT.
+-- Mode/WinCondition/TeamType kept here (can change between rounds); every other beatmap fact
+-- (artist/title/creator/BPM/AR/SR/CS/OD/object counts) is resolved live at TRT-build time by
+-- looking up MapMd5 through IMapRepository — never denormalized here. A round whose beatmap has
+-- since changed (a new md5) or been removed simply reports a null beatmap in the TRT; only the raw
+-- MapMd5 survives.
 create table Rounds
 (
     Id             INTEGER PRIMARY KEY AUTOINCREMENT,
     MatchId        int      not null,
     RoundIndex     int      not null,
-    BeatmapId      int      not null,
     MapMd5         char(32) not null,
     Mode           int      not null,
     WinCondition   int      not null,
     TeamType       int      not null,
-    BeatmapArtist  varchar(128) not null default '',
-    BeatmapTitle   varchar(128) not null default '',
-    BeatmapVersion varchar(128) not null default '',
-    BeatmapCreator varchar(64)  not null default '',
     Aborted        boolean not null default 0,
     Mods           int      not null,
     StartedAt      datetime not null,
@@ -176,10 +183,9 @@ create index Rounds_MatchId_index on Rounds (MatchId);
 -- MapMd5/Mode kept denormalised (not just via Round) so the solo-leaderboard-shaped read paths
 -- (osu-osz2-getscores.php) can keep querying by map without joining through Rounds. RoundId/Team
 -- are null for a score submitted outside any match (not linked to a Round). A score row is never
--- hard-deleted when its beatmap changes or disappears — it's flagged via IsInvalidated instead
--- (destructive to wipe a player's own historical record over a metadata fix or a removed
--- difficulty); an invalidated score stays fully readable (including its .osr replay) everywhere,
--- only the ingestion cascade (BeatmapIngestionService) ever sets it.
+-- hard-deleted when its beatmap changes or disappears — its validity is a read-time fact instead
+-- (does MapMd5 still resolve via IMapRepository?), not a stored flag: a null beatmap in the api.
+-- host's response is the equivalent signal an IsInvalidated column used to carry.
 create table Scores
 (
     Id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,7 +211,6 @@ create table Scores
     Perfect         boolean  not null,
     OnlineChecksum  char(32) not null,
     SubmittedAt     datetime not null,
-    IsInvalidated   boolean default false not null,
     constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
 create index Scores_MapMd5_index on Scores (MapMd5);
@@ -231,6 +236,49 @@ create table MatchEvents
     constraint MatchEvents_Matches_Id_fk foreign key (MatchId) references Matches (Id)
 );
 create index MatchEvents_MatchId_index on MatchEvents (MatchId);
+
+-- Cached row counts for the api. host's paginated list routes' `meta.totalRecords`, so a page
+-- request never needs its own COUNT(*) — kept in sync purely by triggers below, never written to
+-- directly by application code. Mapsets:Public excludes IsPrivate mapsets (what a non-admin caller's
+-- `GET /beatmapsets` sees); Mapsets:Total is unfiltered (what an admin caller sees). Scores are never
+-- hard-deleted (see the Scores table comment above), so Scores:Total only ever needs an insert
+-- trigger. GET /matches and GET /users (admin) don't get a counter here — see docs/architecture.md
+-- for why (their totals are already cheaply available without one).
+create table Counters
+(
+    Name  varchar(64) not null primary key,
+    Value int         default 0 not null
+);
+
+insert into Counters (Name, Value) values ('Mapsets:Total', 0), ('Mapsets:Public', 0), ('Scores:Total', 0);
+
+create trigger Counters_Mapsets_AfterInsert
+after insert on Mapsets
+begin
+    update Counters set Value = Value + 1 where Name = 'Mapsets:Total';
+    update Counters set Value = Value + 1 where Name = 'Mapsets:Public' and NEW.IsPrivate = 0;
+end;
+
+create trigger Counters_Mapsets_AfterDelete
+after delete on Mapsets
+begin
+    update Counters set Value = Value - 1 where Name = 'Mapsets:Total';
+    update Counters set Value = Value - 1 where Name = 'Mapsets:Public' and OLD.IsPrivate = 0;
+end;
+
+create trigger Counters_Mapsets_AfterUpdatePrivacy
+after update of IsPrivate on Mapsets
+when OLD.IsPrivate <> NEW.IsPrivate
+begin
+    update Counters set Value = Value + case when NEW.IsPrivate = 0 then 1 else -1 end
+    where Name = 'Mapsets:Public';
+end;
+
+create trigger Counters_Scores_AfterInsert
+after insert on Scores
+begin
+    update Counters set Value = Value + 1 where Name = 'Scores:Total';
+end;
 
 insert into Users (Id, Name, SafeName, Priv, Country, PwBcrypt)
 values (0, 'BasilBot', 'basilbot', 1, 'vn',

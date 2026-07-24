@@ -15,7 +15,7 @@ public class BeatmapTests
             mapset,
             "Hyper",
             "Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu",
-            TimeSpan.FromSeconds(120), 500, 0, 0, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5));
+            TimeSpan.FromSeconds(120), 500, 0, 0, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
     }
 
     [Fact]

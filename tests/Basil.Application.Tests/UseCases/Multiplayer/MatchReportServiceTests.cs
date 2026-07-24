@@ -80,8 +80,8 @@ public class MatchReportServiceTests
     public async Task BuildAsync_RoundWithTeamScores_WinnerIsHigherScoringTeam()
     {
         _matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-        var round = new RoundRow(10, 5, 1, 42, new string('a', 32),
-            0, 0, 0, "", "", "", "", false, 0,
+        var round = new RoundRow(10, 5, 1, new string('a', 32),
+            0, 0, 0, false, 0,
             new DateTime(2026, 1, 1, 0, 0, 5, DateTimeKind.Utc), null);
         _matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<RoundRow>)[round]);
@@ -110,8 +110,8 @@ public class MatchReportServiceTests
     public async Task BuildAsync_RoundWithoutTeams_WinnerIsTopScoringPlayer()
     {
         _matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-        var round = new RoundRow(10, 5, 1, 42, new string('a', 32),
-            0, 0, 0, "", "", "", "", false, 0,
+        var round = new RoundRow(10, 5, 1, new string('a', 32),
+            0, 0, 0, false, 0,
             new DateTime(2026, 1, 1, 0, 0, 5, DateTimeKind.Utc), null);
         _matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<RoundRow>)[round]);

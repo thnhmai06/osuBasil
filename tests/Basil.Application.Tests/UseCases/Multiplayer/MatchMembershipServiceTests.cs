@@ -554,9 +554,8 @@ public class MatchMembershipServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, int beatmapId, string mapMd5,
+        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
             GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            string beatmapArtist, string beatmapTitle, string beatmapVersion, string beatmapCreator,
             Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextRoundId++);
