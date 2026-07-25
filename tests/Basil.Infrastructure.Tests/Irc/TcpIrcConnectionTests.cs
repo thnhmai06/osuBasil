@@ -237,12 +237,12 @@ public class TcpIrcConnectionTests
             return Task.FromResult(_passwordHashes.GetValueOrDefault(id));
         }
 
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -252,7 +252,7 @@ public class TcpIrcConnectionTests
             throw new NotSupportedException();
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

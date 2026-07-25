@@ -312,11 +312,6 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
         }
 
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(0);

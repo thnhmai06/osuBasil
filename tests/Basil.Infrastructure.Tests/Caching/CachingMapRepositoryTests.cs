@@ -10,7 +10,7 @@ public class CachingMapRepositoryTests
     private static Beatmap MakeBeatmap(int id, string md5)
     {
         var mapset = new Mapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
-        return new Beatmap(md5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500, 0, 0,
+        return new Beatmap(md5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500,
             new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0), new Dictionary<string, int>());
     }
 
@@ -109,11 +109,6 @@ public class CachingMapRepositoryTests
             int amount, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
         }
 
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

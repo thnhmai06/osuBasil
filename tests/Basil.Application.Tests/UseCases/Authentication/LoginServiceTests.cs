@@ -411,7 +411,7 @@ public class LoginServiceTests
 
         await useCase.ExecuteAsync(request);
 
-        await _users.Received(1).UpdateCountryAsync(user.Id, "us", Arg.Any<CancellationToken>());
+        await _users.Received(1).UpdateCountryAsync(user.Id, Country.Us, Arg.Any<CancellationToken>());
     }
 
     [Fact]

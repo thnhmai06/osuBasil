@@ -49,7 +49,7 @@ public sealed class PlayerLogoutService(
             player.LeaveChannel(channelName);
 
             foreach (var session in sessionRegistry.All)
-                if (channel.CanRead(session.Priv))
+                if (channel.CanRead(session.Privilege))
                     session.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
         }
 

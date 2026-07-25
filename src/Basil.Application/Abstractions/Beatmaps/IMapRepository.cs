@@ -49,14 +49,6 @@ public interface IMapRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Ported from apply_beatmap_play_stats. A delta update rather than Python's read-modify-write
-    ///     (Python mutates the in-memory cached Beatmap.plays/.passes then writes the result back;
-    ///     Basil resolves a fresh Beatmap per-request instead of caching one, so a delta avoids a
-    ///     lost-update race between concurrent submissions on the same map).
-    /// </summary>
-    Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default);
-
-    /// <summary>
     ///     The highest Id currently in use (0 if the table is empty),
     ///     used to allocate local ids for beatmaps whose .osu file carries no real online id.
     /// </summary>

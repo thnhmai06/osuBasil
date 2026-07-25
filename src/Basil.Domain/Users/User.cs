@@ -14,7 +14,7 @@ public sealed partial record User(
     int Id,
     string Name,
     Country Country,
-    UserPrivileges Priv,
+    UserPrivileges Privilege,
     DateTimeOffset SilenceEnd)
 {
     /// <summary>

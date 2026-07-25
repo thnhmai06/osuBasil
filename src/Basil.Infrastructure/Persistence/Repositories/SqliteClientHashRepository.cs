@@ -53,7 +53,7 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
         var sql = """
                   SELECT ch.UserId, ch.OsuPathMd5, ch.Adapters, ch.UninstallId,
                          ch.DiskSerial, ch.LastSeenAt, ch.Occurrences,
-                         u.Name, u.Priv
+                         u.Name, u.Privilege
                   FROM ClientHashes ch
                   JOIN Users u ON ch.UserId = u.Id
                   WHERE ch.UserId != @UserId
@@ -109,12 +109,12 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
         public DateTime LastSeenAt { get; set; }
         public int Occurrences { get; set; }
         public string Name { get; set; } = "";
-        public int Priv { get; set; }
+        public int Privilege { get; set; }
 
         public ClientHashWithPlayer ToClientHashWithPlayer()
         {
             return new ClientHashWithPlayer(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
-                Occurrences, Name, (UserPrivileges)Priv);
+                Occurrences, Name, (UserPrivileges)Privilege);
         }
     }
 }

@@ -242,8 +242,6 @@ public sealed partial class BeatmapIngestionService(
                 file.OriginalFilename,
                 TimeSpan.FromMilliseconds(info.Length),
                 info.MaxCombo ?? 0,
-                existingByPath?.Plays ?? 0,
-                existingByPath?.Passes ?? 0,
                 new Difficulty(
                     mode, info.BPM, info.Difficulty.CircleSize,
                     info.Difficulty.ApproachRate, info.Difficulty.OverallDifficulty, info.Difficulty.DrainRate,

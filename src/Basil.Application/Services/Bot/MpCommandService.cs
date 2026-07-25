@@ -190,7 +190,7 @@ public sealed class MpCommandService(
 
         var match = matchRegistry.GetById(matchId);
         if (match is null) return $"No active match with id {matchId}.";
-        if (match.IsPrivate && (sender.Priv & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(sender.Id))
+        if (match.IsPrivate && (sender.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(sender.Id))
             return $"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.";
         if (sender.Match is not null) return "You're already in a match.";
         if (match.BannedIds.Contains(sender.Id)) return "You're banned from this match.";

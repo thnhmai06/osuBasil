@@ -42,8 +42,11 @@ public static class ScoreSubmissionChartsFormatter
         {
             $"beatmapId:{beatmap.Id}",
             $"beatmapSetId:{beatmap.Mapset.Id}",
-            $"beatmapPlaycount:{beatmap.Plays}",
-            $"beatmapPasscount:{beatmap.Passes}",
+            // No Plays/Passes tracking (per scope) — always 0, same convention as the pp fields above:
+            // the key is kept (preserving the protocol's fixed key/value shape for the osu! client's
+            // result-screen parser) without any Plays/Passes-specific special-casing.
+            "beatmapPlaycount:0",
+            "beatmapPasscount:0",
             $"approvedDate:{beatmap.Mapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",
             "\n",
             "chartId:beatmap",

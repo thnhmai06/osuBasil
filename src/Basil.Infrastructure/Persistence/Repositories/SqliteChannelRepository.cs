@@ -35,13 +35,13 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string Topic { get; set; } = "";
-        public int ReadPriv { get; set; }
-        public int WritePriv { get; set; }
+        public int ReadPrivilege { get; set; }
+        public int WritePrivilege { get; set; }
         public bool AutoJoin { get; set; }
 
         public Channel ToChannel()
         {
-            return new Channel(Id, Name, Topic, (UserPrivileges)ReadPriv, (UserPrivileges)WritePriv, AutoJoin);
+            return new Channel(Id, Name, Topic, (UserPrivileges)ReadPrivilege, (UserPrivileges)WritePrivilege, AutoJoin);
         }
     }
 }

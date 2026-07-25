@@ -143,7 +143,7 @@ public sealed class MatchMembershipService(
             return false;
         }
 
-        if (match.IsPrivate && (player.Priv & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(player.Id))
+        if (match.IsPrivate && (player.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(player.Id))
         {
             player.Enqueue(ServerPacketWriter.MatchJoinFail());
             return false;
@@ -152,7 +152,7 @@ public sealed class MatchMembershipService(
         int slotId;
         if (player.Id != match.HostId)
         {
-            if (password != match.Password && (player.Priv & UserPrivileges.Staff) == 0)
+            if (password != match.Password && (player.Privilege & UserPrivileges.Staff) == 0)
             {
                 player.Enqueue(ServerPacketWriter.MatchJoinFail());
                 return false;

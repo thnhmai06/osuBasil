@@ -22,7 +22,7 @@ public sealed record ClientHashWithPlayer(
     DateTime LastSeenAt,
     int Occurrences,
     string Name,
-    UserPrivileges Priv);
+    UserPrivileges Privilege);
 
 /// <summary>
 ///     Ported from app/repositories/client_hashes.py's ClientHashesRepository, scoped to what login

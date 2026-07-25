@@ -33,10 +33,15 @@ public sealed class BotBootstrapService(
 
         var configuredCountry = botOptions.Value.Country;
         if (!string.Equals(user.Country.ToAcronym(), configuredCountry, StringComparison.OrdinalIgnoreCase))
-            await users.UpdateCountryAsync(BotId, configuredCountry, cancellationToken);
+        {
+            var country = Enum.TryParse<Country>(configuredCountry, ignoreCase: true, out var parsedCountry)
+                ? parsedCountry
+                : Country.Xx;
+            await users.UpdateCountryAsync(BotId, country, cancellationToken);
+        }
 
         var loginTime = DateTimeOffset.UtcNow;
-        var session = new PlayerSession(BotId, configuredName, BotToken, user.Priv, loginTime)
+        var session = new PlayerSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
         {
             IsBot = true
         };

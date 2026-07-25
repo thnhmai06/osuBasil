@@ -197,7 +197,7 @@ internal static class BeatmapsetRoutes
         var mapset = new Mapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
         var difficulty = new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42);
         return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
-            "camellia - exit this earth's atmosphere (rlc) [extreme].osu", TimeSpan.FromSeconds(225), 1234, 57, 12,
+            "camellia - exit this earth's atmosphere (rlc) [extreme].osu", TimeSpan.FromSeconds(225), 1234,
             difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 });
     }
 

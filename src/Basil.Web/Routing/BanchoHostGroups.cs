@@ -724,7 +724,7 @@ public static class BanchoHostGroups
 
                 var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(password)));
                 var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
-                var user = await users.CreateAsync(username, pwBcrypt, "xx", cancellationToken: cancellationToken);
+                var user = await users.CreateAsync(username, pwBcrypt, Country.Xx, cancellationToken: cancellationToken);
                 if (user is null)
                     return Results.Json(
                         new { form_error = new { user = new { username = new[] { "Username already taken." } } } },

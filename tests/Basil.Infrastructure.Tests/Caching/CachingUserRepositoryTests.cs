@@ -46,7 +46,7 @@ public class CachingUserRepositoryTests
         var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()));
 
         await repo.FetchByIdAsync(7);
-        await repo.UpdateCountryAsync(7, "us");
+        await repo.UpdateCountryAsync(7, Country.Us);
         await repo.FetchByIdAsync(7);
 
         Assert.Equal(2, inner.FetchByIdCalls);
@@ -106,12 +106,12 @@ public class CachingUserRepositoryTests
             return Task.FromResult<string?>("hash");
         }
 
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -121,7 +121,7 @@ public class CachingUserRepositoryTests
             return Task.CompletedTask;
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<User?>(null);

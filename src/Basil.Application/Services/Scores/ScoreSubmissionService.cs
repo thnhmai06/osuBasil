@@ -142,8 +142,6 @@ public sealed class ScoreSubmissionService(
 
             var scoreId = await scores.CreateAsync(BuildInsertRow(score, roundId, team), cancellationToken);
 
-            if (!player.Restricted) await maps.IncrementPlayCountsAsync(beatmap.Id, score.IsPassed, cancellationToken);
-
             if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
 
             return new ScoreSubmissionOutcome(

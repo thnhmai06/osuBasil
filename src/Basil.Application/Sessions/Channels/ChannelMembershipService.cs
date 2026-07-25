@@ -18,7 +18,7 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 {
     public bool Join(PlayerSession player, ChannelSession channel)
     {
-        if (player.InChannel(channel.Name) || !channel.CanRead(player.Priv)) return false;
+        if (player.InChannel(channel.Name) || !channel.CanRead(player.Privilege)) return false;
 
         channel.Join(player.Id);
         player.JoinChannel(channel.Name);
@@ -115,7 +115,7 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
                 sessionRegistry.GetById(memberId)?.Enqueue(packet);
         else
             foreach (var session in sessionRegistry.All)
-                if (channel.CanRead(session.Priv))
+                if (channel.CanRead(session.Privilege))
                     session.Enqueue(packet);
     }
 }

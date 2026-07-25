@@ -76,8 +76,11 @@ internal static class UserRoutes
 
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(body.Password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
-            var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country ?? "xx",
-                (UserPrivileges?)body.Priv, cancellationToken);
+            var country = Enum.TryParse<Country>(body.Country ?? "xx", ignoreCase: true, out var parsedCountry)
+                ? parsedCountry
+                : Country.Xx;
+            var user = await users.CreateAsync(body.Name, pwBcrypt, country,
+                (UserPrivileges?)body.Privilege, cancellationToken);
             return user is null
                 ? Results.Conflict(new ErrorResponse("Username already exists."))
                 : Results.Json(user);
@@ -112,9 +115,15 @@ internal static class UserRoutes
             }
 
             if (body.Country is not null)
-                await users.UpdateCountryAsync(userId, body.Country, cancellationToken);
-            if (body.Priv is not null)
-                await users.UpdatePrivilegesAsync(userId, (UserPrivileges)body.Priv.Value, cancellationToken);
+            {
+                var country = Enum.TryParse<Country>(body.Country, ignoreCase: true, out var parsedCountry)
+                    ? parsedCountry
+                    : Country.Xx;
+                await users.UpdateCountryAsync(userId, country, cancellationToken);
+            }
+
+            if (body.Privilege is not null)
+                await users.UpdatePrivilegesAsync(userId, (UserPrivileges)body.Privilege.Value, cancellationToken);
 
             return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
         };
@@ -300,6 +309,6 @@ internal static class UserRoutes
     }
 }
 
-public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Priv);
+public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Privilege);
 
-public sealed record UpdateUserRequest(string? Name, string? Country, int? Priv);
+public sealed record UpdateUserRequest(string? Name, string? Country, int? Privilege);

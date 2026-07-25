@@ -14,8 +14,8 @@ public sealed class ChannelSession(
     int id,
     string name,
     string topic,
-    UserPrivileges readPriv,
-    UserPrivileges writePriv,
+    UserPrivileges readPrivilege,
+    UserPrivileges writePrivilege,
     bool autoJoin,
     string? displayName = null,
     bool instance = false)
@@ -26,8 +26,8 @@ public sealed class ChannelSession(
     public string Name { get; } = name;
     public string DisplayName { get; } = displayName ?? name;
     public string Topic { get; } = topic;
-    public UserPrivileges ReadPriv { get; } = readPriv;
-    public UserPrivileges WritePriv { get; } = writePriv;
+    public UserPrivileges ReadPrivilege { get; } = readPrivilege;
+    public UserPrivileges WritePrivilege { get; } = writePrivilege;
     public bool AutoJoin { get; } = autoJoin;
     public bool Instance { get; } = instance;
 
@@ -35,14 +35,14 @@ public sealed class ChannelSession(
 
     public IReadOnlyCollection<int> MemberIds => _members.Keys.ToArray();
 
-    public bool CanRead(UserPrivileges priv)
+    public bool CanRead(UserPrivileges privilege)
     {
-        return ReadPriv == 0 || (priv & ReadPriv) != 0;
+        return ReadPrivilege == 0 || (privilege & ReadPrivilege) != 0;
     }
 
-    public bool CanWrite(UserPrivileges priv)
+    public bool CanWrite(UserPrivileges privilege)
     {
-        return WritePriv == 0 || (priv & WritePriv) != 0;
+        return WritePrivilege == 0 || (privilege & WritePrivilege) != 0;
     }
 
     public void Join(int playerId)

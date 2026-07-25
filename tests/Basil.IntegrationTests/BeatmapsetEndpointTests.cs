@@ -81,7 +81,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
     {
         return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
-            TimeSpan.FromSeconds(100), 500, 0, 0,
+            TimeSpan.FromSeconds(100), 500,
             new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
     }
 
@@ -319,11 +319,6 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
             int offset, int amount, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
         }
 
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

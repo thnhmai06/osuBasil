@@ -72,11 +72,6 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
         }
 
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(0);

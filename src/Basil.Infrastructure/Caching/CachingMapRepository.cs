@@ -63,15 +63,6 @@ public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cach
         return inner.SearchAsync(query, mode, offset, amount, cancellationToken);
     }
 
-    public async Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-    {
-        await inner.IncrementPlayCountsAsync(mapId, passed, cancellationToken);
-        // Fires on every score submission — deliberately not looking the row up first just to also
-        // invalidate its Md5-keyed entry (that entry's Plays/Passes goes stale for at most the TTL,
-        // an acceptable trade-off for not adding a DB round-trip to this hot path).
-        cache.Remove(IdKey(mapId));
-    }
-
     public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
     {
         return inner.FetchMaxIdAsync(cancellationToken);

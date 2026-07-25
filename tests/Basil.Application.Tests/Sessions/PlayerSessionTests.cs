@@ -12,15 +12,15 @@ public class PlayerSessionTests
     }
 
     [Fact]
-    public void BanchoPriv_Unrestricted_MapsToPlayer()
+    public void BanchoPrivilege_Unrestricted_MapsToPlayer()
     {
         var session = MakeSession(UserPrivileges.Unrestricted);
 
-        Assert.Equal(ClientPrivileges.Player, session.BanchoPriv);
+        Assert.Equal(ClientPrivileges.Player, session.BanchoPrivilege);
     }
 
     [Fact]
-    public void BanchoPriv_MapsEachServerPrivilegeToItsClientEquivalent()
+    public void BanchoPrivilege_MapsEachServerPrivilegeToItsClientEquivalent()
     {
         var session = MakeSession(
             UserPrivileges.Unrestricted | UserPrivileges.Donator | UserPrivileges.Moderator
@@ -28,15 +28,15 @@ public class PlayerSessionTests
 
         var expected = ClientPrivileges.Player | ClientPrivileges.Supporter | ClientPrivileges.Moderator
                        | ClientPrivileges.Developer | ClientPrivileges.Owner;
-        Assert.Equal(expected, session.BanchoPriv);
+        Assert.Equal(expected, session.BanchoPrivilege);
     }
 
     [Fact]
-    public void BanchoPriv_NoPrivileges_IsZero()
+    public void BanchoPrivilege_NoPrivileges_IsZero()
     {
         var session = MakeSession(0);
 
-        Assert.Equal((ClientPrivileges)0, session.BanchoPriv);
+        Assert.Equal((ClientPrivileges)0, session.BanchoPrivilege);
     }
 
     [Fact]

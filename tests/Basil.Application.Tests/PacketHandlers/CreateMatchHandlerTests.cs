@@ -30,7 +30,7 @@ public class CreateMatchHandlerTests
     {
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
-        host.Priv = 0;
+        host.Privilege = 0;
         fixture.RegisterAll(host);
         var handler = new CreateMatchHandler(fixture.MatchMembership);
 

@@ -36,7 +36,7 @@ public class JoinMatchHandlerTests
         host.Dequeue();
 
         var guest = MakePlayer(2, "guest");
-        guest.Priv = 0;
+        guest.Privilege = 0;
         fixture.RegisterAll(host, guest);
         var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 

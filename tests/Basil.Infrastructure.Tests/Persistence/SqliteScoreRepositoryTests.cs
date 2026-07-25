@@ -16,14 +16,14 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 
     private async Task InsertUserAsync(int id, string name, string country = "xx", bool restricted = false)
     {
-        var priv = restricted ? 0 : (int)UserPrivileges.Unrestricted;
+        var privilege = restricted ? 0 : (int)UserPrivileges.Unrestricted;
         await using var connection = new SqliteConnection(fixture.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country)
-            VALUES (@Id, @Name, @Name, 'unused', @Priv, @Country)
+            INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country)
+            VALUES (@Id, @Name, @Name, 'unused', @Privilege, @Country)
             """,
-            new { Id = id, Name = name, Priv = priv, Country = country });
+            new { Id = id, Name = name, Privilege = privilege, Country = country });
     }
 
     private async Task<long> InsertScoreAsync(
@@ -181,7 +181,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
             await using (var connection = new SqliteConnection(connectionString))
             {
                 await connection.ExecuteAsync(
-                    "INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Priv, Country) " +
+                    "INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country) " +
                     "VALUES (500, 'pager', 'pager', 'unused', 0, 'xx')");
             }
 

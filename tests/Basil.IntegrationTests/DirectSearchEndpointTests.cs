@@ -6,6 +6,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -55,7 +56,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     {
         var mapset = new Mapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(
-            new string('0', 32), id, mapset, "Version", "file.osu", TimeSpan.FromSeconds(100), 500, 0, 0,
+            new string('0', 32), id, mapset, "Version", "file.osu", TimeSpan.FromSeconds(100), 500,
             new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
     }
 
@@ -157,12 +158,12 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.FromResult<string?>("stored-hash");
         }
 
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -172,7 +173,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -223,11 +224,6 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(SearchResult);
-        }
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
         }
 
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

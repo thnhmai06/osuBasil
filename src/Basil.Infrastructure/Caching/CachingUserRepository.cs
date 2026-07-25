@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Users;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -42,15 +43,15 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
         return inner.FetchPasswordHashAsync(id, cancellationToken);
     }
 
-    public async Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+    public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
     {
         await inner.UpdateCountryAsync(id, country, cancellationToken);
         cache.Remove(IdKey(id));
     }
 
-    public async Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
     {
-        await inner.UpdatePrivilegesAsync(id, priv, cancellationToken);
+        await inner.UpdatePrivilegesAsync(id, privilege, cancellationToken);
         cache.Remove(IdKey(id));
     }
 
@@ -68,10 +69,10 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
         cache.Remove(NameKey(name));
     }
 
-    public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+    public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
         CancellationToken cancellationToken = default)
     {
-        return inner.CreateAsync(name, pwBcrypt, country, priv, cancellationToken);
+        return inner.CreateAsync(name, pwBcrypt, country, privilege, cancellationToken);
     }
 
     /// <summary>Uncached — a list-shaped admin route, not a hot single-row lookup.</summary>

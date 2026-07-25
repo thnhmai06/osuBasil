@@ -55,7 +55,7 @@ public sealed class IrcAuthenticationService(
                     "Nickname is already in use"));
 
         var loginTime = DateTimeOffset.UtcNow;
-        var session = new PlayerSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Priv, loginTime)
+        var session = new PlayerSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
         {
             SilenceEnd = user.SilenceEnd,
             IrcConnection = connection
@@ -71,7 +71,7 @@ public sealed class IrcAuthenticationService(
 
         foreach (var channel in channelRegistry.AutoJoinChannels)
         {
-            if (!channel.CanRead(user.Priv)) continue;
+            if (!channel.CanRead(user.Privilege)) continue;
 
             channelMembership.Join(session, channel);
 
@@ -104,7 +104,7 @@ public sealed class IrcAuthenticationService(
     /// <summary>Ported from help.ppy.sh's IRC page: `@` = chat moderator, `+` = connected via external IRC client.</summary>
     private static string NamePrefix(PlayerSession member)
     {
-        if ((member.Priv & UserPrivileges.Moderator) != 0) return "@";
+        if ((member.Privilege & UserPrivileges.Moderator) != 0) return "@";
 
         return member.IrcConnection.IsExternalIrcClient ? "+" : "";
     }

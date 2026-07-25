@@ -7,6 +7,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -168,12 +169,12 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             return Task.FromResult<string?>("stored-hash");
         }
 
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -183,7 +184,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             return Task.CompletedTask;
         }
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -215,7 +216,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
         private static readonly Mapset Mapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 
         private static readonly Beatmap Beatmap = new(
-            KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0, 0, 0,
+            KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0,
             new Difficulty(GameMode.Standard, 0, 0, 0, 0, 0, 0), new Dictionary<string, int>());
 
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
@@ -238,11 +239,6 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             int amount, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
         }
 
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

@@ -35,7 +35,7 @@ public class ScoreSubmissionServiceTests
         var mapset = new Mapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
         return new Beatmap(
             new string('a', 32), 42, mapset, "c",
-            "f.osu", TimeSpan.FromSeconds(1), 500, 0, 0, new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1), new Dictionary<string, int>());
+            "f.osu", TimeSpan.FromSeconds(1), 500, new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1), new Dictionary<string, int>());
     }
 
     private PlayerSession MakePlayer(int id = 7, string name = "cookiezi")
@@ -130,7 +130,6 @@ public class ScoreSubmissionServiceTests
 
         Assert.Equal(ScoreSubmissionResultCode.NotInMultiplayer, result.Code);
         await _scores.DidNotReceive().CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
-        await _maps.DidNotReceive().IncrementPlayCountsAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         await _replayStorage.DidNotReceive()
             .WriteAsync(Arg.Any<long>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
     }
@@ -198,7 +197,6 @@ public class ScoreSubmissionServiceTests
         Assert.Equal(1, result.Result.Rank);
 
         await _scores.Received(1).CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
-        await _maps.Received(1).IncrementPlayCountsAsync(bmap.Id, true, Arg.Any<CancellationToken>());
     }
 
     [Fact]

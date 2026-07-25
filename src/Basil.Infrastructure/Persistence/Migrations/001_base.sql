@@ -11,14 +11,14 @@ create table Users
     Id            INTEGER PRIMARY KEY AUTOINCREMENT,
     Name          varchar(32)                                   not null,
     SafeName      varchar(32)                                   not null,
-    Priv          int      default 1                            not null,
+    Privilege     int      default 1                            not null,
     PwBcrypt      char(60)                                      not null,
     Country       char(2)  default 'xx'                         not null,
     SilenceEnd    datetime default '1970-01-01 00:00:00'        not null,
     constraint Users_Name_uindex unique (Name),
     constraint Users_SafeName_uindex unique (SafeName)
 );
-create index Users_Priv_index on Users (Priv);
+create index Users_Privilege_index on Users (Privilege);
 
 -- Fixed gameplay stats: seeded once with default values, never UPDATEd on score submission
 -- (server does not track singleplayer ranking/progression).
@@ -71,8 +71,6 @@ create table Beatmaps
     Filename      varchar(256)          not null,
     TotalLength   int                   not null,
     MaxCombo      int                   not null,
-    Plays         int     default 0     not null,
-    Passes        int     default 0     not null,
     Mode          int                   not null,
     Bpm           float(12, 2) default 0.00 not null,
     Cs            float(4, 2)  default 0.00 not null,
@@ -94,8 +92,8 @@ create table Channels
     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
     Name      varchar(32)           not null,
     Topic     varchar(256)          not null,
-    ReadPriv  int     default 1     not null,
-    WritePriv int     default 2     not null,
+    ReadPrivilege  int     default 1     not null,
+    WritePrivilege int     default 2     not null,
     AutoJoin  boolean default false not null,
     constraint Channels_Name_uindex unique (Name)
 );
@@ -280,7 +278,7 @@ begin
     update Counters set Value = Value + 1 where Name = 'Scores:Total';
 end;
 
-insert into Users (Id, Name, SafeName, Priv, Country, PwBcrypt)
+insert into Users (Id, Name, SafeName, Privilege, Country, PwBcrypt)
 values (0, 'BasilBot', 'basilbot', 1, 'vn',
         '_______________________my_cool_bcrypt_______________________');
 
@@ -301,6 +299,6 @@ values (0, 6);
 insert into UserStats (Id, Mode)
 values (0, 8);
 
-insert into Channels (Name, Topic, ReadPriv, WritePriv, AutoJoin)
+insert into Channels (Name, Topic, ReadPrivilege, WritePrivilege, AutoJoin)
 values ('#osu', 'General discussion.', 1, 2, true),
        ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false);

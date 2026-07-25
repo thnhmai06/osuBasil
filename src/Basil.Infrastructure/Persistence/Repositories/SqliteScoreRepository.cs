@@ -55,7 +55,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             FROM Users u
             JOIN Scores s ON u.Id = s.UserId
             WHERE s.MapMd5 = @MapMd5 AND s.Mode = @Mode
-              AND (u.Priv & @Unrestricted) != 0
+              AND (u.Privilege & @Unrestricted) != 0
             ORDER BY s.Score DESC
             LIMIT 1
             """,

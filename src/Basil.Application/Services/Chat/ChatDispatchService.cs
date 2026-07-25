@@ -55,7 +55,7 @@ public sealed class ChatDispatchService(
         CancellationToken cancellationToken)
     {
         var channel = channelRegistry.GetByName(channelName);
-        if (channel is null || !channel.Contains(sender.Id) || !channel.CanWrite(sender.Priv)) return;
+        if (channel is null || !channel.Contains(sender.Id) || !channel.CanWrite(sender.Privilege)) return;
 
         var truncated = text.Length > MaxMessageLength ? text[..MaxMessageLength] : text;
 

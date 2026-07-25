@@ -11,7 +11,7 @@ public class ScoreSubmissionChartsFormatterTests
         var mapset = new Mapset(50, "a", "b", "d",
             new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc), new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc));
         return new Beatmap(
-            "md5", 100, mapset, "c", "f.osu", TimeSpan.FromSeconds(1), 500, 10, 5,
+            "md5", 100, mapset, "c", "f.osu", TimeSpan.FromSeconds(1), 500,
             new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1), new Dictionary<string, int>());
     }
 
@@ -42,7 +42,7 @@ public class ScoreSubmissionChartsFormatterTests
         var result = ScoreSubmissionChartsFormatter.Format(score, beatmap, 42, 3, "test.local");
 
         Assert.Contains(
-            "beatmapId:100|beatmapSetId:50|beatmapPlaycount:10|beatmapPasscount:5|approvedDate:2021-05-20 10:00:00",
+            "beatmapId:100|beatmapSetId:50|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:2021-05-20 10:00:00",
             result);
         Assert.Contains("chartId:beatmap|chartUrl:https://osu.test.local/s/50|chartName:Beatmap Ranking", result);
         Assert.Contains("rankBefore:|rankAfter:3", result);

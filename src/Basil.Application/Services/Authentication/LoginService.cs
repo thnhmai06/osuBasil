@@ -92,7 +92,7 @@ public sealed class LoginService(
             return IncorrectCredentials();
 
         if (loginData.OsuVersion.Stream == OsuStream.Tourney
-            && !HasPrivileges(user.Priv, UserPrivileges.Donator, UserPrivileges.Unrestricted))
+            && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
             return new LoginResult("no",
                 ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
 
@@ -115,8 +115,8 @@ public sealed class LoginService(
             diskSignatureForBanCheck, cancellationToken);
 
         if (hardwareMatches.Count > 0
-            && (user.Priv & UserPrivileges.Verified) == 0
-            && hardwareMatches.Any(m => (m.Priv & UserPrivileges.Unrestricted) == 0))
+            && (user.Privilege & UserPrivileges.Verified) == 0
+            && hardwareMatches.Any(m => (m.Privilege & UserPrivileges.Unrestricted) == 0))
             return new LoginResult("contact-staff", Concat(
                 ServerPacketWriter.Notification("Please contact staff directly to create an account."),
                 ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
@@ -126,9 +126,9 @@ public sealed class LoginService(
         var geolocation = Geolocation.From(request.Headers) ?? GeolocationFromCountry(user.Country);
 
         if (user.Country == Country.Xx)
-            await users.UpdateCountryAsync(user.Id, geolocation.Country.ToAcronym(), cancellationToken);
+            await users.UpdateCountryAsync(user.Id, geolocation.Country, cancellationToken);
 
-        var session = new PlayerSession(user.Id, user.Name, tokenGenerator.GenerateToken(), user.Priv, loginTime)
+        var session = new PlayerSession(user.Id, user.Name, tokenGenerator.GenerateToken(), user.Privilege, loginTime)
         {
             UtcOffset = loginData.UtcOffset,
             PmPrivate = loginData.PmPrivate,
@@ -141,7 +141,7 @@ public sealed class LoginService(
         {
             ServerPacketWriter.ProtocolVersion(19),
             ServerPacketWriter.LoginReply(session.Id),
-            ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPriv | ClientPrivileges.Supporter)),
+            ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter)),
         };
 
         if (WelcomeNotification() is { } notification)
@@ -150,12 +150,12 @@ public sealed class LoginService(
         // send auto-join channel info; the client will attempt to join them.
         foreach (var channel in channelRegistry.AutoJoinChannels)
         {
-            if (!channel.CanRead(user.Priv) || channel.Name == "#lobby") continue;
+            if (!channel.CanRead(user.Privilege) || channel.Name == "#lobby") continue;
 
             data.Add(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
 
             foreach (var other in sessionRegistry.All)
-                if (channel.CanRead(other.Priv))
+                if (channel.CanRead(other.Privilege))
                     other.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
         }
 
@@ -202,11 +202,11 @@ public sealed class LoginService(
                 }
             }
 
-            if ((user.Priv & UserPrivileges.Verified) == 0)
+            if ((user.Privilege & UserPrivileges.Verified) == 0)
             {
-                var newPriv = user.Priv | UserPrivileges.Verified;
-                await users.UpdatePrivilegesAsync(user.Id, newPriv, cancellationToken);
-                session.Priv = newPriv;
+                var newPrivilege = user.Privilege | UserPrivileges.Verified;
+                await users.UpdatePrivilegesAsync(user.Id, newPrivilege, cancellationToken);
+                session.Privilege = newPrivilege;
             }
         }
         else

@@ -1,3 +1,4 @@
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Abstractions.Users;
@@ -19,14 +20,14 @@ public interface IUserRepository
     /// </summary>
     Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default);
 
-    Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default);
+    Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default);
 
-    Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default);
+    Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default);
 
     Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
 
     /// <summary>Null when Name/SafeName collides with an existing row (a concurrent registration won the race).</summary>
-    Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+    Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>For the management REST API's user listing.</summary>

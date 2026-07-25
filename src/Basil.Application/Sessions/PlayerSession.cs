@@ -13,7 +13,7 @@ namespace Basil.Application.Sessions;
 ///     Holds runtime session state: packet queue, channel memberships, spectator list, match
 ///     reference, per-mode stats, geolocation, and IRC transport bridge.
 /// </summary>
-public sealed class PlayerSession(int id, string name, string token, UserPrivileges priv, DateTimeOffset loginTime)
+public sealed class PlayerSession(int id, string name, string token, UserPrivileges privilege, DateTimeOffset loginTime)
 {
     private readonly ConcurrentDictionary<string, byte> _channels = new();
     private readonly ConcurrentQueue<byte[]> _packetQueue = new();
@@ -22,7 +22,7 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
     public int Id { get; } = id;
     public string Name { get; } = name;
     public string Token { get; } = token;
-    public UserPrivileges Priv { get; set; } = priv;
+    public UserPrivileges Privilege { get; set; } = privilege;
     public DateTimeOffset LoginTime { get; } = loginTime;
     public DateTimeOffset LastRecvTime { get; set; } = loginTime;
 
@@ -95,23 +95,23 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
 
     public string SafeName => User.MakeSafeName(Name);
 
-    public bool Restricted => (Priv & UserPrivileges.Unrestricted) == 0;
+    public bool Restricted => (Privilege & UserPrivileges.Unrestricted) == 0;
 
     /// <summary>Ported from Player.bancho_priv — maps server-side privileges to client-facing ones.</summary>
-    public ClientPrivileges BanchoPriv
+    public ClientPrivileges BanchoPrivilege
     {
         get
         {
             var result = (ClientPrivileges)0;
-            if ((Priv & UserPrivileges.Unrestricted) != 0) result |= ClientPrivileges.Player;
+            if ((Privilege & UserPrivileges.Unrestricted) != 0) result |= ClientPrivileges.Player;
 
-            if ((Priv & UserPrivileges.Donator) != 0) result |= ClientPrivileges.Supporter;
+            if ((Privilege & UserPrivileges.Donator) != 0) result |= ClientPrivileges.Supporter;
 
-            if ((Priv & UserPrivileges.Moderator) != 0) result |= ClientPrivileges.Moderator;
+            if ((Privilege & UserPrivileges.Moderator) != 0) result |= ClientPrivileges.Moderator;
 
-            if ((Priv & UserPrivileges.Administrator) != 0) result |= ClientPrivileges.Developer;
+            if ((Privilege & UserPrivileges.Administrator) != 0) result |= ClientPrivileges.Developer;
 
-            if ((Priv & UserPrivileges.Developer) != 0) result |= ClientPrivileges.Owner;
+            if ((Privilege & UserPrivileges.Developer) != 0) result |= ClientPrivileges.Owner;
 
             return result;
         }

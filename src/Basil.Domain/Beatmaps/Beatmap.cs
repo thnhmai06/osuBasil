@@ -28,8 +28,6 @@ public sealed record Beatmap(
 
     TimeSpan TotalLength,
     int MaxCombo,
-    int Plays,
-    int Passes,
     Difficulty Difficulty,
     IReadOnlyDictionary<string, int> ObjectCounts,
 
@@ -69,7 +67,7 @@ public sealed record Beatmap(
         return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
             Version == other.Version && Filename == other.Filename &&
             TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
-            Plays == other.Plays && Passes == other.Passes && Difficulty == other.Difficulty &&
+            Difficulty == other.Difficulty &&
             BackgroundFile == other.BackgroundFile &&
             ObjectCounts.Count == other.ObjectCounts.Count &&
             ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
@@ -85,8 +83,6 @@ public sealed record Beatmap(
         hash.Add(Filename);
         hash.Add(TotalLength);
         hash.Add(MaxCombo);
-        hash.Add(Plays);
-        hash.Add(Passes);
         hash.Add(Difficulty);
         hash.Add(BackgroundFile);
         foreach (var kv in ObjectCounts.OrderBy(kv => kv.Key))

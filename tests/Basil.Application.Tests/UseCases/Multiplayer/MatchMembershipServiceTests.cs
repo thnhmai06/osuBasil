@@ -171,7 +171,7 @@ public class MatchMembershipServiceTests
     {
         var host = MakePlayer(1, "host");
         var staff = MakePlayer(2, "mod");
-        staff.Priv = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
+        staff.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
         RegisterAll(host, staff);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;

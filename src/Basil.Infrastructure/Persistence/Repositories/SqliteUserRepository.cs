@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Users;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -34,20 +35,20 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id });
     }
 
-    public async Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default)
+    public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
             "UPDATE Users SET Country = @Country WHERE Id = @Id",
-            new { Id = id, Country = country });
+            new { Id = id, Country = country.ToAcronym() });
     }
 
-    public async Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default)
+    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
-            "UPDATE Users SET Priv = @Priv WHERE Id = @Id",
-            new { Id = id, Priv = (int)priv });
+            "UPDATE Users SET Privilege = @Privilege WHERE Id = @Id",
+            new { Id = id, Privilege = (int)privilege });
     }
 
     public async Task UpdateNameAsync(int id, string name, string safeName,
@@ -59,7 +60,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+    public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -68,8 +69,8 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         {
             id = await connection.ExecuteScalarAsync<int>(
                 """
-                INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Priv)
-                VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Priv);
+                INSERT INTO Users (Name, SafeName, PwBcrypt, Country, Privilege)
+                VALUES (@Name, @SafeName, @PwBcrypt, @Country, @Privilege);
                 SELECT last_insert_rowid();
                 """,
                 new
@@ -77,8 +78,8 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
                     Name = name,
                     SafeName = User.MakeSafeName(name),
                     PwBcrypt = pwBcrypt,
-                    Country = country,
-                    Priv = (int)(priv ?? (UserPrivileges.Unrestricted | UserPrivileges.Verified | UserPrivileges.Supporter))
+                    Country = country.ToAcronym(),
+                    Privilege = (int)(privilege ?? (UserPrivileges.Unrestricted | UserPrivileges.Verified | UserPrivileges.Supporter))
                 });
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT (Name/SafeName UNIQUE)
@@ -108,7 +109,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string SafeName { get; set; } = "";
-        public int Priv { get; set; }
+        public int Privilege { get; set; }
         public string Country { get; set; } = "";
         public DateTime SilenceEnd { get; set; }
 
@@ -117,7 +118,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             var country = Enum.TryParse<Basil.Domain.Login.Country>(Country, ignoreCase: true, out var parsed)
                 ? parsed
                 : Basil.Domain.Login.Country.Xx;
-            return new User(Id, Name, country, (UserPrivileges)Priv,
+            return new User(Id, Name, country, (UserPrivileges)Privilege,
                 new DateTimeOffset(DateTime.SpecifyKind(SilenceEnd, DateTimeKind.Utc)));
         }
     }

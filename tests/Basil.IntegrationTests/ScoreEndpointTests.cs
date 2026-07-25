@@ -7,6 +7,7 @@ using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.OpenApi;
@@ -207,16 +208,16 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
 
-        public Task UpdateCountryAsync(int id, string country, CancellationToken cancellationToken = default) =>
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges priv, CancellationToken cancellationToken = default) =>
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
         public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task<User?> CreateAsync(string name, string pwBcrypt, string country, UserPrivileges? priv = null,
+        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
             CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
 
         public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
@@ -243,9 +244,6 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
             int amount, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-
-        public Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
 
         public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
 

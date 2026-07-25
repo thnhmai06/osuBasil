@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 public sealed class SqliteMapRepository(string connectionString) : IMapRepository
 {
     private const string SharedColumns = """
-        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo, b.Plays, b.Passes,
+        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
         b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.ObjectCounts,
         m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
         """;
@@ -79,10 +79,10 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         await connection.ExecuteAsync(
             """
             REPLACE INTO Beatmaps (
-                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo, Plays, Passes,
+                Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo,
                 Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, ObjectCounts
             ) VALUES (
-                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo, @Plays, @Passes,
+                @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo,
                 @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @ObjectCounts
             )
             """,
@@ -95,8 +95,6 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
                 resolved.Filename,
                 TotalLength = (int)resolved.TotalLength.TotalSeconds,
                 resolved.MaxCombo,
-                resolved.Plays,
-                resolved.Passes,
                 Mode = (int)resolved.Difficulty.Mode,
                 resolved.Difficulty.Bpm,
                 resolved.Difficulty.Cs,
@@ -167,14 +165,6 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         return setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id]).ToList();
     }
 
-    public async Task IncrementPlayCountsAsync(int mapId, bool passed, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        await connection.ExecuteAsync(
-            $"UPDATE Beatmaps SET Plays = Plays + 1{(passed ? ", Passes = Passes + 1" : "")} WHERE Id = @MapId",
-            new { MapId = mapId });
-    }
-
     public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -218,8 +208,6 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public string Filename { get; set; } = "";
         public int TotalLength { get; set; }
         public int MaxCombo { get; set; }
-        public int Plays { get; set; }
-        public int Passes { get; set; }
         public int Mode { get; set; }
         public double Bpm { get; set; }
         public double Cs { get; set; }
@@ -236,7 +224,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
                 ?? new Dictionary<string, int>();
             return new Beatmap(
                 Md5, Id, mapset, Version, Filename,
-                TimeSpan.FromSeconds(TotalLength), MaxCombo, Plays, Passes,
+                TimeSpan.FromSeconds(TotalLength), MaxCombo,
                 new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr),
                 objectCounts, BackgroundFile);
         }

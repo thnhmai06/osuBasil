@@ -14,7 +14,7 @@ public static class PacketBuilders
     {
         return ServerPacketWriter.UserPresence(
             session.Id, session.Name, session.UtcOffset, (int)session.Geoloc.Country,
-            (int)session.BanchoPriv, (int)session.Status.Mode,
+            (int)session.BanchoPrivilege, (int)session.Status.Mode,
             session.Geoloc.Longitude, session.Geoloc.Latitude, session.CurrentStats?.Rank ?? 0);
     }
 

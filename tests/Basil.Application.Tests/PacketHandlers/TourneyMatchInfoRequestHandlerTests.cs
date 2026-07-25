@@ -35,7 +35,7 @@ public class TourneyMatchInfoRequestHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         var requester = MakePlayer(2, "req");
-        requester.Priv = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
+        requester.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
         fixture.RegisterAll(host, requester);
         var match = fixture.CreateMatch(host);
         var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry);
