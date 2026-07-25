@@ -15,9 +15,9 @@ public static class UserBriefResolver
         IUserRepository users, CancellationToken cancellationToken = default)
     {
         var session = sessionRegistry.GetById(userId);
-        if (session is not null) return new UserBrief(session.Id, session.Name, session.Geoloc.Country.ToAcronym());
+        if (session is not null) return new UserBrief(session.Id, session.Name, session.Geoloc.Country);
 
         var user = await users.FetchByIdAsync(userId, cancellationToken);
-        return user is null ? null : new UserBrief(user.Id, user.Name, user.Country.ToAcronym());
+        return user is null ? null : new UserBrief(user.Id, user.Name, user.Country);
     }
 }

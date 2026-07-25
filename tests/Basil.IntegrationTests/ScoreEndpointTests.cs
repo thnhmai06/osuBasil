@@ -82,7 +82,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var body = envelope!.Data;
         Assert.NotNull(body);
         Assert.Equal(42, body!.Id);
-        Assert.Equal(900_000, body.Score);
+        Assert.Equal(900_000, body.TotalScore);
         Assert.Equal(7, body.User.Id);
     }
 
@@ -118,7 +118,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
     }
 
-    private sealed record ScoreShape(long Id, long Score, UserBriefShape User);
+    private sealed record ScoreShape(long Id, long TotalScore, UserBriefShape User);
 
     private sealed record UserBriefShape(int Id, string Name, string Country);
 

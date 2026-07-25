@@ -108,7 +108,10 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         response.EnsureSuccessStatusCode();
         var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
         var items = envelope.GetProperty("data").EnumerateArray().ToList();
-        Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id && item.GetProperty("isOpen").GetBoolean());
+        // "online" status means the match is currently live -- reflected by a non-null `live` object
+        // (isOpen was dropped in the Phase 2 record redesign; MatchListItem.Live replaces it).
+        Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id &&
+            item.GetProperty("live").ValueKind != JsonValueKind.Null);
     }
 
     [Fact]

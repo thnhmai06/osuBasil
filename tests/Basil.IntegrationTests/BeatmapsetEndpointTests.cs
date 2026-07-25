@@ -150,7 +150,9 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("\"version\":\"Normal\"", body);
-        Assert.Contains("\"filename\":\"diff.osu\"", body);
+        // filename is deliberately never serialized (Phase 2's BeatmapView drops it — internal-only,
+        // still used server-side for ingestion/`GET /web/maps/{filename}`).
+        Assert.DoesNotContain("\"filename\"", body);
     }
 
     // ---- GET /beatmapsets/{mapsetId}/{beatmapId}/download ----

@@ -3,6 +3,7 @@ using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Users;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
@@ -37,14 +38,14 @@ internal static class UserRoutes
         var admin = group.MapGroup("/users").RequireAuthorization(AdminKeyDefaults.Policy);
 
         admin.MapGet("", async (IUserRepository users, CancellationToken cancellationToken) =>
-            Results.Json(await users.FetchAllAsync(cancellationToken)))
+            Results.Json((await users.FetchAllAsync(cancellationToken)).Select(u => u.ToView()).ToList()))
             .WithGroupName("basilapi")
             .WithName("listUsers")
             .WithSummary("List Users")
             .WithDescription("Returns every user row as a JSON array, unfiltered and unpaged." + AdminKeyNote)
             .WithTags("Users")
-            .Produces<IReadOnlyList<User>>()
-            .WithExample(StatusCodes.Status200OK, new List<User> { SampleUser() });
+            .Produces<IReadOnlyList<UserView>>()
+            .WithExample(StatusCodes.Status200OK, new List<UserView> { SampleUser().ToView() });
 
         // Public outer route so a non-numeric {idOrName} can be accepted at all — the numeric branch
         // still enforces the admin policy manually (RequireAuthorization can't attach to a route
@@ -60,8 +61,8 @@ internal static class UserRoutes
                 "to the canonical `/users/{id}` form; a numeric value is served directly. 404 if no user " +
                 "with this id/name exists." + AdminKeyNote)
             .WithTags("Users")
-            .Produces<User>()
-            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .Produces<UserView>()
+            .WithExample(StatusCodes.Status200OK, SampleUser().ToView())
             .Produces(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -263,7 +264,7 @@ internal static class UserRoutes
                 "302-redirected to the canonical form. Public, no authentication.")
             .WithTags("Users")
             .Produces<PlayerInputFrame>()
-            .WithExample(StatusCodes.Status200OK, new PlayerInputFrame(new UserBrief(7, "Alice", "us"), "QUJD"))
+            .WithExample(StatusCodes.Status200OK, new PlayerInputFrame(new UserBrief(7, "Alice", Country.Us), "QUJD"))
             .Produces(StatusCodes.Status400BadRequest);
     }
 
@@ -279,7 +280,7 @@ internal static class UserRoutes
         if (!context.User.IsInRole(AdminKeyDefaults.Role)) return Results.Unauthorized();
 
         var user = await users.FetchByIdAsync(userId, cancellationToken);
-        return user is null ? Results.NotFound() : Results.Json(user);
+        return user is null ? Results.NotFound() : Results.Json(user.ToView());
     }
 
     private static IResult HandleGetAvatar(int userId, HttpContext context, IOptions<StorageOptions> storage)

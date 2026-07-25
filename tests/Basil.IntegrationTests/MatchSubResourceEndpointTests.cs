@@ -297,7 +297,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     // ---- /slots ----
 
     [Fact]
-    public async Task Slots_Get_ReturnsAllSixteenIndicesAsDictKeys()
+    public async Task Slots_Get_ReturnsSixteenIndexedEntries()
     {
         var client = _factory.CreateClient();
         var matchId = await CreateMatchAsync(client);
@@ -306,8 +306,9 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        var slots = body.GetProperty("data").GetProperty("slots");
-        for (var i = 0; i < 16; i++) Assert.True(slots.TryGetProperty(i.ToString(), out _));
+        var slots = body.GetProperty("data").GetProperty("slots").EnumerateArray().ToList();
+        Assert.Equal(16, slots.Count);
+        for (var i = 0; i < 16; i++) Assert.Equal(i, slots[i].GetProperty("index").GetInt32());
     }
 
     [Fact]

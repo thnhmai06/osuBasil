@@ -1,10 +1,14 @@
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Json;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Web.Auth;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
@@ -22,7 +26,10 @@ namespace Basil.Web.Routing;
 internal static class MatchSubResourceRoutes
 {
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new CountryJsonConverter() }
+    };
 
     /// <summary>EventSource always sends this — the same content-negotiation convention `GET /matches/{matchId}` itself uses.</summary>
     private static bool WantsSse(HttpContext context)
@@ -85,7 +92,7 @@ internal static class MatchSubResourceRoutes
                 "authentication.")
             .WithTags("Match Hosts")
             .Produces<MatchHostView>()
-            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", "us")))
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/hosts", async (int matchId, TargetUserIdBody body,
@@ -119,7 +126,7 @@ internal static class MatchSubResourceRoutes
             .WithTags("Match Hosts")
             .Produces<MatchHostView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", "us")))
+            .WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -180,7 +187,7 @@ internal static class MatchSubResourceRoutes
                 "(event name `refs`) instead. 404 if the match isn't currently live. Public, no authentication.")
             .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/refs", async (int matchId, TargetUserIdsBody body,
@@ -217,7 +224,7 @@ internal static class MatchSubResourceRoutes
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -253,7 +260,7 @@ internal static class MatchSubResourceRoutes
             .WithTags("Match Referees")
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie"), new UserBrief(9, "Carol", "us")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie), new UserBrief(9, "Carol", Country.Us)]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 21 is required and must be online."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -297,7 +304,7 @@ internal static class MatchSubResourceRoutes
             .Produces<MatchRefereesView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin", "ie")]))
+            .WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin", Country.Ie)]))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not a referee of this match."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Refusing to leave the match with no referees."))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -333,7 +340,7 @@ internal static class MatchSubResourceRoutes
                 "authentication.")
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
@@ -363,7 +370,7 @@ internal static class MatchSubResourceRoutes
                 "404 if the match isn't currently live." + AdminKeyNote)
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, TargetUserIdsBody body,
@@ -393,7 +400,7 @@ internal static class MatchSubResourceRoutes
                 "currently live." + AdminKeyNote)
             .WithTags("Match Bans")
             .Produces<MatchBansView>()
-            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", "ca"), new UserBrief(22, "Trent", "au")]))
+            .WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca), new UserBrief(22, "Trent", Country.Au)]))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, int? userId, IMatchRegistry matchRegistry,
@@ -582,8 +589,8 @@ internal static class MatchSubResourceRoutes
             .WithName("getMatchSlots")
             .WithSummary("Get Match Slots")
             .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` returns `{ slots: " +
-                "{ \"0\": { user, team, locked }, ..., \"15\": {...} } }` — every slot 0-15 always present " +
-                "as a dict key, `user` a `{ id, name, country }` embed or null when empty; `Accept: " +
+                "[{ index, user, status, team, mods, ready, loaded }, ...] }` — always 16 entries (index " +
+                "0-15), `user` a `{ id, name, country }` embed or null when empty; `Accept: " +
                 "text/event-stream` opens a full-then-delta SSE stream (event name `slots`) instead. 404 if " +
                 "the match isn't currently live. Public, no authentication.")
             .WithTags("Match Slots")
@@ -600,14 +607,14 @@ internal static class MatchSubResourceRoutes
             .WithGroupName("basilapi")
             .WithName("replaceMatchSlots")
             .WithSummary("Replace Match Slots")
-            .WithDescription("Body: `{ slots: { \"<index>\": { userId?, team?, locked? } } }` — every " +
-                "currently-seated player's id must appear exactly once across the payload (reassignment/" +
-                "team/lock only, nobody may be silently added or dropped). A `team` value other than the " +
-                "literal `\"Red\"`/`\"Blue\"` (including omitted) leaves that slot's existing team unchanged. " +
-                "409 (`PlayerCountMismatch`) if the payload's player set doesn't match the match's current " +
-                "occupants exactly, or (`UnknownUserId`) if any `userId` isn't currently seated somewhere in " +
-                "this match; 400 (`SlotOccupiedAndLocked`) if an entry sets both `userId` and `locked: true`. " +
-                "404 if the match isn't currently live." + AdminKeyNote)
+            .WithDescription("Body: `{ slots: { \"<index>\": { userId?, team?, locked? } } }` (request shape " +
+                "unchanged — Phase 3) — every currently-seated player's id must appear exactly once across " +
+                "the payload (reassignment/team/lock only, nobody may be silently added or dropped). A " +
+                "`team` value other than the literal `\"Red\"`/`\"Blue\"` (including omitted) leaves that " +
+                "slot's existing team unchanged. 409 (`PlayerCountMismatch`) if the payload's player set " +
+                "doesn't match the match's current occupants exactly, or (`UnknownUserId`) if any `userId` " +
+                "isn't currently seated somewhere in this match; 400 (`SlotOccupiedAndLocked`) if an entry " +
+                "sets both `userId` and `locked: true`. 404 if the match isn't currently live." + AdminKeyNote)
             .WithTags("Match Slots")
             .Produces<MatchSlotsView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -640,12 +647,13 @@ internal static class MatchSubResourceRoutes
 
     private static MatchSlotsView SampleSlots()
     {
-        var views = new Dictionary<int, SlotView>();
-        for (var i = 0; i < 16; i++) views[i] = new SlotView(null, null, false);
-        views[0] = new SlotView(new UserBrief(7, "Alice", "us"), "Red", false);
-        views[1] = new SlotView(new UserBrief(9, "Carol", "ca"), "Blue", false);
-        views[15] = new SlotView(null, null, true);
-        return new MatchSlotsView(views);
+        var slots = new List<MatchSlotView>(16);
+        for (var i = 0; i < 16; i++)
+            slots.Add(new MatchSlotView(i, null, SlotStatus.Open, MatchTeam.Neutral, Mods.NoMod, false, false));
+        slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.NotReady, MatchTeam.Red, Mods.NoMod, false, false);
+        slots[1] = new MatchSlotView(1, new UserBrief(9, "Carol", Country.Ca), SlotStatus.Ready, MatchTeam.Blue, Mods.NoMod, true, false);
+        slots[15] = new MatchSlotView(15, null, SlotStatus.Locked, MatchTeam.Neutral, Mods.NoMod, false, false);
+        return new MatchSlotsView(slots);
     }
 
     private static async Task<IResult> HandleSlotsWrite(int matchId, SlotsBody body, bool isFullReplace,

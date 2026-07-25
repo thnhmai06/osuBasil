@@ -56,8 +56,8 @@ public sealed class MatchSession(
     ///     One <see cref="SnapshotChannel{T}" /> per slot (0-based, matching <see cref="Slots" />), for
     ///     the `GET /match/{id}/live/{slotIndex}` channel's "slot" sub-event.
     /// </summary>
-    public IReadOnlyList<SnapshotChannel<MatchLiveSlot>> SlotSnapshots { get; } =
-        [.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchLiveSlot>())];
+    public IReadOnlyList<SnapshotChannel<MatchSlotView>> SlotSnapshots { get; } =
+        [.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchSlotView>())];
 
     /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/hosts` channel.</summary>
     public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new();

@@ -1049,25 +1049,26 @@ public static class BanchoHostGroups
 
     private static MatchReport SampleMatchReport()
     {
+        var created = DateTime.Parse("2026-06-01T10:00:00Z");
         var started = DateTime.Parse("2026-07-20T12:00:00Z");
         var ended = DateTime.Parse("2026-07-20T12:04:30Z");
-        var live = new MatchReportLiveInfo(
-            new UserBrief(7, "Alice", "vn"), [new UserBrief(8, "Bob", "gb")],
-            new Dictionary<int, MatchLiveSlot>
-            {
-                [0] = new MatchLiveSlot(new UserBrief(7, "Alice", "vn"), "NotReady", "Red", 0),
-                [1] = new MatchLiveSlot(new UserBrief(9, "Carol", "us"), "NotReady", "Blue", 0)
-            },
-            null,
-            654, "d41d8cd98f00b204e9800998ecf8427e", GameMode.Standard, MatchWinCondition.ScoreV2,
-            MatchTeamType.TeamVs, 0, false, false);
 
-        var score = new MatchReportScore(new UserBrief(7, "Alice", "vn"), "Red", 0, 4_850_213, 98.42, 1234, 720, 45, 3, 2, 12, 5,
-            "A", false, ended);
-        var round = new MatchReportRound(0, "d41d8cd98f00b204e9800998ecf8427e", null,
-            0, 3, 2, 0, false, started, ended,
-            new UserBrief(7, "Alice", "vn"), "Red", "score", 1_200_000, [score]);
-        var evt = new MatchReportEvent(0, "Created", new UserBrief(7, "Alice", "vn"), null, started, null);
+        var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
+            created, false, false, RankedStatus.Loved, 1);
+        var difficulty = new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42);
+        var beatmap = new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme", TimeSpan.FromSeconds(225),
+            1234, difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 },
+            false, beatmapset);
+
+        var live = new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+            Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard, false, beatmap);
+
+        var score = new MatchReportScore(new UserBrief(7, "Alice", Country.Vn), MatchTeam.Red, Mods.NoMod, 4_850_213,
+            98.42, 1234, 720, 45, 3, 2, 12, 5, Grade.A, false, ended);
+        var round = new MatchReportRound(0, "d41d8cd98f00b204e9800998ecf8427e", beatmap,
+            GameMode.Standard, MatchWinCondition.ScoreV2, MatchTeamType.TeamVs, Mods.NoMod, false, started, ended,
+            new UserBrief(7, "Alice", Country.Vn), MatchTeam.Red, MatchWinCondition.Score, 1_200_000, [score]);
+        var evt = new MatchReportEvent(MatchEventType.Created, new UserBrief(7, "Alice", Country.Vn), null, started, null);
 
         return new MatchReport(42, "Grand Finals: Alpha vs Bravo", started, null, live, [evt], [round]);
     }

@@ -20,7 +20,7 @@ public sealed record Beatmap(
     #region Metadata
 
     string Version,
-    string Filename,
+    [property: JsonIgnore] string Filename,
 
     #endregion
 

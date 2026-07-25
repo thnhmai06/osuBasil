@@ -2,6 +2,7 @@ using System.Net;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configuration;
+using Basil.Application.Json;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
@@ -29,6 +30,7 @@ public sealed class Program
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddApplication();
+        ConfigureJson(builder);
         ConfigureOpenApi(builder);
         ConfigureAuth(builder);
         ConfigureCors(builder);
@@ -97,6 +99,16 @@ public sealed class Program
 
         builder.Services.AddAuthorization(options =>
             options.AddPolicy(AdminKeyDefaults.Policy, policy => policy.RequireRole(AdminKeyDefaults.Role)));
+    }
+
+    // Registers CountryJsonConverter globally (the only enum with a non-default wire form — see its
+    // own doc comment) for every `Results.Json(...)` call that doesn't pass its own
+    // JsonSerializerOptions. Every other enum keeps System.Text.Json's default numeric serialization —
+    // no JsonStringEnumConverter anywhere.
+    private static void ConfigureJson(WebApplicationBuilder builder)
+    {
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(new CountryJsonConverter()));
     }
 
     private const string CorsPolicyName = "ApiCors";

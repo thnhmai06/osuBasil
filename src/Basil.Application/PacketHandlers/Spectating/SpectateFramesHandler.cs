@@ -3,7 +3,6 @@ using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Spectating;
-using Basil.Domain.Login;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Spectating;
@@ -30,7 +29,7 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
         foreach (var spectator in player.Spectators) spectator.Enqueue(packet);
 
         var payload = JsonSerializer.SerializeToUtf8Bytes(
-            new PlayerInputFrame(new UserBrief(player.Id, player.Name, player.Geoloc.Country.ToAcronym()),
+            new PlayerInputFrame(new UserBrief(player.Id, player.Name, player.Geoloc.Country),
                 Convert.ToBase64String(rawData)));
         playerInputEvents.PublishInput(player.Id, payload);
 

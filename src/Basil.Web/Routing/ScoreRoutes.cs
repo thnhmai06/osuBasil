@@ -1,10 +1,12 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Scores;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Web.OpenApi;
@@ -92,40 +94,10 @@ internal static class ScoreRoutes
         var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users, cancellationToken);
         var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, maps, cancellationToken);
 
-        return new ScoreDetailView(row.Id, row.RoundId, row.Team, row.MapMd5, beatmap, row.Score, row.Accuracy,
-            row.MaxCombo, row.Mods, row.N300, row.N100, row.N50, row.NMiss, row.NGeki, row.NKatu, row.Grade,
-            row.Mode, row.PlayTime, row.TimeElapsed, row.ClientFlags, user, row.Perfect, row.SubmittedAt);
+        return new ScoreDetailView(row.Id, user, beatmap!, row.Mode, row.Mods, row.Score, row.Accuracy,
+            row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
+            Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
     }
-
-    /// <summary>
-    ///     Wire shape for `GET /scores` and `GET /scores/{scoreId}` — reuses <see cref="ScoreRow" />'s
-    ///     fields but replaces bare `userId` with the resolved `user` embed and adds `beatmap` (null once
-    ///     `mapMd5` no longer resolves), replacing the old `isInvalidated` boolean with that same signal.
-    /// </summary>
-    public sealed record ScoreDetailView(
-        long Id,
-        int? RoundId,
-        MatchTeam? Team,
-        string MapMd5,
-        Beatmap? Beatmap,
-        long Score,
-        double Accuracy,
-        int MaxCombo,
-        Mods Mods,
-        int N300,
-        int N100,
-        int N50,
-        int NMiss,
-        int NGeki,
-        int NKatu,
-        string Grade,
-        GameMode Mode,
-        DateTime PlayTime,
-        int TimeElapsed,
-        ClientFlags ClientFlags,
-        UserBrief User,
-        bool Perfect,
-        DateTime SubmittedAt);
 
     private static ScoreDetailView SampleScoreDetail()
     {
@@ -134,9 +106,15 @@ internal static class ScoreRoutes
             DateTime.Parse("2026-07-20T12:34:56Z"), 185, ClientFlags.Clean, 9, false,
             "3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"));
 
-        return new ScoreDetailView(row.Id, row.RoundId, row.Team, row.MapMd5, null, row.Score, row.Accuracy,
-            row.MaxCombo, row.Mods, row.N300, row.N100, row.N50, row.NMiss, row.NGeki, row.NKatu, row.Grade,
-            row.Mode, row.PlayTime, row.TimeElapsed, row.ClientFlags, new UserBrief(9, "Carol", "us"), row.Perfect,
-            row.SubmittedAt);
+        var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
+            DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
+            RankedStatus.Loved, 1);
+        var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme", TimeSpan.FromSeconds(225), 1234,
+            new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42),
+            new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false, beatmapset);
+
+        return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,
+            row.Score, row.Accuracy, row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
+            Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
     }
 }

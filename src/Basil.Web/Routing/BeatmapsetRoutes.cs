@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
@@ -54,11 +55,12 @@ internal static class BeatmapsetRoutes
             .WithGroupName("basilapi")
             .WithName("getBeatmapset")
             .WithSummary("Get Beatmapset")
-            .WithDescription("Returns `{ id, artist, title, creator, createdAt, lastUpdate, isFrozen, " +
-                "isPrivate, beatmaps }` — `beatmaps` is the full list of difficulties under this set, each " +
-                "the real domain `Beatmap` object (nested `Mapset`/`Difficulty`, same shape `GET " +
-                "/beatmapsets/{mapsetId}/{beatmapId}` returns for one). 404 if the mapset doesn't exist, or " +
-                "(for a non-admin caller) it's private. Public, with a soft admin elevation.")
+            .WithDescription("Returns `{ id, artist, title, creator, lastUpdate, createdAt, isFrozen, " +
+                "isPrivate, status, beatmaps }` — `beatmaps` is the full list of difficulties under this " +
+                "set, each a `BeatmapInSet` (no parent beatmapset embed, unlike `GET " +
+                "/beatmapsets/{mapsetId}/{beatmapId}`'s `BeatmapDetail`, to avoid the cycle). 404 if the " +
+                "mapset doesn't exist, or (for a non-admin caller) it's private. Public, with a soft admin " +
+                "elevation.")
             .WithTags("Beatmapsets")
             .Produces<BeatmapsetDetail>()
             .WithExample(StatusCodes.Status200OK, SampleDetail())
@@ -121,15 +123,15 @@ internal static class BeatmapsetRoutes
             .WithGroupName("basilapi")
             .WithName("getBeatmap")
             .WithSummary("Get Beatmap")
-            .WithDescription("Returns the real domain `Beatmap` object directly (nested `Mapset`/`Difficulty`, " +
-                "per-mode `objectCounts`, `length`) — the same shape each entry of `GET " +
-                "/beatmapsets/{mapsetId}`'s `beatmaps` list uses. Never includes the internal background-" +
-                "image filename (see `GET .../background` instead). 404 if the beatmap doesn't exist, " +
-                "doesn't belong to this mapset, or the parent mapset is private and the caller isn't admin. " +
-                "Public, with a soft admin elevation.")
+            .WithDescription("Returns a `BeatmapDetail` (difficulty/object-count metadata plus the parent " +
+                "`beatmapset` embed) — unlike each entry of `GET /beatmapsets/{mapsetId}`'s `beatmaps` list " +
+                "(a `BeatmapInSet`, no parent embed, to avoid the beatmap-in-set-in-beatmap cycle). Never " +
+                "includes the internal filename/background-image filename (see `GET .../background` " +
+                "instead). 404 if the beatmap doesn't exist, doesn't belong to this mapset, or the parent " +
+                "mapset is private and the caller isn't admin. Public, with a soft admin elevation.")
             .WithTags("Beatmapsets")
-            .Produces<Beatmap>()
-            .WithExample(StatusCodes.Status200OK, SampleBeatmap())
+            .Produces<BeatmapDetail>()
+            .WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
@@ -181,14 +183,14 @@ internal static class BeatmapsetRoutes
     {
         var created = DateTime.Parse("2026-06-01T10:00:00Z");
         return new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created,
-            false, false);
+            false, false, RankedStatus.Loved, 1);
     }
 
     private static BeatmapsetDetail SampleDetail()
     {
         var s = SampleSummary();
-        return new BeatmapsetDetail(s.Id, s.Artist, s.Title, s.Creator, s.CreatedAt, s.LastUpdate, s.IsFrozen,
-            s.IsPrivate, [SampleBeatmap()]);
+        return new BeatmapsetDetail(s.Id, s.Artist, s.Title, s.Creator, s.LastUpdate, s.CreatedAt, s.IsFrozen,
+            s.IsPrivate, s.Status, [SampleBeatmap().ToInSet()]);
     }
 
     private static Beatmap SampleBeatmap()
@@ -203,28 +205,24 @@ internal static class BeatmapsetRoutes
 
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
-    private sealed record BeatmapsetSummary(int Id, string Artist, string Title, string Creator, DateTime CreatedAt,
-        DateTime LastUpdate, bool IsFrozen, bool IsPrivate);
-
-    private sealed record BeatmapsetDetail(int Id, string Artist, string Title, string Creator, DateTime CreatedAt,
-        DateTime LastUpdate, bool IsFrozen, bool IsPrivate, IReadOnlyList<Beatmap> Beatmaps);
-
     public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
 
     private sealed record IngestResult(int Ingested);
 
     private static async Task<IResult> HandleList([FromQuery] int? page, [FromQuery] int? pageSize,
-        HttpContext context, IMapsetRepository mapsets, CancellationToken cancellationToken)
+        HttpContext context, IMapsetRepository mapsets, IMapRepository maps, CancellationToken cancellationToken)
     {
         var (p, ps) = Pagination.Normalize(page, pageSize);
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
         var overqueried = await mapsets.FetchPageAsync((p - 1) * ps, ps + 1, !isAdmin, cancellationToken);
         var totalRecords = await mapsets.FetchCountAsync(isAdmin, cancellationToken);
-        var items = overqueried
-            .Select(m => new BeatmapsetSummary(m.Id, m.Artist, m.Title, m.Creator, m.CreatedAt, m.LastUpdate,
-                m.IsFrozen, m.IsPrivate))
-            .ToList();
+        var items = new List<BeatmapsetSummary>(overqueried.Count);
+        foreach (var m in overqueried)
+        {
+            var beatmapCount = (await maps.FetchAllBySetIdAsync(m.Id, isAdmin, cancellationToken)).Count;
+            items.Add(m.ToSummary(beatmapCount));
+        }
 
         return Results.Json(Pagination.Trim(items, p, ps, totalRecords));
     }
@@ -264,13 +262,7 @@ internal static class BeatmapsetRoutes
         if (mapset.IsPrivate && !isAdmin) return Results.NotFound();
 
         var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
-        return Results.Json(BuildDetail(mapset, beatmaps));
-    }
-
-    private static BeatmapsetDetail BuildDetail(Mapset mapset, IReadOnlyList<Beatmap> beatmaps)
-    {
-        return new BeatmapsetDetail(mapset.Id, mapset.Artist, mapset.Title, mapset.Creator, mapset.CreatedAt,
-            mapset.LastUpdate, mapset.IsFrozen, mapset.IsPrivate, beatmaps);
+        return Results.Json(mapset.ToDetail(beatmaps));
     }
 
     private static async Task<IResult> HandleReplace(int mapsetId, HttpContext context, IMapsetRepository mapsets,
@@ -342,7 +334,7 @@ internal static class BeatmapsetRoutes
         var updated = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
         var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, includePrivate: true,
             cancellationToken: cancellationToken);
-        return Results.Json(BuildDetail(updated!, beatmaps));
+        return Results.Json(updated!.ToDetail(beatmaps));
     }
 
     private static async Task<IResult> HandleBeatmapInfo(int mapsetId, int beatmapId, HttpContext context,
@@ -353,7 +345,9 @@ internal static class BeatmapsetRoutes
             cancellationToken: cancellationToken);
         if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
-        return Results.Json(bmap);
+        var siblings = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+        var beatmapset = bmap.Mapset.ToSummary(siblings.Count);
+        return Results.Json(bmap.ToDetail(beatmapset));
     }
 
     private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -18,7 +19,10 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class OpenApiExampleExtensions
 {
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new CountryJsonConverter() }
+    };
 
     public static RouteHandlerBuilder WithExample(this RouteHandlerBuilder builder, int statusCode, object example)
     {

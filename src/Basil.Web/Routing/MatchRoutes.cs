@@ -2,12 +2,15 @@ using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Json;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
@@ -43,7 +46,8 @@ internal static class MatchRoutes
             .WithTags("Matches")
             .Produces<PagedResult<MatchListItem>>()
             .WithExample(StatusCodes.Status200OK, new PagedResult<MatchListItem>(1, 50, 1,
-                [new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null, true, false)]));
+                [new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null,
+                    SampleRoomLive())]));
 
         group.MapPost("/matches", HandleCreate)
             .RequireAuthorization(AdminKeyDefaults.Policy)
@@ -143,8 +147,9 @@ internal static class MatchRoutes
                 "event name\" at a single 200 status without misrepresenting `slot` callers. Public, no " +
                 "authentication.")
             .WithTags("Match Live")
-            .Produces<MatchLiveSlot>()
-            .WithExample(StatusCodes.Status200OK, new MatchLiveSlot(new UserBrief(7, "Alice", "us"), "Playing", "Red", 0))
+            .Produces<MatchSlotView>()
+            .WithExample(StatusCodes.Status200OK,
+                new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red, Mods.NoMod, false, true))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapMatchSubResourceRoutes();
@@ -152,15 +157,15 @@ internal static class MatchRoutes
 
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
-
-    private sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, bool IsOpen,
-        bool IsPrivate);
+    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new CountryJsonConverter() }
+    };
 
     private static async Task<IResult> HandleList(
         [FromQuery] string? status, [FromQuery] int? page, [FromQuery] int? pageSize,
         HttpContext context, IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
-        CancellationToken cancellationToken)
+        IMapRepository maps, CancellationToken cancellationToken)
     {
         var (p, ps) = Pagination.Normalize(page, pageSize);
         var mode = (status ?? "online").ToLowerInvariant();
@@ -168,7 +173,7 @@ internal static class MatchRoutes
         var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
         var rows = await matchPersistence.FetchAllMatchesAsync(cancellationToken);
-        var items = rows
+        var filtered = rows
             .Select(row => (Row: row, Live: matchRegistry.GetByDbId(row.Id)))
             .Where(t =>
             {
@@ -178,9 +183,14 @@ internal static class MatchRoutes
                 return !isOpen || !t.Live!.IsPrivate || isAdmin;
             })
             .OrderByDescending(t => t.Row.Id)
-            .Select(t => new MatchListItem(t.Row.Id, t.Row.Name, t.Row.CreatedAt, t.Row.EndedAt,
-                t.Live is not null, t.Live?.IsPrivate ?? false))
             .ToList();
+
+        var items = new List<MatchListItem>(filtered.Count);
+        foreach (var t in filtered)
+        {
+            var live = t.Live is not null ? await MatchLiveSnapshotBuilder.BuildRoomLive(t.Live, maps, cancellationToken) : null;
+            items.Add(new MatchListItem(t.Row.Id, t.Row.Name, t.Row.CreatedAt, t.Row.EndedAt, live));
+        }
 
         var overqueried = items.Skip((p - 1) * ps).Take(ps + 1).ToList();
         return Results.Json(Pagination.Trim(overqueried, p, ps, items.Count));
@@ -307,9 +317,28 @@ internal static class MatchRoutes
     private static MatchSettingsView SampleSettings()
     {
         return new MatchSettingsView(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
-            "Camellia - Exit This Earth's Atmosphere [Extreme]", 0, false,
-            MatchTeamType.TeamVs, MatchWinCondition.ScoreV2,
-            new UserBrief(7, "Alice", "us"), [new UserBrief(8, "Bob", "gb"), new UserBrief(13, "Erin", "ie")], null);
+            Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard,
+            new UserBrief(7, "Alice", Country.Us),
+            [new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)],
+            SampleBeatmap());
+    }
+
+    private static MatchRoomLive SampleRoomLive()
+    {
+        return new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+            Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard,
+            true, SampleBeatmap());
+    }
+
+    private static BeatmapDetail SampleBeatmap()
+    {
+        var created = DateTime.Parse("2026-06-01T10:00:00Z");
+        var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
+            created, false, false, RankedStatus.Loved, 1);
+        var difficulty = new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42);
+        return new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme", TimeSpan.FromSeconds(225), 1234,
+            difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false,
+            beatmapset);
     }
 }
 

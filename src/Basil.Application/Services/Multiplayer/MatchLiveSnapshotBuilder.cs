@@ -1,10 +1,12 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
 
 namespace Basil.Application.Services.Multiplayer;
@@ -24,6 +26,8 @@ public static class MatchLiveSnapshotBuilder
     public static async Task<MatchLiveSnapshot> BuildMain(MatchSession match, IPlayerSessionRegistry sessionRegistry,
         IUserRepository users, IMapRepository maps, CancellationToken cancellationToken = default)
     {
+        var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+
         var host = match.HostId == 0
             ? null
             : await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken);
@@ -32,36 +36,39 @@ public static class MatchLiveSnapshotBuilder
         foreach (var id in match.Referees)
             referees.Add(await ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
 
-        var slots = new Dictionary<int, MatchLiveSlot>();
-        for (var index = 0; index < match.Slots.Count; index++)
-        {
-            var slot = match.Slots[index];
-            var user = slot.PlayerId is { } pid
-                ? await ResolveOrPlaceholder(pid, sessionRegistry, users, cancellationToken)
-                : null;
-            slots[index] = new MatchLiveSlot(user, slot.Status.ToString(), slot.Team.ToString(), (int)slot.Mods);
-        }
-
+        var slots = await BuildSlotViews(match, sessionRegistry, users, cancellationToken);
         var beatmap = await ResolveBeatmapAsync(match.MapMd5, maps, cancellationToken);
 
         return new MatchLiveSnapshot(
-            match.DbId, match.Name, match.MapId, match.MapMd5, match.InProgress,
-            match.WinCondition, match.TeamType, match.Mode, (int)match.Mods, match.Freemods,
-            host, referees, beatmap, slots);
+            match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+            match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
+            match.InProgress, host, referees, beatmap, slots);
+    }
+
+    /// <summary>
+    ///     The room-core-plus-map-plus-in-progress shape reused by both `GET /matches` list items and
+    ///     <see cref="MatchReportService" />'s <c>Live</c> field — no host/referees/slots (those are
+    ///     membership details, not room configuration).
+    /// </summary>
+    public static async Task<MatchRoomLive> BuildRoomLive(MatchSession match, IMapRepository maps,
+        CancellationToken cancellationToken = default)
+    {
+        var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+        var beatmap = await ResolveBeatmapAsync(match.MapMd5, maps, cancellationToken);
+
+        return new MatchRoomLive(
+            match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+            match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
+            match.InProgress, beatmap);
     }
 
     public static PlayerLiveScore BuildPlayerScore(PlayerSession player, ScoreFrameData frame)
     {
         return new PlayerLiveScore(
-            new UserBrief(player.Id, player.Name, player.Geoloc.Country.ToAcronym()),
+            new UserBrief(player.Id, player.Name, player.Geoloc.Country),
             frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
-            frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp);
-    }
-
-    /// <summary>The `api.` host's `/match/{id}/live` payload — room-wide "currently playing" info, no per-player data.</summary>
-    public static MatchLiveStatus BuildLiveStatus(MatchSession match)
-    {
-        return new MatchLiveStatus(match.InProgress, match.CurrentRoundId, match.MapId, match.Mode);
+            frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp,
+            frame.ScoreV2);
     }
 
     /// <summary>
@@ -86,9 +93,14 @@ public static class MatchLiveSnapshotBuilder
 
         return new MatchSettingsView(
             match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
-            match.MapId, match.MapName, (int)match.Mods, match.Freemods,
-            match.TeamType, match.WinCondition,
+            match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
             host, referees, beatmap);
+    }
+
+    /// <summary>The `api.` host's `/match/{id}/live` payload — room-wide "currently playing" info, no per-player data. Untouched by the Phase 2 record redesign — not one of the replaced types.</summary>
+    public static MatchLiveStatus BuildLiveStatus(MatchSession match)
+    {
+        return new MatchLiveStatus(match.InProgress, match.CurrentRoundId, match.MapId, match.Mode);
     }
 
     public static async Task<MatchHostView> BuildHost(MatchSession match, IPlayerSessionRegistry sessionRegistry,
@@ -133,18 +145,24 @@ public static class MatchLiveSnapshotBuilder
     public static async Task<MatchSlotsView> BuildSlots(MatchSession match, IPlayerSessionRegistry sessionRegistry,
         IUserRepository users, CancellationToken cancellationToken = default)
     {
-        var slots = new Dictionary<int, SlotView>();
+        return new MatchSlotsView(await BuildSlotViews(match, sessionRegistry, users, cancellationToken));
+    }
+
+    private static async Task<IReadOnlyList<MatchSlotView>> BuildSlotViews(MatchSession match,
+        IPlayerSessionRegistry sessionRegistry, IUserRepository users, CancellationToken cancellationToken)
+    {
+        var slots = new List<MatchSlotView>(match.Slots.Count);
         for (var i = 0; i < match.Slots.Count; i++)
         {
             var slot = match.Slots[i];
             var user = slot.PlayerId is { } pid
                 ? await ResolveOrPlaceholder(pid, sessionRegistry, users, cancellationToken)
                 : null;
-            slots[i] = new SlotView(user, slot.PlayerId is not null ? slot.Team.ToString() : null,
-                slot.Status == SlotStatus.Locked);
+            slots.Add(new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
+                slot.Status == SlotStatus.Ready, slot.Loaded));
         }
 
-        return new MatchSlotsView(slots);
+        return slots;
     }
 
     /// <summary>
@@ -153,12 +171,18 @@ public static class MatchLiveSnapshotBuilder
     ///     never worth a repository round-trip and must not be confused with a stale/unresolvable md5
     ///     (both end up `null`, but only the latter is an actual lookup miss).
     /// </summary>
-    public static Task<Beatmap?> ResolveBeatmapAsync(string mapMd5, IMapRepository maps,
+    public static async Task<BeatmapDetail?> ResolveBeatmapAsync(string mapMd5, IMapRepository maps,
         CancellationToken cancellationToken = default)
     {
-        return string.IsNullOrEmpty(mapMd5)
-            ? Task.FromResult<Beatmap?>(null)
-            : maps.FetchOneAsync(md5: mapMd5, includePrivate: true, cancellationToken: cancellationToken);
+        if (string.IsNullOrEmpty(mapMd5)) return null;
+
+        var beatmap = await maps.FetchOneAsync(md5: mapMd5, includePrivate: true, cancellationToken: cancellationToken);
+        if (beatmap is null) return null;
+
+        var siblings = await maps.FetchAllBySetIdAsync(beatmap.Mapset.Id, includePrivate: true,
+            cancellationToken: cancellationToken);
+        var beatmapset = beatmap.Mapset.ToSummary(siblings.Count);
+        return beatmap.ToDetail(beatmapset);
     }
 
     /// <summary>
@@ -172,14 +196,61 @@ public static class MatchLiveSnapshotBuilder
         IUserRepository users, CancellationToken cancellationToken)
     {
         return await UserBriefResolver.ResolveAsync(userId, sessionRegistry, users, cancellationToken)
-               ?? new UserBrief(userId, "Unknown", Country.Xx.ToAcronym());
+               ?? new UserBrief(userId, "Unknown", Country.Xx);
     }
 }
 
-/// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round.</summary>
+/// <summary>
+///     The one reused `{id, name, country}` embed for every user reference across this plan's
+///     routes/SSE payloads (settings host/referees, hosts/refs/bans views, slot occupants, TRT
+///     actor/target/winner/scorer, per-player live streams) — resolved via <see cref="UserBriefResolver" />.
+///     <see cref="Country" /> stays enum-typed here (type-safe in C#); <see cref="Json.CountryJsonConverter" />
+///     owns converting it to the wire's lowercase 2-letter acronym.
+/// </summary>
+public sealed record UserBrief(int Id, string Name, Country Country);
+
+/// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round. Untouched by the Phase 2 record redesign.</summary>
 public sealed record MatchLiveStatus(bool InProgress, int? CurrentRoundId, int MapId, GameMode Mode);
 
-/// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write.</summary>
+/// <summary>
+///     Configuration fields shared by every match "room" shape — no membership (host/referees/slots)
+///     and no rounds. <see cref="MapId" /> keeps the bancho `-1` sentinel ("choosing beatmap" or "map
+///     not on this system") rather than going nullable; <see cref="Beatmap" /> (on each derived record)
+///     is null in both of those cases.
+/// </summary>
+public abstract record MatchRoomCore(
+    int Id,
+    string Name,
+    bool HasPassword,
+    bool IsPrivate,
+    bool IsLocked,
+    int Size,
+    int MapId,
+    Mods Mods,
+    bool Freemod,
+    MatchTeamType TeamType,
+    MatchWinCondition WinCondition,
+    GameMode Mode);
+
+/// <summary>The `live` object embedded in a `GET /matches` list item and in <see cref="MatchReportService" />'s report — room config plus the current map/in-progress flag, no slots/host/refs/rounds.</summary>
+public sealed record MatchRoomLive(
+    int Id,
+    string Name,
+    bool HasPassword,
+    bool IsPrivate,
+    bool IsLocked,
+    int Size,
+    int MapId,
+    Mods Mods,
+    bool Freemod,
+    MatchTeamType TeamType,
+    MatchWinCondition WinCondition,
+    GameMode Mode,
+    bool InProgress,
+    BeatmapDetail? Beatmap)
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
+
+/// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write — carries host/referees since this resource manages membership control, not just config.</summary>
 public sealed record MatchSettingsView(
     int Id,
     string Name,
@@ -188,63 +259,36 @@ public sealed record MatchSettingsView(
     bool IsLocked,
     int Size,
     int MapId,
-    string MapName,
-    int Mods,
+    Mods Mods,
     bool Freemod,
     MatchTeamType TeamType,
     MatchWinCondition WinCondition,
-    UserBrief? Host,
-    IReadOnlyList<UserBrief> Referees,
-    Beatmap? Beatmap);
-
-/// <summary>
-///     The one reused `{id, name, country}` embed for every user reference across this plan's
-///     routes/SSE payloads (settings host/referees, hosts/refs/bans views, slot occupants, TRT
-///     actor/target/winner/scorer, per-player live streams) — resolved via <see cref="UserBriefResolver" />.
-/// </summary>
-public sealed record UserBrief(int Id, string Name, string Country);
-
-/// <summary>Payload for the SSE /match/{id} main channel.</summary>
-public sealed record MatchLiveSnapshot(
-    int MatchId,
-    string Name,
-    int CurrentMapId,
-    string CurrentMapMd5,
-    bool InProgress,
-    MatchWinCondition WinCondition,
-    MatchTeamType TeamType,
     GameMode Mode,
-    int Mods,
-    bool Freemods,
     UserBrief? Host,
     IReadOnlyList<UserBrief> Referees,
-    Beatmap? Beatmap,
-    IReadOnlyDictionary<int, MatchLiveSlot> Slots);
+    BeatmapDetail? Beatmap)
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
 
-public sealed record MatchLiveSlot(
-    UserBrief? User,
-    string Status,
-    string Team,
-    int Mods);
-
-/// <summary>Payload for the SSE /match/{id}/{playerName} channel.</summary>
-public sealed record PlayerLiveScore(
-    UserBrief User,
-    int Time,
-    int Num300,
-    int Num100,
-    int Num50,
-    int NumGeki,
-    int NumKatu,
-    int NumMiss,
-    int TotalScore,
-    int MaxCombo,
-    int CurrentCombo,
-    bool Perfect,
-    int CurrentHp);
-
-/// <summary>Payload for the SSE /spec/{id} channel.</summary>
-public sealed record PlayerInputFrame(UserBrief User, string DataBase64);
+/// <summary>Payload for the SSE `/match/{id}` main channel — the full live snapshot, including slots.</summary>
+public sealed record MatchLiveSnapshot(
+    int Id,
+    string Name,
+    bool HasPassword,
+    bool IsPrivate,
+    bool IsLocked,
+    int Size,
+    int MapId,
+    Mods Mods,
+    bool Freemod,
+    MatchTeamType TeamType,
+    MatchWinCondition WinCondition,
+    GameMode Mode,
+    bool InProgress,
+    UserBrief? Host,
+    IReadOnlyList<UserBrief> Referees,
+    BeatmapDetail? Beatmap,
+    IReadOnlyList<MatchSlotView> Slots)
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
 
 /// <summary>Payload for `GET /matches/{matchId}/hosts` — null when the room has no host (id 0).</summary>
 public sealed record MatchHostView(UserBrief? Host);
@@ -259,15 +303,39 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
 
 /// <summary>
-///     One slot in `GET /matches/{matchId}/slots`'s dict response — <see cref="Locked" /> is always
-///     `false` for an occupied slot (an occupied slot's underlying <see cref="SlotStatus" /> can never
-///     also be <see cref="SlotStatus.Locked" />).
+///     One slot in `GET /matches/{matchId}/slots` — <see cref="Status" />/<see cref="Team" />/
+///     <see cref="Mods" /> stay enum-typed (never a `.ToString()` name). <see cref="Ready" /> mirrors
+///     <see cref="Status" /> being <see cref="SlotStatus.Ready" />, kept as its own bool since a
+///     consumer checking readiness shouldn't have to know the full <see cref="SlotStatus" /> flag set.
 /// </summary>
-public sealed record SlotView(UserBrief? User, string? Team, bool Locked);
+public sealed record MatchSlotView(int Index, UserBrief? User, SlotStatus Status, MatchTeam Team, Mods Mods,
+    bool Ready, bool Loaded);
 
-/// <summary>
-///     Payload for `GET/PUT/PATCH /matches/{matchId}/slots` — every slot 0-15 always present as a
-///     dict key (JSON-serializes as string keys), per the owner's RFC 7396-friendly dict-over-array
-///     design for every multiplayer slots representation.
-/// </summary>
-public sealed record MatchSlotsView(IReadOnlyDictionary<int, SlotView> Slots);
+/// <summary>Payload for `GET/PUT/PATCH /matches/{matchId}/slots` — always 16 entries, index 0-15.</summary>
+public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
+
+/// <summary>One `GET /matches` list item — bare match metadata plus `Live` (non-null while the room is currently tracked in memory), replacing the old flat `IsOpen` bool.</summary>
+public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
+
+/// <summary>Response body for `POST /matches/{matchId}/close` — net-new, not wired into any route yet (Phase 3).</summary>
+public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
+
+/// <summary>Payload for the SSE `/match/{id}/{playerName}` channel.</summary>
+public sealed record PlayerLiveScore(
+    UserBrief User,
+    int Time,
+    int Num300,
+    int Num100,
+    int Num50,
+    int NumGeki,
+    int NumKatu,
+    int NumMiss,
+    int TotalScore,
+    int MaxCombo,
+    int CurrentCombo,
+    bool Perfect,
+    int CurrentHp,
+    bool ScoreV2);
+
+/// <summary>Payload for the SSE /spec/{id} channel.</summary>
+public sealed record PlayerInputFrame(UserBrief User, string DataBase64);

@@ -87,8 +87,7 @@ public class MatchReportServiceTests
 
         Assert.NotNull(report);
         Assert.NotNull(report.Live);
-        Assert.Equal(42, report.Live.CurrentMapId);
-        Assert.Equal(7, report.Live.Slots[0].User!.Id);
+        Assert.Equal(42, report.Live.MapId);
     }
 
     [Fact]
@@ -116,9 +115,9 @@ public class MatchReportServiceTests
 
         Assert.NotNull(report);
         var builtRound = Assert.Single(report.Rounds);
-        Assert.Equal(MatchTeam.Red.ToString(), builtRound.WinnerTeam);
+        Assert.Equal(MatchTeam.Red, builtRound.WinnerTeam);
         Assert.Null(builtRound.Winner);
-        Assert.Equal(2, builtRound.Scores.Length);
+        Assert.Equal(2, builtRound.Scores.Count);
     }
 
     [Fact]
