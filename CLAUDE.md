@@ -142,3 +142,13 @@ Key structural facts worth knowing up front:
 - **Dapper + SQLite quirks to remember when touching `Basil.Infrastructure/Persistence/Repositories/`:** the connection string always carries `Foreign Keys=True` (SQLite disables FK enforcement per-connection by default) and `Default Timeout=5` (maps to `busy_timeout` — the server is deliberately multithreaded, see `MatchSession.Lock` below, so concurrent writers across different matches are expected and need to wait rather than throw `SQLITE_BUSY` immediately). Dapper can't materialize positional `record` types straight from a SQLite reader (column values come back as `Int64`/`string`, not the narrower `int`/`DateTime` a record's positional constructor expects) — every repository maps through a private mutable DTO class first (see any `Sqlite*Repository`'s `*Row`/`*RowDto` nested classes) instead of querying a public record type directly.
 - **The schema is offline-pivot SQLite** (`Persistence/Migrations/001_base.sql`), PascalCase tables/columns, ids auto-incrementing from 1 (no bancho.py-style gaps). `Matches`/`Rounds`/`Scores` replace per-score online-play bookkeeping; `UserStats` is seeded once at zero and never updated by score submission (no singleplayer ranking exists). The tournament match report (TRT) is never persisted — built at read time from those three tables (or from the live `MatchSession` for an in-progress match) by `MatchReportService`. Full detail in [`docs/architecture.md`](docs/architecture.md).
 - **Chat commands and the bot account use a *fresh* dispatch layer** (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`), narrower than bancho.py's full set. The scrim engine (`MatchScoringService`) does not exist — don't build it without being asked. Which `!mp` subcommands exist (including `!mp make`, `!mp timer`/`aborttimer` — all implemented) versus are deliberately deferred (`!mp force`, the full mappool/scrim engine, personal commands like `!block`/`!changename`) is listed in [`docs/working-scopes.md`](docs/working-scopes.md) — read it before assuming a bancho.py chat command exists here.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (thnhmai06/osuBasil), via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at repo root (created lazily by `/domain-modeling`). See `docs/agents/domain.md`.
