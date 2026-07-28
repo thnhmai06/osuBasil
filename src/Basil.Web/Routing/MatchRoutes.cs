@@ -287,7 +287,8 @@ internal static class MatchRoutes
         IPlayerSessionRegistry sessionRegistry, CancellationToken cancellationToken)
     {
         var match = matchRegistry.GetByDbId(matchId);
-        if (match is null || slotIndex is < 1 or > 16) return Results.NotFound();
+        if (match is null || slotIndex is < 1 or > 16)
+            return LiveSseRoutes.SseError(StatusCodes.Status404NotFound, "Match is not currently live, or slotIndex is out of range.");
 
         var index = slotIndex - 1;
         return LiveSseRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, sessionRegistry,
@@ -423,7 +424,7 @@ internal static class MatchRoutes
             true, SampleBeatmap());
     }
 
-    private static MatchLiveSnapshot SampleLiveSnapshot()
+    internal static MatchLiveSnapshot SampleLiveSnapshot()
     {
         var slots = new List<MatchSlotView>(16);
         for (var i = 0; i < 16; i++)

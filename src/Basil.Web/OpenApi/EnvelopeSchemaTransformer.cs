@@ -40,8 +40,10 @@ namespace Basil.Web.OpenApi;
 ///             body, since real sample data can't be guessed) — closes most of the "no `.WithExample`"
 ///             gap on error responses as a side effect of visiting every one of them anyway.</item>
 ///     </list>
-///     Routes carrying <see cref="SseEndpointMarker" /> are skipped entirely — every SSE payload on this
-///     host is a raw, un-enveloped JSON line by design (see the marker's own doc comment).
+///     On a route carrying <see cref="SseEndpointMarker" />, only the 2xx response is left alone — that's
+///     the actual live stream, a raw un-enveloped JSON line by design (see the marker's own doc comment).
+///     Any other status on that same route (409/404/400 returned synchronously before a stream opens) is
+///     enveloped exactly like every other route's error response.
 /// </summary>
 internal static class EnvelopeSchemaTransformer
 {
@@ -52,15 +54,22 @@ internal static class EnvelopeSchemaTransformer
     {
         options.AddOperationTransformer((operation, context, _) =>
         {
+            if (operation.Responses is null) return Task.CompletedTask;
+
+            // An SSE route's 2xx is the actual live stream — a raw, un-enveloped event payload by
+            // design (see this type's own doc comment) — but any other status on that same route is a
+            // genuine synchronous JSON error returned *before* a stream ever opens (e.g. 409 "not
+            // live", 404 out-of-range, 400 no-stream-to-expose; see LiveSseRoutes.SseError/NotLive) and
+            // gets enveloped exactly like every other route's error response.
             var isSse = context.Description.ActionDescriptor.EndpointMetadata
                 .OfType<SseEndpointMarker>().Any();
-            if (isSse || operation.Responses is null) return Task.CompletedTask;
 
             EnsureSharedComponentsRegistered(context.Document);
 
             foreach (var (statusKey, existingResponse) in operation.Responses.ToList())
             {
                 if (existingResponse is null || !int.TryParse(statusKey, out var statusCode)) continue;
+                if (isSse && statusCode < 400) continue;
 
                 var jsonMediaType = FindJsonMediaType(existingResponse);
                 // A bare 401 (added by SecuritySchemeTransformers) has no content at all yet — every

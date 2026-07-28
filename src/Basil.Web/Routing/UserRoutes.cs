@@ -111,7 +111,7 @@ internal static class UserRoutes
             await users.UpdateCountryAsync(userId, body.Country, cancellationToken);
             await users.UpdatePrivilegesAsync(userId, body.Privilege, cancellationToken);
 
-            return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
+            return Results.Json((await users.FetchByIdAsync(userId, cancellationToken))!.ToView());
         })
             .WithGroupName("basilapi")
             .WithName("replaceUser")
@@ -121,9 +121,9 @@ internal static class UserRoutes
                 "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
                 "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
             .WithTags("Users")
-            .Produces<User>()
+            .Produces<UserView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status200OK, SampleUser().ToView())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -147,7 +147,7 @@ internal static class UserRoutes
             if (body.Privilege is not null)
                 await users.UpdatePrivilegesAsync(userId, body.Privilege.Value, cancellationToken);
 
-            return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
+            return Results.Json((await users.FetchByIdAsync(userId, cancellationToken))!.ToView());
         })
             .WithGroupName("basilapi")
             .WithName("updateUser")
@@ -157,9 +157,9 @@ internal static class UserRoutes
                 "full field-by-field editor exists). Returns the updated user row. 404 if no user with this " +
                 "id exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
             .WithTags("Users")
-            .Produces<User>()
+            .Produces<UserView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status200OK, SampleUser().ToView())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -253,6 +253,7 @@ internal static class UserRoutes
             .WithTags("Users")
             .Produces<UserView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, SampleUser().ToView() with { Privilege = 0 })
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -277,7 +278,8 @@ internal static class UserRoutes
             .WithExample(StatusCodes.Status200OK, new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us),
                 ReplayAction.Standard, 0, [new ReplayFrameData(Keys.Left1, 0, 100.5f, 200.25f, 1000)],
                 new ScoreFrameData(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)))
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("BasilBot has no gameplay stream to expose."));
     }
 
     private static User SampleUser()
@@ -317,7 +319,8 @@ internal static class UserRoutes
     private static IResult HandleGetLive(int userId, HttpContext context, IPlayerInputEvents events,
         CancellationToken cancellationToken)
     {
-        if (userId == BotBootstrapServiceBotId) return Results.BadRequest();
+        if (userId == BotBootstrapServiceBotId)
+            return LiveSseRoutes.SseError(StatusCodes.Status400BadRequest, "BasilBot has no gameplay stream to expose.");
         return LiveSseRoutes.HandleInput(context, userId, events, cancellationToken);
     }
 }

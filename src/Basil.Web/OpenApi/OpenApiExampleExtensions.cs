@@ -22,9 +22,11 @@ namespace Basil.Web.OpenApi;
 ///     in the Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
 ///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> actually does to the response body at
 ///     runtime — every other document's examples pass through unwrapped, since only basilapi routes are
-///     enveloped. A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped even on
-///     basilapi — its real payload is a raw, un-enveloped SSE event, matching
-///     <see cref="EnvelopeSchemaTransformer" />'s same exception for the declared schema.
+///     enveloped. A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped for its own
+///     2xx status only — that's its real raw, un-enveloped SSE event payload — matching
+///     <see cref="EnvelopeSchemaTransformer" />'s same per-status exception for the declared schema; any
+///     other status on that same route (a synchronous pre-stream error) is still wrapped like everywhere
+///     else.
 /// </summary>
 internal static class OpenApiExampleExtensions
 {
@@ -40,10 +42,14 @@ internal static class OpenApiExampleExtensions
             if (operation.Responses.TryGetValue(statusCode.ToString(), out var response) &&
                 response?.Content.TryGetValue("application/json", out var mediaType) == true)
             {
-                var isSse = context.Description.ActionDescriptor.EndpointMetadata
+                // Only an SSE route's own 2xx is the raw, un-enveloped stream payload (see
+                // EnvelopeSchemaTransformer's matching per-status check) — any other status on that
+                // same route is a synchronous JSON error and still gets the envelope like every other
+                // route's error response.
+                var isSseSuccessPayload = statusCode < 400 && context.Description.ActionDescriptor.EndpointMetadata
                     .OfType<SseEndpointMarker>().Any();
 
-                mediaType!.Example = context.DocumentName == "basilapi" && !isSse
+                mediaType!.Example = context.DocumentName == "basilapi" && !isSseSuccessPayload
                     ? BuildEnvelope(statusCode, context.Description.HttpMethod, example)
                     : JsonSerializer.SerializeToNode(example, JsonWebOptions);
             }

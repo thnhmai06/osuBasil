@@ -925,6 +925,7 @@ internal static class MatchSubResourceRoutes
             .WithTags("Match Abort")
             .Produces<MatchLiveSnapshot>()
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, MatchRoutes.SampleLiveSnapshot())
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not in progress."))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
@@ -958,6 +959,7 @@ internal static class MatchSubResourceRoutes
             .WithDescription("Returns a confirmation body. 404 if the match isn't currently live." + AdminKeyNote)
             .WithTags("Match Close")
             .Produces<MatchClosedView>()
+            .WithExample(StatusCodes.Status200OK, new MatchClosedView(42, DateTime.Parse("2026-07-20T14:30:00Z")))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 

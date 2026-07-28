@@ -240,15 +240,20 @@ internal static class LiveSseRoutes
 
     /// <summary>
     ///     Every `.../live` route is <see cref="Middleware.SseEndpointMarker" />-tagged, so
-    ///     <see cref="Middleware.EnvelopeMiddleware" /> unconditionally skips it — a genuine JSON error
-    ///     response on that same path has to envelope itself by hand instead. Used when the requested
-    ///     match/resource isn't currently live, so there's nothing to stream.
+    ///     <see cref="Middleware.EnvelopeMiddleware" /> unconditionally skips buffering it (buffering
+    ///     would silently turn a real live stream into one that never delivers a single event) — a
+    ///     genuine synchronous JSON error returned before any stream opens has to envelope itself by
+    ///     hand instead. Used when the requested match/resource isn't currently live, so there's nothing
+    ///     to stream.
     /// </summary>
-    public static IResult NotLive(string message = "Match is not live")
+    public static IResult NotLive(string message = "Match is not live") =>
+        SseError(StatusCodes.Status409Conflict, message);
+
+    /// <summary>Same hand-envelope need as <see cref="NotLive" />, for the other pre-stream error statuses an SSE route can return (e.g. 404 out-of-range slot, 400 no-stream-to-expose).</summary>
+    public static IResult SseError(int statusCode, string message)
     {
-        var envelope = new Envelope<object?>(false, StatusCodes.Status409Conflict, message, null, null, null,
-            DateTimeOffset.UtcNow);
-        return Results.Json(envelope, BasilJsonOptions.Instance, statusCode: StatusCodes.Status409Conflict);
+        var envelope = new Envelope<object?>(false, statusCode, message, null, null, null, DateTimeOffset.UtcNow);
+        return Results.Json(envelope, BasilJsonOptions.Instance, statusCode: statusCode);
     }
 
     private static IAsyncEnumerable<SseItem<string>> Subscribe(
