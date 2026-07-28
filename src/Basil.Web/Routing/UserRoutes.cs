@@ -49,23 +49,19 @@ internal static class UserRoutes
             .Produces<IReadOnlyList<UserView>>()
             .WithExample(StatusCodes.Status200OK, new List<UserView> { SampleUser().ToView() });
 
-        // Public outer route so a non-numeric {idOrName} can be accepted at all — the numeric branch
-        // still enforces the admin policy manually (RequireAuthorization can't attach to a route
-        // template shared with the public username-redirect branch).
-        group.MapGet("/users/{idOrName}", (string idOrName, IUserRepository users, HttpContext context,
+        group.MapGet("/users/{idOrName}", (string idOrName, IUserRepository users,
             CancellationToken cancellationToken) =>
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}",
-                id => HandleGetUser(id, context, users, cancellationToken), cancellationToken))
+                id => HandleGetUser(id, users, cancellationToken), cancellationToken))
             .WithGroupName("basilapi")
             .WithName("getUser")
             .WithSummary("Get User")
             .WithDescription("A non-numeric `{idOrName}` is resolved via username lookup and 302-redirected " +
                 "to the canonical `/users/{id}` form; a numeric value is served directly. 404 if no user " +
-                "with this id/name exists." + AdminKeyNote)
+                "with this id/name exists. Public.")
             .WithTags("Users")
             .Produces<UserView>()
             .WithExample(StatusCodes.Status200OK, SampleUser().ToView())
-            .Produces(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         admin.MapPost("", async (CreateUserRequest body, IUserRepository users,
@@ -214,10 +210,10 @@ internal static class UserRoutes
             .Produces<AvatarView>()
             .WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"));
 
-        group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users, HttpContext context,
+        group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users,
             IOptions<StorageOptions> storage, CancellationToken cancellationToken) =>
             UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/avatar",
-                id => Task.FromResult(HandleGetAvatar(id, context, storage)), cancellationToken))
+                id => Task.FromResult(HandleGetAvatar(id, storage)), cancellationToken))
             .WithGroupName("basilapi")
             .WithName("getUserAvatar")
             .WithSummary("Get User Avatar")
@@ -225,10 +221,8 @@ internal static class UserRoutes
                 "the `a.<domain>` host's client-facing avatar route, this never falls back to a default image — " +
                 "404 if no avatar was ever uploaded for this id. Content-Type is inferred from the file " +
                 "extension. A non-numeric `{idOrName}` is resolved via username lookup and 302-redirected to " +
-                "the canonical form." + AdminKeyNote + " (Enforced manually in the handler, same deviation as " +
-                "`GET /users/{idOrName}`.)")
+                "the canonical form. Public.")
             .WithTags("Users")
-            .Produces(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
@@ -288,19 +282,15 @@ internal static class UserRoutes
             DateTimeOffset.UnixEpoch);
     }
 
-    private static async Task<IResult> HandleGetUser(int userId, HttpContext context, IUserRepository users,
+    private static async Task<IResult> HandleGetUser(int userId, IUserRepository users,
         CancellationToken cancellationToken)
     {
-        if (!context.User.IsInRole(AdminKeyDefaults.Role)) return Results.Unauthorized();
-
         var user = await users.FetchByIdAsync(userId, cancellationToken);
         return user is null ? Results.NotFound() : Results.Json(user.ToView());
     }
 
-    private static IResult HandleGetAvatar(int userId, HttpContext context, IOptions<StorageOptions> storage)
+    private static IResult HandleGetAvatar(int userId, IOptions<StorageOptions> storage)
     {
-        if (!context.User.IsInRole(AdminKeyDefaults.Role)) return Results.Unauthorized();
-
         var match = Directory.Exists(storage.Value.AvatarsPath)
             ? Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*").FirstOrDefault()
             : null;

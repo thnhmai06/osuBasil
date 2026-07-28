@@ -128,13 +128,13 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
-    public async Task GetUserAvatar_MissingAdminKey_ReturnsUnauthorized()
+    public async Task GetUserAvatar_NoAdminKey_IsPublicAndReturnsNotFoundWhenNoneUploaded()
     {
         var client = _factory.CreateClient();
 
         var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
