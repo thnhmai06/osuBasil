@@ -36,6 +36,7 @@ public sealed partial record User(
         if (name.Length is < 3 or > 15) error = "Username must be between 3 and 15 characters.";
         else if (name.StartsWith(' ') || name.EndsWith(' ')) error = "Username cannot start or end with a space.";
         else if (name.Contains("  ")) error = "Username cannot contain consecutive spaces.";
+        else if (name.All(char.IsDigit)) error = "Username cannot contain only digits."; 
         else if (!AllowedUsernameCharacters.IsMatch(name))
             error = "Username may only contain letters, numbers, spaces, and _ - [ ].";
         else error = null;
