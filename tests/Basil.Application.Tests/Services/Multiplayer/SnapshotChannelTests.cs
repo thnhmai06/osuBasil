@@ -6,8 +6,6 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 
 public class SnapshotChannelTests
 {
-    private sealed record Sample(string Name, int Count);
-
     [Fact]
     public void Latest_BeforeAnyPublish_IsNull()
     {
@@ -64,4 +62,6 @@ public class SnapshotChannelTests
         var json = JsonDocument.Parse(Encoding.UTF8.GetString(patchBytes));
         Assert.Empty(json.RootElement.EnumerateObject());
     }
+
+    private sealed record Sample(string Name, int Count);
 }

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configuration;
@@ -16,11 +17,72 @@ using Basil.Web.Routing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 
 namespace Basil.Web;
 
 public sealed class Program
 {
+    private const string CorsPolicyName = "ApiCors";
+
+    /// <summary>
+    ///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
+    ///     sidebar's collapsible sections in this exact order — every route under one resource (e.g.
+    ///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
+    ///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
+    ///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
+    ///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
+    ///     group order (see <see cref="AddOpenApiDocument" />).
+    /// </summary>
+    private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
+    [
+        ("Matches",
+        [
+            ("Matches", "List and create matches."),
+            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
+                             "equivalent is under Match Live)."),
+            ("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
+            ("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
+            ("Match Hosts", "Get/set/clear the match host."),
+            ("Match Referees", "List/replace/add/remove the match's referees."),
+            ("Match Bans", "List/replace/add players banned from the match, and unban."),
+            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
+                            "invite players onto them, and kick a seated player."),
+            ("Match Timer", "Read, start, or abort the match's countdown timer."),
+            ("Match Abort", "Abort the match currently in progress."),
+            ("Match Close", "Close the match immediately.")
+        ]),
+        ("Users",
+        [
+            ("Users", "User CRUD, avatar management, and live spectator-input streams.")
+        ]),
+        ("Beatmapsets",
+        [
+            ("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
+            ("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
+        ]),
+        ("Scores",
+        [
+            ("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
+        ]),
+        ("FAQ",
+        [
+            ("FAQ", "Public FAQ entry storage.")
+        ]),
+        ("Seasonal Backgrounds",
+        [
+            ("Seasonal Backgrounds", "Public seasonal background image storage.")
+        ]),
+        ("Abbreviation Redirects",
+        [
+            ("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
+        ]),
+        ("Health",
+        [
+            ("Health", "Liveness check.")
+        ])
+    ];
+
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -56,8 +118,8 @@ public sealed class Program
     private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
     {
         builder.Configuration
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", false, true)
+            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true)
             .AddCommandLine(args);
     }
 
@@ -120,8 +182,6 @@ public sealed class Program
         });
     }
 
-    private const string CorsPolicyName = "ApiCors";
-
     // Permissive by design: the api. host is meant to be called directly from arbitrary browser-based
     // tooling (tournament overlays, dashboards, OBS browser sources). No credentials are ever sent
     // (X-Admin-Key is a plain header, not a cookie), so AllowAnyOrigin is safe here.
@@ -159,64 +219,6 @@ public sealed class Program
             BasilApiTagGroups);
     }
 
-    /// <summary>
-    ///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
-    ///     sidebar's collapsible sections in this exact order — every route under one resource (e.g.
-    ///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
-    ///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
-    ///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
-    ///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
-    ///     group order (see <see cref="AddOpenApiDocument" />).
-    /// </summary>
-    private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
-    [
-        ("Matches",
-        [
-            ("Matches", "List and create matches."),
-            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
-                "equivalent is under Match Live)."),
-            ("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
-            ("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
-            ("Match Hosts", "Get/set/clear the match host."),
-            ("Match Referees", "List/replace/add/remove the match's referees."),
-            ("Match Bans", "List/replace/add players banned from the match, and unban."),
-            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
-                "invite players onto them, and kick a seated player."),
-            ("Match Timer", "Read, start, or abort the match's countdown timer."),
-            ("Match Abort", "Abort the match currently in progress."),
-            ("Match Close", "Close the match immediately.")
-        ]),
-        ("Users",
-        [
-            ("Users", "User CRUD, avatar management, and live spectator-input streams.")
-        ]),
-        ("Beatmapsets",
-        [
-            ("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
-            ("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
-        ]),
-        ("Scores",
-        [
-            ("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
-        ]),
-        ("FAQ",
-        [
-            ("FAQ", "Public FAQ entry storage.")
-        ]),
-        ("Seasonal Backgrounds",
-        [
-            ("Seasonal Backgrounds", "Public seasonal background image storage.")
-        ]),
-        ("Abbreviation Redirects",
-        [
-            ("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
-        ]),
-        ("Health",
-        [
-            ("Health", "Liveness check.")
-        ])
-    ];
-
     private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
         string description, (string Group, (string Tag, string Description)[] Tags)[]? tagGroups = null)
     {
@@ -232,25 +234,25 @@ public sealed class Program
                 {
                     document.Tags = tagGroups
                         .SelectMany(g => g.Tags)
-                        .Select(t => new Microsoft.OpenApi.OpenApiTag { Name = t.Tag, Description = t.Description })
+                        .Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
                         .ToHashSet();
 
-                    var tagGroupsJson = new System.Text.Json.Nodes.JsonArray(tagGroups.Select(g =>
-                        (System.Text.Json.Nodes.JsonNode)new System.Text.Json.Nodes.JsonObject
+                    var tagGroupsJson = new JsonArray(tagGroups.Select(g =>
+                        (JsonNode)new JsonObject
                         {
                             ["name"] = g.Group,
-                            ["tags"] = new System.Text.Json.Nodes.JsonArray(
-                                g.Tags.Select(t => (System.Text.Json.Nodes.JsonNode)t.Tag).ToArray())
+                            ["tags"] = new JsonArray(
+                                g.Tags.Select(t => (JsonNode)t.Tag).ToArray())
                         }).ToArray());
-                    document.Extensions ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiExtension>();
-                    document.Extensions["x-tagGroups"] = new Microsoft.OpenApi.JsonNodeExtension(tagGroupsJson);
+                    document.Extensions ??= new Dictionary<string, IOpenApiExtension>();
+                    document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
 
                     // Scalar's sidebar buckets each tag's operations by their position in the document,
                     // not alphabetically — reorder Paths (shortest/most general route first per tag
                     // section) without touching the actual C# route-registration order in Routing/*.cs.
                     if (document.Paths is not null)
                     {
-                        var reordered = new Microsoft.OpenApi.OpenApiPaths();
+                        var reordered = new OpenApiPaths();
                         foreach (var (path, item) in document.Paths
                                      .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
                                      .ThenBy(kvp => kvp.Key.Length)

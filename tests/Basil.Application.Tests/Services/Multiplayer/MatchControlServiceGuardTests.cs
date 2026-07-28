@@ -236,7 +236,7 @@ public class MatchControlServiceGuardTests
             [1] = new(notInMatch.Id, null, null)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: true);
+        var result = await control.SetSlotsAsync(match, entries, true);
 
         Assert.Equal(MatchControlService.SetSlotsResult.UnknownUserId, result);
     }
@@ -258,7 +258,7 @@ public class MatchControlServiceGuardTests
             [hostSlot] = new(host.Id, "Red", null)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: true);
+        var result = await control.SetSlotsAsync(match, entries, true);
 
         Assert.Equal(MatchControlService.SetSlotsResult.PlayerCountMismatch, result);
     }
@@ -279,7 +279,7 @@ public class MatchControlServiceGuardTests
             [hostSlot] = new(host.Id, "Red", null)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: false);
+        var result = await control.SetSlotsAsync(match, entries, false);
 
         Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
         Assert.Equal(MatchTeam.Red, match.Slots[hostSlot].Team);
@@ -299,7 +299,7 @@ public class MatchControlServiceGuardTests
             [hostSlot] = new(host.Id, null, true)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: false);
+        var result = await control.SetSlotsAsync(match, entries, false);
 
         Assert.Equal(MatchControlService.SetSlotsResult.SlotOccupiedAndLocked, result);
     }
@@ -322,7 +322,7 @@ public class MatchControlServiceGuardTests
             [otherSlot] = new(host.Id, null, null)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: true);
+        var result = await control.SetSlotsAsync(match, entries, true);
 
         Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
         Assert.Equal(other.Id, match.Slots[hostSlot].PlayerId);
@@ -344,7 +344,7 @@ public class MatchControlServiceGuardTests
             [hostSlot] = new(host.Id, "Neutral", null)
         };
 
-        var result = await control.SetSlotsAsync(match, entries, isFullReplace: false);
+        var result = await control.SetSlotsAsync(match, entries, false);
 
         Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
         Assert.Equal(teamBefore, match.Slots[hostSlot].Team);

@@ -35,7 +35,10 @@ public sealed class DirectSearchService(IMapRepository maps)
             cancellationToken);
     }
 
-    /// <summary>Ported from app/api/domains/osu.py's format_direct_search_response (DIRECT_SET_INFO_FMTSTR / DIRECT_MAP_INFO_FMTSTR).</summary>
+    /// <summary>
+    ///     Ported from app/api/domains/osu.py's format_direct_search_response (DIRECT_SET_INFO_FMTSTR /
+    ///     DIRECT_MAP_INFO_FMTSTR).
+    /// </summary>
     public static string Format(IReadOnlyList<IReadOnlyList<Beatmap>> beatmapSets)
     {
         // A full page signals "there may be more" to the client, so it's reported as 101 rather than the literal count.

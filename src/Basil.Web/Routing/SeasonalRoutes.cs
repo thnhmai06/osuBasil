@@ -23,8 +23,8 @@ internal static class SeasonalRoutes
             .WithName("listSeasonalBackgrounds")
             .WithSummary("List Seasonal Backgrounds")
             .WithDescription("Bare filenames (unlike the osu! client-facing " +
-                "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same folder). " +
-                "Public.")
+                             "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same folder). " +
+                             "Public.")
             .WithTags("Seasonal Backgrounds")
             .Produces<IReadOnlyList<string>>()
             .WithExample(StatusCodes.Status200OK, new List<string> { "winter-2026.png", "summer-2026.jpg" });
@@ -35,8 +35,8 @@ internal static class SeasonalRoutes
             .WithName("createSeasonalBackground")
             .WithSummary("Create Seasonal Background")
             .WithDescription("Multipart upload, field name `file`, saved under its own uploaded filename " +
-                "(path-traversal-filtered). 409 if a file with that name already exists — use " +
-                "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
+                             "(path-traversal-filtered). 409 if a file with that name already exists — use " +
+                             "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
             .WithMultipartFileUpload()
             .Produces<SeasonalCreatedView>(StatusCodes.Status201Created)
@@ -47,24 +47,24 @@ internal static class SeasonalRoutes
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-2026.png' already exists."));
 
         group.MapGet("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
-        {
-            var path = seasonal.FindFilePath(fileName);
-            if (path is null) return Results.NotFound();
-
-            var contentType = Path.GetExtension(path).ToLowerInvariant() switch
             {
-                ".png" => "image/png",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                _ => "application/octet-stream"
-            };
-            return Results.File(path, contentType);
-        })
+                var path = seasonal.FindFilePath(fileName);
+                if (path is null) return Results.NotFound();
+
+                var contentType = Path.GetExtension(path).ToLowerInvariant() switch
+                {
+                    ".png" => "image/png",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".gif" => "image/gif",
+                    _ => "application/octet-stream"
+                };
+                return Results.File(path, contentType);
+            })
             .WithGroupName("basilapi")
             .WithName("downloadSeasonalBackground")
             .WithSummary("Download Seasonal Background")
             .WithDescription("`{fileName}` is the full filename including extension. 404 if it doesn't exist. " +
-                "Content-Type is inferred from the file extension. Public.")
+                             "Content-Type is inferred from the file extension. Public.")
             .WithTags("Seasonal Backgrounds")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -74,7 +74,7 @@ internal static class SeasonalRoutes
             .WithName("replaceSeasonalBackground")
             .WithSummary("Replace Seasonal Background")
             .WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
-                "— use `POST /seasonals/` to create one." + AdminKeyNote)
+                             "— use `POST /seasonals/` to create one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
             .WithMultipartFileUpload()
             .Produces<SeasonalReplacedView>()
@@ -84,7 +84,7 @@ internal static class SeasonalRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
-            seasonal.Delete(fileName) ? Results.Json(new SeasonalDeletedView(fileName, true)) : Results.NotFound())
+                seasonal.Delete(fileName) ? Results.Json(new SeasonalDeletedView(fileName, true)) : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithName("deleteSeasonalBackground")
@@ -96,19 +96,11 @@ internal static class SeasonalRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
-    /// <summary>Confirmation body for `DELETE /seasonals/{fileName}`.</summary>
-    public sealed record SeasonalDeletedView(string FileName, bool Deleted);
-
-    /// <summary>Confirmation body for `POST /seasonals/`.</summary>
-    public sealed record SeasonalCreatedView(string FileName, bool Created);
-
-    /// <summary>Confirmation body for `PUT /seasonals/{fileName}`.</summary>
-    public sealed record SeasonalReplacedView(string FileName, bool Replaced);
-
     private static async Task<IResult> HandleCreate(HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
+        if (!context.Request.HasFormContentType)
+            return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
@@ -125,7 +117,8 @@ internal static class SeasonalRoutes
     private static async Task<IResult> HandleReplace(string fileName, HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
+        if (!context.Request.HasFormContentType)
+            return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
@@ -137,4 +130,13 @@ internal static class SeasonalRoutes
             ? Results.NotFound()
             : Results.Json(new SeasonalReplacedView(fileName, true));
     }
+
+    /// <summary>Confirmation body for `DELETE /seasonals/{fileName}`.</summary>
+    public sealed record SeasonalDeletedView(string FileName, bool Deleted);
+
+    /// <summary>Confirmation body for `POST /seasonals/`.</summary>
+    public sealed record SeasonalCreatedView(string FileName, bool Created);
+
+    /// <summary>Confirmation body for `PUT /seasonals/{fileName}`.</summary>
+    public sealed record SeasonalReplacedView(string FileName, bool Replaced);
 }

@@ -7,6 +7,8 @@ namespace Basil.Domain.Tests;
 
 public class ScoreSubmissionValidationTests
 {
+    private static readonly DateOnly LoginVersionDate = new(2021, 5, 20);
+
     [Fact]
     public void ParseUniqueIdHashes_HashesEachHalfIndependently()
     {
@@ -15,8 +17,6 @@ public class ScoreSubmissionValidationTests
         Assert.Equal(Md5("uid1value"), hashes.UniqueId1Md5);
         Assert.Equal(Md5("uid2value"), hashes.UniqueId2Md5);
     }
-
-    private static readonly DateOnly LoginVersionDate = new(2021, 5, 20);
 
     private static ClientDetails MakeClient()
     {
@@ -83,9 +83,12 @@ public class ScoreSubmissionValidationTests
     public void ValidateScoreChecksum_Mismatch_Throws()
     {
         var score = ScoreSubmission.FromSubmission([
-            "wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
-            "210520235959", "20210520 "
-        ]) with { BeatmapMd5 = "beatmap_md5_hash_1234567890abcd" };
+                "wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
+                "210520235959", "20210520 "
+            ]) with
+            {
+                BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
+            };
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
             score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null));
@@ -95,9 +98,12 @@ public class ScoreSubmissionValidationTests
     public void ValidateScoreChecksum_Match_DoesNotThrow()
     {
         var score = ScoreSubmission.FromSubmission([
-            "placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
-            "210520235959", "20210520 "
-        ]) with { BeatmapMd5 = "beatmap_md5_hash_1234567890abcd" };
+                "placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
+                "210520235959", "20210520 "
+            ]) with
+            {
+                BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
+            };
         score = score with { ClientChecksum = score.ComputeOnlineChecksum("cookiezi", "20210520", "clienthash", "") };
 
         score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null);

@@ -26,14 +26,15 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         _mapsets = new SqliteMapsetRepository(fixture.ConnectionString);
         _mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
         Directory.CreateDirectory(_mapsetsPath);
-        _service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), Options.Create(new StorageOptions
-        {
-            ReplaysPath = "",
-            AvatarsPath = "",
-            MapsetsPath = _mapsetsPath,
-            SeasonalsPath = "",
-            FaqsPath = ""
-        }), NullLogger<BeatmapIngestionService>.Instance);
+        _service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), Options.Create(
+            new StorageOptions
+            {
+                ReplaysPath = "",
+                AvatarsPath = "",
+                MapsetsPath = _mapsetsPath,
+                SeasonalsPath = "",
+                FaqsPath = ""
+            }), NullLogger<BeatmapIngestionService>.Instance);
     }
 
     private static string FixtureSourcePath =>
@@ -132,7 +133,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         var mapset = await _mapsets.FetchByIdAsync(setId!.Value);
         Assert.NotNull(mapset);
         var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
-            new StorageOptions { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+            new StorageOptions
+                { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
             mapset!);
         Directory.Move(tempFolder, resolvedFolder);
         Directory.Delete(resolvedFolder, true);
@@ -182,7 +184,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
         var mapset = await _mapsets.FetchByIdAsync(setId!.Value);
         var folder = BeatmapIngestionService.MapsetFolderPath(
-            new StorageOptions { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+            new StorageOptions
+                { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
             mapset!);
         Directory.Move(tempFolder, folder);
         var osuPath = Path.Combine(folder, "vivid_osu_file.osu");

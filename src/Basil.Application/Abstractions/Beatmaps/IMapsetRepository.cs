@@ -20,7 +20,10 @@ public interface IMapsetRepository
     /// <summary>The highest Id currently in use (0 if the table is empty), for local-id allocation.</summary>
     Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Every Mapset id in the DB — used by the full reconciliation pass to find rows whose backing folder no longer exists on disk.</summary>
+    /// <summary>
+    ///     Every Mapset id in the DB — used by the full reconciliation pass to find rows whose backing folder no longer
+    ///     exists on disk.
+    /// </summary>
     Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

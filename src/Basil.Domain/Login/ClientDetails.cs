@@ -15,7 +15,7 @@ public sealed record ClientDetails(
     ImmutableList<string> Adapters)
 {
     private const string WineAdapterSentinel = "runningunderwine";
-    
+
     public bool IsRunningUnderWine => Adapters.Contains(WineAdapterSentinel) && Adapters.Count == 1;
 
     /// <summary>Ported from ClientDetails.client_hash (cached_property).</summary>
@@ -26,22 +26,22 @@ public sealed record ClientDetails(
 
         return $"{OsuPathMd5}:{adaptersString}:{AdaptersMd5}:{UninstallMd5}:{DiskSignatureMd5}:";
     }
-    
+
     public static ClientDetails From(string hash)
     {
         var hashParts = hash[..^1].Split(':', 5);
-        
+
         var osuPathMd5 = hashParts[0];
         var adaptersString = hashParts[1];
         var adaptersMd5 = hashParts[2];
         var uninstallMd5 = hashParts[3];
         var diskSignatureMd5 = hashParts[4];
-        
+
         var adapters = ParseAdapters(adaptersString);
 
         return new ClientDetails(osuPathMd5, adaptersMd5, uninstallMd5, diskSignatureMd5, adapters);
     }
-    
+
     private static ImmutableList<string> ParseAdapters(string adaptersString)
     {
         if (adaptersString == WineAdapterSentinel) return [WineAdapterSentinel];

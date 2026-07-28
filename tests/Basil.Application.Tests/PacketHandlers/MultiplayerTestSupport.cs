@@ -70,7 +70,9 @@ internal static class MultiplayerTestSupport
         parts.Add((byte)(freeMods ? 1 : 0));
         if (freeMods)
             for (var i = 0; i < 16; i++)
-                parts.AddRange(PacketWriter.WriteInt32(0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
+                parts.AddRange(PacketWriter
+                    .WriteInt32(
+                        0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
         parts.AddRange(PacketWriter.WriteInt32(seed));
         return new BanchoPacketReader(parts.ToArray());
     }
@@ -167,7 +169,8 @@ internal static class MultiplayerTestSupport
         private int _nextMatchId = 1;
         private int _nextRoundId = 1;
 
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+            CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextMatchId++);
         }
@@ -184,7 +187,8 @@ internal static class MultiplayerTestSupport
             return Task.FromResult(_nextRoundId++);
         }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -210,10 +214,27 @@ internal static class MultiplayerTestSupport
             return Task.CompletedTask;
         }
 
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        }
+
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
     }
 
     /// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
@@ -234,7 +255,6 @@ internal static class MultiplayerTestSupport
         public event Action<int, string, byte[]>? PlayerScorePublished;
         public event Action<int, byte[]>? SettingsPublished;
         public event Action<int, int, byte[]>? SlotPublished;
-        public event Action<int, byte[]>? LivePublished;
         public event Action<int, byte[]>? HostPublished;
         public event Action<int, byte[]>? RefsPublished;
         public event Action<int, byte[]>? BansPublished;
@@ -265,12 +285,6 @@ internal static class MultiplayerTestSupport
             SlotPublished?.Invoke(matchDbId, slotIndex, payload);
         }
 
-        public void PublishLive(int matchDbId, byte[] payload)
-        {
-            LivePublishes.Add((matchDbId, payload));
-            LivePublished?.Invoke(matchDbId, payload);
-        }
-
         public void PublishHost(int matchDbId, byte[] payload)
         {
             HostPublishes.Add((matchDbId, payload));
@@ -299,6 +313,14 @@ internal static class MultiplayerTestSupport
         {
             SlotsPublishes.Add((matchDbId, payload));
             SlotsPublished?.Invoke(matchDbId, payload);
+        }
+
+        public event Action<int, byte[]>? LivePublished;
+
+        public void PublishLive(int matchDbId, byte[] payload)
+        {
+            LivePublishes.Add((matchDbId, payload));
+            LivePublished?.Invoke(matchDbId, payload);
         }
     }
 

@@ -57,7 +57,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetBlocksSender_SendsDmBlockedNotice()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         _sessionRegistry.GetByName("other").Returns(target);
         _relationships.FetchOneAsync(2, 1).Returns(new Relationship(2, 1, RelationshipType.Block));
 
@@ -70,7 +71,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetPmPrivateAndNotFriend_SendsDmBlockedNotice()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { PmPrivate = true };
+        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+            { PmPrivate = true };
         _sessionRegistry.GetByName("other").Returns(target);
         _relationships.FetchOneAsync(2, 1).Returns((Relationship?)null);
 
@@ -83,7 +85,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetSilenced_SendsTargetSilencedNotice()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         target.SilenceEnd = DateTimeOffset.UtcNow.AddSeconds(60);
         _sessionRegistry.GetByName("other").Returns(target);
 
@@ -96,7 +99,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetOnline_DeliversLive()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var target = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         _sessionRegistry.GetByName("other").Returns(target);
 
         await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi there", "other", 1));
@@ -136,7 +140,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetIsBot_DispatchesWithNullMatchScopeAndRepliesDirectly()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
+                DateTimeOffset.UnixEpoch)
             { IsBot = true };
         _sessionRegistry.GetByName("BanchoBot").Returns(bot);
         _commandDispatcher.DispatchAsync(sender, "!roll", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -154,7 +159,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetIsBot_DispatcherReturnsNull_NoReplySent()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
+                DateTimeOffset.UnixEpoch)
             { IsBot = true };
         _sessionRegistry.GetByName("BanchoBot").Returns(bot);
         _commandDispatcher.DispatchAsync(sender, "hi", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -169,7 +175,8 @@ public class SendPrivateMessageHandlerTests
     public async Task Handle_TargetIsBot_MultilineReply_SendsOnePacketPerLine()
     {
         var sender = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
+                DateTimeOffset.UnixEpoch)
             { IsBot = true };
         _sessionRegistry.GetByName("BasilBot").Returns(bot);
         _commandDispatcher.DispatchAsync(sender, "!faq rules", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())

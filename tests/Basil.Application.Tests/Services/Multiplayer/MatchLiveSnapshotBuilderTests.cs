@@ -8,7 +8,10 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Multiplayer;
 
-/// <summary>Covers <see cref="MatchLiveSnapshotBuilder.BuildRoomLive" /> — new for the Phase 2 record redesign, replacing the old flat `IsOpen` bool on `GET /matches` list items with this room-core-plus-map embed.</summary>
+/// <summary>
+///     Covers <see cref="MatchLiveSnapshotBuilder.BuildRoomLive" /> — new for the Phase 2 record redesign, replacing
+///     the old flat `IsOpen` bool on `GET /matches` list items with this room-core-plus-map embed.
+/// </summary>
 public class MatchLiveSnapshotBuilderTests
 {
     private readonly IMapRepository _maps = Substitute.For<IMapRepository>();

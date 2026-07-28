@@ -10,7 +10,7 @@ public class ScoreSubmissionResponseBuilderTests
     public void BuildSuccess_FailedScore_ReturnsErrorNo()
     {
         var beatmap = MakeBeatmap();
-        var score = MakeScore(beatmap, passed: false);
+        var score = MakeScore(beatmap, false);
         var result = new SubmittedScoreResult(score, 1, beatmap, "cmyui", null);
 
         Assert.Equal("error: no", ScoreSubmissionResponseBuilder.BuildSuccess(result, "test.local"));
@@ -20,7 +20,7 @@ public class ScoreSubmissionResponseBuilderTests
     public void BuildSuccess_PassedScore_ReturnsCharts()
     {
         var beatmap = MakeBeatmap();
-        var score = MakeScore(beatmap, passed: true);
+        var score = MakeScore(beatmap, true);
         var result = new SubmittedScoreResult(score, 1, beatmap, "cmyui", null);
 
         var body = ScoreSubmissionResponseBuilder.BuildSuccess(result, "test.local");

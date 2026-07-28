@@ -38,16 +38,18 @@ public sealed class MatchReportService(
         foreach (var e in events)
         {
             var actor = e.ActorUserId is { } actorId
-                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, sessionRegistry, users, cancellationToken)
+                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, sessionRegistry, users,
+                    cancellationToken)
                 : null;
             var target = e.TargetUserId is { } targetId
-                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, sessionRegistry, users, cancellationToken)
+                ? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, sessionRegistry, users,
+                    cancellationToken)
                 : null;
             reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target, e.Timestamp, e.Detail));
         }
 
         var live = matchRegistry.GetByDbId(matchId);
-        MatchRoomLive? liveInfo = live is null
+        var liveInfo = live is null
             ? null
             : await MatchLiveSnapshotBuilder.BuildRoomLive(live, maps, cancellationToken);
 
@@ -81,6 +83,7 @@ public sealed class MatchReportService(
             {
                 winnerUserId = only.UserId;
             }
+
             winDiff = 0;
         }
         else if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))

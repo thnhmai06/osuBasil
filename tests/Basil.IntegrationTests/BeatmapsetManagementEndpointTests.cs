@@ -24,10 +24,10 @@ namespace Basil.IntegrationTests;
 public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
     private const string AdminKey = "correct-key";
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-mapset-mgmt-tests-").FullName;
-    private readonly StubMapsetRepository _mapsets = new();
+    private readonly WebApplicationFactory<Program> _factory;
     private readonly StubMapRepository _maps = new();
+    private readonly StubMapsetRepository _mapsets = new();
 
     public BeatmapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -49,7 +49,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IMapsetRepository>(_mapsets);
                 services.AddSingleton<IMapRepository>(_maps);
-                services.AddSingleton<IOptions<StorageOptions>>(Options.Create(new StorageOptions
+                services.AddSingleton(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
                     AvatarsPath = Path.Combine(_dataDir, "Avatars"),
@@ -63,7 +63,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
     public void Dispose()
     {
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, recursive: true);
+        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
     }
 
     private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
@@ -99,7 +99,8 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
     public async Task PutBeatmapset_UnknownId_ReturnsNotFound()
     {
         var request = MakeRequest(HttpMethod.Put, "/beatmapsets/999999");
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
+        request.Content = new MultipartFormDataContent
+            { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -109,11 +110,12 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task PutBeatmapset_Frozen_ReturnsConflict()
     {
-        _mapsets.Mapset = new Mapset(700, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, IsFrozen: true);
+        _mapsets.Mapset = new Mapset(700, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
         MapsetFolder(700);
 
         var request = MakeRequest(HttpMethod.Put, "/beatmapsets/700");
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
+        request.Content = new MultipartFormDataContent
+            { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -128,7 +130,8 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
         await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content");
 
         var request = MakeRequest(HttpMethod.Put, "/beatmapsets/701");
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
+        request.Content = new MultipartFormDataContent
+            { { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -150,7 +153,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
     [Fact]
     public async Task DeleteBeatmapset_Frozen_ReturnsConflict_FolderUntouched()
     {
-        _mapsets.Mapset = new Mapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, IsFrozen: true);
+        _mapsets.Mapset = new Mapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
         var folder = MapsetFolder(800);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"));
@@ -227,7 +230,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
     {
         _mapsets.Mapset = new Mapset(901, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 
-        var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/901", adminKey: null);
+        var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/901", null);
         request.Content = JsonContent.Create(new { frozen = true });
 
         var response = await _factory.CreateClient().SendAsync(request);

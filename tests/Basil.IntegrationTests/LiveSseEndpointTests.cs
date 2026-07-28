@@ -120,8 +120,9 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     private int RegisterLiveMatch(int dbId)
     {
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-        var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [], 0);
-        var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, hostId: 0))!;
+        var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
+            0);
+        var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, 0))!;
         match.DbId = dbId;
         return match.DbId;
     }
@@ -184,39 +185,71 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     /// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
     private sealed class NeverPersistedMatchRepository : IMatchPersistenceRepository
     {
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default) =>
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+            CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default) =>
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
             GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default) =>
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default) =>
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+            CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<MatchRow?>(null);
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<MatchRow?>(null);
+        }
 
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
 
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
 
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        }
 
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
     }
 }

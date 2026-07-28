@@ -2,7 +2,10 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Ported from app/objects/beatmap.py's Beatmap fields + the properties actually consumed by score submission and leaderboards.</summary>
+/// <summary>
+///     Ported from app/objects/beatmap.py's Beatmap fields + the properties actually consumed by score submission and
+///     leaderboards.
+/// </summary>
 public class BeatmapTests
 {
     private static Beatmap MakeBeatmap()
@@ -15,7 +18,8 @@ public class BeatmapTests
             mapset,
             "Hyper",
             "Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu",
-            TimeSpan.FromSeconds(120), 500, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
+            TimeSpan.FromSeconds(120), 500, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5),
+            new Dictionary<string, int>());
     }
 
     [Fact]

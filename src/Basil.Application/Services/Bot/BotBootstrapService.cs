@@ -34,7 +34,7 @@ public sealed class BotBootstrapService(
         var configuredCountry = botOptions.Value.Country;
         if (!string.Equals(user.Country.ToAcronym(), configuredCountry, StringComparison.OrdinalIgnoreCase))
         {
-            var country = Enum.TryParse<Country>(configuredCountry, ignoreCase: true, out var parsedCountry)
+            var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)
                 ? parsedCountry
                 : Country.Xx;
             await users.UpdateCountryAsync(BotId, country, cancellationToken);

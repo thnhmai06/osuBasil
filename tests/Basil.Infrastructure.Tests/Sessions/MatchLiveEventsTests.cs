@@ -1,4 +1,3 @@
-using Basil.Application.Sessions.Multiplayer;
 using Basil.Infrastructure.Sessions;
 
 namespace Basil.Infrastructure.Tests.Sessions;
@@ -41,7 +40,12 @@ public class MatchLiveEventsTests
     {
         var events = new MatchLiveEvents();
         var received = new List<byte[]>();
-        void Handler(int id, byte[] payload) => received.Add(payload);
+
+        void Handler(int id, byte[] payload)
+        {
+            received.Add(payload);
+        }
+
         events.MainPublished += Handler;
         events.MainPublished -= Handler;
 

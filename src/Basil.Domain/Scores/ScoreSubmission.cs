@@ -8,48 +8,6 @@ namespace Basil.Domain.Scores;
 
 public sealed record ScoreSubmission
 {
-    #region Identity
-
-    public required string BeatmapMd5 { get; init; }
-    public required int UserId { get; init; }
-
-    #endregion
-
-    #region Mechanic
-
-    public required GameMode Mode { get; init; }
-    public required Mods Mods { get; init; }
-
-    #endregion
-
-    #region Stats
-
-    public required HitCounts HitCounts { get; init; }
-    public required long Score { get; init; }
-    public required int MaxCombo { get; init; }
-    public required Grade Grade { get; init; }
-    public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
-
-    public required bool IsPassed { get; init; }
-    public required bool IsFullCombo { get; init; } // IsPerfect
-
-    #endregion
-
-    #region Synchronization
-
-    public required DateTime ClientTime { get; init; }
-    public DateTime ServerTime { get; init; } = DateTime.UtcNow;
-    public TimeSpan TimeElapsed { get; init; }
-
-    #endregion
-
-    #region Integrity
-
-    public ClientFlags ClientFlags { get; init; } = ClientFlags.Clean;
-    public string ClientChecksum { get; init; } = string.Empty;
-
-    #endregion
-
     /// <summary>
     ///     Ported from Score.from_submission. `fields` is the decrypted colon-delimited submission
     ///     string with the leading beatmap_md5/username entries already stripped by the caller (they
@@ -67,16 +25,16 @@ public sealed record ScoreSubmission
             UserId = 0,
             ClientChecksum = fields[0],
             HitCounts = new HitCounts(
-                x300: int.Parse(fields[1], CultureInfo.InvariantCulture),
-                x100: int.Parse(fields[2], CultureInfo.InvariantCulture),
-                x50: int.Parse(fields[3], CultureInfo.InvariantCulture),
-                xGeki: int.Parse(fields[4], CultureInfo.InvariantCulture),
-                xKatu: int.Parse(fields[5], CultureInfo.InvariantCulture),
-                xMiss: int.Parse(fields[6], CultureInfo.InvariantCulture)),
+                int.Parse(fields[1], CultureInfo.InvariantCulture),
+                int.Parse(fields[2], CultureInfo.InvariantCulture),
+                int.Parse(fields[3], CultureInfo.InvariantCulture),
+                int.Parse(fields[4], CultureInfo.InvariantCulture),
+                int.Parse(fields[5], CultureInfo.InvariantCulture),
+                int.Parse(fields[6], CultureInfo.InvariantCulture)),
             Score = long.Parse(fields[7], CultureInfo.InvariantCulture),
             MaxCombo = int.Parse(fields[8], CultureInfo.InvariantCulture),
             IsFullCombo = fields[9] == "True",
-            Grade = Enum.Parse<Grade>(fields[10], ignoreCase: true),
+            Grade = Enum.Parse<Grade>(fields[10], true),
             Mods = mods,
             IsPassed = fields[12] == "True",
             Mode = (GameMode)int.Parse(fields[13], CultureInfo.InvariantCulture),
@@ -84,6 +42,7 @@ public sealed record ScoreSubmission
             ClientFlags = (ClientFlags)(fields[15].Count(c => c == ' ') & ~4)
         };
     }
+
     /// <summary>
     ///     Ported from Score.compute_online_checksum. The exact format string (and field order, which
     ///     does not match the format-arg index order — storyboardChecksum is placed before osuVersion
@@ -175,6 +134,48 @@ public sealed record ScoreSubmission
     {
         return Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(value)));
     }
+
+    #region Identity
+
+    public required string BeatmapMd5 { get; init; }
+    public required int UserId { get; init; }
+
+    #endregion
+
+    #region Mechanic
+
+    public required GameMode Mode { get; init; }
+    public required Mods Mods { get; init; }
+
+    #endregion
+
+    #region Stats
+
+    public required HitCounts HitCounts { get; init; }
+    public required long Score { get; init; }
+    public required int MaxCombo { get; init; }
+    public required Grade Grade { get; init; }
+    public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
+
+    public required bool IsPassed { get; init; }
+    public required bool IsFullCombo { get; init; } // IsPerfect
+
+    #endregion
+
+    #region Synchronization
+
+    public required DateTime ClientTime { get; init; }
+    public DateTime ServerTime { get; init; } = DateTime.UtcNow;
+    public TimeSpan TimeElapsed { get; init; }
+
+    #endregion
+
+    #region Integrity
+
+    public ClientFlags ClientFlags { get; init; } = ClientFlags.Clean;
+    public string ClientChecksum { get; init; } = string.Empty;
+
+    #endregion
 }
 
 /// <summary>

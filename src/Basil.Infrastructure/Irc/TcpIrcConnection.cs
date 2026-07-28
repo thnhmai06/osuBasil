@@ -128,7 +128,7 @@ public sealed class TcpIrcConnection(
 
             case "PART" when message.Params.Count >= 1:
                 var partTarget = channelRegistry.GetByName(message.Params[0]);
-                if (partTarget is not null) channelMembership.Part(Player, partTarget, kick: false);
+                if (partTarget is not null) channelMembership.Part(Player, partTarget, false);
                 break;
 
             case "AWAY":

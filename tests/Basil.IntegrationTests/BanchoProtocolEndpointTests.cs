@@ -64,7 +64,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
     public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         session.Enqueue(ServerPacketWriter.Notification("hello"));
         sessionRegistry.Add(session);
 

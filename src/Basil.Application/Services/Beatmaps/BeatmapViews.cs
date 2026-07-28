@@ -23,7 +23,10 @@ public abstract record BeatmapView(
     IReadOnlyDictionary<string, int> ObjectCounts,
     bool IsLocallyIngested);
 
-/// <summary>Used inside <see cref="BeatmapsetDetail" />'s <c>Beatmaps</c> list — no parent beatmapset embed (avoids the cycle).</summary>
+/// <summary>
+///     Used inside <see cref="BeatmapsetDetail" />'s <c>Beatmaps</c> list — no parent beatmapset embed (avoids the
+///     cycle).
+/// </summary>
 public sealed record BeatmapInSet(
     string Md5,
     int Id,
@@ -35,7 +38,10 @@ public sealed record BeatmapInSet(
     bool IsLocallyIngested)
     : BeatmapView(Md5, Id, Version, TotalLength, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
 
-/// <summary>Used everywhere else a beatmap is embedded (score, match round, live snapshot, GET /beatmapsets/{setId}/{beatmapId}) — carries the parent beatmapset.</summary>
+/// <summary>
+///     Used everywhere else a beatmap is embedded (score, match round, live snapshot, GET
+///     /beatmapsets/{setId}/{beatmapId}) — carries the parent beatmapset.
+/// </summary>
 public sealed record BeatmapDetail(
     string Md5,
     int Id,
@@ -65,7 +71,10 @@ public sealed record BeatmapsetSummary(
     RankedStatus Status,
     int BeatmapCount);
 
-/// <summary>Payload for `GET /beatmapsets/{mapsetId}` — every difficulty under the set, each as a <see cref="BeatmapInSet" />.</summary>
+/// <summary>
+///     Payload for `GET /beatmapsets/{mapsetId}` — every difficulty under the set, each as a
+///     <see cref="BeatmapInSet" />.
+/// </summary>
 public sealed record BeatmapsetDetail(
     int Id,
     string Artist,

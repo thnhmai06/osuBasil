@@ -141,7 +141,7 @@ public sealed class LoginService(
         {
             ServerPacketWriter.ProtocolVersion(19),
             ServerPacketWriter.LoginReply(session.Id),
-            ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter)),
+            ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter))
         };
 
         if (WelcomeNotification() is { } notification)

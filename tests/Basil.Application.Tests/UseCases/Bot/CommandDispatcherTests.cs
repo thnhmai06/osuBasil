@@ -588,6 +588,6 @@ public class CommandDispatcherTests
 
     private static User MakeUser(string name, string country)
     {
-        return new User(1, name, Enum.Parse<Country>(country, ignoreCase: true), UserPrivileges.Unrestricted, default);
+        return new User(1, name, Enum.Parse<Country>(country, true), UserPrivileges.Unrestricted, default);
     }
 }

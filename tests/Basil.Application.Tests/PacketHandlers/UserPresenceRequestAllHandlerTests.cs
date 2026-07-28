@@ -18,8 +18,10 @@ public class UserPresenceRequestAllHandlerTests
     public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
     {
         var self = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var unrestrictedOther = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var restrictedOther = new PlayerSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
+        var unrestrictedOther = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
+        var restrictedOther =
+            new PlayerSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
         var reader = new BanchoPacketReader(PacketWriter.WriteInt32(0));
 

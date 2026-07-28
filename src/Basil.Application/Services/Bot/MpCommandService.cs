@@ -9,7 +9,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
 
 namespace Basil.Application.Services.Bot;
 
@@ -25,7 +24,6 @@ namespace Basil.Application.Services.Bot;
 ///     a pure permission flag (doesn't require physical presence in the room); the host is NOT
 ///     automatically a referee — hosting only grants direct in-client settings control, which ranks
 ///     below referee authority for `!mp` purposes.
-///
 ///     The actual room-mutation logic lives in <see cref="MatchControlService" /> — shared with the
 ///     `api.` host's HTTP write routes so both surfaces call the identical state-mutation/broadcast
 ///     code. This class owns everything chat-specific: parsing raw argument tokens, resolving a
@@ -41,9 +39,6 @@ public sealed class MpCommandService(
     IUserRepository userRepository)
 {
     private const int MaxMatchNameLength = 50;
-
-    private readonly MatchControlService _matchControl =
-        new(matchMembership, matchPersistence, mapRepository, sessionRegistry);
 
     /// <summary>
     ///     Single source of truth for `!mp help`'s output — add a subcommand here, and it shows up with
@@ -88,6 +83,9 @@ public sealed class MpCommandService(
 
     private static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
+    private readonly MatchControlService _matchControl =
+        new(matchMembership, matchPersistence, mapRepository, sessionRegistry);
+
     public async Task<string?> HandleAsync(PlayerSession sender, MatchSession match, string subcommand,
         IReadOnlyList<string> args, CancellationToken cancellationToken = default)
     {
@@ -123,7 +121,8 @@ public sealed class MpCommandService(
             "password" => await RunLockedAsync(match, () => AlwaysSucceeds(SetPassword(match, args))),
             "invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args))),
             "addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, cancellationToken)),
-            "removeref" => await RunLockedAsync(match, () => RemoveRefereeAsync(sender, match, args, cancellationToken)),
+            "removeref" => await RunLockedAsync(match,
+                () => RemoveRefereeAsync(sender, match, args, cancellationToken)),
             "listrefs" => (true, ListReferees(match)),
             "banlist" => (true, await BanListAsync(match, cancellationToken)),
             "team" => await RunLockedAsync(match, () => SetTeam(match, args)),
@@ -267,7 +266,7 @@ public sealed class MpCommandService(
     private async Task<string> SettingsAsync(MatchSession match, CancellationToken cancellationToken)
     {
         var beatmapLine = match.MapId > 0
-            ? await mapRepository.FetchOneAsync(id: match.MapId, cancellationToken: cancellationToken) is { } bmap
+            ? await mapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
                 ? $"Beatmap: {bmap.Id} {bmap.FullName}"
                 : "Beatmap: Not found"
             : $"Beatmap: {match.MapId} {match.MapName}";
@@ -440,7 +439,8 @@ public sealed class MpCommandService(
         var target = sessionRegistry.GetByName(targetName);
         if (target is null) return (false, $"User not found: {targetName}");
 
-        var result = await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+        var result =
+            await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
         return result switch
         {
             MatchControlService.RemoveRefereeResult.WouldLeaveEmpty =>
@@ -683,7 +683,8 @@ public sealed class MpCommandService(
             : (true, $"Unbanned {targetUser.Name} from the match");
     }
 
-    private async Task<string?> CloseAsync(PlayerSession sender, MatchSession match, CancellationToken cancellationToken)
+    private async Task<string?> CloseAsync(PlayerSession sender, MatchSession match,
+        CancellationToken cancellationToken)
     {
         await _matchControl.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
         return "Closed the match";

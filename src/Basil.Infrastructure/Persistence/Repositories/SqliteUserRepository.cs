@@ -43,7 +43,8 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Country = country.ToAcronym() });
     }
 
-    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+        CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         await connection.ExecuteAsync(
@@ -60,7 +61,8 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
             new { Id = id, Name = name, SafeName = safeName });
     }
 
-    public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
+    public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country,
+        UserPrivileges? privilege = null,
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
@@ -79,7 +81,8 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
                     SafeName = User.MakeSafeName(name),
                     PwBcrypt = pwBcrypt,
                     Country = country.ToAcronym(),
-                    Privilege = (int)(privilege ?? (UserPrivileges.Unrestricted | UserPrivileges.Verified | UserPrivileges.Supporter))
+                    Privilege = (int)(privilege ?? UserPrivileges.Unrestricted | UserPrivileges.Verified |
+                        UserPrivileges.Supporter)
                 });
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT (Name/SafeName UNIQUE)
@@ -115,9 +118,9 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
 
         public User ToUser()
         {
-            var country = Enum.TryParse<Basil.Domain.Login.Country>(Country, ignoreCase: true, out var parsed)
+            var country = Enum.TryParse<Country>(Country, true, out var parsed)
                 ? parsed
-                : Basil.Domain.Login.Country.Xx;
+                : Domain.Login.Country.Xx;
             return new User(Id, Name, country, (UserPrivileges)Privilege,
                 new DateTimeOffset(DateTime.SpecifyKind(SilenceEnd, DateTimeKind.Utc)));
         }

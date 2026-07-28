@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Multiplayer;
@@ -22,12 +23,13 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 public class MatchMembershipServiceTests
 {
     private readonly FakeChannelRegistry _channelRegistry = new();
-    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
-    private readonly FakeMatchRegistry _matchRegistry = new();
-    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
     private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
+
+    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
+    private readonly FakeMatchRegistry _matchRegistry = new();
+    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -338,9 +340,9 @@ public class MatchMembershipServiceTests
         await service.EnqueueState(match);
 
         Assert.Equal(2, payloads.Count);
-        Assert.Equal("{}", System.Text.Encoding.UTF8.GetString(payloads[0]));
+        Assert.Equal("{}", Encoding.UTF8.GetString(payloads[0]));
 
-        var secondJson = System.Text.Encoding.UTF8.GetString(payloads[1]);
+        var secondJson = Encoding.UTF8.GetString(payloads[1]);
         Assert.Contains("\"name\":\"Renamed\"", secondJson);
         Assert.DoesNotContain("\"referees\"", secondJson);
     }
@@ -446,7 +448,7 @@ public class MatchMembershipServiceTests
         RegisterAll(host, bot);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        _mapRepository.FetchOneAsync(id: 100, cancellationToken: Arg.Any<CancellationToken>())
+        _mapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
             .Returns((Beatmap?)null);
         host.Dequeue();
 
@@ -546,7 +548,8 @@ public class MatchMembershipServiceTests
 
         public List<int> EndedMatchIds { get; } = [];
 
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default)
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+            CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_nextMatchId++);
         }
@@ -564,7 +567,8 @@ public class MatchMembershipServiceTests
             return Task.FromResult(_nextRoundId++);
         }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default)
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -590,9 +594,26 @@ public class MatchMembershipServiceTests
             return Task.CompletedTask;
         }
 
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        }
+
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
     }
 }

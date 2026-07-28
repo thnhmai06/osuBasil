@@ -31,7 +31,8 @@ public class ChangeActionHandlerTests
     {
         var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var reader =
-            new BanchoPacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0, 42));
+            new BanchoPacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0,
+                42));
 
         await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
 
@@ -85,7 +86,8 @@ public class ChangeActionHandlerTests
     [Fact]
     public async Task Handle_Restricted_DoesNotBroadcast()
     {
-        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+        var session =
+            new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([session, other]);
         var reader = new BanchoPacketReader(Payload(0, "", "", 0, 0, 0));

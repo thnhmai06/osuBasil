@@ -65,12 +65,12 @@ public sealed record Beatmap(
         if (ReferenceEquals(this, other)) return true;
 
         return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
-            Version == other.Version && Filename == other.Filename &&
-            TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
-            Difficulty == other.Difficulty &&
-            BackgroundFile == other.BackgroundFile &&
-            ObjectCounts.Count == other.ObjectCounts.Count &&
-            ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
+               Version == other.Version && Filename == other.Filename &&
+               TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
+               Difficulty == other.Difficulty &&
+               BackgroundFile == other.BackgroundFile &&
+               ObjectCounts.Count == other.ObjectCounts.Count &&
+               ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
     }
 
     public override int GetHashCode()

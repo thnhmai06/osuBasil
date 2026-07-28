@@ -19,8 +19,8 @@ namespace Basil.IntegrationTests;
 public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
     private const string AdminKey = "correct-key";
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-avatar-tests-").FullName;
+    private readonly WebApplicationFactory<Program> _factory;
 
     public AvatarManagementEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -41,7 +41,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
                 services.AddSingleton<IUserRepository>(new StubUserRepository());
-                services.AddSingleton<IOptions<StorageOptions>>(Options.Create(new StorageOptions
+                services.AddSingleton(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
                     AvatarsPath = Path.Combine(_dataDir, "Avatars"),
@@ -55,7 +55,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 
     public void Dispose()
     {
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, recursive: true);
+        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
     }
 
     private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
@@ -84,7 +84,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
     [Fact]
     public async Task PutAvatar_MissingAdminKey_ReturnsUnauthorized()
     {
-        var request = MakeRequest(HttpMethod.Put, "/users/1/avatar", adminKey: null);
+        var request = MakeRequest(HttpMethod.Put, "/users/1/avatar", null);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "avatar.png" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -116,7 +116,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
     public async Task DeleteAvatar_MissingAdminKey_ReturnsUnauthorized()
     {
         var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", adminKey: null));
+            .SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", null));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -151,7 +151,8 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

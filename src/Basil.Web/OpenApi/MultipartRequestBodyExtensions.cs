@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.OpenApi;
 
 namespace Basil.Web.OpenApi;
@@ -10,7 +9,8 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class MultipartRequestBodyExtensions
 {
-    public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder, string fieldName = "file")
+    public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder,
+        string fieldName = "file")
     {
         return builder.AddOpenApiOperationTransformer((operation, _, _) =>
         {
@@ -19,7 +19,7 @@ internal static class MultipartRequestBodyExtensions
                 Required = true,
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
-                    ["multipart/form-data"] = new OpenApiMediaType
+                    ["multipart/form-data"] = new()
                     {
                         Schema = new OpenApiSchema
                         {

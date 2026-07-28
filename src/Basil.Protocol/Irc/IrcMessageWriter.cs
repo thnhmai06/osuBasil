@@ -32,7 +32,10 @@ public static class IrcMessageWriter
         return $"{nick}!{id}@basil";
     }
 
-    /// <summary>Splits a <see cref="UserPrefix" /> back into (nick, id). Returns false for a client-sent (prefix-less) message.</summary>
+    /// <summary>
+    ///     Splits a <see cref="UserPrefix" /> back into (nick, id). Returns false for a client-sent (prefix-less)
+    ///     message.
+    /// </summary>
     public static bool TryParseUserPrefix(string? prefix, out string nick, out int id)
     {
         nick = "";

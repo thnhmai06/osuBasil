@@ -32,6 +32,8 @@ public class TcpIrcConnectionTests
 {
     private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
 
+    private readonly IOptions<IrcOptions> _fakeIrcOptions = new OptionsWrapper<IrcOptions>(new IrcOptions());
+
     [Fact]
     public async Task TwoIrcClients_LoginAndPrivmsgInAutoJoinChannel_MessageArrivesAtTheOtherClient()
     {
@@ -49,7 +51,8 @@ public class TcpIrcConnectionTests
         var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
         var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
             new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
-        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions, hasher);
+        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
+            _fakeIrcOptions, hasher);
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -115,11 +118,13 @@ public class TcpIrcConnectionTests
         var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
         var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
             new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
-        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership, _fakeIrcOptions, hasher);
+        var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
+            _fakeIrcOptions, hasher);
 
         // Stands in for a real bancho client: same PlayerSession/IrcConnection shape the chat core sees
         // once LoginService logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
-        var banchoPlayer = new PlayerSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var banchoPlayer = new PlayerSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         sessionRegistry.Add(banchoPlayer);
         channelMembership.Join(banchoPlayer, channelRegistry.GetByName("#osu")!);
 
@@ -207,20 +212,11 @@ public class TcpIrcConnectionTests
             if (predicate(line)) return line;
         }
     }
-    
-    private readonly IOptions<IrcOptions> _fakeIrcOptions = new OptionsWrapper<IrcOptions>(new IrcOptions());
 
     private sealed class FakeUserRepository : IUserRepository
     {
         private readonly Dictionary<string, User> _byName = new();
         private readonly Dictionary<int, string> _passwordHashes = new();
-
-        public void Add(User user, string? pwBcrypt = null)
-        {
-            _byName[User.MakeSafeName(user.Name)] = user;
-            if (pwBcrypt is not null)
-                _passwordHashes[user.Id] = pwBcrypt;
-        }
 
         public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
         {
@@ -242,7 +238,8 @@ public class TcpIrcConnectionTests
             throw new NotSupportedException();
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -261,6 +258,13 @@ public class TcpIrcConnectionTests
         public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public void Add(User user, string? pwBcrypt = null)
+        {
+            _byName[User.MakeSafeName(user.Name)] = user;
+            if (pwBcrypt is not null)
+                _passwordHashes[user.Id] = pwBcrypt;
         }
     }
 

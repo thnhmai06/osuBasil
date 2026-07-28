@@ -8,7 +8,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Middleware;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.OpenApi;
 
 namespace Basil.Web.OpenApi;
@@ -88,9 +87,9 @@ internal static class OpenApiExampleExtensions
             {
                 OneOf =
                 [
-                    new OpenApiSchemaReference("MatchSlotView", context.Document, null),
+                    new OpenApiSchemaReference("MatchSlotView", context.Document),
                     playerLiveScoreSchema,
-                    new OpenApiSchemaReference("SpectateFramesEvent", context.Document, null)
+                    new OpenApiSchemaReference("SpectateFramesEvent", context.Document)
                 ]
             };
 

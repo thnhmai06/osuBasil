@@ -16,6 +16,9 @@ public sealed record Mapset(
     bool IsFrozen = false,
     bool IsPrivate = false)
 {
-    /// <summary>Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status curation.</summary>
+    /// <summary>
+    ///     Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status
+    ///     curation.
+    /// </summary>
     public RankedStatus Status => RankedStatus.Loved;
 }

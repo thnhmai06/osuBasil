@@ -17,7 +17,8 @@ public class UserStatsRequestHandlerTests
     public async Task Handle_UnrestrictedTarget_EnqueuesTheirStats()
     {
         var self = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "target", "target-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var target = new PlayerSession(2, "target", "target-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         target.ModeStats[GameMode.Standard] = new CachedPlayerStats(1000, 900, 95.0, 10, 3);
         _sessionRegistry.All.Returns([self, target]);
         _sessionRegistry.GetById(2).Returns(target);
@@ -25,7 +26,8 @@ public class UserStatsRequestHandlerTests
 
         await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
-        var expected = ServerPacketWriter.UserStats(2, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 95.0, 10,
+        var expected = ServerPacketWriter.UserStats(2, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 95.0,
+            10,
             1000, 3, 0);
         Assert.Equal(expected, self.Dequeue());
     }
@@ -34,7 +36,9 @@ public class UserStatsRequestHandlerTests
     public async Task Handle_RestrictedTarget_NotEnqueued()
     {
         var self = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "target", "target-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+        var target =
+            new PlayerSession(2, "target", "target-token", UserPrivileges.Verified,
+                DateTimeOffset.UnixEpoch); // restricted
         _sessionRegistry.All.Returns([self, target]);
         var reader = new BanchoPacketReader(PacketWriter.WriteI32List([2]));
 

@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.Services.Content;
 using Basil.Domain.Login;
 using Microsoft.Extensions.Options;
 
@@ -19,8 +19,6 @@ public sealed class CommandDispatcher(
     IMatchRegistry matchRegistry)
     : ICommandDispatcher
 {
-    private readonly FaqService _faq = new(storageOptions);
-
     private const int RollMaxCap = int.MaxValue; // highest value int.TryParse can produce
 
     /// <summary>
@@ -43,6 +41,8 @@ public sealed class CommandDispatcher(
 
     private static readonly HashSet<string> NonChainableMpSubcommands =
         new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "in", "join" };
+
+    private readonly FaqService _faq = new(storageOptions);
 
     public async Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
         bool prefixOptional = false, CancellationToken cancellationToken = default)
@@ -201,7 +201,9 @@ public sealed class CommandDispatcher(
 
         var name = string.Join(' ', args);
         var user = await userRepository.FetchByNameAsync(name, cancellationToken);
-        return user is null ? $"{name} is not registered." : $"{user.Name} is in {DescribeCountry(user.Country.ToAcronym())}";
+        return user is null
+            ? $"{name} is not registered."
+            : $"{user.Name} is in {DescribeCountry(user.Country.ToAcronym())}";
     }
 
     private static string DescribeCountry(string code)

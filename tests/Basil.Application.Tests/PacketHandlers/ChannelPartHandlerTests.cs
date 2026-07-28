@@ -15,7 +15,8 @@ public class ChannelPartHandlerTests
 
     private ChannelPartHandler MakeHandler()
     {
-        return new ChannelPartHandler(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+        return new ChannelPartHandler(_channelRegistry,
+            new ChannelMembershipService(_sessionRegistry, _channelRegistry));
     }
 
     private static BanchoPacketReader ChannelNameReader(string name)

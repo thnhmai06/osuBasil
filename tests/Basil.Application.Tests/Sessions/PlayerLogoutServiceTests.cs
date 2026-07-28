@@ -81,7 +81,8 @@ public class PlayerLogoutServiceTests
     [Fact]
     public async Task Logout_RestrictedPlayer_DoesNotBroadcastLogoutPacket()
     {
-        var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+        var player =
+            new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([other]);
 

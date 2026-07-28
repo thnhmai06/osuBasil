@@ -11,20 +11,20 @@ public sealed record Geolocation(double Latitude, double Longitude, Country Coun
     }
 
     private static Geolocation? TryParseFromKeys(
-        IReadOnlyDictionary<string, string> headers, 
+        IReadOnlyDictionary<string, string> headers,
         string countryKey, string latKey, string lonKey)
     {
         if (!headers.TryGetValue(countryKey, out var countryValue)
             || !headers.TryGetValue(latKey, out var latValue)
             || !headers.TryGetValue(lonKey, out var lonValue)) return null;
-        
-        if (!Enum.TryParse<Country>(countryValue, ignoreCase: true, out var countryCode)) return null;
+
+        if (!Enum.TryParse<Country>(countryValue, true, out var countryCode)) return null;
         if (!double.TryParse(latValue, CultureInfo.InvariantCulture, out var latitude) ||
             !double.TryParse(lonValue, CultureInfo.InvariantCulture, out var longitude)) return null;
 
         return new Geolocation(latitude, longitude, countryCode);
     }
-    
+
     private static Geolocation? TryParseCloudflare(IReadOnlyDictionary<string, string> headers)
     {
         return TryParseFromKeys(headers, "CF-IPCountry", "CF-IPLatitude", "CF-IPLongitude");

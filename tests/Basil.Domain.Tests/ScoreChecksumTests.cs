@@ -12,7 +12,7 @@ public class ScoreChecksumTests
     [Fact]
     public void ComputeOnlineChecksum_MatchesPythonOracle()
     {
-        var hitCounts = new HitCounts(x300: 490, x100: 5, x50: 3, xGeki: 100, xKatu: 2, xMiss: 1);
+        var hitCounts = new HitCounts(490, 5, 3, 100, 2, 1);
         var score = new ScoreSubmission
         {
             HitCounts = hitCounts,

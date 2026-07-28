@@ -9,7 +9,7 @@ public enum MatchEventType
     PlayerJoined = 4,
     PlayerLeft = 5,
     Kicked = 6,
-    Closed = 7,
+    Closed = 7
 }
 
 public sealed record MatchEventRow(

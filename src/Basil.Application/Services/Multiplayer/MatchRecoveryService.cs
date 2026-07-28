@@ -12,10 +12,8 @@ public sealed class MatchRecoveryService(
         {
             var openRounds = await persistence.FetchUnrecoveredRoundsAsync(match.Id, cancellationToken);
             foreach (var round in openRounds)
-            {
-                await persistence.SetRoundEndedAsync(round.Id, DateTimeOffset.UtcNow.UtcDateTime, aborted: true,
+                await persistence.SetRoundEndedAsync(round.Id, DateTimeOffset.UtcNow.UtcDateTime, true,
                     cancellationToken);
-            }
 
             await persistence.SetMatchEndedAsync(match.Id, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 

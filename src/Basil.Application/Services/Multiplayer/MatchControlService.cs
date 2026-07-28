@@ -6,7 +6,6 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.Services.Multiplayer;
@@ -29,7 +28,97 @@ public sealed class MatchControlService(
     IMapRepository mapRepository,
     IPlayerSessionRegistry sessionRegistry)
 {
+    public enum AbortResult
+    {
+        Ok,
+        NotInProgress
+    }
+
+    public enum AbortTimerResult
+    {
+        Ok,
+        NoTimerRunning
+    }
+
+    public enum ForceInviteResult
+    {
+        Ok,
+        NoFreeSlot,
+        TargetBanned,
+        TargetInAnotherMatch
+    }
+
+    public enum InviteResult
+    {
+        Ok,
+        TargetAlreadyInRoom
+    }
+
+    public enum KickResult
+    {
+        Ok,
+        TargetNotInMatch
+    }
+
+    public enum MoveResult
+    {
+        Ok,
+        DestinationNotOpen,
+        TargetNotInMatch
+    }
+
+    public enum RemoveRefereeResult
+    {
+        Ok,
+        NotAReferee,
+        WouldLeaveEmpty
+    }
+
+    public enum SetMapResult
+    {
+        Ok,
+        BeatmapNotFound
+    }
+
+    public enum SetRefereesResult
+    {
+        Ok,
+        WouldLeaveEmpty
+    }
+
+    public enum SetSlotsResult
+    {
+        Ok,
+        PlayerCountMismatch,
+        UnknownUserId,
+        SlotOccupiedAndLocked
+    }
+
+    public enum StartResult
+    {
+        AlreadyInProgress,
+        Started,
+        CountdownQueued,
+        BeatmapMissing
+    }
+
+    public enum TeamResult
+    {
+        Ok,
+        TargetNotInMatch
+    }
+
+    public enum UnbanResult
+    {
+        Ok,
+        NotBanned
+    }
+
     public const int MaxMatchNameLength = 50;
+    private const int PeriodicReminderIntervalSeconds = 60;
+    private const int NearTotalIgnoreWindowSeconds = 5;
+
+    private static readonly int[] TimerCheckpoints = [60, 30, 10, 5, 4, 3, 2, 1];
 
     /// <summary>
     ///     Ported from `!mp lock`/`!mp unlock` verbatim — note no <c>EnqueueState</c> broadcast happens
@@ -64,13 +153,6 @@ public sealed class MatchControlService(
             if (i >= size && slot.Status == SlotStatus.Open) slot.Status = SlotStatus.Locked;
             else if (i < size && slot.Status == SlotStatus.Locked) slot.Status = SlotStatus.Open;
         }
-    }
-
-    public enum MoveResult
-    {
-        Ok,
-        DestinationNotOpen,
-        TargetNotInMatch
     }
 
     /// <summary><paramref name="destSlotIndex" /> is 0-based; callers convert from their own 1-based input.</summary>
@@ -126,12 +208,6 @@ public sealed class MatchControlService(
         await matchMembership.EnqueueState(match);
     }
 
-    public enum InviteResult
-    {
-        Ok,
-        TargetAlreadyInRoom
-    }
-
     public InviteResult Invite(PlayerSession sender, MatchSession match, PlayerSession target)
     {
         if (target.Match == match) return InviteResult.TargetAlreadyInRoom;
@@ -154,14 +230,9 @@ public sealed class MatchControlService(
         await matchMembership.PublishRefs(match);
     }
 
-    public enum SetRefereesResult
-    {
-        Ok,
-        WouldLeaveEmpty
-    }
-
     /// <summary>PUT — full replace. 409 (<see cref="SetRefereesResult.WouldLeaveEmpty" />) if it would end up empty.</summary>
-    public async Task<SetRefereesResult> SetRefereesAsync(MatchSession match, IReadOnlyCollection<PlayerSession> targets,
+    public async Task<SetRefereesResult> SetRefereesAsync(MatchSession match,
+        IReadOnlyCollection<PlayerSession> targets,
         CancellationToken cancellationToken = default)
     {
         if (targets.Count == 0) return SetRefereesResult.WouldLeaveEmpty;
@@ -208,13 +279,6 @@ public sealed class MatchControlService(
         await matchMembership.PublishRefs(match);
     }
 
-    public enum RemoveRefereeResult
-    {
-        Ok,
-        NotAReferee,
-        WouldLeaveEmpty
-    }
-
     /// <summary>
     ///     Replaces the old bool-returning "auto-close a `!mp make` room when its last referee is
     ///     removed" behavior with a guard that blocks removing the last referee at all — the auto-close
@@ -236,12 +300,6 @@ public sealed class MatchControlService(
 
         await matchMembership.PublishRefs(match);
         return RemoveRefereeResult.Ok;
-    }
-
-    public enum TeamResult
-    {
-        Ok,
-        TargetNotInMatch
     }
 
     public async Task<TeamResult> SetTeam(MatchSession match, PlayerSession target, MatchTeam team)
@@ -279,12 +337,6 @@ public sealed class MatchControlService(
 
         await matchMembership.EnqueueState(match);
         matchMembership.CancelQueuedAutoStart(match);
-    }
-
-    public enum SetMapResult
-    {
-        Ok,
-        BeatmapNotFound
     }
 
     /// <summary>Returns the resolved beatmap alongside the result so callers don't need a second lookup.</summary>
@@ -348,14 +400,6 @@ public sealed class MatchControlService(
                 slot.Mods = Mods.NoMod;
     }
 
-    public enum StartResult
-    {
-        AlreadyInProgress,
-        Started,
-        CountdownQueued,
-        BeatmapMissing
-    }
-
     /// <summary><paramref name="countdownSeconds" /> null/non-positive starts immediately instead of queuing.</summary>
     public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds,
         CancellationToken cancellationToken = default)
@@ -377,10 +421,6 @@ public sealed class MatchControlService(
     {
         BeginCountdown(match, seconds, false);
     }
-
-    private static readonly int[] TimerCheckpoints = [60, 30, 10, 5, 4, 3, 2, 1];
-    private const int PeriodicReminderIntervalSeconds = 60;
-    private const int NearTotalIgnoreWindowSeconds = 5;
 
     /// <summary>
     ///     Fixed marks plus an extra reminder every 60s for long countdowns (e.g. a 5-minute timer also
@@ -493,12 +533,6 @@ public sealed class MatchControlService(
         matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
     }
 
-    public enum AbortTimerResult
-    {
-        Ok,
-        NoTimerRunning
-    }
-
     public AbortTimerResult AbortTimer(MatchSession match)
     {
         if (match.PendingTimer is null) return AbortTimerResult.NoTimerRunning;
@@ -512,12 +546,6 @@ public sealed class MatchControlService(
         return AbortTimerResult.Ok;
     }
 
-    public enum AbortResult
-    {
-        Ok,
-        NotInProgress
-    }
-
     public async Task<AbortResult> AbortAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         if (!match.InProgress) return AbortResult.NotInProgress;
@@ -528,19 +556,14 @@ public sealed class MatchControlService(
 
         if (match.CurrentRoundId is { } roundId)
         {
-            await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, true, cancellationToken);
+            await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, true,
+                cancellationToken);
             match.CurrentRoundId = null;
         }
 
         matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
         await matchMembership.EnqueueState(match);
         return AbortResult.Ok;
-    }
-
-    public enum KickResult
-    {
-        Ok,
-        TargetNotInMatch
     }
 
     public async Task<KickResult> KickAsync(int? actorId, string? actorName, MatchSession match, PlayerSession target,
@@ -575,12 +598,6 @@ public sealed class MatchControlService(
 
         await matchMembership.PublishBans(match);
         return KickResult.Ok;
-    }
-
-    public enum UnbanResult
-    {
-        Ok,
-        NotBanned
     }
 
     public async Task<UnbanResult> Unban(MatchSession match, int targetUserId)
@@ -628,14 +645,6 @@ public sealed class MatchControlService(
         seated.Enqueue(ServerPacketWriter.MatchJoinFail());
     }
 
-    public enum ForceInviteResult
-    {
-        Ok,
-        NoFreeSlot,
-        TargetBanned,
-        TargetInAnotherMatch
-    }
-
     /// <summary>
     ///     `force: true` on `POST /matches/{matchId}/invite` — bypasses password/private/locked gating
     ///     and seats the target directly, but a banned target is still rejected (the one gate force does
@@ -650,17 +659,6 @@ public sealed class MatchControlService(
         return await matchMembership.ForceJoin(target, match) ? ForceInviteResult.Ok : ForceInviteResult.NoFreeSlot;
     }
 
-    /// <summary>One entry in a `PUT`/`PATCH /matches/{matchId}/slots` request, keyed by slot index (0-based).</summary>
-    public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
-
-    public enum SetSlotsResult
-    {
-        Ok,
-        PlayerCountMismatch,
-        UnknownUserId,
-        SlotOccupiedAndLocked
-    }
-
     /// <summary>
     ///     Reassigns/re-teams/locks slots in one atomic pass. Every <see cref="SlotPatchEntry.UserId" />
     ///     referenced anywhere in <paramref name="entries" /> must already occupy some slot in this
@@ -672,7 +670,8 @@ public sealed class MatchControlService(
     ///     `"Red"`/`"Blue"` is a no-op — the destination slot's existing team is preserved, never reset
     ///     to neutral, and never inherited from the moving player's previous slot.
     /// </summary>
-    public async Task<SetSlotsResult> SetSlotsAsync(MatchSession match, IReadOnlyDictionary<int, SlotPatchEntry> entries,
+    public async Task<SetSlotsResult> SetSlotsAsync(MatchSession match,
+        IReadOnlyDictionary<int, SlotPatchEntry> entries,
         bool isFullReplace, CancellationToken cancellationToken = default)
     {
         foreach (var entry in entries.Values)
@@ -745,4 +744,7 @@ public sealed class MatchControlService(
     {
         await matchMembership.CloseAsync(match, actorId, actorName, cancellationToken);
     }
+
+    /// <summary>One entry in a `PUT`/`PATCH /matches/{matchId}/slots` request, keyed by slot index (0-based).</summary>
+    public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
 }

@@ -10,8 +10,19 @@ namespace Basil.Application.Services.Content;
 /// </summary>
 public sealed class FaqService(IOptions<StorageOptions> storage)
 {
-    public enum CreateResult { Created, AlreadyExists, InvalidName }
-    public enum ReplaceResult { Replaced, NotFound, InvalidName }
+    public enum CreateResult
+    {
+        Created,
+        AlreadyExists,
+        InvalidName
+    }
+
+    public enum ReplaceResult
+    {
+        Replaced,
+        NotFound,
+        InvalidName
+    }
 
     public IReadOnlyList<string> ListEntries()
     {
@@ -23,8 +34,10 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
             .ToList();
     }
 
-    /// <summary>Reads an entry's content, normalized to `\n`-joined lines with no trailing newline —
-    /// independent of the file's own line-ending convention.</summary>
+    /// <summary>
+    ///     Reads an entry's content, normalized to `\n`-joined lines with no trailing newline —
+    ///     independent of the file's own line-ending convention.
+    /// </summary>
     public async Task<string?> ReadEntryAsync(string entry, CancellationToken cancellationToken = default)
     {
         if (!IsSafeEntry(entry)) return null;

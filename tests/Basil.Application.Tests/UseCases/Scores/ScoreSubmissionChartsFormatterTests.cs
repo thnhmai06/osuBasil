@@ -9,7 +9,8 @@ public class ScoreSubmissionChartsFormatterTests
     private static Beatmap MakeBeatmap()
     {
         var mapset = new Mapset(50, "a", "b", "d",
-            new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc), new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc));
+            new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc),
+            new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc));
         return new Beatmap(
             "md5", 100, mapset, "c", "f.osu", TimeSpan.FromSeconds(1), 500,
             new Difficulty(GameMode.Standard, 1, 1, 1, 1, 1, 1), new Dictionary<string, int>());

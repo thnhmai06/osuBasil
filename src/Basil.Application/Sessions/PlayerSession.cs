@@ -117,7 +117,8 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
         }
     }
 
-    public TimeSpan RemainingSilence => SilenceEnd > DateTimeOffset.UtcNow ? SilenceEnd - DateTimeOffset.UtcNow : TimeSpan.Zero;
+    public TimeSpan RemainingSilence =>
+        SilenceEnd > DateTimeOffset.UtcNow ? SilenceEnd - DateTimeOffset.UtcNow : TimeSpan.Zero;
 
     public bool Silenced => RemainingSilence != TimeSpan.Zero;
 

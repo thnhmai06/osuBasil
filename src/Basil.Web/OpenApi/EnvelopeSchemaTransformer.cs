@@ -10,38 +10,50 @@ namespace Basil.Web.OpenApi;
 ///     Rewrites every basilapi JSON response's declared schema to the real <see cref="Envelope{T}" />
 ///     shape, matching what <see cref="EnvelopeMiddleware" /> actually produces at runtime:
 ///     <list type="bullet">
-///         <item>Every status code carrying a JSON-ish content type (`application/json` AND
+///         <item>
+///             Every status code carrying a JSON-ish content type (`application/json` AND
 ///             `application/problem+json` — `.ProducesProblem(...)` responses were previously never
 ///             touched at all, since only the exact `application/json` key was checked) gets rewritten,
 ///             including a bare `401` with no declared type or content (added by
 ///             <see cref="SecuritySchemeTransformers" />, which must run before this transformer per its
 ///             registration order in <c>Program.cs</c>) — every JSON-ish response ends up under the one
 ///             canonical `application/json` key, since that's the only content type
-///             <see cref="EnvelopeMiddleware" /> ever actually emits.</item>
-///         <item>`data` is `null`-only for every &gt;=400 response (matching
+///             <see cref="EnvelopeMiddleware" /> ever actually emits.
+///         </item>
+///         <item>
+///             `data` is `null`-only for every &gt;=400 response (matching
 ///             <c>EnvelopeBuilder.Build</c>'s guarantee — an error body's `data` is never anything else),
-///             not the originally-declared `ErrorResponse`/`ProblemDetails` shape.</item>
-///         <item>`data`/`meta`/`errors` are properly nullable (`oneOf: [{type: null}, ...]`, the same
+///             not the originally-declared `ErrorResponse`/`ProblemDetails` shape.
+///         </item>
+///         <item>
+///             `data`/`meta`/`errors` are properly nullable (`oneOf: [{type: null}, ...]`, the same
 ///             pattern the framework's own nullable-property schemas already use elsewhere in this
 ///             document) — previously `meta`/`data` on a non-paginated success response showed as
-///             required-non-null even though they're `null` whenever unused.</item>
-///         <item>`data`'s schema for a success response is obtained via
+///             required-non-null even though they're `null` whenever unused.
+///         </item>
+///         <item>
+///             `data`'s schema for a success response is obtained via
 ///             <see cref="OpenApiOperationTransformerContext.GetOrCreateSchemaAsync" /> against the
 ///             *original* declared type (not a synthesized closed <c>Envelope&lt;T&gt;</c> generic) — this
 ///             is the same call the framework's own default response-schema generation uses, so it
 ///             correctly reuses an already-registered named component via `$ref` instead of re-inlining
 ///             the whole nested object graph on every single operation (the previous
 ///             <c>GetOrCreateSchemaAsync(typeof(Envelope&lt;&gt;).MakeGenericType(...))</c> approach
-///             silently broke that reuse for everything nested one level inside the wrapper).</item>
-///         <item>The envelope's six non-`data` fields (`success`/`code`/`message`/`meta`/`errors`/
+///             silently broke that reuse for everything nested one level inside the wrapper).
+///         </item>
+///         <item>
+///             The envelope's six non-`data` fields (`success`/`code`/`message`/`meta`/`errors`/
 ///             `timestamp`) are a single shared <c>Envelope</c> component combined via `allOf` with a
 ///             per-operation `{ data: ... }` object, instead of re-declaring all seven properties inline
 ///             on every response — `meta`/`errors` further reference shared, once-registered
-///             <c>PageMeta</c>/<c>FieldError</c> components instead of re-inlining their own shape.</item>
-///         <item>Any response left without an example after all of the above gets a minimal synthesized
+///             <c>PageMeta</c>/<c>FieldError</c> components instead of re-inlining their own shape.
+///         </item>
+///         <item>
+///             Any response left without an example after all of the above gets a minimal synthesized
 ///             one (`{success,code,message,data:null,...}` for an error; nothing invented for a success
 ///             body, since real sample data can't be guessed) — closes most of the "no `.WithExample`"
-///             gap on error responses as a side effect of visiting every one of them anyway.</item>
+///             gap on error responses as a side effect of visiting every one of them anyway.
+///         </item>
 ///     </list>
 ///     On a route carrying <see cref="SseEndpointMarker" />, only the 2xx response is left alone — that's
 ///     the actual live stream, a raw un-enveloped JSON line by design (see the marker's own doc comment).
@@ -102,7 +114,7 @@ internal static class EnvelopeSchemaTransformer
                     // (confirmed by inspecting the generated document — this was the actual cause of the
                     // duplication this transformer is meant to avoid).
                     var isPaged = declaredType.IsGenericType &&
-                        declaredType.GetGenericTypeDefinition() == typeof(PagedResult<>);
+                                  declaredType.GetGenericTypeDefinition() == typeof(PagedResult<>);
                     if (isPaged && jsonMediaType.Schema.Properties is { } pagedProps &&
                         pagedProps.TryGetValue("items", out var itemsSchema))
                         dataSchema = NullableWrap(itemsSchema);
@@ -192,11 +204,11 @@ internal static class EnvelopeSchemaTransformer
                 ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
                 ["code"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32" },
                 ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                ["meta"] = NullableWrap(new OpenApiSchemaReference(PageMetaSchemaId, document, null)),
+                ["meta"] = NullableWrap(new OpenApiSchemaReference(PageMetaSchemaId, document)),
                 ["errors"] = NullableWrap(new OpenApiSchema
                 {
                     Type = JsonSchemaType.Array,
-                    Items = new OpenApiSchemaReference(FieldErrorSchemaId, document, null)
+                    Items = new OpenApiSchemaReference(FieldErrorSchemaId, document)
                 }),
                 ["timestamp"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" }
             }
@@ -209,7 +221,7 @@ internal static class EnvelopeSchemaTransformer
         {
             AllOf =
             [
-                new OpenApiSchemaReference(EnvelopeSchemaId, document, null),
+                new OpenApiSchemaReference(EnvelopeSchemaId, document),
                 new OpenApiSchema
                 {
                     Type = JsonSchemaType.Object,

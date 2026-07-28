@@ -1,6 +1,5 @@
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Sessions;
-using Basil.Domain.Login;
 
 namespace Basil.Application.Services.Multiplayer;
 

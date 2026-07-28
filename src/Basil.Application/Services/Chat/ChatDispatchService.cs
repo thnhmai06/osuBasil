@@ -61,12 +61,13 @@ public sealed class ChatDispatchService(
 
         channelMembership.BroadcastPrivmsg(
             channel, IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
-            skipMemberId: sender.Id);
+            sender.Id);
 
         var matchScope = sender.Match is not null && sender.Match.ChatChannelName == channel.Name
             ? sender.Match
             : null;
-        var reply = await commandDispatcher.DispatchAsync(sender, truncated, matchScope, cancellationToken: cancellationToken);
+        var reply = await commandDispatcher.DispatchAsync(sender, truncated, matchScope,
+            cancellationToken: cancellationToken);
         if (reply is null) return;
 
         var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
@@ -82,8 +83,8 @@ public sealed class ChatDispatchService(
     private async Task SendBotCommandAsync(PlayerSession sender, PlayerSession bot, string text,
         CancellationToken cancellationToken)
     {
-        var reply = await commandDispatcher.DispatchAsync(sender, text, null, prefixOptional: true,
-            cancellationToken: cancellationToken);
+        var reply = await commandDispatcher.DispatchAsync(sender, text, null, true,
+            cancellationToken);
         if (reply is null) return;
 
         // See SendChannelMessageAsync's matching split — a `\n`-embedded reply (e.g. !faq) becomes one

@@ -6,6 +6,6 @@ public sealed class IrcOptions
     public const string SectionName = "Basil:Irc";
 
     public string Name { get; init; } = "Basil";
-    
+
     public int Port { get; init; } = 6667;
 }

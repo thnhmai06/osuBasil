@@ -22,12 +22,12 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
+    private readonly WebApplicationFactory<Program> _factory;
     private readonly StubMapRepository _maps = new();
     private readonly StubMapsetRepository _mapsets = new();
-    private readonly StubScoreRepository _scores = new();
     private readonly StubReplayStorage _replayStorage = new();
+    private readonly StubScoreRepository _scores = new();
 
     public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -51,7 +51,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
                 services.AddSingleton<IMapsetRepository>(_mapsets);
                 services.AddSingleton<IScoreRepository>(_scores);
                 services.AddSingleton<IReplayStorage>(_replayStorage);
-                services.AddSingleton<IOptions<StorageOptions>>(Options.Create(new StorageOptions
+                services.AddSingleton(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
                     AvatarsPath = Path.Combine(_dataDir, "Avatars"),
@@ -65,7 +65,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
     public void Dispose()
     {
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, recursive: true);
+        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
     }
 
     private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "api.test.local")
@@ -143,7 +143,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task BeatmapInfo_KnownId_ReturnsJson()
     {
         var mapset = MakeMapset(100);
-        _maps.OneBeatmap = MakeBeatmap(1, mapset, "diff.osu");
+        _maps.OneBeatmap = MakeBeatmap(1, mapset);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
         var body = await response.Content.ReadAsStringAsync();
@@ -182,7 +182,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmap_FileExists_ReturnsCorrectMimeType()
     {
         var mapset = MakeMapset(100);
-        _maps.OneBeatmap = MakeBeatmap(1, mapset, "diff.osu");
+        _maps.OneBeatmap = MakeBeatmap(1, mapset);
         var folder = MapsetFolder(100);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
@@ -201,7 +201,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         var mapset = MakeMapset(200);
         _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -210,11 +211,12 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmapset_FolderExists_ReturnsCorrectMimeType()
     {
         var mapset = MakeMapset(300);
-        _maps.SetBeatmaps = [MakeBeatmap(1, mapset, "diff.osu")];
+        _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
         var folder = MapsetFolder(300);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
@@ -225,7 +227,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task Storyboard_NoFolder_ReturnsNotFound()
     {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -235,7 +238,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     {
         MapsetFolder(500);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard"));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -246,7 +250,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         var folder = MapsetFolder(600);
         await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]");
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard"));
+        var response = await _factory.CreateClient()
+            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-storyboard", response.Content.Headers.ContentType?.MediaType);
@@ -338,7 +343,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         {
             return Task.FromResult(SetBeatmaps.Count > 0 && SetBeatmaps[0].Mapset.Id == setId
                 ? SetBeatmaps
-                : (IReadOnlyList<Beatmap>)[]);
+                : []);
         }
     }
 

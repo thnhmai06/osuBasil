@@ -33,11 +33,11 @@ public class LoginServiceTests
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+
+    private readonly SpectatorService _spectatorService;
     private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
     private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-
-    private readonly SpectatorService _spectatorService;
 
     public LoginServiceTests()
     {
@@ -477,7 +477,7 @@ public class LoginServiceTests
 
     private static User MakeUser(int id, UserPrivileges priv, string country = "us")
     {
-        return new User(id, "cmyui", Enum.Parse<Country>(country, ignoreCase: true), priv, default);
+        return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default);
     }
 
     private static byte[] Concat(params byte[][] parts)

@@ -32,7 +32,7 @@ internal static class AbbreviationRedirectRoutes
                 .WithName($"redirectTo{targetTitle}")
                 .WithSummary($"Redirect To {targetTitle}")
                 .WithDescription($"302 redirect to `/{target}/...`, preserving the remaining path and query " +
-                    "string. Public.")
+                                 "string. Public.")
                 .WithTags("Abbreviation Redirects")
                 .Produces(StatusCodes.Status302Found);
         }

@@ -49,7 +49,8 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
         cache.Remove(IdKey(id));
     }
 
-    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+        CancellationToken cancellationToken = default)
     {
         await inner.UpdatePrivilegesAsync(id, privilege, cancellationToken);
         cache.Remove(IdKey(id));
@@ -60,7 +61,8 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
     ///     fine — a rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a
     ///     lookup by the old (now-freed) name could keep resolving to this user until the TTL expires.
     /// </summary>
-    public async Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+    public async Task UpdateNameAsync(int id, string name, string safeName,
+        CancellationToken cancellationToken = default)
     {
         var before = await inner.FetchByIdAsync(id, cancellationToken);
         await inner.UpdateNameAsync(id, name, safeName, cancellationToken);

@@ -8,8 +8,6 @@ public class JsonMergePatchTests
 {
     private static readonly JsonSerializerOptions CamelCase = new(JsonSerializerDefaults.Web);
 
-    private sealed record Sample(string Name, int Count, bool Flag);
-
     [Fact]
     public void Diff_NoChanges_ReturnsEmptyPatch()
     {
@@ -117,4 +115,6 @@ public class JsonMergePatchTests
         var array = Assert.IsType<JsonArray>(obj["items"]);
         Assert.Equal(4, array.Count);
     }
+
+    private sealed record Sample(string Name, int Count, bool Flag);
 }

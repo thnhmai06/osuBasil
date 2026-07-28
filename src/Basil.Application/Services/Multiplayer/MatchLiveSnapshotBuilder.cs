@@ -76,7 +76,8 @@ public static class MatchLiveSnapshotBuilder
     ///     only whether one is set, even for an admin-elevated caller (a public, unauthenticated SSE
     ///     channel is not the place to leak it).
     /// </summary>
-    public static async Task<MatchSettingsView> BuildSettings(MatchSession match, IPlayerSessionRegistry sessionRegistry,
+    public static async Task<MatchSettingsView> BuildSettings(MatchSession match,
+        IPlayerSessionRegistry sessionRegistry,
         IUserRepository users, IMapRepository maps, CancellationToken cancellationToken = default)
     {
         var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
@@ -173,8 +174,8 @@ public static class MatchLiveSnapshotBuilder
         var beatmap = await maps.FetchOneAsync(md5: mapMd5, includePrivate: true, cancellationToken: cancellationToken);
         if (beatmap is null) return null;
 
-        var siblings = await maps.FetchAllBySetIdAsync(beatmap.Mapset.Id, includePrivate: true,
-            cancellationToken: cancellationToken);
+        var siblings = await maps.FetchAllBySetIdAsync(beatmap.Mapset.Id, true,
+            cancellationToken);
         var beatmapset = beatmap.Mapset.ToSummary(siblings.Count);
         return beatmap.ToDetail(beatmapset);
     }
@@ -223,7 +224,10 @@ public abstract record MatchRoomCore(
     MatchWinCondition WinCondition,
     GameMode Mode);
 
-/// <summary>The `live` object embedded in a `GET /matches` list item and in <see cref="MatchReportService" />'s report — room config plus the current map/in-progress flag, no slots/host/refs/rounds.</summary>
+/// <summary>
+///     The `live` object embedded in a `GET /matches` list item and in <see cref="MatchReportService" />'s report —
+///     room config plus the current map/in-progress flag, no slots/host/refs/rounds.
+/// </summary>
 public sealed record MatchRoomLive(
     int Id,
     string Name,
@@ -239,9 +243,13 @@ public sealed record MatchRoomLive(
     GameMode Mode,
     bool InProgress,
     BeatmapDetail? Beatmap)
-    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
+        Mode);
 
-/// <summary>Payload for the SSE `/match/{id}/settings` channel and the response of every settings write — carries host/referees since this resource manages membership control, not just config.</summary>
+/// <summary>
+///     Payload for the SSE `/match/{id}/settings` channel and the response of every settings write — carries
+///     host/referees since this resource manages membership control, not just config.
+/// </summary>
 public sealed record MatchSettingsView(
     int Id,
     string Name,
@@ -258,7 +266,8 @@ public sealed record MatchSettingsView(
     UserBrief? Host,
     IReadOnlyList<UserBrief> Referees,
     BeatmapDetail? Beatmap)
-    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
+        Mode);
 
 /// <summary>Payload for the SSE `/match/{id}` main channel — the full live snapshot, including slots.</summary>
 public sealed record MatchLiveSnapshot(
@@ -279,7 +288,8 @@ public sealed record MatchLiveSnapshot(
     IReadOnlyList<UserBrief> Referees,
     BeatmapDetail? Beatmap,
     IReadOnlyList<MatchSlotView> Slots)
-    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition, Mode);
+    : MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
+        Mode);
 
 /// <summary>Payload for `GET /matches/{matchId}/hosts` — null when the room has no host (id 0).</summary>
 public sealed record MatchHostView(UserBrief? Host);
@@ -290,7 +300,10 @@ public sealed record MatchRefereesView(IReadOnlyList<UserBrief> Referees);
 /// <summary>Payload for `GET /matches/{matchId}/ban`.</summary>
 public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 
-/// <summary>Payload for `GET /matches/{matchId}/timer`. <c>AutoStart</c> mirrors <see cref="MatchSession.PendingTimerIsAutoStart" />.</summary>
+/// <summary>
+///     Payload for `GET /matches/{matchId}/timer`. <c>AutoStart</c> mirrors
+///     <see cref="MatchSession.PendingTimerIsAutoStart" />.
+/// </summary>
 public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
 
 /// <summary>
@@ -299,13 +312,22 @@ public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool Au
 ///     <see cref="Status" /> being <see cref="SlotStatus.Ready" />, kept as its own bool since a
 ///     consumer checking readiness shouldn't have to know the full <see cref="SlotStatus" /> flag set.
 /// </summary>
-public sealed record MatchSlotView(int Index, UserBrief? User, SlotStatus Status, MatchTeam Team, Mods Mods,
-    bool Ready, bool Loaded);
+public sealed record MatchSlotView(
+    int Index,
+    UserBrief? User,
+    SlotStatus Status,
+    MatchTeam Team,
+    Mods Mods,
+    bool Ready,
+    bool Loaded);
 
 /// <summary>Payload for `GET/PUT/PATCH /matches/{matchId}/slots` — always 16 entries, index 0-15.</summary>
 public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 
-/// <summary>One `GET /matches` list item — bare match metadata plus `Live` (non-null while the room is currently tracked in memory), replacing the old flat `IsOpen` bool.</summary>
+/// <summary>
+///     One `GET /matches` list item — bare match metadata plus `Live` (non-null while the room is currently tracked
+///     in memory), replacing the old flat `IsOpen` bool.
+/// </summary>
 public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
 
 /// <summary>Response body for `POST /matches/{matchId}/close` — net-new, not wired into any route yet (Phase 3).</summary>

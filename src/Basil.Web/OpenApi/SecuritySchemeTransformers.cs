@@ -1,5 +1,6 @@
 using Basil.Web.Auth;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 namespace Basil.Web.OpenApi;
@@ -15,7 +16,7 @@ internal static class SecuritySchemeTransformers
 {
     private const string SchemeId = "AdminKey";
 
-    public static void AddAdminKeyDocumentTransformer(this Microsoft.AspNetCore.OpenApi.OpenApiOptions options)
+    public static void AddAdminKeyDocumentTransformer(this OpenApiOptions options)
     {
         options.AddDocumentTransformer((document, _, _) =>
         {
@@ -27,7 +28,7 @@ internal static class SecuritySchemeTransformers
                 In = ParameterLocation.Header,
                 Name = "X-Admin-Key",
                 Description = "Admin key matching the server's configured `Server:AdminKey`. Required for " +
-                    "every management/mutation route on this host."
+                              "every management/mutation route on this host."
             };
 
             return Task.CompletedTask;
@@ -44,7 +45,7 @@ internal static class SecuritySchemeTransformers
             operation.Security ??= [];
             operation.Security.Add(new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference(SchemeId, context.Document, null)] = []
+                [new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = []
             });
 
             operation.Responses ??= new OpenApiResponses();

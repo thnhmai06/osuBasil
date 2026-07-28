@@ -5,9 +5,8 @@ using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 using Basil.Domain.Login;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.OpenApi;
@@ -26,8 +25,8 @@ namespace Basil.IntegrationTests;
 public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly StubScoreRepository _scores = new();
     private readonly StubReplayStorage _replayStorage = new();
+    private readonly StubScoreRepository _scores = new();
 
     public ScoreEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -199,29 +198,47 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     /// </summary>
     private sealed class NoopUserRepository : IUserRepository
     {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<User?>(null);
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            Task.FromResult<User?>(null);
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>(null);
+        }
 
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
         public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<User>>([]);
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<User>>([]);
+        }
     }
 
     /// <summary>
@@ -232,25 +249,41 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     private sealed class NoopMapRepository : IMapRepository
     {
         public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Beatmap?>(null);
+            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Beatmap?>(null);
+        }
 
-        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default) =>
+        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-            int amount, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+            int amount, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+        }
 
-        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0);
+        }
 
-        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-            CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Beatmap>>([]);
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
+        }
     }
 }

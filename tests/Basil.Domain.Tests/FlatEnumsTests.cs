@@ -1,6 +1,5 @@
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests;
@@ -41,7 +40,8 @@ public class FlatEnumsTests
         Assert.Equal(1 << 13, (int)UserPrivileges.Administrator);
         Assert.Equal(1 << 14, (int)UserPrivileges.Developer);
         Assert.Equal(UserPrivileges.Supporter | UserPrivileges.Premium, UserPrivileges.Donator);
-        Assert.Equal(UserPrivileges.Moderator | UserPrivileges.Administrator | UserPrivileges.Developer, UserPrivileges.Staff);
+        Assert.Equal(UserPrivileges.Moderator | UserPrivileges.Administrator | UserPrivileges.Developer,
+            UserPrivileges.Staff);
     }
 
     [Fact]
@@ -97,5 +97,4 @@ public class FlatEnumsTests
         Assert.Equal(2, (int)MatchTeamType.TeamVs);
         Assert.Equal(3, (int)MatchTeamType.TagTeamVs);
     }
-
 }

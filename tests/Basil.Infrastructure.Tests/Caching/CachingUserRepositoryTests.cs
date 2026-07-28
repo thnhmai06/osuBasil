@@ -71,7 +71,8 @@ public class CachingUserRepositoryTests
     public async Task FetchByIdAsync_AfterTtlExpires_HitsInnerAgain()
     {
         var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
-        var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()), TimeSpan.FromMilliseconds(20));
+        var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+            TimeSpan.FromMilliseconds(20));
 
         await repo.FetchByIdAsync(7);
         await Task.Delay(100);
@@ -111,7 +112,8 @@ public class CachingUserRepositoryTests
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

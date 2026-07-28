@@ -77,7 +77,8 @@ public class BanchoPacketDispatcherTests
         var pingHandler = new FakeHandler(ClientPackets.Ping, true, (_, _) => pingCalled = true);
         var chatHandler = new FakeHandler(ClientPackets.SendPublicMessage, false, (_, _) => chatCalled = true);
         var dispatcher = new BanchoPacketDispatcher([pingHandler, chatHandler]);
-        var restrictedSession = new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+        var restrictedSession =
+            new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 
         var body = PacketBytes(ClientPackets.Ping, []).Concat(PacketBytes(ClientPackets.SendPublicMessage, [1, 2]))
             .ToArray();

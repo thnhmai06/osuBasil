@@ -12,8 +12,8 @@ namespace Basil.Application.Tests.Sessions;
 /// </summary>
 public class ChannelMembershipServiceTests
 {
-    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private ChannelMembershipService MakeService()
     {

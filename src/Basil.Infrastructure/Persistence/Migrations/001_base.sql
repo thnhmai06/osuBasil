@@ -8,13 +8,13 @@
 
 create table Users
 (
-    Id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name          varchar(32)                                   not null,
-    SafeName      varchar(32)                                   not null,
-    Privilege     int      default 1                            not null,
-    PwBcrypt      char(60)                                      not null,
-    Country       char(2)  default 'xx'                         not null,
-    SilenceEnd    datetime default '1970-01-01 00:00:00'        not null,
+    Id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name       varchar(32)                            not null,
+    SafeName   varchar(32)                            not null,
+    Privilege  int      default 1                     not null,
+    PwBcrypt   char(60)                               not null,
+    Country    char(2)  default 'xx'                  not null,
+    SilenceEnd datetime default '1970-01-01 00:00:00' not null,
     constraint Users_Name_uindex unique (Name),
     constraint Users_SafeName_uindex unique (SafeName)
 );
@@ -24,8 +24,8 @@ create index Users_Privilege_index on Users (Privilege);
 -- (server does not track singleplayer ranking/progression).
 create table UserStats
 (
-    Id     int not null,
-    Mode   int not null,
+    Id     int                       not null,
+    Mode   int                       not null,
     Tscore bigint      default 0     not null,
     Rscore bigint      default 0     not null,
     Plays  int         default 0     not null,
@@ -64,22 +64,22 @@ create table Mapsets
 -- IBeatmap.GetStatistics() — mode-agnostic on purpose, not a fixed set of columns.
 create table Beatmaps
 (
-    Id            int                   not null primary key,
-    MapsetId      int                   not null,
-    Md5           char(32)              not null,
-    Version       varchar(128)          not null,
-    Filename      varchar(256)          not null,
-    TotalLength   int                   not null,
-    MaxCombo      int                   not null,
-    Mode          int                   not null,
-    Bpm           float(12, 2) default 0.00 not null,
-    Cs            float(4, 2)  default 0.00 not null,
-    Ar            float(4, 2)  default 0.00 not null,
-    Od            float(4, 2)  default 0.00 not null,
-    Hp            float(4, 2)  default 0.00 not null,
-    Sr            float(6, 3)  default 0.000 not null,
-    BackgroundFile varchar(256) null,
-    ObjectCounts  text default '{}' not null,
+    Id             int                        not null primary key,
+    MapsetId       int                        not null,
+    Md5            char(32)                   not null,
+    Version        varchar(128)               not null,
+    Filename       varchar(256)               not null,
+    TotalLength    int                        not null,
+    MaxCombo       int                        not null,
+    Mode           int                        not null,
+    Bpm            float(12, 2) default 0.00  not null,
+    Cs             float(4, 2)  default 0.00  not null,
+    Ar             float(4, 2)  default 0.00  not null,
+    Od             float(4, 2)  default 0.00  not null,
+    Hp             float(4, 2)  default 0.00  not null,
+    Sr             float(6, 3)  default 0.000 not null,
+    BackgroundFile varchar(256)               null,
+    ObjectCounts   text         default '{}'  not null,
     constraint Beatmaps_Md5_uindex unique (Md5),
     constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
 );
@@ -89,20 +89,20 @@ create index Beatmaps_Mode_index on Beatmaps (Mode);
 
 create table Channels
 (
-    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name      varchar(32)           not null,
-    Topic     varchar(256)          not null,
+    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name           varchar(32)           not null,
+    Topic          varchar(256)          not null,
     ReadPrivilege  int     default 1     not null,
     WritePrivilege int     default 2     not null,
-    AutoJoin  boolean default false not null,
+    AutoJoin       boolean default false not null,
     constraint Channels_Name_uindex unique (Name)
 );
 create index Channels_AutoJoin_index on Channels (AutoJoin);
 
 create table Relationships
 (
-    User1 int not null,
-    User2 int not null,
+    User1 int         not null,
+    User2 int         not null,
     Type  varchar(10) not null check (Type in ('friend', 'block')),
     primary key (User1, User2)
 );
@@ -150,7 +150,7 @@ create table Matches
     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
     Name      varchar(50) not null,
     CreatedAt datetime    not null,
-    EndedAt   datetime null
+    EndedAt   datetime    null
 );
 
 -- One beatmap played within a Match = one Round. WinningTeam is intentionally NOT stored here —
@@ -163,17 +163,17 @@ create table Matches
 -- MapMd5 survives.
 create table Rounds
 (
-    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    MatchId        int      not null,
-    RoundIndex     int      not null,
-    MapMd5         char(32) not null,
-    Mode           int      not null,
-    WinCondition   int      not null,
-    TeamType       int      not null,
-    Aborted        boolean not null default 0,
-    Mods           int      not null,
-    StartedAt      datetime not null,
-    EndedAt        datetime null,
+    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    MatchId      int      not null,
+    RoundIndex   int      not null,
+    MapMd5       char(32) not null,
+    Mode         int      not null,
+    WinCondition int      not null,
+    TeamType     int      not null,
+    Aborted      boolean  not null default 0,
+    Mods         int      not null,
+    StartedAt    datetime not null,
+    EndedAt      datetime null,
     constraint Rounds_Matches_Id_fk foreign key (MatchId) references Matches (Id)
 );
 create index Rounds_MatchId_index on Rounds (MatchId);
@@ -186,29 +186,29 @@ create index Rounds_MatchId_index on Rounds (MatchId);
 -- host's response is the equivalent signal an IsInvalidated column used to carry.
 create table Scores
 (
-    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    RoundId         int null,
-    Team            int null,
-    MapMd5          char(32) not null,
-    Score           bigint   not null,
-    Accuracy        float(6, 3) not null,
-    MaxCombo        int      not null,
-    Mods            int      not null,
-    N300            int      not null,
-    N100            int      not null,
-    N50             int      not null,
-    NMiss           int      not null,
-    NGeki           int      not null,
-    NKatu           int      not null,
-    Grade           varchar(2) default 'N' not null,
-    Mode            int      not null,
-    PlayTime        datetime not null,
-    TimeElapsed     int      not null,
-    ClientFlags     int      not null,
-    UserId          int      not null,
-    Perfect         boolean  not null,
-    OnlineChecksum  char(32) not null,
-    SubmittedAt     datetime not null,
+    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    RoundId        int                    null,
+    Team           int                    null,
+    MapMd5         char(32)               not null,
+    Score          bigint                 not null,
+    Accuracy       float(6, 3)            not null,
+    MaxCombo       int                    not null,
+    Mods           int                    not null,
+    N300           int                    not null,
+    N100           int                    not null,
+    N50            int                    not null,
+    NMiss          int                    not null,
+    NGeki          int                    not null,
+    NKatu          int                    not null,
+    Grade          varchar(2) default 'N' not null,
+    Mode           int                    not null,
+    PlayTime       datetime               not null,
+    TimeElapsed    int                    not null,
+    ClientFlags    int                    not null,
+    UserId         int                    not null,
+    Perfect        boolean                not null,
+    OnlineChecksum char(32)               not null,
+    SubmittedAt    datetime               not null,
     constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
 create index Scores_MapMd5_index on Scores (MapMd5);
@@ -223,13 +223,13 @@ create index Scores_RoundId_index on Scores (RoundId);
 create table MatchEvents
 (
     Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    MatchId        int       not null,
-    EventType      int       not null,
-    ActorUserId    int       null,
-    ActorUserName  varchar(32) null,
-    TargetUserId   int       null,
-    TargetUserName varchar(32) null,
-    Timestamp      datetime  not null,
+    MatchId        int          not null,
+    EventType      int          not null,
+    ActorUserId    int          null,
+    ActorUserName  varchar(32)  null,
+    TargetUserId   int          null,
+    TargetUserName varchar(32)  null,
+    Timestamp      datetime     not null,
     Detail         varchar(512) null,
     constraint MatchEvents_Matches_Id_fk foreign key (MatchId) references Matches (Id)
 );
@@ -244,36 +244,44 @@ create index MatchEvents_MatchId_index on MatchEvents (MatchId);
 -- for why (their totals are already cheaply available without one).
 create table Counters
 (
-    Name  varchar(64) not null primary key,
-    Value int         default 0 not null
+    Name  varchar(64)   not null primary key,
+    Value int default 0 not null
 );
 
-insert into Counters (Name, Value) values ('Mapsets:Total', 0), ('Mapsets:Public', 0), ('Scores:Total', 0);
+insert into Counters (Name, Value)
+values ('Mapsets:Total', 0),
+       ('Mapsets:Public', 0),
+       ('Scores:Total', 0);
 
 create trigger Counters_Mapsets_AfterInsert
-after insert on Mapsets
+    after insert
+    on Mapsets
 begin
     update Counters set Value = Value + 1 where Name = 'Mapsets:Total';
     update Counters set Value = Value + 1 where Name = 'Mapsets:Public' and NEW.IsPrivate = 0;
 end;
 
 create trigger Counters_Mapsets_AfterDelete
-after delete on Mapsets
+    after delete
+    on Mapsets
 begin
     update Counters set Value = Value - 1 where Name = 'Mapsets:Total';
     update Counters set Value = Value - 1 where Name = 'Mapsets:Public' and OLD.IsPrivate = 0;
 end;
 
 create trigger Counters_Mapsets_AfterUpdatePrivacy
-after update of IsPrivate on Mapsets
-when OLD.IsPrivate <> NEW.IsPrivate
+    after update of IsPrivate
+    on Mapsets
+    when OLD.IsPrivate <> NEW.IsPrivate
 begin
-    update Counters set Value = Value + case when NEW.IsPrivate = 0 then 1 else -1 end
+    update Counters
+    set Value = Value + case when NEW.IsPrivate = 0 then 1 else -1 end
     where Name = 'Mapsets:Public';
 end;
 
 create trigger Counters_Scores_AfterInsert
-after insert on Scores
+    after insert
+    on Scores
 begin
     update Counters set Value = Value + 1 where Name = 'Scores:Total';
 end;

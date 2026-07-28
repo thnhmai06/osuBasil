@@ -16,12 +16,12 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 
 public class MatchReportServiceTests
 {
+    private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
     private readonly IMatchPersistenceRepository _matchPersistence = Substitute.For<IMatchPersistenceRepository>();
     private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
     private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-    private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
 
     public MatchReportServiceTests()
     {

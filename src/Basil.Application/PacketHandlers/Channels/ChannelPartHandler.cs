@@ -24,7 +24,7 @@ public sealed class ChannelPartHandler(IChannelRegistry channelRegistry, Channel
         if (name is "#highlight" or "#userlog") return Task.CompletedTask;
 
         var channel = channelRegistry.GetByName(name);
-        if (channel is not null) channelMembership.Part(player, channel, kick: false);
+        if (channel is not null) channelMembership.Part(player, channel, false);
 
         return Task.CompletedTask;
     }

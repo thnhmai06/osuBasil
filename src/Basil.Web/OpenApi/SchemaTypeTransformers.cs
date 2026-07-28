@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json.Nodes;
 using Basil.Application.Json;
 using Basil.Domain.Login;
@@ -12,6 +13,20 @@ namespace Basil.Web.OpenApi;
 internal static class SchemaTypeTransformers
 {
     /// <summary>
+    ///     Enums that are genuinely combined by bitwise OR on the wire (a real player can have
+    ///     `Hidden | HardRock` set at once) — the noun is used in <see cref="ApplyBitmaskDescription" />'s
+    ///     generated prose. <c>SlotStatus</c> is `[Flags]` in C# too, but only for internal
+    ///     grouped-comparison convenience (see <see cref="AddEnumValuesSchemaTransformer" />'s own doc
+    ///     comment) — a slot's serialized `status` is always exactly one of its single-bit values, never
+    ///     a combination, so it's treated as a regular closed enum instead of a bitmask below.
+    /// </summary>
+    private static readonly Dictionary<Type, string> CombinableFlagsNouns = new()
+    {
+        [typeof(Mods)] = "osu! mods",
+        [typeof(UserPrivileges)] = "user privileges"
+    };
+
+    /// <summary>
     ///     A type with a custom <c>JsonConverter</c> (<see cref="CountryJsonConverter" />,
     ///     <see cref="TimeSpanSecondsJsonConverter" />) can't have its wire shape inferred by reflection,
     ///     so the generator emits an empty `{}` schema — declare the real shape by hand instead. Scoped to
@@ -21,7 +36,7 @@ internal static class SchemaTypeTransformers
     {
         options.AddSchemaTransformer((schema, context, _) =>
         {
-            if (context.JsonTypeInfo.Type == typeof(Basil.Domain.Login.Country))
+            if (context.JsonTypeInfo.Type == typeof(Country))
             {
                 schema.Type = JsonSchemaType.String;
                 schema.Description = "2-letter lowercase country/region acronym (e.g. \"vn\", \"xx\" for unknown).";
@@ -51,7 +66,7 @@ internal static class SchemaTypeTransformers
         options.AddSchemaTransformer((schema, _, _) =>
         {
             if (schema.Type is { } type && (type.HasFlag(JsonSchemaType.Integer) || type.HasFlag(JsonSchemaType.Number))
-                && type.HasFlag(JsonSchemaType.String))
+                                        && type.HasFlag(JsonSchemaType.String))
             {
                 schema.Type = type & ~JsonSchemaType.String;
                 schema.Pattern = null;
@@ -60,20 +75,6 @@ internal static class SchemaTypeTransformers
             return Task.CompletedTask;
         });
     }
-
-    /// <summary>
-    ///     Enums that are genuinely combined by bitwise OR on the wire (a real player can have
-    ///     `Hidden | HardRock` set at once) — the noun is used in <see cref="ApplyBitmaskDescription" />'s
-    ///     generated prose. <c>SlotStatus</c> is `[Flags]` in C# too, but only for internal
-    ///     grouped-comparison convenience (see <see cref="AddEnumValuesSchemaTransformer" />'s own doc
-    ///     comment) — a slot's serialized `status` is always exactly one of its single-bit values, never
-    ///     a combination, so it's treated as a regular closed enum instead of a bitmask below.
-    /// </summary>
-    private static readonly Dictionary<Type, string> CombinableFlagsNouns = new()
-    {
-        [typeof(Mods)] = "osu! mods",
-        [typeof(UserPrivileges)] = "user privileges"
-    };
 
     /// <summary>
     ///     A non-<c>[Flags]</c> enum still serializes as a plain number (see the enum-wire-convention
@@ -90,14 +91,14 @@ internal static class SchemaTypeTransformers
     ///     already gets its own string shape from <see cref="AddCustomConverterSchemaTransformer" /> and
     ///     has far too many members for a meaningful dropdown anyway.
     ///     <para>
-    ///     Runs as a *document* transformer over the final `components.schemas`, matched by component
-    ///     name against every public enum across the `Basil.*` assemblies, rather than as a schema
-    ///     transformer keyed on <c>context.JsonTypeInfo.Type</c> — a schema transformer only reliably
-    ///     mutates the *first* schema object generated for a given type, and for a type used at several
-    ///     call sites (nullable in one place, non-nullable in another) that first mutation isn't
-    ///     guaranteed to be the one that survives into the final named component (confirmed by
-    ///     inspecting the generated document: some enum components kept the mutation, others silently
-    ///     didn't). Operating on the fully-assembled document sidesteps that ordering entirely.
+    ///         Runs as a *document* transformer over the final `components.schemas`, matched by component
+    ///         name against every public enum across the `Basil.*` assemblies, rather than as a schema
+    ///         transformer keyed on <c>context.JsonTypeInfo.Type</c> — a schema transformer only reliably
+    ///         mutates the *first* schema object generated for a given type, and for a type used at several
+    ///         call sites (nullable in one place, non-nullable in another) that first mutation isn't
+    ///         guaranteed to be the one that survives into the final named component (confirmed by
+    ///         inspecting the generated document: some enum components kept the mutation, others silently
+    ///         didn't). Operating on the fully-assembled document sidesteps that ordering entirely.
     ///     </para>
     /// </summary>
     public static void AddEnumValuesSchemaTransformer(this OpenApiOptions options)
@@ -152,7 +153,7 @@ internal static class SchemaTypeTransformers
         var singleBitFlags = Enum.GetValues(type).Cast<object>()
             .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
             .Where(m => m.Value != 0 && (m.Value & (m.Value - 1)) == 0)
-            .Select(m => (m.Name, m.Value, Shift: System.Numerics.BitOperations.Log2((ulong)m.Value)))
+            .Select(m => (m.Name, m.Value, Shift: BitOperations.Log2((ulong)m.Value)))
             .OrderBy(m => m.Value)
             .ToList();
 

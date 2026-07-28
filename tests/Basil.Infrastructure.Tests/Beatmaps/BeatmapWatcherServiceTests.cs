@@ -13,10 +13,10 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 /// </summary>
 public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
+    private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
     private readonly SqliteMapRepository _maps;
     private readonly string _mapsetsPath;
     private readonly BeatmapWatcherService _watcher;
-    private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
     private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
     public BeatmapWatcherServiceTests(SqliteFixture fixture)
@@ -100,11 +100,15 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
             // parses the Mapset id from the folder's own leading digits — rename to the actually
             // resolved id first, matching every other test here that relies on that lookup.
             var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
-                new StorageOptions { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+                new StorageOptions
+                {
+                    ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
+                },
                 beatmap!.Mapset);
             Directory.Move(folder, resolvedFolder);
 
-            var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
+            var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
+                                Guid.NewGuid().ToString("N");
             Directory.Move(resolvedFolder, deletedFolder);
 
             var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
@@ -124,8 +128,15 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
     {
         public readonly List<string> Messages = [];
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)

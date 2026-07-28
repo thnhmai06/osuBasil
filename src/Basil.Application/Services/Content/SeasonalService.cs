@@ -11,8 +11,17 @@ namespace Basil.Application.Services.Content;
 /// </summary>
 public sealed class SeasonalService(IOptions<StorageOptions> storage)
 {
-    public enum CreateResult { Created, AlreadyExists }
-    public enum ReplaceResult { Replaced, NotFound }
+    public enum CreateResult
+    {
+        Created,
+        AlreadyExists
+    }
+
+    public enum ReplaceResult
+    {
+        Replaced,
+        NotFound
+    }
 
     public IReadOnlyList<string> ListFileNames()
     {

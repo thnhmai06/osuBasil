@@ -116,7 +116,7 @@ public sealed class MatchMembershipService(
     {
         var match = matchRegistry.TryCreate(id =>
         {
-            var created = BuildNew(id, data, hostId: 0, createdViaMakeCommand: true);
+            var created = BuildNew(id, data, 0, true);
             RegisterChannel(created);
             return created;
         });
@@ -339,7 +339,7 @@ public sealed class MatchMembershipService(
     public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var bmap = match.MapId > 0
-            ? await mapRepo.FetchOneAsync(id: match.MapId, cancellationToken: cancellationToken)
+            ? await mapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
             : null;
 
         if (match.MapId > 0 && bmap is null)

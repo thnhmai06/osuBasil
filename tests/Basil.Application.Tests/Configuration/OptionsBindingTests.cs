@@ -5,7 +5,10 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Tests.Configuration;
 
-/// <summary>Verifies every configuration section Basil actually reads binds correctly through the standard IOptions&lt;T&gt; pipeline.</summary>
+/// <summary>
+///     Verifies every configuration section Basil actually reads binds correctly through the standard IOptions&lt;T
+///     &gt; pipeline.
+/// </summary>
 public class OptionsBindingTests
 {
     private static T BindOptions<T>(string sectionName, Dictionary<string, string?> values)

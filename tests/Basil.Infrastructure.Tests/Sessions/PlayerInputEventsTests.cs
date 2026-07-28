@@ -1,4 +1,3 @@
-using Basil.Application.Sessions.Spectating;
 using Basil.Infrastructure.Sessions;
 
 namespace Basil.Infrastructure.Tests.Sessions;
@@ -42,7 +41,12 @@ public class PlayerInputEventsTests
     {
         var events = new PlayerInputEvents();
         var received = new List<byte[]>();
-        void Handler(int id, byte[] payload) => received.Add(payload);
+
+        void Handler(int id, byte[] payload)
+        {
+            received.Add(payload);
+        }
+
         events.InputPublished += Handler;
         events.InputPublished -= Handler;
 

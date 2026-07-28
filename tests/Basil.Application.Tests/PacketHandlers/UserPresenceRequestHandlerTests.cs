@@ -15,7 +15,8 @@ public class UserPresenceRequestHandlerTests
     public async Task Handle_KnownTarget_EnqueuesTheirPresence()
     {
         var self = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var target = new PlayerSession(2, "target", "target-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var target = new PlayerSession(2, "target", "target-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         _sessionRegistry.GetById(2).Returns(target);
         var reader = new BanchoPacketReader(PacketWriter.WriteI32List([2]));
 

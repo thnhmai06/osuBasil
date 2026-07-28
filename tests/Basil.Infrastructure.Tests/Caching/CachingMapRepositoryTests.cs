@@ -22,8 +22,8 @@ public class CachingMapRepositoryTests
         inner.ById[1] = beatmap;
         var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
 
-        await repo.FetchOneAsync(id: 1);
-        await repo.FetchOneAsync(id: 1);
+        await repo.FetchOneAsync(1);
+        await repo.FetchOneAsync(1);
 
         Assert.Equal(1, inner.FetchOneCalls);
     }
@@ -63,7 +63,7 @@ public class CachingMapRepositoryTests
         inner.ByMd5[original.Md5] = original;
         var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
 
-        await repo.FetchOneAsync(id: 1);
+        await repo.FetchOneAsync(1);
         await repo.FetchOneAsync(md5: original.Md5);
         Assert.Equal(2, inner.FetchOneCalls);
 
@@ -73,7 +73,7 @@ public class CachingMapRepositoryTests
         inner.ById[1] = updated;
         inner.ByMd5[original.Md5] = updated;
 
-        await repo.FetchOneAsync(id: 1);
+        await repo.FetchOneAsync(1);
         await repo.FetchOneAsync(md5: original.Md5);
 
         Assert.Equal(4, inner.FetchOneCalls);

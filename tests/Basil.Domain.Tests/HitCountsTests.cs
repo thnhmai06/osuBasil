@@ -60,7 +60,8 @@ public class HitCountsTests
         var acc = hits.CalculateAccuracy(GameMode.Mania, Mods.ScoreV2);
 
         const int total = 50 + 20 + 10 + 15 + 5;
-        const double expected = 100.0 * (10 * 50.0 + 20 * 100.0 + 5 * 200.0 + 50 * 300.0 + 15 * 305.0) / (total * 305.0);
+        const double expected =
+            100.0 * (10 * 50.0 + 20 * 100.0 + 5 * 200.0 + 50 * 300.0 + 15 * 305.0) / (total * 305.0);
         Assert.Equal(expected, acc, 10);
     }
 

@@ -130,7 +130,8 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

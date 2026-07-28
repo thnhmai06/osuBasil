@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.OpenApi;
 
 namespace Basil.Web.OpenApi;

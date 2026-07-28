@@ -1,7 +1,6 @@
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Json;
 using Basil.Application.Services.Multiplayer;
@@ -246,10 +245,15 @@ internal static class LiveSseRoutes
     ///     hand instead. Used when the requested match/resource isn't currently live, so there's nothing
     ///     to stream.
     /// </summary>
-    public static IResult NotLive(string message = "Match is not live") =>
-        SseError(StatusCodes.Status409Conflict, message);
+    public static IResult NotLive(string message = "Match is not live")
+    {
+        return SseError(StatusCodes.Status409Conflict, message);
+    }
 
-    /// <summary>Same hand-envelope need as <see cref="NotLive" />, for the other pre-stream error statuses an SSE route can return (e.g. 404 out-of-range slot, 400 no-stream-to-expose).</summary>
+    /// <summary>
+    ///     Same hand-envelope need as <see cref="NotLive" />, for the other pre-stream error statuses an SSE route can
+    ///     return (e.g. 404 out-of-range slot, 400 no-stream-to-expose).
+    /// </summary>
     public static IResult SseError(int statusCode, string message)
     {
         var envelope = new Envelope<object?>(false, statusCode, message, null, null, null, DateTimeOffset.UtcNow);

@@ -29,5 +29,4 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 
         Assert.Empty(stats);
     }
-
 }

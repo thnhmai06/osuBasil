@@ -39,8 +39,10 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     {
         var matchId = await _repository.CreateMatchAsync("Multi-Round", FixedTime);
         var mapMd5 = new string('r', 32);
-        await _repository.CreateRoundAsync(matchId, 2, mapMd5, GameMode.Standard, MatchWinCondition.Score, MatchTeamType.HeadToHead, Mods.NoMod, FixedTime.AddMinutes(5));
-        await _repository.CreateRoundAsync(matchId, 1, mapMd5, GameMode.Standard, MatchWinCondition.Score, MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
+        await _repository.CreateRoundAsync(matchId, 2, mapMd5, GameMode.Standard, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, Mods.NoMod, FixedTime.AddMinutes(5));
+        await _repository.CreateRoundAsync(matchId, 1, mapMd5, GameMode.Standard, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
 
         var rounds = await _repository.FetchRoundsAsync(matchId);
 
@@ -53,7 +55,8 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     public async Task SetRoundEnded_PersistsEndedAt()
     {
         var matchId = await _repository.CreateMatchAsync("Round End", FixedTime);
-        var roundId = await _repository.CreateRoundAsync(matchId, 1, new string('s', 32), GameMode.Standard, MatchWinCondition.Score, MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
+        var roundId = await _repository.CreateRoundAsync(matchId, 1, new string('s', 32), GameMode.Standard,
+            MatchWinCondition.Score, MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
 
         await _repository.SetRoundEndedAsync(roundId, FixedTime.AddMinutes(3), false);
 
@@ -78,7 +81,8 @@ public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : ICla
     public async Task DeleteMatch_RemovesMatchAndItsRounds()
     {
         var matchId = await _repository.CreateMatchAsync("To Delete", FixedTime);
-        await _repository.CreateRoundAsync(matchId, 1, new string('d', 32), GameMode.Standard, MatchWinCondition.Score, MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
+        await _repository.CreateRoundAsync(matchId, 1, new string('d', 32), GameMode.Standard, MatchWinCondition.Score,
+            MatchTeamType.HeadToHead, Mods.NoMod, FixedTime);
 
         await _repository.DeleteMatchAsync(matchId);
 

@@ -23,8 +23,8 @@ public sealed class ReplayService(IScoreRepository scores, IReplayStorage replay
         if (owner is null) return new ReplayFetchResult(ReplayFetchResultCode.NotFound, null);
 
         var data = await replayStorage.ReadAsync(scoreId, cancellationToken);
-        return data is not null 
-            ? new ReplayFetchResult(ReplayFetchResultCode.Found, data) 
+        return data is not null
+            ? new ReplayFetchResult(ReplayFetchResultCode.Found, data)
             : new ReplayFetchResult(ReplayFetchResultCode.NotFound, null);
     }
 }

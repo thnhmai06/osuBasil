@@ -17,7 +17,7 @@ public sealed class CountryJsonConverter : JsonConverter<Country>
     public override Country Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        return value is not null && Enum.TryParse<Country>(value, ignoreCase: true, out var country)
+        return value is not null && Enum.TryParse<Country>(value, true, out var country)
             ? country
             : Country.Xx;
     }

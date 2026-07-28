@@ -21,7 +21,7 @@ internal static class FaqRoutes
             .WithName("listFaqs")
             .WithSummary("List FAQs")
             .WithDescription("Bare entry names (no `.txt` suffix), matching `!faq list`'s own identifier " +
-                "space. Public.")
+                             "space. Public.")
             .WithTags("FAQ")
             .Produces<IReadOnlyList<string>>()
             .WithExample(StatusCodes.Status200OK, new List<string> { "rules", "schedule", "how-to-join" });
@@ -32,8 +32,8 @@ internal static class FaqRoutes
             .WithName("createFaq")
             .WithSummary("Create FAQ")
             .WithDescription("Multipart upload, field name `file`, must be a `.txt` file — its name (minus " +
-                "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
-                "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
+                             "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
+                             "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
             .WithTags("FAQ")
             .WithMultipartFileUpload()
             .Produces<FaqCreatedView>(StatusCodes.Status201Created)
@@ -44,15 +44,15 @@ internal static class FaqRoutes
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'rules' already exists."));
 
         group.MapGet("/faqs/{entry}", async (string entry, FaqService faq, CancellationToken cancellationToken) =>
-        {
-            var content = await faq.ReadEntryAsync(entry, cancellationToken);
-            return content is null ? Results.NotFound() : Results.Text(content);
-        })
+            {
+                var content = await faq.ReadEntryAsync(entry, cancellationToken);
+                return content is null ? Results.NotFound() : Results.Text(content);
+            })
             .WithGroupName("basilapi")
             .WithName("getFaq")
             .WithSummary("Get FAQ")
             .WithDescription("`{entry}` is the bare name used by `!faq <entry>` (no `.txt` suffix). 404 if no " +
-                "entry with this name exists. Public.")
+                             "entry with this name exists. Public.")
             .WithTags("FAQ")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -62,7 +62,7 @@ internal static class FaqRoutes
             .WithName("replaceFaq")
             .WithSummary("Replace FAQ")
             .WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet " +
-                "— use `POST /faqs/` to create one." + AdminKeyNote)
+                             "— use `POST /faqs/` to create one." + AdminKeyNote)
             .WithTags("FAQ")
             .WithMultipartFileUpload()
             .Produces<FaqReplacedView>()
@@ -72,7 +72,7 @@ internal static class FaqRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/faqs/{entry}", (string entry, FaqService faq) =>
-            faq.DeleteEntry(entry) ? Results.Json(new FaqDeletedView(entry, true)) : Results.NotFound())
+                faq.DeleteEntry(entry) ? Results.Json(new FaqDeletedView(entry, true)) : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithName("deleteFaq")
@@ -84,19 +84,11 @@ internal static class FaqRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
-    /// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
-    public sealed record FaqDeletedView(string Entry, bool Deleted);
-
-    /// <summary>Confirmation body for `POST /faqs/`.</summary>
-    public sealed record FaqCreatedView(string Entry, bool Created);
-
-    /// <summary>Confirmation body for `PUT /faqs/{entry}`.</summary>
-    public sealed record FaqReplacedView(string Entry, bool Replaced);
-
     private static async Task<IResult> HandleCreate(HttpContext context, FaqService faq,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
+        if (!context.Request.HasFormContentType)
+            return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
@@ -118,7 +110,8 @@ internal static class FaqRoutes
     private static async Task<IResult> HandleReplace(string entry, HttpContext context, FaqService faq,
         CancellationToken cancellationToken)
     {
-        if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
+        if (!context.Request.HasFormContentType)
+            return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
         var form = await context.Request.ReadFormAsync(cancellationToken);
         var file = form.Files.GetFile("file");
@@ -133,4 +126,13 @@ internal static class FaqRoutes
             _ => Results.Json(new FaqReplacedView(entry, true))
         };
     }
+
+    /// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
+    public sealed record FaqDeletedView(string Entry, bool Deleted);
+
+    /// <summary>Confirmation body for `POST /faqs/`.</summary>
+    public sealed record FaqCreatedView(string Entry, bool Created);
+
+    /// <summary>Confirmation body for `PUT /faqs/{entry}`.</summary>
+    public sealed record FaqReplacedView(string Entry, bool Replaced);
 }

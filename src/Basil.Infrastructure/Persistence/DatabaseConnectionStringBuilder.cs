@@ -5,8 +5,10 @@ namespace Basil.Infrastructure.Persistence;
 /// <summary>Shared by DI registration and the startup migration runner so both build the identical connection string.</summary>
 public static class DatabaseConnectionStringBuilder
 {
-    /// <summary>Resolves <see cref="DatabaseOptions.Path" /> to an absolute path, anchored to the
-    ///     executable's directory (not the process's working directory) when relative.</summary>
+    /// <summary>
+    ///     Resolves <see cref="DatabaseOptions.Path" /> to an absolute path, anchored to the
+    ///     executable's directory (not the process's working directory) when relative.
+    /// </summary>
     public static string ResolvePath(DatabaseOptions options)
     {
         return Path.IsPathRooted(options.Path) ? options.Path : Path.Combine(AppContext.BaseDirectory, options.Path);

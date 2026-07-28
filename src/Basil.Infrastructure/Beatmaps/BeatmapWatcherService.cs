@@ -103,7 +103,8 @@ public sealed class BeatmapWatcherService(
 
         // A `.deleted_` folder is mid-deletion (rename-in-place done, physical removal pending the
         // GC pass) — never a live mapset, so no reconciliation pathway applies to it.
-        if (Path.GetFileName(affected).Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
+        if (Path.GetFileName(affected)
+            .Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
             return;
 
         try

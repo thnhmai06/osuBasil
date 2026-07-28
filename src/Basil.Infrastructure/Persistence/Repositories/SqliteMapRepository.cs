@@ -10,10 +10,10 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 public sealed class SqliteMapRepository(string connectionString) : IMapRepository
 {
     private const string SharedColumns = """
-        b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
-        b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.ObjectCounts,
-        m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
-        """;
+                                         b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
+                                         b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.ObjectCounts,
+                                         m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
+                                         """;
 
     public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
         int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
@@ -67,7 +67,8 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 
     public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
     {
-        var existing = await FetchOneAsync(md5: beatmap.Md5, includePrivate: true, cancellationToken: cancellationToken);
+        var existing =
+            await FetchOneAsync(md5: beatmap.Md5, includePrivate: true, cancellationToken: cancellationToken);
         int resolvedId;
         if (existing is not null) resolvedId = existing.Id;
         else if (beatmap.Id > 0) resolvedId = beatmap.Id;
@@ -181,7 +182,9 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
-        var whereClause = includePrivate ? "WHERE b.MapsetId = @MapsetId" : "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
+        var whereClause = includePrivate
+            ? "WHERE b.MapsetId = @MapsetId"
+            : "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
         var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
             $"""
              SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
@@ -221,7 +224,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
         public Beatmap ToBeatmap(Mapset mapset)
         {
             var objectCounts = JsonSerializer.Deserialize<Dictionary<string, int>>(ObjectCounts)
-                ?? new Dictionary<string, int>();
+                               ?? new Dictionary<string, int>();
             return new Beatmap(
                 Md5, Id, mapset, Version, Filename,
                 TimeSpan.FromSeconds(TotalLength), MaxCombo,

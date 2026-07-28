@@ -12,7 +12,10 @@ public enum RankedStatus : sbyte
     Loved = 5
 }
 
-/// <summary>Ported from app/constants/beatmap_statuses.py's RankedStatus classmethods/properties used by score submission and leaderboards.</summary>
+/// <summary>
+///     Ported from app/constants/beatmap_statuses.py's RankedStatus classmethods/properties used by score submission
+///     and leaderboards.
+/// </summary>
 public static class RankedStatusExtensions
 {
     /// <summary>Ported from RankedStatus.osu_api — only statuses osu!api itself returns are mapped.</summary>

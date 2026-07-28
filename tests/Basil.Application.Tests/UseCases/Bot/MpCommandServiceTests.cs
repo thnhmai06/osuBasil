@@ -252,7 +252,7 @@ public class MpCommandServiceTests
         _fixture.RegisterAll(host);
         var match = _fixture.CreateMatch(host);
         var bmap = MultiplayerTestSupport.MakeBeatmap(match.MapId);
-        _maps.FetchOneAsync(id: match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+        _maps.FetchOneAsync(match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
         var reply = await MakeService().HandleAsync(host, match, "settings", []);
 
@@ -265,7 +265,7 @@ public class MpCommandServiceTests
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         _fixture.RegisterAll(host);
         var match = _fixture.CreateMatch(host);
-        _maps.FetchOneAsync(id: match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns((Beatmap?)null);
+        _maps.FetchOneAsync(match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns((Beatmap?)null);
 
         var reply = await MakeService().HandleAsync(host, match, "settings", []);
 

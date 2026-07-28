@@ -33,15 +33,17 @@ public sealed partial class BeatmapIngestionService(
     IOptions<StorageOptions> options,
     ILogger<BeatmapIngestionService> logger)
 {
+    /// <summary>
+    ///     Marker infix for a mapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
+    ///     doc comment and the `api.` host's async mapset delete route) — never treated as a live mapset.
+    /// </summary>
+    public const string DeletedFolderInfix = ".deleted_";
+
     // Platform-provided, not a hardcoded Windows list — on Linux (a supported deploy target, see
     // CLAUDE.md's win-x64/linux-x64 publish commands) this is just { '\0', '/' }, so e.g. "|" in a
     // beatmap's title is a perfectly valid path character there and is left alone.
     private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
     private static readonly Regex LeadingIdPattern = MyRegex();
-
-    /// <summary>Marker infix for a mapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
-    /// doc comment and the `api.` host's async mapset delete route) — never treated as a live mapset.</summary>
-    public const string DeletedFolderInfix = ".deleted_";
 
     public static string MapsetFolderName(Mapset mapset)
     {
@@ -130,8 +132,12 @@ public sealed partial class BeatmapIngestionService(
         return ingested;
     }
 
-    /// <summary>Extracts every entry of a loose ".osz" (audio/images/video/.osu, as-is) into its resolved mapset folder, then reconciles that folder.</summary>
-    public async Task<(int Ingested, int? SetId)> ReconcileOszAsync(string oszPath, CancellationToken cancellationToken = default)
+    /// <summary>
+    ///     Extracts every entry of a loose ".osz" (audio/images/video/.osu, as-is) into its resolved mapset folder, then
+    ///     reconciles that folder.
+    /// </summary>
+    public async Task<(int Ingested, int? SetId)> ReconcileOszAsync(string oszPath,
+        CancellationToken cancellationToken = default)
     {
         var decoded = new List<DecodedFile>();
         await using (var archive = ZipFile.OpenRead(oszPath))
@@ -208,7 +214,8 @@ public sealed partial class BeatmapIngestionService(
             var parsed = TryDecode(osuBytes);
             if (parsed is null) continue;
 
-            decoded.Add(new DecodedFile(Path.GetFileName(osuPath), osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
+            decoded.Add(new DecodedFile(Path.GetFileName(osuPath), osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes),
+                parsed));
         }
 
         if (decoded.Count == 0) return (0, null);
@@ -254,14 +261,17 @@ public sealed partial class BeatmapIngestionService(
         }
 
         var onDisk = decoded.Select(f => f.OriginalFilename).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var known = await maps.FetchAllBySetIdAsync(mapset.Id, includePrivate: true, cancellationToken: cancellationToken);
+        var known = await maps.FetchAllBySetIdAsync(mapset.Id, true, cancellationToken);
         foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
             await maps.DeleteByMd5Async(gone.Md5, cancellationToken);
 
         return (ingested, mapset.Id);
     }
 
-    /// <summary>A mapset folder vanished from disk — drop its DB row (Beatmaps cascade via FK) if its leading id is still parseable and known.</summary>
+    /// <summary>
+    ///     A mapset folder vanished from disk — drop its DB row (Beatmaps cascade via FK) if its leading id is still
+    ///     parseable and known.
+    /// </summary>
     public async Task ReconcileDeletedFolderAsync(string folderPath, CancellationToken cancellationToken = default)
     {
         var name = Path.GetFileName(folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
@@ -286,7 +296,8 @@ public sealed partial class BeatmapIngestionService(
     {
         foreach (var file in decoded)
         {
-            var existing = await maps.FetchOneAsync(md5: file.Md5, includePrivate: true, cancellationToken: cancellationToken);
+            var existing = await maps.FetchOneAsync(md5: file.Md5, includePrivate: true,
+                cancellationToken: cancellationToken);
             if (existing is not null) return existing.Mapset;
         }
 
@@ -294,7 +305,8 @@ public sealed partial class BeatmapIngestionService(
         if (match.Success && int.TryParse(match.Groups[1].Value, out var leadingId))
         {
             var existingMapset = await mapsets.FetchByIdAsync(leadingId, cancellationToken);
-            if (existingMapset is not null) return await RefreshMapsetAsync(existingMapset, decoded[0], cancellationToken);
+            if (existingMapset is not null)
+                return await RefreshMapsetAsync(existingMapset, decoded[0], cancellationToken);
         }
 
         var onlineSetId = decoded[0].Parsed.BeatmapInfo.BeatmapSet?.OnlineID;
@@ -305,7 +317,8 @@ public sealed partial class BeatmapIngestionService(
         return await RefreshMapsetAsync(null, decoded[0], cancellationToken, newId);
     }
 
-    private async Task<Mapset> RefreshMapsetAsync(Mapset? existing, DecodedFile first, CancellationToken cancellationToken,
+    private async Task<Mapset> RefreshMapsetAsync(Mapset? existing, DecodedFile first,
+        CancellationToken cancellationToken,
         int? newId = null)
     {
         var info = first.Parsed.BeatmapInfo;
@@ -357,8 +370,8 @@ public sealed partial class BeatmapIngestionService(
         return IllegalFilenameChars.Aggregate(name, (current, c) => current.Replace(c.ToString(), ""));
     }
 
-    private sealed record DecodedFile(string OriginalFilename, byte[] Bytes, string Md5, LazerBeatmap Parsed);
-
     [GeneratedRegex(@"^(\d+)")]
     private static partial Regex MyRegex();
+
+    private sealed record DecodedFile(string OriginalFilename, byte[] Bytes, string Md5, LazerBeatmap Parsed);
 }

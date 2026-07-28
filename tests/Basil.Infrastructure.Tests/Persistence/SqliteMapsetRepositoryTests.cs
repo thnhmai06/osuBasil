@@ -5,8 +5,8 @@ namespace Basil.Infrastructure.Tests.Persistence;
 
 public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-    private readonly SqliteMapsetRepository _mapsetRepository = new(fixture.ConnectionString);
     private readonly SqliteMapRepository _mapRepository = new(fixture.ConnectionString);
+    private readonly SqliteMapsetRepository _mapsetRepository = new(fixture.ConnectionString);
 
     private static Mapset MakeMapset(int id, bool isPrivate = false)
     {
@@ -102,7 +102,7 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
     public async Task FetchPageAsync_OnlyWithVisibleBeatmaps_ExcludesPrivateMapsets()
     {
         var visible = MakeMapset(9040);
-        var privateOnly = MakeMapset(9041, isPrivate: true);
+        var privateOnly = MakeMapset(9041, true);
         await _mapsetRepository.UpsertAsync(visible);
         await _mapsetRepository.UpsertAsync(privateOnly);
         await _mapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
@@ -112,8 +112,8 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
             TimeSpan.FromSeconds(120), 500,
             new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>()));
 
-        var visibleOnly = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: true);
-        var everything = await _mapsetRepository.FetchPageAsync(0, 100, onlyWithVisibleBeatmaps: false);
+        var visibleOnly = await _mapsetRepository.FetchPageAsync(0, 100, true);
+        var everything = await _mapsetRepository.FetchPageAsync(0, 100, false);
 
         Assert.Contains(visibleOnly, m => m.Id == 9040);
         Assert.DoesNotContain(visibleOnly, m => m.Id == 9041);

@@ -41,7 +41,8 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 
         public Channel ToChannel()
         {
-            return new Channel(Id, Name, Topic, (UserPrivileges)ReadPrivilege, (UserPrivileges)WritePrivilege, AutoJoin);
+            return new Channel(Id, Name, Topic, (UserPrivileges)ReadPrivilege, (UserPrivileges)WritePrivilege,
+                AutoJoin);
         }
     }
 }

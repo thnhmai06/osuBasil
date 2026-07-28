@@ -1,8 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Linq;
 using Basil.Web.OpenApi;
-using Basil.Web.Routing;
 
 namespace Basil.Web.Middleware;
 
@@ -49,7 +47,7 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 
         var contentType = context.Response.ContentType;
         var isJsonOrEmpty = string.IsNullOrEmpty(contentType) ||
-            contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
+                            contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
 
         buffer.Seek(0, SeekOrigin.Begin);
         if (!isJsonOrEmpty)

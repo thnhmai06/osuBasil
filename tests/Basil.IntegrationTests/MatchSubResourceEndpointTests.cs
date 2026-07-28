@@ -8,9 +8,9 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -105,7 +105,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     [Fact]
     public async Task PutHosts_MissingAdminKey_ReturnsUnauthorized()
     {
-        var request = MakeRequest(HttpMethod.Put, "/matches/1/hosts", adminKey: null);
+        var request = MakeRequest(HttpMethod.Put, "/matches/1/hosts", null);
         request.Content = JsonContent.Create(new { userId = 1 });
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -286,7 +286,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         response.EnsureSuccessStatusCode();
 
         var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var byUserId = envelope.GetProperty("data").EnumerateArray().ToDictionary(r => r.GetProperty("userId").GetInt32());
+        var byUserId = envelope.GetProperty("data").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("userId").GetInt32());
 
         Assert.False(byUserId[banned.Id].GetProperty("ok").GetBoolean());
         Assert.True(byUserId[free.Id].GetProperty("ok").GetBoolean());
@@ -430,40 +431,72 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     {
         private int _nextId = 1;
 
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt, CancellationToken cancellationToken = default) =>
-            Task.FromResult(_nextId++);
+        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_nextId++);
+        }
 
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
         public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
             GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default) =>
+            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted, CancellationToken cancellationToken = default) =>
+        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+            CancellationToken cancellationToken = default)
+        {
             throw new NotSupportedException();
+        }
 
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<MatchRow?>(null);
+        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<MatchRow?>(null);
+        }
 
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
 
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
 
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+        }
 
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+        }
+
+        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+        }
     }
 
     /// <summary>
@@ -474,28 +507,46 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
     /// </summary>
     private sealed class NoopUserRepository : IUserRepository
     {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<User?>(null);
+        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            Task.FromResult<User?>(null);
+        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(null);
+        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>(null);
+        }
 
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
 
         public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<User?>(null);
+        }
 
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<User>>([]);
+        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<User>>([]);
+        }
     }
 }

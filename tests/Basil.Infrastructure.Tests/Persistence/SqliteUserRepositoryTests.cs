@@ -68,7 +68,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdateCountry_PersistsChange()
     {
-        var created = (await _repository.CreateAsync("country test user", "hash", Country.Xx, null))!;
+        var created = (await _repository.CreateAsync("country test user", "hash", Country.Xx))!;
 
         await _repository.UpdateCountryAsync(created.Id, Country.Jp);
 
@@ -79,7 +79,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdatePrivileges_PersistsChange()
     {
-        var created = (await _repository.CreateAsync("priv test user", "hash", Country.Xx, null))!;
+        var created = (await _repository.CreateAsync("priv test user", "hash", Country.Xx))!;
 
         await _repository.UpdatePrivilegesAsync(created.Id, (UserPrivileges)3);
 
@@ -90,7 +90,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task Create_ThenFetchByName_RoundTrips()
     {
-        var created = (await _repository.CreateAsync("Fresh Player", "some-hash", Country.Us, null))!;
+        var created = (await _repository.CreateAsync("Fresh Player", "some-hash", Country.Us))!;
 
         Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
 
@@ -101,7 +101,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
     [Fact]
     public async Task UpdateName_PersistsNameAndSafeName()
     {
-        var created = (await _repository.CreateAsync("rename me", "hash", Country.Xx, null))!;
+        var created = (await _repository.CreateAsync("rename me", "hash", Country.Xx))!;
 
         await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
 

@@ -54,7 +54,8 @@ public interface IMatchPersistenceRepository
     Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Find rounds that weren't properly ended within a match.</summary>
-    Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>New for MatchReportService/management API reads — a raw Matches row.</summary>

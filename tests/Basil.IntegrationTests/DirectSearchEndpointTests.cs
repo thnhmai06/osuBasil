@@ -80,7 +80,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task Search_Authenticated_ReturnsFormattedResults()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(60, "search-user", "tok", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(60, "search-user", "tok", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         _maps.SearchResult = [[MakeBeatmap(1, 100)]];
         var request = MakeRequest("/web/osu-search.php", "u=search-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
 
@@ -104,7 +105,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task SearchSet_UnknownSet_ReturnsEmptyBody()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         _maps.SetInfo = null;
         var request = MakeRequest("/web/osu-search-set.php", "u=searchset-unknown&h=correct-md5&s=999");
 
@@ -118,7 +120,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     public async Task SearchSet_KnownSet_ReturnsFormattedSetLine()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         _maps.SetInfo = MakeBeatmap(1, 100);
         var request = MakeRequest("/web/osu-search-set.php", "u=searchset-known&h=correct-md5&s=100");
 
@@ -163,7 +166,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

@@ -33,7 +33,8 @@ public class MapsetGarbageCollectorServiceTests : IDisposable
     [Fact]
     public async Task StartAsync_DeletesMarkedFoldersImmediately_LeavesLiveFoldersAlone()
     {
-        var deletedFolder = Path.Combine(_mapsetsPath, "5 Artist - Title" + BeatmapIngestionService.DeletedFolderInfix + "abc");
+        var deletedFolder = Path.Combine(_mapsetsPath,
+            "5 Artist - Title" + BeatmapIngestionService.DeletedFolderInfix + "abc");
         var liveFolder = Path.Combine(_mapsetsPath, "6 Artist - Title");
         Directory.CreateDirectory(deletedFolder);
         Directory.CreateDirectory(liveFolder);

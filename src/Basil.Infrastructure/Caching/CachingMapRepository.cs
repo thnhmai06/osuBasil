@@ -23,22 +23,14 @@ public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cach
     {
         if (id is not null && md5 is null && filename is null && setId is null)
             return FetchCachedAsync(IdKey(id.Value),
-                () => inner.FetchOneAsync(id: id, includePrivate: includePrivate, cancellationToken: cancellationToken));
+                () => inner.FetchOneAsync(id, includePrivate: includePrivate, cancellationToken: cancellationToken));
 
         if (md5 is not null && id is null && filename is null && setId is null)
             return FetchCachedAsync(Md5Key(md5),
-                () => inner.FetchOneAsync(md5: md5, includePrivate: includePrivate, cancellationToken: cancellationToken));
+                () => inner.FetchOneAsync(md5: md5, includePrivate: includePrivate,
+                    cancellationToken: cancellationToken));
 
         return inner.FetchOneAsync(id, md5, filename, setId, includePrivate, cancellationToken);
-    }
-
-    private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
-    {
-        if (cache.TryGetValue(key, out Beatmap? cached)) return cached;
-
-        var beatmap = await fetch();
-        if (beatmap is not null) cache.Set(key, beatmap, _ttl);
-        return beatmap;
     }
 
     public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
@@ -79,6 +71,15 @@ public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cach
         CancellationToken cancellationToken = default)
     {
         return inner.FetchAllBySetIdAsync(setId, includePrivate, cancellationToken);
+    }
+
+    private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
+    {
+        if (cache.TryGetValue(key, out Beatmap? cached)) return cached;
+
+        var beatmap = await fetch();
+        if (beatmap is not null) cache.Set(key, beatmap, _ttl);
+        return beatmap;
     }
 
     private void Invalidate(Beatmap beatmap)

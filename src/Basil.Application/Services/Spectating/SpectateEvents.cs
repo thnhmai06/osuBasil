@@ -12,8 +12,12 @@ public abstract record SpectateEvent(UserBrief User);
 ///     protocol types directly (same convention as <see cref="PlayerLiveScore" />, built from
 ///     <see cref="ScoreFrameData" /> elsewhere) rather than duplicating an API-layer copy of the same fields.
 /// </summary>
-public sealed record SpectateFramesEvent(UserBrief User, ReplayAction Action, int ExtraByte,
-    IReadOnlyList<ReplayFrameData> Frames, ScoreFrameData ScoreFrame) : SpectateEvent(User);
+public sealed record SpectateFramesEvent(
+    UserBrief User,
+    ReplayAction Action,
+    int ExtraByte,
+    IReadOnlyList<ReplayFrameData> Frames,
+    ScoreFrameData ScoreFrame) : SpectateEvent(User);
 
 /// <summary>Spectate session lifecycle states (SSE event name `state`).</summary>
 public enum SpectateState

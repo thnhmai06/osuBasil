@@ -26,7 +26,8 @@ public sealed class GhostDisconnectService(
         var currentTime = DateTimeOffset.UtcNow;
 
         foreach (var player in sessionRegistry.All)
-            if (!player.IsBot && currentTime - player.LastRecvTime > TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
+            if (!player.IsBot && currentTime - player.LastRecvTime >
+                TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
             {
                 // Parts every joined channel (broadcasting IRC QUIT to real IRC clients still in
                 // them) before dropping the session — otherwise a ghosted IRC member would linger

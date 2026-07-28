@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Performance;
@@ -57,10 +58,10 @@ public class PpyOsuCalculatorTests
     {
         var calculator = new PpyOsuCalculator();
         var bytes = File.ReadAllBytes(FixturePath);
-        var expected = Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(bytes));
+        var expected = Convert.ToHexStringLower(MD5.HashData(bytes));
 
         var md5 = calculator.ComputeBeatmapMd5(bytes);
 
-        Assert.Equal(expected, md5, ignoreCase: true);
+        Assert.Equal(expected, md5, true);
     }
 }

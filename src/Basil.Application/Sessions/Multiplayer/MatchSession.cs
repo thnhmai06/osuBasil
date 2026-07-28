@@ -143,7 +143,10 @@ public sealed class MatchSession(
     /// </summary>
     public bool PendingTimerIsAutoStart { get; set; }
 
-    /// <summary>Set alongside <see cref="PendingTimer" />, cleared alongside it — backs `GET /matches/{matchId}/timer`'s remaining-seconds computation.</summary>
+    /// <summary>
+    ///     Set alongside <see cref="PendingTimer" />, cleared alongside it — backs `GET /matches/{matchId}/timer`'s
+    ///     remaining-seconds computation.
+    /// </summary>
     public DateTimeOffset? TimerStartedAt { get; set; }
 
     /// <summary>Set alongside <see cref="PendingTimer" />, cleared alongside it.</summary>

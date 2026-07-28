@@ -65,7 +65,7 @@ public class GeolocationTests
 
         Assert.Null(Geolocation.From(headers));
     }
-    
+
     [Fact]
     public void PhraseIpAddress_CfConnectingIpHeader_TakesPriority()
     {

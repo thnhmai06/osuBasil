@@ -4,5 +4,5 @@ namespace Basil.Web.Routing;
 internal static class RouteDocs
 {
     public const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header matching the " +
-        "server's configured `Server:AdminKey`.";
+                                       "server's configured `Server:AdminKey`.";
 }

@@ -75,7 +75,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task WrongPassword_ReturnsUnauthorized()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(50, "cmyui-wrongpw", "tok", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(50, "cmyui-wrongpw", "tok", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         var request = MakeRequest("us=cmyui-wrongpw&ha=wrong-md5&m=0&mods=0");
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -87,7 +88,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task Authenticated_UnknownMap_ReturnsNotSubmitted()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(51, "cmyui-stub", "tok2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(51, "cmyui-stub", "tok2", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         var request = MakeRequest("us=cmyui-stub&ha=correct-md5&c=unknown-md5&m=0&mods=0");
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -100,7 +102,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task Authenticated_KnownMap_ReturnsMapsetRankedStatus()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        sessionRegistry.Add(new PlayerSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+        sessionRegistry.Add(new PlayerSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch));
         var request = MakeRequest($"us=cmyui-known&ha=correct-md5&c={StubMapRepository.KnownMd5}&m=0&mods=0");
 
         var response = await _factory.CreateClient().SendAsync(request);
@@ -113,8 +116,10 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task ModeOrModsChanged_BroadcastsUpdatedStatsToOtherSessions()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        var player = new PlayerSession(52, "cmyui-status", "tok3", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var other = new PlayerSession(53, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var player = new PlayerSession(52, "cmyui-status", "tok3", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
+        var other = new PlayerSession(53, "other", "other-token", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         sessionRegistry.Add(player);
         sessionRegistry.Add(other);
         var request = MakeRequest("us=cmyui-status&ha=correct-md5&m=1&mods=8"); // Taiko + Hidden, differs from defaults
@@ -128,8 +133,10 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     public async Task ModeAndModsUnchanged_DoesNotBroadcast()
     {
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        var player = new PlayerSession(54, "cmyui-nochange", "tok4", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var other = new PlayerSession(55, "other2", "other-token2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+        var player = new PlayerSession(54, "cmyui-nochange", "tok4", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
+        var other = new PlayerSession(55, "other2", "other-token2", UserPrivileges.Unrestricted,
+            DateTimeOffset.UnixEpoch);
         sessionRegistry.Add(player);
         sessionRegistry.Add(other);
         var request = MakeRequest("us=cmyui-nochange&ha=correct-md5&m=0&mods=0"); // matches PlayerStatus defaults
@@ -174,7 +181,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
             return Task.CompletedTask;
         }
 
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default)
+        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+            CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -213,7 +221,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     {
         public const string KnownMd5 = "known-md5";
 
-        private static readonly Mapset Mapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
+        private static readonly Mapset Mapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch,
+            DateTime.UnixEpoch);
 
         private static readonly Beatmap Beatmap = new(
             KnownMd5, 1, Mapset, "Normal", "map.osu", TimeSpan.Zero, 0,

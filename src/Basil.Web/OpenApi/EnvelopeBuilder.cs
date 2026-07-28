@@ -75,12 +75,15 @@ internal static class EnvelopeBuilder
         return ReasonPhrases.GetReasonPhrase(statusCode);
     }
 
-    /// <summary>Structurally detects the internal paged shape (see <see cref="IPagedResult" />/<see cref="Basil.Web.Routing.PagedResult{T}" />) by an exact 4-key match — no per-route marker needed.</summary>
+    /// <summary>
+    ///     Structurally detects the internal paged shape (see <see cref="IPagedResult" />/
+    ///     <see cref="Basil.Web.Routing.PagedResult{T}" />) by an exact 4-key match — no per-route marker needed.
+    /// </summary>
     public static bool IsPagedShape(JsonNode? body, out JsonObject? paged)
     {
         paged = body as JsonObject;
         return paged is not null && paged.Count == 4 && paged.ContainsKey("page") &&
-            paged.ContainsKey("pageSize") && paged.ContainsKey("totalRecords") && paged.ContainsKey("items");
+               paged.ContainsKey("pageSize") && paged.ContainsKey("totalRecords") && paged.ContainsKey("items");
     }
 
     public static PageMeta BuildMeta(JsonObject paged)
