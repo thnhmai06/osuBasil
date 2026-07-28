@@ -82,7 +82,7 @@ internal static class UserRoutes
             var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country, body.Privilege, cancellationToken);
             return user is null
                 ? Results.Conflict(new ErrorResponse("Username already exists."))
-                : Results.Json(user);
+                : Results.Created($"/users/{user.Id}", user.ToView());
         })
             .WithGroupName("basilapi")
             .WithName("createUser")
@@ -91,10 +91,10 @@ internal static class UserRoutes
                 "plaintext `password` is MD5'd then bcrypt-hashed server-side, matching the real client's " +
                 "own hashing convention. 400 on an invalid username, 409 if the name is already taken." + AdminKeyNote)
             .WithTags("Users")
-            .Produces<User>()
+            .Produces<UserView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status201Created, SampleUser().ToView())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Username must be between 3 and 15 characters."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."));
 

@@ -127,14 +127,14 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     }
 
     [Fact]
-    public async Task PostFaq_NewEntry_CreatesFileAndReturnsNoContent()
+    public async Task PostFaq_NewEntry_CreatesFileAndReturnsCreated()
     {
         var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
         request.Content = new MultipartFormDataContent { { new ByteArrayContent("hello"u8.ToArray()), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.True(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
     }
 
@@ -243,7 +243,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.True(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
     }
 

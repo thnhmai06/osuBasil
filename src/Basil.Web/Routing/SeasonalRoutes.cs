@@ -38,9 +38,10 @@ internal static class SeasonalRoutes
                 "(path-traversal-filtered). 409 if a file with that name already exists — use " +
                 "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<SeasonalCreatedView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status201Created, new SeasonalCreatedView("winter-2026.png", true))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-2026.png' already exists."));
 
@@ -74,8 +75,9 @@ internal static class SeasonalRoutes
             .WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
                 "— use `POST /seasonals/` to create one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<SeasonalReplacedView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new SeasonalReplacedView("winter-2026.png", true))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -95,6 +97,12 @@ internal static class SeasonalRoutes
     /// <summary>Confirmation body for `DELETE /seasonals/{fileName}`.</summary>
     public sealed record SeasonalDeletedView(string FileName, bool Deleted);
 
+    /// <summary>Confirmation body for `POST /seasonals/`.</summary>
+    public sealed record SeasonalCreatedView(string FileName, bool Created);
+
+    /// <summary>Confirmation body for `PUT /seasonals/{fileName}`.</summary>
+    public sealed record SeasonalReplacedView(string FileName, bool Replaced);
+
     private static async Task<IResult> HandleCreate(HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)
     {
@@ -104,11 +112,12 @@ internal static class SeasonalRoutes
         var file = form.Files.GetFile("file");
         if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
+        var fileName = Path.GetFileName(file.FileName);
         await using var stream = file.OpenReadStream();
         var result = await seasonal.CreateAsync(file.FileName, stream, cancellationToken);
         return result == SeasonalService.CreateResult.AlreadyExists
-            ? Results.Conflict(new ErrorResponse($"'{Path.GetFileName(file.FileName)}' already exists."))
-            : Results.NoContent();
+            ? Results.Conflict(new ErrorResponse($"'{fileName}' already exists."))
+            : Results.Created($"/seasonals/{fileName}", new SeasonalCreatedView(fileName, true));
     }
 
     private static async Task<IResult> HandleReplace(string fileName, HttpContext context, SeasonalService seasonal,
@@ -122,6 +131,8 @@ internal static class SeasonalRoutes
 
         await using var stream = file.OpenReadStream();
         var result = await seasonal.ReplaceAsync(fileName, stream, cancellationToken);
-        return result == SeasonalService.ReplaceResult.NotFound ? Results.NotFound() : Results.NoContent();
+        return result == SeasonalService.ReplaceResult.NotFound
+            ? Results.NotFound()
+            : Results.Json(new SeasonalReplacedView(fileName, true));
     }
 }

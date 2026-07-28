@@ -46,9 +46,9 @@ internal static class BeatmapsetRoutes
                 "ingestion reconciliation pass synchronously and returns `{ ingested }` (the number of " +
                 "beatmaps added/updated)." + AdminKeyNote)
             .WithTags("Beatmapsets")
-            .Produces<IngestResult>()
+            .Produces<IngestResult>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, new IngestResult(5))
+            .WithExample(StatusCodes.Status201Created, new IngestResult(5))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Only .osz uploads are accepted — a single .osu file has no set context."));
 
         group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
@@ -255,7 +255,10 @@ internal static class BeatmapsetRoutes
         }
 
         var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
-        return Results.Json(new IngestResult(ingested));
+        // No single canonical Location: one .osz upload can ingest/update more than one mapset via the
+        // full reconciliation pass, so this can't point at one specific created resource like a normal
+        // 201 would.
+        return Results.Json(new IngestResult(ingested), statusCode: StatusCodes.Status201Created);
     }
 
     private static async Task<IResult> HandleGet(int mapsetId, HttpContext context, IMapsetRepository mapsets,

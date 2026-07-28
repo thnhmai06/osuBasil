@@ -35,9 +35,10 @@ internal static class FaqRoutes
                 "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
                 "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
             .WithTags("FAQ")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<FaqCreatedView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status201Created, new FaqCreatedView("rules", true))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'rules' already exists."));
 
@@ -62,8 +63,9 @@ internal static class FaqRoutes
             .WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet " +
                 "— use `POST /faqs/` to create one." + AdminKeyNote)
             .WithTags("FAQ")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<FaqReplacedView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules", true))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -83,6 +85,12 @@ internal static class FaqRoutes
     /// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
     public sealed record FaqDeletedView(string Entry, bool Deleted);
 
+    /// <summary>Confirmation body for `POST /faqs/`.</summary>
+    public sealed record FaqCreatedView(string Entry, bool Created);
+
+    /// <summary>Confirmation body for `PUT /faqs/{entry}`.</summary>
+    public sealed record FaqReplacedView(string Entry, bool Replaced);
+
     private static async Task<IResult> HandleCreate(HttpContext context, FaqService faq,
         CancellationToken cancellationToken)
     {
@@ -101,7 +109,7 @@ internal static class FaqRoutes
         {
             FaqService.CreateResult.AlreadyExists => Results.Conflict(new ErrorResponse($"'{entry}' already exists.")),
             FaqService.CreateResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
-            _ => Results.NoContent()
+            _ => Results.Created($"/faqs/{entry}", new FaqCreatedView(entry, true))
         };
     }
 
@@ -120,7 +128,7 @@ internal static class FaqRoutes
         {
             FaqService.ReplaceResult.NotFound => Results.NotFound(),
             FaqService.ReplaceResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
-            _ => Results.NoContent()
+            _ => Results.Json(new FaqReplacedView(entry, true))
         };
     }
 }

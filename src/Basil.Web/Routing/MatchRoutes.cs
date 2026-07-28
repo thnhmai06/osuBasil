@@ -60,10 +60,10 @@ internal static class MatchRoutes
                 "with host id 0 and no referees — assign both via the `host`/`addref` actions afterward. " +
                 "Returns the full settings representation (not a bare id)." + AdminKeyNote)
             .WithTags("Matches")
-            .Produces<MatchSettingsView>()
+            .Produces<MatchSettingsView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
-            .WithExample(StatusCodes.Status200OK, SampleSettings())
+            .WithExample(StatusCodes.Status201Created, SampleSettings())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."));
 
         group.MapGet("/matches/{matchId:int}/settings", HandleSettingsGet)
@@ -243,7 +243,8 @@ internal static class MatchRoutes
             match.Lock.Release();
         }
 
-        return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+        var settings = await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken);
+        return Results.Created($"/matches/{match.DbId}/settings", settings);
     }
 
     private static async Task<IResult> HandleSettingsGet(int matchId, IMatchRegistry matchRegistry,

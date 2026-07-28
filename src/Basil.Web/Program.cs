@@ -262,11 +262,16 @@ public sealed class Program
                 return Task.CompletedTask;
             });
 
+            // Applies to every document — a generator-default artifact of how .NET's OpenAPI schema
+            // builder represents integers/numbers, not specific to basilapi's own types.
+            options.AddNumericSchemaSimplificationTransformer();
+
             // Only the basilapi document is enveloped/admin-key-gated — every other document (bancho/
             // osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
             if (tagGroups is not null)
             {
                 options.AddAdminKeyDocumentTransformer();
+                options.AddCustomConverterSchemaTransformer();
                 options.AddEnvelopeSchemaTransformer();
             }
         });
