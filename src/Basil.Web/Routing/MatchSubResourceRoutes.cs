@@ -62,7 +62,7 @@ internal static class MatchSubResourceRoutes
     public sealed record StartTimerRequest(int Seconds, bool AutoStart);
 
     /// <summary>One per-slot entry shared by <see cref="ReplaceSlotsRequest" />/<see cref="UpdateSlotsRequest" /> — inherently a per-slot partial shape either way.</summary>
-    public sealed record SlotAssignment(int Index, int? UserId, MatchTeam? Team, bool? Locked);
+    public sealed record SlotAssignment(int Index, int? UserId = null, MatchTeam? Team = null, bool? Locked = null);
 
     public sealed record ReplaceSlotsRequest(IReadOnlyList<SlotAssignment> Slots);
 

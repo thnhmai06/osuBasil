@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Json;
+using Basil.Web.Middleware;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace Basil.Web.OpenApi;
 
@@ -15,7 +15,9 @@ namespace Basil.Web.OpenApi;
 ///     in the Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
 ///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> actually does to the response body at
 ///     runtime — every other document's examples pass through unwrapped, since only basilapi routes are
-///     enveloped.
+///     enveloped. A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped even on
+///     basilapi — its real payload is a raw, un-enveloped SSE event, matching
+///     <see cref="EnvelopeSchemaTransformer" />'s same exception for the declared schema.
 /// </summary>
 internal static class OpenApiExampleExtensions
 {
@@ -31,7 +33,10 @@ internal static class OpenApiExampleExtensions
             if (operation.Responses.TryGetValue(statusCode.ToString(), out var response) &&
                 response?.Content.TryGetValue("application/json", out var mediaType) == true)
             {
-                mediaType!.Example = context.DocumentName == "basilapi"
+                var isSse = context.Description.ActionDescriptor.EndpointMetadata
+                    .OfType<SseEndpointMarker>().Any();
+
+                mediaType!.Example = context.DocumentName == "basilapi" && !isSse
                     ? BuildEnvelope(statusCode, context.Description.HttpMethod, example)
                     : JsonSerializer.SerializeToNode(example, JsonWebOptions);
             }
@@ -42,81 +47,7 @@ internal static class OpenApiExampleExtensions
 
     private static JsonNode BuildEnvelope(int statusCode, string? httpMethod, object example)
     {
-        var success = statusCode < 400;
         var body = JsonSerializer.SerializeToNode(example, JsonWebOptions);
-
-        string message;
-        JsonNode? data = null;
-        JsonNode? meta = null;
-
-        if (success)
-        {
-            message = DescribeSuccess(httpMethod);
-            if (IsPagedShape(body, out var paged))
-            {
-                meta = JsonSerializer.SerializeToNode(BuildMeta(paged!), JsonWebOptions);
-                data = paged!["items"];
-                paged.Remove("items");
-            }
-            else
-            {
-                data = body;
-            }
-        }
-        else
-        {
-            message = DescribeError(body, statusCode);
-        }
-
-        return new JsonObject
-        {
-            ["success"] = success,
-            ["code"] = statusCode,
-            ["message"] = message,
-            ["data"] = data,
-            ["meta"] = meta,
-            ["errors"] = null,
-            ["timestamp"] = DateTimeOffset.UtcNow.ToString("O")
-        };
-    }
-
-    private static string DescribeSuccess(string? method)
-    {
-        return method switch
-        {
-            "POST" => "Created successfully",
-            "PUT" => "Replaced successfully",
-            "PATCH" => "Updated successfully",
-            "DELETE" => "Deleted successfully",
-            _ => "Retrieval successful"
-        };
-    }
-
-    private static string DescribeError(JsonNode? body, int statusCode)
-    {
-        if (body is JsonObject obj)
-        {
-            var message = obj["error"]?.GetValue<string>() ?? obj["detail"]?.GetValue<string>() ??
-                obj["title"]?.GetValue<string>();
-            if (message is not null) return message;
-        }
-
-        return ReasonPhrases.GetReasonPhrase(statusCode);
-    }
-
-    private static bool IsPagedShape(JsonNode? body, out JsonObject? paged)
-    {
-        paged = body as JsonObject;
-        return paged is not null && paged.Count == 4 && paged.ContainsKey("page") &&
-            paged.ContainsKey("pageSize") && paged.ContainsKey("totalRecords") && paged.ContainsKey("items");
-    }
-
-    private static PageMeta BuildMeta(JsonObject paged)
-    {
-        var page = paged["page"]!.GetValue<int>();
-        var pageSize = paged["pageSize"]!.GetValue<int>();
-        var totalRecords = paged["totalRecords"]!.GetValue<int>();
-        var totalPages = pageSize == 0 ? 0 : (int)Math.Ceiling(totalRecords / (double)pageSize);
-        return new PageMeta(page, pageSize, totalRecords, totalPages);
+        return EnvelopeBuilder.Build(statusCode, httpMethod, body, JsonWebOptions);
     }
 }

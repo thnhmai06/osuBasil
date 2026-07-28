@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Basil.Application.Configuration;
 using Basil.Web;
 using Basil.Web.OpenApi;
@@ -129,6 +130,92 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 
         response.EnsureSuccessStatusCode();
         Assert.Equal("ok", body!.Data!.Status);
+    }
+
+    /// <summary>
+    ///     Every declared basilapi JSON response schema must be the Enveloped Response Standard shape,
+    ///     not the bare handler type — the exact defect flagged as "schema vs example mismatch" (an
+    ///     auto-generated client would parse the wrong shape otherwise). SSE-only routes are the one
+    ///     exception (their payload is never enveloped) and are checked separately below.
+    /// </summary>
+    [Fact]
+    public async Task BasilApiDocument_JsonResponseSchemasAreEnveloped()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        var schema = document
+            .GetProperty("paths").GetProperty("/scores").GetProperty("get")
+            .GetProperty("responses").GetProperty("200").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema");
+
+        var propertyNames = schema.GetProperty("properties").EnumerateObject().Select(p => p.Name).ToHashSet();
+        Assert.Equal(new HashSet<string> { "success", "code", "message", "data", "meta", "errors", "timestamp" },
+            propertyNames);
+    }
+
+    [Fact]
+    public async Task BasilApiDocument_SseRouteResponseSchemaIsNotEnveloped()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        var responseNode = document
+            .GetProperty("paths").GetProperty("/matches/{matchId}/live").GetProperty("get")
+            .GetProperty("responses").GetProperty("200").GetProperty("content")
+            .GetProperty("application/json");
+
+        // Bare $ref to the declared payload type (MatchLiveSnapshot), not an inline Envelope object —
+        // SSE payloads are never enveloped at runtime, so neither is their declared schema.
+        Assert.Equal("#/components/schemas/MatchLiveSnapshot", responseNode.GetProperty("schema")
+            .GetProperty("$ref").GetString());
+
+        // The example must also stay unwrapped (no top-level "success"/"data" envelope keys) —
+        // this route is marked SseEndpointMarker, so OpenApiExampleExtensions.WithExample must skip
+        // the same envelope-wrapping it applies to every other basilapi route.
+        var examplePropertyNames = responseNode.GetProperty("example").EnumerateObject()
+            .Select(p => p.Name).ToHashSet();
+        Assert.DoesNotContain("success", examplePropertyNames);
+        Assert.Contains("inProgress", examplePropertyNames);
+    }
+
+    [Fact]
+    public async Task BasilApiDocument_DeclaresAdminKeySecurityScheme_AndAppliesItToAdminRoutes()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        var scheme = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminKey");
+        Assert.Equal("apiKey", scheme.GetProperty("type").GetString());
+        Assert.Equal("X-Admin-Key", scheme.GetProperty("name").GetString());
+        Assert.Equal("header", scheme.GetProperty("in").GetString());
+
+        var adminOp = document.GetProperty("paths").GetProperty("/users/{userId}").GetProperty("put");
+        Assert.True(adminOp.GetProperty("security")[0].TryGetProperty("AdminKey", out _));
+
+        var publicOp = document.GetProperty("paths").GetProperty("/scores").GetProperty("get");
+        Assert.False(publicOp.TryGetProperty("security", out _));
+    }
+
+    [Fact]
+    public async Task BasilApiDocument_PatchRequestSchemaHasNoRequiredFields_UnlikePut()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var schemas = document.GetProperty("components").GetProperty("schemas");
+
+        Assert.False(schemas.GetProperty("UpdateUserRequest").TryGetProperty("required", out _));
+        var replaceRequired = schemas.GetProperty("ReplaceUserRequest").GetProperty("required")
+            .EnumerateArray().Select(e => e.GetString()).ToHashSet();
+        Assert.Equal(new HashSet<string> { "name", "country", "privilege" }, replaceRequired);
     }
 
     private sealed record HealthShape(string Status);

@@ -3,7 +3,6 @@ using System.Text.Json.Nodes;
 using System.Linq;
 using Basil.Web.OpenApi;
 using Basil.Web.Routing;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace Basil.Web.Middleware;
 
@@ -63,90 +62,12 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
             context.Response.StatusCode = StatusCodes.Status200OK;
 
         var statusCode = context.Response.StatusCode;
-        var success = statusCode < 400;
         var body = buffer.Length == 0 ? null : JsonNode.Parse(buffer);
-
-        string message;
-        JsonNode? data = null;
-        PageMeta? meta = null;
-
-        if (success)
-        {
-            message = DescribeSuccess(context.Request.Method);
-            if (IsPagedShape(body, out var paged))
-            {
-                meta = BuildMeta(paged!);
-                data = paged!["items"];
-                paged.Remove("items");
-            }
-            else
-            {
-                data = body;
-            }
-        }
-        else
-        {
-            message = DescribeError(body, statusCode);
-        }
-
-        var envelope = new JsonObject
-        {
-            ["success"] = success,
-            ["code"] = statusCode,
-            ["message"] = message,
-            ["data"] = data,
-            ["meta"] = meta is null ? null : JsonSerializer.SerializeToNode(meta, JsonWebOptions),
-            ["errors"] = null,
-            ["timestamp"] = DateTimeOffset.UtcNow.ToString("O")
-        };
+        var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
 
         context.Response.ContentType = "application/json; charset=utf-8";
         var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonWebOptions);
         context.Response.ContentLength = bytes.Length;
         await originalBody.WriteAsync(bytes);
-    }
-
-    private static string DescribeSuccess(string method)
-    {
-        return method switch
-        {
-            "POST" => "Created successfully",
-            "PUT" => "Replaced successfully",
-            "PATCH" => "Updated successfully",
-            "DELETE" => "Deleted successfully",
-            _ => "Retrieval successful"
-        };
-    }
-
-    private static string DescribeError(JsonNode? body, int statusCode)
-    {
-        if (body is JsonObject obj)
-        {
-            var message = obj["error"]?.GetValue<string>() ?? obj["detail"]?.GetValue<string>() ??
-                obj["title"]?.GetValue<string>();
-            if (message is not null) return message;
-        }
-
-        return ReasonPhrases.GetReasonPhrase(statusCode);
-    }
-
-    /// <summary>
-    ///     Structurally detects the internal paged shape (see <see cref="IPagedResult" />/
-    ///     <see cref="PagedResult{T}" />) by an exact 4-key match — no per-route marker needed.
-    /// </summary>
-    private static bool IsPagedShape(JsonNode? body, out JsonObject? paged)
-    {
-        paged = body as JsonObject;
-        return paged is not null && paged.Count == 4 && paged.ContainsKey("page") &&
-            paged.ContainsKey("pageSize") && paged.ContainsKey("totalRecords") && paged.ContainsKey("items");
-    }
-
-    private static PageMeta BuildMeta(JsonObject paged)
-    {
-        var page = paged["page"]!.GetValue<int>();
-        var pageSize = paged["pageSize"]!.GetValue<int>();
-        var totalRecords = paged["totalRecords"]!.GetValue<int>();
-        var totalPages = pageSize == 0 ? 0 : (int)Math.Ceiling(totalRecords / (double)pageSize);
-        return new PageMeta(page, pageSize, totalRecords, totalPages);
     }
 }

@@ -461,5 +461,6 @@ public sealed record ReplaceMatchSettingsRequest(
 
 /// <summary>Body for `PATCH /matches/{matchId}/settings` — every field optional, only present ones are applied.</summary>
 public sealed record UpdateMatchSettingsRequest(
-    string? Name, string? Password, bool? IsPrivate, bool? IsLocked, int? Size, int? MapId, Mods? Mods,
-    bool? Freemod, MatchTeamType? TeamType, MatchWinCondition? WinCondition);
+    string? Name = null, string? Password = null, bool? IsPrivate = null, bool? IsLocked = null,
+    int? Size = null, int? MapId = null, Mods? Mods = null, bool? Freemod = null,
+    MatchTeamType? TeamType = null, MatchWinCondition? WinCondition = null);

@@ -11,6 +11,7 @@ using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
 using Basil.Web.Middleware;
+using Basil.Web.OpenApi;
 using Basil.Web.Routing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -172,15 +173,15 @@ public sealed class Program
         ("Matches",
         [
             ("Matches", "List and create matches."),
-            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot or a live SSE stream."),
+            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
+                "equivalent is under Match Live)."),
             ("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
             ("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
             ("Match Hosts", "Get/set/clear the match host."),
             ("Match Referees", "List/replace/add/remove the match's referees."),
             ("Match Bans", "List/replace/add players banned from the match, and unban."),
-            ("Match Kick", "Remove a player from the match."),
-            ("Match Invites", "Invite one or more players, optionally bypassing join gating."),
-            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots as one dict-keyed operation."),
+            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
+                "invite players onto them, and kick a seated player."),
             ("Match Timer", "Read, start, or abort the match's countdown timer."),
             ("Match Abort", "Abort the match currently in progress."),
             ("Match Close", "Close the match immediately.")
@@ -260,6 +261,14 @@ public sealed class Program
 
                 return Task.CompletedTask;
             });
+
+            // Only the basilapi document is enveloped/admin-key-gated — every other document (bancho/
+            // osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
+            if (tagGroups is not null)
+            {
+                options.AddAdminKeyDocumentTransformer();
+                options.AddEnvelopeSchemaTransformer();
+            }
         });
     }
 

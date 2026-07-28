@@ -262,8 +262,8 @@ internal static class UserRoutes
                 id => Task.FromResult(HandleGetLive(id, context, events, cancellationToken)), cancellationToken))
             .WithGroupName("basilapi")
             .WithMetadata(SseEndpointMarker.Instance)
-            .WithName("getUserLiveStream")
-            .WithSummary("Get User Live Stream")
+            .WithName("spectateUser")
+            .WithSummary("Spectate User")
             .WithDescription("Server-Sent Events stream (event name `frames`) of one player's decoded " +
                 "replay-frame bundles (button state, cursor position, and the trailing scoreframe per " +
                 "bundle), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
@@ -328,7 +328,7 @@ public sealed record CreateUserRequest(string Name, string Password, Country Cou
 public sealed record ReplaceUserRequest(string Name, Country Country, UserPrivileges Privilege);
 
 /// <summary>PATCH — every field optional, only present ones are applied.</summary>
-public sealed record UpdateUserRequest(string? Name, Country? Country, UserPrivileges? Privilege);
+public sealed record UpdateUserRequest(string? Name = null, Country? Country = null, UserPrivileges? Privilege = null);
 
 /// <summary>Response body for avatar upload/reset.</summary>
 public sealed record AvatarView(int UserId, string AvatarUrl);
