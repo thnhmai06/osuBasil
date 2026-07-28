@@ -46,6 +46,7 @@ internal static class BeatmapsetRoutes
                 "ingestion reconciliation pass synchronously and returns `{ ingested }` (the number of " +
                 "beatmaps added/updated)." + AdminKeyNote)
             .WithTags("Beatmapsets")
+            .WithMultipartFileUpload()
             .Produces<IngestResult>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .WithExample(StatusCodes.Status201Created, new IngestResult(5))
@@ -78,6 +79,7 @@ internal static class BeatmapsetRoutes
                 "reconciliation the filesystem watcher already runs, not synchronously in this request. 404 " +
                 "if the mapset doesn't exist; 409 if it's frozen (see `PATCH /beatmapsets/{mapsetId}`)." + AdminKeyNote)
             .WithTags("Beatmapsets")
+            .WithMultipartFileUpload()
             .Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -132,7 +134,7 @@ internal static class BeatmapsetRoutes
                 "includes the internal filename/background-image filename (see `GET .../background` " +
                 "instead). 404 if the beatmap doesn't exist, doesn't belong to this mapset, or the parent " +
                 "mapset is private and the caller isn't admin. Public, with a soft admin elevation.")
-            .WithTags("Beatmapsets")
+            .WithTags("Beatmaps")
             .Produces<BeatmapDetail>()
             .WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -145,7 +147,7 @@ internal static class BeatmapsetRoutes
                 "doesn't belong to this mapset, its file is missing on disk, or the parent mapset is " +
                 "private and the caller isn't admin. Content-Type `application/x-osu-beatmap`. Public, " +
                 "with a soft admin elevation.")
-            .WithTags("Beatmapsets")
+            .WithTags("Beatmaps")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/background", HandleDownloadBackground)
@@ -156,7 +158,7 @@ internal static class BeatmapsetRoutes
                 "doesn't belong to this mapset, has no recorded background image, its file is missing on " +
                 "disk, or the parent mapset is private and the caller isn't admin. Content-Type inferred " +
                 "from the file extension. Public, with a soft admin elevation.")
-            .WithTags("Beatmapsets")
+            .WithTags("Beatmaps")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)

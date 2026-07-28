@@ -185,6 +185,7 @@ internal static class UserRoutes
             .WithDescription("Multipart upload, field name `file`. Replaces any existing avatar for this user id " +
                 "(any prior file with a different extension is deleted first)." + AdminKeyNote)
             .WithTags("Users")
+            .WithMultipartFileUpload()
             .Produces<AvatarView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"))

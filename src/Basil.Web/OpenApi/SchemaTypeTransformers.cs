@@ -1,4 +1,6 @@
+using System.Text.Json.Nodes;
 using Basil.Application.Json;
+using Basil.Domain.Login;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -51,6 +53,58 @@ internal static class SchemaTypeTransformers
             {
                 schema.Type = type & ~JsonSchemaType.String;
                 schema.Pattern = null;
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    ///     A non-<c>[Flags]</c> enum still serializes as a plain number (see the enum-wire-convention
+    ///     bullet in <c>CLAUDE.md</c> — no <c>JsonStringEnumConverter</c> anywhere), but the *set* of
+    ///     valid numbers is closed, unlike an arbitrary integer field — declaring it via `enum:` lets
+    ///     Scalar/generated clients offer a fixed value list instead of a bare "integer" input, with the
+    ///     name-to-value mapping spelled out in the description since OpenAPI's `enum:` carries no
+    ///     built-in slot for member names. A `[Flags]` enum (<c>Mods</c>, <c>UserPrivileges</c>,
+    ///     <c>SlotStatus</c>) is a bitwise combination of members, not a closed set of single values, so
+    ///     it's left as a plain integer; <see cref="Country" /> is excluded too — it already gets its own
+    ///     string shape from <see cref="AddCustomConverterSchemaTransformer" /> and has far too many
+    ///     members for a meaningful dropdown anyway.
+    ///     <para>
+    ///     Runs as a *document* transformer over the final `components.schemas`, matched by component
+    ///     name against every public enum across the `Basil.*` assemblies, rather than as a schema
+    ///     transformer keyed on <c>context.JsonTypeInfo.Type</c> — a schema transformer only reliably
+    ///     mutates the *first* schema object generated for a given type, and for a type used at several
+    ///     call sites (nullable in one place, non-nullable in another) that first mutation isn't
+    ///     guaranteed to be the one that survives into the final named component (confirmed by
+    ///     inspecting the generated document: some enum components kept the mutation, others silently
+    ///     didn't). Operating on the fully-assembled document sidesteps that ordering entirely.
+    ///     </para>
+    /// </summary>
+    public static void AddEnumValuesSchemaTransformer(this OpenApiOptions options)
+    {
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            if (document.Components?.Schemas is not { } schemas) return Task.CompletedTask;
+
+            var enumTypesByName = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => a.GetName().Name?.StartsWith("Basil.", StringComparison.Ordinal) == true)
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.IsEnum && t.IsPublic && t != typeof(Country) &&
+                    !t.IsDefined(typeof(FlagsAttribute), inherit: false))
+                .ToDictionary(t => t.Name);
+
+            foreach (var (name, schema) in schemas)
+            {
+                if (schema is not OpenApiSchema s || !enumTypesByName.TryGetValue(name, out var type)) continue;
+
+                var members = Enum.GetValues(type).Cast<object>()
+                    .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
+                    .ToList();
+
+                s.Enum = members.Select(m => (JsonNode)JsonValue.Create(m.Value)).ToList();
+                var mapping = string.Join(", ", members.Select(m => $"{m.Value} = {m.Name}"));
+                s.Description = s.Description is { Length: > 0 } ? $"{s.Description} ({mapping})" : mapping;
             }
 
             return Task.CompletedTask;

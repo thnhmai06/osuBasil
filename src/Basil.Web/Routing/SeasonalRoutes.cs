@@ -38,6 +38,7 @@ internal static class SeasonalRoutes
                 "(path-traversal-filtered). 409 if a file with that name already exists — use " +
                 "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
+            .WithMultipartFileUpload()
             .Produces<SeasonalCreatedView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -75,6 +76,7 @@ internal static class SeasonalRoutes
             .WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
                 "— use `POST /seasonals/` to create one." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
+            .WithMultipartFileUpload()
             .Produces<SeasonalReplacedView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .WithExample(StatusCodes.Status200OK, new SeasonalReplacedView("winter-2026.png", true))

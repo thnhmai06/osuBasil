@@ -940,13 +940,7 @@ public static class BanchoHostGroups
     {
         group.MapOpenApi().ExcludeFromDescription();
 
-        group.MapGet("/", () => Results.Redirect("/docs/"))
-            .WithGroupName("basilapi")
-            .WithName("redirectToDocs")
-            .WithSummary("Redirect To Docs")
-            .WithDescription("302 redirect to `/docs/`.")
-            .WithTags("Health")
-            .Produces(StatusCodes.Status302Found);
+        group.MapGet("/", () => Results.Redirect("/docs/")).ExcludeFromDescription();
 
         group.MapGet("/health", () => Results.Json(new HealthStatus("ok")))
             .WithGroupName("basilapi")

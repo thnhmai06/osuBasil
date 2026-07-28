@@ -151,9 +151,18 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
             .GetProperty("responses").GetProperty("200").GetProperty("content")
             .GetProperty("application/json").GetProperty("schema");
 
-        var propertyNames = schema.GetProperty("properties").EnumerateObject().Select(p => p.Name).ToHashSet();
+        // The envelope's six non-`data` fields live on the shared `Envelope` component, combined via
+        // `allOf` with a per-operation `{ data }` object — not re-inlined as flat "properties" on every
+        // single response (see EnvelopeSchemaTransformer).
+        var allOf = schema.GetProperty("allOf").EnumerateArray().ToList();
+        Assert.Equal("#/components/schemas/Envelope", allOf[0].GetProperty("$ref").GetString());
+
+        var envelopeProps = document.GetProperty("components").GetProperty("schemas").GetProperty("Envelope")
+            .GetProperty("properties").EnumerateObject().Select(p => p.Name);
+        var dataProps = allOf[1].GetProperty("properties").EnumerateObject().Select(p => p.Name);
+
         Assert.Equal(new HashSet<string> { "success", "code", "message", "data", "meta", "errors", "timestamp" },
-            propertyNames);
+            envelopeProps.Concat(dataProps).ToHashSet());
     }
 
     [Fact]

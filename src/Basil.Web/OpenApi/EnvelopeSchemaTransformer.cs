@@ -33,8 +33,11 @@ namespace Basil.Web.OpenApi;
 ///             the whole nested object graph on every single operation (the previous
 ///             <c>GetOrCreateSchemaAsync(typeof(Envelope&lt;&gt;).MakeGenericType(...))</c> approach
 ///             silently broke that reuse for everything nested one level inside the wrapper).</item>
-///         <item>`meta`/`errors` reference shared, once-registered <c>PageMeta</c>/<c>FieldError</c>
-///             components instead of re-inlining their shape on every operation.</item>
+///         <item>The envelope's six non-`data` fields (`success`/`code`/`message`/`meta`/`errors`/
+///             `timestamp`) are a single shared <c>Envelope</c> component combined via `allOf` with a
+///             per-operation `{ data: ... }` object, instead of re-declaring all seven properties inline
+///             on every response — `meta`/`errors` further reference shared, once-registered
+///             <c>PageMeta</c>/<c>FieldError</c> components instead of re-inlining their own shape.</item>
 ///         <item>Any response left without an example after all of the above gets a minimal synthesized
 ///             one (`{success,code,message,data:null,...}` for an error; nothing invented for a success
 ///             body, since real sample data can't be guessed) — closes most of the "no `.WithExample`"
@@ -47,6 +50,7 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class EnvelopeSchemaTransformer
 {
+    private const string EnvelopeSchemaId = "Envelope";
     private const string PageMetaSchemaId = "PageMeta";
     private const string FieldErrorSchemaId = "FieldError";
 
@@ -169,31 +173,45 @@ internal static class EnvelopeSchemaTransformer
                 ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
             }
         });
-    }
 
-    private static OpenApiSchema BuildEnvelopeObjectSchema(OpenApiDocument document, IOpenApiSchema dataSchema)
-    {
-        var metaSchema = NullableWrap(new OpenApiSchemaReference(PageMetaSchemaId, document, null));
-        var errorsSchema = NullableWrap(new OpenApiSchema
-        {
-            Type = JsonSchemaType.Array,
-            Items = new OpenApiSchemaReference(FieldErrorSchemaId, document, null)
-        });
-
-        return new OpenApiSchema
+        // Every field except `data` (whose type varies per operation) — registered once and combined
+        // via `allOf` below instead of re-declaring all six fields' schemas on every single response,
+        // which is what made the previous per-operation-inlined version thousands of lines longer than
+        // it needed to be.
+        document.Components.Schemas.TryAdd(EnvelopeSchemaId, new OpenApiSchema
         {
             Type = JsonSchemaType.Object,
-            Required = new HashSet<string> { "success", "code", "message", "data", "meta", "errors", "timestamp" },
+            Required = new HashSet<string> { "success", "code", "message", "meta", "errors", "timestamp" },
             Properties = new Dictionary<string, IOpenApiSchema>
             {
                 ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
                 ["code"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32" },
                 ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                ["data"] = dataSchema,
-                ["meta"] = metaSchema,
-                ["errors"] = errorsSchema,
+                ["meta"] = NullableWrap(new OpenApiSchemaReference(PageMetaSchemaId, document, null)),
+                ["errors"] = NullableWrap(new OpenApiSchema
+                {
+                    Type = JsonSchemaType.Array,
+                    Items = new OpenApiSchemaReference(FieldErrorSchemaId, document, null)
+                }),
                 ["timestamp"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" }
             }
+        });
+    }
+
+    private static OpenApiSchema BuildEnvelopeObjectSchema(OpenApiDocument document, IOpenApiSchema dataSchema)
+    {
+        return new OpenApiSchema
+        {
+            AllOf =
+            [
+                new OpenApiSchemaReference(EnvelopeSchemaId, document, null),
+                new OpenApiSchema
+                {
+                    Type = JsonSchemaType.Object,
+                    Required = new HashSet<string> { "data" },
+                    Properties = new Dictionary<string, IOpenApiSchema> { ["data"] = dataSchema }
+                }
+            ]
         };
     }
 

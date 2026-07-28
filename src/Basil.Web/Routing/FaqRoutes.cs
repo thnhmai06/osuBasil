@@ -35,6 +35,7 @@ internal static class FaqRoutes
                 "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
                 "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
             .WithTags("FAQ")
+            .WithMultipartFileUpload()
             .Produces<FaqCreatedView>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -63,6 +64,7 @@ internal static class FaqRoutes
             .WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet " +
                 "— use `POST /faqs/` to create one." + AdminKeyNote)
             .WithTags("FAQ")
+            .WithMultipartFileUpload()
             .Produces<FaqReplacedView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules", true))

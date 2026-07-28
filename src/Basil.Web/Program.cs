@@ -192,7 +192,8 @@ public sealed class Program
         ]),
         ("Beatmapsets",
         [
-            ("Beatmapsets", "Beatmapset/beatmap CRUD, downloads, and freeze/private management.")
+            ("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
+            ("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
         ]),
         ("Scores",
         [
@@ -272,6 +273,8 @@ public sealed class Program
             {
                 options.AddAdminKeyDocumentTransformer();
                 options.AddCustomConverterSchemaTransformer();
+                options.AddEnumValuesSchemaTransformer();
+                options.AddPaginationParameterConstraintsTransformer();
                 options.AddEnvelopeSchemaTransformer();
             }
         });
