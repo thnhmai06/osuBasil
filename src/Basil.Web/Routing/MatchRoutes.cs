@@ -6,6 +6,7 @@ using Basil.Application.Json;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
@@ -151,21 +152,19 @@ internal static class MatchRoutes
             .WithSummary("Get Match Slot Live Stream")
             .WithDescription("`{slotIndex}` is 1-16 (matching `!mp move`'s convention). One SSE stream " +
                 "tagging three feeds by event name: `slot` (that slot's membership/status/team/mods, " +
-                "full-then-delta), `score` (the current occupant's live score frames during a round, " +
-                "forwarded as-is), and `input` (the current occupant's raw spectator-input frames, " +
-                "forwarded as-is). Follows whoever currently occupies the slot — if the occupant changes, " +
-                "the next `slot` event reflects that, and `score`/`input` start matching the new occupant " +
-                "automatically. 404 if the match isn't currently live or `slotIndex` is out of range. The " +
-                "`slot` event's shape is documented below via its own schema/example; `score` is " +
-                "`PlayerLiveScore` (see `MatchScoreUpdateHandler`) and `input` is `SpectateFramesEvent` (same " +
-                "shape as `GET /users/{idOrName}/live`'s single event) — both omitted from this operation's " +
-                "declared schema since OpenAPI has no way to represent \"one of three shapes depending on " +
-                "event name\" at a single 200 status without misrepresenting `slot` callers. Public, no " +
-                "authentication.")
+                "full-then-delta, `MatchSlotView`), `score` (the current occupant's live score frames during " +
+                "a round, forwarded as-is, `PlayerLiveScore`), and `input` (the current occupant's raw " +
+                "spectator-input frames, forwarded as-is, `SpectateFramesEvent` — same shape as " +
+                "`GET /users/{idOrName}/live`'s single event). Follows whoever currently occupies the slot — " +
+                "if the occupant changes, the next `slot` event reflects that, and `score`/`input` start " +
+                "matching the new occupant automatically. 404 if the match isn't currently live or " +
+                "`slotIndex` is out of range. The declared schema below is `oneOf` the three shapes — which " +
+                "one a given message is is carried by the SSE-protocol `event:` field itself (not a JSON " +
+                "discriminator property inside the body), so pick the shape by that field, not by inspecting " +
+                "the JSON's own properties. Public, no authentication.")
             .WithTags("Match Live")
-            .Produces<MatchSlotView>()
-            .WithExample(StatusCodes.Status200OK,
-                new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red, Mods.NoMod, false, true))
+            .Produces<PlayerLiveScore>()
+            .WithSlotLiveExamples()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapMatchSubResourceRoutes();
