@@ -1,6 +1,8 @@
 using System.Text.Json.Nodes;
 using Basil.Application.Json;
 using Basil.Domain.Login;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -60,16 +62,33 @@ internal static class SchemaTypeTransformers
     }
 
     /// <summary>
+    ///     Enums that are genuinely combined by bitwise OR on the wire (a real player can have
+    ///     `Hidden | HardRock` set at once) — the noun is used in <see cref="ApplyBitmaskDescription" />'s
+    ///     generated prose. <c>SlotStatus</c> is `[Flags]` in C# too, but only for internal
+    ///     grouped-comparison convenience (see <see cref="AddEnumValuesSchemaTransformer" />'s own doc
+    ///     comment) — a slot's serialized `status` is always exactly one of its single-bit values, never
+    ///     a combination, so it's treated as a regular closed enum instead of a bitmask below.
+    /// </summary>
+    private static readonly Dictionary<Type, string> CombinableFlagsNouns = new()
+    {
+        [typeof(Mods)] = "osu! mods",
+        [typeof(UserPrivileges)] = "user privileges"
+    };
+
+    /// <summary>
     ///     A non-<c>[Flags]</c> enum still serializes as a plain number (see the enum-wire-convention
     ///     bullet in <c>CLAUDE.md</c> — no <c>JsonStringEnumConverter</c> anywhere), but the *set* of
     ///     valid numbers is closed, unlike an arbitrary integer field — declaring it via `enum:` lets
     ///     Scalar/generated clients offer a fixed value list instead of a bare "integer" input, with the
     ///     name-to-value mapping spelled out in the description since OpenAPI's `enum:` carries no
-    ///     built-in slot for member names. A `[Flags]` enum (<c>Mods</c>, <c>UserPrivileges</c>,
-    ///     <c>SlotStatus</c>) is a bitwise combination of members, not a closed set of single values, so
-    ///     it's left as a plain integer; <see cref="Country" /> is excluded too — it already gets its own
-    ///     string shape from <see cref="AddCustomConverterSchemaTransformer" /> and has far too many
-    ///     members for a meaningful dropdown anyway.
+    ///     built-in slot for member names. A genuinely combinable <c>[Flags]</c> enum (see
+    ///     <see cref="CombinableFlagsNouns" />) gets bitmask prose instead — `enum:` can't represent
+    ///     "any OR-combination of these bits" — spelling out each single-bit flag's value, that multiple
+    ///     flags combine via bitwise OR, and a worked example. Any other `[Flags]` enum (currently just
+    ///     <c>SlotStatus</c>) is treated as a regular closed enum, since its wire value is never actually
+    ///     a combination despite the C# attribute. <see cref="Country" /> is excluded entirely — it
+    ///     already gets its own string shape from <see cref="AddCustomConverterSchemaTransformer" /> and
+    ///     has far too many members for a meaningful dropdown anyway.
     ///     <para>
     ///     Runs as a *document* transformer over the final `components.schemas`, matched by component
     ///     name against every public enum across the `Basil.*` assemblies, rather than as a schema
@@ -90,24 +109,60 @@ internal static class SchemaTypeTransformers
             var enumTypesByName = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(a => a.GetName().Name?.StartsWith("Basil.", StringComparison.Ordinal) == true)
                 .SelectMany(a => a.GetTypes())
-                .Where(t => t.IsEnum && t.IsPublic && t != typeof(Country) &&
-                    !t.IsDefined(typeof(FlagsAttribute), inherit: false))
+                .Where(t => t.IsEnum && t.IsPublic && t != typeof(Country))
                 .ToDictionary(t => t.Name);
 
             foreach (var (name, schema) in schemas)
             {
                 if (schema is not OpenApiSchema s || !enumTypesByName.TryGetValue(name, out var type)) continue;
 
-                var members = Enum.GetValues(type).Cast<object>()
-                    .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
-                    .ToList();
-
-                s.Enum = members.Select(m => (JsonNode)JsonValue.Create(m.Value)).ToList();
-                var mapping = string.Join(", ", members.Select(m => $"{m.Value} = {m.Name}"));
-                s.Description = s.Description is { Length: > 0 } ? $"{s.Description} ({mapping})" : mapping;
+                if (CombinableFlagsNouns.TryGetValue(type, out var noun))
+                    ApplyBitmaskDescription(s, type, noun);
+                else
+                    ApplyClosedEnumValues(s, type);
             }
 
             return Task.CompletedTask;
         });
+    }
+
+    private static void ApplyClosedEnumValues(OpenApiSchema schema, Type type)
+    {
+        var members = Enum.GetValues(type).Cast<object>()
+            .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
+            .ToList();
+
+        schema.Enum = members.Select(m => (JsonNode)JsonValue.Create(m.Value)).ToList();
+        var mapping = string.Join(", ", members.Select(m => $"{m.Value} = {m.Name}"));
+        schema.Description = schema.Description is { Length: > 0 } ? $"{schema.Description} ({mapping})" : mapping;
+    }
+
+    /// <summary>
+    ///     No `enum:` array (a combinable flags field's valid values are every OR-combination of its
+    ///     single-bit members, not a closed list) — only single-bit members are listed as "flag values"
+    ///     (a combo alias like `UserPrivileges.Donator = Supporter | Premium` is itself expressible as the
+    ///     OR of its parts, so it isn't a distinct flag value worth listing separately), each written as
+    ///     `1 &lt;&lt; N` — matching how every one of these enums is itself declared in source (see
+    ///     `Mods.cs`/`Privileges.cs`) — rather than the decimal value, which hides which bit it is. The
+    ///     worked example combines the first two single-bit flags in ascending value order — deliberately
+    ///     generic rather than hand-picked per type, so it can't go stale if a type's members change.
+    /// </summary>
+    private static void ApplyBitmaskDescription(OpenApiSchema schema, Type type, string noun)
+    {
+        var singleBitFlags = Enum.GetValues(type).Cast<object>()
+            .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
+            .Where(m => m.Value != 0 && (m.Value & (m.Value - 1)) == 0)
+            .Select(m => (m.Name, m.Value, Shift: System.Numerics.BitOperations.Log2((ulong)m.Value)))
+            .OrderBy(m => m.Value)
+            .ToList();
+
+        var flagLines = string.Join("\n", singleBitFlags.Select(m => $"1 << {m.Shift} = {m.Name}"));
+        var (a, b) = (singleBitFlags[0], singleBitFlags[1]);
+
+        schema.Description =
+            $"Bitmask of enabled {noun}.\n\n" +
+            $"Flag values:\n{flagLines}\n\n" +
+            $"Multiple {noun} are combined using bitwise OR.\n\n" +
+            $"Example:\n{a.Name} (1 << {a.Shift}) + {b.Name} (1 << {b.Shift}) = {a.Value + b.Value}.";
     }
 }
