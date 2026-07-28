@@ -15,7 +15,7 @@ public class UserTests
 
     [Theory]
     [InlineData("abc")] // min length
-    [InlineData("123456789012345")] // max length (15)
+    [InlineData("123456789abcdef")] // max length (15)
     [InlineData("cool_guy")]
     [InlineData("cool-guy")]
     [InlineData("[tag]player")]
@@ -34,9 +34,16 @@ public class UserTests
     }
 
     [Fact]
+    public void ValidateUsername_OnlyDigits_ReturnsFalse()
+    {
+        Assert.False(User.ValidateUsername("123456789", out var error));
+        Assert.NotNull(error);
+    }
+
+    [Fact]
     public void ValidateUsername_TooLong_ReturnsFalse()
     {
-        Assert.False(User.ValidateUsername("1234567890123456", out var error)); // 16 chars
+        Assert.False(User.ValidateUsername("123456789abcdefg", out var error)); // 16 chars
         Assert.NotNull(error);
     }
 
