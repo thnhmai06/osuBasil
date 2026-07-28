@@ -92,7 +92,15 @@ internal static class UserRoutes
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
             .WithExample(StatusCodes.Status201Created, SampleUser().ToView())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Username must be between 3 and 15 characters."))
-            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."));
+            .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."))
+            .WithLink(StatusCodes.Status201Created, "GetUser", "getUser", "Look up the newly created user.",
+                ("idOrName", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "ReplaceUser", "replaceUser", "Replace the newly created user's editable fields.",
+                ("userId", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "UpdateUser", "updateUser", "Partially update the newly created user.",
+                ("userId", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "DeleteUser", "deleteUser", "Soft-delete the newly created user.",
+                ("userId", "$response.body#/data/id"));
 
         admin.MapPut("/{userId:int}", async (int userId, ReplaceUserRequest body, IUserRepository users,
             CancellationToken cancellationToken) =>

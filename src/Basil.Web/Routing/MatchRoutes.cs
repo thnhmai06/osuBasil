@@ -65,7 +65,15 @@ internal static class MatchRoutes
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .WithExample(StatusCodes.Status201Created, SampleSettings())
-            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."));
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
+            .WithLink(StatusCodes.Status201Created, "GetMatchReport", "getMatchReport", "Fetch the full TRT report for the newly created match.",
+                ("matchId", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "GetMatchSettings", "getMatchSettings", "Read back the newly created match's room settings.",
+                ("matchId", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "ReplaceMatchSettings", "replaceMatchSettings", "Replace the newly created match's room settings.",
+                ("matchId", "$response.body#/data/id"))
+            .WithLink(StatusCodes.Status201Created, "UpdateMatchSettings", "updateMatchSettings", "Partially update the newly created match's room settings.",
+                ("matchId", "$response.body#/data/id"));
 
         group.MapGet("/matches/{matchId:int}/settings", HandleSettingsGet)
             .WithGroupName("basilapi")

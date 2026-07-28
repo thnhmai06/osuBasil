@@ -274,7 +274,6 @@ public sealed class Program
                 options.AddAdminKeyDocumentTransformer();
                 options.AddCustomConverterSchemaTransformer();
                 options.AddEnumValuesSchemaTransformer();
-                options.AddPaginationParameterConstraintsTransformer();
                 options.AddEnvelopeSchemaTransformer();
             }
         });

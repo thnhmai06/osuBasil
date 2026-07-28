@@ -29,13 +29,11 @@ public sealed record PagedResult<T>(int Page, int PageSize, int TotalRecords, IR
 public static class Pagination
 {
     public const int DefaultPageSize = 50;
-    public const int MaxPageSize = 100;
 
-    /// <summary>1-based page, defaulting to 1/50 for missing or non-positive query values, pageSize capped at 100.</summary>
+    /// <summary>1-based page, defaulting to 1/50 for missing or non-positive query values.</summary>
     public static (int Page, int PageSize) Normalize(int? page, int? pageSize)
     {
-        var normalizedPageSize = pageSize is > 0 ? Math.Min(pageSize.Value, MaxPageSize) : DefaultPageSize;
-        return (page is > 0 ? page.Value : 1, normalizedPageSize);
+        return (page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : DefaultPageSize);
     }
 
     /// <summary>

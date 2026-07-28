@@ -123,7 +123,11 @@ internal static class EnvelopeSchemaTransformer
                 operation.Responses[statusKey] = new OpenApiResponse
                 {
                     Description = existingResponse.Description,
-                    Content = new Dictionary<string, OpenApiMediaType> { ["application/json"] = newMediaType }
+                    Content = new Dictionary<string, OpenApiMediaType> { ["application/json"] = newMediaType },
+                    // Carried over from whatever a route-level transformer (e.g. LinkExtensions.WithLink,
+                    // which — like OpenApiExampleExtensions.WithExample — runs before this one, per its
+                    // own doc comment) already attached to the pre-replacement response object.
+                    Links = existingResponse.Links
                 };
             }
 
