@@ -52,13 +52,44 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     [Fact]
     public async Task LiveChannel_ReceivesWhateverIsPublishedForThatMatchId()
     {
+        var matchId = await CreateMatchAsync();
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/matches/5/live",
-            () => events.PublishLive(5, JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })));
+        // discardFirst: true — POST /matches warms this match's main SnapshotChannel immediately
+        // (same reasoning as LiveSlotChannel_ReceivesSlotEventsForItsOwnSlotOnly below), so the first
+        // event off a fresh connect is that warm full snapshot (inProgress: false), not this test's
+        // manually published delta.
+        var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+            () => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })),
+            discardFirst: true);
 
-        Assert.Equal("live", eventType);
+        Assert.Equal("main", eventType);
         Assert.Contains("true", data);
+    }
+
+    [Fact]
+    public async Task LiveChannel_UnknownMatch_ReturnsConflictEnvelope()
+    {
+        var client = _factory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/matches/999999/live") { Headers = { Host = "api.test.local" } };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("success").GetBoolean());
+    }
+
+    private async Task<int> CreateMatchAsync()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches") { Headers = { Host = "api.test.local" } };
+        createRequest.Headers.Add("X-Admin-Key", AdminKey);
+        createRequest.Content = JsonContent.Create(new { });
+        var createResponse = await client.SendAsync(createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        return created.GetProperty("data").GetProperty("id").GetInt32();
     }
 
     [Fact]
@@ -86,24 +117,29 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
+        // discardFirst: true — POST /matches now applies every CreateMatchRequest field unconditionally
+        // (SetPrivate/SetSize/... all call EnqueueState), so this slot's SnapshotChannel is already warm
+        // by the time the match is created; the first event off a fresh connect is that warm snapshot,
+        // not a published delta.
         var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
         {
             events.PublishSlot(matchId, 5, "wrong slot"u8.ToArray());
             events.PublishSlot(matchId, 0, "right slot"u8.ToArray());
-        });
+        }, discardFirst: true);
 
         Assert.Equal("slot", eventType);
         Assert.Equal("right slot", data);
     }
 
-    private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish)
+    private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish,
+        bool discardFirst = false)
     {
         var client = _factory.CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var pipelineTask = ConnectAndReadOneEventAsync(client, request, cts.Token);
+        var pipelineTask = ConnectAndReadOneEventAsync(client, request, discardFirst, cts.Token);
 
         while (!pipelineTask.IsCompleted)
         {
@@ -115,7 +151,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     }
 
     private static async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(
-        HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
+        HttpClient client, HttpRequestMessage request, bool discardFirst, CancellationToken cancellationToken)
     {
         using var response =
             await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -123,6 +159,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
+        if (discardFirst) await ReadNextEventAsync(reader, cancellationToken);
         return await ReadNextEventAsync(reader, cancellationToken);
     }
 

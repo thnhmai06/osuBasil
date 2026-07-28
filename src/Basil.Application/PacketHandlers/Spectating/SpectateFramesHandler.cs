@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Basil.Application.Json;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -30,7 +31,7 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 
         var payload = JsonSerializer.SerializeToUtf8Bytes(
             new PlayerInputFrame(new UserBrief(player.Id, player.Name, player.Geoloc.Country),
-                Convert.ToBase64String(rawData)));
+                Convert.ToBase64String(rawData)), BasilJsonOptions.Instance);
         playerInputEvents.PublishInput(player.Id, payload);
 
         return Task.CompletedTask;

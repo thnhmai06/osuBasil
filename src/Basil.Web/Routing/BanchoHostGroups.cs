@@ -983,48 +983,24 @@ public static class BanchoHostGroups
             options.AddDocument("basilapi", "Basil API");
         }).ExcludeFromDescription();
 
-        // GET (JSON snapshot) and SSE (live "main" channel — meta/map/state, no per-player data,
-        // see MatchLiveSnapshotBuilder's doc comment) share this one path, branched on the client's
-        // Accept header (EventSource always sends "text/event-stream"). A match that has actually
-        // closed (persisted with EndedAt set) has nothing left to push, so an SSE request against
-        // one falls back to the one-shot JSON report instead of opening a stream that would never
-        // receive a frame — a match that's still live, or one that has simply never existed at all,
-        // still gets a stream (a nonexistent id just never receives any frames).
-        group.MapGet("/matches/{matchId:int}", async (int matchId, HttpContext context, MatchReportService reportService,
-            IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
-            IMatchLiveEvents events, CancellationToken cancellationToken) =>
+        // Plain JSON snapshot built at read time — events, rounds, per-round scores, and (if the match
+        // is still open) its live room state. The live "main" SSE channel (meta/map/state/slots, no
+        // per-player data) is a separate, SSE-only path — see MatchRoutes.cs's
+        // GET /matches/{matchId}/live — so this route never branches on Accept.
+        group.MapGet("/matches/{matchId:int}", async (int matchId, MatchReportService reportService,
+            CancellationToken cancellationToken) =>
         {
-            if (context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream") == true))
-            {
-                var match = matchRegistry.GetByDbId(matchId);
-                var isClosed = match is null &&
-                    (await matchPersistence.FetchMatchAsync(matchId, cancellationToken))?.EndedAt is not null;
-
-                if (!isClosed)
-                    return LiveSseRoutes.HandleMain(context, matchId, events,
-                        () => match?.MainSnapshot.Latest is { } snapshot
-                            ? JsonSerializer.SerializeToUtf8Bytes(snapshot)
-                            : null,
-                        cancellationToken);
-            }
-
             var report = await reportService.BuildAsync(matchId, cancellationToken);
             return report is null ? Results.NotFound() : Results.Json(report);
         })
             .WithGroupName("basilapi")
             .WithName("getMatchReport")
             .WithSummary("Get Match Report")
-            .WithDescription("Content-negotiated on the `Accept` header: a plain `GET` (or any `Accept` not " +
-                "containing `text/event-stream`) returns a full JSON snapshot built at read time — events, " +
-                "rounds, per-round scores, and, if the match is still open, its live state (host, referees, " +
-                "slots, current map, win condition, team type, mods, in-progress flag). Sending " +
-                "`Accept: text/event-stream` instead opens a persistent Server-Sent Events stream on the same " +
-                "path (event name `main`) — the first event is the full current state, every event after that " +
-                "is an RFC 7396 JSON Merge Patch against the previous one — no per-player score data on this " +
-                "channel, see `GET /matches/{matchId}/live/{slotIndex}` for that. 404 (one-shot mode only) if " +
-                "no match with this id has ever existed. A closed match always falls back to the one-shot JSON " +
-                "report, even when `Accept: text/event-stream` is sent — there's nothing left to push. Public, " +
-                "no authentication.")
+            .WithDescription("Full JSON snapshot built at read time — events, rounds, per-round scores, and, " +
+                "if the match is still open, its live state (host, referees, slots, current map, win " +
+                "condition, team type, mods, in-progress flag). For a live push stream instead, see " +
+                "`GET /matches/{matchId}/live`. 404 if no match with this id has ever existed. Public, no " +
+                "authentication.")
             .WithTags("Match Report")
             .Produces<MatchReport>()
             .WithExample(StatusCodes.Status200OK, SampleMatchReport())

@@ -236,7 +236,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var matchId = await CreateMatchAsync(client);
         var player = await SeatNewPlayer(2004, "kickme", matchId);
 
-        var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/kick");
+        var request = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new { userId = player.Id });
         var response = await client.SendAsync(request);
 
@@ -255,7 +255,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
         await matchMembership.Leave(player, matchRegistry.GetByDbId(matchId)!);
 
-        var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/kick");
+        var request = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new { userId = player.Id });
         var response = await client.SendAsync(request);
 
@@ -280,7 +280,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         banRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id } });
         (await client.SendAsync(banRequest)).EnsureSuccessStatusCode();
 
-        var inviteRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/invite");
+        var inviteRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/slots");
         inviteRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id, free.Id }, force = true });
         var response = await client.SendAsync(inviteRequest);
         response.EnsureSuccessStatusCode();
@@ -327,10 +327,10 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new
         {
-            slots = new Dictionary<string, object>
+            slots = new object[]
             {
-                [slotA.ToString()] = new { userId = b.Id },
-                [slotB.ToString()] = new { userId = a.Id }
+                new { index = slotA, userId = b.Id },
+                new { index = slotB, userId = a.Id }
             }
         });
         var response = await client.SendAsync(request);
@@ -349,7 +349,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new
         {
-            slots = new Dictionary<string, object> { ["0"] = new { userId = 999999 } }
+            slots = new object[] { new { index = 0, userId = 999999 } }
         });
         var response = await client.SendAsync(request);
 
@@ -368,7 +368,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new
         {
-            slots = new Dictionary<string, object> { [slot.ToString()] = new { userId = player.Id, locked = true } }
+            slots = new object[] { new { index = slot, userId = player.Id, locked = true } }
         });
         var response = await client.SendAsync(request);
 

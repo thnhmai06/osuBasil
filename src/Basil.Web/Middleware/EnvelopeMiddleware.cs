@@ -11,16 +11,14 @@ namespace Basil.Web.Middleware;
 ///     Wraps every JSON body on the `basilapi` OpenAPI group in the Enveloped Response Standard
 ///     (see <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Program.cs</c>.
 ///     Skips a request entirely — no buffering, no rewriting — when the matched endpoint isn't tagged
-///     `basilapi` (every other host group: bancho/osu-web/beatmap-assets/avatar), carries
+///     `basilapi` (every other host group: bancho/osu-web/beatmap-assets/avatar) or carries
 ///     <see cref="SseEndpointMarker" /> (an always-SSE route, e.g. `GET /matches/{id}/live`, that never
-///     produces a plain-JSON body regardless of the request), or the request itself asks for
-///     `Accept: text/event-stream` on one of the several content-negotiated routes (e.g.
-///     `GET /matches/{id}/hosts`) that serve either JSON or SSE depending on that header — mirrors each
-///     such route's own `WantsSse` check, so the request-time decision here always matches what the
-///     handler is about to do. Buffering a live push stream until the handler completes would silently
-///     turn it into one that never delivers a single event until the connection closes. A file
-///     download's `Content-Type` is never "json" and is passed through unwrapped for the same
-///     structural reason, with no separate marker needed.
+///     produces a plain-JSON body regardless of the request). Every SSE route on this host is now a
+///     dedicated, unconditionally-SSE `.../live` path — no route branches on the `Accept` header
+///     anymore, so the marker check alone is sufficient to decide skip-vs-wrap. Buffering a live push
+///     stream until the handler completes would silently turn it into one that never delivers a single
+///     event until the connection closes. A file download's `Content-Type` is never "json" and is
+///     passed through unwrapped for the same structural reason, with no separate marker needed.
 /// </summary>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
@@ -31,9 +29,7 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
         var endpoint = context.GetEndpoint();
         var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
         var isAlwaysSse = endpoint?.Metadata.GetMetadata<SseEndpointMarker>() is not null;
-        var wantsSse = context.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream",
-            StringComparison.OrdinalIgnoreCase) == true);
-        if (groupName != "basilapi" || isAlwaysSse || wantsSse)
+        if (groupName != "basilapi" || isAlwaysSse)
         {
             await next(context);
             return;

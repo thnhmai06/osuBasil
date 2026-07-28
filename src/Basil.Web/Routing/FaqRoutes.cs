@@ -68,16 +68,20 @@ internal static class FaqRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/faqs/{entry}", (string entry, FaqService faq) =>
-            faq.DeleteEntry(entry) ? Results.NoContent() : Results.NotFound())
+            faq.DeleteEntry(entry) ? Results.Json(new FaqDeletedView(entry, true)) : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithName("deleteFaq")
             .WithSummary("Delete FAQ")
-            .WithDescription("204 on success, 404 if no entry with this name exists." + AdminKeyNote)
+            .WithDescription("Returns a confirmation body. 404 if no entry with this name exists." + AdminKeyNote)
             .WithTags("FAQ")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<FaqDeletedView>()
+            .WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules", true))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
+
+    /// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
+    public sealed record FaqDeletedView(string Entry, bool Deleted);
 
     private static async Task<IResult> HandleCreate(HttpContext context, FaqService faq,
         CancellationToken cancellationToken)

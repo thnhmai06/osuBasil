@@ -54,12 +54,11 @@ internal static class MatchRoutes
             .WithGroupName("basilapi")
             .WithName("createMatch")
             .WithSummary("Create Match")
-            .WithDescription("Body: any subset of `{ name, password, isPrivate, isLocked, size, mapId, " +
-                "mods, freemod, teamType, winCondition }` — same shape `PATCH /matches/{matchId}/settings` " +
-                "accepts, all optional (each defaults to `!mp make`'s own defaults when omitted). No chat " +
-                "\"sender\" exists over HTTP, so the new match starts with host id 0 and no referees — " +
-                "assign both via the `host`/`addref` actions afterward. Returns the full settings " +
-                "representation (not a bare id)." + AdminKeyNote)
+            .WithDescription("Body: `{ name, password, isPrivate, mapId, mods, freemod, teamType, " +
+                "winCondition, size }` — every field required except `password` (nullable). `mapId: -1` " +
+                "means no beatmap chosen yet. No chat \"sender\" exists over HTTP, so the new match starts " +
+                "with host id 0 and no referees — assign both via the `host`/`addref` actions afterward. " +
+                "Returns the full settings representation (not a bare id)." + AdminKeyNote)
             .WithTags("Matches")
             .Produces<MatchSettingsView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -67,31 +66,45 @@ internal static class MatchRoutes
             .WithExample(StatusCodes.Status200OK, SampleSettings())
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."));
 
-        group.MapGet("/matches/{matchId:int}/settings", HandleSettingsStream)
+        group.MapGet("/matches/{matchId:int}/settings", HandleSettingsGet)
             .WithGroupName("basilapi")
-            .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getMatchSettings")
             .WithSummary("Get Match Settings")
+            .WithDescription("Plain JSON snapshot of the room-configuration fields — never includes the raw " +
+                "password, only `hasPassword`. 404 if the match isn't currently live. For a live push stream " +
+                "of the same shape, see `GET /matches/{matchId}/settings/live`. Public, no authentication.")
+            .WithTags("Match Settings")
+            .Produces<MatchSettingsView>()
+            .WithExample(StatusCodes.Status200OK, SampleSettings())
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/matches/{matchId:int}/settings/live", HandleSettingsStream)
+            .WithGroupName("basilapi")
+            .WithMetadata(SseEndpointMarker.Instance)
+            .WithName("getMatchSettingsLive")
+            .WithSummary("Get Match Settings Live Stream")
             .WithDescription("Server-Sent Events stream (event name `settings`) scoped to just the " +
                 "room-configuration fields — first event is the full current settings, every event after " +
                 "is an RFC 7396 JSON Merge Patch against the previous one. Never includes the raw " +
-                "password, only `hasPassword`. Public, no authentication.")
+                "password, only `hasPassword`. 409 (enveloped) if the match isn't currently live — never " +
+                "opens a stream that would never receive a frame. Public, no authentication.")
             .WithTags("Match Settings")
             .Produces<MatchSettingsView>()
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
             .WithExample(StatusCodes.Status200OK, SampleSettings());
 
-        group.MapPut("/matches/{matchId:int}/settings", HandleSettingsUpdate)
+        group.MapPut("/matches/{matchId:int}/settings", HandleSettingsReplace)
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithName("replaceMatchSettings")
             .WithSummary("Replace Match Settings")
-            .WithDescription("Body: any subset of `{ name, password, isPrivate, isLocked, size, mapId, " +
-                "mods, freemod, teamType, winCondition }` — only present fields are touched, matching " +
-                "this host's usual partial-update convention. `freemod: true` enables FreeMod (ignoring " +
-                "`mods` for that call); `mods` alone (no `freemod`) sets the room's fixed mod set. Maps to " +
-                "`!mp name/password/private/lock+unlock/size/map/mods/set`. 404 if the match isn't " +
-                "currently live; 400 if `mapId` doesn't resolve to a known beatmap. Returns the updated " +
-                "settings representation." + AdminKeyNote)
+            .WithDescription("Body: `{ name, password, isPrivate, isLocked, size, mapId, mods, freemod, " +
+                "teamType, winCondition }` — every field required except `password` (nullable). `mapId: -1` " +
+                "clears/skips the beatmap selection. `freemod: true` enables FreeMod (ignoring `mods` for " +
+                "that call); `mods` alone (no `freemod`) sets the room's fixed mod set. Maps to `!mp " +
+                "name/password/private/lock+unlock/size/map/mods/set`. 404 if the match isn't currently " +
+                "live; 400 if `mapId` doesn't resolve to a known beatmap. Returns the updated settings " +
+                "representation." + AdminKeyNote)
             .WithTags("Match Settings")
             .Produces<MatchSettingsView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -104,9 +117,8 @@ internal static class MatchRoutes
             .WithGroupName("basilapi")
             .WithName("updateMatchSettings")
             .WithSummary("Update Match Settings")
-            .WithDescription("Identical semantics to `PUT` on this same path (every field here is always " +
-                "applied only if present) — offered under both verbs since callers reasonably expect " +
-                "either for a partial update." + AdminKeyNote)
+            .WithDescription("Body: any subset of `{ name, password, isPrivate, isLocked, size, mapId, " +
+                "mods, freemod, teamType, winCondition }` — only present fields are touched." + AdminKeyNote)
             .WithTags("Match Settings")
             .Produces<MatchSettingsView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -114,19 +126,23 @@ internal static class MatchRoutes
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/matches/{matchId:int}/live", HandleLiveStream)
+        group.MapGet("/matches/{matchId:int}/live", HandleMainLiveStream)
             .WithGroupName("basilapi")
             .WithMetadata(SseEndpointMarker.Instance)
-            .WithName("getMatchLiveStatus")
-            .WithSummary("Get Match Live Status")
-            .WithDescription("Server-Sent Events stream (event name `live`) of `{ inProgress, " +
-                "currentRoundId, mapId, mode }` — no per-player data, see " +
-                "`GET /matches/{matchId}/live/{slotIndex}` for that. First event is the full current " +
-                "status, every event after is an RFC 7396 JSON Merge Patch. Idle (no events) outside of " +
-                "an active round — that's expected. Public, no authentication.")
+            .WithName("getMatchLive")
+            .WithSummary("Get Match Live Stream")
+            .WithDescription("Server-Sent Events stream (event name `main`) of the full live snapshot — " +
+                "room config, host, referees, current beatmap, in-progress flag, and every slot. First " +
+                "event is the full current state, every event after is an RFC 7396 JSON Merge Patch against " +
+                "the previous one — no per-player score data on this channel, see " +
+                "`GET /matches/{matchId}/live/{slotIndex}` for that. 409 (enveloped) if the match isn't " +
+                "currently live — never opens a stream that would never receive a frame. For a one-shot " +
+                "JSON snapshot including historical rounds/events, see `GET /matches/{matchId}`. Public, no " +
+                "authentication.")
             .WithTags("Match Live")
-            .Produces<MatchLiveStatus>()
-            .WithExample(StatusCodes.Status200OK, new MatchLiveStatus(true, 3, 654, GameMode.Standard));
+            .Produces<MatchLiveSnapshot>()
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status200OK, SampleLiveSnapshot());
 
         group.MapGet("/matches/{matchId:int}/live/{slotIndex:int}", HandleLiveSlotStream)
             .WithGroupName("basilapi")
@@ -156,11 +172,6 @@ internal static class MatchRoutes
     }
 
     private const string AdminKeyNote = RouteDocs.AdminKeyNote;
-
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new CountryJsonConverter() }
-    };
 
     private static async Task<IResult> HandleList(
         [FromQuery] string? status, [FromQuery] int? page, [FromQuery] int? pageSize,
@@ -196,11 +207,14 @@ internal static class MatchRoutes
         return Results.Json(Pagination.Trim(overqueried, p, ps, items.Count));
     }
 
-    private static async Task<IResult> HandleCreate(MatchSettingsBody body, MatchMembershipService matchMembership,
+    /// <summary>`!mp make`'s own default room size — applied when <see cref="CreateMatchRequest.Size" /> is omitted (JSON default 0).</summary>
+    private const int DefaultCreateSize = 16;
+
+    private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchMembershipService matchMembership,
         MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
         IMapRepository maps, CancellationToken cancellationToken)
     {
-        var name = body.Name ?? "New match";
+        var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
         if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
 
         var data = new ReadMatchResult(
@@ -215,8 +229,14 @@ internal static class MatchRoutes
         await match.Lock.WaitAsync(cancellationToken);
         try
         {
-            var applyResult = await ApplySettingsAsync(match, body, matchControl, cancellationToken);
-            if (applyResult is not null) return applyResult;
+            await matchControl.SetPrivate(match, body.IsPrivate);
+            await matchControl.SetSize(match, body.Size > 0 ? body.Size : DefaultCreateSize);
+
+            var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
+            if (mapError is not null) return mapError;
+
+            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl);
+            await matchControl.SetTeamTypeWinConditionAndSize(match, body.TeamType, body.WinCondition, null);
         }
         finally
         {
@@ -226,24 +246,38 @@ internal static class MatchRoutes
         return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
     }
 
+    private static async Task<IResult> HandleSettingsGet(int matchId, IMatchRegistry matchRegistry,
+        IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+        CancellationToken cancellationToken)
+    {
+        var match = matchRegistry.GetByDbId(matchId);
+        if (match is null) return Results.NotFound();
+
+        return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+    }
+
     private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
         IMatchLiveEvents events, CancellationToken cancellationToken)
     {
         var match = matchRegistry.GetByDbId(matchId);
+        if (match is null) return LiveSseRoutes.NotLive();
+
         return LiveSseRoutes.HandleSettings(context, matchId, events,
-            () => match?.SettingsSnapshot.Latest is { } snapshot
-                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+            () => match.SettingsSnapshot.Latest is { } snapshot
+                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
                 : null,
             cancellationToken);
     }
 
-    private static IResult HandleLiveStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
+    private static IResult HandleMainLiveStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
         IMatchLiveEvents events, CancellationToken cancellationToken)
     {
         var match = matchRegistry.GetByDbId(matchId);
-        return LiveSseRoutes.HandleLive(context, matchId, events,
-            () => match?.LiveSnapshot.Latest is { } snapshot
-                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+        if (match is null) return LiveSseRoutes.NotLive();
+
+        return LiveSseRoutes.HandleMain(context, matchId, events,
+            () => match.MainSnapshot.Latest is { } snapshot
+                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
                 : null,
             cancellationToken);
     }
@@ -258,12 +292,42 @@ internal static class MatchRoutes
         var index = slotIndex - 1;
         return LiveSseRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, sessionRegistry,
             () => match.SlotSnapshots[index].Latest is { } snapshot
-                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonWebOptions)
+                ? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
                 : null,
             cancellationToken);
     }
 
-    private static async Task<IResult> HandleSettingsUpdate(int matchId, MatchSettingsBody body,
+    private static async Task<IResult> HandleSettingsReplace(int matchId, ReplaceMatchSettingsRequest body,
+        IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
+        IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
+    {
+        var match = matchRegistry.GetByDbId(matchId);
+        if (match is null) return Results.NotFound();
+
+        await match.Lock.WaitAsync(cancellationToken);
+        try
+        {
+            await matchControl.SetName(match, body.Name);
+            await matchControl.SetPassword(match, body.Password ?? "");
+            await matchControl.SetPrivate(match, body.IsPrivate);
+            matchControl.SetLocked(match, body.IsLocked);
+            await matchControl.SetSize(match, body.Size);
+
+            var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
+            if (mapError is not null) return mapError;
+
+            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl);
+            await matchControl.SetTeamTypeWinConditionAndSize(match, body.TeamType, body.WinCondition, null);
+        }
+        finally
+        {
+            match.Lock.Release();
+        }
+
+        return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+    }
+
+    private static async Task<IResult> HandleSettingsUpdate(int matchId, UpdateMatchSettingsRequest body,
         IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
         IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
     {
@@ -284,8 +348,38 @@ internal static class MatchRoutes
         return Results.Json(await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
     }
 
+    /// <summary>
+    ///     Shared by <see cref="HandleCreate" />/<see cref="HandleSettingsReplace" /> — both apply every
+    ///     field unconditionally (PUT-style, no "was this given" check), unlike
+    ///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `-1` is the established
+    ///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids auto-
+    ///     increment from 1 in this schema (see CLAUDE.md), so 0 (JSON's default for an omitted field)
+    ///     can never be a real beatmap either — both are skipped entirely rather than attempted as a
+    ///     lookup (which would otherwise fail with a confusing "beatmap not found" error for a caller
+    ///     correctly signalling "no map").
+    /// </summary>
+    private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int mapId,
+        MatchControlService matchControl, CancellationToken cancellationToken)
+    {
+        if (mapId <= 0) return null;
+
+        var (result, _) = await matchControl.SetMapAsync(match, mapId, cancellationToken);
+        return result == MatchControlService.SetMapResult.BeatmapNotFound
+            ? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found locally."))
+            : null;
+    }
+
+    /// <summary>Shared by <see cref="HandleCreate" />/<see cref="HandleSettingsReplace" /> — `freemod: true` ignores `mods` for that call, matching real Bancho.</summary>
+    private static async Task ApplyFullModsAsync(MatchSession match, Mods mods, bool freemod, MatchControlService matchControl)
+    {
+        if (freemod)
+            await matchControl.SetMods(match, Mods.NoMod, true);
+        else
+            await matchControl.SetMods(match, mods, false);
+    }
+
     /// <summary>Caller must hold <paramref name="match" />'s Lock. Returns a non-null error IResult on failure.</summary>
-    private static async Task<IResult?> ApplySettingsAsync(MatchSession match, MatchSettingsBody body,
+    private static async Task<IResult?> ApplySettingsAsync(MatchSession match, UpdateMatchSettingsRequest body,
         MatchControlService matchControl, CancellationToken cancellationToken)
     {
         if (body.Name is not null) await matchControl.SetName(match, body.Name);
@@ -304,12 +398,11 @@ internal static class MatchRoutes
         if (body.Freemod == true)
             await matchControl.SetMods(match, Mods.NoMod, true);
         else if (body.Mods is not null)
-            await matchControl.SetMods(match, (Mods)body.Mods.Value, false);
+            await matchControl.SetMods(match, body.Mods.Value, false);
 
         if (body.TeamType is not null || body.WinCondition is not null)
             await matchControl.SetTeamTypeWinConditionAndSize(match,
-                body.TeamType is not null ? (MatchTeamType)body.TeamType.Value : match.TeamType,
-                body.WinCondition is not null ? (MatchWinCondition)body.WinCondition.Value : null, null);
+                body.TeamType ?? match.TeamType, body.WinCondition, null);
 
         return null;
     }
@@ -330,6 +423,20 @@ internal static class MatchRoutes
             true, SampleBeatmap());
     }
 
+    private static MatchLiveSnapshot SampleLiveSnapshot()
+    {
+        var slots = new List<MatchSlotView>(16);
+        for (var i = 0; i < 16; i++)
+            slots.Add(new MatchSlotView(i, null, SlotStatus.Open, MatchTeam.Neutral, Mods.NoMod, false, false));
+        slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red, Mods.NoMod, true, true);
+
+        return new MatchLiveSnapshot(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+            Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard, true,
+            new UserBrief(7, "Alice", Country.Us),
+            [new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)],
+            SampleBeatmap(), slots);
+    }
+
     private static BeatmapDetail SampleBeatmap()
     {
         var created = DateTime.Parse("2026-06-01T10:00:00Z");
@@ -342,7 +449,17 @@ internal static class MatchRoutes
     }
 }
 
-/// <summary>Body for `POST /matches` and `PUT`/`PATCH /matches/{matchId}/settings` — every field optional, only present ones are applied.</summary>
-public sealed record MatchSettingsBody(
-    string? Name, string? Password, bool? IsPrivate, bool? IsLocked, int? Size,
-    int? MapId, int? Mods, bool? Freemod, int? TeamType, int? WinCondition);
+/// <summary>Body for `POST /matches` — every field required except `password`. `mapId: -1` means no beatmap chosen.</summary>
+public sealed record CreateMatchRequest(
+    string Name, string? Password, bool IsPrivate, int MapId, Mods Mods, bool Freemod,
+    MatchTeamType TeamType, MatchWinCondition WinCondition, int Size);
+
+/// <summary>Body for `PUT /matches/{matchId}/settings` — full replace, every field required except `password`. `mapId: -1` means no beatmap chosen.</summary>
+public sealed record ReplaceMatchSettingsRequest(
+    string Name, string? Password, bool IsPrivate, bool IsLocked, int Size, int MapId, Mods Mods,
+    bool Freemod, MatchTeamType TeamType, MatchWinCondition WinCondition);
+
+/// <summary>Body for `PATCH /matches/{matchId}/settings` — every field optional, only present ones are applied.</summary>
+public sealed record UpdateMatchSettingsRequest(
+    string? Name, string? Password, bool? IsPrivate, bool? IsLocked, int? Size, int? MapId, Mods? Mods,
+    bool? Freemod, MatchTeamType? TeamType, MatchWinCondition? WinCondition);

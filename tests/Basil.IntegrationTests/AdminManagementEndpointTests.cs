@@ -115,7 +115,10 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var client = _factory.CreateClient();
 
         var request = MakeRequest(HttpMethod.Post, "/users", "correct-key");
-        request.Content = JsonContent.Create(new CreateUserRequest("ab", "hunter2", null, null));
+        // Constructed as a plain anonymous object (country as the wire's lowercase acronym string, not
+        // the C# Country enum) since JsonContent.Create with no explicit JsonSerializerOptions doesn't
+        // know about CountryJsonConverter — matches every other body literal in this test suite.
+        request.Content = JsonContent.Create(new { name = "ab", password = "hunter2", country = "xx", privilege = (int)UserPrivileges.Unrestricted });
 
         var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();

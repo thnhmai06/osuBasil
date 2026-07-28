@@ -80,16 +80,20 @@ internal static class SeasonalRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
-            seasonal.Delete(fileName) ? Results.NoContent() : Results.NotFound())
+            seasonal.Delete(fileName) ? Results.Json(new SeasonalDeletedView(fileName, true)) : Results.NotFound())
             .RequireAuthorization(AdminKeyDefaults.Policy)
             .WithGroupName("basilapi")
             .WithName("deleteSeasonalBackground")
             .WithSummary("Delete Seasonal Background")
-            .WithDescription("204 on success, 404 if the file doesn't exist." + AdminKeyNote)
+            .WithDescription("Returns a confirmation body. 404 if the file doesn't exist." + AdminKeyNote)
             .WithTags("Seasonal Backgrounds")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<SeasonalDeletedView>()
+            .WithExample(StatusCodes.Status200OK, new SeasonalDeletedView("winter-2026.png", true))
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
+
+    /// <summary>Confirmation body for `DELETE /seasonals/{fileName}`.</summary>
+    public sealed record SeasonalDeletedView(string FileName, bool Deleted);
 
     private static async Task<IResult> HandleCreate(HttpContext context, SeasonalService seasonal,
         CancellationToken cancellationToken)

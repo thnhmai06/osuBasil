@@ -73,14 +73,15 @@ internal static class BeatmapsetRoutes
             .WithSummary("Replace Beatmapset")
             .WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. Filesystem-only " +
                 "and asynchronous: extracts the new archive's contents directly into the mapset's existing " +
-                "storage folder (overwriting files), then returns `202 Accepted` immediately — the database " +
-                "catches up shortly after via the same live reconciliation the filesystem watcher already " +
-                "runs, not synchronously in this request. 404 if the mapset doesn't exist; 409 if it's " +
-                "frozen (see `PATCH /beatmapsets/{mapsetId}`)." + AdminKeyNote)
+                "storage folder (overwriting files), then returns `202 Accepted` with a small body describing " +
+                "what was accepted immediately — the database catches up shortly after via the same live " +
+                "reconciliation the filesystem watcher already runs, not synchronously in this request. 404 " +
+                "if the mapset doesn't exist; 409 if it's frozen (see `PATCH /beatmapsets/{mapsetId}`)." + AdminKeyNote)
             .WithTags("Beatmapsets")
-            .Produces(StatusCodes.Status202Accepted)
+            .Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status202Accepted, new MapsetOperationAccepted(321, "replace"))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Only .osz uploads are accepted."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("This mapset is frozen and cannot be modified."))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -92,14 +93,16 @@ internal static class BeatmapsetRoutes
             .WithSummary("Delete Beatmapset")
             .WithDescription("Filesystem-only and asynchronous: atomically renames the mapset's storage " +
                 "folder in place (a TOCTOU-safe marker the live reconciliation and a background garbage " +
-                "collector both recognize as \"gone\"), then returns `202 Accepted` — the database row and " +
-                "the physical folder are both cleaned up shortly after, not synchronously in this request. " +
-                "404 if the mapset doesn't exist; 409 (folder left untouched) if the rename itself fails " +
-                "(e.g. a locked file) or if the mapset is frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
+                "collector both recognize as \"gone\"), then returns `202 Accepted` with a small body " +
+                "describing what was accepted — the database row and the physical folder are both cleaned " +
+                "up shortly after, not synchronously in this request. 404 if the mapset doesn't exist; 409 " +
+                "(folder left untouched) if the rename itself fails (e.g. a locked file) or if the mapset is " +
+                "frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
                 AdminKeyNote)
             .WithTags("Beatmapsets")
-            .Produces(StatusCodes.Status202Accepted)
+            .Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
             .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .WithExample(StatusCodes.Status202Accepted, new MapsetOperationAccepted(321, "delete"))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("This mapset is frozen and cannot be deleted."))
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -209,6 +212,9 @@ internal static class BeatmapsetRoutes
 
     private sealed record IngestResult(int Ingested);
 
+    /// <summary>Body for the async, filesystem-first `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
+    public sealed record MapsetOperationAccepted(int MapsetId, string Operation);
+
     private static async Task<IResult> HandleList([FromQuery] int? page, [FromQuery] int? pageSize,
         HttpContext context, IMapsetRepository mapsets, IMapRepository maps, CancellationToken cancellationToken)
     {
@@ -297,7 +303,7 @@ internal static class BeatmapsetRoutes
             File.Delete(tempOszPath);
         }
 
-        return Results.Accepted();
+        return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "replace"));
     }
 
     private static async Task<IResult> HandleDelete(int mapsetId, IMapsetRepository mapsets,
@@ -320,7 +326,7 @@ internal static class BeatmapsetRoutes
             return Results.Conflict(new ErrorResponse("The mapset's files are currently in use; try again shortly."));
         }
 
-        return Results.Accepted();
+        return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "delete"));
     }
 
     private static async Task<IResult> HandlePatch(int mapsetId, BeatmapsetPatchBody body,

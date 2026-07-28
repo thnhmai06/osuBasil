@@ -77,11 +77,7 @@ internal static class UserRoutes
 
             var passwordMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(body.Password)));
             var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
-            var country = Enum.TryParse<Country>(body.Country ?? "xx", ignoreCase: true, out var parsedCountry)
-                ? parsedCountry
-                : Country.Xx;
-            var user = await users.CreateAsync(body.Name, pwBcrypt, country,
-                (UserPrivileges?)body.Privilege, cancellationToken);
+            var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country, body.Privilege, cancellationToken);
             return user is null
                 ? Results.Conflict(new ErrorResponse("Username already exists."))
                 : Results.Json(user);
@@ -89,10 +85,9 @@ internal static class UserRoutes
             .WithGroupName("basilapi")
             .WithName("createUser")
             .WithSummary("Create User")
-            .WithDescription("Body: `{ name, password, country?, priv? }` (`country` defaults to `\"xx\"`, " +
-                "`priv` to the server's default privileges if omitted). The plaintext `password` is MD5'd then " +
-                "bcrypt-hashed server-side, matching the real client's own hashing convention. 400 on an " +
-                "invalid username, 409 if the name is already taken." + AdminKeyNote)
+            .WithDescription("Body: `{ name, password, country, privilege }` — every field required. The " +
+                "plaintext `password` is MD5'd then bcrypt-hashed server-side, matching the real client's " +
+                "own hashing convention. 400 on an invalid username, 409 if the name is already taken." + AdminKeyNote)
             .WithTags("Users")
             .Produces<User>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -101,8 +96,37 @@ internal static class UserRoutes
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Username must be between 3 and 15 characters."))
             .WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."));
 
-        Func<int, UpdateUserRequest, IUserRepository, CancellationToken, Task<IResult>> updateUserHandler =
-            async (userId, body, users, cancellationToken) =>
+        admin.MapPut("/{userId:int}", async (int userId, ReplaceUserRequest body, IUserRepository users,
+            CancellationToken cancellationToken) =>
+        {
+            if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
+            if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
+
+            if (!User.ValidateUsername(body.Name, out var usernameError))
+                return Results.BadRequest(new ErrorResponse(usernameError));
+
+            await users.UpdateNameAsync(userId, body.Name, User.MakeSafeName(body.Name), cancellationToken);
+            await users.UpdateCountryAsync(userId, body.Country, cancellationToken);
+            await users.UpdatePrivilegesAsync(userId, body.Privilege, cancellationToken);
+
+            return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
+        })
+            .WithGroupName("basilapi")
+            .WithName("replaceUser")
+            .WithSummary("Replace User")
+            .WithDescription("Body: `{ name, country, privilege }` — every field required, all three are " +
+                "always applied (full replace). Deliberately limited to these three fields (no full " +
+                "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
+                "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
+            .WithTags("Users")
+            .Produces<User>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, SampleUser())
+            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        admin.MapPatch("/{userId:int}", async (int userId, UpdateUserRequest body, IUserRepository users,
+            CancellationToken cancellationToken) =>
         {
             if (userId == BotBootstrapServiceBotId) return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
             if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
@@ -116,41 +140,20 @@ internal static class UserRoutes
             }
 
             if (body.Country is not null)
-            {
-                var country = Enum.TryParse<Country>(body.Country, ignoreCase: true, out var parsedCountry)
-                    ? parsedCountry
-                    : Country.Xx;
-                await users.UpdateCountryAsync(userId, country, cancellationToken);
-            }
+                await users.UpdateCountryAsync(userId, body.Country.Value, cancellationToken);
 
             if (body.Privilege is not null)
-                await users.UpdatePrivilegesAsync(userId, (UserPrivileges)body.Privilege.Value, cancellationToken);
+                await users.UpdatePrivilegesAsync(userId, body.Privilege.Value, cancellationToken);
 
             return Results.Json(await users.FetchByIdAsync(userId, cancellationToken));
-        };
-
-        const string updateUserDescription = "Body: `{ name?, country?, priv? }` — each field is updated only if present; " +
-            "omitted fields are left unchanged. Deliberately limited to these three fields (no full " +
-            "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
-            "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot).";
-
-        admin.MapPut("/{userId:int}", updateUserHandler)
-            .WithGroupName("basilapi")
-            .WithName("replaceUser")
-            .WithSummary("Replace User")
-            .WithDescription(updateUserDescription + AdminKeyNote)
-            .WithTags("Users")
-            .Produces<User>()
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .WithExample(StatusCodes.Status200OK, SampleUser())
-            .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
-            .ProducesProblem(StatusCodes.Status404NotFound);
-
-        admin.MapPatch("/{userId:int}", updateUserHandler)
+        })
             .WithGroupName("basilapi")
             .WithName("updateUser")
             .WithSummary("Update User")
-            .WithDescription(updateUserDescription + AdminKeyNote)
+            .WithDescription("Body: `{ name?, country?, privilege? }` — each field is updated only if " +
+                "present; omitted fields are left unchanged. Deliberately limited to these three fields (no " +
+                "full field-by-field editor exists). Returns the updated user row. 404 if no user with this " +
+                "id exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." + AdminKeyNote)
             .WithTags("Users")
             .Produces<User>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -159,7 +162,7 @@ internal static class UserRoutes
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
-            CancellationToken cancellationToken) =>
+            IOptions<ServerOptions> serverOptions, CancellationToken cancellationToken) =>
         {
             if (!context.Request.HasFormContentType) return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
@@ -176,35 +179,38 @@ internal static class UserRoutes
             await using var fileStream = File.Create(destination);
             await file.CopyToAsync(fileStream, cancellationToken);
 
-            return Results.NoContent();
+            return Results.Json(new AvatarView(userId, $"https://a.{serverOptions.Value.Domain}/{userId}"));
         })
             .WithGroupName("basilapi")
             .WithName("uploadUserAvatar")
             .WithSummary("Upload User Avatar")
             .WithDescription("Multipart upload, field name `file`. Replaces any existing avatar for this user id " +
-                "(any prior file with a different extension is deleted first). 204 on success." + AdminKeyNote)
+                "(any prior file with a different extension is deleted first)." + AdminKeyNote)
             .WithTags("Users")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<AvatarView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"))
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-        admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage) =>
+        admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage,
+            IOptions<ServerOptions> serverOptions) =>
         {
             if (Directory.Exists(storage.Value.AvatarsPath))
                 foreach (var existing in Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*"))
                     File.Delete(existing);
 
-            return Results.NoContent();
+            return Results.Json(new AvatarView(userId, $"https://a.{serverOptions.Value.Domain}/{userId}"));
         })
             .WithGroupName("basilapi")
             .WithName("resetUserAvatar")
             .WithSummary("Reset User Avatar")
-            .WithDescription("Deletes every uploaded avatar file for this user id, if any. Always 204, even if " +
-                "no avatar was ever uploaded (idempotent-delete convention). The `a.<domain>` host's own avatar " +
-                "route re-checks the filesystem per request, so its default-avatar fallback reappears " +
-                "immediately." + AdminKeyNote)
+            .WithDescription("Deletes every uploaded avatar file for this user id, if any. Always succeeds, " +
+                "even if no avatar was ever uploaded (idempotent-delete convention). The `a.<domain>` host's " +
+                "own avatar route re-checks the filesystem per request, so its default-avatar fallback " +
+                "reappears immediately." + AdminKeyNote)
             .WithTags("Users")
-            .Produces(StatusCodes.Status204NoContent);
+            .Produces<AvatarView>()
+            .WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"));
 
         group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users, HttpContext context,
             IOptions<StorageOptions> storage, CancellationToken cancellationToken) =>
@@ -232,17 +238,18 @@ internal static class UserRoutes
             if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
 
             await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);
-            return Results.NoContent();
+            var deleted = await users.FetchByIdAsync(userId, cancellationToken);
+            return Results.Json(deleted!.ToView());
         })
             .WithGroupName("basilapi")
             .WithName("deleteUser")
             .WithSummary("Delete User")
             .WithDescription("Zeroes the user's privilege bits rather than removing the row, so score/social/" +
                 "anticheat history referencing this user id stays intact — the same convention this server " +
-                "already uses for restriction/ban. 204 on success, 404 if no user with this id exists, 400 if " +
-                "targeting user id 0 (BasilBot)." + AdminKeyNote)
+                "already uses for restriction/ban. Returns the soft-deleted user row (privilege now zero). " +
+                "404 if no user with this id exists, 400 if targeting user id 0 (BasilBot)." + AdminKeyNote)
             .WithTags("Users")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<UserView>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -310,6 +317,13 @@ internal static class UserRoutes
     }
 }
 
-public sealed record CreateUserRequest(string Name, string Password, string? Country, int? Privilege);
+public sealed record CreateUserRequest(string Name, string Password, Country Country, UserPrivileges Privilege);
 
-public sealed record UpdateUserRequest(string? Name, string? Country, int? Privilege);
+/// <summary>PUT — full replace, every field required.</summary>
+public sealed record ReplaceUserRequest(string Name, Country Country, UserPrivileges Privilege);
+
+/// <summary>PATCH — every field optional, only present ones are applied.</summary>
+public sealed record UpdateUserRequest(string? Name, Country? Country, UserPrivileges? Privilege);
+
+/// <summary>Response body for avatar upload/reset.</summary>
+public sealed record AvatarView(int UserId, string AvatarUrl);

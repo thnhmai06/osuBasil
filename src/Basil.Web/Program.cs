@@ -104,11 +104,19 @@ public sealed class Program
     // Registers CountryJsonConverter globally (the only enum with a non-default wire form — see its
     // own doc comment) for every `Results.Json(...)` call that doesn't pass its own
     // JsonSerializerOptions. Every other enum keeps System.Text.Json's default numeric serialization —
-    // no JsonStringEnumConverter anywhere.
+    // no JsonStringEnumConverter anywhere. Copies the converters from BasilJsonOptions.Instance (the
+    // shared options every live SSE payload serializes with — see SnapshotChannel/JsonMergePatch)
+    // rather than constructing its own CountryJsonConverter, so regular JSON responses and the live
+    // channel payloads never drift apart. Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions
+    // has no public setter, so the instance itself can't be swapped for BasilJsonOptions.Instance —
+    // copying its converters is the closest equivalent.
     private static void ConfigureJson(WebApplicationBuilder builder)
     {
         builder.Services.ConfigureHttpJsonOptions(options =>
-            options.SerializerOptions.Converters.Add(new CountryJsonConverter()));
+        {
+            foreach (var converter in BasilJsonOptions.Instance.Converters)
+                options.SerializerOptions.Converters.Add(converter);
+        });
     }
 
     private const string CorsPolicyName = "ApiCors";

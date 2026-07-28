@@ -144,7 +144,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         warmRequest.Content = JsonContent.Create(new { userId = warmHost.Id });
         (await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
-        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/hosts", async () =>
+        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/hosts/live", async () =>
         {
             var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/hosts");
             request.Content = JsonContent.Create(new { userId = player.Id });
@@ -167,7 +167,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         warmRequest.Content = JsonContent.Create(new { userIds = new[] { warmRef.Id } });
         (await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
-        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/refs", async () =>
+        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/refs/live", async () =>
         {
             var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
             request.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
@@ -188,7 +188,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         warmRequest.Content = JsonContent.Create(new { userIds = new[] { 111 } });
         (await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
-        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/ban", async () =>
+        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/ban/live", async () =>
         {
             var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
             request.Content = JsonContent.Create(new { userIds = new[] { 777 } });
@@ -214,16 +214,16 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
         warmRequest.Content = JsonContent.Create(new
         {
-            slots = new Dictionary<string, object> { [currentSlot.ToString()] = new { userId = player.Id } }
+            slots = new[] { new { index = currentSlot, userId = player.Id } }
         });
         (await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
-        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/slots", async () =>
+        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/slots/live", async () =>
         {
             var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
             request.Content = JsonContent.Create(new
             {
-                slots = new Dictionary<string, object> { [otherSlot.ToString()] = new { userId = player.Id } }
+                slots = new[] { new { index = otherSlot, userId = player.Id } }
             });
             (await client.SendAsync(request)).EnsureSuccessStatusCode();
         });
@@ -244,7 +244,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         warmRequest.Content = JsonContent.Create(new { seconds = 120 });
         (await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
-        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/timer",
+        var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/timer/live",
             async () => (await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer")))
                 .EnsureSuccessStatusCode());
 

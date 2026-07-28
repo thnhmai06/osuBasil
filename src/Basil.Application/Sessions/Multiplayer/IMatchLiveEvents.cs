@@ -22,9 +22,6 @@ public interface IMatchLiveEvents
     /// <summary>Fires for one slot's state (SSE GET /match/{id}/live/{slotIndex}, "slot" sub-event). (matchDbId, slotIndex, payload)</summary>
     event Action<int, int, byte[]> SlotPublished;
 
-    /// <summary>Fires for a match's room-wide "currently playing" channel (SSE GET /match/{id}/live). (matchDbId, payload)</summary>
-    event Action<int, byte[]> LivePublished;
-
     /// <summary>Fires for a match's host channel (SSE GET /matches/{matchId}/hosts). (matchDbId, payload)</summary>
     event Action<int, byte[]> HostPublished;
 
@@ -44,7 +41,6 @@ public interface IMatchLiveEvents
     void PublishPlayer(int matchDbId, string playerName, byte[] payload);
     void PublishSettings(int matchDbId, byte[] payload);
     void PublishSlot(int matchDbId, int slotIndex, byte[] payload);
-    void PublishLive(int matchDbId, byte[] payload);
     void PublishHost(int matchDbId, byte[] payload);
     void PublishRefs(int matchDbId, byte[] payload);
     void PublishBans(int matchDbId, byte[] payload);

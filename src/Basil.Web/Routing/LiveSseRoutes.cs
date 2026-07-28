@@ -3,10 +3,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Basil.Application.Json;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
+using Basil.Web.OpenApi;
 
 namespace Basil.Web.Routing;
 
@@ -66,25 +68,6 @@ internal static class LiveSseRoutes
 
                 events.SettingsPublished += Handler;
                 return () => events.SettingsPublished -= Handler;
-            },
-            readLatestSnapshot));
-    }
-
-    /// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to the room-wide "currently playing" fields.</summary>
-    public static IResult HandleLive(HttpContext context, int matchId, IMatchLiveEvents events,
-        Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
-    {
-        SetSseHeaders(context);
-        return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "live",
-            publish =>
-            {
-                void Handler(int id, byte[] payload)
-                {
-                    if (id == matchId) publish(payload);
-                }
-
-                events.LivePublished += Handler;
-                return () => events.LivePublished -= Handler;
             },
             readLatestSnapshot));
     }
@@ -248,13 +231,24 @@ internal static class LiveSseRoutes
         }));
     }
 
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
-
     /// <summary>Defeats reverse-proxy response buffering (nginx's X-Accel-Buffering) and any caching of a live stream.</summary>
     private static void SetSseHeaders(HttpContext context)
     {
         context.Response.Headers.CacheControl = "no-cache";
         context.Response.Headers["X-Accel-Buffering"] = "no";
+    }
+
+    /// <summary>
+    ///     Every `.../live` route is <see cref="Middleware.SseEndpointMarker" />-tagged, so
+    ///     <see cref="Middleware.EnvelopeMiddleware" /> unconditionally skips it — a genuine JSON error
+    ///     response on that same path has to envelope itself by hand instead. Used when the requested
+    ///     match/resource isn't currently live, so there's nothing to stream.
+    /// </summary>
+    public static IResult NotLive(string message = "Match is not live")
+    {
+        var envelope = new Envelope<object?>(false, StatusCodes.Status409Conflict, message, null, null, null,
+            DateTimeOffset.UtcNow);
+        return Results.Json(envelope, BasilJsonOptions.Instance, statusCode: StatusCodes.Status409Conflict);
     }
 
     private static IAsyncEnumerable<SseItem<string>> Subscribe(

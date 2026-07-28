@@ -49,9 +49,6 @@ public sealed class MatchSession(
     /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/settings` channel.</summary>
     public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
 
-    /// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/live` channel.</summary>
-    public SnapshotChannel<MatchLiveStatus> LiveSnapshot { get; } = new();
-
     /// <summary>
     ///     One <see cref="SnapshotChannel{T}" /> per slot (0-based, matching <see cref="Slots" />), for
     ///     the `GET /match/{id}/live/{slotIndex}` channel's "slot" sub-event.

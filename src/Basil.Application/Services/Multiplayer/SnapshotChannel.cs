@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Json;
 
 namespace Basil.Application.Services.Multiplayer;
 
@@ -16,7 +17,7 @@ namespace Basil.Application.Services.Multiplayer;
 /// </summary>
 public sealed class SnapshotChannel<T> where T : class
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = BasilJsonOptions.Instance;
 
     private T? _latest;
 

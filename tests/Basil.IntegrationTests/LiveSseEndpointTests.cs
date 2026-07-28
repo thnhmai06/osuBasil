@@ -2,11 +2,13 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Configuration;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Protocol.Multiplayer;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -45,9 +47,10 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                // The "main" SSE route now checks whether a match has actually closed (persisted with
-                // EndedAt set) before opening a stream — a stub avoids needing a real SQLite file
-                // just to answer "no, nothing here has ever been persisted" for these plumbing tests.
+                // A stub avoids needing a real SQLite file for these plumbing tests (IMatchPersistenceRepository
+                // is still resolved by other services in the DI graph even though the main SSE route itself
+                // no longer touches it — see RegisterLiveMatch, which registers matches directly against
+                // IMatchRegistry instead of going through the real persistence-backed creation flow).
                 services.AddSingleton<IMatchPersistenceRepository>(new NeverPersistedMatchRepository());
             });
         });
@@ -56,10 +59,11 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task MainChannel_ReceivesWhateverIsPublishedForThatMatchId()
     {
+        var matchId = RegisterLiveMatch(5);
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/matches/5",
-            () => events.PublishMain(5, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
+        var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+            () => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
 
         Assert.Equal("main", eventType);
         Assert.Contains("world", data);
@@ -94,15 +98,32 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
     [Fact]
     public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
     {
+        var matchId = RegisterLiveMatch(11);
         var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync("/matches/11", () =>
+        var (_, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
         {
             events.PublishMain(12, "wrong match"u8.ToArray());
-            events.PublishMain(11, "right match"u8.ToArray());
+            events.PublishMain(matchId, "right match"u8.ToArray());
         });
 
         Assert.Equal("right match", data);
+    }
+
+    /// <summary>
+    ///     Directly registers a live <see cref="MatchSession" /> against the real, DI-resolved
+    ///     <see cref="IMatchRegistry" /> — this test file has no admin key configured (it only cares
+    ///     about the SSE plumbing, not the write routes), so matches can't be created through
+    ///     `POST /matches`, but `GET /matches/{matchId}/live` now 409s unless the match is actually
+    ///     tracked in memory. Returns the assigned <see cref="MatchSession.DbId" /> (== <paramref name="dbId" />).
+    /// </summary>
+    private int RegisterLiveMatch(int dbId)
+    {
+        var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+        var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [], 0);
+        var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, hostId: 0))!;
+        match.DbId = dbId;
+        return match.DbId;
     }
 
     /// <summary>

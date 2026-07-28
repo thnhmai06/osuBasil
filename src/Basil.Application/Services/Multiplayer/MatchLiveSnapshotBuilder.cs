@@ -97,12 +97,6 @@ public static class MatchLiveSnapshotBuilder
             host, referees, beatmap);
     }
 
-    /// <summary>The `api.` host's `/match/{id}/live` payload — room-wide "currently playing" info, no per-player data. Untouched by the Phase 2 record redesign — not one of the replaced types.</summary>
-    public static MatchLiveStatus BuildLiveStatus(MatchSession match)
-    {
-        return new MatchLiveStatus(match.InProgress, match.CurrentRoundId, match.MapId, match.Mode);
-    }
-
     public static async Task<MatchHostView> BuildHost(MatchSession match, IPlayerSessionRegistry sessionRegistry,
         IUserRepository users, CancellationToken cancellationToken = default)
     {
@@ -208,9 +202,6 @@ public static class MatchLiveSnapshotBuilder
 ///     owns converting it to the wire's lowercase 2-letter acronym.
 /// </summary>
 public sealed record UserBrief(int Id, string Name, Country Country);
-
-/// <summary>Payload for the SSE `/match/{id}/live` channel — idle (no events) outside of an active round. Untouched by the Phase 2 record redesign.</summary>
-public sealed record MatchLiveStatus(bool InProgress, int? CurrentRoundId, int MapId, GameMode Mode);
 
 /// <summary>
 ///     Configuration fields shared by every match "room" shape — no membership (host/referees/slots)

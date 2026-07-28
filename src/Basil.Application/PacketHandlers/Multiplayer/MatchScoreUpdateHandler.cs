@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Basil.Application.Json;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -46,7 +47,7 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
             {
                 var frame = new BanchoPacketReader(playData).ReadScoreFrame();
                 var payload = JsonSerializer.SerializeToUtf8Bytes(
-                    MatchLiveSnapshotBuilder.BuildPlayerScore(player, frame));
+                    MatchLiveSnapshotBuilder.BuildPlayerScore(player, frame), BasilJsonOptions.Instance);
                 eventBus.PublishPlayer(match.DbId, player.Name, payload);
             }
             catch (Exception)
