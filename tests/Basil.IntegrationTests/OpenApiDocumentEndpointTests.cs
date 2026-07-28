@@ -214,7 +214,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 
         Assert.False(schemas.GetProperty("UpdateUserRequest").TryGetProperty("required", out _));
         var replaceRequired = schemas.GetProperty("ReplaceUserRequest").GetProperty("required")
-            .EnumerateArray().Select(e => e.GetString()).ToHashSet();
+            .EnumerateArray().Select(e => e.GetString()!).ToHashSet();
         Assert.Equal(new HashSet<string> { "name", "country", "privilege" }, replaceRequired);
     }
 

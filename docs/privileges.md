@@ -33,15 +33,15 @@ When a new user is created — whether through in-game registration (`POST /user
 Unrestricted | Verified | Supporter  (value 19)
 ```
 
-If `priv` is explicitly provided to the admin API, that value is used instead. In-game registration always uses the default.
+If `privilege` is explicitly provided to the admin API, that value is used instead. In-game registration always uses the default.
 
 ## Login auto-grant
 
 On every successful login, if the user does not yet have `Verified` set, the server adds it:
 
 ```csharp
-if ((user.Priv & Privileges.Verified) == 0)
-    newPriv = user.Priv | Privileges.Verified
+if ((user.Privilege & Privileges.Verified) == 0)
+    newPrivilege = user.Privilege | Privileges.Verified
 ```
 
 No other privileges are auto-granted at login (no special first-user treatment).

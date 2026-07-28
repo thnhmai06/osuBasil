@@ -134,14 +134,16 @@ To move a deployment to another machine: stop the server, copy the whole executa
    curl -X POST https://api.<domain>/users \
      -H "X-Admin-Key: <your Server.AdminKey>" \
      -H "Content-Type: application/json" \
-     -d '{"name":"Player1","password":"hunter2"}'
+     -d '{"name":"Player1","password":"hunter2","country":"vn","privilege":19}'
    ```
 
-   Optional fields: `"country": "VN"`, `"priv": 19` (default — see [`privileges.md`](privileges.md)).
+   `country` (2-letter lowercase, see `Country`) and `privilege` (numeric bitfield, `19` =
+   `Unrestricted | Verified | Supporter` — see [`privileges.md`](privileges.md)) are both required fields
+   on this request.
 
    Every account is auto-verified (`Verified` flag added) on its own first login. No special
    first-user staff grant exists — grant staff privileges via `PATCH /users/{userId}` on the `api.` host
-   with `"priv": 28683` (unrestricted + verified + supporter + moderator). See [`privileges.md`](privileges.md)
+   with `{"privilege": 28683}` (unrestricted + verified + supporter + moderator). See [`privileges.md`](privileges.md)
    for the full flag reference.
 
 ---
