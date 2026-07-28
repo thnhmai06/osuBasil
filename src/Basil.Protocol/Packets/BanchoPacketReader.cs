@@ -259,4 +259,19 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
             ReadF32(),
             ReadI32());
     }
+
+    /// <summary>Ported from BanchoPacketReader.read_replayframe_bundle in app/packets.py.</summary>
+    public SpectateFrameBundle ReadReplayFrameBundle()
+    {
+        var extra = ReadI32();
+        var frameCount = ReadU16();
+        var frames = new ReplayFrameData[frameCount];
+        for (var i = 0; i < frameCount; i++) frames[i] = ReadReplayFrame();
+
+        var action = (ReplayAction)ReadU8();
+        var scoreFrame = ReadScoreFrame();
+        var sequence = ReadU16();
+
+        return new SpectateFrameBundle(frames, scoreFrame, action, extra, sequence);
+    }
 }

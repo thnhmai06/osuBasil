@@ -5,9 +5,22 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
-/// <summary>Ported from app/api/domains/cho.py's SpectateFrames — forwards raw bytes unparsed.</summary>
+/// <summary>
+///     Ported from app/api/domains/cho.py's SpectateFrames — forwards raw bytes unparsed to native
+///     spectators, and (new) also decodes the same bytes into a structured SSE payload.
+/// </summary>
 public class SpectateFramesHandlerTests
 {
+    /// <summary>
+    ///     A minimal but well-formed SpectateFrames bundle (extra=0, 0 frames, action=Standard, an
+    ///     all-zero non-scorev2 scoreframe, sequence=0) — see BanchoPacketReaderTests in
+    ///     Basil.Protocol.Tests for the full wire-format round-trip coverage; this fixture only needs
+    ///     to be parseable, not meaningful, since these tests assert on publish behavior, not payload
+    ///     content.
+    /// </summary>
+    private static readonly byte[] ValidBundleBytes =
+        Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000000000000");
+
     private static PlayerSession MakePlayer(int id, string name)
     {
         return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
@@ -48,7 +61,7 @@ public class SpectateFramesHandlerTests
         var host = MakePlayer(1, "host");
         var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(ValidBundleBytes));
 
         var publish = Assert.Single(playerInputEvents.Publishes);
         Assert.Equal(host.Id, publish.PlayerId);
@@ -64,9 +77,25 @@ public class SpectateFramesHandlerTests
             .GetAwaiter().GetResult();
         var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 9 }));
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(ValidBundleBytes));
 
         var publish = Assert.Single(playerInputEvents.Publishes);
         Assert.Equal(host.Id, publish.PlayerId);
+    }
+
+    [Fact]
+    public async Task Handle_MalformedBundle_StillForwardsRawBytesButSkipsPublish()
+    {
+        var host = MakePlayer(1, "host");
+        var spectator = MakePlayer(2, "alice");
+        host.AddSpectator(spectator);
+        var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
+        var tooShortToDecode = new byte[] { 1, 2, 3 };
+
+        await new SpectateFramesHandler(playerInputEvents).HandleAsync(host,
+            new BanchoPacketReader(tooShortToDecode));
+
+        Assert.Equal(ServerPacketWriter.SpectateFrames(tooShortToDecode), spectator.Dequeue());
+        Assert.Empty(playerInputEvents.Publishes);
     }
 }

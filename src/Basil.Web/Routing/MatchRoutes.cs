@@ -157,7 +157,7 @@ internal static class MatchRoutes
                 "the next `slot` event reflects that, and `score`/`input` start matching the new occupant " +
                 "automatically. 404 if the match isn't currently live or `slotIndex` is out of range. The " +
                 "`slot` event's shape is documented below via its own schema/example; `score` is " +
-                "`PlayerLiveScore` (see `MatchScoreUpdateHandler`) and `input` is `PlayerInputFrame` (same " +
+                "`PlayerLiveScore` (see `MatchScoreUpdateHandler`) and `input` is `SpectateFramesEvent` (same " +
                 "shape as `GET /users/{idOrName}/live`'s single event) — both omitted from this operation's " +
                 "declared schema since OpenAPI has no way to represent \"one of three shapes depending on " +
                 "event name\" at a single 200 status without misrepresenting `slot` callers. Public, no " +

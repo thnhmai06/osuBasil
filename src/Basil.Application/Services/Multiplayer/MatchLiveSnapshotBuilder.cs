@@ -327,6 +327,3 @@ public sealed record PlayerLiveScore(
     bool Perfect,
     int CurrentHp,
     bool ScoreV2);
-
-/// <summary>Payload for the SSE /spec/{id} channel.</summary>
-public sealed record PlayerInputFrame(UserBrief User, string DataBase64);

@@ -3,10 +3,12 @@ using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Services.Users;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Basil.Protocol.Multiplayer;
 using Basil.Web.Auth;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
@@ -262,16 +264,19 @@ internal static class UserRoutes
             .WithMetadata(SseEndpointMarker.Instance)
             .WithName("getUserLiveStream")
             .WithSummary("Get User Live Stream")
-            .WithDescription("Server-Sent Events stream (event name `input`) of one player's raw replay-frame " +
-                "bytes (base64-encoded), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
+            .WithDescription("Server-Sent Events stream (event name `frames`) of one player's decoded " +
+                "replay-frame bundles (button state, cursor position, and the trailing scoreframe per " +
+                "bundle), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
                 "BasilBot automatically spectates every player from the moment they log in, so this stream is " +
                 "live whenever that player is online and playing, tournament match or not. 400 for user id 0 " +
                 "(BasilBot itself has no gameplay stream to expose). A nonexistent or offline player id simply " +
                 "never receives any frames. A non-numeric `{idOrName}` is resolved via username lookup and " +
                 "302-redirected to the canonical form. Public, no authentication.")
             .WithTags("Users")
-            .Produces<PlayerInputFrame>()
-            .WithExample(StatusCodes.Status200OK, new PlayerInputFrame(new UserBrief(7, "Alice", Country.Us), "QUJD"))
+            .Produces<SpectateFramesEvent>()
+            .WithExample(StatusCodes.Status200OK, new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us),
+                ReplayAction.Standard, 0, [new ReplayFrameData(Keys.Left1, 0, 100.5f, 200.25f, 1000)],
+                new ScoreFrameData(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)))
             .Produces(StatusCodes.Status400BadRequest);
     }
 
