@@ -26,7 +26,7 @@ internal static class LinkExtensions
     {
         return builder.AddOpenApiOperationTransformer((operation, _, _) =>
         {
-            if (!operation.Responses.TryGetValue(statusCode.ToString(), out var response) ||
+            if (operation.Responses?.TryGetValue(statusCode.ToString(), out var response) != true ||
                 response is not OpenApiResponse concrete)
                 return Task.CompletedTask;
 

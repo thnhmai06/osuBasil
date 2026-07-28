@@ -59,6 +59,7 @@ internal static class EnvelopeSchemaTransformer
         options.AddOperationTransformer((operation, context, _) =>
         {
             if (operation.Responses is null) return Task.CompletedTask;
+            if (context.Document is null) return Task.CompletedTask;
 
             // An SSE route's 2xx is the actual live stream — a raw, un-enveloped event payload by
             // design (see this type's own doc comment) — but any other status on that same route is a

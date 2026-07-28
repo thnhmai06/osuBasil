@@ -39,8 +39,8 @@ internal static class OpenApiExampleExtensions
     {
         return builder.AddOpenApiOperationTransformer((operation, context, _) =>
         {
-            if (operation.Responses.TryGetValue(statusCode.ToString(), out var response) &&
-                response?.Content.TryGetValue("application/json", out var mediaType) == true)
+            if (operation.Responses?.TryGetValue(statusCode.ToString(), out var response) == true &&
+                response?.Content?.TryGetValue("application/json", out var mediaType) == true)
             {
                 // Only an SSE route's own 2xx is the raw, un-enveloped stream payload (see
                 // EnvelopeSchemaTransformer's matching per-status check) — any other status on that
@@ -79,8 +79,8 @@ internal static class OpenApiExampleExtensions
     {
         return builder.AddOpenApiOperationTransformer((operation, context, _) =>
         {
-            if (!operation.Responses.TryGetValue("200", out var response) ||
-                response?.Content.TryGetValue("application/json", out var mediaType) != true)
+            if (operation.Responses?.TryGetValue("200", out var response) != true ||
+                response?.Content?.TryGetValue("application/json", out var mediaType) != true)
                 return Task.CompletedTask;
 
             var playerLiveScoreSchema = mediaType!.Schema!;
