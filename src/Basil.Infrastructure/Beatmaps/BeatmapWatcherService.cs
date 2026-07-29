@@ -88,12 +88,29 @@ public sealed class BeatmapWatcherService(
         if (affected is null) return;
 
         _timers.AddOrUpdate(affected,
-            _ => new Timer(_ => _ = Settle(affected), null, DebounceWindow, Timeout.InfiniteTimeSpan),
+            _ => NewTimer(affected),
             (_, existing) =>
             {
-                existing.Change(DebounceWindow, Timeout.InfiniteTimeSpan);
-                return existing;
+                try
+                {
+                    existing.Change(DebounceWindow, Timeout.InfiniteTimeSpan);
+                    return existing;
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Settle already TryRemove'd this entry and is disposing the same Timer
+                    // concurrently (ConcurrentDictionary.AddOrUpdate's update factory runs outside
+                    // any lock, so this Change() call and Settle's DisposeAsync() can race) — the
+                    // debounce that fired us is still real, so arm a fresh timer instead of re-
+                    // arming a dead one.
+                    return NewTimer(affected);
+                }
             });
+    }
+
+    private Timer NewTimer(string affected)
+    {
+        return new Timer(_ => _ = Settle(affected), null, DebounceWindow, Timeout.InfiniteTimeSpan);
     }
 
     private async Task Settle(string affected)
