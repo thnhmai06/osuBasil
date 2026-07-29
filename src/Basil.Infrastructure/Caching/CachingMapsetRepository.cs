@@ -68,6 +68,13 @@ public sealed class CachingMapsetRepository(IMapsetRepository inner, IMemoryCach
 		cache.Remove(IdKey(id));
 	}
 
+	public async Task SetBackgroundFileAsync(int id, string? backgroundFile,
+		CancellationToken cancellationToken = default)
+	{
+		await inner.SetBackgroundFileAsync(id, backgroundFile, cancellationToken);
+		cache.Remove(IdKey(id));
+	}
+
 	/// <summary>Uncached — a live counter read, not a single-row lookup.</summary>
 	public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
 	{

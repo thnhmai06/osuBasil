@@ -54,6 +54,20 @@ public class CachingMapsetRepositoryTests
 	}
 
 	[Fact]
+	public async Task SetBackgroundFileAsync_InvalidatesCachedEntry()
+	{
+		var inner = new CountingMapsetRepository();
+		inner.ById[1] = MakeMapset(1);
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+
+		await repo.FetchByIdAsync(1);
+		await repo.SetBackgroundFileAsync(1, "bg.jpg");
+		await repo.FetchByIdAsync(1);
+
+		Assert.Equal(2, inner.FetchByIdCalls);
+	}
+
+	[Fact]
 	public async Task UpsertAsync_InvalidatesCachedEntry()
 	{
 		var inner = new CountingMapsetRepository();
@@ -115,6 +129,12 @@ public class CachingMapsetRepositoryTests
 		}
 
 		public Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task SetBackgroundFileAsync(int id, string? backgroundFile,
+			CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

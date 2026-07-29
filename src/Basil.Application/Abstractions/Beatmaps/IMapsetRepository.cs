@@ -48,6 +48,13 @@ public interface IMapsetRepository
 	Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default);
 
 	/// <summary>
+	///     Sets <see cref="Mapset.BackgroundFile" /> — called by
+	///     <c>BeatmapIngestionService.ReconcileFolderAsync</c> once the set's beatmaps for that pass
+	///     are known, never by an api. host route directly.
+	/// </summary>
+	Task SetBackgroundFileAsync(int id, string? backgroundFile, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	///     Total mapset count for the `api.` host's `GET /beatmapsets` list's `meta.totalRecords` —
 	///     reads a cached counter row (kept in sync by DB triggers) instead of a live `COUNT(*)`.
 	///     <paramref name="includePrivate" /> mirrors <see cref="FetchPageAsync" />'s

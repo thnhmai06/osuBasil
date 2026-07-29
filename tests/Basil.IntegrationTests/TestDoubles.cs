@@ -56,6 +56,14 @@ internal static class TestDoubles
 		return repo;
 	}
 
+	/// <summary>Every mapset unknown — used where routing doesn't care about beatmapsets.</summary>
+	public static IMapsetRepository NullMapsetRepository()
+	{
+		var repo = Substitute.For<IMapsetRepository>();
+		repo.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Mapset?>(null));
+		return repo;
+	}
+
 	/// <summary>Every user unknown, every write a no-op, matching the old StubUserRepository used as a pure DI placeholder.</summary>
 	public static IUserRepository NullUserRepository()
 	{

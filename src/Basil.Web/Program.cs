@@ -207,8 +207,8 @@ public sealed class Program
 			"The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
 			"downloads and in-game registration. Served from the osu. subdomain.");
 		AddOpenApiDocument(builder, "beatmapassets", "osu! Client API — Beatmap Assets",
-			"Legacy beatmap thumbnail/preview asset requests, redirected to osu.ppy.sh's own CDN. " +
-			"Served from the b. subdomain.");
+			"Beatmapset thumbnail/preview asset requests, redirected to the api. host's own locally-" +
+			"stored background image (self-hosted, no osu.ppy.sh dependency). Served from the b. subdomain.");
 		AddOpenApiDocument(builder, "avatar", "osu! Client API — Avatar Files",
 			"Locally-stored player avatar images. Served from the a. subdomain.");
 		AddOpenApiDocument(builder, "basilapi", "Basil API",

@@ -167,6 +167,18 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmaps")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
+		group.MapGet("/beatmapsets/{mapsetId:int}/background", HandleDownloadMapsetBackground)
+			.WithGroupName("basilapi")
+			.WithName("downloadBeatmapsetBackground")
+			.WithSummary("Download Beatmapset Background")
+			.WithDescription("Serves the preview background image for this set — the lowest-id " +
+			                 "beatmap's background, kept in sync by ingestion. 404 if the mapset doesn't exist, has no " +
+			                 "recorded preview background, its file is missing on disk, or the mapset is private and the " +
+			                 "caller isn't admin. Content-Type inferred from the file extension. Public, with a soft " +
+			                 "admin elevation.")
+			.WithTags("Beatmapsets")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
 		group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetStoryboard")
@@ -397,6 +409,19 @@ internal static class BeatmapsetRoutes
 			".bmp" => "image/bmp",
 			_ => "image/jpeg"
 		};
+	}
+
+	private static async Task<IResult> HandleDownloadMapsetBackground(int mapsetId, HttpContext context,
+		IMapsetRepository mapsets, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+	{
+		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+		var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
+		if (mapset is null || (mapset.IsPrivate && !isAdmin)) return Results.NotFound();
+
+		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, mapset);
+		if (backgroundPath is null || !File.Exists(backgroundPath)) return Results.NotFound();
+
+		return Results.File(backgroundPath, BackgroundContentType(backgroundPath));
 	}
 
 	private static IResult HandleDownloadStoryboard(int mapsetId, IOptions<StorageOptions> storage)

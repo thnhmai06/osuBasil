@@ -151,6 +151,15 @@ public static class BanchoHostGroups
 		File.Move(tempPath, destinationPath, true);
 	}
 
+	private static async Task<IResult> HandleThumbnail(int setId, IMapsetRepository mapsets,
+		IOptions<ServerOptions> serverOptions, CancellationToken cancellationToken)
+	{
+		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
+		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
+
+		return Results.Redirect($"https://api.{serverOptions.Value.Domain}/beatmapsets/{setId}/background", true);
+	}
+
 	// api. host: TRT snapshot (GET+SSE), file downloads, SSE live channels, admin-key-gated management
 	// CRUD, a trivial /health probe, and (below) the generated OpenAPI/Scalar documentation site —
 	// same content whether this server is self-hosted or run locally; the GitHub Pages copy is a
@@ -1002,16 +1011,24 @@ public static class BanchoHostGroups
 	{
 		private void MapBeatmapAssetGroup()
 		{
-			// Ported from app/api/domains/map.py's everything — every request under the b.{domain}
-			// host forwards straight through to osu!'s real static-asset CDN (thumbnails, previews).
-			group.MapGet("/{**path}", (HttpContext context) =>
-					Results.Redirect($"https://b.ppy.sh{context.Request.Path}", true))
+			// No longer proxies osu.ppy.sh (this server is meant to run fully offline) — both the
+			// list-icon ("l") and cover thumbnail requests resolve to the same locally-stored preview,
+			// redirected to the api. host's set-level background route (self-hosted, tournament server
+			// has no per-size thumbnail variants).
+			group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnail)
 				.WithGroupName("beatmapassets")
-				.WithSummary("Beatmap thumbnail/preview asset — 301 redirect to osu.ppy.sh's real CDN.")
-				.WithDescription("Every request under this host, regardless of path, is redirected as-is to the " +
-				                 "matching path on `https://b.ppy.sh`. This server has no local mirror of osu!'s thumbnail/" +
-				                 "preview asset library — this exists purely so the client's asset requests (e.g. `/thumb/" +
-				                 "{setId}l.jpg`) resolve to real content instead of failing.")
+				.WithSummary("Beatmapset list-icon thumbnail — redirects to the locally-hosted preview.")
+				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
+				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private.")
+				.WithTags("Beatmap Assets");
+
+			group.MapGet("/thumb/{setId:int}.jpg", HandleThumbnail)
+				.WithGroupName("beatmapassets")
+				.WithSummary("Beatmapset cover thumbnail — redirects to the locally-hosted preview.")
+				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
+				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private. " +
+				                 "Same target as the list-icon (`l`) variant — this server keeps a single preview image per " +
+				                 "set, not separate small/large renders.")
 				.WithTags("Beatmap Assets");
 		}
 

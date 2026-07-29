@@ -208,6 +208,53 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.Null(await _maps.FetchOneAsync(md5: oldMd5, includePrivate: true));
 	}
 
+	[Fact]
+	public async Task ReconcileFolderAsync_MultipleDifficulties_SetsMapsetPreviewToLowestIdBeatmapsBackground()
+	{
+		var folder = Path.Combine(_mapsetsPath, "900000005 FAIRY FORE - Vivid");
+		Directory.CreateDirectory(folder);
+		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
+		var secondPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
+		WriteVariant(secondPath, 3000);
+		// A distinct background on the second difficulty lets the assertion tell which one actually
+		// won, instead of assuming file-enumeration order.
+		File.WriteAllText(secondPath, File.ReadAllText(secondPath).Replace("Chocobos.jpg", "Moogle.jpg"));
+
+		var (ingestedInFolder, setId) = await _service.ReconcileFolderAsync(folder);
+		Assert.Equal(2, ingestedInFolder);
+		Assert.NotNull(setId);
+
+		var beatmaps = await _maps.FetchAllBySetIdAsync(setId.Value, true);
+		var lowest = beatmaps.MinBy(b => b.Id)!;
+
+		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		Assert.Equal(lowest.BackgroundFile, mapset!.BackgroundFile);
+	}
+
+	[Fact]
+	public async Task ReconcileFolderAsync_LowestIdDifficultyRemoved_PreviewFallsBackToNextLowest()
+	{
+		var folder = Path.Combine(_mapsetsPath, "900000006 FAIRY FORE - Vivid");
+		Directory.CreateDirectory(folder);
+		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
+		var secondPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
+		WriteVariant(secondPath, 3000);
+		File.WriteAllText(secondPath, File.ReadAllText(secondPath).Replace("Chocobos.jpg", "Moogle.jpg"));
+
+		var (_, setId) = await _service.ReconcileFolderAsync(folder);
+		Assert.NotNull(setId);
+
+		var beatmaps = await _maps.FetchAllBySetIdAsync(setId.Value, true);
+		var lowest = beatmaps.MinBy(b => b.Id)!;
+		var remaining = beatmaps.First(b => b.Id != lowest.Id);
+
+		File.Delete(Path.Combine(folder, lowest.Filename));
+		await _service.ReconcileFolderAsync(folder);
+
+		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		Assert.Equal(remaining.BackgroundFile, mapset!.BackgroundFile);
+	}
+
 	/// <summary>Writes a copy of the fixture .osu with AudioLeadIn tweaked so its content (and md5) differs.</summary>
 	private static void WriteVariant(string destPath, int audioLeadIn)
 	{

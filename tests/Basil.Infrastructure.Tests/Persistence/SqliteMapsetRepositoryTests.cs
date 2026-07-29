@@ -159,4 +159,30 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 		Assert.True(reingested.IsPrivate);
 		Assert.True((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.IsPrivate);
 	}
+
+	[Fact]
+	public async Task SetBackgroundFileAsync_SetsAndClearsValue()
+	{
+		var mapset = MakeMapset(9034);
+		await _mapsetRepository.UpsertAsync(mapset);
+
+		await _mapsetRepository.SetBackgroundFileAsync(mapset.Id, "bg.jpg");
+		Assert.Equal("bg.jpg", (await _mapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+
+		await _mapsetRepository.SetBackgroundFileAsync(mapset.Id, null);
+		Assert.Null((await _mapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+	}
+
+	[Fact]
+	public async Task Upsert_ExistingBackgroundFile_ReingestionDoesNotClearIt()
+	{
+		var mapset = MakeMapset(9035);
+		await _mapsetRepository.UpsertAsync(mapset);
+		await _mapsetRepository.SetBackgroundFileAsync(mapset.Id, "bg.jpg");
+
+		var reingested = await _mapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+
+		Assert.Equal("bg.jpg", reingested.BackgroundFile);
+		Assert.Equal("bg.jpg", (await _mapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+	}
 }

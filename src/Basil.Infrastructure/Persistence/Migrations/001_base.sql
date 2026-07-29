@@ -45,16 +45,20 @@ create table UserStats
 -- exempt from its own lock. IsPrivate: hides every beatmap under this set from non-admin listings —
 -- a set-level flag (not per-difficulty) since a single beatmapset is always released/curated as a
 -- whole for this server's purposes.
+-- BackgroundFile: the lowest-id beatmap's background image filename in this set (see
+-- Beatmaps.BackgroundFile below), resolved against the mapset's own storage folder — kept in sync
+-- by ingestion, backs b.<domain>'s per-set thumbnail and the api. host's set-level background route.
 create table Mapsets
 (
-	Id         int                   not null primary key,
-	Artist     varchar(128)          not null,
-	Title      varchar(128)          not null,
-	Creator    varchar(19)           not null,
-	LastUpdate datetime              not null,
-	CreatedAt  datetime              not null,
-	IsFrozen   boolean default false not null,
-	IsPrivate  boolean default false not null
+	Id             int                   not null primary key,
+	Artist         varchar(128)          not null,
+	Title          varchar(128)          not null,
+	Creator        varchar(19)           not null,
+	LastUpdate     datetime              not null,
+	CreatedAt      datetime              not null,
+	IsFrozen       boolean default false not null,
+	IsPrivate      boolean default false not null,
+	BackgroundFile text null
 );
 
 -- BackgroundFile: the beatmap's background image filename (from its .osu metadata), resolved
@@ -80,7 +84,7 @@ create table Beatmaps
     Od             float(4, 2)  default 0.00  not null,
     Hp             float(4, 2)  default 0.00  not null,
     Sr             float(6, 3)  default 0.000 not null,
-    BackgroundFile varchar(256)               null,
+    BackgroundFile text                       null,
     ObjectCounts   text         default '{}'  not null,
     constraint Beatmaps_Md5_uindex unique (Md5),
     constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade

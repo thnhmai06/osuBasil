@@ -84,6 +84,14 @@ public sealed partial class BeatmapIngestionService(
 		return folder is null ? null : Path.Combine(folder, beatmap.BackgroundFile);
 	}
 
+	/// <summary>Null if the mapset has no recorded preview background or its folder can't be found.</summary>
+	public static string? BackgroundFilePath(StorageOptions storage, Mapset mapset)
+	{
+		if (mapset.BackgroundFile is null) return null;
+		var folder = FindMapsetFolder(storage, mapset.Id);
+		return folder is null ? null : Path.Combine(folder, mapset.BackgroundFile);
+	}
+
 	/// <summary>
 	///     Full pass: extracts every loose ".osz" at the storage root, reconciles every subfolder
 	///     that looks like a mapset (".osu" files at depth 1), then deletes any Mapset row whose
@@ -266,6 +274,12 @@ public sealed partial class BeatmapIngestionService(
 		var known = await maps.FetchAllBySetIdAsync(mapset.Id, true, cancellationToken);
 		foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
 			await maps.DeleteByMd5Async(gone.Md5, cancellationToken);
+
+		// decoded.Count > 0 (checked above) guarantees at least one beatmap survives this pass, so
+		// there's always a lowest-id one to derive the set's preview from.
+		var remaining = known.Where(k => onDisk.Contains(k.Filename)).ToList();
+		var preview = remaining.MinBy(b => b.Id);
+		await mapsets.SetBackgroundFileAsync(mapset.Id, preview?.BackgroundFile, cancellationToken);
 
 		return (ingested, mapset.Id);
 	}

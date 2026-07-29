@@ -1,10 +1,13 @@
 using System.Net;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Configuration;
+using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -37,6 +40,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.NullChannelRepository());
+				services.AddSingleton(TestDoubles.NullMapsetRepository());
 			});
 		});
 	}
@@ -76,13 +80,34 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	[Theory]
 	[InlineData("b.test.local")]
 	[InlineData("b.ppy.sh")]
-	public async Task BeatmapAssetSubdomain_RoutesToMapGroup(string host)
+	public async Task BeatmapAssetSubdomain_UnknownMapset_ReturnsNotFound(string host)
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-		var response = await SendWithHost(client, host);
+		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1l.jpg");
+		request.Headers.Host = host;
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("b.test.local")]
+	[InlineData("b.ppy.sh")]
+	public async Task BeatmapAssetSubdomain_KnownMapset_RedirectsToApiBackground(string host)
+	{
+		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		var mapsets = Substitute.For<IMapsetRepository>();
+		mapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Mapset?>(mapset));
+
+		var factory = _factory.WithWebHostBuilder(builder =>
+			builder.ConfigureServices(services => services.AddSingleton(mapsets)));
+		var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1.jpg");
+		request.Headers.Host = host;
+		var response = await client.SendAsync(request);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
-		Assert.Equal("https://b.ppy.sh/", response.Headers.Location!.ToString());
+		Assert.Equal("https://api.test.local/beatmapsets/1/background", response.Headers.Location!.ToString());
 	}
 
 	[Theory]

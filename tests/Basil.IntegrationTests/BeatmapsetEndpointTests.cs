@@ -247,6 +247,57 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
 	}
 
+	// ---- GET /beatmapsets/{mapsetId}/background ----
+
+	[Fact]
+	public async Task MapsetBackground_UnknownId_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/800/background"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task MapsetBackground_Private_NonAdmin_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(801) with { IsPrivate = true, BackgroundFile = "bg.jpg" };
+		_mapset = mapset;
+		var folder = MapsetFolder(801);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.jpg"), [1]);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/801/background"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task MapsetBackground_NoPreviewRecorded_ReturnsNotFound()
+	{
+		_mapset = MakeMapset(802);
+		MapsetFolder(802);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/802/background"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task MapsetBackground_FileExists_ReturnsCorrectMimeType()
+	{
+		_mapset = MakeMapset(803) with { BackgroundFile = "bg.png" };
+		var folder = MapsetFolder(803);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"), [1]);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/803/background"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+	}
+
 	// ---- GET /beatmapsets/{mapsetId}/storyboard ----
 
 	[Fact]

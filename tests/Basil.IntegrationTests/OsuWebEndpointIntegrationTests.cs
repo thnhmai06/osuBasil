@@ -41,6 +41,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.NullMapRepository());
+				services.AddSingleton(TestDoubles.NullMapsetRepository());
 			});
 		});
 	}
@@ -220,14 +221,13 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 	}
 
 	[Fact]
-	public async Task BeatmapAssetHost_RedirectsToRealCdn()
+	public async Task BeatmapAssetHost_UnknownMapset_ReturnsNotFound()
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
 		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/thumb/12345l.jpg", "b.test.local"));
 
-		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
-		Assert.Equal("https://b.ppy.sh/thumb/12345l.jpg", response.Headers.Location!.ToString());
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
 	private static HttpContent JsonContent(string json)
