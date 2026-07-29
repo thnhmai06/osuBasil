@@ -35,7 +35,7 @@ public class SnapshotChannelTests
 
         var json = JsonDocument.Parse(Encoding.UTF8.GetString(patchBytes));
         var obj = json.RootElement;
-        Assert.Equal(1, obj.EnumerateObject().Count());
+        Assert.Single(obj.EnumerateObject());
         Assert.Equal(2, obj.GetProperty("count").GetInt32());
     }
 

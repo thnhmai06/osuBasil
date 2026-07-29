@@ -52,8 +52,7 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
-            .GetAwaiter().GetResult()!;
+        var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
 
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
@@ -70,8 +69,7 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
-            .GetAwaiter().GetResult()!;
+        var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
         match.IsPrivate = true;
 
         var guest = MakePlayer(2, "guest");
@@ -90,8 +88,7 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw"))
-            .GetAwaiter().GetResult()!;
+        var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
         match.IsPrivate = true;
 
         var guest = MakePlayer(2, "guest");
@@ -110,8 +107,8 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
-            .GetAwaiter().GetResult()!;
+        var match =
+            (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true))!;
         match.IsPrivate = true;
         await fixture.MatchMembership.Leave(host, match);
         var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
@@ -128,8 +125,8 @@ public class JoinMatchHandlerTests
         var fixture = new Fixture();
         var host = MakePlayer(1, "host");
         fixture.RegisterAll(host);
-        var match = fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true)
-            .GetAwaiter().GetResult()!;
+        var match =
+            (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id), createdViaMakeCommand: true))!;
         match.IsPrivate = true;
         await fixture.MatchMembership.Leave(host, match);
         match.AddInvite(host.Id);
