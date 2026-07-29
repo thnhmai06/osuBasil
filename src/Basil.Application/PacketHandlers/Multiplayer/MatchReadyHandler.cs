@@ -25,7 +25,7 @@ public sealed class MatchReadyHandler(MatchMembershipService matchMembership) : 
             if (slot is null) return;
 
             slot.Status = SlotStatus.Ready;
-            await matchMembership.EnqueueState(match, false);
+            await matchMembership.EnqueueStateAsync(match, false, default);
         }
         finally
         {

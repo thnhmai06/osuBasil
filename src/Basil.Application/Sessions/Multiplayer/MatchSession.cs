@@ -110,7 +110,7 @@ public sealed class MatchSession(
     ///     Set by <c>!mp private [0|1]</c> — when <c>true</c>, the room cannot be (re)joined by anyone
     ///     but staff or <see cref="InvitedIds" />, via any path (<c>!mp join</c>, the native client
     ///     join packet, or an <c>osump://</c> URL) — see
-    ///     <see cref="MatchMembershipService.Join" />. The host
+    ///     <see cref="MatchMembershipService.JoinAsync" />. The host
     ///     is NOT exempt: hosting only grants in-room settings control, not a standing invite, so a
     ///     host who leaves a private room needs a referee's <c>!mp invite</c> like anyone else to get
     ///     back in. Also hidden from <c>#lobby</c>. Distinct from <see cref="IsLocked" />, which blocks

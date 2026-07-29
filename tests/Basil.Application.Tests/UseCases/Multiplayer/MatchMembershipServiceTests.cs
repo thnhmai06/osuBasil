@@ -143,7 +143,7 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
         host.Dequeue();
 
-        var joined = await service.Join(guest, match, "pw");
+        var joined = await service.JoinAsync(guest, match, "pw", default);
 
         Assert.True(joined);
         Assert.Same(match, guest.Match);
@@ -161,7 +161,7 @@ public class MatchMembershipServiceTests
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
-        var joined = await service.Join(guest, match, "wrong");
+        var joined = await service.JoinAsync(guest, match, "wrong", default);
 
         Assert.False(joined);
         Assert.Null(guest.Match);
@@ -178,7 +178,7 @@ public class MatchMembershipServiceTests
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
-        Assert.True(await service.Join(staff, match, "wrong"));
+        Assert.True(await service.JoinAsync(staff, match, "wrong", default));
     }
 
     [Fact]
@@ -192,9 +192,9 @@ public class MatchMembershipServiceTests
         var otherHost = MakePlayer(3, "other");
         RegisterAll(host, guest, otherHost);
         var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
-        await service.Join(guest, matchA, "");
+        await service.JoinAsync(guest, matchA, "", default);
 
-        Assert.False(await service.Join(guest, matchB, ""));
+        Assert.False(await service.JoinAsync(guest, matchB, "", default));
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public class MatchMembershipServiceTests
         var overflow = MakePlayer(2, "overflow");
         RegisterAll(host, overflow);
 
-        Assert.False(await service.Join(overflow, match, ""));
+        Assert.False(await service.JoinAsync(overflow, match, "", default));
         Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
     }
 
@@ -227,7 +227,7 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id))!;
         match.TeamType = MatchTeamType.TeamVs;
 
-        await service.Join(guest, match, "");
+        await service.JoinAsync(guest, match, "", default);
 
         Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
     }
@@ -246,7 +246,7 @@ public class MatchMembershipServiceTests
         membership.Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
-        await service.Leave(host, match);
+        await service.LeaveAsync(host, match, default);
 
         Assert.Null(_matchRegistry.GetById(match.Id));
         Assert.Null(_channelRegistry.GetByName("#multi_0"));
@@ -263,10 +263,10 @@ public class MatchMembershipServiceTests
         RegisterAll(host, guest);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        await service.Join(guest, match, "");
+        await service.JoinAsync(guest, match, "", default);
         guest.Dequeue();
 
-        await service.Leave(host, match);
+        await service.LeaveAsync(host, match, default);
 
         Assert.Equal(guest.Id, match.HostId);
         Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
@@ -280,10 +280,10 @@ public class MatchMembershipServiceTests
         RegisterAll(host, guest);
         var service = MakeService();
         var match = Create(service, host, MakeMatchData(host.Id))!;
-        await service.Join(guest, match, "");
+        await service.JoinAsync(guest, match, "", default);
         match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
 
-        await service.Leave(guest, match);
+        await service.LeaveAsync(guest, match, default);
 
         Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
         Assert.True(match.Slots[1].Empty);
@@ -300,20 +300,20 @@ public class MatchMembershipServiceTests
         var match = Create(service, host, MakeMatchData(host.Id))!;
         host.Dequeue();
 
-        await service.EnqueueState(match);
+        await service.EnqueueStateAsync(match);
         Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
         var lobby = _channelRegistry.GetByName("#lobby")!;
         new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
         lobbyMember.Dequeue();
 
-        await service.EnqueueState(match);
+        await service.EnqueueStateAsync(match);
         Assert.NotEmpty(lobbyMember.Dequeue());
     }
 
     /// <summary>
-    ///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.Join" />
-    ///     (which itself calls <see cref="MatchMembershipService.EnqueueState" />) for the host, so
+    ///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.JoinAsync" />
+    ///     (which itself calls <see cref="MatchMembershipService.EnqueueStateAsync" />) for the host, so
     ///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
     ///     <c>Create</c> returns — <see cref="Services.Multiplayer.SnapshotChannelTests" /> covers that
     ///     "first publish is full" behavior standalone. This test covers what happens after that: a
@@ -335,9 +335,9 @@ public class MatchMembershipServiceTests
         events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
             .Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
 
-        await service.EnqueueState(match);
+        await service.EnqueueStateAsync(match);
         match.Name = "Renamed";
-        await service.EnqueueState(match);
+        await service.EnqueueStateAsync(match);
 
         Assert.Equal(2, payloads.Count);
         Assert.Equal("{}", Encoding.UTF8.GetString(payloads[0]));

@@ -47,7 +47,7 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
         await match.Lock.WaitAsync();
         try
         {
-            await matchMembership.Join(player, match, password);
+            await matchMembership.JoinAsync(player, match, password, default);
         }
         finally
         {

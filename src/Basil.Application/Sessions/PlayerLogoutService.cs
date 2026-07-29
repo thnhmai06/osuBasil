@@ -17,14 +17,14 @@ public sealed class PlayerLogoutService(
     SpectatorService spectatorService,
     MatchMembershipService matchMembership)
 {
-    public async Task LogoutAsync(PlayerSession player)
+    public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
     {
         if (player.Match is { } match)
         {
-            await match.Lock.WaitAsync();
+            await match.Lock.WaitAsync(cancellationToken);
             try
             {
-                await matchMembership.Leave(player, match);
+                await matchMembership.LeaveAsync(player, match, cancellationToken);
             }
             finally
             {

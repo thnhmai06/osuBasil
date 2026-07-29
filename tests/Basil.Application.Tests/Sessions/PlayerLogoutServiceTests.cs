@@ -46,7 +46,7 @@ public class PlayerLogoutServiceTests
     {
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         _sessionRegistry.Received(1).Remove(player);
     }
@@ -60,7 +60,7 @@ public class PlayerLogoutServiceTests
         player.JoinChannel("#osu");
         _channelRegistry.GetByName("#osu").Returns(channel);
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         Assert.False(channel.Contains(1));
         Assert.False(player.InChannel("#osu"));
@@ -73,7 +73,7 @@ public class PlayerLogoutServiceTests
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([other]);
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         Assert.Equal(ServerPacketWriter.Logout(1), other.Dequeue());
     }
@@ -86,7 +86,7 @@ public class PlayerLogoutServiceTests
         var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         _sessionRegistry.All.Returns([other]);
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         Assert.Empty(other.Dequeue());
     }
@@ -99,7 +99,7 @@ public class PlayerLogoutServiceTests
         host.AddSpectator(player);
         player.Spectating = host;
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         Assert.Null(player.Spectating);
         Assert.DoesNotContain(player, host.Spectators);
@@ -116,7 +116,7 @@ public class PlayerLogoutServiceTests
         player.AddSpectator(bot);
         bot.Spectating = player;
 
-        await MakeService().LogoutAsync(player);
+        await MakeService().LogoutAsync(player, default);
 
         Assert.Empty(player.Spectators);
         Assert.Null(bot.Spectating);
@@ -139,7 +139,7 @@ public class PlayerLogoutServiceTests
         var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
         var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
 
-        await service.LogoutAsync(host);
+        await service.LogoutAsync(host, default);
 
         Assert.Null(host.Match);
         Assert.Null(matchRegistry.GetById(match.Id)); // last player left -> match disposed, not a ghost slot

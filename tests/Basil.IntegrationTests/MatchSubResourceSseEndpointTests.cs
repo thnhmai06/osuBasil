@@ -82,7 +82,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
         sessionRegistry.Add(session);
 
         var match = matchRegistry.GetByDbId(matchId)!;
-        Assert.True(await matchMembership.Join(session, match, ""));
+        Assert.True(await matchMembership.JoinAsync(session, match, "", default));
         return session;
     }
 

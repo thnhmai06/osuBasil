@@ -19,7 +19,7 @@ public class MatchCompleteHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        await fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.JoinAsync(guest, match, "", default);
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         match.InProgress = true;
@@ -43,8 +43,8 @@ public class MatchCompleteHandlerTests
         var spectatorish = MakePlayer(3, "afk"); // in the room but never played (status stays Open/NotReady)
         fixture.RegisterAll(host, guest, spectatorish);
         var match = fixture.CreateMatch(host);
-        await fixture.MatchMembership.Join(guest, match, "");
-        await fixture.MatchMembership.Join(spectatorish, match, "");
+        await fixture.MatchMembership.JoinAsync(guest, match, "", default);
+        await fixture.MatchMembership.JoinAsync(spectatorish, match, "", default);
         match.Slots[0].Status = SlotStatus.Playing;
         match.Slots[1].Status = SlotStatus.Playing;
         match.Slots[2].Status = SlotStatus.NotReady; // never started playing

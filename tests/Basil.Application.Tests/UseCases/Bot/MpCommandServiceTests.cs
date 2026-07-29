@@ -70,7 +70,7 @@ public class MpCommandServiceTests
 
         Assert.True(match.IsLocked);
         Assert.Equal("Locked the match", reply);
-        Assert.False(await _fixture.MatchMembership.Join(other, match, ""));
+        Assert.False(await _fixture.MatchMembership.JoinAsync(other, match, "", default));
         Assert.Null(other.Match);
     }
 
@@ -87,7 +87,7 @@ public class MpCommandServiceTests
 
         Assert.False(match.IsLocked);
         Assert.Equal("Unlocked the match", reply);
-        Assert.True(await _fixture.MatchMembership.Join(other, match, ""));
+        Assert.True(await _fixture.MatchMembership.JoinAsync(other, match, "", default));
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "move", ["other", "5"]);
 
@@ -142,7 +142,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "move", ["other", "99"]);
 
@@ -157,7 +157,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "host", ["other"]);
 
@@ -588,7 +588,7 @@ public class MpCommandServiceTests
         { IsBot = true };
         _fixture.RegisterAll(host, guest, bot);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(guest, match, "");
+        await _fixture.MatchMembership.JoinAsync(guest, match, "", default);
         var service = MakeService();
         await service.HandleAsync(host, match, "start", ["30"]);
         var cts = match.PendingTimer;
@@ -716,7 +716,7 @@ public class MpCommandServiceTests
         var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
         _fixture.RegisterAll(host, referee);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(referee, match, "");
+        await _fixture.MatchMembership.JoinAsync(referee, match, "", default);
         match.AddReferee(referee.Id);
 
         var reply = await MakeService().HandleAsync(host, match, "kick", ["referee"]);
@@ -733,7 +733,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "kick", ["other"]);
 
@@ -748,7 +748,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "ban", ["other"]);
 
@@ -756,7 +756,7 @@ public class MpCommandServiceTests
         Assert.Contains(other.Id, match.BannedIds);
         Assert.Equal("Banned other from the match", reply);
 
-        var rejoined = await _fixture.MatchMembership.Join(other, match, "");
+        var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "", default);
         Assert.False(rejoined);
     }
 
@@ -782,7 +782,7 @@ public class MpCommandServiceTests
         var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
         _fixture.RegisterAll(host, referee);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(referee, match, "");
+        await _fixture.MatchMembership.JoinAsync(referee, match, "", default);
         match.AddReferee(referee.Id);
 
         var reply = await MakeService().HandleAsync(host, match, "ban", ["referee"]);
@@ -819,7 +819,7 @@ public class MpCommandServiceTests
         _users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
         await MakeService().HandleAsync(host, match, "unban", ["other"]);
-        var rejoined = await _fixture.MatchMembership.Join(other, match, "");
+        var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         Assert.True(rejoined);
     }
@@ -844,7 +844,7 @@ public class MpCommandServiceTests
         var other = MultiplayerTestSupport.MakePlayer(2, "other");
         _fixture.RegisterAll(host, other);
         var match = _fixture.CreateMatch(host);
-        await _fixture.MatchMembership.Join(other, match, "");
+        await _fixture.MatchMembership.JoinAsync(other, match, "", default);
 
         var reply = await MakeService().HandleAsync(host, match, "close", []);
 
@@ -954,7 +954,7 @@ public class MpCommandServiceTests
         await MakeService().MakeAsync(sender, ["Room"]);
         var match = sender.Match!;
 
-        await _fixture.MatchMembership.Leave(sender, match);
+        await _fixture.MatchMembership.LeaveAsync(sender, match, default);
 
         Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
         Assert.Contains(sender.Id, match.Referees);

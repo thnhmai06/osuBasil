@@ -246,14 +246,15 @@ internal static class MatchRoutes
         await match.Lock.WaitAsync(cancellationToken);
         try
         {
-            await matchControl.SetPrivate(match, body.IsPrivate);
-            await matchControl.SetSize(match, body.Size > 0 ? body.Size : DefaultCreateSize);
+            await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
+            await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, cancellationToken);
 
             var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
             if (mapError is not null) return mapError;
 
-            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl);
-            await matchControl.SetTeamTypeWinConditionAndSize(match, body.TeamType, body.WinCondition, null);
+            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
+            await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
+                cancellationToken);
         }
         finally
         {
@@ -329,17 +330,18 @@ internal static class MatchRoutes
         await match.Lock.WaitAsync(cancellationToken);
         try
         {
-            await matchControl.SetName(match, body.Name);
-            await matchControl.SetPassword(match, body.Password ?? "");
-            await matchControl.SetPrivate(match, body.IsPrivate);
+            await matchControl.SetNameAsync(match, body.Name, cancellationToken);
+            await matchControl.SetPasswordAsync(match, body.Password ?? "", cancellationToken);
+            await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
             matchControl.SetLocked(match, body.IsLocked);
-            await matchControl.SetSize(match, body.Size);
+            await matchControl.SetSizeAsync(match, body.Size, cancellationToken);
 
             var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
             if (mapError is not null) return mapError;
 
-            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl);
-            await matchControl.SetTeamTypeWinConditionAndSize(match, body.TeamType, body.WinCondition, null);
+            await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
+            await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
+                cancellationToken);
         }
         finally
         {
@@ -398,23 +400,24 @@ internal static class MatchRoutes
     ///     for that call, matching real Bancho.
     /// </summary>
     private static async Task ApplyFullModsAsync(MatchSession match, Mods mods, bool freemod,
-        MatchControlService matchControl)
+        MatchControlService matchControl, CancellationToken cancellationToken)
     {
         if (freemod)
-            await matchControl.SetMods(match, Mods.NoMod, true);
+            await matchControl.SetModsAsync(match, Mods.NoMod, true, cancellationToken);
         else
-            await matchControl.SetMods(match, mods, false);
+            await matchControl.SetModsAsync(match, mods, false, cancellationToken);
     }
 
     /// <summary>Caller must hold <paramref name="match" />'s Lock. Returns a non-null error IResult on failure.</summary>
     private static async Task<IResult?> ApplySettingsAsync(MatchSession match, UpdateMatchSettingsRequest body,
         MatchControlService matchControl, CancellationToken cancellationToken)
     {
-        if (body.Name is not null) await matchControl.SetName(match, body.Name);
-        if (body.Password is not null) await matchControl.SetPassword(match, body.Password);
-        if (body.IsPrivate is not null) await matchControl.SetPrivate(match, body.IsPrivate.Value);
+        if (body.Name is not null) await matchControl.SetNameAsync(match, body.Name, cancellationToken);
+        if (body.Password is not null) await matchControl.SetPasswordAsync(match, body.Password, cancellationToken);
+        if (body.IsPrivate is not null)
+            await matchControl.SetPrivateAsync(match, body.IsPrivate.Value, cancellationToken);
         if (body.IsLocked is not null) matchControl.SetLocked(match, body.IsLocked.Value);
-        if (body.Size is not null) await matchControl.SetSize(match, body.Size.Value);
+        if (body.Size is not null) await matchControl.SetSizeAsync(match, body.Size.Value, cancellationToken);
 
         if (body.MapId is not null)
         {
@@ -424,13 +427,13 @@ internal static class MatchRoutes
         }
 
         if (body.Freemod == true)
-            await matchControl.SetMods(match, Mods.NoMod, true);
+            await matchControl.SetModsAsync(match, Mods.NoMod, true, cancellationToken);
         else if (body.Mods is not null)
-            await matchControl.SetMods(match, body.Mods.Value, false);
+            await matchControl.SetModsAsync(match, body.Mods.Value, false, cancellationToken);
 
         if (body.TeamType is not null || body.WinCondition is not null)
-            await matchControl.SetTeamTypeWinConditionAndSize(match,
-                body.TeamType ?? match.TeamType, body.WinCondition, null);
+            await matchControl.SetTeamTypeWinConditionAndSizeAsync(match,
+                body.TeamType ?? match.TeamType, body.WinCondition, null, cancellationToken);
 
         return null;
     }

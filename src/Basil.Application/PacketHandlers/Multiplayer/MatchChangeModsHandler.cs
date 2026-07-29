@@ -39,7 +39,7 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
                 match.Mods = mods;
             }
 
-            await matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueStateAsync(match);
         }
         finally
         {

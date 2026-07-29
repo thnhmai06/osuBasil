@@ -116,7 +116,7 @@ public sealed class MatchChangeSettingsHandler(
             }
 
             match.Name = matchData.Name;
-            await matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueStateAsync(match);
         }
         finally
         {

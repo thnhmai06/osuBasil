@@ -83,7 +83,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         sessionRegistry.Add(session);
 
         var match = matchRegistry.GetByDbId(matchId)!;
-        Assert.True(await matchMembership.Join(session, match, ""));
+        Assert.True(await matchMembership.JoinAsync(session, match, "", default));
         return session;
     }
 
@@ -253,7 +253,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
         var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
         var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
         var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-        await matchMembership.Leave(player, matchRegistry.GetByDbId(matchId)!);
+        await matchMembership.LeaveAsync(player, matchRegistry.GetByDbId(matchId)!, default);
 
         var request = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/slots");
         request.Content = JsonContent.Create(new { userId = player.Id });

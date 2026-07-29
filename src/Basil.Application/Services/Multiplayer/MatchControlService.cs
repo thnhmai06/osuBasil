@@ -129,17 +129,17 @@ public sealed class MatchControlService(
         match.IsLocked = locked;
     }
 
-    public async Task SetPrivate(MatchSession match, bool isPrivate)
+    public async Task SetPrivateAsync(MatchSession match, bool isPrivate, CancellationToken cancellationToken = default)
     {
         match.IsPrivate = isPrivate;
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
     }
 
-    public async Task SetSize(MatchSession match, int size)
+    public async Task SetSizeAsync(MatchSession match, int size, CancellationToken cancellationToken = default)
     {
         size = Math.Clamp(size, 1, 16);
         ApplySize(match, size);
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
         matchMembership.CancelQueuedAutoStart(match);
     }
 
@@ -156,7 +156,8 @@ public sealed class MatchControlService(
     }
 
     /// <summary><paramref name="destSlotIndex" /> is 0-based; callers convert from their own 1-based input.</summary>
-    public async Task<MoveResult> MoveSlot(MatchSession match, PlayerSession target, int destSlotIndex)
+    public async Task<MoveResult> MoveSlotAsync(MatchSession match, PlayerSession target, int destSlotIndex,
+        CancellationToken cancellationToken = default)
     {
         var destSlot = match.Slots[destSlotIndex];
         if (destSlot.Status != SlotStatus.Open) return MoveResult.DestinationNotOpen;
@@ -166,16 +167,17 @@ public sealed class MatchControlService(
 
         destSlot.CopyFrom(sourceSlot);
         sourceSlot.Reset();
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
         return MoveResult.Ok;
     }
 
-    public async Task SetHost(MatchSession match, PlayerSession target)
+    public async Task SetHostAsync(MatchSession match, PlayerSession target,
+        CancellationToken cancellationToken = default)
     {
         var prevHostId = match.HostId;
         match.HostId = target.Id;
         target.Enqueue(ServerPacketWriter.MatchTransferHost());
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
         var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
         _ = matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -183,29 +185,30 @@ public sealed class MatchControlService(
             prevHostId, prevHostName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null));
 
-        await matchMembership.PublishHost(match);
+        await matchMembership.PublishHostAsync(match, cancellationToken);
     }
 
-    public async Task ClearHost(MatchSession match)
+    public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         match.HostId = 0;
-        await matchMembership.EnqueueState(match);
-        await matchMembership.PublishHost(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+        await matchMembership.PublishHostAsync(match, cancellationToken);
     }
 
-    public async Task SetName(MatchSession match, string name)
+    public async Task SetNameAsync(MatchSession match, string name, CancellationToken cancellationToken = default)
     {
         if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
 
         match.Name = name;
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
     }
 
     /// <summary>Empty string clears the password, matching `!mp password` with no argument.</summary>
-    public async Task SetPassword(MatchSession match, string password)
+    public async Task SetPasswordAsync(MatchSession match, string password,
+        CancellationToken cancellationToken = default)
     {
         match.Password = password;
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
     }
 
     public InviteResult Invite(PlayerSession sender, MatchSession match, PlayerSession target)
@@ -227,7 +230,7 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-        await matchMembership.PublishRefs(match);
+        await matchMembership.PublishRefsAsync(match, cancellationToken);
     }
 
     /// <summary>PUT — full replace. 409 (<see cref="SetRefereesResult.WouldLeaveEmpty" />) if it would end up empty.</summary>
@@ -258,7 +261,7 @@ public sealed class MatchControlService(
                 null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
         }
 
-        await matchMembership.PublishRefs(match);
+        await matchMembership.PublishRefsAsync(match, cancellationToken);
         return SetRefereesResult.Ok;
     }
 
@@ -276,7 +279,7 @@ public sealed class MatchControlService(
                 null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
         }
 
-        await matchMembership.PublishRefs(match);
+        await matchMembership.PublishRefsAsync(match, cancellationToken);
     }
 
     /// <summary>
@@ -298,17 +301,18 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-        await matchMembership.PublishRefs(match);
+        await matchMembership.PublishRefsAsync(match, cancellationToken);
         return RemoveRefereeResult.Ok;
     }
 
-    public async Task<TeamResult> SetTeam(MatchSession match, PlayerSession target, MatchTeam team)
+    public async Task<TeamResult> SetTeamAsync(MatchSession match, PlayerSession target, MatchTeam team,
+        CancellationToken cancellationToken = default)
     {
         var slot = match.GetSlot(target.Id);
         if (slot is null) return TeamResult.TargetNotInMatch;
 
         slot.Team = team;
-        await matchMembership.EnqueueState(match, false);
+        await matchMembership.EnqueueStateAsync(match, false, cancellationToken);
         matchMembership.CancelQueuedAutoStart(match);
         return TeamResult.Ok;
     }
@@ -328,14 +332,14 @@ public sealed class MatchControlService(
         match.TeamType = newType;
     }
 
-    public async Task SetTeamTypeWinConditionAndSize(MatchSession match, MatchTeamType teamType,
-        MatchWinCondition? winCondition, int? size)
+    public async Task SetTeamTypeWinConditionAndSizeAsync(MatchSession match, MatchTeamType teamType,
+        MatchWinCondition? winCondition, int? size, CancellationToken cancellationToken = default)
     {
         ApplyTeamType(match, teamType);
         if (winCondition is { } wc) match.WinCondition = wc;
         if (size is { } s) ApplySize(match, s);
 
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
         matchMembership.CancelQueuedAutoStart(match);
     }
 
@@ -351,7 +355,7 @@ public sealed class MatchControlService(
         match.MapMd5 = bmap.Md5;
         match.MapName = bmap.FullName;
         match.Mode = bmap.Difficulty.Mode;
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
         matchMembership.CancelQueuedAutoStart(match);
         return (SetMapResult.Ok, bmap);
     }
@@ -361,19 +365,20 @@ public sealed class MatchControlService(
     ///     just one of the values a caller can pass (<paramref name="enableFreemod" />), not a separate
     ///     command. Passing <paramref name="enableFreemod" /> ignores <paramref name="mods" />.
     /// </summary>
-    public async Task SetMods(MatchSession match, Mods mods, bool enableFreemod)
+    public async Task SetModsAsync(MatchSession match, Mods mods, bool enableFreemod,
+        CancellationToken cancellationToken = default)
     {
         if (enableFreemod)
         {
             EnableFreemods(match);
-            await matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
             return;
         }
 
         if (match.Freemods) DisableFreemods(match);
 
         match.Mods = mods;
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
     }
 
     private static void EnableFreemods(MatchSession match)
@@ -564,7 +569,7 @@ public sealed class MatchControlService(
         }
 
         matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
-        await matchMembership.EnqueueState(match);
+        await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
         return AbortResult.Ok;
     }
 
@@ -573,7 +578,7 @@ public sealed class MatchControlService(
     {
         if (target.Match != match) return KickResult.TargetNotInMatch;
 
-        await matchMembership.Leave(target, match);
+        await matchMembership.LeaveAsync(target, match, cancellationToken);
         target.Enqueue(ServerPacketWriter.MatchJoinFail());
 
         await matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -590,7 +595,7 @@ public sealed class MatchControlService(
         if (target.Match != match) return KickResult.TargetNotInMatch;
 
         match.AddBan(target.Id);
-        await matchMembership.Leave(target, match);
+        await matchMembership.LeaveAsync(target, match, cancellationToken);
         target.Enqueue(ServerPacketWriter.MatchJoinFail());
 
         await matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -598,52 +603,56 @@ public sealed class MatchControlService(
             actorId, actorName, target.Id, target.Name,
             DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
-        await matchMembership.PublishBans(match);
+        await matchMembership.PublishBansAsync(match, cancellationToken);
         return KickResult.Ok;
     }
 
-    public async Task<UnbanResult> Unban(MatchSession match, int targetUserId)
+    public async Task<UnbanResult> UnbanAsync(MatchSession match, int targetUserId,
+        CancellationToken cancellationToken = default)
     {
         if (!match.BannedIds.Contains(targetUserId)) return UnbanResult.NotBanned;
 
         match.RemoveBan(targetUserId);
-        await matchMembership.PublishBans(match);
+        await matchMembership.PublishBansAsync(match, cancellationToken);
         return UnbanResult.Ok;
     }
 
     /// <summary>PUT — full replace of the ban list. No empty guard: banning down to zero is fine.</summary>
-    public async Task SetBans(MatchSession match, IReadOnlyCollection<int> userIds)
+    public async Task SetBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
+        CancellationToken cancellationToken = default)
     {
         var newIds = userIds.ToHashSet();
         var toRemove = match.BannedIds.Where(id => !newIds.Contains(id)).ToList();
         var toAdd = newIds.Where(id => !match.BannedIds.Contains(id)).ToList();
 
         foreach (var id in toRemove) match.RemoveBan(id);
-        foreach (var id in toAdd) await AddBanAndKickIfSeated(match, id);
+        foreach (var id in toAdd) await AddBanAndKickIfSeated(match, id, cancellationToken);
 
-        await matchMembership.PublishBans(match);
+        await matchMembership.PublishBansAsync(match, cancellationToken);
     }
 
     /// <summary>PATCH — add a batch of bans, each newly-banned id who is currently seated is also kicked.</summary>
-    public async Task AddBans(MatchSession match, IReadOnlyCollection<int> userIds)
+    public async Task AddBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
+        CancellationToken cancellationToken = default)
     {
         foreach (var id in userIds)
         {
             if (match.BannedIds.Contains(id)) continue;
-            await AddBanAndKickIfSeated(match, id);
+            await AddBanAndKickIfSeated(match, id, cancellationToken);
         }
 
-        await matchMembership.PublishBans(match);
+        await matchMembership.PublishBansAsync(match, cancellationToken);
     }
 
-    private async Task AddBanAndKickIfSeated(MatchSession match, int userId)
+    private async Task AddBanAndKickIfSeated(MatchSession match, int userId,
+        CancellationToken cancellationToken = default)
     {
         match.AddBan(userId);
 
         var seated = sessionRegistry.GetById(userId);
         if (seated is null || seated.Match != match) return;
 
-        await matchMembership.Leave(seated, match);
+        await matchMembership.LeaveAsync(seated, match, cancellationToken);
         seated.Enqueue(ServerPacketWriter.MatchJoinFail());
     }
 
@@ -652,13 +661,16 @@ public sealed class MatchControlService(
     ///     and seats the target directly, but a banned target is still rejected (the one gate force does
     ///     not cross).
     /// </summary>
-    public async Task<ForceInviteResult> ForceInvite(MatchSession match, PlayerSession target)
+    public async Task<ForceInviteResult> ForceInviteAsync(MatchSession match, PlayerSession target,
+        CancellationToken cancellationToken = default)
     {
         if (match.BannedIds.Contains(target.Id)) return ForceInviteResult.TargetBanned;
         if (target.Match == match) return ForceInviteResult.Ok;
         if (target.Match is not null) return ForceInviteResult.TargetInAnotherMatch;
 
-        return await matchMembership.ForceJoin(target, match) ? ForceInviteResult.Ok : ForceInviteResult.NoFreeSlot;
+        return await matchMembership.ForceJoinAsync(target, match, cancellationToken)
+            ? ForceInviteResult.Ok
+            : ForceInviteResult.NoFreeSlot;
     }
 
     /// <summary>
@@ -737,7 +749,7 @@ public sealed class MatchControlService(
                 slot.Status = locked ? SlotStatus.Locked : SlotStatus.Open;
         }
 
-        await matchMembership.PublishSlots(match);
+        await matchMembership.PublishSlotsAsync(match, cancellationToken);
         return SetSlotsResult.Ok;
     }
 

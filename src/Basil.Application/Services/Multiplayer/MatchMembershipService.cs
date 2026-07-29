@@ -92,7 +92,7 @@ public sealed class MatchMembershipService(
         await match.Lock.WaitAsync(cancellationToken);
         try
         {
-            await Join(host, match, data.Password);
+            await JoinAsync(host, match, data.Password, cancellationToken);
         }
         finally
         {
@@ -133,7 +133,8 @@ public sealed class MatchMembershipService(
         return match;
     }
 
-    public async Task<bool> Join(PlayerSession player, MatchSession match, string password)
+    public async Task<bool> JoinAsync(PlayerSession player, MatchSession match, string password,
+        CancellationToken cancellationToken = default)
     {
         if (player.Match is not null || match.TourneyClients.Contains(player.Id) ||
             match.BannedIds.Contains(player.Id) ||
@@ -172,28 +173,30 @@ public sealed class MatchMembershipService(
             slotId = 0;
         }
 
-        return await OccupySlot(player, match, slotId);
+        return await OccupySlot(player, match, slotId, cancellationToken);
     }
 
     /// <summary>
-    ///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInvite" />) —
+    ///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInviteAsync" />) —
     ///     bypasses every join gate (password/private/locked/ban aren't re-checked here; the caller
     ///     already did). Fails only if the player is already in a match or the room is full.
     /// </summary>
-    public async Task<bool> ForceJoin(PlayerSession player, MatchSession match)
+    public async Task<bool> ForceJoinAsync(PlayerSession player, MatchSession match,
+        CancellationToken cancellationToken = default)
     {
         if (player.Match is not null) return false;
 
         var free = match.GetFreeSlotId();
-        return free is not null && await OccupySlot(player, match, free.Value);
+        return free is not null && await OccupySlot(player, match, free.Value, cancellationToken);
     }
 
     /// <summary>
-    ///     The slot-occupation tail shared by <see cref="Join" /> and <see cref="ForceJoin" />: channel
+    ///     The slot-occupation tail shared by <see cref="JoinAsync" /> and <see cref="ForceJoinAsync" />: channel
     ///     join, team default, slot fields, the <c>MatchJoinSuccess</c> packet, state broadcast, and the
     ///     <c>PlayerJoined</c> event.
     /// </summary>
-    private async Task<bool> OccupySlot(PlayerSession player, MatchSession match, int slotId)
+    private async Task<bool> OccupySlot(PlayerSession player, MatchSession match, int slotId,
+        CancellationToken cancellationToken = default)
     {
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is null || !channelMembership.Join(player, channel)) return false;
@@ -209,7 +212,7 @@ public sealed class MatchMembershipService(
         player.Match = match;
 
         player.Enqueue(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)));
-        await EnqueueState(match);
+        await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
         _ = matchPersistence.CreateEventAsync(new MatchEventRow(
             match.DbId, (int)MatchEventType.PlayerJoined,
@@ -218,7 +221,8 @@ public sealed class MatchMembershipService(
         return true;
     }
 
-    public async Task Leave(PlayerSession player, MatchSession match)
+    public async Task LeaveAsync(PlayerSession player, MatchSession match,
+        CancellationToken cancellationToken = default)
     {
         var slot = match.GetSlot(player.Id);
         if (slot is null)
@@ -255,7 +259,7 @@ public sealed class MatchMembershipService(
                 }
             }
 
-            await EnqueueState(match);
+            await EnqueueStateAsync(match, cancellationToken: cancellationToken);
         }
 
         player.Match = null;
@@ -369,7 +373,7 @@ public sealed class MatchMembershipService(
             match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
         Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
-        await EnqueueState(match);
+        await EnqueueStateAsync(match, cancellationToken: cancellationToken);
         return true;
     }
 
@@ -390,7 +394,8 @@ public sealed class MatchMembershipService(
         channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
     }
 
-    public async Task EnqueueState(MatchSession match, bool lobby = true)
+    public async Task EnqueueStateAsync(MatchSession match, bool lobby = true,
+        CancellationToken cancellationToken = default)
     {
         var channel = channelRegistry.GetByName(match.ChatChannelName);
         if (channel is not null)
@@ -415,21 +420,21 @@ public sealed class MatchMembershipService(
         }
     }
 
-    public async Task PublishHost(MatchSession match)
+    public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo);
         var delta = match.HostSnapshot.Publish(host);
         eventBus.PublishHost(match.DbId, delta);
     }
 
-    public async Task PublishRefs(MatchSession match)
+    public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var refs = await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, userRepo);
         var delta = match.RefsSnapshot.Publish(refs);
         eventBus.PublishRefs(match.DbId, delta);
     }
 
-    public async Task PublishBans(MatchSession match)
+    public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo);
         var delta = match.BansSnapshot.Publish(bans);
@@ -442,7 +447,7 @@ public sealed class MatchMembershipService(
         eventBus.PublishTimer(match.DbId, delta);
     }
 
-    public async Task PublishSlots(MatchSession match)
+    public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
     {
         var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo);
         var delta = match.SlotsSnapshot.Publish(slots);

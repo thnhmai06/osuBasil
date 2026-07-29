@@ -24,7 +24,7 @@ public class MatchChangeSettingsHandlerTests
         var guest = MakePlayer(2, "guest");
         fixture.RegisterAll(host, guest);
         var match = fixture.CreateMatch(host);
-        await fixture.MatchMembership.Join(guest, match, "");
+        await fixture.MatchMembership.JoinAsync(guest, match, "", default);
         var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
         await handler.HandleAsync(guest,

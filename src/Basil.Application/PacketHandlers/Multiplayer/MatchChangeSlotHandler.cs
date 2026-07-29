@@ -31,7 +31,7 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
             match.Slots[slotId].CopyFrom(slot);
             slot.Reset();
 
-            await matchMembership.EnqueueState(match);
+            await matchMembership.EnqueueStateAsync(match);
         }
         finally
         {

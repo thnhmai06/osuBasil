@@ -21,6 +21,6 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService) : IBanchoPa
         // block any logout request within 1 second from login.
         if (DateTimeOffset.UtcNow - player.LoginTime < TimeSpan.FromSeconds(1)) return;
 
-        await logoutService.LogoutAsync(player);
+        await logoutService.LogoutAsync(player, default);
     }
 }

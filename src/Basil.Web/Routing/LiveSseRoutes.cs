@@ -30,7 +30,7 @@ internal static class LiveSseRoutes
 {
     /// <summary>
     ///     The "main" channel now carries deltas (see <see cref="SnapshotChannel{T}" />/
-    ///     <see cref="MatchMembershipService.EnqueueState" />) instead of a full re-snapshot on every
+    ///     <see cref="MatchMembershipService.EnqueueStateAsync" />) instead of a full re-snapshot on every
     ///     change — a fresh connection reads <see cref="MatchSession.MainSnapshot" /> directly for its
     ///     first event, then this subscription forwards every delta published after that.
     /// </summary>

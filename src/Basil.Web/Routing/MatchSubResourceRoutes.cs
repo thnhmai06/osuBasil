@@ -123,7 +123,7 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    await matchControl.SetHost(match, target);
+                    await matchControl.SetHostAsync(match, target, cancellationToken);
                     return Results.Json(
                         await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, users, cancellationToken));
                 }
@@ -155,7 +155,7 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    await matchControl.ClearHost(match);
+                    await matchControl.ClearHostAsync(match, cancellationToken);
                     return Results.Json(
                         await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, users, cancellationToken));
                 }
@@ -418,7 +418,7 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    await matchControl.SetBans(match, body.UserIds);
+                    await matchControl.SetBansAsync(match, body.UserIds, cancellationToken);
                     return Results.Json(
                         await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
                 }
@@ -449,7 +449,7 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    await matchControl.AddBans(match, body.UserIds);
+                    await matchControl.AddBansAsync(match, body.UserIds, cancellationToken);
                     return Results.Json(
                         await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users, cancellationToken));
                 }
@@ -483,7 +483,7 @@ internal static class MatchSubResourceRoutes
                 await match.Lock.WaitAsync(cancellationToken);
                 try
                 {
-                    var result = await matchControl.Unban(match, uid);
+                    var result = await matchControl.UnbanAsync(match, uid, cancellationToken);
                     return result == MatchControlService.UnbanResult.NotBanned
                         ? Results.BadRequest(new ErrorResponse("userId is not banned from this match."))
                         : Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, users,
@@ -638,7 +638,7 @@ internal static class MatchSubResourceRoutes
 
                         if (body.Force)
                         {
-                            var forceResult = await matchControl.ForceInvite(match, target);
+                            var forceResult = await matchControl.ForceInviteAsync(match, target, cancellationToken);
                             results.Add(forceResult switch
                             {
                                 MatchControlService.ForceInviteResult.Ok => new InviteResult(userId, true, null),
