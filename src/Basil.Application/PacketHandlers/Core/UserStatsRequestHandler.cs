@@ -10,7 +10,8 @@ public sealed class UserStatsRequestHandler(IPlayerSessionRegistry sessionRegist
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var requestedIds = reader.ReadI32ListI16L();
         var unrestrictedIds = sessionRegistry.All.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();

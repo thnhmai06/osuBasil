@@ -10,7 +10,8 @@ public sealed class RequestStatusUpdateHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         player.Enqueue(PacketBuilders.BuildUserStats(player));
         return Task.CompletedTask;

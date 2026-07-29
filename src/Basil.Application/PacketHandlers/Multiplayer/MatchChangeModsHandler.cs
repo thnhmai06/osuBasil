@@ -13,7 +13,8 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var mods = (Mods)reader.ReadI32();
 

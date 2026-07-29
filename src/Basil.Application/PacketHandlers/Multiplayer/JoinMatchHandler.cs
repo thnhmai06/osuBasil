@@ -14,7 +14,8 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var matchId = reader.ReadI32();
         var password = reader.ReadString();
@@ -47,7 +48,7 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
         await match.Lock.WaitAsync();
         try
         {
-            await matchMembership.JoinAsync(player, match, password, default);
+            await matchMembership.JoinAsync(player, match, password, cancellationToken);
         }
         finally
         {

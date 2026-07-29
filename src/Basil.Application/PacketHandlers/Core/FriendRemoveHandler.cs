@@ -11,7 +11,8 @@ public sealed class FriendRemoveHandler(IRelationshipRepository relationships) :
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var targetId = reader.ReadI32();
         var relationship = await relationships.FetchOneAsync(player.Id, targetId);

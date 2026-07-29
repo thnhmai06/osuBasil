@@ -11,7 +11,8 @@ public sealed class CantSpectateHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var host = player.Spectating;
         if (host is null || player.Stealth) return Task.CompletedTask;

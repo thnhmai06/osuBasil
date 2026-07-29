@@ -13,7 +13,8 @@ public sealed class ChangeActionHandler(IPlayerSessionRegistry sessionRegistry) 
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var action = reader.ReadU8();
         var infoText = reader.ReadString();

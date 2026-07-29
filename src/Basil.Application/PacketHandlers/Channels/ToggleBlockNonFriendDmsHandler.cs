@@ -11,7 +11,8 @@ public sealed class ToggleBlockNonFriendDmsHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         player.PmPrivate = reader.ReadI32() == 1;
         return Task.CompletedTask;

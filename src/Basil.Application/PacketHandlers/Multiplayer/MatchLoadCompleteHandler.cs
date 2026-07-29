@@ -13,7 +13,8 @@ public sealed class MatchLoadCompleteHandler(MatchMembershipService matchMembers
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var match = player.Match;
         if (match is null) return;

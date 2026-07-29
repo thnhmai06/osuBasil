@@ -13,7 +13,8 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService) : IBanchoPa
 
     public bool AllowedWhenRestricted => true;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         reader.ReadI32(); // reserved
 
@@ -21,6 +22,6 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService) : IBanchoPa
         // block any logout request within 1 second from login.
         if (DateTimeOffset.UtcNow - player.LoginTime < TimeSpan.FromSeconds(1)) return;
 
-        await logoutService.LogoutAsync(player, default);
+        await logoutService.LogoutAsync(player, cancellationToken);
     }
 }

@@ -25,7 +25,8 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 
     public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var rawData = reader.ReadRaw(reader.RemainingLength);
         var packet = ServerPacketWriter.SpectateFrames(rawData);

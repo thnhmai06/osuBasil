@@ -12,7 +12,8 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var match = player.Match;
         if (match is null) return;
@@ -20,7 +21,7 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
         await match.Lock.WaitAsync();
         try
         {
-            await matchMembership.LeaveAsync(player, match, default);
+            await matchMembership.LeaveAsync(player, match, cancellationToken);
         }
         finally
         {

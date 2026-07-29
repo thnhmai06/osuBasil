@@ -10,7 +10,8 @@ public sealed class UserPresenceRequestHandler(IPlayerSessionRegistry sessionReg
 
     public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         foreach (var id in reader.ReadI32ListI16L())
         {

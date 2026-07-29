@@ -17,7 +17,8 @@ public sealed class SendPublicMessageHandler(ChatDispatchService chatDispatch) :
 
     public bool AllowedWhenRestricted => true;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var message = reader.ReadMessage();
         await chatDispatch.SendPrivmsgAsync(player, message.Recipient, message.Text);

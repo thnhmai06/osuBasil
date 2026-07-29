@@ -23,7 +23,8 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var playData = reader.ReadRaw(reader.RemainingLength);
 

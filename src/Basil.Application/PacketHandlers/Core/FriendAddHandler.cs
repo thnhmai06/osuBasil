@@ -11,7 +11,8 @@ public sealed class FriendAddHandler(IRelationshipRepository relationships) : IB
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var targetId = reader.ReadI32();
         if (targetId == player.Id) return;

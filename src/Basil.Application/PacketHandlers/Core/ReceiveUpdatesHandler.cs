@@ -11,7 +11,8 @@ public sealed class ReceiveUpdatesHandler : IBanchoPacketHandler
 
     public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var value = reader.ReadI32();
         if (value is < 0 or >= 3) return Task.CompletedTask;

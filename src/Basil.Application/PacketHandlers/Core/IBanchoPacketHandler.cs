@@ -17,5 +17,5 @@ public interface IBanchoPacketHandler
     /// <summary>Whether this handler may run for a restricted player. Ported from @register(..., restricted=True).</summary>
     bool AllowedWhenRestricted { get; }
 
-    Task HandleAsync(PlayerSession player, BanchoPacketReader reader);
+    Task HandleAsync(PlayerSession player, BanchoPacketReader reader, CancellationToken cancellationToken = default);
 }

@@ -13,7 +13,8 @@ public sealed class MatchReadyHandler(MatchMembershipService matchMembership) : 
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var match = player.Match;
         if (match is null) return;
@@ -25,7 +26,7 @@ public sealed class MatchReadyHandler(MatchMembershipService matchMembership) : 
             if (slot is null) return;
 
             slot.Status = SlotStatus.Ready;
-            await matchMembership.EnqueueStateAsync(match, false, default);
+            await matchMembership.EnqueueStateAsync(match, false, cancellationToken);
         }
         finally
         {

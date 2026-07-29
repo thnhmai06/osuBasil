@@ -96,7 +96,8 @@ public class BanchoPacketDispatcherTests
         public ClientPackets PacketId => packetId;
         public bool AllowedWhenRestricted => allowedWhenRestricted;
 
-        public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+        public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+            CancellationToken cancellationToken = default)
         {
             onHandle(player, reader);
             return Task.CompletedTask;

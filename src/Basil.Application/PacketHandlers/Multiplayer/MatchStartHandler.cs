@@ -15,7 +15,8 @@ public sealed class MatchStartHandler(MatchMembershipService matchMembership) : 
 
     public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var match = player.Match;
         if (match is null || player.Id != match.HostId) return;

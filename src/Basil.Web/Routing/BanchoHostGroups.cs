@@ -330,7 +330,7 @@ public static class BanchoHostGroups
                         else
                         {
                             var dispatcher = context.RequestServices.GetRequiredService<BanchoPacketDispatcher>();
-                            await dispatcher.DispatchAsync(session, body);
+                            await dispatcher.DispatchAsync(session, body, cancellationToken);
                             session.LastRecvTime = DateTimeOffset.UtcNow;
                             responseBody = session.Dequeue();
                         }

@@ -13,7 +13,8 @@ public sealed class StartSpectatingHandler(IPlayerSessionRegistry sessionRegistr
 
     public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader)
+    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+        CancellationToken cancellationToken = default)
     {
         var targetId = reader.ReadI32();
         var newHost = sessionRegistry.GetById(targetId);
