@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -24,13 +25,37 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 {
     private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly StubMapRepository _maps = new();
-    private readonly StubMapsetRepository _mapsets = new();
-    private readonly StubReplayStorage _replayStorage = new();
-    private readonly StubScoreRepository _scores = new();
+    private Beatmap? _oneBeatmap;
+    private Beatmap? _byFilename;
+    private IReadOnlyList<Beatmap> _setBeatmaps = [];
+    private Mapset? _mapset;
+    private ScoreOwnerRow? _scoreOwner;
+    private byte[]? _replayBytes;
 
     public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
     {
+        var maps = Substitute.For<IMapRepository>();
+        maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<string?>(2) is not null ? _byFilename : _oneBeatmap);
+        maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Mapset.Id == call.ArgAt<int>(0)
+                ? _setBeatmaps
+                : []);
+        maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
+
+        var mapsets = Substitute.For<IMapsetRepository>();
+        mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
+
+        var scores = Substitute.For<IScoreRepository>();
+        scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _scoreOwner);
+
+        var replayStorage = Substitute.For<IReplayStorage>();
+        replayStorage.ReadAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _replayBytes);
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -47,10 +72,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IMapRepository>(_maps);
-                services.AddSingleton<IMapsetRepository>(_mapsets);
-                services.AddSingleton<IScoreRepository>(_scores);
-                services.AddSingleton<IReplayStorage>(_replayStorage);
+                services.AddSingleton(maps);
+                services.AddSingleton(mapsets);
+                services.AddSingleton(scores);
+                services.AddSingleton(replayStorage);
                 services.AddSingleton(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -106,8 +131,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task GetBeatmapset_KnownId_ReturnsInfoWithBeatmapsInline()
     {
         var mapset = MakeMapset(100);
-        _mapsets.Mapset = mapset;
-        _maps.SetBeatmaps = [MakeBeatmap(1, mapset, "diff1.osu"), MakeBeatmap(2, mapset, "diff2.osu")];
+        _mapset = mapset;
+        _setBeatmaps = [MakeBeatmap(1, mapset, "diff1.osu"), MakeBeatmap(2, mapset, "diff2.osu")];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"));
         var body = await response.Content.ReadAsStringAsync();
@@ -121,8 +146,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task GetBeatmapset_Private_NonAdmin_ReturnsNotFound()
     {
         var mapset = MakeMapset(101) with { IsPrivate = true };
-        _mapsets.Mapset = mapset;
-        _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
+        _mapset = mapset;
+        _setBeatmaps = [MakeBeatmap(1, mapset)];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"));
 
@@ -143,7 +168,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task BeatmapInfo_KnownId_ReturnsJson()
     {
         var mapset = MakeMapset(100);
-        _maps.OneBeatmap = MakeBeatmap(1, mapset);
+        _oneBeatmap = MakeBeatmap(1, mapset);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
         var body = await response.Content.ReadAsStringAsync();
@@ -170,7 +195,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmap_FileMissingOnDisk_ReturnsNotFound()
     {
         var mapset = MakeMapset(100);
-        _maps.OneBeatmap = MakeBeatmap(1, mapset);
+        _oneBeatmap = MakeBeatmap(1, mapset);
 
         var response = await _factory.CreateClient()
             .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
@@ -182,7 +207,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmap_FileExists_ReturnsCorrectMimeType()
     {
         var mapset = MakeMapset(100);
-        _maps.OneBeatmap = MakeBeatmap(1, mapset);
+        _oneBeatmap = MakeBeatmap(1, mapset);
         var folder = MapsetFolder(100);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
@@ -199,7 +224,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmapset_NoFolder_ReturnsNotFound()
     {
         var mapset = MakeMapset(200);
-        _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
+        _setBeatmaps = [MakeBeatmap(1, mapset)];
 
         var response = await _factory.CreateClient()
             .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
@@ -211,7 +236,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DownloadBeatmapset_FolderExists_ReturnsCorrectMimeType()
     {
         var mapset = MakeMapset(300);
-        _maps.SetBeatmaps = [MakeBeatmap(1, mapset)];
+        _setBeatmaps = [MakeBeatmap(1, mapset)];
         var folder = MapsetFolder(300);
         await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
@@ -276,7 +301,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task MapFile_Exists_ReturnsCorrectMimeType()
     {
-        _maps.ByFilename = MakeBeatmap(1, MakeMapset(700), "Some Map.osu");
+        _byFilename = MakeBeatmap(1, MakeMapset(700), "Some Map.osu");
         var folder = MapsetFolder(700);
         await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
 
@@ -291,181 +316,12 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task ReplayDownload_Exists_ReturnsCorrectMimeType()
     {
-        _scores.Owner = new ScoreOwnerRow(1, GameMode.Standard);
-        _replayStorage.Bytes = [1, 2, 3];
+        _scoreOwner = new ScoreOwnerRow(1, GameMode.Standard);
+        _replayBytes = [1, 2, 3];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
-    }
-
-    private sealed class StubMapRepository : IMapRepository
-    {
-        public Beatmap? OneBeatmap { get; set; }
-        public Beatmap? ByFilename { get; set; }
-        public IReadOnlyList<Beatmap> SetBeatmaps { get; set; } = [];
-
-        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(filename is not null ? ByFilename : OneBeatmap);
-        }
-
-        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(beatmap);
-        }
-
-        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
-            int offset, int amount, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(SetBeatmaps.Count > 0 && SetBeatmaps[0].Mapset.Id == setId
-                ? SetBeatmaps
-                : []);
-        }
-    }
-
-    private sealed class StubMapsetRepository : IMapsetRepository
-    {
-        public Mapset? Mapset { get; set; }
-
-        public Task<Mapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Mapset?.Id == id ? Mapset : null);
-        }
-
-        public Task<Mapset> UpsertAsync(Mapset mapset, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(mapset);
-        }
-
-        public Task DeleteAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<int>>(Mapset is not null ? [Mapset.Id] : []);
-        }
-
-        public Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<Mapset>>(Mapset is not null ? [Mapset] : []);
-        }
-
-        public Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
-        {
-            if (Mapset?.Id == id) Mapset = Mapset with { IsFrozen = frozen };
-            return Task.CompletedTask;
-        }
-
-        public Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
-        {
-            if (Mapset?.Id == id) Mapset = Mapset with { IsPrivate = isPrivate };
-            return Task.CompletedTask;
-        }
-
-        public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Mapset is not null && (includePrivate || !Mapset.IsPrivate) ? 1 : 0);
-        }
-    }
-
-    private sealed class StubScoreRepository : IScoreRepository
-    {
-        public ScoreOwnerRow? Owner { get; set; }
-
-        public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0L);
-        }
-
-        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(false);
-        }
-
-        public Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<FirstPlaceScoreRow?>(null);
-        }
-
-        public Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Owner);
-        }
-
-        public Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<ScoreRow?>(null);
-        }
-
-        public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<ScoreRow>>([]);
-        }
-
-        public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
-        }
-
-        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class StubReplayStorage : IReplayStorage
-    {
-        public byte[]? Bytes { get; set; }
-
-        public Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Bytes);
-        }
-
-        public Task WriteAsync(long scoreId, byte[] data, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
     }
 }
