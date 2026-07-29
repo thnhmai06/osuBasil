@@ -6,6 +6,10 @@
 
     <ItemGroup>
         <!-- Basil.Infrastructure -->
+        <!-- Direct reference solely to override the AutoMapper 13.0.1 transitive dependency pulled in
+             by ppy.osu.Game.Rulesets.* (GHSA-rvv3-g6hj-g44x, high severity) — Basil itself never calls
+             AutoMapper directly. -->
+        <PackageVersion Include="AutoMapper" Version="15.1.1"/>
         <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0"/>
         <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2"/>
         <PackageVersion Include="Dapper" Version="2.1.79"/>
