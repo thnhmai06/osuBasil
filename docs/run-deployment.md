@@ -26,7 +26,6 @@ truth for every setting. Edit the file directly and restart the process.
 | `[Server]`        | `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
 |                    | `Port`                               | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here.       |
 |                    | `CertPath` / `CertPassword`          | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
-|                    | `MenuIconPath` / `MenuOnclickUrl`    | osu! client's in-game menu icon (top-left). `MenuIconPath` is a **local file path**, not a URL — served back over HTTP at `GET /web/menuicon` on the `osu.` host; the client is pointed at that URL, not the path. `MenuOnclickUrl` is the click-through URL opened when clicked. Cosmetic only. |
 | `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=0` user in-place.                   |
 |                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
 |                    | `Country`                            | BasilBot's country code (default `"vn"`). Overrides seed migration value.                                          |
@@ -48,6 +47,7 @@ Created automatically next to the executable on startup if missing — no manual
 | `Mapsets/`    | One folder per beatmapset (`"{id} Artist - Title"`, full original `.osz` contents — audio/images/video/`.osu`). A loose `.osz` dropped at the root is auto-extracted into its own folder. A loose `.osu` file alone is **not** ingested (a single difficulty has no set context). Sync is live — a `FileSystemWatcher`-backed background service picks up any add/change/delete within ~2 seconds, plus a full reconciliation pass at every startup to catch drift while the server was offline. Admin uploads via `POST /beatmaps` on `api.` (admin-key) accept `.osz` only. |
 | `Seasonals/`  | Seasonal background images shown in the client's main menu.              |
 | `Faqs/`       | `!faq <entry>` text files (`<entry>.txt`).                               |
+| `MenuIcon.{ext}` / `MenuIconUrl.txt` | The in-game main menu icon and its click-through URL — not config, managed at runtime via `PUT`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url` on the `api.` host. Deleting the icon file (or `DELETE /menuicon/icon`) turns the menu icon off entirely. |
 
 To move a deployment to another machine: stop the server, copy the whole executable directory
 (including `basil.db*` and the five folders above) to the target, start it there.
@@ -76,8 +76,7 @@ To move a deployment to another machine: stop the server, copy the whole executa
      (`api.<domain>/docs/osu-client`) for exactly how.
     - `Server.AdminKey` — set this to a real secret. Without it the management API (used to create
        user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
-   - `Bot.Name` / `Bot.CommandPrefix`, `Server.MenuIconPath`/`MenuOnclickUrl`, `Irc.Name`/`Irc.Port` — cosmetic,
-     optional.
+   - `Bot.Name` / `Bot.CommandPrefix`, `Irc.Name`/`Irc.Port` — cosmetic, optional.
 
 3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects
    over **HTTPS on port 443** — plain HTTP is silently rejected before it reaches Kestrel, and the
