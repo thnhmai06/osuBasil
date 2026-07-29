@@ -61,7 +61,8 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             """,
             new
             {
-                MapMd5 = mapMd5, Mode = (int)mode,
+                MapMd5 = mapMd5,
+                Mode = (int)mode,
                 Unrestricted = (int)UserPrivileges.Unrestricted
             });
         return row?.ToRow();

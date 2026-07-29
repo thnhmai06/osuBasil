@@ -46,9 +46,14 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
             """,
             new
             {
-                MatchId = matchId, RoundIndex = roundIndex, MapMd5 = mapMd5,
-                Mode = mode, WinCondition = winCondition, TeamType = teamType,
-                Mods = mods, StartedAt = startedAt
+                MatchId = matchId,
+                RoundIndex = roundIndex,
+                MapMd5 = mapMd5,
+                Mode = mode,
+                WinCondition = winCondition,
+                TeamType = teamType,
+                Mods = mods,
+                StartedAt = startedAt
             });
     }
 
@@ -112,8 +117,14 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
             """,
             new
             {
-                row.MatchId, row.EventType, row.ActorUserId, row.ActorUserName,
-                row.TargetUserId, row.TargetUserName, row.Timestamp, row.Detail
+                row.MatchId,
+                row.EventType,
+                row.ActorUserId,
+                row.ActorUserName,
+                row.TargetUserId,
+                row.TargetUserName,
+                row.Timestamp,
+                row.Detail
             });
     }
 

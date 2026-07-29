@@ -874,7 +874,7 @@ public static class BanchoHostGroups
                             new
                             {
                                 form_error = new
-                                    { user = new { email = new[] { "Username and password are required." } } }
+                                { user = new { email = new[] { "Username and password are required." } } }
                             },
                             statusCode: StatusCodes.Status400BadRequest);
 
@@ -890,7 +890,7 @@ public static class BanchoHostGroups
                             new
                             {
                                 form_error = new
-                                    { user = new { email = new[] { "In-game registration is disabled." } } }
+                                { user = new { email = new[] { "In-game registration is disabled." } } }
                             },
                             statusCode: StatusCodes.Status400BadRequest);
 

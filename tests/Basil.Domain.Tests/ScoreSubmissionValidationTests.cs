@@ -86,9 +86,9 @@ public class ScoreSubmissionValidationTests
                 "wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
                 "210520235959", "20210520 "
             ]) with
-            {
-                BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
-            };
+        {
+            BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
+        };
 
         Assert.Throws<ScoreSubmissionIntegrityException>(() =>
             score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null));
@@ -101,9 +101,9 @@ public class ScoreSubmissionValidationTests
                 "placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
                 "210520235959", "20210520 "
             ]) with
-            {
-                BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
-            };
+        {
+            BeatmapMd5 = "beatmap_md5_hash_1234567890abcd"
+        };
         score = score with { ClientChecksum = score.ComputeOnlineChecksum("cookiezi", "20210520", "clienthash", "") };
 
         score.ValidateScoreChecksum("cookiezi", "20210520", "clienthash", null);

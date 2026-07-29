@@ -27,7 +27,7 @@ public class ToggleBlockNonFriendDmsHandlerTests
     public async Task HandleAsync_ValueZero_SetsPmPrivateFalse()
     {
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
-            { PmPrivate = true };
+        { PmPrivate = true };
 
         await new ToggleBlockNonFriendDmsHandler().HandleAsync(player, ValueReader(0));
 

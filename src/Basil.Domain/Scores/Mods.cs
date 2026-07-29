@@ -170,12 +170,12 @@ public static class ModsExtensions
                 result &= ~Mods.Autopilot; // (SO|RX)AP
                 break;
             case 3:
-            {
-                result &= ~Mods.Relax; // rx is std/taiko/ctb common
-                if ((result & Mods.Hidden) != Mods.NoMod &&
-                    (result & Mods.FadeIn) != Mods.NoMod) result &= ~Mods.FadeIn; // HDFI
-                break;
-            }
+                {
+                    result &= ~Mods.Relax; // rx is std/taiko/ctb common
+                    if ((result & Mods.Hidden) != Mods.NoMod &&
+                        (result & Mods.FadeIn) != Mods.NoMod) result &= ~Mods.FadeIn; // HDFI
+                    break;
+                }
         }
 
         // 4. remove multiple keymods, keeping only the first

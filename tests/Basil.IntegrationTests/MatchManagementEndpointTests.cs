@@ -186,7 +186,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 
         var streamClient = _factory.CreateClient();
         var streamRequest = new HttpRequestMessage(HttpMethod.Get, $"/matches/{id}/settings/live")
-            { Headers = { Host = "api.test.local" } };
+        { Headers = { Host = "api.test.local" } };
         streamRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));

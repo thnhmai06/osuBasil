@@ -21,7 +21,10 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
             """,
             new
             {
-                UserId = userId, OsuPathMd5 = osuPathMd5, Adapters = adapters, UninstallId = uninstallId,
+                UserId = userId,
+                OsuPathMd5 = osuPathMd5,
+                Adapters = adapters,
+                UninstallId = uninstallId,
                 DiskSerial = diskSerial
             });
 
@@ -33,7 +36,10 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
             """,
             new
             {
-                UserId = userId, OsuPathMd5 = osuPathMd5, Adapters = adapters, UninstallId = uninstallId,
+                UserId = userId,
+                OsuPathMd5 = osuPathMd5,
+                Adapters = adapters,
+                UninstallId = uninstallId,
                 DiskSerial = diskSerial
             });
 

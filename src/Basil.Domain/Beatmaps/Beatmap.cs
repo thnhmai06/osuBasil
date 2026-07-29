@@ -9,35 +9,35 @@ namespace Basil.Domain.Beatmaps;
 /// </summary>
 public sealed record Beatmap(
 
-    #region Identity
+#region Identity
 
     string Md5,
     int Id,
     Mapset Mapset,
 
-    #endregion
+#endregion
 
-    #region Metadata
+#region Metadata
 
     string Version,
     [property: JsonIgnore] string Filename,
 
-    #endregion
+#endregion
 
-    #region Stats
+#region Stats
 
     TimeSpan TotalLength,
     int MaxCombo,
     Difficulty Difficulty,
     IReadOnlyDictionary<string, int> ObjectCounts,
 
-    #endregion
+#endregion
 
-    #region Background
+#region Background
 
     [property: JsonIgnore] string? BackgroundFile = null
 
-    #endregion
+#endregion
 
 )
 {

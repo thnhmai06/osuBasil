@@ -128,7 +128,11 @@ public class MatchSessionTests
     {
         var source = new MatchSlot
         {
-            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeam.Red, Mods = Mods.Hidden, Loaded = true,
+            PlayerId = 5,
+            Status = SlotStatus.Ready,
+            Team = MatchTeam.Red,
+            Mods = Mods.Hidden,
+            Loaded = true,
             Skipped = true
         };
         var target = new MatchSlot();
@@ -148,7 +152,11 @@ public class MatchSessionTests
     {
         var slot = new MatchSlot
         {
-            PlayerId = 5, Status = SlotStatus.Ready, Team = MatchTeam.Red, Mods = Mods.Hidden, Loaded = true,
+            PlayerId = 5,
+            Status = SlotStatus.Ready,
+            Team = MatchTeam.Red,
+            Mods = Mods.Hidden,
+            Loaded = true,
             Skipped = true
         };
 

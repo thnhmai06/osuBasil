@@ -6,7 +6,7 @@ namespace Basil.Application.Tests.Json;
 public class TimeSpanSecondsJsonConverterTests
 {
     private static readonly JsonSerializerOptions Options = new()
-        { Converters = { new TimeSpanSecondsJsonConverter() } };
+    { Converters = { new TimeSpanSecondsJsonConverter() } };
 
     [Fact]
     public void Write_ProducesWholeSecondInteger_NotTimeSpanString()

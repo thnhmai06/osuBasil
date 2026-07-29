@@ -281,7 +281,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
         await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/web/maps/Some%20Map.osu")
-            { Headers = { Host = "osu.test.local" } };
+        { Headers = { Host = "osu.test.local" } };
         var response = await _factory.CreateClient().SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

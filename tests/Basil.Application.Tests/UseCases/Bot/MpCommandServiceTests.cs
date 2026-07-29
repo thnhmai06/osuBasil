@@ -584,7 +584,8 @@ public class MpCommandServiceTests
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var guest = MultiplayerTestSupport.MakePlayer(2, "guest");
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _fixture.RegisterAll(host, guest, bot);
         var match = _fixture.CreateMatch(host);
         await _fixture.MatchMembership.Join(guest, match, "");
@@ -609,7 +610,8 @@ public class MpCommandServiceTests
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _fixture.RegisterAll(host, bot);
         var match = _fixture.CreateMatch(host);
         var bmap = MultiplayerTestSupport.MakeBeatmap(200);
@@ -656,7 +658,8 @@ public class MpCommandServiceTests
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _fixture.RegisterAll(host, bot);
         var match = _fixture.CreateMatch(host);
         host.Dequeue();

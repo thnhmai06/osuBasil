@@ -22,7 +22,7 @@ public class GhostDisconnectServiceTests
     private static PlayerSession MakeSession(int id, string token, DateTimeOffset lastRecvTime)
     {
         return new PlayerSession(id, $"player{id}", token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
-            { LastRecvTime = lastRecvTime };
+        { LastRecvTime = lastRecvTime };
     }
 
     private static ChannelMembershipService MakeChannelMembership(IPlayerSessionRegistry registry)
@@ -68,7 +68,7 @@ public class GhostDisconnectServiceTests
     {
         var registry = new InMemoryPlayerSessionRegistryTestDouble();
         var bot = new PlayerSession(1, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
-            { LastRecvTime = Now.AddSeconds(-301), IsBot = true };
+        { LastRecvTime = Now.AddSeconds(-301), IsBot = true };
         registry.Add(bot);
 
         new GhostDisconnectService(registry, MakeChannelMembership(registry), MakeSpectatorService(registry))
@@ -121,7 +121,8 @@ public class GhostDisconnectServiceTests
     {
         var registry = new InMemoryPlayerSessionRegistryTestDouble();
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         registry.Add(bot);
         var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
         stale.AddSpectator(bot);

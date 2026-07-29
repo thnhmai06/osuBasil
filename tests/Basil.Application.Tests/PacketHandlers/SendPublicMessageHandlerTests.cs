@@ -164,7 +164,7 @@ public class SendPublicMessageHandlerTests
         var sender = new PlayerSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var bot = new PlayerSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
                 DateTimeOffset.UnixEpoch)
-            { IsBot = true };
+        { IsBot = true };
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#osu");
@@ -189,7 +189,7 @@ public class SendPublicMessageHandlerTests
         var sender = new PlayerSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
                 DateTimeOffset.UnixEpoch)
-            { IsBot = true };
+        { IsBot = true };
         var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
         channel.Join(sender.Id);
         sender.JoinChannel("#osu");

@@ -72,7 +72,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     {
         var client = _factory.CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "/matches/999999/live")
-            { Headers = { Host = "api.test.local" } };
+        { Headers = { Host = "api.test.local" } };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
         var response = await client.SendAsync(request);
@@ -86,7 +86,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     {
         var client = _factory.CreateClient();
         var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches")
-            { Headers = { Host = "api.test.local" } };
+        { Headers = { Host = "api.test.local" } };
         createRequest.Headers.Add("X-Admin-Key", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);
@@ -99,7 +99,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     {
         var client = _factory.CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "/matches/999999/live/1")
-            { Headers = { Host = "api.test.local" } };
+        { Headers = { Host = "api.test.local" } };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
         var response = await client.SendAsync(request);
@@ -112,7 +112,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
     {
         var client = _factory.CreateClient();
         var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches")
-            { Headers = { Host = "api.test.local" } };
+        { Headers = { Host = "api.test.local" } };
         createRequest.Headers.Add("X-Admin-Key", AdminKey);
         createRequest.Content = JsonContent.Create(new { });
         var createResponse = await client.SendAsync(createRequest);

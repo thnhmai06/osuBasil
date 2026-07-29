@@ -53,7 +53,8 @@ public class LoginServiceTests
             _tokenGenerator, _spectatorService,
             Options.Create(new ServerOptions
             {
-                Domain = "test.local", MenuIconPath = "icon.png",
+                Domain = "test.local",
+                MenuIconPath = "icon.png",
                 MenuOnclickUrl = "https://a"
             }));
     }
@@ -61,7 +62,8 @@ public class LoginServiceTests
     private static PlayerSession MakeBot()
     {
         return new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
     }
 
     private static byte[] LoginBody(
@@ -404,7 +406,9 @@ public class LoginServiceTests
         SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "xx");
         var headers = new Dictionary<string, string>
         {
-            ["CF-IPCountry"] = "US", ["CF-IPLatitude"] = "37.7749", ["CF-IPLongitude"] = "-122.4194"
+            ["CF-IPCountry"] = "US",
+            ["CF-IPLatitude"] = "37.7749",
+            ["CF-IPLongitude"] = "-122.4194"
         };
 
         var useCase = MakeUseCase();

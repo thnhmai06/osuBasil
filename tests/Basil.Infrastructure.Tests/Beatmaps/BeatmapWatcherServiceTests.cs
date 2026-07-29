@@ -28,7 +28,11 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
         var options = Options.Create(new StorageOptions
         {
-            ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
+            ReplaysPath = "",
+            AvatarsPath = "",
+            MapsetsPath = _mapsetsPath,
+            SeasonalsPath = "",
+            FaqsPath = ""
         });
         var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
         _watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
@@ -102,7 +106,11 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
             var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
                 new StorageOptions
                 {
-                    ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
+                    ReplaysPath = "",
+                    AvatarsPath = "",
+                    MapsetsPath = _mapsetsPath,
+                    SeasonalsPath = "",
+                    FaqsPath = ""
                 },
                 beatmap.Mapset);
             Directory.Move(folder, resolvedFolder);

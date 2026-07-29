@@ -104,7 +104,7 @@ public sealed class TcpIrcConnection(
                 case "PING":
                     Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
                     break;
-                // USER's real-name/hostname fields carry nothing Basil needs — PASS+NICK are enough.
+                    // USER's real-name/hostname fields carry nothing Basil needs — PASS+NICK are enough.
             }
 
             if (!_registered && nick is not null && pass is not null)

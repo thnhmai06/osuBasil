@@ -79,7 +79,8 @@ public class MatchReportServiceTests
             .Returns((IReadOnlyList<MatchEventRow>)[]);
 
         var live = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 1, GameMode.Standard,
-            Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0") { DbId = 5 };
+            Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
+        { DbId = 5 };
         live.Slots[0].PlayerId = 7;
         _matchRegistry.GetByDbId(5).Returns(live);
 

@@ -63,7 +63,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
     private static HttpRequestMessage MakeRequest(string path, string queryString)
     {
         return new HttpRequestMessage(HttpMethod.Get, $"{path}?{queryString}")
-            { Headers = { Host = "osu.test.local" } };
+        { Headers = { Host = "osu.test.local" } };
     }
 
     [Fact]

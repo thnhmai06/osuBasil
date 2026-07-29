@@ -119,7 +119,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
         // the C# Country enum) since JsonContent.Create with no explicit JsonSerializerOptions doesn't
         // know about CountryJsonConverter — matches every other body literal in this test suite.
         request.Content = JsonContent.Create(new
-            { name = "ab", password = "hunter2", country = "xx", privilege = (int)UserPrivileges.Unrestricted });
+        { name = "ab", password = "hunter2", country = "xx", privilege = (int)UserPrivileges.Unrestricted });
 
         var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();

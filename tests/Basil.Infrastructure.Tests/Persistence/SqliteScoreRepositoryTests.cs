@@ -46,9 +46,15 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
             """,
             new
             {
-                MapMd5 = mapMd5, Score = score, Mods = (int)mods, Mode = (int)mode,
-                UserId = userId, Perfect = perfect, Checksum = Guid.NewGuid().ToString("N"),
-                RoundId = roundId, Team = (int?)team
+                MapMd5 = mapMd5,
+                Score = score,
+                Mods = (int)mods,
+                Mode = (int)mode,
+                UserId = userId,
+                Perfect = perfect,
+                Checksum = Guid.NewGuid().ToString("N"),
+                RoundId = roundId,
+                Team = (int?)team
             });
     }
 

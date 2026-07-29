@@ -45,13 +45,13 @@ public sealed class DirectSearchService(IMapRepository maps)
         var resultCount = beatmapSets.Count == PageSize ? 101 : beatmapSets.Count;
         var lines = new List<string> { resultCount.ToString() };
         lines.AddRange(from set in beatmapSets
-            let first = set[0]
-            let diffs = string.Join(",", set.Select(FormatDiff))
-            select string.Join('|', $"{first.Mapset.Id}.osz", RemovePipes(first.Mapset.Artist),
-                RemovePipes(first.Mapset.Title), first.Mapset.Creator,
-                first.Mapset.Status.ToOsuApi().ToString(), "10.0",
-                first.Mapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Mapset.Id.ToString(), "0", "0", "0", "0",
-                "0", diffs));
+                       let first = set[0]
+                       let diffs = string.Join(",", set.Select(FormatDiff))
+                       select string.Join('|', $"{first.Mapset.Id}.osz", RemovePipes(first.Mapset.Artist),
+                           RemovePipes(first.Mapset.Title), first.Mapset.Creator,
+                           first.Mapset.Status.ToOsuApi().ToString(), "10.0",
+                           first.Mapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Mapset.Id.ToString(), "0", "0", "0", "0",
+                           "0", diffs));
 
         return string.Join("\n", lines);
     }

@@ -84,7 +84,8 @@ public class ClientIntegrityServiceTests
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _fixture.RegisterAll(host, referee, bot);
         var match = _fixture.CreateMatch(host, hostIsReferee: false);
         match.AddReferee(referee.Id);
@@ -110,7 +111,8 @@ public class ClientIntegrityServiceTests
     {
         var host = MultiplayerTestSupport.MakePlayer(1, "host");
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _fixture.RegisterAll(host, bot);
         var match = _fixture.CreateMatch(host);
         host.Dequeue();

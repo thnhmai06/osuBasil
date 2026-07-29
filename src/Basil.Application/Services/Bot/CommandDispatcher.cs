@@ -83,27 +83,27 @@ public sealed class CommandDispatcher(
         switch (trigger)
         {
             case "mp":
-            {
-                var subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "";
-
-                switch (subcommand)
                 {
-                    // `make` creates a match, `join` targets any match by wire id, and `in` targets one
-                    // the sender may not be in at all — all three run with no channel-derived match scope
-                    // (reachable via PM to the bot), unlike every other !mp subcommand — see
-                    // MpCommandService.MakeAsync/JoinAsync/SetScopeAsync.
-                    case "make":
-                        return await mpCommands.MakeAsync(sender, args[1..], cancellationToken);
-                    case "join":
-                        return await mpCommands.JoinAsync(sender, args[1..], cancellationToken);
-                    case "in":
-                        return mpCommands.SetScopeAsync(sender, args[1..]);
-                }
+                    var subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "";
 
-                var scope = ResolveScope(sender, matchScope);
-                if (scope is null) return null;
-                return await mpCommands.HandleAsync(sender, scope, subcommand, args[1..], cancellationToken);
-            }
+                    switch (subcommand)
+                    {
+                        // `make` creates a match, `join` targets any match by wire id, and `in` targets one
+                        // the sender may not be in at all — all three run with no channel-derived match scope
+                        // (reachable via PM to the bot), unlike every other !mp subcommand — see
+                        // MpCommandService.MakeAsync/JoinAsync/SetScopeAsync.
+                        case "make":
+                            return await mpCommands.MakeAsync(sender, args[1..], cancellationToken);
+                        case "join":
+                            return await mpCommands.JoinAsync(sender, args[1..], cancellationToken);
+                        case "in":
+                            return mpCommands.SetScopeAsync(sender, args[1..]);
+                    }
+
+                    var scope = ResolveScope(sender, matchScope);
+                    if (scope is null) return null;
+                    return await mpCommands.HandleAsync(sender, scope, subcommand, args[1..], cancellationToken);
+                }
             case "where":
                 return await Where(args, cancellationToken);
             case "faq":

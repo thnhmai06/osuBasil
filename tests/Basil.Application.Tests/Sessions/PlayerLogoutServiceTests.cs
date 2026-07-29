@@ -109,7 +109,8 @@ public class PlayerLogoutServiceTests
     public async Task Logout_PlayerWhoseOnlySpectatorIsTheBot_RemovesBotSpectateRelationship()
     {
         var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
-            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true };
+            UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+        { IsBot = true };
         _sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
         var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
         player.AddSpectator(bot);

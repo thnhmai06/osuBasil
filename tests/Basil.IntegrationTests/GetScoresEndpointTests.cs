@@ -57,7 +57,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
     private static HttpRequestMessage MakeRequest(string queryString)
     {
         return new HttpRequestMessage(HttpMethod.Get, $"/web/osu-osz2-getscores.php?{queryString}")
-            { Headers = { Host = "osu.test.local" } };
+        { Headers = { Host = "osu.test.local" } };
     }
 
     [Fact]

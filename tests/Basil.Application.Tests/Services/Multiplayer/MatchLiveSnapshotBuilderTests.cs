@@ -19,7 +19,8 @@ public class MatchLiveSnapshotBuilderTests
     private static MatchSession MakeMatch(string mapMd5 = "")
     {
         return new MatchSession(0, "Grand Finals", "hunter2", "map", 42, mapMd5, 1, GameMode.Standard,
-            Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0") { DbId = 5 };
+            Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
+        { DbId = 5 };
     }
 
     [Fact]

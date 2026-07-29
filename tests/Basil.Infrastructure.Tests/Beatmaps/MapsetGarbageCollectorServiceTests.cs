@@ -20,7 +20,11 @@ public class MapsetGarbageCollectorServiceTests : IDisposable
         Directory.CreateDirectory(_mapsetsPath);
         var options = Options.Create(new StorageOptions
         {
-            ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
+            ReplaysPath = "",
+            AvatarsPath = "",
+            MapsetsPath = _mapsetsPath,
+            SeasonalsPath = "",
+            FaqsPath = ""
         });
         _service = new MapsetGarbageCollectorService(options, NullLogger<MapsetGarbageCollectorService>.Instance);
     }

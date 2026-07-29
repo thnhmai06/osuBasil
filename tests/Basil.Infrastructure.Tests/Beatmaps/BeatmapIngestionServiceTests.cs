@@ -134,7 +134,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         Assert.NotNull(mapset);
         var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
             new StorageOptions
-                { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+            { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
             mapset);
         Directory.Move(tempFolder, resolvedFolder);
         Directory.Delete(resolvedFolder, true);
@@ -185,7 +185,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
         var mapset = await _mapsets.FetchByIdAsync(setId.Value);
         var folder = BeatmapIngestionService.MapsetFolderPath(
             new StorageOptions
-                { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
+            { ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "" },
             mapset!);
         Directory.Move(tempFolder, folder);
         var osuPath = Path.Combine(folder, "vivid_osu_file.osu");
