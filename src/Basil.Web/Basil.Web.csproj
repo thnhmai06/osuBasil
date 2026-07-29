@@ -7,9 +7,6 @@
     </ItemGroup>
 
     <ItemGroup>
-    </ItemGroup>
-
-    <ItemGroup>
         <EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\icon.png"/>
         <EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\default.png"/>
     </ItemGroup>
