@@ -41,9 +41,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:MenuIconPath"] = "icon.png",
-					["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>

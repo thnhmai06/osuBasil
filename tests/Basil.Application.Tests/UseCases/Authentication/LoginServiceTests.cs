@@ -6,6 +6,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -50,12 +51,10 @@ public class LoginServiceTests
 		return new LoginService(
 			_users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
 			_relationships, _passwordHasher, _leaderboardStore,
-			_tokenGenerator, _spectatorService,
+			_tokenGenerator, _spectatorService, new MenuIconService(),
 			Options.Create(new ServerOptions
 			{
-				Domain = "test.local",
-				MenuIconPath = "icon.png",
-				MenuOnclickUrl = "https://a"
+				Domain = "test.local"
 			}));
 	}
 
@@ -460,6 +459,49 @@ public class LoginServiceTests
 			ServerPacketWriter.ProtocolVersion(19),
 			ServerPacketWriter.LoginReply(10));
 		Assert.Equal(expectedHeader, result.ResponseBody.Take(expectedHeader.Length).ToArray());
+	}
+
+	[Fact]
+	public async Task MenuIconFile_WhenExists_SendsMainMenuIconPacket()
+	{
+		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
+			await File.WriteAllBytesAsync(iconPath, [1]);
+			SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+			var useCase = MakeUseCase();
+			var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+			var result = await useCase.ExecuteAsync(request);
+
+			var expectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
+				"https://github.com/thnhmai06/osuBasil");
+			var bodyHex = Convert.ToHexString(result.ResponseBody);
+			Assert.Contains(Convert.ToHexString(expectedPacket), bodyHex);
+		}
+		finally
+		{
+			File.Delete(iconPath);
+		}
+	}
+
+	[Fact]
+	public async Task MenuIconFile_WhenMissing_SendsNoMainMenuIconPacket()
+	{
+		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
+		if (File.Exists(iconPath)) File.Delete(iconPath);
+
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
+
+		var unexpectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
+			"https://github.com/thnhmai06/osuBasil");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.DoesNotContain(Convert.ToHexString(unexpectedPacket), bodyHex);
 	}
 
 	private void SetUpHappyPath(out User user, UserPrivileges priv, int userId = 10, string country = "us")

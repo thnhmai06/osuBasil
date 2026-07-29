@@ -48,6 +48,7 @@ public static class DependencyInjection
 		services.AddSingleton<IrcAuthenticationService>();
 		services.AddSingleton<FaqService>();
 		services.AddSingleton<SeasonalService>();
+		services.AddSingleton<MenuIconService>();
 
 		services.AddSingleton<IBanchoPacketHandler, PingHandler>();
 		services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();

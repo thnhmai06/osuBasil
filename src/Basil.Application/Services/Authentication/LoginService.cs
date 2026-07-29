@@ -6,6 +6,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -34,6 +35,7 @@ public sealed class LoginService(
 	ILeaderboardStore leaderboardStore,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
+	MenuIconService menuIconService,
 	IOptions<ServerOptions> serverOptions)
 {
 	private static readonly string MotdPath = Path.Combine("Data", "MOTD.txt");
@@ -177,8 +179,13 @@ public sealed class LoginService(
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
 		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
 
-		var menuIconUrl = $"https://osu.{serverOptions.Value.Domain}/web/menuicon";
-		data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, serverOptions.Value.MenuOnclickUrl));
+		if (menuIconService.FindIconPath() is not null)
+		{
+			var menuIconUrl = $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
+			var onclickUrl = menuIconService.ReadUrl() ?? "https://github.com/thnhmai06/osuBasil";
+			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
+		}
+
 		data.Add(ServerPacketWriter.FriendsList(friendIds));
 		data.Add(ServerPacketWriter.SilenceEnd((int)session.RemainingSilence.TotalSeconds));
 

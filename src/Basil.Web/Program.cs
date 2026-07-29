@@ -72,6 +72,10 @@ public sealed class Program
 		[
 			("Seasonal Backgrounds", "Public seasonal background image storage.")
 		]),
+		("Menu Icon",
+		[
+			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
+		]),
 		("Abbreviation Redirects",
 		[
 			("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")

@@ -64,8 +64,6 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 				{
 					["Basil:Server:Domain"] = "test.local",
 					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:MenuIconPath"] = "icon.png",
-					["Basil:Server:MenuOnclickUrl"] = "https://example.test",
 					["Basil:Server:AdminKey"] = "correct-key"
 				});
 			});

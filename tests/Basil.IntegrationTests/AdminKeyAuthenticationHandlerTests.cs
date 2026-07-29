@@ -27,8 +27,6 @@ public class AdminKeyAuthenticationHandlerTests
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local",
-				MenuIconPath = "icon.png",
-				MenuOnclickUrl = "https://example.test",
 				AdminKey = ConfiguredKey
 			}));
 

@@ -53,14 +53,10 @@ public class OptionsBindingTests
 		var options = BindOptions<ServerOptions>(ServerOptions.SectionName,
 			new Dictionary<string, string?>
 			{
-				[$"{ServerOptions.SectionName}:Domain"] = "akatsuki.gg",
-				[$"{ServerOptions.SectionName}:MenuIconPath"] = "icon.png",
-				[$"{ServerOptions.SectionName}:MenuOnclickUrl"] = "https://a.example"
+				[$"{ServerOptions.SectionName}:Domain"] = "akatsuki.gg"
 			});
 
 		Assert.Equal("akatsuki.gg", options.Domain);
-		Assert.Equal("icon.png", options.MenuIconPath);
-		Assert.Equal("https://a.example", options.MenuOnclickUrl);
 	}
 
 	[Fact]

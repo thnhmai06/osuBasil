@@ -1,6 +1,10 @@
 namespace Basil.Application.Configuration;
 
-/// <summary>Ports DOMAIN, MENU_ICON_URL, MENU_ONCLICK_URL from app/settings.py.</summary>
+/// <summary>
+///     Ports DOMAIN from app/settings.py. MENU_ICON_URL/MENU_ONCLICK_URL have no equivalent here —
+///     see <see cref="Basil.Application.Services.Content.MenuIconService" /> for the runtime-configurable,
+///     file-backed replacement.
+/// </summary>
 public sealed class ServerOptions
 {
 	public const string SectionName = "Basil:Server";
@@ -15,15 +19,6 @@ public sealed class ServerOptions
 
 	/// <summary>Password for the HTTPS certificate.</summary>
 	public string? CertPassword { get; init; }
-
-	/// <summary>
-	///     Local file path to the in-game menu icon image, served back by `GET /web/menu-icon` on the
-	///     `osu.` host (see BanchoHostGroups) rather than sent to the client as-is — the client just
-	///     gets that endpoint's URL. Relative paths resolve against the executable's directory.
-	/// </summary>
-	public required string MenuIconPath { get; init; }
-
-	public required string MenuOnclickUrl { get; init; }
 
 	/// <summary>
 	///     Gates every api.&lt;domain&gt; management REST route (beatmap/user/replay/match/seasonal CRUD)

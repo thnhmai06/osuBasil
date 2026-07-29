@@ -241,6 +241,8 @@ public static class BanchoHostGroups
 
 		group.MapSeasonalRoutes();
 
+		group.MapMenuIconRoutes();
+
 		group.MapAbbreviationRedirects();
 	}
 
@@ -368,35 +370,6 @@ public static class BanchoHostGroups
 				.WithSummary("Health-check stub.")
 				.WithDescription("Returns the literal string \"osu\". Not called by the real osu! client.")
 				.WithTags("Stubs");
-
-			// Serves ServerOptions.MenuIconPath as an image — the in-game main menu icon is
-			// configured as a local file path (not a URL) so it doesn't depend on external hosting;
-			// LoginService points the client at this endpoint instead of the file path itself.
-			// Unauthenticated by design — fetched by the client's own image loader, not through the
-			// bancho session.
-			group.MapGet("/web/menuicon", (HttpContext context) =>
-				{
-					var serverOptions = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value;
-					var path = Path.IsPathRooted(serverOptions.MenuIconPath)
-						? serverOptions.MenuIconPath
-						: Path.Combine(AppContext.BaseDirectory, serverOptions.MenuIconPath);
-					if (!File.Exists(path)) return Results.NotFound();
-
-					var contentType = Path.GetExtension(path).ToLowerInvariant() switch
-					{
-						".png" => "image/png",
-						".jpg" or ".jpeg" => "image/jpeg",
-						".gif" => "image/gif",
-						_ => "application/octet-stream"
-					};
-					return Results.File(path, contentType);
-				})
-				.WithGroupName("osuweb")
-				.WithSummary("The in-game main menu icon image.")
-				.WithDescription("Serves the image configured as `Server:MenuIconPath` in Settings.toml. " +
-				                 "Unauthenticated — fetched directly by the client's own image loader, independent of the " +
-				                 "bancho session. 404 if the configured file doesn't exist on disk.")
-				.WithTags("Menu");
 
 			// Ported from app/api/domains/osu.py's getScores, reduced to a status-only reply — this
 			// server doesn't support browsing a beatmap's leaderboard (out of scope), but it still
