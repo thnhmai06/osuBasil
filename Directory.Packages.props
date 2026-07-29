@@ -1,15 +1,8 @@
 <Project>
-
     <PropertyGroup>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
-
     <ItemGroup>
-        <!-- Basil.Infrastructure -->
-        <!-- Direct reference solely to override the AutoMapper 13.0.1 transitive dependency pulled in
-             by ppy.osu.Game.Rulesets.* (GHSA-rvv3-g6hj-g44x, high severity) — Basil itself never calls
-             AutoMapper directly. -->
-        <PackageVersion Include="AutoMapper" Version="15.1.1"/>
         <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0"/>
         <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2"/>
         <PackageVersion Include="Dapper" Version="2.1.79"/>
@@ -21,18 +14,15 @@
         <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.702.1"/>
         <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.702.1"/>
         <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.702.1"/>
-
         <!-- Basil.Application -->
         <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.10"/>
         <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10"/>
         <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10"/>
-
         <!-- Basil.Web -->
         <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10"/>
         <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.10"/>
         <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0"/>
         <PackageVersion Include="Scalar.AspNetCore" Version="2.16.16"/>
-
         <!-- Shared across test projects -->
         <PackageVersion Include="coverlet.collector" Version="10.0.1"/>
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
@@ -46,5 +36,4 @@
         <PackageVersion Include="NetArchTest.Rules" Version="1.3.2"/>
         <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10"/>
     </ItemGroup>
-
 </Project>

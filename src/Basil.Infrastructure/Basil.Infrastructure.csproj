@@ -9,7 +9,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoMapper"/>
         <PackageReference Include="BCrypt.Net-Next"/>
         <PackageReference Include="BouncyCastle.Cryptography"/>
         <PackageReference Include="Dapper"/>

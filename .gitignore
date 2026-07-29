@@ -21,3 +21,5 @@ Thumbs.db
 ## Local env
 .env
 *.pfx
+
+*.db

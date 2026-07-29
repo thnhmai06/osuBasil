@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+    <PropertyGroup>
+        <SelfContained>true</SelfContained>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
         <ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
