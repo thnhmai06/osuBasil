@@ -6,7 +6,7 @@
 
 <sub><i>If [Akatsuki](https://github.com/osuAkatsuki) means "dawn", then Basil is the sunflower always facing the Sun.</i></sub>
 
-**A lightweight [osu!](https://osu.ppy.sh/) (stable) server for multiplayer/tournament play over LAN — fully offline, no internet dependency.**
+**A lightweight [osu!](https://osu.ppy.sh/) (stable) server for multiplayer/tournament play over LAN — no osu.ppy.sh/mirror dependency for gameplay, no singleplayer ranking.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
@@ -24,8 +24,8 @@
 - Provides a [**multiplayer environment**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) matching [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), with singleplayer processing and unrelated features **removed**.
 - Supports [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat), and **basic social features**.
 - Manages **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** directly via database/filesystem.
-- **No dependencies** on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api), mirror services, or third-party services. Parameters (such as Star Rating) are computed locally and stored in the database. **100% offline and local**.
-- **Provides APIs** for live match data, player input, and match event tracking.
+- **No dependency on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or a mirror for gameplay.** Parameters (such as Star Rating) are computed locally and stored in the database, and beatmap search/downloads are served from the local `Mapsets` folder — no calls out to osu.ppy.sh for any of that. The one exception is beatmap thumbnail/preview images (`b.<domain>`), which still redirect to osu.ppy.sh's own CDN since this server keeps no local copy of that asset library; an operator can optionally point `Basil:Mirror:DownloadEndpoint` at their own mirror for `.osz` downloads, otherwise that endpoint just reports unavailable.
+- **A full tournament-management HTTP API** (`api.<domain>`) alongside the osu! client protocol: CRUD for matches/beatmapsets/users, admin-key-gated management routes, live match/spectator/player-input state pushed over Server-Sent Events, and a runtime-generated tournament match report — all documented as OpenAPI, rendered with [Scalar](https://scalar.com/) at `api.<domain>/docs/`.
 
 ## Tech stack
 

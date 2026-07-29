@@ -43,8 +43,8 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
         }
         catch (Exception)
         {
-            // ponytail: a malformed/short bundle must never break the bancho relay above — the SSE
-            // channel just misses this one update.
+            // A malformed/short bundle must never break the bancho relay above — the SSE channel
+            // just misses this one update.
         }
 
         return Task.CompletedTask;

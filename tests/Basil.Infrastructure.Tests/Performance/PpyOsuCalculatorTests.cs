@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Tests.Performance;
 ///     Verifies the ppy.osu.Game-backed calculation engine produces stable star ratings and
 ///     hit-object counts for Fixtures/vivid_osu_file.osu across representative mod combinations.
 ///     Reference values were recorded by running this calculator directly — not a cross-check
-///     against any other engine's output (the old akatsuki-pp-rs reference values no longer apply).
+///     against any other engine's output.
 /// </summary>
 public class PpyOsuCalculatorTests
 {

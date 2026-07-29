@@ -160,7 +160,7 @@ Every `PlayerSession` has an `IIrcConnection` (`Sessions/Irc/`):
 4. After registration, every `PRIVMSG`/`JOIN`/`PART`/`AWAY`/`QUIT` from the IRC client is dispatched by `TcpIrcConnection` to `ChatDispatchService`/`ChannelMembershipService`.
 
 > [!NOTE]
-> **Passwords:** IRC PASS requires the **account password** (same as osu! client login) — unlike official osu!Bancho (irc.ppy.sh uses a separate password "different from your account password"). `ApiKey` and `UpdateApiKeyAsync` in `IUserRepository` were once staged but were dead code and have been removed.
+> **Passwords:** IRC PASS requires the **account password** (same as osu! client login) — unlike official osu!Bancho (irc.ppy.sh uses a separate password "different from your account password").
 
 ## BanchoBot handler
 

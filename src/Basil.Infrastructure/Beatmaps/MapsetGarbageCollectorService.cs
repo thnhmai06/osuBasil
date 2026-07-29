@@ -54,8 +54,8 @@ public sealed class MapsetGarbageCollectorService(
             }
             catch (Exception e)
             {
-                // ponytail: a locked file (in-flight read elsewhere) just retries next cycle instead
-                // of aborting the whole pass.
+                // A locked file (in-flight read elsewhere) just retries next cycle instead of
+                // aborting the whole pass.
                 logger.LogWarning(e, "Failed to garbage-collect deleted mapset folder {Path}; will retry next cycle.",
                     folder);
             }

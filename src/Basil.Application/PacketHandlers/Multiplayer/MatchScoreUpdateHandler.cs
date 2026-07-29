@@ -52,8 +52,8 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
             }
             catch (Exception)
             {
-                // ponytail: a malformed/short scoreframe must never break the bancho relay above —
-                // the live WS channel just misses this one update.
+                // A malformed/short scoreframe must never break the bancho relay above — the live
+                // WS channel just misses this one update.
             }
         }
         finally

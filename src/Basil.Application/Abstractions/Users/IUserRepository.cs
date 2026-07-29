@@ -11,7 +11,7 @@ public interface IUserRepository
 {
     Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default);
 
-    /// <summary>Looks up by User.MakeSafeName(name), matching bancho.py's safe_name lookup.</summary>
+    /// <summary>Looks up by <see cref="User.MakeSafeName" />.</summary>
     Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>

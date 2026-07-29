@@ -282,9 +282,8 @@ public sealed partial class BeatmapIngestionService(
 
         if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
             await mapsets.DeleteAsync(id, cancellationToken);
-        // ponytail: a manually-renamed-away-from-convention folder that's then deleted leaves an
-        // orphan row until the next ReconcileAllAsync pass reclaims it — acceptable for a
-        // human-admin server.
+        // A manually-renamed-away-from-convention folder that's then deleted leaves an orphan row
+        // until the next ReconcileAllAsync pass reclaims it — acceptable for a human-admin server.
     }
 
     /// <summary>
@@ -344,9 +343,9 @@ public sealed partial class BeatmapIngestionService(
         }
         catch (Exception e)
         {
-            // ponytail: a map whose difficulty can't be calculated (unsupported ruleset content,
-            // corrupt hitobjects) still gets ingested — it just keeps Sr at 0/no object counts
-            // instead of aborting.
+            // A map whose difficulty can't be calculated (unsupported ruleset content, corrupt
+            // hitobjects) still gets ingested — it just keeps Sr at 0/no object counts instead of
+            // aborting.
             logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
             return new BeatmapAnalysis(0, new Dictionary<string, int>());
         }
@@ -362,7 +361,7 @@ public sealed partial class BeatmapIngestionService(
         }
         catch
         {
-            // ponytail: skip malformed .osu files rather than aborting the whole scan.
+            // Skip malformed .osu files rather than aborting the whole scan.
             return null;
         }
     }
