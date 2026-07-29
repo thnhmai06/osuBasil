@@ -9,6 +9,7 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 ///     The GC pass runs once immediately on start (before its own 10-minute timer), so this can be
 ///     tested without waiting out the real interval.
 /// </summary>
+[Collection(BeatmapFilesystemTestCollection.Name)]
 public class MapsetGarbageCollectorServiceTests : IDisposable
 {
     private readonly string _mapsetsPath;

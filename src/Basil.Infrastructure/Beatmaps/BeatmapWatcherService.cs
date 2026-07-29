@@ -20,6 +20,7 @@ public sealed class BeatmapWatcherService(
     ILogger<BeatmapWatcherService> logger) : BackgroundService
 {
     private static readonly TimeSpan DebounceWindow = TimeSpan.FromSeconds(2);
+    private readonly ConcurrentDictionary<Task, byte> _inFlightSettles = new();
     private readonly ConcurrentDictionary<string, Timer> _timers = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,7 +47,12 @@ public sealed class BeatmapWatcherService(
             // expected on shutdown
         }
 
+        // Disposing an armed-but-not-yet-fired timer is enough to stop it; a timer whose callback
+        // already fired is gone from _timers (Settle removes itself) but its reconciliation may
+        // still be running — those are tracked separately so shutdown actually waits for them
+        // instead of returning while a beatmap-ingestion pass is still mutating the DB.
         foreach (var timer in _timers.Values) await timer.DisposeAsync();
+        await Task.WhenAll(_inFlightSettles.Keys);
     }
 
     /// <summary>Resolves any changed path back to the top-level entry directly under MapsetsPath it belongs to.</summary>
@@ -110,7 +116,14 @@ public sealed class BeatmapWatcherService(
 
     private Timer NewTimer(string affected)
     {
-        return new Timer(_ => _ = Settle(affected), null, DebounceWindow, Timeout.InfiniteTimeSpan);
+        return new Timer(_ => TrackSettle(affected), null, DebounceWindow, Timeout.InfiniteTimeSpan);
+    }
+
+    private void TrackSettle(string affected)
+    {
+        var task = Settle(affected);
+        _inFlightSettles[task] = 0;
+        task.ContinueWith(t => _inFlightSettles.TryRemove(t, out _), TaskScheduler.Default);
     }
 
     private async Task Settle(string affected)

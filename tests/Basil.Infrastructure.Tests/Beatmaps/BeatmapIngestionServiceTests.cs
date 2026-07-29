@@ -13,6 +13,7 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 ///     Fixtures/vivid_osu_file.osu (an old-format file with no BeatmapID/BeatmapSetID fields, so it
 ///     exercises the local-id-allocation fallback rather than the online-id path).
 /// </summary>
+[Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
     private readonly SqliteMapRepository _maps;

@@ -17,6 +17,7 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 ///     two tests below can never observe each other's rows — no test-order dependency, unlike a
 ///     shared-DB class fixture would produce for two tests racing the same debounce window.
 /// </summary>
+[Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapWatcherServiceTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
@@ -184,9 +185,13 @@ public class BeatmapWatcherServiceTests : IDisposable
                 " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
 
             // ReconcileOszAsync deletes the .osz right after extracting it, which raises this same
-            // watcher's own Deleted event for that path — give that a full debounce window (plus
-            // margin) to settle before asserting the mapset survived it.
-            await Task.Delay(TimeSpan.FromSeconds(4));
+            // watcher's own Deleted event for that path — poll out a generous window (rather than a
+            // single fixed sleep, which under CI-level parallel load can be too short) watching for
+            // the mapset to vanish; it must not, for the whole window.
+            var survivalDeadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < survivalDeadline &&
+                   await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
+                await Task.Delay(200);
 
             var survived = await _maps.FetchOneAsync(setId: 900000, includePrivate: true);
             Assert.True(survived is not null,
