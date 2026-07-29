@@ -1,19 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -25,11 +23,24 @@ namespace Basil.IntegrationTests;
 public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly StubReplayStorage _replayStorage = new();
-    private readonly StubScoreRepository _scores = new();
+    private byte[]? _replayBytes;
+    private ScoreOwnerRow? _owner;
+    private ScoreRow? _row;
 
     public ScoreEndpointTests(WebApplicationFactory<Program> factory)
     {
+        var scores = Substitute.For<IScoreRepository>();
+        scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(_ => _row is null ? 0 : 1);
+        scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _owner);
+        scores.FetchByIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _row);
+        scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ScoreRow>>([]));
+        scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));
+
+        var replayStorage = Substitute.For<IReplayStorage>();
+        replayStorage.ReadAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _replayBytes);
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -45,10 +56,10 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IScoreRepository>(_scores);
-                services.AddSingleton<IReplayStorage>(_replayStorage);
-                services.AddSingleton<IUserRepository>(new NoopUserRepository());
-                services.AddSingleton<IMapRepository>(new NoopMapRepository());
+                services.AddSingleton(scores);
+                services.AddSingleton(replayStorage);
+                services.AddSingleton(TestDoubles.NullUserRepository());
+                services.AddSingleton(TestDoubles.NullMapRepository());
             });
         });
     }
@@ -69,7 +80,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetScore_KnownId_ReturnsFullRow()
     {
-        _scores.Row = new ScoreRow(
+        _row = new ScoreRow(
             42, null, null, new string('a', 32), 900_000, 98.5, 500, Mods.Hidden,
             300, 10, 5, 0, 0, 0, "S", GameMode.Standard, DateTime.UtcNow, 120_000,
             ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow);
@@ -96,7 +107,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetReplay_KnownScoreNoStoredReplay_ReturnsNotFound()
     {
-        _scores.Owner = new ScoreOwnerRow(7, GameMode.Standard);
+        _owner = new ScoreOwnerRow(7, GameMode.Standard);
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
 
@@ -106,8 +117,8 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetReplay_Found_ReturnsReplayBytes()
     {
-        _scores.Owner = new ScoreOwnerRow(7, GameMode.Standard);
-        _replayStorage.Bytes = [1, 2, 3, 4];
+        _owner = new ScoreOwnerRow(7, GameMode.Standard);
+        _replayBytes = [1, 2, 3, 4];
 
         var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
         var bytes = await response.Content.ReadAsByteArrayAsync();
@@ -120,170 +131,4 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     private sealed record ScoreShape(long Id, long TotalScore, UserBriefShape User);
 
     private sealed record UserBriefShape(int Id, string Name, string Country);
-
-    private sealed class StubScoreRepository : IScoreRepository
-    {
-        public ScoreRow? Row { get; set; }
-        public ScoreOwnerRow? Owner { get; set; }
-
-        public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Row is null ? 0 : 1);
-        }
-
-        public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Owner);
-        }
-
-        public Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Row);
-        }
-
-        public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<ScoreRow>>([]);
-        }
-
-        public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
-        }
-
-        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-    }
-
-    private sealed class StubReplayStorage : IReplayStorage
-    {
-        public byte[]? Bytes { get; set; }
-
-        public Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Bytes);
-        }
-
-        public Task WriteAsync(long scoreId, byte[] data, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
-    ///     referenced by these tests resolves to "no account" instead of hitting the real SQLite path
-    ///     these tests otherwise never need a working database connection for.
-    /// </summary>
-    private sealed class NoopUserRepository : IUserRepository
-    {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<User>>([]);
-        }
-    }
-
-    /// <summary>
-    ///     Stands in for the real DB-backed <see cref="IMapRepository" /> so a score's stored `mapMd5`
-    ///     resolves to "beatmap gone" (null) instead of hitting the real SQLite path these tests
-    ///     otherwise never need a working database connection for.
-    /// </summary>
-    private sealed class NoopMapRepository : IMapRepository
-    {
-        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Beatmap?>(null);
-        }
-
-        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-            int amount, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
-        }
-    }
 }

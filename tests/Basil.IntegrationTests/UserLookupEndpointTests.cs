@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -20,10 +21,17 @@ namespace Basil.IntegrationTests;
 public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly StubUserRepository _users = new();
+    private readonly Dictionary<string, User> _byName = [];
 
     public UserLookupEndpointTests(WebApplicationFactory<Program> factory)
     {
+        var users = Substitute.For<IUserRepository>();
+        users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => _byName.Values.FirstOrDefault(u => u.Id == call.ArgAt<int>(0)));
+        users.FetchByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => _byName.GetValueOrDefault(call.ArgAt<string>(0)));
+        users.FetchAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<User>>([]));
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -40,7 +48,7 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IUserRepository>(_users);
+                services.AddSingleton(users);
             });
         });
     }
@@ -60,7 +68,7 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task GetUser_ByUsername_RedirectsToCanonicalId()
     {
-        _users.ByName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
         var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player", "correct-key"));
 
@@ -79,7 +87,7 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task GetUserAvatar_ByUsername_RedirectsToCanonicalId()
     {
-        _users.ByName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
         var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/avatar", "correct-key"));
 
@@ -90,7 +98,7 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task GetUserLive_ByUsername_RedirectsToCanonicalId()
     {
-        _users.ByName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
         var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/live"));
 
@@ -104,52 +112,5 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
         var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
 
         Assert.NotEqual(HttpStatusCode.Redirect, response.StatusCode);
-    }
-
-    private sealed class StubUserRepository : IUserRepository
-    {
-        public Dictionary<string, User> ByName { get; } = [];
-
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(ByName.Values.FirstOrDefault(u => u.Id == id));
-        }
-
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(ByName.GetValueOrDefault(name));
-        }
-
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<User>>([]);
-        }
     }
 }
