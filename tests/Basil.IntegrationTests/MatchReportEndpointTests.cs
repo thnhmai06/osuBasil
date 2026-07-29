@@ -1,19 +1,16 @@
 using System.Net;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -21,11 +18,32 @@ namespace Basil.IntegrationTests;
 public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly StubMatchPersistenceRepository _matchPersistence = new();
-    private readonly StubScoreRepository _scores = new();
+    private MatchRow? _match;
 
     public MatchReportEndpointTests(WebApplicationFactory<Program> factory)
     {
+        var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+        matchPersistence.FetchMatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => _match?.Id == call.ArgAt<int>(0) ? _match : null);
+        matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+        matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<MatchRow>)(_match is null ? [] : [_match]));
+        matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MatchEventRow>>([]));
+        matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MatchRow>>([]));
+        matchPersistence.FetchUnrecoveredRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+
+        var scores = Substitute.For<IScoreRepository>();
+        scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
+        scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));
+
+        var matchRegistry = Substitute.For<IMatchRegistry>();
+        matchRegistry.All.Returns((IReadOnlyList<MatchSession>)[]);
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -41,10 +59,10 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IMatchPersistenceRepository>(_matchPersistence);
-                services.AddSingleton<IScoreRepository>(_scores);
-                services.AddSingleton<IMatchRegistry>(new StubMatchRegistry());
-                services.AddSingleton<IUserRepository>(new NoopUserRepository());
+                services.AddSingleton(matchPersistence);
+                services.AddSingleton(scores);
+                services.AddSingleton(matchRegistry);
+                services.AddSingleton(TestDoubles.NullUserRepository());
             });
         });
     }
@@ -67,7 +85,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
     [Fact]
     public async Task GetMulti_KnownMatch_ReturnsReportJson()
     {
-        _matchPersistence.Match = new MatchRow(5, "Grand Finals",
+        _match = new MatchRow(5, "Grand Finals",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
         var client = _factory.CreateClient();
 
@@ -77,204 +95,5 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
         response.EnsureSuccessStatusCode();
         Assert.Contains("\"Grand Finals\"", body);
         Assert.Contains("\"matchId\":5", body, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private sealed class StubMatchPersistenceRepository : IMatchPersistenceRepository
-    {
-        public MatchRow? Match { get; set; }
-
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Match?.Id == matchId ? Match : null);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>(Match is null ? [] : [Match]);
-        }
-
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-    }
-
-    private sealed class StubScoreRepository : IScoreRepository
-    {
-        public Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5,
-            GameMode mode, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundScoreRow>>([]);
-        }
-
-        public Task InvalidateByMapMd5Async(string mapMd5, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class StubMatchRegistry : IMatchRegistry
-    {
-        public IReadOnlyList<MatchSession> All => [];
-
-        public MatchSession? GetById(int id)
-        {
-            return null;
-        }
-
-        public MatchSession? GetByDbId(int dbId)
-        {
-            return null;
-        }
-
-        public MatchSession? TryCreate(Func<int, MatchSession> factory)
-        {
-            return null;
-        }
-
-        public void Remove(int id)
-        {
-        }
-    }
-
-    /// <summary>
-    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
-    ///     referenced by these tests resolves to "no account" — UserBriefResolver's documented fallback —
-    ///     instead of hitting the real SQLite path these tests otherwise never need a working database
-    ///     connection for.
-    /// </summary>
-    private sealed class NoopUserRepository : IUserRepository
-    {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<User>>([]);
-        }
     }
 }
