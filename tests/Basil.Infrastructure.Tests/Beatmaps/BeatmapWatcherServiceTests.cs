@@ -1,7 +1,7 @@
 using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
-using Basil.Infrastructure.Tests.Persistence;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -10,19 +10,31 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 /// <summary>
 ///     Thin glue over BeatmapIngestionService's already-tested reconciliation methods — one
 ///     integration-style test dropping a real mapset folder in and polling for the DB row is enough.
+///     Deliberately does NOT use the shared <c>SqliteFixture</c>/<c>IClassFixture</c> pattern used
+///     elsewhere: xUnit already constructs a fresh instance of this class per test method (no
+///     <c>IClassFixture</c> forces sharing), so giving each instance its own temp DB here means the
+///     two tests below can never observe each other's rows — no test-order dependency, unlike a
+///     shared-DB class fixture would produce for two tests racing the same debounce window.
 /// </summary>
-public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposable
+public class BeatmapWatcherServiceTests : IDisposable
 {
+    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
     private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
     private readonly SqliteMapRepository _maps;
     private readonly string _mapsetsPath;
     private readonly BeatmapWatcherService _watcher;
     private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
-    public BeatmapWatcherServiceTests(SqliteFixture fixture)
+    public BeatmapWatcherServiceTests()
     {
-        _maps = new SqliteMapRepository(fixture.ConnectionString);
-        var mapsets = new SqliteMapsetRepository(fixture.ConnectionString);
+        // Pooling=False so Dispose can delete the file immediately without SqliteConnection
+        // .ClearAllPools() — that call is process-global and would yank pooled connections out
+        // from under every other IClassFixture<SqliteFixture>-based test class running in parallel.
+        var connectionString = $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5;Pooling=False";
+        SqlMigrationRunner.RunMigrations(connectionString);
+
+        _maps = new SqliteMapRepository(connectionString);
+        var mapsets = new SqliteMapsetRepository(connectionString);
         _mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
         Directory.CreateDirectory(_mapsetsPath);
 
@@ -41,6 +53,10 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
     public void Dispose()
     {
         Directory.Delete(_mapsetsPath, true);
+        // Pooling=False above means there's nothing pooled to clear before deleting.
+        File.Delete(_dbPath);
+        File.Delete(_dbPath + "-wal");
+        File.Delete(_dbPath + "-shm");
     }
 
     [Fact]
