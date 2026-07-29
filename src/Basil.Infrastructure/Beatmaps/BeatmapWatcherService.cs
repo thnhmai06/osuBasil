@@ -109,13 +109,16 @@ public sealed class BeatmapWatcherService(
 
         try
         {
+            var looksLikeOsz = affected.EndsWith(".osz", StringComparison.OrdinalIgnoreCase);
             if (Directory.Exists(affected))
                 await ingestion.ReconcileFolderAsync(affected);
-            else if (File.Exists(affected) && affected.EndsWith(".osz", StringComparison.OrdinalIgnoreCase))
+            else if (File.Exists(affected) && looksLikeOsz)
                 await ingestion.ReconcileOszAsync(affected);
-            else if (!File.Exists(affected))
+            else if (!File.Exists(affected) && !looksLikeOsz)
                 await ingestion.ReconcileDeletedFolderAsync(affected);
-            // else: a stray non-.osz file at the root — no valid ingestion pathway, ignore.
+            // else: a .osz that ReconcileOszAsync already extracted-then-deleted (its own Deleted
+            // event lands here too, and must NOT be treated as a live mapset folder disappearing —
+            // see BeatmapWatcherServiceTests' repro), or a stray non-.osz file — no pathway applies.
         }
         catch (Exception ex)
         {

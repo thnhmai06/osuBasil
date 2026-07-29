@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence;
@@ -141,6 +142,57 @@ public class BeatmapWatcherServiceTests : IDisposable
                 await Task.Delay(200);
 
             Assert.Null(await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
+        }
+        finally
+        {
+            await _watcher.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task DroppingOsz_SelfDeletingAfterExtraction_DoesNotDeleteTheMapsetItJustIngested()
+    {
+        await _watcher.StartAsync(CancellationToken.None);
+        try
+        {
+            // FileSystemWatcher can silently miss the very first filesystem event after a process's
+            // first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
+            // event before the real payload avoids that race.
+            await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+            await Task.Delay(300);
+            File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+
+            // Fixture carries an explicit BeatmapSetID (900000) so the mapset ResolveMapsetAsync
+            // creates has a deterministic id, and the .osz's own filename below uses that same id —
+            // matching what a real osu!-downloaded archive looks like ("{setId} Artist - Title.osz").
+            // Without that alignment ReconcileDeletedFolderAsync (parsing the leading digits of
+            // whatever path it's given) would parse an id that happens not to match any row, and the
+            // bug this test exists to catch — deleting the just-ingested mapset — would go unnoticed.
+            var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
+            using (var archive = ZipFile.Open(oszPath, ZipArchiveMode.Create))
+                archive.CreateEntryFromFile(
+                    Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu"),
+                    "vivid_with_setid.osu");
+
+            var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < ingestDeadline &&
+                   await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
+                await Task.Delay(200);
+
+            Assert.True(await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null,
+                "Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
+                " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+
+            // ReconcileOszAsync deletes the .osz right after extracting it, which raises this same
+            // watcher's own Deleted event for that path — give that a full debounce window (plus
+            // margin) to settle before asserting the mapset survived it.
+            await Task.Delay(TimeSpan.FromSeconds(4));
+
+            var survived = await _maps.FetchOneAsync(setId: 900000, includePrivate: true);
+            Assert.True(survived is not null,
+                "Mapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
+                string.Join(" | ", _ingestionLog.Messages) +
+                " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
         }
         finally
         {
