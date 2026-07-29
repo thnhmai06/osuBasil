@@ -1,4 +1,3 @@
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.PacketHandlers.Spectating;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
@@ -6,6 +5,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -89,33 +89,5 @@ public class StartSpectatingHandlerTests
         }
 
         return chunks;
-    }
-
-    private sealed class FakeChannelRegistry : IChannelRegistry
-    {
-        private readonly Dictionary<string, ChannelSession> _byName = new();
-
-        public void Seed(IReadOnlyList<Channel> channels)
-        {
-            throw new NotSupportedException();
-        }
-
-        public void Add(ChannelSession channel)
-        {
-            _byName[channel.Name] = channel;
-        }
-
-        public void Remove(string name)
-        {
-            _byName.Remove(name);
-        }
-
-        public ChannelSession? GetByName(string name)
-        {
-            return _byName.GetValueOrDefault(name);
-        }
-
-        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
-        public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
     }
 }

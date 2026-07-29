@@ -22,13 +22,13 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 /// <summary>Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
 public class MatchMembershipServiceTests
 {
-    private readonly FakeChannelRegistry _channelRegistry = new();
+    private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
 
     /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
     private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
 
     private readonly FakeMatchPersistenceRepository _matchPersistence = new();
-    private readonly FakeMatchRegistry _matchRegistry = new();
+    private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
     private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
@@ -477,68 +477,6 @@ public class MatchMembershipServiceTests
         }
 
         return chunks;
-    }
-
-    private sealed class FakeChannelRegistry : IChannelRegistry
-    {
-        private readonly Dictionary<string, ChannelSession> _byName = new();
-
-        public void Seed(IReadOnlyList<Channel> channels)
-        {
-            throw new NotSupportedException();
-        }
-
-        public void Add(ChannelSession channel)
-        {
-            _byName[channel.Name] = channel;
-        }
-
-        public void Remove(string name)
-        {
-            _byName.Remove(name);
-        }
-
-        public ChannelSession? GetByName(string name)
-        {
-            return _byName.GetValueOrDefault(name);
-        }
-
-        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
-
-        public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
-    }
-
-    private sealed class FakeMatchRegistry : IMatchRegistry
-    {
-        private readonly Dictionary<int, MatchSession> _byId = new();
-        private int _nextId;
-
-        public MatchSession? GetById(int id)
-        {
-            return _byId.GetValueOrDefault(id);
-        }
-
-        public MatchSession? GetByDbId(int dbId)
-        {
-            return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
-        }
-
-        public MatchSession? TryCreate(Func<int, MatchSession> factory)
-        {
-            if (_nextId >= 64) return null;
-
-            var match = factory(_nextId);
-            _byId[_nextId] = match;
-            _nextId++;
-            return match;
-        }
-
-        public void Remove(int id)
-        {
-            _byId.Remove(id);
-        }
-
-        public IReadOnlyList<MatchSession> All => [.. _byId.Values];
     }
 
     private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
