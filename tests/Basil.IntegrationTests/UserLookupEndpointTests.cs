@@ -20,97 +20,97 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly Dictionary<string, User> _byName = [];
+	private readonly Dictionary<string, User> _byName = [];
+	private readonly WebApplicationFactory<Program> _factory;
 
-    public UserLookupEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        var users = Substitute.For<IUserRepository>();
-        users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(call => _byName.Values.FirstOrDefault(u => u.Id == call.ArgAt<int>(0)));
-        users.FetchByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => _byName.GetValueOrDefault(call.ArgAt<string>(0)));
-        users.FetchAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<User>>([]));
+	public UserLookupEndpointTests(WebApplicationFactory<Program> factory)
+	{
+		var users = Substitute.For<IUserRepository>();
+		users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(call => _byName.Values.FirstOrDefault(u => u.Id == call.ArgAt<int>(0)));
+		users.FetchByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(call => _byName.GetValueOrDefault(call.ArgAt<string>(0)));
+		users.FetchAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<User>>([]));
 
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Basil:Server:AdminKey"] = "correct-key"
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton(users);
-            });
-        });
-    }
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+					["Basil:Server:AdminKey"] = "correct-key"
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(users);
+			});
+		});
+	}
 
-    private HttpClient MakeClient()
-    {
-        return _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-    }
+	private HttpClient MakeClient()
+	{
+		return _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+	}
 
-    private static HttpRequestMessage MakeRequest(string path, string? adminKey = null)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
-        if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
-        return request;
-    }
+	private static HttpRequestMessage MakeRequest(string path, string? adminKey = null)
+	{
+		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
+		if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+		return request;
+	}
 
-    [Fact]
-    public async Task GetUser_ByUsername_RedirectsToCanonicalId()
-    {
-        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+	[Fact]
+	public async Task GetUser_ByUsername_RedirectsToCanonicalId()
+	{
+		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
-        var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player", "correct-key"));
+		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player", "correct-key"));
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/users/7", response.Headers.Location?.ToString());
-    }
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("/users/7", response.Headers.Location?.ToString());
+	}
 
-    [Fact]
-    public async Task GetUser_ByUnknownUsername_ReturnsNotFound()
-    {
-        var response = await MakeClient().SendAsync(MakeRequest("/users/nobody", "correct-key"));
+	[Fact]
+	public async Task GetUser_ByUnknownUsername_ReturnsNotFound()
+	{
+		var response = await MakeClient().SendAsync(MakeRequest("/users/nobody", "correct-key"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task GetUserAvatar_ByUsername_RedirectsToCanonicalId()
-    {
-        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+	[Fact]
+	public async Task GetUserAvatar_ByUsername_RedirectsToCanonicalId()
+	{
+		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
-        var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/avatar", "correct-key"));
+		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/avatar", "correct-key"));
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/users/7/avatar", response.Headers.Location?.ToString());
-    }
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("/users/7/avatar", response.Headers.Location?.ToString());
+	}
 
-    [Fact]
-    public async Task GetUserLive_ByUsername_RedirectsToCanonicalId()
-    {
-        _byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+	[Fact]
+	public async Task GetUserLive_ByUsername_RedirectsToCanonicalId()
+	{
+		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
-        var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/live"));
+		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/live"));
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/users/7/live", response.Headers.Location?.ToString());
-    }
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("/users/7/live", response.Headers.Location?.ToString());
+	}
 
-    [Fact]
-    public async Task GetUser_NumericId_IsNotRedirected()
-    {
-        var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
+	[Fact]
+	public async Task GetUser_NumericId_IsNotRedirected()
+	{
+		var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
 
-        Assert.NotEqual(HttpStatusCode.Redirect, response.StatusCode);
-    }
+		Assert.NotEqual(HttpStatusCode.Redirect, response.StatusCode);
+	}
 }

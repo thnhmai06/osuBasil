@@ -9,20 +9,20 @@ namespace Basil.Application.PacketHandlers.Core;
 /// </summary>
 public sealed class UserPresenceRequestAllHandler(IPlayerSessionRegistry sessionRegistry) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.UserPresenceRequestAll;
+	public ClientPackets PacketId => ClientPackets.UserPresenceRequestAll;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        reader.ReadI32(); // ingame_time, unused
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		reader.ReadI32(); // ingame_time, unused
 
-        var buffer = new List<byte>();
-        foreach (var other in sessionRegistry.All.Where(s => !s.Restricted))
-            buffer.AddRange(PacketBuilders.BuildUserPresence(other));
+		var buffer = new List<byte>();
+		foreach (var other in sessionRegistry.All.Where(s => !s.Restricted))
+			buffer.AddRange(PacketBuilders.BuildUserPresence(other));
 
-        player.Enqueue([.. buffer]);
-        return Task.CompletedTask;
-    }
+		player.Enqueue([.. buffer]);
+		return Task.CompletedTask;
+	}
 }

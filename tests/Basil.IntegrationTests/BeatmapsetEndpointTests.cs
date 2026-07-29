@@ -23,305 +23,305 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
-    private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
-    private Beatmap? _oneBeatmap;
-    private Beatmap? _byFilename;
-    private IReadOnlyList<Beatmap> _setBeatmaps = [];
-    private Mapset? _mapset;
-    private ScoreOwnerRow? _scoreOwner;
-    private byte[]? _replayBytes;
+	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
+	private readonly WebApplicationFactory<Program> _factory;
+	private Beatmap? _byFilename;
+	private Mapset? _mapset;
+	private Beatmap? _oneBeatmap;
+	private byte[]? _replayBytes;
+	private ScoreOwnerRow? _scoreOwner;
+	private IReadOnlyList<Beatmap> _setBeatmaps = [];
 
-    public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        var maps = Substitute.For<IMapRepository>();
-        maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
-                Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.ArgAt<string?>(2) is not null ? _byFilename : _oneBeatmap);
-        maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Mapset.Id == call.ArgAt<int>(0)
-                ? _setBeatmaps
-                : []);
-        maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
+	public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
+	{
+		var maps = Substitute.For<IMapRepository>();
+		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+				Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(call => call.ArgAt<string?>(2) is not null ? _byFilename : _oneBeatmap);
+		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Mapset.Id == call.ArgAt<int>(0)
+				? _setBeatmaps
+				: []);
+		maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+				Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 
-        var mapsets = Substitute.For<IMapsetRepository>();
-        mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
+		var mapsets = Substitute.For<IMapsetRepository>();
+		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
 
-        var scores = Substitute.For<IScoreRepository>();
-        scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _scoreOwner);
+		var scores = Substitute.For<IScoreRepository>();
+		scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _scoreOwner);
 
-        var replayStorage = Substitute.For<IReplayStorage>();
-        replayStorage.ReadAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _replayBytes);
+		var replayStorage = Substitute.For<IReplayStorage>();
+		replayStorage.ReadAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _replayBytes);
 
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Basil:Server:AdminKey"] = "correct-key"
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton(maps);
-                services.AddSingleton(mapsets);
-                services.AddSingleton(scores);
-                services.AddSingleton(replayStorage);
-                services.AddSingleton(Options.Create(new StorageOptions
-                {
-                    ReplaysPath = Path.Combine(_dataDir, "Replays"),
-                    AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-                    MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
-                    SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
-                    FaqsPath = Path.Combine(_dataDir, "Faqs")
-                }));
-            });
-        });
-    }
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+					["Basil:Server:AdminKey"] = "correct-key"
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(maps);
+				services.AddSingleton(mapsets);
+				services.AddSingleton(scores);
+				services.AddSingleton(replayStorage);
+				services.AddSingleton(Options.Create(new StorageOptions
+				{
+					ReplaysPath = Path.Combine(_dataDir, "Replays"),
+					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
+					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					FaqsPath = Path.Combine(_dataDir, "Faqs")
+				}));
+			});
+		});
+	}
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
-    }
+	public void Dispose()
+	{
+		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
+	}
 
-    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "api.test.local")
-    {
-        return new HttpRequestMessage(method, path) { Headers = { Host = host } };
-    }
+	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string host = "api.test.local")
+	{
+		return new HttpRequestMessage(method, path) { Headers = { Host = host } };
+	}
 
-    private static Mapset MakeMapset(int id)
-    {
-        return new Mapset(id, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
-    }
+	private static Mapset MakeMapset(int id)
+	{
+		return new Mapset(id, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+	}
 
-    private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
-    {
-        return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
-            TimeSpan.FromSeconds(100), 500,
-            new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
-    }
+	private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
+	{
+		return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
+			TimeSpan.FromSeconds(100), 500,
+			new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
+	}
 
-    private string MapsetFolder(int setId)
-    {
-        var folder = Path.Combine(_dataDir, "Mapsets", $"{setId} Artist - Title");
-        Directory.CreateDirectory(folder);
-        return folder;
-    }
+	private string MapsetFolder(int setId)
+	{
+		var folder = Path.Combine(_dataDir, "Mapsets", $"{setId} Artist - Title");
+		Directory.CreateDirectory(folder);
+		return folder;
+	}
 
-    // ---- GET /beatmapsets/{mapsetId} ----
+	// ---- GET /beatmapsets/{mapsetId} ----
 
-    [Fact]
-    public async Task GetBeatmapset_UnknownId_ReturnsNotFound()
-    {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/999"));
+	[Fact]
+	public async Task GetBeatmapset_UnknownId_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/999"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task GetBeatmapset_KnownId_ReturnsInfoWithBeatmapsInline()
-    {
-        var mapset = MakeMapset(100);
-        _mapset = mapset;
-        _setBeatmaps = [MakeBeatmap(1, mapset, "diff1.osu"), MakeBeatmap(2, mapset, "diff2.osu")];
+	[Fact]
+	public async Task GetBeatmapset_KnownId_ReturnsInfoWithBeatmapsInline()
+	{
+		var mapset = MakeMapset(100);
+		_mapset = mapset;
+		_setBeatmaps = [MakeBeatmap(1, mapset, "diff1.osu"), MakeBeatmap(2, mapset, "diff2.osu")];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"));
-        var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"));
+		var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("\"artist\":\"Artist\"", body);
-        Assert.Contains("\"beatmaps\"", body);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Contains("\"artist\":\"Artist\"", body);
+		Assert.Contains("\"beatmaps\"", body);
+	}
 
-    [Fact]
-    public async Task GetBeatmapset_Private_NonAdmin_ReturnsNotFound()
-    {
-        var mapset = MakeMapset(101) with { IsPrivate = true };
-        _mapset = mapset;
-        _setBeatmaps = [MakeBeatmap(1, mapset)];
+	[Fact]
+	public async Task GetBeatmapset_Private_NonAdmin_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(101) with { IsPrivate = true };
+		_mapset = mapset;
+		_setBeatmaps = [MakeBeatmap(1, mapset)];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    // ---- GET /beatmapsets/{mapsetId}/{beatmapId} (info) ----
+	// ---- GET /beatmapsets/{mapsetId}/{beatmapId} (info) ----
 
-    [Fact]
-    public async Task BeatmapInfo_UnknownId_ReturnsNotFound()
-    {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999"));
+	[Fact]
+	public async Task BeatmapInfo_UnknownId_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task BeatmapInfo_KnownId_ReturnsJson()
-    {
-        var mapset = MakeMapset(100);
-        _oneBeatmap = MakeBeatmap(1, mapset);
+	[Fact]
+	public async Task BeatmapInfo_KnownId_ReturnsJson()
+	{
+		var mapset = MakeMapset(100);
+		_oneBeatmap = MakeBeatmap(1, mapset);
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
-        var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
+		var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("\"version\":\"Normal\"", body);
-        // filename is deliberately never serialized (Phase 2's BeatmapView drops it — internal-only,
-        // still used server-side for ingestion/`GET /web/maps/{filename}`).
-        Assert.DoesNotContain("\"filename\"", body);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Contains("\"version\":\"Normal\"", body);
+		// filename is deliberately never serialized (Phase 2's BeatmapView drops it — internal-only,
+		// still used server-side for ingestion/`GET /web/maps/{filename}`).
+		Assert.DoesNotContain("\"filename\"", body);
+	}
 
-    // ---- GET /beatmapsets/{mapsetId}/{beatmapId}/download ----
+	// ---- GET /beatmapsets/{mapsetId}/{beatmapId}/download ----
 
-    [Fact]
-    public async Task DownloadBeatmap_UnknownId_ReturnsNotFound()
-    {
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/download"));
+	[Fact]
+	public async Task DownloadBeatmap_UnknownId_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/download"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task DownloadBeatmap_FileMissingOnDisk_ReturnsNotFound()
-    {
-        var mapset = MakeMapset(100);
-        _oneBeatmap = MakeBeatmap(1, mapset);
+	[Fact]
+	public async Task DownloadBeatmap_FileMissingOnDisk_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(100);
+		_oneBeatmap = MakeBeatmap(1, mapset);
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task DownloadBeatmap_FileExists_ReturnsCorrectMimeType()
-    {
-        var mapset = MakeMapset(100);
-        _oneBeatmap = MakeBeatmap(1, mapset);
-        var folder = MapsetFolder(100);
-        await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+	[Fact]
+	public async Task DownloadBeatmap_FileExists_ReturnsCorrectMimeType()
+	{
+		var mapset = MakeMapset(100);
+		_oneBeatmap = MakeBeatmap(1, mapset);
+		var folder = MapsetFolder(100);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
+	}
 
-    // ---- GET /beatmapsets/{mapsetId}/download ----
+	// ---- GET /beatmapsets/{mapsetId}/download ----
 
-    [Fact]
-    public async Task DownloadBeatmapset_NoFolder_ReturnsNotFound()
-    {
-        var mapset = MakeMapset(200);
-        _setBeatmaps = [MakeBeatmap(1, mapset)];
+	[Fact]
+	public async Task DownloadBeatmapset_NoFolder_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(200);
+		_setBeatmaps = [MakeBeatmap(1, mapset)];
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task DownloadBeatmapset_FolderExists_ReturnsCorrectMimeType()
-    {
-        var mapset = MakeMapset(300);
-        _setBeatmaps = [MakeBeatmap(1, mapset)];
-        var folder = MapsetFolder(300);
-        await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+	[Fact]
+	public async Task DownloadBeatmapset_FolderExists_ReturnsCorrectMimeType()
+	{
+		var mapset = MakeMapset(300);
+		_setBeatmaps = [MakeBeatmap(1, mapset)];
+		var folder = MapsetFolder(300);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
+	}
 
-    // ---- GET /beatmapsets/{mapsetId}/storyboard ----
+	// ---- GET /beatmapsets/{mapsetId}/storyboard ----
 
-    [Fact]
-    public async Task Storyboard_NoFolder_ReturnsNotFound()
-    {
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard"));
+	[Fact]
+	public async Task Storyboard_NoFolder_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task Storyboard_FolderExistsNoOsb_ReturnsNotFound()
-    {
-        MapsetFolder(500);
+	[Fact]
+	public async Task Storyboard_FolderExistsNoOsb_ReturnsNotFound()
+	{
+		MapsetFolder(500);
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task Storyboard_FolderHasOsbFile_ReturnsCorrectMimeType()
-    {
-        var folder = MapsetFolder(600);
-        await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]");
+	[Fact]
+	public async Task Storyboard_FolderHasOsbFile_ReturnsCorrectMimeType()
+	{
+		var folder = MapsetFolder(600);
+		await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]");
 
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard"));
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/x-osu-storyboard", response.Content.Headers.ContentType?.MediaType);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("application/x-osu-storyboard", response.Content.Headers.ContentType?.MediaType);
+	}
 
-    // ---- Admin's old single-lookup route is gone (DELETE at the same template still exists —
-    // see AdminManagementEndpointTests for DELETE coverage) ----
+	// ---- Admin's old single-lookup route is gone (DELETE at the same template still exists —
+	// see AdminManagementEndpointTests for DELETE coverage) ----
 
-    [Fact]
-    public async Task OldAdminBeatmapLookup_GetNoLongerSupported()
-    {
-        var request = MakeRequest(HttpMethod.Get, "/beatmaps/1");
-        request.Headers.Add("X-Admin-Key", "correct-key");
+	[Fact]
+	public async Task OldAdminBeatmapLookup_GetNoLongerSupported()
+	{
+		var request = MakeRequest(HttpMethod.Get, "/beatmaps/1");
+		request.Headers.Add("X-Admin-Key", "correct-key");
 
-        var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    // ---- Pre-existing download routes' MIME-type fixes ----
+	// ---- Pre-existing download routes' MIME-type fixes ----
 
-    [Fact]
-    public async Task MapFile_Exists_ReturnsCorrectMimeType()
-    {
-        _byFilename = MakeBeatmap(1, MakeMapset(700), "Some Map.osu");
-        var folder = MapsetFolder(700);
-        await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
+	[Fact]
+	public async Task MapFile_Exists_ReturnsCorrectMimeType()
+	{
+		_byFilename = MakeBeatmap(1, MakeMapset(700), "Some Map.osu");
+		var folder = MapsetFolder(700);
+		await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/web/maps/Some%20Map.osu")
-        { Headers = { Host = "osu.test.local" } };
-        var response = await _factory.CreateClient().SendAsync(request);
+		var request = new HttpRequestMessage(HttpMethod.Get, "/web/maps/Some%20Map.osu")
+			{ Headers = { Host = "osu.test.local" } };
+		var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
+	}
 
-    [Fact]
-    public async Task ReplayDownload_Exists_ReturnsCorrectMimeType()
-    {
-        _scoreOwner = new ScoreOwnerRow(1, GameMode.Standard);
-        _replayBytes = [1, 2, 3];
+	[Fact]
+	public async Task ReplayDownload_Exists_ReturnsCorrectMimeType()
+	{
+		_scoreOwner = new ScoreOwnerRow(1, GameMode.Standard);
+		_replayBytes = [1, 2, 3];
 
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
+	}
 }

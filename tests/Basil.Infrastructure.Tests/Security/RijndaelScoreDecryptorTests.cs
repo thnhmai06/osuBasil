@@ -9,27 +9,27 @@ namespace Basil.Infrastructure.Tests.Security;
 /// </summary>
 public class RijndaelScoreDecryptorTests
 {
-    private const string IvBase64 = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
-    private const string OsuVersion = "20210520";
+	private const string IvBase64 = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+	private const string OsuVersion = "20210520";
 
-    private const string ScoreDataBase64 =
-        "fRJr4+syKqvnOK9Ks3RmOB9DDqqahqqB166HvYITNF/jny83NYRL+h0SRtXc2i048oJwyp0SVOTouXBfyyRbUhbcXz5YSxroTujOgv+VyaCoVR755MA6H5g1Zc0jePRd";
+	private const string ScoreDataBase64 =
+		"fRJr4+syKqvnOK9Ks3RmOB9DDqqahqqB166HvYITNF/jny83NYRL+h0SRtXc2i048oJwyp0SVOTouXBfyyRbUhbcXz5YSxroTujOgv+VyaCoVR755MA6H5g1Zc0jePRd";
 
-    private const string ClientHashBase64 = "V0evq1wNLPakUmrnrOvpLElNYkZ+r1I7y4UNe6XKLvA=";
+	private const string ClientHashBase64 = "V0evq1wNLPakUmrnrOvpLElNYkZ+r1I7y4UNe6XKLvA=";
 
-    [Fact]
-    public void Decrypt_MatchesPythonEncryptionOracle()
-    {
-        var decryptor = new RijndaelScoreDecryptor();
+	[Fact]
+	public void Decrypt_MatchesPythonEncryptionOracle()
+	{
+		var decryptor = new RijndaelScoreDecryptor();
 
-        var (fields, clientHash) = decryptor.Decrypt(ScoreDataBase64, ClientHashBase64, IvBase64, OsuVersion);
+		var (fields, clientHash) = decryptor.Decrypt(ScoreDataBase64, ClientHashBase64, IvBase64, OsuVersion);
 
-        Assert.Equal(
-            [
-                "abc123checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "72", "True", "0",
-                "210520235959", "20210520 "
-            ],
-            fields);
-        Assert.Equal("client_hash_plaintext_value", clientHash);
-    }
+		Assert.Equal(
+			[
+				"abc123checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "72", "True", "0",
+				"210520235959", "20210520 "
+			],
+			fields);
+		Assert.Equal("client_hash_plaintext_value", clientHash);
+	}
 }

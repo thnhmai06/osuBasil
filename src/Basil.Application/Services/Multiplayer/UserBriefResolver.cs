@@ -10,13 +10,13 @@ namespace Basil.Application.Services.Multiplayer;
 /// </summary>
 public static class UserBriefResolver
 {
-    public static async Task<UserBrief?> ResolveAsync(int userId, IPlayerSessionRegistry sessionRegistry,
-        IUserRepository users, CancellationToken cancellationToken = default)
-    {
-        var session = sessionRegistry.GetById(userId);
-        if (session is not null) return new UserBrief(session.Id, session.Name, session.Geoloc.Country);
+	public static async Task<UserBrief?> ResolveAsync(int userId, IPlayerSessionRegistry sessionRegistry,
+		IUserRepository users, CancellationToken cancellationToken = default)
+	{
+		var session = sessionRegistry.GetById(userId);
+		if (session is not null) return new UserBrief(session.Id, session.Name, session.Geoloc.Country);
 
-        var user = await users.FetchByIdAsync(userId, cancellationToken);
-        return user is null ? null : new UserBrief(user.Id, user.Name, user.Country);
-    }
+		var user = await users.FetchByIdAsync(userId, cancellationToken);
+		return user is null ? null : new UserBrief(user.Id, user.Name, user.Country);
+	}
 }

@@ -22,78 +22,78 @@ namespace Basil.Infrastructure.Tests.DependencyInjection;
 /// </summary>
 public class CompositionRootTests
 {
-    private readonly ServiceProvider _provider;
+	private readonly ServiceProvider _provider;
 
-    public CompositionRootTests()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Basil:Server:Domain"] = "test.local",
-                ["Basil:Bot:CommandPrefix"] = "!",
-                ["Basil:Server:MenuIconPath"] = "icon.png",
-                ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
-            })
-            .Build();
+	public CompositionRootTests()
+	{
+		var configuration = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?>
+			{
+				["Basil:Server:Domain"] = "test.local",
+				["Basil:Bot:CommandPrefix"] = "!",
+				["Basil:Server:MenuIconPath"] = "icon.png",
+				["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+			})
+			.Build();
 
-        var services = new ServiceCollection();
-        services.AddInfrastructure(configuration);
-        services.AddApplication();
-        _provider = services.BuildServiceProvider();
-    }
+		var services = new ServiceCollection();
+		services.AddInfrastructure(configuration);
+		services.AddApplication();
+		_provider = services.BuildServiceProvider();
+	}
 
-    [Fact]
-    public void ResolvesOsuLoginUseCase()
-    {
-        Assert.NotNull(_provider.GetRequiredService<LoginService>());
-    }
+	[Fact]
+	public void ResolvesOsuLoginUseCase()
+	{
+		Assert.NotNull(_provider.GetRequiredService<LoginService>());
+	}
 
-    [Fact]
-    public void ResolvesBanchoPacketDispatcherWithAllHandlers()
-    {
-        Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-        Assert.Equal(44, _provider.GetServices<IBanchoPacketHandler>().Count());
-    }
+	[Fact]
+	public void ResolvesBanchoPacketDispatcherWithAllHandlers()
+	{
+		Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
+		Assert.Equal(44, _provider.GetServices<IBanchoPacketHandler>().Count());
+	}
 
-    [Fact]
-    public void ResolvesSessionRegistriesAsSharedSingletons()
-    {
-        var registry1 = _provider.GetRequiredService<IPlayerSessionRegistry>();
-        var registry2 = _provider.GetRequiredService<IPlayerSessionRegistry>();
-        Assert.Same(registry1, registry2);
-    }
+	[Fact]
+	public void ResolvesSessionRegistriesAsSharedSingletons()
+	{
+		var registry1 = _provider.GetRequiredService<IPlayerSessionRegistry>();
+		var registry2 = _provider.GetRequiredService<IPlayerSessionRegistry>();
+		Assert.Same(registry1, registry2);
+	}
 
-    [Fact]
-    public void ResolvesScoreSubmissionUseCase()
-    {
-        Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionService>());
-    }
+	[Fact]
+	public void ResolvesScoreSubmissionUseCase()
+	{
+		Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionService>());
+	}
 
-    [Fact]
-    public void ResolvesReplayServiceAndItsStorage()
-    {
-        Assert.NotNull(_provider.GetRequiredService<ReplayService>());
-        Assert.NotNull(_provider.GetRequiredService<IReplayStorage>());
-    }
+	[Fact]
+	public void ResolvesReplayServiceAndItsStorage()
+	{
+		Assert.NotNull(_provider.GetRequiredService<ReplayService>());
+		Assert.NotNull(_provider.GetRequiredService<IReplayStorage>());
+	}
 
-    [Fact]
-    public void ResolvesScoreDecryptor()
-    {
-        Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
-    }
+	[Fact]
+	public void ResolvesScoreDecryptor()
+	{
+		Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
+	}
 
-    [Fact]
-    public void ResolvesSpectatorServiceAndChannelMembershipService()
-    {
-        Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
-        Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
-    }
+	[Fact]
+	public void ResolvesSpectatorServiceAndChannelMembershipService()
+	{
+		Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
+		Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
+	}
 
-    [Fact]
-    public void ResolvesMatchRegistryAsASharedSingleton()
-    {
-        var registry1 = _provider.GetRequiredService<IMatchRegistry>();
-        var registry2 = _provider.GetRequiredService<IMatchRegistry>();
-        Assert.Same(registry1, registry2);
-    }
+	[Fact]
+	public void ResolvesMatchRegistryAsASharedSingleton()
+	{
+		var registry1 = _provider.GetRequiredService<IMatchRegistry>();
+		var registry2 = _provider.GetRequiredService<IMatchRegistry>();
+		Assert.Same(registry1, registry2);
+	}
 }

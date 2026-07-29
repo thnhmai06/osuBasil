@@ -17,66 +17,66 @@ namespace Basil.Application.Services.Spectating;
 /// </summary>
 public sealed class SpectatorService(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
 {
-    private static string ChannelNameFor(int hostId)
-    {
-        return $"#spec_{hostId}";
-    }
+	private static string ChannelNameFor(int hostId)
+	{
+		return $"#spec_{hostId}";
+	}
 
-    public void AddSpectator(PlayerSession host, PlayerSession spectator)
-    {
-        var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
-        if (channel is null)
-        {
-            channel = new ChannelSession(
-                0, ChannelNameFor(host.Id), $"{host.Name}'s spectator channel.",
-                0, 0, false, "#spectator", true);
-            channelRegistry.Add(channel);
-            channelMembership.Join(host, channel);
-        }
+	public void AddSpectator(PlayerSession host, PlayerSession spectator)
+	{
+		var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
+		if (channel is null)
+		{
+			channel = new ChannelSession(
+				0, ChannelNameFor(host.Id), $"{host.Name}'s spectator channel.",
+				0, 0, false, "#spectator", true);
+			channelRegistry.Add(channel);
+			channelMembership.Join(host, channel);
+		}
 
-        if (!channelMembership.Join(spectator, channel)) return;
+		if (!channelMembership.Join(spectator, channel)) return;
 
-        if (!spectator.Stealth)
-        {
-            var joinedBySpectator = ServerPacketWriter.FellowSpectatorJoined(spectator.Id);
-            foreach (var existing in host.Spectators)
-            {
-                existing.Enqueue(joinedBySpectator);
-                spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
-            }
+		if (!spectator.Stealth)
+		{
+			var joinedBySpectator = ServerPacketWriter.FellowSpectatorJoined(spectator.Id);
+			foreach (var existing in host.Spectators)
+			{
+				existing.Enqueue(joinedBySpectator);
+				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
+			}
 
-            host.Enqueue(ServerPacketWriter.SpectatorJoined(spectator.Id));
-        }
-        else
-        {
-            // Stealth: only give the (admin) spectator visibility into existing spectators, not
-            // vice-versa — the host and other spectators are never told this player joined.
-            foreach (var existing in host.Spectators)
-                spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
-        }
+			host.Enqueue(ServerPacketWriter.SpectatorJoined(spectator.Id));
+		}
+		else
+		{
+			// Stealth: only give the (admin) spectator visibility into existing spectators, not
+			// vice-versa — the host and other spectators are never told this player joined.
+			foreach (var existing in host.Spectators)
+				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
+		}
 
-        host.AddSpectator(spectator);
-        spectator.Spectating = host;
-    }
+		host.AddSpectator(spectator);
+		spectator.Spectating = host;
+	}
 
-    public void RemoveSpectator(PlayerSession host, PlayerSession spectator)
-    {
-        host.RemoveSpectator(spectator);
-        spectator.Spectating = null;
+	public void RemoveSpectator(PlayerSession host, PlayerSession spectator)
+	{
+		host.RemoveSpectator(spectator);
+		spectator.Spectating = null;
 
-        var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
-        if (channel is null) return;
+		var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
+		if (channel is null) return;
 
-        channelMembership.Part(spectator, channel);
+		channelMembership.Part(spectator, channel);
 
-        if (host.Spectators.Count == 0)
-        {
-            channelMembership.Part(host, channel);
-            channelRegistry.Remove(channel.Name);
-            return;
-        }
+		if (host.Spectators.Count == 0)
+		{
+			channelMembership.Part(host, channel);
+			channelRegistry.Remove(channel.Name);
+			return;
+		}
 
-        var fellowLeft = ServerPacketWriter.FellowSpectatorLeft(spectator.Id);
-        foreach (var remaining in host.Spectators) remaining.Enqueue(fellowLeft);
-    }
+		var fellowLeft = ServerPacketWriter.FellowSpectatorLeft(spectator.Id);
+		foreach (var remaining in host.Spectators) remaining.Enqueue(fellowLeft);
+	}
 }

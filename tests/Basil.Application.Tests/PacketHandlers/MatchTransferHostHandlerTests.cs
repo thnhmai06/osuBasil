@@ -7,59 +7,59 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchTransferHost.</summary>
 public class MatchTransferHostHandlerTests
 {
-    private static BanchoPacketReader ReaderFor(int slotId)
-    {
-        return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
-    }
+	private static BanchoPacketReader ReaderFor(int slotId)
+	{
+		return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
+	}
 
-    [Fact]
-    public async Task Handle_NonHost_NoOp()
-    {
-        var fixture = new Fixture();
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        fixture.RegisterAll(host, guest);
-        var match = fixture.CreateMatch(host);
-        await fixture.MatchMembership.JoinAsync(guest, match, "", default);
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-            fixture.MatchPersistence);
+	[Fact]
+	public async Task Handle_NonHost_NoOp()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var match = fixture.CreateMatch(host);
+		await fixture.MatchMembership.JoinAsync(guest, match, "");
+		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+			fixture.MatchPersistence);
 
-        await handler.HandleAsync(guest, ReaderFor(1));
+		await handler.HandleAsync(guest, ReaderFor(1));
 
-        Assert.Equal(host.Id, match.HostId);
-    }
+		Assert.Equal(host.Id, match.HostId);
+	}
 
-    [Fact]
-    public async Task Handle_HostTransfersToOccupiedSlot_UpdatesHostAndNotifies()
-    {
-        var fixture = new Fixture();
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        fixture.RegisterAll(host, guest);
-        var match = fixture.CreateMatch(host);
-        await fixture.MatchMembership.JoinAsync(guest, match, "", default);
-        guest.Dequeue();
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-            fixture.MatchPersistence);
+	[Fact]
+	public async Task Handle_HostTransfersToOccupiedSlot_UpdatesHostAndNotifies()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var match = fixture.CreateMatch(host);
+		await fixture.MatchMembership.JoinAsync(guest, match, "");
+		guest.Dequeue();
+		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+			fixture.MatchPersistence);
 
-        await handler.HandleAsync(host, ReaderFor(1));
+		await handler.HandleAsync(host, ReaderFor(1));
 
-        Assert.Equal(guest.Id, match.HostId);
-        Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
-    }
+		Assert.Equal(guest.Id, match.HostId);
+		Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
+	}
 
-    [Fact]
-    public async Task Handle_TargetSlotEmpty_NoOp()
-    {
-        var fixture = new Fixture();
-        var host = MakePlayer(1, "host");
-        fixture.RegisterAll(host);
-        var match = fixture.CreateMatch(host);
-        var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-            fixture.MatchPersistence);
+	[Fact]
+	public async Task Handle_TargetSlotEmpty_NoOp()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
+			fixture.MatchPersistence);
 
-        await handler.HandleAsync(host, ReaderFor(4));
+		await handler.HandleAsync(host, ReaderFor(4));
 
-        Assert.Equal(host.Id, match.HostId);
-    }
+		Assert.Equal(host.Id, match.HostId);
+	}
 }

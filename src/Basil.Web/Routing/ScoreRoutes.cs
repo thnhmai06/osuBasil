@@ -21,101 +21,101 @@ namespace Basil.Web.Routing;
 /// </summary>
 internal static class ScoreRoutes
 {
-    public static void MapScoreRoutes(this RouteGroupBuilder group)
-    {
-        group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
-                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
-                CancellationToken cancellationToken) =>
-            {
-                var (p, ps) = Pagination.Normalize(page, pageSize);
-                var overqueried = await scores.FetchPageAsync((p - 1) * ps, ps + 1, cancellationToken);
-                var totalRecords = await scores.FetchCountAsync(cancellationToken);
-                var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
-                var views = new List<ScoreDetailView>(trimmed.Items.Count);
-                foreach (var row in trimmed.Items)
-                    views.Add(await BuildDetailView(row, sessionRegistry, users, maps, cancellationToken));
-                return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
-                    trimmed.TotalRecords, views));
-            })
-            .WithGroupName("basilapi")
-            .WithName("listScores")
-            .WithSummary("List Scores")
-            .WithDescription("Query params: `page` (default 1), `pageSize` (default 50). Response: " +
-                             "`{ page, pageSize, totalRecords, items }` (wrapped in the enveloped `meta` object at the " +
-                             "top level), each item the same shape as " +
-                             "`GET /scores/{scoreId}`. Public, no authentication.")
-            .WithTags("Scores")
-            .Produces<PagedResult<ScoreDetailView>>()
-            .WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
+	public static void MapScoreRoutes(this RouteGroupBuilder group)
+	{
+		group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
+				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+				CancellationToken cancellationToken) =>
+			{
+				var (p, ps) = Pagination.Normalize(page, pageSize);
+				var overqueried = await scores.FetchPageAsync((p - 1) * ps, ps + 1, cancellationToken);
+				var totalRecords = await scores.FetchCountAsync(cancellationToken);
+				var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
+				var views = new List<ScoreDetailView>(trimmed.Items.Count);
+				foreach (var row in trimmed.Items)
+					views.Add(await BuildDetailView(row, sessionRegistry, users, maps, cancellationToken));
+				return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
+					trimmed.TotalRecords, views));
+			})
+			.WithGroupName("basilapi")
+			.WithName("listScores")
+			.WithSummary("List Scores")
+			.WithDescription("Query params: `page` (default 1), `pageSize` (default 50). Response: " +
+			                 "`{ page, pageSize, totalRecords, items }` (wrapped in the enveloped `meta` object at the " +
+			                 "top level), each item the same shape as " +
+			                 "`GET /scores/{scoreId}`. Public, no authentication.")
+			.WithTags("Scores")
+			.Produces<PagedResult<ScoreDetailView>>()
+			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
-        group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
-                IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
-                CancellationToken cancellationToken) =>
-            {
-                var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
-                return score is null
-                    ? Results.NotFound()
-                    : Results.Json(await BuildDetailView(score, sessionRegistry, users, maps, cancellationToken));
-            })
-            .WithGroupName("basilapi")
-            .WithName("getScore")
-            .WithSummary("Get Score")
-            .WithDescription("Returns the score's full row — mode-specific hit counts, combo, total score, " +
-                             "mods, the submitting `user` embed, and the played `beatmap` (null once its stored `mapMd5` " +
-                             "no longer resolves — content changed or the beatmap was removed since). 404 if no score with " +
-                             "this id exists. Public, no authentication.")
-            .WithTags("Scores")
-            .Produces<ScoreDetailView>()
-            .WithExample(StatusCodes.Status200OK, SampleScoreDetail())
-            .ProducesProblem(StatusCodes.Status404NotFound);
+		group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
+				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+				CancellationToken cancellationToken) =>
+			{
+				var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
+				return score is null
+					? Results.NotFound()
+					: Results.Json(await BuildDetailView(score, sessionRegistry, users, maps, cancellationToken));
+			})
+			.WithGroupName("basilapi")
+			.WithName("getScore")
+			.WithSummary("Get Score")
+			.WithDescription("Returns the score's full row — mode-specific hit counts, combo, total score, " +
+			                 "mods, the submitting `user` embed, and the played `beatmap` (null once its stored `mapMd5` " +
+			                 "no longer resolves — content changed or the beatmap was removed since). 404 if no score with " +
+			                 "this id exists. Public, no authentication.")
+			.WithTags("Scores")
+			.Produces<ScoreDetailView>()
+			.WithExample(StatusCodes.Status200OK, SampleScoreDetail())
+			.ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/scores/{scoreId:long}/replay", async (long scoreId, ReplayService replayService,
-                CancellationToken cancellationToken) =>
-            {
-                var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);
-                return result.Code == ReplayFetchResultCode.NotFound
-                    ? Results.NotFound()
-                    : Results.Bytes(result.Data!, "application/x-osu-replay");
-            })
-            .WithGroupName("basilapi")
-            .WithName("downloadScoreReplay")
-            .WithSummary("Download Score Replay")
-            .WithDescription("Serves the `.osr` replay for the given score id. 404 if the score doesn't exist " +
-                             "or has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication — " +
-                             "unlike the osu! client's own `GET /web/osu-getreplay.php`, which requires client-style login " +
-                             "credentials.")
-            .WithTags("Scores")
-            .ProducesProblem(StatusCodes.Status404NotFound);
-    }
+		group.MapGet("/scores/{scoreId:long}/replay", async (long scoreId, ReplayService replayService,
+				CancellationToken cancellationToken) =>
+			{
+				var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);
+				return result.Code == ReplayFetchResultCode.NotFound
+					? Results.NotFound()
+					: Results.Bytes(result.Data!, "application/x-osu-replay");
+			})
+			.WithGroupName("basilapi")
+			.WithName("downloadScoreReplay")
+			.WithSummary("Download Score Replay")
+			.WithDescription("Serves the `.osr` replay for the given score id. 404 if the score doesn't exist " +
+			                 "or has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication — " +
+			                 "unlike the osu! client's own `GET /web/osu-getreplay.php`, which requires client-style login " +
+			                 "credentials.")
+			.WithTags("Scores")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+	}
 
-    private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IPlayerSessionRegistry sessionRegistry,
-        IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
-    {
-        var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users,
-            cancellationToken);
-        var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, maps, cancellationToken);
+	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IPlayerSessionRegistry sessionRegistry,
+		IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
+	{
+		var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users,
+			cancellationToken);
+		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, maps, cancellationToken);
 
-        return new ScoreDetailView(row.Id, user, beatmap!, row.Mode, row.Mods, row.Score, row.Accuracy,
-            row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
-            Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
-    }
+		return new ScoreDetailView(row.Id, user, beatmap!, row.Mode, row.Mods, row.Score, row.Accuracy,
+			row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
+			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
+	}
 
-    private static ScoreDetailView SampleScoreDetail()
-    {
-        var row = new ScoreRow(999, 3, MatchTeam.Red, "d41d8cd98f00b204e9800998ecf8427e", 4_850_213, 98.42, 1234,
-            Mods.HardRock | Mods.Hidden, 720, 45, 3, 2, 12, 5, "A", GameMode.Standard,
-            DateTime.Parse("2026-07-20T12:34:56Z"), 185, ClientFlags.Clean, 9, false,
-            "3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"));
+	private static ScoreDetailView SampleScoreDetail()
+	{
+		var row = new ScoreRow(999, 3, MatchTeam.Red, "d41d8cd98f00b204e9800998ecf8427e", 4_850_213, 98.42, 1234,
+			Mods.HardRock | Mods.Hidden, 720, 45, 3, 2, 12, 5, "A", GameMode.Standard,
+			DateTime.Parse("2026-07-20T12:34:56Z"), 185, ClientFlags.Clean, 9, false,
+			"3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"));
 
-        var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
-            DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
-            RankedStatus.Loved, 1);
-        var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme", TimeSpan.FromSeconds(225), 1234,
-            new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42),
-            new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false, beatmapset);
+		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
+			DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
+			RankedStatus.Loved, 1);
+		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme", TimeSpan.FromSeconds(225), 1234,
+			new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42),
+			new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false, beatmapset);
 
-        return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,
-            row.Score, row.Accuracy, row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
-            Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
-    }
+		return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,
+			row.Score, row.Accuracy, row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
+			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
+	}
 }

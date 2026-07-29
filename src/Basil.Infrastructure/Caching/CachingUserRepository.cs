@@ -13,83 +13,83 @@ namespace Basil.Infrastructure.Caching;
 ///     ever missed, not a substitute for it.
 /// </summary>
 public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache cache, TimeSpan? ttl = null)
-    : IUserRepository
+	: IUserRepository
 {
-    private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
+	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
 
-    public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var key = IdKey(id);
-        if (cache.TryGetValue(key, out User? cached)) return cached;
+	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+	{
+		var key = IdKey(id);
+		if (cache.TryGetValue(key, out User? cached)) return cached;
 
-        var user = await inner.FetchByIdAsync(id, cancellationToken);
-        if (user is not null) cache.Set(key, user, _ttl);
-        return user;
-    }
+		var user = await inner.FetchByIdAsync(id, cancellationToken);
+		if (user is not null) cache.Set(key, user, _ttl);
+		return user;
+	}
 
-    public async Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-    {
-        var key = NameKey(name);
-        if (cache.TryGetValue(key, out User? cached)) return cached;
+	public async Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
+	{
+		var key = NameKey(name);
+		if (cache.TryGetValue(key, out User? cached)) return cached;
 
-        var user = await inner.FetchByNameAsync(name, cancellationToken);
-        if (user is not null) cache.Set(key, user, _ttl);
-        return user;
-    }
+		var user = await inner.FetchByNameAsync(name, cancellationToken);
+		if (user is not null) cache.Set(key, user, _ttl);
+		return user;
+	}
 
-    /// <summary>Never cached — a bcrypt hash has no business sitting in a general-purpose read cache.</summary>
-    public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-    {
-        return inner.FetchPasswordHashAsync(id, cancellationToken);
-    }
+	/// <summary>Never cached — a bcrypt hash has no business sitting in a general-purpose read cache.</summary>
+	public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return inner.FetchPasswordHashAsync(id, cancellationToken);
+	}
 
-    public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-    {
-        await inner.UpdateCountryAsync(id, country, cancellationToken);
-        cache.Remove(IdKey(id));
-    }
+	public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
+	{
+		await inner.UpdateCountryAsync(id, country, cancellationToken);
+		cache.Remove(IdKey(id));
+	}
 
-    public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-        CancellationToken cancellationToken = default)
-    {
-        await inner.UpdatePrivilegesAsync(id, privilege, cancellationToken);
-        cache.Remove(IdKey(id));
-    }
+	public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
+		CancellationToken cancellationToken = default)
+	{
+		await inner.UpdatePrivilegesAsync(id, privilege, cancellationToken);
+		cache.Remove(IdKey(id));
+	}
 
-    /// <summary>
-    ///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine — a
-    ///     rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a lookup
-    ///     by the old (now-freed) name could keep resolving to this user until the TTL expires.
-    /// </summary>
-    public async Task UpdateNameAsync(int id, string name, string safeName,
-        CancellationToken cancellationToken = default)
-    {
-        var before = await inner.FetchByIdAsync(id, cancellationToken);
-        await inner.UpdateNameAsync(id, name, safeName, cancellationToken);
-        cache.Remove(IdKey(id));
-        if (before is not null) cache.Remove(NameKey(before.Name));
-        cache.Remove(NameKey(name));
-    }
+	/// <summary>
+	///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine — a
+	///     rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a lookup
+	///     by the old (now-freed) name could keep resolving to this user until the TTL expires.
+	/// </summary>
+	public async Task UpdateNameAsync(int id, string name, string safeName,
+		CancellationToken cancellationToken = default)
+	{
+		var before = await inner.FetchByIdAsync(id, cancellationToken);
+		await inner.UpdateNameAsync(id, name, safeName, cancellationToken);
+		cache.Remove(IdKey(id));
+		if (before is not null) cache.Remove(NameKey(before.Name));
+		cache.Remove(NameKey(name));
+	}
 
-    public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-        CancellationToken cancellationToken = default)
-    {
-        return inner.CreateAsync(name, pwBcrypt, country, privilege, cancellationToken);
-    }
+	public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
+		CancellationToken cancellationToken = default)
+	{
+		return inner.CreateAsync(name, pwBcrypt, country, privilege, cancellationToken);
+	}
 
-    /// <summary>Uncached — a list-shaped admin route, not a hot single-row lookup.</summary>
-    public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-    {
-        return inner.FetchAllAsync(cancellationToken);
-    }
+	/// <summary>Uncached — a list-shaped admin route, not a hot single-row lookup.</summary>
+	public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
+	{
+		return inner.FetchAllAsync(cancellationToken);
+	}
 
-    private static string IdKey(int id)
-    {
-        return $"User:Id:{id}";
-    }
+	private static string IdKey(int id)
+	{
+		return $"User:Id:{id}";
+	}
 
-    private static string NameKey(string name)
-    {
-        return $"User:Name:{User.MakeSafeName(name)}";
-    }
+	private static string NameKey(string name)
+	{
+		return $"User:Name:{User.MakeSafeName(name)}";
+	}
 }

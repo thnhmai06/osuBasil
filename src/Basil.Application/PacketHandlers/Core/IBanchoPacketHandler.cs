@@ -12,10 +12,10 @@ namespace Basil.Application.PacketHandlers.Core;
 /// </summary>
 public interface IBanchoPacketHandler
 {
-    ClientPackets PacketId { get; }
+	ClientPackets PacketId { get; }
 
-    /// <summary>Whether this handler may run for a restricted player. Ported from @register(..., restricted=True).</summary>
-    bool AllowedWhenRestricted { get; }
+	/// <summary>Whether this handler may run for a restricted player. Ported from @register(..., restricted=True).</summary>
+	bool AllowedWhenRestricted { get; }
 
-    Task HandleAsync(PlayerSession player, BanchoPacketReader reader, CancellationToken cancellationToken = default);
+	Task HandleAsync(PlayerSession player, BanchoPacketReader reader, CancellationToken cancellationToken = default);
 }

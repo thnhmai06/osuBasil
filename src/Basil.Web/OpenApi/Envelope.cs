@@ -8,13 +8,13 @@ namespace Basil.Web.OpenApi;
 ///     <see cref="Basil.Web.Routing.PagedResult{T}" />); every other route leaves it null.
 /// </summary>
 public sealed record Envelope<T>(
-    bool Success,
-    int Code,
-    string Message,
-    T? Data,
-    PageMeta? Meta,
-    IReadOnlyList<FieldError>? Errors,
-    DateTimeOffset Timestamp);
+	bool Success,
+	int Code,
+	string Message,
+	T? Data,
+	PageMeta? Meta,
+	IReadOnlyList<FieldError>? Errors,
+	DateTimeOffset Timestamp);
 
 /// <summary>Pagination metadata for a list route's envelope, derived from its `PagedResult{T}` body.</summary>
 public sealed record PageMeta(int Page, int PageSize, int TotalRecords, int TotalPages);

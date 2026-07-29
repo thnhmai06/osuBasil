@@ -8,17 +8,17 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's SetAwayMessage.</summary>
 public class SetAwayMessageHandlerTests
 {
-    [Fact]
-    public async Task Handle_SetsAwayMessageFromMessageText()
-    {
-        var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-        var payload =
-            ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)
-                [7..]; // strip packet header, keep message payload
-        var reader = new BanchoPacketReader(payload);
+	[Fact]
+	public async Task Handle_SetsAwayMessageFromMessageText()
+	{
+		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var payload =
+			ServerPacketWriter.SendMessage("cmyui", "gone fishing", "", 1)
+				[7..]; // strip packet header, keep message payload
+		var reader = new BanchoPacketReader(payload);
 
-        await new SetAwayMessageHandler().HandleAsync(session, reader);
+		await new SetAwayMessageHandler().HandleAsync(session, reader);
 
-        Assert.Equal("gone fishing", session.AwayMessage);
-    }
+		Assert.Equal("gone fishing", session.AwayMessage);
+	}
 }

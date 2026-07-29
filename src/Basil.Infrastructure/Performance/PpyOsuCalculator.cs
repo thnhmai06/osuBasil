@@ -27,87 +27,87 @@ namespace Basil.Infrastructure.Performance;
 /// </remarks>
 public sealed class PpyOsuCalculator : IOsuCalculator
 {
-    public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
-    {
-        try
-        {
-            using var stream = File.OpenRead(beatmapFilePath);
-            using var reader = new LineBufferedReader(stream);
-            var beatmap = Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
+	public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
+	{
+		try
+		{
+			using var stream = File.OpenRead(beatmapFilePath);
+			using var reader = new LineBufferedReader(stream);
+			var beatmap = Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
 
-            var ruleset = CreateRuleset(mode);
-            var workingBeatmap = new StreamlessWorkingBeatmap(beatmap);
+			var ruleset = CreateRuleset(mode);
+			var workingBeatmap = new StreamlessWorkingBeatmap(beatmap);
 
-            // 'Mode' already captures Relax/Autopilot — ppy's calculator only needs the
-            // difficulty-affecting mods (HR, DT, HT, EZ, HD, FL, ...).
-            var strippedMods = mods & ~(Mods.Relax | Mods.Autopilot);
-            var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)strippedMods).ToArray();
+			// 'Mode' already captures Relax/Autopilot — ppy's calculator only needs the
+			// difficulty-affecting mods (HR, DT, HT, EZ, HD, FL, ...).
+			var strippedMods = mods & ~(Mods.Relax | Mods.Autopilot);
+			var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)strippedMods).ToArray();
 
-            var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
+			var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
 
-            var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
-            var objectCounts = new Dictionary<string, int>();
-            foreach (var statistic in playable.GetStatistics())
-                if (int.TryParse(statistic.Content, out var count))
-                    objectCounts[statistic.Name.ToString()] = count;
+			var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
+			var objectCounts = new Dictionary<string, int>();
+			foreach (var statistic in playable.GetStatistics())
+				if (int.TryParse(statistic.Content, out var count))
+					objectCounts[statistic.Name.ToString()] = count;
 
-            return new BeatmapAnalysis(attributes.StarRating, objectCounts);
-        }
-        catch (Exception e)
-        {
-            throw new InvalidOperationException(
-                $"Failed to analyze beatmap '{beatmapFilePath}'.", e);
-        }
-    }
+			return new BeatmapAnalysis(attributes.StarRating, objectCounts);
+		}
+		catch (Exception e)
+		{
+			throw new InvalidOperationException(
+				$"Failed to analyze beatmap '{beatmapFilePath}'.", e);
+		}
+	}
 
-    public string ComputeBeatmapMd5(byte[] beatmapBytes)
-    {
-        using var stream = new MemoryStream(beatmapBytes);
-        return stream.ComputeMD5Hash();
-    }
+	public string ComputeBeatmapMd5(byte[] beatmapBytes)
+	{
+		using var stream = new MemoryStream(beatmapBytes);
+		return stream.ComputeMD5Hash();
+	}
 
-    private static Ruleset CreateRuleset(GameMode mode)
-    {
-        return mode switch
-        {
-            GameMode.Standard => new OsuRuleset(),
-            GameMode.Taiko => new TaikoRuleset(),
-            GameMode.Catch => new CatchRuleset(),
-            GameMode.Mania => new ManiaRuleset(),
-            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
-        };
-    }
+	private static Ruleset CreateRuleset(GameMode mode)
+	{
+		return mode switch
+		{
+			GameMode.Standard => new OsuRuleset(),
+			GameMode.Taiko => new TaikoRuleset(),
+			GameMode.Catch => new CatchRuleset(),
+			GameMode.Mania => new ManiaRuleset(),
+			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
+		};
+	}
 
-    /// <summary>
-    ///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only — no
-    ///     osu!framework host, audio, or texture access is needed or provided.
-    /// </summary>
-    private sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
-        : WorkingBeatmap(beatmap.BeatmapInfo, null)
-    {
-        protected override IBeatmap GetBeatmap()
-        {
-            return beatmap;
-        }
+	/// <summary>
+	///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only — no
+	///     osu!framework host, audio, or texture access is needed or provided.
+	/// </summary>
+	private sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
+		: WorkingBeatmap(beatmap.BeatmapInfo, null)
+	{
+		protected override IBeatmap GetBeatmap()
+		{
+			return beatmap;
+		}
 
-        public override Texture? GetBackground()
-        {
-            return null;
-        }
+		public override Texture? GetBackground()
+		{
+			return null;
+		}
 
-        protected override Track? GetBeatmapTrack()
-        {
-            return null;
-        }
+		protected override Track? GetBeatmapTrack()
+		{
+			return null;
+		}
 
-        protected override ISkin? GetSkin()
-        {
-            return null;
-        }
+		protected override ISkin? GetSkin()
+		{
+			return null;
+		}
 
-        public override Stream? GetStream(string storagePath)
-        {
-            return null;
-        }
-    }
+		public override Stream? GetStream(string storagePath)
+		{
+			return null;
+		}
+	}
 }

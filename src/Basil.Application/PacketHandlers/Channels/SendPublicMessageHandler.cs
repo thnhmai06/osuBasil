@@ -13,14 +13,14 @@ namespace Basil.Application.PacketHandlers.Channels;
 /// </summary>
 public sealed class SendPublicMessageHandler(ChatDispatchService chatDispatch) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.SendPublicMessage;
+	public ClientPackets PacketId => ClientPackets.SendPublicMessage;
 
-    public bool AllowedWhenRestricted => true;
+	public bool AllowedWhenRestricted => true;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var message = reader.ReadMessage();
-        await chatDispatch.SendPrivmsgAsync(player, message.Recipient, message.Text);
-    }
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var message = reader.ReadMessage();
+		await chatDispatch.SendPrivmsgAsync(player, message.Recipient, message.Text);
+	}
 }

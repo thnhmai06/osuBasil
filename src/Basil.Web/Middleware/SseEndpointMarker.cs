@@ -10,9 +10,9 @@ namespace Basil.Web.Middleware;
 /// </summary>
 public sealed class SseEndpointMarker
 {
-    public static readonly SseEndpointMarker Instance = new();
+	public static readonly SseEndpointMarker Instance = new();
 
-    private SseEndpointMarker()
-    {
-    }
+	private SseEndpointMarker()
+	{
+	}
 }

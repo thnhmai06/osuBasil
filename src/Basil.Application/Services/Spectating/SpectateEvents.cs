@@ -13,19 +13,19 @@ public abstract record SpectateEvent(UserBrief User);
 ///     <see cref="ScoreFrameData" /> elsewhere) rather than duplicating an API-layer copy of the same fields.
 /// </summary>
 public sealed record SpectateFramesEvent(
-    UserBrief User,
-    ReplayAction Action,
-    int ExtraByte,
-    IReadOnlyList<ReplayFrameData> Frames,
-    ScoreFrameData ScoreFrame) : SpectateEvent(User);
+	UserBrief User,
+	ReplayAction Action,
+	int ExtraByte,
+	IReadOnlyList<ReplayFrameData> Frames,
+	ScoreFrameData ScoreFrame) : SpectateEvent(User);
 
 /// <summary>Spectate session lifecycle states (SSE event name `state`).</summary>
 public enum SpectateState
 {
-    Start,
-    Stop,
-    FellowJoined,
-    FellowLeft
+	Start,
+	Stop,
+	FellowJoined,
+	FellowLeft
 }
 
 /// <summary>Fires when the spectated player's session starts/stops or a fellow spectator joins/leaves.</summary>

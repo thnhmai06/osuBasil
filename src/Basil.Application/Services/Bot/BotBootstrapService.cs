@@ -14,45 +14,45 @@ namespace Basil.Application.Services.Bot;
 ///     connection behind this session, so it skips the normal handshake entirely.
 /// </summary>
 public sealed class BotBootstrapService(
-    IUserRepository users,
-    IPlayerSessionRegistry sessionRegistry,
-    IChannelRegistry channelRegistry,
-    IOptions<BotOptions> botOptions)
+	IUserRepository users,
+	IPlayerSessionRegistry sessionRegistry,
+	IChannelRegistry channelRegistry,
+	IOptions<BotOptions> botOptions)
 {
-    public const int BotId = 0;
-    private const string BotToken = "bancho-bot-session";
+	public const int BotId = 0;
+	private const string BotToken = "bancho-bot-session";
 
-    public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
-    {
-        var user = await users.FetchByIdAsync(BotId, cancellationToken);
-        if (user is null) return null;
+	public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
+	{
+		var user = await users.FetchByIdAsync(BotId, cancellationToken);
+		if (user is null) return null;
 
-        var configuredName = botOptions.Value.Name;
-        if (user.Name != configuredName)
-            await users.UpdateNameAsync(BotId, configuredName, User.MakeSafeName(configuredName), cancellationToken);
+		var configuredName = botOptions.Value.Name;
+		if (user.Name != configuredName)
+			await users.UpdateNameAsync(BotId, configuredName, User.MakeSafeName(configuredName), cancellationToken);
 
-        var configuredCountry = botOptions.Value.Country;
-        if (!string.Equals(user.Country.ToAcronym(), configuredCountry, StringComparison.OrdinalIgnoreCase))
-        {
-            var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)
-                ? parsedCountry
-                : Country.Xx;
-            await users.UpdateCountryAsync(BotId, country, cancellationToken);
-        }
+		var configuredCountry = botOptions.Value.Country;
+		if (!string.Equals(user.Country.ToAcronym(), configuredCountry, StringComparison.OrdinalIgnoreCase))
+		{
+			var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)
+				? parsedCountry
+				: Country.Xx;
+			await users.UpdateCountryAsync(BotId, country, cancellationToken);
+		}
 
-        var loginTime = DateTimeOffset.UtcNow;
-        var session = new PlayerSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
-        {
-            IsBot = true
-        };
+		var loginTime = DateTimeOffset.UtcNow;
+		var session = new PlayerSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
+		{
+			IsBot = true
+		};
 
-        foreach (var channel in channelRegistry.AutoJoinChannels)
-        {
-            channel.Join(BotId);
-            session.JoinChannel(channel.Name);
-        }
+		foreach (var channel in channelRegistry.AutoJoinChannels)
+		{
+			channel.Join(BotId);
+			session.JoinChannel(channel.Name);
+		}
 
-        sessionRegistry.Add(session);
-        return session;
-    }
+		sessionRegistry.Add(session);
+		return session;
+	}
 }

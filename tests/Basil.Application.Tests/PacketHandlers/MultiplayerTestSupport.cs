@@ -23,377 +23,378 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// </summary>
 internal static class MultiplayerTestSupport
 {
-    public static PlayerSession MakePlayer(int id, string name)
-    {
-        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-    }
+	public static PlayerSession MakePlayer(int id, string name)
+	{
+		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+	}
 
-    public static ReadMatchResult MakeMatchData(
-        int hostId, string name = "test match", string password = "", bool freeMods = false,
-        int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead, int winCondition = 0)
-    {
-        return new ReadMatchResult(
-            0, false, 0, 0, name, password,
-            "Some Map", mapId, mapMd5.Length == 32 ? mapMd5 : new string('a', 32),
-            [], [], [], hostId, 0,
-            winCondition, (int)teamType, freeMods, [], 0);
-    }
+	public static ReadMatchResult MakeMatchData(
+		int hostId, string name = "test match", string password = "", bool freeMods = false,
+		int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead, int winCondition = 0)
+	{
+		return new ReadMatchResult(
+			0, false, 0, 0, name, password,
+			"Some Map", mapId, mapMd5.Length == 32 ? mapMd5 : new string('a', 32),
+			[], [], [], hostId, 0,
+			winCondition, (int)teamType, freeMods, [], 0);
+	}
 
-    /// <summary>
-    ///     Builds a raw wire-format buffer BanchoPacketReader.ReadMatch can parse — the inverse of
-    ///     that method, for handler tests that read a MultiplayerMatch packet body. All 16 slots are
-    ///     left as status 0 (no player bits set), so no slot ids are written, matching what real
-    ///     CREATE_MATCH/MATCH_CHANGE_SETTINGS/MATCH_CHANGE_PASSWORD bodies look like from a client
-    ///     that hasn't populated slots client-side yet.
-    /// </summary>
-    public static BanchoPacketReader MatchRequestReader(
-        int id, string name, string password, string mapName, int mapId, string mapMd5,
-        int hostId, int mode = 0, int winCondition = 0, int teamType = 0, bool freeMods = false, int seed = 0)
-    {
-        var parts = new List<byte>();
-        parts.AddRange(BitConverter.GetBytes((short)id));
-        parts.Add(0); // in_progress
-        parts.Add(0); // powerplay
-        parts.AddRange(PacketWriter.WriteInt32(0)); // mods
-        parts.AddRange(PacketWriter.WriteString(name));
-        parts.AddRange(PacketWriter.WriteString(password));
-        parts.AddRange(PacketWriter.WriteString(mapName));
-        parts.AddRange(PacketWriter.WriteInt32(mapId));
-        parts.AddRange(PacketWriter.WriteString(mapMd5));
-        parts.AddRange(new byte[16]); // slot statuses — all 0 (no player)
-        parts.AddRange(new byte[16]); // slot teams
-        // no slot ids: no status has any player bits set
-        parts.AddRange(PacketWriter.WriteInt32(hostId));
-        parts.Add((byte)mode);
-        parts.Add((byte)winCondition);
-        parts.Add((byte)teamType);
-        parts.Add((byte)(freeMods ? 1 : 0));
-        if (freeMods)
-            for (var i = 0; i < 16; i++)
-                parts.AddRange(PacketWriter
-                    .WriteInt32(
-                        0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
-        parts.AddRange(PacketWriter.WriteInt32(seed));
-        return new BanchoPacketReader(parts.ToArray());
-    }
+	/// <summary>
+	///     Builds a raw wire-format buffer BanchoPacketReader.ReadMatch can parse — the inverse of
+	///     that method, for handler tests that read a MultiplayerMatch packet body. All 16 slots are
+	///     left as status 0 (no player bits set), so no slot ids are written, matching what real
+	///     CREATE_MATCH/MATCH_CHANGE_SETTINGS/MATCH_CHANGE_PASSWORD bodies look like from a client
+	///     that hasn't populated slots client-side yet.
+	/// </summary>
+	public static BanchoPacketReader MatchRequestReader(
+		int id, string name, string password, string mapName, int mapId, string mapMd5,
+		int hostId, int mode = 0, int winCondition = 0, int teamType = 0, bool freeMods = false, int seed = 0)
+	{
+		var parts = new List<byte>();
+		parts.AddRange(BitConverter.GetBytes((short)id));
+		parts.Add(0); // in_progress
+		parts.Add(0); // powerplay
+		parts.AddRange(PacketWriter.WriteInt32(0)); // mods
+		parts.AddRange(PacketWriter.WriteString(name));
+		parts.AddRange(PacketWriter.WriteString(password));
+		parts.AddRange(PacketWriter.WriteString(mapName));
+		parts.AddRange(PacketWriter.WriteInt32(mapId));
+		parts.AddRange(PacketWriter.WriteString(mapMd5));
+		parts.AddRange(new byte[16]); // slot statuses — all 0 (no player)
+		parts.AddRange(new byte[16]); // slot teams
+		// no slot ids: no status has any player bits set
+		parts.AddRange(PacketWriter.WriteInt32(hostId));
+		parts.Add((byte)mode);
+		parts.Add((byte)winCondition);
+		parts.Add((byte)teamType);
+		parts.Add((byte)(freeMods ? 1 : 0));
+		if (freeMods)
+			for (var i = 0; i < 16; i++)
+				parts.AddRange(PacketWriter
+					.WriteInt32(
+						0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
+		parts.AddRange(PacketWriter.WriteInt32(seed));
+		return new BanchoPacketReader(parts.ToArray());
+	}
 
-    /// <summary>Dummy valid beatmap for tests that need `mapRepository.FetchOneAsync` to resolve successfully.</summary>
-    public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
-    {
-        var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
-        var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-        return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500,
-            new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0), new Dictionary<string, int>());
-    }
+	/// <summary>Dummy valid beatmap for tests that need `mapRepository.FetchOneAsync` to resolve successfully.</summary>
+	public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
+	{
+		var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
+		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu", TimeSpan.FromMinutes(2), 500,
+			new Difficulty(GameMode.Standard, 180, 4, 8, 8, 5, 5.0), new Dictionary<string, int>());
+	}
 
-    public static List<byte[]> Chunk(byte[] data)
-    {
-        var chunks = new List<byte[]>();
-        var offset = 0;
-        while (offset < data.Length)
-        {
-            var length = BitConverter.ToInt32(data, offset + 3);
-            var total = 7 + length;
-            chunks.Add(data[offset..(offset + total)]);
-            offset += total;
-        }
+	public static List<byte[]> Chunk(byte[] data)
+	{
+		var chunks = new List<byte[]>();
+		var offset = 0;
+		while (offset < data.Length)
+		{
+			var length = BitConverter.ToInt32(data, offset + 3);
+			var total = 7 + length;
+			chunks.Add(data[offset..(offset + total)]);
+			offset += total;
+		}
 
-        return chunks;
-    }
+		return chunks;
+	}
 
-    public sealed class FakeChannelRegistry : IChannelRegistry
-    {
-        private readonly Dictionary<string, ChannelSession> _byName = new();
+	public sealed class FakeChannelRegistry : IChannelRegistry
+	{
+		private readonly Dictionary<string, ChannelSession> _byName = new();
 
-        public void Seed(IReadOnlyList<Channel> channels)
-        {
-            throw new NotSupportedException();
-        }
+		public void Seed(IReadOnlyList<Channel> channels)
+		{
+			throw new NotSupportedException();
+		}
 
-        public void Add(ChannelSession channel)
-        {
-            _byName[channel.Name] = channel;
-        }
+		public void Add(ChannelSession channel)
+		{
+			_byName[channel.Name] = channel;
+		}
 
-        public void Remove(string name)
-        {
-            _byName.Remove(name);
-        }
+		public void Remove(string name)
+		{
+			_byName.Remove(name);
+		}
 
-        public ChannelSession? GetByName(string name)
-        {
-            return _byName.GetValueOrDefault(name);
-        }
+		public ChannelSession? GetByName(string name)
+		{
+			return _byName.GetValueOrDefault(name);
+		}
 
-        public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
+		public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
 
-        public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
-    }
+		public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
+	}
 
-    public sealed class FakeMatchRegistry : IMatchRegistry
-    {
-        private readonly Dictionary<int, MatchSession> _byId = new();
-        private int _nextId;
+	public sealed class FakeMatchRegistry : IMatchRegistry
+	{
+		private readonly Dictionary<int, MatchSession> _byId = new();
+		private int _nextId;
 
-        public MatchSession? GetById(int id)
-        {
-            return _byId.GetValueOrDefault(id);
-        }
+		public MatchSession? GetById(int id)
+		{
+			return _byId.GetValueOrDefault(id);
+		}
 
-        public MatchSession? GetByDbId(int dbId)
-        {
-            return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
-        }
+		public MatchSession? GetByDbId(int dbId)
+		{
+			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
+		}
 
-        public MatchSession? TryCreate(Func<int, MatchSession> factory)
-        {
-            if (_nextId >= 64) return null;
+		public MatchSession? TryCreate(Func<int, MatchSession> factory)
+		{
+			if (_nextId >= 64) return null;
 
-            var match = factory(_nextId);
-            _byId[_nextId] = match;
-            _nextId++;
-            return match;
-        }
+			var match = factory(_nextId);
+			_byId[_nextId] = match;
+			_nextId++;
+			return match;
+		}
 
-        public void Remove(int id)
-        {
-            _byId.Remove(id);
-        }
+		public void Remove(int id)
+		{
+			_byId.Remove(id);
+		}
 
-        public IReadOnlyList<MatchSession> All => [.. _byId.Values];
-    }
+		public IReadOnlyList<MatchSession> All => [.. _byId.Values];
+	}
 
-    /// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
-    public sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
-    {
-        private int _nextMatchId = 1;
-        private int _nextRoundId = 1;
+	/// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
+	public sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+	{
+		private int _nextMatchId = 1;
+		private int _nextRoundId = 1;
 
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_nextMatchId++);
-        }
+		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(_nextMatchId++);
+		}
 
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_nextRoundId++);
-        }
+		public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
+			GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+			Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(_nextRoundId++);
+		}
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<MatchRow?>(null);
-        }
+		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<MatchRow?>(null);
+		}
 
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
+		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
 
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
 
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+		}
 
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
 
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-    }
+		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
+	}
 
-    /// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
-    public sealed class FakeMatchLiveEvents : IMatchLiveEvents
-    {
-        public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
-        public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
-        public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> HostPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> RefsPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> BansPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> TimerPublishes { get; } = [];
-        public List<(int MatchDbId, byte[] Payload)> SlotsPublishes { get; } = [];
+	/// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
+	public sealed class FakeMatchLiveEvents : IMatchLiveEvents
+	{
+		public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
+		public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
+		public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> HostPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> RefsPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> BansPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> TimerPublishes { get; } = [];
+		public List<(int MatchDbId, byte[] Payload)> SlotsPublishes { get; } = [];
 
-        public event Action<int, byte[]>? MainPublished;
-        public event Action<int, string, byte[]>? PlayerScorePublished;
+		public event Action<int, byte[]>? MainPublished;
+		public event Action<int, string, byte[]>? PlayerScorePublished;
 
-        /// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
-        public bool HasPlayerScoreSubscribers => true;
-        public event Action<int, byte[]>? SettingsPublished;
-        public event Action<int, int, byte[]>? SlotPublished;
-        public event Action<int, byte[]>? HostPublished;
-        public event Action<int, byte[]>? RefsPublished;
-        public event Action<int, byte[]>? BansPublished;
-        public event Action<int, byte[]>? TimerPublished;
-        public event Action<int, byte[]>? SlotsPublished;
+		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+		public bool HasPlayerScoreSubscribers => true;
 
-        public void PublishMain(int matchDbId, byte[] payload)
-        {
-            MainPublishes.Add((matchDbId, payload));
-            MainPublished?.Invoke(matchDbId, payload);
-        }
+		public event Action<int, byte[]>? SettingsPublished;
+		public event Action<int, int, byte[]>? SlotPublished;
+		public event Action<int, byte[]>? HostPublished;
+		public event Action<int, byte[]>? RefsPublished;
+		public event Action<int, byte[]>? BansPublished;
+		public event Action<int, byte[]>? TimerPublished;
+		public event Action<int, byte[]>? SlotsPublished;
 
-        public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
-        {
-            PlayerPublishes.Add((matchDbId, playerName, payload));
-            PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
-        }
+		public void PublishMain(int matchDbId, byte[] payload)
+		{
+			MainPublishes.Add((matchDbId, payload));
+			MainPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishSettings(int matchDbId, byte[] payload)
-        {
-            SettingsPublishes.Add((matchDbId, payload));
-            SettingsPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
+		{
+			PlayerPublishes.Add((matchDbId, playerName, payload));
+			PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+		}
 
-        public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
-        {
-            SlotPublishes.Add((matchDbId, slotIndex, payload));
-            SlotPublished?.Invoke(matchDbId, slotIndex, payload);
-        }
+		public void PublishSettings(int matchDbId, byte[] payload)
+		{
+			SettingsPublishes.Add((matchDbId, payload));
+			SettingsPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishHost(int matchDbId, byte[] payload)
-        {
-            HostPublishes.Add((matchDbId, payload));
-            HostPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
+		{
+			SlotPublishes.Add((matchDbId, slotIndex, payload));
+			SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+		}
 
-        public void PublishRefs(int matchDbId, byte[] payload)
-        {
-            RefsPublishes.Add((matchDbId, payload));
-            RefsPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishHost(int matchDbId, byte[] payload)
+		{
+			HostPublishes.Add((matchDbId, payload));
+			HostPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishBans(int matchDbId, byte[] payload)
-        {
-            BansPublishes.Add((matchDbId, payload));
-            BansPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishRefs(int matchDbId, byte[] payload)
+		{
+			RefsPublishes.Add((matchDbId, payload));
+			RefsPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishTimer(int matchDbId, byte[] payload)
-        {
-            TimerPublishes.Add((matchDbId, payload));
-            TimerPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishBans(int matchDbId, byte[] payload)
+		{
+			BansPublishes.Add((matchDbId, payload));
+			BansPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishSlots(int matchDbId, byte[] payload)
-        {
-            SlotsPublishes.Add((matchDbId, payload));
-            SlotsPublished?.Invoke(matchDbId, payload);
-        }
+		public void PublishTimer(int matchDbId, byte[] payload)
+		{
+			TimerPublishes.Add((matchDbId, payload));
+			TimerPublished?.Invoke(matchDbId, payload);
+		}
 
-        public event Action<int, byte[]>? LivePublished;
+		public void PublishSlots(int matchDbId, byte[] payload)
+		{
+			SlotsPublishes.Add((matchDbId, payload));
+			SlotsPublished?.Invoke(matchDbId, payload);
+		}
 
-        public void PublishLive(int matchDbId, byte[] payload)
-        {
-            LivePublishes.Add((matchDbId, payload));
-            LivePublished?.Invoke(matchDbId, payload);
-        }
-    }
+		public event Action<int, byte[]>? LivePublished;
 
-    /// <summary>Records what would have been pushed to the /spec/{id} SSE subscribers.</summary>
-    public sealed class FakePlayerInputEvents : IPlayerInputEvents
-    {
-        public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
+		public void PublishLive(int matchDbId, byte[] payload)
+		{
+			LivePublishes.Add((matchDbId, payload));
+			LivePublished?.Invoke(matchDbId, payload);
+		}
+	}
 
-        public event Action<int, byte[]>? InputPublished;
+	/// <summary>Records what would have been pushed to the /spec/{id} SSE subscribers.</summary>
+	public sealed class FakePlayerInputEvents : IPlayerInputEvents
+	{
+		public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
 
-        /// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
-        public bool HasSubscribers => true;
+		public event Action<int, byte[]>? InputPublished;
 
-        public void PublishInput(int playerId, byte[] payload)
-        {
-            Publishes.Add((playerId, payload));
-            InputPublished?.Invoke(playerId, payload);
-        }
-    }
+		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+		public bool HasSubscribers => true;
 
-    /// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
-    public sealed class Fixture
-    {
-        public Fixture()
-        {
-            MapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
-                Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
+		public void PublishInput(int playerId, byte[] payload)
+		{
+			Publishes.Add((playerId, payload));
+			InputPublished?.Invoke(playerId, payload);
+		}
+	}
 
-            MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-                new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
-                MapRepository, UserRepository);
-        }
+	/// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
+	public sealed class Fixture
+	{
+		public Fixture()
+		{
+			MapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
-        public FakeChannelRegistry ChannelRegistry { get; } = new();
-        public FakeMatchRegistry MatchRegistry { get; } = new();
-        public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
-        public FakeMatchLiveEvents EventBus { get; } = new();
-        public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
-        public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
+			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
+				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
+				MapRepository, UserRepository);
+		}
 
-        /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
-        public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();
+		public FakeChannelRegistry ChannelRegistry { get; } = new();
+		public FakeMatchRegistry MatchRegistry { get; } = new();
+		public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
+		public FakeMatchLiveEvents EventBus { get; } = new();
+		public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
+		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
-        public MatchMembershipService MatchMembership { get; }
+		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
+		public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();
 
-        public void RegisterAll(params PlayerSession[] sessions)
-        {
-            SessionRegistry.All.Returns(sessions);
-            foreach (var session in sessions)
-            {
-                SessionRegistry.GetById(session.Id).Returns(session);
-                SessionRegistry.GetByName(session.Name).Returns(session);
-            }
-        }
+		public MatchMembershipService MatchMembership { get; }
 
-        /// <summary>
-        ///     Creates a match with `host` in slot 0, registered in <see cref="MatchRegistry" /> and its channel in
-        ///     <see cref="ChannelRegistry" />. The fake persistence repo completes synchronously, so blocking on the
-        ///     task here is safe and keeps every existing synchronous test call site unchanged. `hostIsReferee`
-        ///     defaults to true purely for test convenience (most tests want the host able to issue `!mp` commands
-        ///     right away) — MatchSession.IsReferee itself does NOT auto-include the host; pass false to exercise
-        ///     that real host-is-not-a-referee behavior.
-        /// </summary>
-        public MatchSession CreateMatch(PlayerSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
-            bool hostIsReferee = true)
-        {
-            var match = MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
-                .GetAwaiter().GetResult()!;
-            if (hostIsReferee) match.AddReferee(host.Id);
-            return match;
-        }
-    }
+		public void RegisterAll(params PlayerSession[] sessions)
+		{
+			SessionRegistry.All.Returns(sessions);
+			foreach (var session in sessions)
+			{
+				SessionRegistry.GetById(session.Id).Returns(session);
+				SessionRegistry.GetByName(session.Name).Returns(session);
+			}
+		}
+
+		/// <summary>
+		///     Creates a match with `host` in slot 0, registered in <see cref="MatchRegistry" /> and its channel in
+		///     <see cref="ChannelRegistry" />. The fake persistence repo completes synchronously, so blocking on the
+		///     task here is safe and keeps every existing synchronous test call site unchanged. `hostIsReferee`
+		///     defaults to true purely for test convenience (most tests want the host able to issue `!mp` commands
+		///     right away) — MatchSession.IsReferee itself does NOT auto-include the host; pass false to exercise
+		///     that real host-is-not-a-referee behavior.
+		/// </summary>
+		public MatchSession CreateMatch(PlayerSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
+			bool hostIsReferee = true)
+		{
+			var match = MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
+				.GetAwaiter().GetResult()!;
+			if (hostIsReferee) match.AddReferee(host.Id);
+			return match;
+		}
+	}
 }

@@ -16,70 +16,70 @@ namespace Basil.Application.Services.Scores;
 /// </summary>
 public static class ScoreSubmissionChartsFormatter
 {
-    public static string Format(ScoreSubmission score, Beatmap beatmap, long scoreId, int? rank, string domain)
-    {
-        var beatmapEntries = new[]
-        {
-            ChartEntry("rank", null, rank),
-            ChartEntry("rankedScore", null, score.Score),
-            ChartEntry("totalScore", null, score.Score),
-            ChartEntry("maxCombo", null, score.MaxCombo),
-            ChartEntry("accuracy", null, Math.Round(score.Accuracy, 2)),
-            ChartEntry("pp", null, 0)
-        };
+	public static string Format(ScoreSubmission score, Beatmap beatmap, long scoreId, int? rank, string domain)
+	{
+		var beatmapEntries = new[]
+		{
+			ChartEntry("rank", null, rank),
+			ChartEntry("rankedScore", null, score.Score),
+			ChartEntry("totalScore", null, score.Score),
+			ChartEntry("maxCombo", null, score.MaxCombo),
+			ChartEntry("accuracy", null, Math.Round(score.Accuracy, 2)),
+			ChartEntry("pp", null, 0)
+		};
 
-        var overallEntries = new[]
-        {
-            ChartEntry("rank", null, null),
-            ChartEntry("rankedScore", null, null),
-            ChartEntry("totalScore", null, null),
-            ChartEntry("maxCombo", null, null),
-            ChartEntry("accuracy", null, null),
-            ChartEntry("pp", 0, 0)
-        };
+		var overallEntries = new[]
+		{
+			ChartEntry("rank", null, null),
+			ChartEntry("rankedScore", null, null),
+			ChartEntry("totalScore", null, null),
+			ChartEntry("maxCombo", null, null),
+			ChartEntry("accuracy", null, null),
+			ChartEntry("pp", 0, 0)
+		};
 
-        var parts = new List<string>
-        {
-            $"beatmapId:{beatmap.Id}",
-            $"beatmapSetId:{beatmap.Mapset.Id}",
-            // No Plays/Passes tracking (per scope) — always 0, same convention as the pp fields above:
-            // the key is kept (preserving the protocol's fixed key/value shape for the osu! client's
-            // result-screen parser) without any Plays/Passes-specific special-casing.
-            "beatmapPlaycount:0",
-            "beatmapPasscount:0",
-            $"approvedDate:{beatmap.Mapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",
-            "\n",
-            "chartId:beatmap",
-            $"chartUrl:https://osu.{domain}/s/{beatmap.Mapset.Id}",
-            "chartName:Beatmap Ranking"
-        };
-        parts.AddRange(beatmapEntries);
-        parts.Add($"onlineScoreId:{scoreId}");
-        parts.Add("\n");
-        parts.Add("chartId:overall");
-        parts.Add($"chartUrl:https://{domain}/u/{score.UserId}");
-        parts.Add("chartName:Overall Ranking");
-        parts.AddRange(overallEntries);
-        parts.Add("achievements-new:");
+		var parts = new List<string>
+		{
+			$"beatmapId:{beatmap.Id}",
+			$"beatmapSetId:{beatmap.Mapset.Id}",
+			// No Plays/Passes tracking (per scope) — always 0, same convention as the pp fields above:
+			// the key is kept (preserving the protocol's fixed key/value shape for the osu! client's
+			// result-screen parser) without any Plays/Passes-specific special-casing.
+			"beatmapPlaycount:0",
+			"beatmapPasscount:0",
+			$"approvedDate:{beatmap.Mapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",
+			"\n",
+			"chartId:beatmap",
+			$"chartUrl:https://osu.{domain}/s/{beatmap.Mapset.Id}",
+			"chartName:Beatmap Ranking"
+		};
+		parts.AddRange(beatmapEntries);
+		parts.Add($"onlineScoreId:{scoreId}");
+		parts.Add("\n");
+		parts.Add("chartId:overall");
+		parts.Add($"chartUrl:https://{domain}/u/{score.UserId}");
+		parts.Add("chartName:Overall Ranking");
+		parts.AddRange(overallEntries);
+		parts.Add("achievements-new:");
 
-        return string.Join('|', parts);
-    }
+		return string.Join('|', parts);
+	}
 
-    private static string ChartEntry(string name, object? before, object? after)
-    {
-        return $"{name}Before:{FormatValue(before)}|{name}After:{FormatValue(after)}";
-    }
+	private static string ChartEntry(string name, object? before, object? after)
+	{
+		return $"{name}Before:{FormatValue(before)}|{name}After:{FormatValue(after)}";
+	}
 
-    private static string FormatValue(object? value)
-    {
-        return value switch
-        {
-            null => "",
-            int and 0 => "",
-            long and 0 => "",
-            double and 0.0 => "",
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? ""
-        };
-    }
+	private static string FormatValue(object? value)
+	{
+		return value switch
+		{
+			null => "",
+			int and 0 => "",
+			long and 0 => "",
+			double and 0.0 => "",
+			IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+			_ => value.ToString() ?? ""
+		};
+	}
 }

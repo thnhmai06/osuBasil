@@ -14,87 +14,87 @@ namespace Basil.Infrastructure.Caching;
 ///     TTL is only a safety net, not a substitute for it.
 /// </summary>
 public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cache, TimeSpan? ttl = null)
-    : IMapRepository
+	: IMapRepository
 {
-    private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
+	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
 
-    public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-        int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
-    {
-        if (id is not null && md5 is null && filename is null && setId is null)
-            return FetchCachedAsync(IdKey(id.Value),
-                () => inner.FetchOneAsync(id, includePrivate: includePrivate, cancellationToken: cancellationToken));
+	public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+		int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
+	{
+		if (id is not null && md5 is null && filename is null && setId is null)
+			return FetchCachedAsync(IdKey(id.Value),
+				() => inner.FetchOneAsync(id, includePrivate: includePrivate, cancellationToken: cancellationToken));
 
-        if (md5 is not null && id is null && filename is null && setId is null)
-            return FetchCachedAsync(Md5Key(md5),
-                () => inner.FetchOneAsync(md5: md5, includePrivate: includePrivate,
-                    cancellationToken: cancellationToken));
+		if (md5 is not null && id is null && filename is null && setId is null)
+			return FetchCachedAsync(Md5Key(md5),
+				() => inner.FetchOneAsync(md5: md5, includePrivate: includePrivate,
+					cancellationToken: cancellationToken));
 
-        return inner.FetchOneAsync(id, md5, filename, setId, includePrivate, cancellationToken);
-    }
+		return inner.FetchOneAsync(id, md5, filename, setId, includePrivate, cancellationToken);
+	}
 
-    public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
-    {
-        var resolved = await inner.UpsertAsync(beatmap, cancellationToken);
-        Invalidate(resolved);
-        return resolved;
-    }
+	public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+	{
+		var resolved = await inner.UpsertAsync(beatmap, cancellationToken);
+		Invalidate(resolved);
+		return resolved;
+	}
 
-    public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
-    {
-        cache.TryGetValue(Md5Key(md5), out Beatmap? cached);
-        await inner.DeleteByMd5Async(md5, cancellationToken);
-        cache.Remove(Md5Key(md5));
-        if (cached is not null) cache.Remove(IdKey(cached.Id));
-    }
+	public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+	{
+		cache.TryGetValue(Md5Key(md5), out Beatmap? cached);
+		await inner.DeleteByMd5Async(md5, cancellationToken);
+		cache.Remove(Md5Key(md5));
+		if (cached is not null) cache.Remove(IdKey(cached.Id));
+	}
 
-    /// <summary>Uncached — a discovery/listing surface, not a specific-row lookup.</summary>
-    public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-        int amount, CancellationToken cancellationToken = default)
-    {
-        return inner.SearchAsync(query, mode, offset, amount, cancellationToken);
-    }
+	/// <summary>Uncached — a discovery/listing surface, not a specific-row lookup.</summary>
+	public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
+		int amount, CancellationToken cancellationToken = default)
+	{
+		return inner.SearchAsync(query, mode, offset, amount, cancellationToken);
+	}
 
-    public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-    {
-        return inner.FetchMaxIdAsync(cancellationToken);
-    }
+	public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+	{
+		return inner.FetchMaxIdAsync(cancellationToken);
+	}
 
-    public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
-    {
-        await inner.UpdateDiffAsync(id, diff, cancellationToken);
-        cache.Remove(IdKey(id));
-    }
+	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+	{
+		await inner.UpdateDiffAsync(id, diff, cancellationToken);
+		cache.Remove(IdKey(id));
+	}
 
-    /// <summary>Uncached — a list-shaped call (every difficulty in a set), not a single-row lookup.</summary>
-    public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-        CancellationToken cancellationToken = default)
-    {
-        return inner.FetchAllBySetIdAsync(setId, includePrivate, cancellationToken);
-    }
+	/// <summary>Uncached — a list-shaped call (every difficulty in a set), not a single-row lookup.</summary>
+	public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+		CancellationToken cancellationToken = default)
+	{
+		return inner.FetchAllBySetIdAsync(setId, includePrivate, cancellationToken);
+	}
 
-    private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
-    {
-        if (cache.TryGetValue(key, out Beatmap? cached)) return cached;
+	private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
+	{
+		if (cache.TryGetValue(key, out Beatmap? cached)) return cached;
 
-        var beatmap = await fetch();
-        if (beatmap is not null) cache.Set(key, beatmap, _ttl);
-        return beatmap;
-    }
+		var beatmap = await fetch();
+		if (beatmap is not null) cache.Set(key, beatmap, _ttl);
+		return beatmap;
+	}
 
-    private void Invalidate(Beatmap beatmap)
-    {
-        cache.Remove(IdKey(beatmap.Id));
-        cache.Remove(Md5Key(beatmap.Md5));
-    }
+	private void Invalidate(Beatmap beatmap)
+	{
+		cache.Remove(IdKey(beatmap.Id));
+		cache.Remove(Md5Key(beatmap.Md5));
+	}
 
-    private static string IdKey(int id)
-    {
-        return $"Beatmap:Id:{id}";
-    }
+	private static string IdKey(int id)
+	{
+		return $"Beatmap:Id:{id}";
+	}
 
-    private static string Md5Key(string md5)
-    {
-        return $"Beatmap:Md5:{md5}";
-    }
+	private static string Md5Key(string md5)
+	{
+		return $"Beatmap:Md5:{md5}";
+	}
 }

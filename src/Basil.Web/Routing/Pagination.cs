@@ -8,10 +8,10 @@ namespace Basil.Web.Routing;
 /// </summary>
 public interface IPagedResult
 {
-    int Page { get; }
-    int PageSize { get; }
-    int TotalRecords { get; }
-    IEnumerable<object?> ItemsUntyped { get; }
+	int Page { get; }
+	int PageSize { get; }
+	int TotalRecords { get; }
+	IEnumerable<object?> ItemsUntyped { get; }
 }
 
 /// <summary>
@@ -23,27 +23,27 @@ public interface IPagedResult
 /// </summary>
 public sealed record PagedResult<T>(int Page, int PageSize, int TotalRecords, IReadOnlyList<T> Items) : IPagedResult
 {
-    IEnumerable<object?> IPagedResult.ItemsUntyped => Items.Cast<object?>();
+	IEnumerable<object?> IPagedResult.ItemsUntyped => Items.Cast<object?>();
 }
 
 public static class Pagination
 {
-    public const int DefaultPageSize = 50;
+	public const int DefaultPageSize = 50;
 
-    /// <summary>1-based page, defaulting to 1/50 for missing or non-positive query values.</summary>
-    public static (int Page, int PageSize) Normalize(int? page, int? pageSize)
-    {
-        return (page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : DefaultPageSize);
-    }
+	/// <summary>1-based page, defaulting to 1/50 for missing or non-positive query values.</summary>
+	public static (int Page, int PageSize) Normalize(int? page, int? pageSize)
+	{
+		return (page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : DefaultPageSize);
+	}
 
-    /// <summary>
-    ///     Trims an "overqueried by one" source (fetched with <c>LIMIT pageSize + 1</c>) down to at
-    ///     most <paramref name="pageSize" /> items — the extra row is discarded now that
-    ///     <paramref name="totalRecords" /> (a real count) makes it unnecessary for anything.
-    /// </summary>
-    public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize, int totalRecords)
-    {
-        var items = overqueried.Count > pageSize ? [.. overqueried.Take(pageSize)] : overqueried;
-        return new PagedResult<T>(page, pageSize, totalRecords, items);
-    }
+	/// <summary>
+	///     Trims an "overqueried by one" source (fetched with <c>LIMIT pageSize + 1</c>) down to at
+	///     most <paramref name="pageSize" /> items — the extra row is discarded now that
+	///     <paramref name="totalRecords" /> (a real count) makes it unnecessary for anything.
+	/// </summary>
+	public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize, int totalRecords)
+	{
+		var items = overqueried.Count > pageSize ? [.. overqueried.Take(pageSize)] : overqueried;
+		return new PagedResult<T>(page, pageSize, totalRecords, items);
+	}
 }

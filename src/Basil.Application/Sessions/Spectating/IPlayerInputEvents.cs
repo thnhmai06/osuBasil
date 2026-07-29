@@ -8,14 +8,14 @@ namespace Basil.Application.Sessions.Spectating;
 /// </summary>
 public interface IPlayerInputEvents
 {
-    /// <summary>Fires whenever a spectated player's input frame is relayed. (playerId, payload)</summary>
-    event Action<int, byte[]> InputPublished;
+	/// <summary>
+	///     Whether anything is currently subscribed to <see cref="InputPublished" /> — lets a caller
+	///     skip decoding/serializing a payload nobody will receive.
+	/// </summary>
+	bool HasSubscribers { get; }
 
-    /// <summary>
-    ///     Whether anything is currently subscribed to <see cref="InputPublished" /> — lets a caller
-    ///     skip decoding/serializing a payload nobody will receive.
-    /// </summary>
-    bool HasSubscribers { get; }
+	/// <summary>Fires whenever a spectated player's input frame is relayed. (playerId, payload)</summary>
+	event Action<int, byte[]> InputPublished;
 
-    void PublishInput(int playerId, byte[] payload);
+	void PublishInput(int playerId, byte[] payload);
 }

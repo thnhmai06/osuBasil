@@ -17,101 +17,100 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Program> _factory;
 
-    public HostRoutingTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton(TestDoubles.NullChannelRepository());
-            });
-        });
-    }
+	public HostRoutingTests(WebApplicationFactory<Program> factory)
+	{
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.NullChannelRepository());
+			});
+		});
+	}
 
-    [Theory]
-    [InlineData("c.test.local")]
-    [InlineData("ce.test.local")]
-    [InlineData("c4.test.local")]
-    [InlineData("c5.test.local")]
-    [InlineData("c6.test.local")]
-    [InlineData("c.ppy.sh")]
-    [InlineData("ce.ppy.sh")]
-    [InlineData("c4.ppy.sh")]
-    [InlineData("c5.ppy.sh")]
-    [InlineData("c6.ppy.sh")]
-    public async Task BanchoSubdomains_RouteToChoGroup(string host)
-    {
-        var client = _factory.CreateClient();
-        var response = await SendWithHost(client, host);
+	[Theory]
+	[InlineData("c.test.local")]
+	[InlineData("ce.test.local")]
+	[InlineData("c4.test.local")]
+	[InlineData("c5.test.local")]
+	[InlineData("c6.test.local")]
+	[InlineData("c.ppy.sh")]
+	[InlineData("ce.ppy.sh")]
+	[InlineData("c4.ppy.sh")]
+	[InlineData("c5.ppy.sh")]
+	[InlineData("c6.ppy.sh")]
+	public async Task BanchoSubdomains_RouteToChoGroup(string host)
+	{
+		var client = _factory.CreateClient();
+		var response = await SendWithHost(client, host);
 
-        response.EnsureSuccessStatusCode();
-        Assert.Equal("cho", await response.Content.ReadAsStringAsync());
-    }
+		response.EnsureSuccessStatusCode();
+		Assert.Equal("cho", await response.Content.ReadAsStringAsync());
+	}
 
-    [Theory]
-    [InlineData("osu.test.local")]
-    [InlineData("osu.ppy.sh")]
-    public async Task OsuSubdomain_RoutesToOsuWebGroup(string host)
-    {
-        var client = _factory.CreateClient();
-        var response = await SendWithHost(client, host);
+	[Theory]
+	[InlineData("osu.test.local")]
+	[InlineData("osu.ppy.sh")]
+	public async Task OsuSubdomain_RoutesToOsuWebGroup(string host)
+	{
+		var client = _factory.CreateClient();
+		var response = await SendWithHost(client, host);
 
-        response.EnsureSuccessStatusCode();
-        Assert.Equal("osu", await response.Content.ReadAsStringAsync());
-    }
+		response.EnsureSuccessStatusCode();
+		Assert.Equal("osu", await response.Content.ReadAsStringAsync());
+	}
 
-    [Theory]
-    [InlineData("b.test.local")]
-    [InlineData("b.ppy.sh")]
-    public async Task BeatmapAssetSubdomain_RoutesToMapGroup(string host)
-    {
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var response = await SendWithHost(client, host);
+	[Theory]
+	[InlineData("b.test.local")]
+	[InlineData("b.ppy.sh")]
+	public async Task BeatmapAssetSubdomain_RoutesToMapGroup(string host)
+	{
+		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+		var response = await SendWithHost(client, host);
 
-        Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
-        Assert.Equal("https://b.ppy.sh/", response.Headers.Location!.ToString());
-    }
+		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
+		Assert.Equal("https://b.ppy.sh/", response.Headers.Location!.ToString());
+	}
 
-    [Theory]
-    [InlineData("api.test.local")]
-    [InlineData("api.ppy.sh")]
-    public async Task ApiSubdomain_RoutesToApiGroup(string host)
-    {
-        var client = _factory.CreateClient();
-        var response = await SendWithHost(client, host);
+	[Theory]
+	[InlineData("api.test.local")]
+	[InlineData("api.ppy.sh")]
+	public async Task ApiSubdomain_RoutesToApiGroup(string host)
+	{
+		var client = _factory.CreateClient();
+		var response = await SendWithHost(client, host);
 
-        response.EnsureSuccessStatusCode();
-        // "/" now serves the generated OpenAPI/Scalar docs site landing page instead of a bare stub.
-        Assert.Contains("Basil API Documentation", await response.Content.ReadAsStringAsync());
-    }
+		response.EnsureSuccessStatusCode();
+		// "/" now serves the generated OpenAPI/Scalar docs site landing page instead of a bare stub.
+		Assert.Contains("Basil API Documentation", await response.Content.ReadAsStringAsync());
+	}
 
-    [Fact]
-    public async Task UnrecognizedHost_Returns404()
-    {
-        var client = _factory.CreateClient();
-        var response = await SendWithHost(client, "unknown.test.local");
+	[Fact]
+	public async Task UnrecognizedHost_Returns404()
+	{
+		var client = _factory.CreateClient();
+		var response = await SendWithHost(client, "unknown.test.local");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    private static async Task<HttpResponseMessage> SendWithHost(HttpClient client, string host)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, "/");
-        request.Headers.Host = host;
-        return await client.SendAsync(request);
-    }
-
+	private static async Task<HttpResponseMessage> SendWithHost(HttpClient client, string host)
+	{
+		var request = new HttpRequestMessage(HttpMethod.Get, "/");
+		request.Headers.Host = host;
+		return await client.SendAsync(request);
+	}
 }

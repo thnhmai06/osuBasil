@@ -20,209 +20,211 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 [Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapWatcherServiceTests : IDisposable
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
-    private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
-    private readonly SqliteMapRepository _maps;
-    private readonly string _mapsetsPath;
-    private readonly BeatmapWatcherService _watcher;
-    private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
+	private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
+	private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
+	private readonly SqliteMapRepository _maps;
+	private readonly string _mapsetsPath;
+	private readonly BeatmapWatcherService _watcher;
+	private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
-    public BeatmapWatcherServiceTests()
-    {
-        // Pooling=False so Dispose can delete the file immediately without SqliteConnection
-        // .ClearAllPools() — that call is process-global and would yank pooled connections out
-        // from under every other IClassFixture<SqliteFixture>-based test class running in parallel.
-        var connectionString = $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5;Pooling=False";
-        SqlMigrationRunner.RunMigrations(connectionString);
+	public BeatmapWatcherServiceTests()
+	{
+		// Pooling=False so Dispose can delete the file immediately without SqliteConnection
+		// .ClearAllPools() — that call is process-global and would yank pooled connections out
+		// from under every other IClassFixture<SqliteFixture>-based test class running in parallel.
+		var connectionString = $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5;Pooling=False";
+		SqlMigrationRunner.RunMigrations(connectionString);
 
-        _maps = new SqliteMapRepository(connectionString);
-        var mapsets = new SqliteMapsetRepository(connectionString);
-        _mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
-        Directory.CreateDirectory(_mapsetsPath);
+		_maps = new SqliteMapRepository(connectionString);
+		var mapsets = new SqliteMapsetRepository(connectionString);
+		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
+		Directory.CreateDirectory(_mapsetsPath);
 
-        var options = Options.Create(new StorageOptions
-        {
-            ReplaysPath = "",
-            AvatarsPath = "",
-            MapsetsPath = _mapsetsPath,
-            SeasonalsPath = "",
-            FaqsPath = ""
-        });
-        var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
-        _watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
-    }
+		var options = Options.Create(new StorageOptions
+		{
+			ReplaysPath = "",
+			AvatarsPath = "",
+			MapsetsPath = _mapsetsPath,
+			SeasonalsPath = "",
+			FaqsPath = ""
+		});
+		var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
+		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
+	}
 
-    public void Dispose()
-    {
-        Directory.Delete(_mapsetsPath, true);
-        // Pooling=False above means there's nothing pooled to clear before deleting.
-        File.Delete(_dbPath);
-        File.Delete(_dbPath + "-wal");
-        File.Delete(_dbPath + "-shm");
-    }
+	public void Dispose()
+	{
+		Directory.Delete(_mapsetsPath, true);
+		// Pooling=False above means there's nothing pooled to clear before deleting.
+		File.Delete(_dbPath);
+		File.Delete(_dbPath + "-wal");
+		File.Delete(_dbPath + "-shm");
+	}
 
-    [Fact]
-    public async Task DroppingMapsetFolder_GetsAutoIngestedWithinDebounceWindow()
-    {
-        await _watcher.StartAsync(CancellationToken.None);
-        try
-        {
-            // FileSystemWatcher can silently miss the very first filesystem event after a process's
-            // first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
-            // event before the real payload avoids that race.
-            await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
-            await Task.Delay(300);
-            File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+	[Fact]
+	public async Task DroppingMapsetFolder_GetsAutoIngestedWithinDebounceWindow()
+	{
+		await _watcher.StartAsync(CancellationToken.None);
+		try
+		{
+			// FileSystemWatcher can silently miss the very first filesystem event after a process's
+			// first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
+			// event before the real payload avoids that race.
+			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+			await Task.Delay(300);
+			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
 
-            var folder = Path.Combine(_mapsetsPath, "900000000 FAIRY FORE - Vivid");
-            Directory.CreateDirectory(folder);
-            File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
-                Path.Combine(folder, "vivid_osu_file.osu"));
+			var folder = Path.Combine(_mapsetsPath, "900000000 FAIRY FORE - Vivid");
+			Directory.CreateDirectory(folder);
+			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
+				Path.Combine(folder, "vivid_osu_file.osu"));
 
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < deadline &&
-                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
-                await Task.Delay(200);
+			var deadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < deadline &&
+			       await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
+				await Task.Delay(200);
 
-            var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
-            Assert.True(found is not null,
-                "Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
-                " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
-        }
-        finally
-        {
-            await _watcher.StopAsync(CancellationToken.None);
-        }
-    }
+			var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
+			Assert.True(found is not null,
+				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
+				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+		}
+		finally
+		{
+			await _watcher.StopAsync(CancellationToken.None);
+		}
+	}
 
-    [Fact]
-    public async Task RenamingMapsetFolderToDeletedMarker_RemovesMapsetWithoutReingestingIt()
-    {
-        await _watcher.StartAsync(CancellationToken.None);
-        try
-        {
-            await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
-            await Task.Delay(300);
-            File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+	[Fact]
+	public async Task RenamingMapsetFolderToDeletedMarker_RemovesMapsetWithoutReingestingIt()
+	{
+		await _watcher.StartAsync(CancellationToken.None);
+		try
+		{
+			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+			await Task.Delay(300);
+			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
 
-            var folder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
-            Directory.CreateDirectory(folder);
-            File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
-                Path.Combine(folder, "vivid_osu_file.osu"));
+			var folder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
+			Directory.CreateDirectory(folder);
+			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
+				Path.Combine(folder, "vivid_osu_file.osu"));
 
-            var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < ingestDeadline &&
-                   await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
-                await Task.Delay(200);
+			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < ingestDeadline &&
+			       await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
+				await Task.Delay(200);
 
-            var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
-            Assert.NotNull(beatmap);
+			var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
+			Assert.NotNull(beatmap);
 
-            // ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
-            // parses the Mapset id from the folder's own leading digits — rename to the actually
-            // resolved id first, matching every other test here that relies on that lookup.
-            var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
-                new StorageOptions
-                {
-                    ReplaysPath = "",
-                    AvatarsPath = "",
-                    MapsetsPath = _mapsetsPath,
-                    SeasonalsPath = "",
-                    FaqsPath = ""
-                },
-                beatmap.Mapset);
-            Directory.Move(folder, resolvedFolder);
+			// ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
+			// parses the Mapset id from the folder's own leading digits — rename to the actually
+			// resolved id first, matching every other test here that relies on that lookup.
+			var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
+				new StorageOptions
+				{
+					ReplaysPath = "",
+					AvatarsPath = "",
+					MapsetsPath = _mapsetsPath,
+					SeasonalsPath = "",
+					FaqsPath = ""
+				},
+				beatmap.Mapset);
+			Directory.Move(folder, resolvedFolder);
 
-            var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
-                                Guid.NewGuid().ToString("N");
-            Directory.Move(resolvedFolder, deletedFolder);
+			var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
+			                    Guid.NewGuid().ToString("N");
+			Directory.Move(resolvedFolder, deletedFolder);
 
-            var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < deleteDeadline &&
-                   await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
-                await Task.Delay(200);
+			var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < deleteDeadline &&
+			       await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
+				await Task.Delay(200);
 
-            Assert.Null(await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
-        }
-        finally
-        {
-            await _watcher.StopAsync(CancellationToken.None);
-        }
-    }
+			Assert.Null(await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
+		}
+		finally
+		{
+			await _watcher.StopAsync(CancellationToken.None);
+		}
+	}
 
-    [Fact]
-    public async Task DroppingOsz_SelfDeletingAfterExtraction_DoesNotDeleteTheMapsetItJustIngested()
-    {
-        await _watcher.StartAsync(CancellationToken.None);
-        try
-        {
-            // FileSystemWatcher can silently miss the very first filesystem event after a process's
-            // first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
-            // event before the real payload avoids that race.
-            await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
-            await Task.Delay(300);
-            File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+	[Fact]
+	public async Task DroppingOsz_SelfDeletingAfterExtraction_DoesNotDeleteTheMapsetItJustIngested()
+	{
+		await _watcher.StartAsync(CancellationToken.None);
+		try
+		{
+			// FileSystemWatcher can silently miss the very first filesystem event after a process's
+			// first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
+			// event before the real payload avoids that race.
+			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+			await Task.Delay(300);
+			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
 
-            // Fixture carries an explicit BeatmapSetID (900000) so the mapset ResolveMapsetAsync
-            // creates has a deterministic id, and the .osz's own filename below uses that same id —
-            // matching what a real osu!-downloaded archive looks like ("{setId} Artist - Title.osz").
-            // Without that alignment ReconcileDeletedFolderAsync (parsing the leading digits of
-            // whatever path it's given) would parse an id that happens not to match any row, and the
-            // bug this test exists to catch — deleting the just-ingested mapset — would go unnoticed.
-            var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
-            using (var archive = ZipFile.Open(oszPath, ZipArchiveMode.Create))
-                archive.CreateEntryFromFile(
-                    Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu"),
-                    "vivid_with_setid.osu");
+			// Fixture carries an explicit BeatmapSetID (900000) so the mapset ResolveMapsetAsync
+			// creates has a deterministic id, and the .osz's own filename below uses that same id —
+			// matching what a real osu!-downloaded archive looks like ("{setId} Artist - Title.osz").
+			// Without that alignment ReconcileDeletedFolderAsync (parsing the leading digits of
+			// whatever path it's given) would parse an id that happens not to match any row, and the
+			// bug this test exists to catch — deleting the just-ingested mapset — would go unnoticed.
+			var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
+			using (var archive = ZipFile.Open(oszPath, ZipArchiveMode.Create))
+			{
+				archive.CreateEntryFromFile(
+					Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu"),
+					"vivid_with_setid.osu");
+			}
 
-            var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < ingestDeadline &&
-                   await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
-                await Task.Delay(200);
+			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < ingestDeadline &&
+			       await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
+				await Task.Delay(200);
 
-            Assert.True(await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null,
-                "Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
-                " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+			Assert.True(await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null,
+				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
+				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
 
-            // ReconcileOszAsync deletes the .osz right after extracting it, which raises this same
-            // watcher's own Deleted event for that path — poll out a generous window (rather than a
-            // single fixed sleep, which under CI-level parallel load can be too short) watching for
-            // the mapset to vanish; it must not, for the whole window.
-            var survivalDeadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < survivalDeadline &&
-                   await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
-                await Task.Delay(200);
+			// ReconcileOszAsync deletes the .osz right after extracting it, which raises this same
+			// watcher's own Deleted event for that path — poll out a generous window (rather than a
+			// single fixed sleep, which under CI-level parallel load can be too short) watching for
+			// the mapset to vanish; it must not, for the whole window.
+			var survivalDeadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < survivalDeadline &&
+			       await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
+				await Task.Delay(200);
 
-            var survived = await _maps.FetchOneAsync(setId: 900000, includePrivate: true);
-            Assert.True(survived is not null,
-                "Mapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
-                string.Join(" | ", _ingestionLog.Messages) +
-                " || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
-        }
-        finally
-        {
-            await _watcher.StopAsync(CancellationToken.None);
-        }
-    }
+			var survived = await _maps.FetchOneAsync(setId: 900000, includePrivate: true);
+			Assert.True(survived is not null,
+				"Mapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
+				string.Join(" | ", _ingestionLog.Messages) +
+				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+		}
+		finally
+		{
+			await _watcher.StopAsync(CancellationToken.None);
+		}
+	}
 
-    private sealed class CapturingLogger<T> : ILogger<T>
-    {
-        public readonly List<string> Messages = [];
+	private sealed class CapturingLogger<T> : ILogger<T>
+	{
+		public readonly List<string> Messages = [];
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-        {
-            return null;
-        }
+		public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+		{
+			return null;
+		}
 
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
+		public bool IsEnabled(LogLevel logLevel)
+		{
+			return true;
+		}
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            Messages.Add($"[{logLevel}] {formatter(state, exception)} {exception}");
-        }
-    }
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+			Func<TState, Exception?, string> formatter)
+		{
+			Messages.Add($"[{logLevel}] {formatter(state, exception)} {exception}");
+		}
+	}
 }

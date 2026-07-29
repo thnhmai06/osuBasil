@@ -16,12 +16,12 @@ namespace Basil.Application.Json;
 /// </summary>
 public static class BasilJsonOptions
 {
-    public static readonly JsonSerializerOptions Instance = CreateOptions();
+	public static readonly JsonSerializerOptions Instance = CreateOptions();
 
-    private static JsonSerializerOptions CreateOptions()
-    {
-        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        options.Converters.Add(new CountryJsonConverter());
-        return options;
-    }
+	private static JsonSerializerOptions CreateOptions()
+	{
+		var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+		options.Converters.Add(new CountryJsonConverter());
+		return options;
+	}
 }

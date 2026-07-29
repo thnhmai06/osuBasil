@@ -11,12 +11,12 @@ namespace Basil.Web.Routing;
 /// </summary>
 internal static class UserLookup
 {
-    public static async Task<IResult> ResolveAsync(string idOrName, IUserRepository users,
-        Func<int, string> canonicalPath, Func<int, Task<IResult>> onId, CancellationToken cancellationToken)
-    {
-        if (int.TryParse(idOrName, out var id)) return await onId(id);
+	public static async Task<IResult> ResolveAsync(string idOrName, IUserRepository users,
+		Func<int, string> canonicalPath, Func<int, Task<IResult>> onId, CancellationToken cancellationToken)
+	{
+		if (int.TryParse(idOrName, out var id)) return await onId(id);
 
-        var user = await users.FetchByNameAsync(idOrName, cancellationToken);
-        return user is null ? Results.NotFound() : Results.Redirect(canonicalPath(user.Id));
-    }
+		var user = await users.FetchByNameAsync(idOrName, cancellationToken);
+		return user is null ? Results.NotFound() : Results.Redirect(canonicalPath(user.Id));
+	}
 }

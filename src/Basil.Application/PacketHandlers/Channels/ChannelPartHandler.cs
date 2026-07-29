@@ -11,22 +11,22 @@ namespace Basil.Application.PacketHandlers.Channels;
 ///     server-initiated part elsewhere, which does need one).
 /// </summary>
 public sealed class ChannelPartHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
-    : IBanchoPacketHandler
+	: IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.ChannelPart;
+	public ClientPackets PacketId => ClientPackets.ChannelPart;
 
-    public bool AllowedWhenRestricted => true;
+	public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var name = reader.ReadString();
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var name = reader.ReadString();
 
-        if (name is "#highlight" or "#userlog") return Task.CompletedTask;
+		if (name is "#highlight" or "#userlog") return Task.CompletedTask;
 
-        var channel = channelRegistry.GetByName(name);
-        if (channel is not null) channelMembership.Part(player, channel, false);
+		var channel = channelRegistry.GetByName(name);
+		if (channel is not null) channelMembership.Part(player, channel, false);
 
-        return Task.CompletedTask;
-    }
+		return Task.CompletedTask;
+	}
 }

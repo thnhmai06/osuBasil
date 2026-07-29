@@ -14,47 +14,47 @@ namespace Basil.Application.BackgroundServices;
 ///     bancho.py invented.
 /// </summary>
 public sealed class GhostDisconnectService(
-    IPlayerSessionRegistry sessionRegistry,
-    ChannelMembershipService channelMembership,
-    SpectatorService spectatorService) : BackgroundService
+	IPlayerSessionRegistry sessionRegistry,
+	ChannelMembershipService channelMembership,
+	SpectatorService spectatorService) : BackgroundService
 {
-    private const int OsuClientMinPingIntervalSeconds = 300;
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds / 3.0);
+	private const int OsuClientMinPingIntervalSeconds = 300;
+	private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds / 3.0);
 
-    public void RunOnce()
-    {
-        var currentTime = DateTimeOffset.UtcNow;
-        var allPlayers = sessionRegistry.All;
+	public void RunOnce()
+	{
+		var currentTime = DateTimeOffset.UtcNow;
+		var allPlayers = sessionRegistry.All;
 
-        foreach (var player in allPlayers)
-            if (!player.IsBot && currentTime - player.LastRecvTime >
-                TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
-            {
-                // Parts every joined channel (broadcasting IRC QUIT to real IRC clients still in
-                // them) before dropping the session — otherwise a ghosted IRC member would linger
-                // in ChannelSession.MemberIds/NAMES forever, and PlayerCount would stay wrong.
-                channelMembership.Quit(player, "Ping timeout");
+		foreach (var player in allPlayers)
+			if (!player.IsBot && currentTime - player.LastRecvTime >
+			    TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
+			{
+				// Parts every joined channel (broadcasting IRC QUIT to real IRC clients still in
+				// them) before dropping the session — otherwise a ghosted IRC member would linger
+				// in ChannelSession.MemberIds/NAMES forever, and PlayerCount would stay wrong.
+				channelMembership.Quit(player, "Ping timeout");
 
-                // #spec_{userId} is keyed by the persistent user id, stable across relogins — tear
-                // down BasilBot's watch of this ghosted player now, matching PlayerLogoutService's
-                // explicit-logout cleanup, or the channel would keep a dead member reference.
-                var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-                if (bot is not null) spectatorService.RemoveSpectator(player, bot);
+				// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear
+				// down BasilBot's watch of this ghosted player now, matching PlayerLogoutService's
+				// explicit-logout cleanup, or the channel would keep a dead member reference.
+				var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+				if (bot is not null) spectatorService.RemoveSpectator(player, bot);
 
-                sessionRegistry.Remove(player);
+				sessionRegistry.Remove(player);
 
-                if (!player.Restricted)
-                    foreach (var other in allPlayers)
-                        other.Enqueue(ServerPacketWriter.Logout(player.Id));
-            }
-    }
+				if (!player.Restricted)
+					foreach (var other in allPlayers)
+						other.Enqueue(ServerPacketWriter.Logout(player.Id));
+			}
+	}
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await Task.Delay(CheckInterval, stoppingToken);
-            RunOnce();
-        }
-    }
+	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	{
+		while (!stoppingToken.IsCancellationRequested)
+		{
+			await Task.Delay(CheckInterval, stoppingToken);
+			RunOnce();
+		}
+	}
 }

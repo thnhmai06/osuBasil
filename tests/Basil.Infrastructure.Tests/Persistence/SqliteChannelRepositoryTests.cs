@@ -8,30 +8,30 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-    private readonly SqliteChannelRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteChannelRepository _repository = new(fixture.ConnectionString);
 
-    [Fact]
-    public async Task FetchAllAutoJoin_ReturnsOnlyAutoJoinChannels()
-    {
-        var channels = await _repository.FetchAllAutoJoinAsync();
+	[Fact]
+	public async Task FetchAllAutoJoin_ReturnsOnlyAutoJoinChannels()
+	{
+		var channels = await _repository.FetchAllAutoJoinAsync();
 
-        Assert.Contains(channels, c => c.Name == "#osu");
-        Assert.DoesNotContain(channels, c => c.Name == "#lobby");
-        Assert.All(channels, c => Assert.True(c.AutoJoin));
-    }
+		Assert.Contains(channels, c => c.Name == "#osu");
+		Assert.DoesNotContain(channels, c => c.Name == "#lobby");
+		Assert.All(channels, c => Assert.True(c.AutoJoin));
+	}
 
-    [Fact]
-    public async Task FetchOneByName_SeededChannel_ReturnsChannel()
-    {
-        var channel = await _repository.FetchOneByNameAsync("#osu");
+	[Fact]
+	public async Task FetchOneByName_SeededChannel_ReturnsChannel()
+	{
+		var channel = await _repository.FetchOneByNameAsync("#osu");
 
-        Assert.NotNull(channel);
-        Assert.Equal("General discussion.", channel.Topic);
-    }
+		Assert.NotNull(channel);
+		Assert.Equal("General discussion.", channel.Topic);
+	}
 
-    [Fact]
-    public async Task FetchOneByName_Unknown_ReturnsNull()
-    {
-        Assert.Null(await _repository.FetchOneByNameAsync("#does-not-exist"));
-    }
+	[Fact]
+	public async Task FetchOneByName_Unknown_ReturnsNull()
+	{
+		Assert.Null(await _repository.FetchOneByNameAsync("#does-not-exist"));
+	}
 }

@@ -10,21 +10,21 @@ namespace Basil.Application.Abstractions.Scores;
 /// </summary>
 public interface ILeaderboardStore
 {
-    /// <summary>Fetches a player's 1-indexed global rank for a mode, if ranked.</summary>
-    Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode, CancellationToken cancellationToken = default);
+	/// <summary>Fetches a player's 1-indexed global rank for a mode, if ranked.</summary>
+	Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode, CancellationToken cancellationToken = default);
 
-    /// <summary>Fetches a player's 1-indexed country rank for a mode, if ranked.</summary>
-    Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,
-        CancellationToken cancellationToken = default);
+	/// <summary>Fetches a player's 1-indexed country rank for a mode, if ranked.</summary>
+	Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,
+		CancellationToken cancellationToken = default);
 
-    Task AddToGlobalLeaderboardAsync(int playerId, GameMode mode, double score,
-        CancellationToken cancellationToken = default);
+	Task AddToGlobalLeaderboardAsync(int playerId, GameMode mode, double score,
+		CancellationToken cancellationToken = default);
 
-    Task RemoveFromGlobalLeaderboardAsync(int playerId, GameMode mode, CancellationToken cancellationToken = default);
+	Task RemoveFromGlobalLeaderboardAsync(int playerId, GameMode mode, CancellationToken cancellationToken = default);
 
-    Task AddToCountryLeaderboardAsync(int playerId, GameMode mode, string country, double score,
-        CancellationToken cancellationToken = default);
+	Task AddToCountryLeaderboardAsync(int playerId, GameMode mode, string country, double score,
+		CancellationToken cancellationToken = default);
 
-    Task RemoveFromCountryLeaderboardAsync(int playerId, GameMode mode, string country,
-        CancellationToken cancellationToken = default);
+	Task RemoveFromCountryLeaderboardAsync(int playerId, GameMode mode, string country,
+		CancellationToken cancellationToken = default);
 }

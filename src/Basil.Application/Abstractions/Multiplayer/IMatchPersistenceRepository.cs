@@ -12,58 +12,58 @@ namespace Basil.Application.Abstractions.Multiplayer;
 /// </summary>
 public interface IMatchPersistenceRepository
 {
-    /// <summary>Returns the newly created Matches.Id.</summary>
-    Task<int> CreateMatchAsync(
-        string name, DateTime createdAt, CancellationToken cancellationToken = default);
+	/// <summary>Returns the newly created Matches.Id.</summary>
+	Task<int> CreateMatchAsync(
+		string name, DateTime createdAt, CancellationToken cancellationToken = default);
 
-    Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default);
+	Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    ///     Returns the newly created Rounds.Id. Only `mapMd5` identifies the beatmap played — every
-    ///     other beatmap fact is resolved live at TRT-build time by looking that md5 up through
-    ///     `IMapRepository`, never denormalized onto the round itself.
-    /// </summary>
-    Task<int> CreateRoundAsync(
-        int matchId, int roundIndex, string mapMd5,
-        GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-        Mods mods, DateTime startedAt,
-        CancellationToken cancellationToken = default);
+	/// <summary>
+	///     Returns the newly created Rounds.Id. Only `mapMd5` identifies the beatmap played — every
+	///     other beatmap fact is resolved live at TRT-build time by looking that md5 up through
+	///     `IMapRepository`, never denormalized onto the round itself.
+	/// </summary>
+	Task<int> CreateRoundAsync(
+		int matchId, int roundIndex, string mapMd5,
+		GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+		Mods mods, DateTime startedAt,
+		CancellationToken cancellationToken = default);
 
-    Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-        CancellationToken cancellationToken = default);
+	Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+		CancellationToken cancellationToken = default);
 
-    /// <summary>New for MatchReportService (the TRT builder) — null when no such match exists.</summary>
-    Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default);
+	/// <summary>New for MatchReportService (the TRT builder) — null when no such match exists.</summary>
+	Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default);
 
-    /// <summary>New for MatchReportService. Ordered by RoundIndex ascending.</summary>
-    Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default);
+	/// <summary>New for MatchReportService. Ordered by RoundIndex ascending.</summary>
+	Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default);
 
-    /// <summary>New for the management REST API's match listing/deletion.</summary>
-    Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default);
+	/// <summary>New for the management REST API's match listing/deletion.</summary>
+	Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>New for the management REST API — cascades to the match's Rounds first (FK).</summary>
-    Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default);
+	/// <summary>New for the management REST API — cascades to the match's Rounds first (FK).</summary>
+	Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default);
 
-    /// <summary>Log a match lifecycle event.</summary>
-    Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default);
+	/// <summary>Log a match lifecycle event.</summary>
+	Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default);
 
-    /// <summary>Fetch all events for a match, ordered by Timestamp ascending.</summary>
-    Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default);
+	/// <summary>Fetch all events for a match, ordered by Timestamp ascending.</summary>
+	Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default);
 
-    /// <summary>Find matches that weren't properly closed (server crash / shutdown).</summary>
-    Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default);
+	/// <summary>Find matches that weren't properly closed (server crash / shutdown).</summary>
+	Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Find rounds that weren't properly ended within a match.</summary>
-    Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-        CancellationToken cancellationToken = default);
+	/// <summary>Find rounds that weren't properly ended within a match.</summary>
+	Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		CancellationToken cancellationToken = default);
 }
 
 /// <summary>New for MatchReportService/management API reads — a raw Matches row.</summary>
 public sealed record MatchRow(
-    int Id,
-    string Name,
-    DateTime CreatedAt,
-    DateTime? EndedAt);
+	int Id,
+	string Name,
+	DateTime CreatedAt,
+	DateTime? EndedAt);
 
 /// <summary>
 ///     New for MatchReportService — a raw Rounds row. Only `MapMd5` identifies the beatmap; every
@@ -71,14 +71,14 @@ public sealed record MatchRow(
 ///     here.
 /// </summary>
 public sealed record RoundRow(
-    int Id,
-    int MatchId,
-    int RoundIndex,
-    string MapMd5,
-    GameMode Mode,
-    MatchWinCondition WinCondition,
-    MatchTeamType TeamType,
-    bool Aborted,
-    Mods Mods,
-    DateTime StartedAt,
-    DateTime? EndedAt);
+	int Id,
+	int MatchId,
+	int RoundIndex,
+	string MapMd5,
+	GameMode Mode,
+	MatchWinCondition WinCondition,
+	MatchTeamType TeamType,
+	bool Aborted,
+	Mods Mods,
+	DateTime StartedAt,
+	DateTime? EndedAt);

@@ -18,31 +18,31 @@ namespace Basil.Web.Auth;
 ///     the framework's own authorization middleware 401 automatically when the role is missing.
 /// </summary>
 public sealed class AdminKeyAuthenticationHandler(
-    IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger,
-    UrlEncoder encoder,
-    IOptions<ServerOptions> serverOptions)
-    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+	IOptionsMonitor<AuthenticationSchemeOptions> options,
+	ILoggerFactory logger,
+	UrlEncoder encoder,
+	IOptions<ServerOptions> serverOptions)
+	: AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        var adminKey = serverOptions.Value.AdminKey;
-        var provided = Request.Headers["X-Admin-Key"].FirstOrDefault();
+	protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+	{
+		var adminKey = serverOptions.Value.AdminKey;
+		var provided = Request.Headers["X-Admin-Key"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(adminKey) || string.IsNullOrEmpty(provided) || provided != adminKey)
-            return Task.FromResult(AuthenticateResult.NoResult());
+		if (string.IsNullOrEmpty(adminKey) || string.IsNullOrEmpty(provided) || provided != adminKey)
+			return Task.FromResult(AuthenticateResult.NoResult());
 
-        var identity = new ClaimsIdentity([new Claim(ClaimTypes.Role, AdminKeyDefaults.Role)], Scheme.Name);
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, Scheme.Name);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
-    }
+		var identity = new ClaimsIdentity([new Claim(ClaimTypes.Role, AdminKeyDefaults.Role)], Scheme.Name);
+		var principal = new ClaimsPrincipal(identity);
+		var ticket = new AuthenticationTicket(principal, Scheme.Name);
+		return Task.FromResult(AuthenticateResult.Success(ticket));
+	}
 }
 
 /// <summary>Scheme/policy/role names for <see cref="AdminKeyAuthenticationHandler" />, shared by <c>Program.cs</c>.</summary>
 public static class AdminKeyDefaults
 {
-    public const string Scheme = "AdminKey";
-    public const string Policy = "Admin";
-    public const string Role = "Admin";
+	public const string Scheme = "AdminKey";
+	public const string Policy = "Admin";
+	public const string Role = "Admin";
 }

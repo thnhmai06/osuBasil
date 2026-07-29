@@ -6,19 +6,19 @@ namespace Basil.Application.PacketHandlers.Core;
 /// <summary>Ported from app/api/domains/cho.py's UserPresenceRequest.</summary>
 public sealed class UserPresenceRequestHandler(IPlayerSessionRegistry sessionRegistry) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.UserPresenceRequest;
+	public ClientPackets PacketId => ClientPackets.UserPresenceRequest;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        foreach (var id in reader.ReadI32ListI16L())
-        {
-            var target = sessionRegistry.GetById(id);
-            if (target is not null) player.Enqueue(PacketBuilders.BuildUserPresence(target));
-        }
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		foreach (var id in reader.ReadI32ListI16L())
+		{
+			var target = sessionRegistry.GetById(id);
+			if (target is not null) player.Enqueue(PacketBuilders.BuildUserPresence(target));
+		}
 
-        return Task.CompletedTask;
-    }
+		return Task.CompletedTask;
+	}
 }

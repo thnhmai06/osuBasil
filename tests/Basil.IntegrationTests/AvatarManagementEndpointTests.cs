@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Application.Configuration;
-using Basil.Domain.Login;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -16,114 +15,114 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
-    private const string AdminKey = "correct-key";
-    private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-avatar-tests-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+	private const string AdminKey = "correct-key";
+	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-avatar-tests-").FullName;
+	private readonly WebApplicationFactory<Program> _factory;
 
-    public AvatarManagementEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test",
-                    ["Basil:Server:AdminKey"] = AdminKey
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton(TestDoubles.NullUserRepository());
-                services.AddSingleton(Options.Create(new StorageOptions
-                {
-                    ReplaysPath = Path.Combine(_dataDir, "Replays"),
-                    AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-                    MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
-                    SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
-                    FaqsPath = Path.Combine(_dataDir, "Faqs")
-                }));
-            });
-        });
-    }
+	public AvatarManagementEndpointTests(WebApplicationFactory<Program> factory)
+	{
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test",
+					["Basil:Server:AdminKey"] = AdminKey
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.NullUserRepository());
+				services.AddSingleton(Options.Create(new StorageOptions
+				{
+					ReplaysPath = Path.Combine(_dataDir, "Replays"),
+					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
+					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					FaqsPath = Path.Combine(_dataDir, "Faqs")
+				}));
+			});
+		});
+	}
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
-    }
+	public void Dispose()
+	{
+		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
+	}
 
-    private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
-    {
-        var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
-        if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
-        return request;
-    }
+	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
+	{
+		var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
+		if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+		return request;
+	}
 
-    private static HttpRequestMessage MakeUploadRequest(HttpMethod method, int userId, string fileName = "avatar.png")
-    {
-        var request = MakeRequest(method, $"/users/{userId}/avatar");
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", fileName } };
-        return request;
-    }
+	private static HttpRequestMessage MakeUploadRequest(HttpMethod method, int userId, string fileName = "avatar.png")
+	{
+		var request = MakeRequest(method, $"/users/{userId}/avatar");
+		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", fileName } };
+		return request;
+	}
 
-    [Fact]
-    public async Task PutAvatar_ValidUpload_ReturnsNoContentAndStoresFile()
-    {
-        var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Put, 1));
+	[Fact]
+	public async Task PutAvatar_ValidUpload_ReturnsNoContentAndStoresFile()
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Put, 1));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(File.Exists(Path.Combine(_dataDir, "Avatars", "1.png")));
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.True(File.Exists(Path.Combine(_dataDir, "Avatars", "1.png")));
+	}
 
-    [Fact]
-    public async Task PutAvatar_MissingAdminKey_ReturnsUnauthorized()
-    {
-        var request = MakeRequest(HttpMethod.Put, "/users/1/avatar", null);
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "avatar.png" } };
+	[Fact]
+	public async Task PutAvatar_MissingAdminKey_ReturnsUnauthorized()
+	{
+		var request = MakeRequest(HttpMethod.Put, "/users/1/avatar", null);
+		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "avatar.png" } };
 
-        var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task DeleteAvatar_ExistingUpload_RemovesFileAndReturnsNoContent()
-    {
-        var client = _factory.CreateClient();
-        await client.SendAsync(MakeUploadRequest(HttpMethod.Put, 2));
+	[Fact]
+	public async Task DeleteAvatar_ExistingUpload_RemovesFileAndReturnsNoContent()
+	{
+		var client = _factory.CreateClient();
+		await client.SendAsync(MakeUploadRequest(HttpMethod.Put, 2));
 
-        var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/2/avatar"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/2/avatar"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.False(File.Exists(Path.Combine(_dataDir, "Avatars", "2.png")));
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.False(File.Exists(Path.Combine(_dataDir, "Avatars", "2.png")));
+	}
 
-    [Fact]
-    public async Task DeleteAvatar_NoAvatarUploaded_StillReturnsNoContent()
-    {
-        var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/users/999/avatar"));
+	[Fact]
+	public async Task DeleteAvatar_NoAvatarUploaded_StillReturnsNoContent()
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/users/999/avatar"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task DeleteAvatar_MissingAdminKey_ReturnsUnauthorized()
-    {
-        var response = await _factory.CreateClient()
-            .SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", null));
+	[Fact]
+	public async Task DeleteAvatar_MissingAdminKey_ReturnsUnauthorized()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", null));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
 
-    [Fact]
-    public async Task PostAvatar_NoLongerSupported()
-    {
-        var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Post, 3));
+	[Fact]
+	public async Task PostAvatar_NoLongerSupported()
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Post, 3));
 
-        Assert.False(response.IsSuccessStatusCode);
-    }
+		Assert.False(response.IsSuccessStatusCode);
+	}
 }

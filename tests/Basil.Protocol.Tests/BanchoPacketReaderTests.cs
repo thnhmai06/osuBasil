@@ -12,249 +12,249 @@ namespace Basil.Protocol.Tests;
 /// </summary>
 public class BanchoPacketReaderTests
 {
-    private static BanchoPacketReader Reader(string hex)
-    {
-        return new BanchoPacketReader(Convert.FromHexString(hex));
-    }
+	private static BanchoPacketReader Reader(string hex)
+	{
+		return new BanchoPacketReader(Convert.FromHexString(hex));
+	}
 
-    [Theory]
-    [InlineData("00", 0)]
-    [InlineData("7f", 127)]
-    [InlineData("ff", -1)]
-    [InlineData("80", -128)]
-    public void ReadI8(string hex, int expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadI8());
-    }
+	[Theory]
+	[InlineData("00", 0)]
+	[InlineData("7f", 127)]
+	[InlineData("ff", -1)]
+	[InlineData("80", -128)]
+	public void ReadI8(string hex, int expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadI8());
+	}
 
-    [Theory]
-    [InlineData("00", 0)]
-    [InlineData("ff", 255)]
-    public void ReadU8(string hex, int expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadU8());
-    }
+	[Theory]
+	[InlineData("00", 0)]
+	[InlineData("ff", 255)]
+	public void ReadU8(string hex, int expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadU8());
+	}
 
-    [Theory]
-    [InlineData("0000", 0)]
-    [InlineData("ff7f", 32767)]
-    [InlineData("ffff", -1)]
-    public void ReadI16(string hex, int expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadI16());
-    }
+	[Theory]
+	[InlineData("0000", 0)]
+	[InlineData("ff7f", 32767)]
+	[InlineData("ffff", -1)]
+	public void ReadI16(string hex, int expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadI16());
+	}
 
-    [Theory]
-    [InlineData("0000", 0)]
-    [InlineData("ffff", 65535)]
-    public void ReadU16(string hex, int expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadU16());
-    }
+	[Theory]
+	[InlineData("0000", 0)]
+	[InlineData("ffff", 65535)]
+	public void ReadU16(string hex, int expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadU16());
+	}
 
-    [Theory]
-    [InlineData("00000000", 0)]
-    [InlineData("ffffff7f", 2147483647)]
-    [InlineData("ffffffff", -1)]
-    [InlineData("00000080", -2147483648)]
-    public void ReadI32(string hex, int expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadI32());
-    }
+	[Theory]
+	[InlineData("00000000", 0)]
+	[InlineData("ffffff7f", 2147483647)]
+	[InlineData("ffffffff", -1)]
+	[InlineData("00000080", -2147483648)]
+	public void ReadI32(string hex, int expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadI32());
+	}
 
-    [Theory]
-    [InlineData("00000000", 0u)]
-    [InlineData("ffffffff", 4294967295u)]
-    public void ReadU32(string hex, uint expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadU32());
-    }
+	[Theory]
+	[InlineData("00000000", 0u)]
+	[InlineData("ffffffff", 4294967295u)]
+	public void ReadU32(string hex, uint expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadU32());
+	}
 
-    [Theory]
-    [InlineData("0000000000000000", 0L)]
-    [InlineData("ffffffffffffff7f", 9223372036854775807L)]
-    [InlineData("ffffffffffffffff", -1L)]
-    public void ReadI64(string hex, long expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadI64());
-    }
+	[Theory]
+	[InlineData("0000000000000000", 0L)]
+	[InlineData("ffffffffffffff7f", 9223372036854775807L)]
+	[InlineData("ffffffffffffffff", -1L)]
+	public void ReadI64(string hex, long expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadI64());
+	}
 
-    [Theory]
-    [InlineData("0000000000000000", 0ul)]
-    [InlineData("ffffffffffffffff", 18446744073709551615ul)]
-    public void ReadU64(string hex, ulong expected)
-    {
-        Assert.Equal(expected, Reader(hex).ReadU64());
-    }
+	[Theory]
+	[InlineData("0000000000000000", 0ul)]
+	[InlineData("ffffffffffffffff", 18446744073709551615ul)]
+	public void ReadU64(string hex, ulong expected)
+	{
+		Assert.Equal(expected, Reader(hex).ReadU64());
+	}
 
-    [Fact]
-    public void ReadF32()
-    {
-        Assert.Equal(3.140000104904175f, Reader("c3f54840").ReadF32(), 6);
-    }
+	[Fact]
+	public void ReadF32()
+	{
+		Assert.Equal(3.140000104904175f, Reader("c3f54840").ReadF32(), 6);
+	}
 
-    [Fact]
-    public void ReadF32_Zero()
-    {
-        Assert.Equal(0.0f, Reader("00000000").ReadF32());
-    }
+	[Fact]
+	public void ReadF32_Zero()
+	{
+		Assert.Equal(0.0f, Reader("00000000").ReadF32());
+	}
 
-    [Fact]
-    public void ReadF64()
-    {
-        Assert.Equal(3.141592653589793, Reader("182d4454fb210940").ReadF64(), 12);
-    }
+	[Fact]
+	public void ReadF64()
+	{
+		Assert.Equal(3.141592653589793, Reader("182d4454fb210940").ReadF64(), 12);
+	}
 
-    [Fact]
-    public void ReadI32ListI16L_Empty()
-    {
-        Assert.Empty(Reader("0000").ReadI32ListI16L());
-    }
+	[Fact]
+	public void ReadI32ListI16L_Empty()
+	{
+		Assert.Empty(Reader("0000").ReadI32ListI16L());
+	}
 
-    [Fact]
-    public void ReadI32ListI16L_Values()
-    {
-        Assert.Equal([1, 4, 1001], Reader("03000100000004000000e9030000").ReadI32ListI16L());
-    }
+	[Fact]
+	public void ReadI32ListI16L_Values()
+	{
+		Assert.Equal([1, 4, 1001], Reader("03000100000004000000e9030000").ReadI32ListI16L());
+	}
 
-    [Fact]
-    public void ReadI32ListI32L_Empty()
-    {
-        Assert.Empty(Reader("00000000").ReadI32ListI32L());
-    }
+	[Fact]
+	public void ReadI32ListI32L_Empty()
+	{
+		Assert.Empty(Reader("00000000").ReadI32ListI32L());
+	}
 
-    [Fact]
-    public void ReadI32ListI32L_Values()
-    {
-        Assert.Equal([5, 6], Reader("020000000500000006000000").ReadI32ListI32L());
-    }
+	[Fact]
+	public void ReadI32ListI32L_Values()
+	{
+		Assert.Equal([5, 6], Reader("020000000500000006000000").ReadI32ListI32L());
+	}
 
-    [Fact]
-    public void ReadString_Empty()
-    {
-        Assert.Equal("", Reader("00").ReadString());
-    }
+	[Fact]
+	public void ReadString_Empty()
+	{
+		Assert.Equal("", Reader("00").ReadString());
+	}
 
-    [Fact]
-    public void ReadString_Ascii()
-    {
-        Assert.Equal("cmyui", Reader("0b05636d797569").ReadString());
-    }
+	[Fact]
+	public void ReadString_Ascii()
+	{
+		Assert.Equal("cmyui", Reader("0b05636d797569").ReadString());
+	}
 
-    [Fact]
-    public void ReadString_Unicode()
-    {
-        Assert.Equal("héllo wörld", Reader("0b0d68c3a96c6c6f2077c3b6726c64").ReadString());
-    }
+	[Fact]
+	public void ReadString_Unicode()
+	{
+		Assert.Equal("héllo wörld", Reader("0b0d68c3a96c6c6f2077c3b6726c64").ReadString());
+	}
 
-    [Fact]
-    public void ReadMessage()
-    {
-        var message = Reader("0b05636d7975690b0568657921210b086a61636f6269616e20000000").ReadMessage();
+	[Fact]
+	public void ReadMessage()
+	{
+		var message = Reader("0b05636d7975690b0568657921210b086a61636f6269616e20000000").ReadMessage();
 
-        Assert.Equal(new BanchoMessage("cmyui", "hey!!", "jacobian", 32), message);
-    }
+		Assert.Equal(new BanchoMessage("cmyui", "hey!!", "jacobian", 32), message);
+	}
 
-    // NOTE: app/packets.py's read_channel() is dead code (never called anywhere in bancho.py) and
-    // has a latent write/read asymmetry bug (write_channel encodes player count as u16, but
-    // read_channel reads it back as i32) that only doesn't crash because Python's memoryview
-    // slicing silently clips out-of-range reads. Not porting unused, buggy code — see
-    // ServerPacketWriterTests.ChannelInfo_* for the (used, correct) write side.
+	// NOTE: app/packets.py's read_channel() is dead code (never called anywhere in bancho.py) and
+	// has a latent write/read asymmetry bug (write_channel encodes player count as u16, but
+	// read_channel reads it back as i32) that only doesn't crash because Python's memoryview
+	// slicing silently clips out-of-range reads. Not porting unused, buggy code — see
+	// ServerPacketWriterTests.ChannelInfo_* for the (used, correct) write side.
 
-    [Fact]
-    public void ReadScoreFrame_V1_HasNoComboOrBonusPortion()
-    {
-        var frame = Reader("629500001c400130000200200008000300688307007a00270000f50000").ReadScoreFrame();
+	[Fact]
+	public void ReadScoreFrame_V1_HasNoComboOrBonusPortion()
+	{
+		var frame = Reader("629500001c400130000200200008000300688307007a00270000f50000").ReadScoreFrame();
 
-        Assert.Equal(new ScoreFrameData(
-            38242, 28, 320, 48, 2, 32, 8,
-            3, 492_392, 122, 39, false,
-            245, 0, false), frame);
-    }
+		Assert.Equal(new ScoreFrameData(
+			38242, 28, 320, 48, 2, 32, 8,
+			3, 492_392, 122, 39, false,
+			245, 0, false), frame);
+	}
 
-    [Fact]
-    public void ReadScoreFrame_V2_IncludesComboAndBonusPortion()
-    {
-        var frame = Reader("0100000002030004000500060007000800090000000b000a000164010177be9f1a2fdd5e409a99999999b95340")
-            .ReadScoreFrame();
+	[Fact]
+	public void ReadScoreFrame_V2_IncludesComboAndBonusPortion()
+	{
+		var frame = Reader("0100000002030004000500060007000800090000000b000a000164010177be9f1a2fdd5e409a99999999b95340")
+			.ReadScoreFrame();
 
-        Assert.Equal(1, frame.Time);
-        Assert.Equal(2, frame.Id);
-        Assert.True(frame.Perfect);
-        Assert.True(frame.ScoreV2);
-        Assert.Equal(123.456, frame.ComboPortion!.Value, 6);
-        Assert.Equal(78.9, frame.BonusPortion!.Value, 6);
-    }
+		Assert.Equal(1, frame.Time);
+		Assert.Equal(2, frame.Id);
+		Assert.True(frame.Perfect);
+		Assert.True(frame.ScoreV2);
+		Assert.Equal(123.456, frame.ComboPortion!.Value, 6);
+		Assert.Equal(78.9, frame.BonusPortion!.Value, 6);
+	}
 
-    [Fact]
-    public void ReadReplayFrame()
-    {
-        var frame = Reader("050000004841000060c064000000").ReadReplayFrame();
+	[Fact]
+	public void ReadReplayFrame()
+	{
+		var frame = Reader("050000004841000060c064000000").ReadReplayFrame();
 
-        Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, 0, 12.5f, -3.5f, 100), frame);
-    }
+		Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, 0, 12.5f, -3.5f, 100), frame);
+	}
 
-    [Fact]
-    public void ReadReplayFrameBundle_V1_TwoFrames_HasNoComboOrBonusPortion()
-    {
-        // Generated by packing the same fields through Python's struct module using bancho.py's own
-        // ReplayFrameBundle wire layout (extra:i32, framecount:u16, frames[], action:u8, scoreframe, sequence:u16),
-        // not hand-derived, to avoid transcription drift — same approach as the ScoreFrame/ReplayFrame fixtures above.
-        var bundle = Reader(
-                "07000000020005000000c94200404843e803000000000000164300007a43f803000000f8030000000a000200010000000000000040e2010032000c00016400002a00")
-            .ReadReplayFrameBundle();
+	[Fact]
+	public void ReadReplayFrameBundle_V1_TwoFrames_HasNoComboOrBonusPortion()
+	{
+		// Generated by packing the same fields through Python's struct module using bancho.py's own
+		// ReplayFrameBundle wire layout (extra:i32, framecount:u16, frames[], action:u8, scoreframe, sequence:u16),
+		// not hand-derived, to avoid transcription drift — same approach as the ScoreFrame/ReplayFrame fixtures above.
+		var bundle = Reader(
+				"07000000020005000000c94200404843e803000000000000164300007a43f803000000f8030000000a000200010000000000000040e2010032000c00016400002a00")
+			.ReadReplayFrameBundle();
 
-        Assert.Equal(7, bundle.ExtraByte);
-        Assert.Equal(42, bundle.Sequence);
-        Assert.Equal(ReplayAction.Standard, bundle.Action);
-        Assert.Equal(2, bundle.Frames.Count);
-        Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, 0, 100.5f, 200.25f, 1000), bundle.Frames[0]);
-        Assert.Equal(new ReplayFrameData(Keys.None, 0, 150.0f, 250.0f, 1016), bundle.Frames[1]);
-        Assert.Equal(new ScoreFrameData(1016, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false),
-            bundle.ScoreFrame);
-    }
+		Assert.Equal(7, bundle.ExtraByte);
+		Assert.Equal(42, bundle.Sequence);
+		Assert.Equal(ReplayAction.Standard, bundle.Action);
+		Assert.Equal(2, bundle.Frames.Count);
+		Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, 0, 100.5f, 200.25f, 1000), bundle.Frames[0]);
+		Assert.Equal(new ReplayFrameData(Keys.None, 0, 150.0f, 250.0f, 1016), bundle.Frames[1]);
+		Assert.Equal(new ScoreFrameData(1016, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false),
+			bundle.ScoreFrame);
+	}
 
-    [Fact]
-    public void ReadReplayFrameBundle_V2_EmptyFrames_IncludesComboAndBonusPortion()
-    {
-        var bundle = Reader(
-                "ffffffff000008d007000000050005000500000000000100f1fb09001e00050000500101000000000000e83f000000000000d03f0000")
-            .ReadReplayFrameBundle();
+	[Fact]
+	public void ReadReplayFrameBundle_V2_EmptyFrames_IncludesComboAndBonusPortion()
+	{
+		var bundle = Reader(
+				"ffffffff000008d007000000050005000500000000000100f1fb09001e00050000500101000000000000e83f000000000000d03f0000")
+			.ReadReplayFrameBundle();
 
-        Assert.Equal(-1, bundle.ExtraByte);
-        Assert.Equal(0, bundle.Sequence);
-        Assert.Equal(ReplayAction.WatchingOther, bundle.Action);
-        Assert.Empty(bundle.Frames);
-        Assert.True(bundle.ScoreFrame.ScoreV2);
-        Assert.Equal(0.75, bundle.ScoreFrame.ComboPortion!.Value, 6);
-        Assert.Equal(0.25, bundle.ScoreFrame.BonusPortion!.Value, 6);
-    }
+		Assert.Equal(-1, bundle.ExtraByte);
+		Assert.Equal(0, bundle.Sequence);
+		Assert.Equal(ReplayAction.WatchingOther, bundle.Action);
+		Assert.Empty(bundle.Frames);
+		Assert.True(bundle.ScoreFrame.ScoreV2);
+		Assert.Equal(0.75, bundle.ScoreFrame.ComboPortion!.Value, 6);
+		Assert.Equal(0.25, bundle.ScoreFrame.BonusPortion!.Value, 6);
+	}
 
-    [Fact]
-    public void ReadMatch_FullRoundTrip()
-    {
-        var match = Reader(
-                "07000100400000000b0570617274790b067365637265740b08536f6d65204d61703c8400000b2036306237323566313063396338356337306439373838306466653831393162330408010101010101010101010101010101020000000000000000000000000000e90300002000000020000000000202014000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040e20100")
-            .ReadMatch();
+	[Fact]
+	public void ReadMatch_FullRoundTrip()
+	{
+		var match = Reader(
+				"07000100400000000b0570617274790b067365637265740b08536f6d65204d61703c8400000b2036306237323566313063396338356337306439373838306466653831393162330408010101010101010101010101010101020000000000000000000000000000e90300002000000020000000000202014000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040e20100")
+			.ReadMatch();
 
-        Assert.Equal(7, match.Id);
-        Assert.True(match.InProgress);
-        Assert.Equal(0, match.Powerplay);
-        Assert.Equal(64, match.Mods);
-        Assert.Equal("party", match.Name);
-        Assert.Equal("secret", match.Password);
-        Assert.Equal("Some Map", match.MapName);
-        Assert.Equal(33852, match.MapId);
-        Assert.Equal("60b725f10c9c85c70d97880dfe8191b3", match.MapMd5);
-        Assert.Equal([4, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], match.SlotStatuses);
-        Assert.Equal([1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotTeams);
-        Assert.Equal([1001, 32], match.SlotIds);
-        Assert.Equal(32, match.HostId);
-        Assert.Equal(0, match.Mode);
-        Assert.Equal(2, match.WinCondition);
-        Assert.Equal(2, match.TeamType);
-        Assert.True(match.FreeMods);
-        Assert.Equal([64, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotMods);
-        Assert.Equal(123_456, match.Seed);
-    }
+		Assert.Equal(7, match.Id);
+		Assert.True(match.InProgress);
+		Assert.Equal(0, match.Powerplay);
+		Assert.Equal(64, match.Mods);
+		Assert.Equal("party", match.Name);
+		Assert.Equal("secret", match.Password);
+		Assert.Equal("Some Map", match.MapName);
+		Assert.Equal(33852, match.MapId);
+		Assert.Equal("60b725f10c9c85c70d97880dfe8191b3", match.MapMd5);
+		Assert.Equal([4, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], match.SlotStatuses);
+		Assert.Equal([1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotTeams);
+		Assert.Equal([1001, 32], match.SlotIds);
+		Assert.Equal(32, match.HostId);
+		Assert.Equal(0, match.Mode);
+		Assert.Equal(2, match.WinCondition);
+		Assert.Equal(2, match.TeamType);
+		Assert.True(match.FreeMods);
+		Assert.Equal([64, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotMods);
+		Assert.Equal(123_456, match.Seed);
+	}
 }

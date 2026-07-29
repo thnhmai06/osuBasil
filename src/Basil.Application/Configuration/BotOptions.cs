@@ -7,13 +7,13 @@ namespace Basil.Application.Configuration;
 /// </summary>
 public sealed class BotOptions
 {
-    public const string SectionName = "Basil:Bot";
+	public const string SectionName = "Basil:Bot";
 
-    public string Name { get; init; } = "BasilBot";
+	public string Name { get; init; } = "BasilBot";
 
-    /// <summary>Prefix chat commands must start with (!help, !roll, !mp ...).</summary>
-    public required string CommandPrefix { get; init; }
+	/// <summary>Prefix chat commands must start with (!help, !roll, !mp ...).</summary>
+	public required string CommandPrefix { get; init; }
 
-    /// <summary>Country code for BasilBot (default 'vn'). Seeded in base.sql, overridable here.</summary>
-    public string Country { get; init; } = "vn";
+	/// <summary>Country code for BasilBot (default 'vn'). Seeded in base.sql, overridable here.</summary>
+	public string Country { get; init; } = "vn";
 }

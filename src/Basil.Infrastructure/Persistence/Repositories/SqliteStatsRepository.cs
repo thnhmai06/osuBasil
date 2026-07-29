@@ -8,33 +8,33 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IStatsRepository" />
 public sealed class SqliteStatsRepository(string connectionString) : IStatsRepository
 {
-    public async Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId,
-        CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        var rows = await connection.QueryAsync<StatsRow>(
-            "SELECT * FROM UserStats WHERE Id = @UserId",
-            new { UserId = userId });
-        return [.. rows.Select(r => r.ToStats())];
-    }
+	public async Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId,
+		CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		var rows = await connection.QueryAsync<StatsRow>(
+			"SELECT * FROM UserStats WHERE Id = @UserId",
+			new { UserId = userId });
+		return [.. rows.Select(r => r.ToStats())];
+	}
 
-    private SqliteConnection Connect()
-    {
-        return new SqliteConnection(connectionString);
-    }
+	private SqliteConnection Connect()
+	{
+		return new SqliteConnection(connectionString);
+	}
 
-    private sealed class StatsRow
-    {
-        public int Id { get; set; }
-        public int Mode { get; set; }
-        public long Tscore { get; set; }
-        public long Rscore { get; set; }
-        public int Plays { get; set; }
-        public double Acc { get; set; }
+	private sealed class StatsRow
+	{
+		public int Id { get; set; }
+		public int Mode { get; set; }
+		public long Tscore { get; set; }
+		public long Rscore { get; set; }
+		public int Plays { get; set; }
+		public double Acc { get; set; }
 
-        public Stats ToStats()
-        {
-            return new Stats(Id, (GameMode)Mode, Tscore, Rscore, Plays, Acc);
-        }
-    }
+		public Stats ToStats()
+		{
+			return new Stats(Id, (GameMode)Mode, Tscore, Rscore, Plays, Acc);
+		}
+	}
 }

@@ -10,20 +10,20 @@ namespace Basil.Application.PacketHandlers.Core;
 /// </summary>
 public static class PacketBuilders
 {
-    public static byte[] BuildUserPresence(PlayerSession session)
-    {
-        return ServerPacketWriter.UserPresence(
-            session.Id, session.Name, session.UtcOffset, (int)session.Geoloc.Country,
-            (int)session.BanchoPrivilege, (int)session.Status.Mode,
-            session.Geoloc.Longitude, session.Geoloc.Latitude, session.CurrentStats?.Rank ?? 0);
-    }
+	public static byte[] BuildUserPresence(PlayerSession session)
+	{
+		return ServerPacketWriter.UserPresence(
+			session.Id, session.Name, session.UtcOffset, (int)session.Geoloc.Country,
+			(int)session.BanchoPrivilege, (int)session.Status.Mode,
+			session.Geoloc.Longitude, session.Geoloc.Latitude, session.CurrentStats?.Rank ?? 0);
+	}
 
-    public static byte[] BuildUserStats(PlayerSession session)
-    {
-        return ServerPacketWriter.UserStats(
-            session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
-            (int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
-            session.CurrentStats?.Rscore ?? 0, session.CurrentStats?.Acc ?? 0.0, session.CurrentStats?.Plays ?? 0,
-            session.CurrentStats?.Tscore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
-    }
+	public static byte[] BuildUserStats(PlayerSession session)
+	{
+		return ServerPacketWriter.UserStats(
+			session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
+			(int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
+			session.CurrentStats?.Rscore ?? 0, session.CurrentStats?.Acc ?? 0.0, session.CurrentStats?.Plays ?? 0,
+			session.CurrentStats?.Tscore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
+	}
 }

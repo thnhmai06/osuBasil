@@ -8,51 +8,51 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 
 /// <summary>Ported from app/api/domains/cho.py's MatchJoin.</summary>
 public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembershipService matchMembership)
-    : IBanchoPacketHandler
+	: IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.JoinMatch;
+	public ClientPackets PacketId => ClientPackets.JoinMatch;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var matchId = reader.ReadI32();
-        var password = reader.ReadString();
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var matchId = reader.ReadI32();
+		var password = reader.ReadString();
 
-        var match = matchRegistry.GetById(matchId);
-        if (match is null)
-        {
-            player.Enqueue(ServerPacketWriter.MatchJoinFail());
-            return;
-        }
+		var match = matchRegistry.GetById(matchId);
+		if (match is null)
+		{
+			player.Enqueue(ServerPacketWriter.MatchJoinFail());
+			return;
+		}
 
-        if (player.Restricted)
-        {
-            player.Enqueue([
-                .. ServerPacketWriter.MatchJoinFail(),
-                .. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
-            ]);
-            return;
-        }
+		if (player.Restricted)
+		{
+			player.Enqueue([
+				.. ServerPacketWriter.MatchJoinFail(),
+				.. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
+			]);
+			return;
+		}
 
-        if (player.Silenced)
-        {
-            player.Enqueue([
-                .. ServerPacketWriter.MatchJoinFail(),
-                .. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
-            ]);
-            return;
-        }
+		if (player.Silenced)
+		{
+			player.Enqueue([
+				.. ServerPacketWriter.MatchJoinFail(),
+				.. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
+			]);
+			return;
+		}
 
-        await match.Lock.WaitAsync();
-        try
-        {
-            await matchMembership.JoinAsync(player, match, password, cancellationToken);
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
+		await match.Lock.WaitAsync();
+		try
+		{
+			await matchMembership.JoinAsync(player, match, password, cancellationToken);
+		}
+		finally
+		{
+			match.Lock.Release();
+		}
+	}
 }

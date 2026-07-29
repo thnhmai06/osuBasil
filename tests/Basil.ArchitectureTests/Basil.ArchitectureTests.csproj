@@ -1,33 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="coverlet.collector">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
-        <PackageReference Include="NetArchTest.Rules"/>
-        <PackageReference Include="xunit"/>
-        <PackageReference Include="xunit.runner.visualstudio">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
+		<PackageReference Include="NetArchTest.Rules"/>
+		<PackageReference Include="xunit"/>
+		<PackageReference Include="xunit.runner.visualstudio">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
-    <ItemGroup>
-        <Using Include="Xunit"/>
-    </ItemGroup>
+	<ItemGroup>
+		<Using Include="Xunit"/>
+	</ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\Basil.Domain\Basil.Domain.csproj"/>
-        <ProjectReference Include="..\..\src\Basil.Application\Basil.Application.csproj"/>
-        <ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
-        <ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
-        <ProjectReference Include="..\..\src\Basil.Web\Basil.Web.csproj"/>
-    </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Application\Basil.Application.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Web\Basil.Web.csproj"/>
+	</ItemGroup>
 
 </Project>

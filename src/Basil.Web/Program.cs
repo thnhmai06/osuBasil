@@ -22,306 +22,306 @@ namespace Basil.Web;
 
 public sealed class Program
 {
-    private const string CorsPolicyName = "ApiCors";
+	private const string CorsPolicyName = "ApiCors";
 
-    /// <summary>
-    ///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
-    ///     sidebar's collapsible sections in this exact order — every route under one resource (e.g.
-    ///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
-    ///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
-    ///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
-    ///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
-    ///     group order (see <see cref="AddOpenApiDocument" />).
-    /// </summary>
-    private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
-    [
-        ("Matches",
-        [
-            ("Matches", "List and create matches."),
-            ("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
-                             "equivalent is under Match Live)."),
-            ("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
-            ("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
-            ("Match Hosts", "Get/set/clear the match host."),
-            ("Match Referees", "List/replace/add/remove the match's referees."),
-            ("Match Bans", "List/replace/add players banned from the match, and unban."),
-            ("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
-                            "invite players onto them, and kick a seated player."),
-            ("Match Timer", "Read, start, or abort the match's countdown timer."),
-            ("Match Abort", "Abort the match currently in progress."),
-            ("Match Close", "Close the match immediately.")
-        ]),
-        ("Users",
-        [
-            ("Users", "User CRUD, avatar management, and live spectator-input streams.")
-        ]),
-        ("Beatmapsets",
-        [
-            ("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
-            ("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
-        ]),
-        ("Scores",
-        [
-            ("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
-        ]),
-        ("FAQ",
-        [
-            ("FAQ", "Public FAQ entry storage.")
-        ]),
-        ("Seasonal Backgrounds",
-        [
-            ("Seasonal Backgrounds", "Public seasonal background image storage.")
-        ]),
-        ("Abbreviation Redirects",
-        [
-            ("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
-        ]),
-        ("Health",
-        [
-            ("Health", "Liveness check.")
-        ])
-    ];
+	/// <summary>
+	///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
+	///     sidebar's collapsible sections in this exact order — every route under one resource (e.g.
+	///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
+	///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
+	///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
+	///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
+	///     group order (see <see cref="AddOpenApiDocument" />).
+	/// </summary>
+	private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
+	[
+		("Matches",
+		[
+			("Matches", "List and create matches."),
+			("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
+			                 "equivalent is under Match Live)."),
+			("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
+			("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
+			("Match Hosts", "Get/set/clear the match host."),
+			("Match Referees", "List/replace/add/remove the match's referees."),
+			("Match Bans", "List/replace/add players banned from the match, and unban."),
+			("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
+			                "invite players onto them, and kick a seated player."),
+			("Match Timer", "Read, start, or abort the match's countdown timer."),
+			("Match Abort", "Abort the match currently in progress."),
+			("Match Close", "Close the match immediately.")
+		]),
+		("Users",
+		[
+			("Users", "User CRUD, avatar management, and live spectator-input streams.")
+		]),
+		("Beatmapsets",
+		[
+			("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
+			("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
+		]),
+		("Scores",
+		[
+			("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
+		]),
+		("FAQ",
+		[
+			("FAQ", "Public FAQ entry storage.")
+		]),
+		("Seasonal Backgrounds",
+		[
+			("Seasonal Backgrounds", "Public seasonal background image storage.")
+		]),
+		("Abbreviation Redirects",
+		[
+			("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
+		]),
+		("Health",
+		[
+			("Health", "Liveness check.")
+		])
+	];
 
-    public static async Task Main(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+	public static async Task Main(string[] args)
+	{
+		var builder = WebApplication.CreateBuilder(args);
 
-        ConfigureConfiguration(builder, args);
-        ConfigureKestrel(builder);
-        builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
+		ConfigureConfiguration(builder, args);
+		ConfigureKestrel(builder);
+		builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 
-        builder.Services.AddInfrastructure(builder.Configuration);
-        builder.Services.AddApplication();
-        ConfigureJson(builder);
-        ConfigureOpenApi(builder);
-        ConfigureAuth(builder);
-        ConfigureCors(builder);
+		builder.Services.AddInfrastructure(builder.Configuration);
+		builder.Services.AddApplication();
+		ConfigureJson(builder);
+		ConfigureOpenApi(builder);
+		ConfigureAuth(builder);
+		ConfigureCors(builder);
 
-        var app = builder.Build();
-        app.UseWebSockets();
-        app.UseCors(CorsPolicyName);
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.UseMiddleware<EnvelopeMiddleware>();
+		var app = builder.Build();
+		app.UseWebSockets();
+		app.UseCors(CorsPolicyName);
+		app.UseAuthentication();
+		app.UseAuthorization();
+		app.UseMiddleware<EnvelopeMiddleware>();
 
-        var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
-        BanchoHostGroups.MapAll(app, domain);
+		var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
+		BanchoHostGroups.MapAll(app, domain);
 
-        await InitializeDataAsync(app);
-        await app.RunAsync();
-    }
+		await InitializeDataAsync(app);
+		await app.RunAsync();
+	}
 
-    // appsettings.json carries all Basil settings under a "Basil" section alongside standard
-    // ASP.NET Core config (Logging, AllowedHosts). appsettings.{env}.json and command-line args
-    // are layered on top for environment-specific overrides.
-    private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
-    {
-        builder.Configuration
-            .AddJsonFile("appsettings.json", false, true)
-            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true)
-            .AddCommandLine(args);
-    }
+	// appsettings.json carries all Basil settings under a "Basil" section alongside standard
+	// ASP.NET Core config (Logging, AllowedHosts). appsettings.{env}.json and command-line args
+	// are layered on top for environment-specific overrides.
+	private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
+	{
+		builder.Configuration
+			.AddJsonFile("appsettings.json", false, true)
+			.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true)
+			.AddCommandLine(args);
+	}
 
-    // Kestrel endpoint and HTTPS cert configured from appsettings.json Basil:Server section (Port,
-    // CertPath, CertPassword). Disables auto port selection — server binds exclusively on the
-    // configured port. Leave CertPath/CertPassword unset to use the dev cert or OS-level TLS.
-    // Http1AndHttp2 lets a browser multiplex several SSE connections over one connection instead of
-    // hitting HTTP/1.1's ~6-per-origin ceiling — only takes effect over TLS, which every listener here
-    // already uses.
-    private static void ConfigureKestrel(WebApplicationBuilder builder)
-    {
-        builder.WebHost.ConfigureKestrel((context, options) =>
-        {
-            var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);
-            var port = serverSection.GetValue<int?>("Port") ?? 443;
-            var certPath = serverSection["CertPath"];
-            var certPassword = serverSection["CertPassword"];
+	// Kestrel endpoint and HTTPS cert configured from appsettings.json Basil:Server section (Port,
+	// CertPath, CertPassword). Disables auto port selection — server binds exclusively on the
+	// configured port. Leave CertPath/CertPassword unset to use the dev cert or OS-level TLS.
+	// Http1AndHttp2 lets a browser multiplex several SSE connections over one connection instead of
+	// hitting HTTP/1.1's ~6-per-origin ceiling — only takes effect over TLS, which every listener here
+	// already uses.
+	private static void ConfigureKestrel(WebApplicationBuilder builder)
+	{
+		builder.WebHost.ConfigureKestrel((context, options) =>
+		{
+			var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);
+			var port = serverSection.GetValue<int?>("Port") ?? 443;
+			var certPath = serverSection["CertPath"];
+			var certPassword = serverSection["CertPassword"];
 
-            options.ConfigureEndpointDefaults(listenOptions =>
-                listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
+			options.ConfigureEndpointDefaults(listenOptions =>
+				listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
 
-            options.ListenAnyIP(port, listenOptions =>
-            {
-                if (!string.IsNullOrEmpty(certPath))
-                    listenOptions.UseHttps(certPath, certPassword);
-                else
-                    listenOptions.UseHttps();
-            });
-        });
-    }
+			options.ListenAnyIP(port, listenOptions =>
+			{
+				if (!string.IsNullOrEmpty(certPath))
+					listenOptions.UseHttps(certPath, certPassword);
+				else
+					listenOptions.UseHttps();
+			});
+		});
+	}
 
-    // Custom scheme reading X-Admin-Key (see AdminKeyAuthenticationHandler) instead of the old
-    // AdminKeyFilter endpoint filter — lets both the hard admin-only gate (RequireAuthorization) and
-    // the soft private/frozen-visibility elevation (User.IsInRole) share one mechanism.
-    private static void ConfigureAuth(WebApplicationBuilder builder)
-    {
-        builder.Services
-            .AddAuthentication(AdminKeyDefaults.Scheme)
-            .AddScheme<AuthenticationSchemeOptions, AdminKeyAuthenticationHandler>(AdminKeyDefaults.Scheme, null);
+	// Custom scheme reading X-Admin-Key (see AdminKeyAuthenticationHandler) instead of the old
+	// AdminKeyFilter endpoint filter — lets both the hard admin-only gate (RequireAuthorization) and
+	// the soft private/frozen-visibility elevation (User.IsInRole) share one mechanism.
+	private static void ConfigureAuth(WebApplicationBuilder builder)
+	{
+		builder.Services
+			.AddAuthentication(AdminKeyDefaults.Scheme)
+			.AddScheme<AuthenticationSchemeOptions, AdminKeyAuthenticationHandler>(AdminKeyDefaults.Scheme, null);
 
-        builder.Services.AddAuthorization(options =>
-            options.AddPolicy(AdminKeyDefaults.Policy, policy => policy.RequireRole(AdminKeyDefaults.Role)));
-    }
+		builder.Services.AddAuthorization(options =>
+			options.AddPolicy(AdminKeyDefaults.Policy, policy => policy.RequireRole(AdminKeyDefaults.Role)));
+	}
 
-    // Registers CountryJsonConverter globally (the only enum with a non-default wire form — see its
-    // own doc comment) for every `Results.Json(...)` call that doesn't pass its own
-    // JsonSerializerOptions. Every other enum keeps System.Text.Json's default numeric serialization —
-    // no JsonStringEnumConverter anywhere. Copies the converters from BasilJsonOptions.Instance (the
-    // shared options every live SSE payload serializes with — see SnapshotChannel/JsonMergePatch)
-    // rather than constructing its own CountryJsonConverter, so regular JSON responses and the live
-    // channel payloads never drift apart. Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions
-    // has no public setter, so the instance itself can't be swapped for BasilJsonOptions.Instance —
-    // copying its converters is the closest equivalent.
-    private static void ConfigureJson(WebApplicationBuilder builder)
-    {
-        builder.Services.ConfigureHttpJsonOptions(options =>
-        {
-            foreach (var converter in BasilJsonOptions.Instance.Converters)
-                options.SerializerOptions.Converters.Add(converter);
-        });
-    }
+	// Registers CountryJsonConverter globally (the only enum with a non-default wire form — see its
+	// own doc comment) for every `Results.Json(...)` call that doesn't pass its own
+	// JsonSerializerOptions. Every other enum keeps System.Text.Json's default numeric serialization —
+	// no JsonStringEnumConverter anywhere. Copies the converters from BasilJsonOptions.Instance (the
+	// shared options every live SSE payload serializes with — see SnapshotChannel/JsonMergePatch)
+	// rather than constructing its own CountryJsonConverter, so regular JSON responses and the live
+	// channel payloads never drift apart. Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions
+	// has no public setter, so the instance itself can't be swapped for BasilJsonOptions.Instance —
+	// copying its converters is the closest equivalent.
+	private static void ConfigureJson(WebApplicationBuilder builder)
+	{
+		builder.Services.ConfigureHttpJsonOptions(options =>
+		{
+			foreach (var converter in BasilJsonOptions.Instance.Converters)
+				options.SerializerOptions.Converters.Add(converter);
+		});
+	}
 
-    // Permissive by design: the api. host is meant to be called directly from arbitrary browser-based
-    // tooling (tournament overlays, dashboards, OBS browser sources). No credentials are ever sent
-    // (X-Admin-Key is a plain header, not a cookie), so AllowAnyOrigin is safe here.
-    private static void ConfigureCors(WebApplicationBuilder builder)
-    {
-        builder.Services.AddCors(options =>
-            options.AddPolicy(CorsPolicyName, policy => policy
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader()));
-    }
+	// Permissive by design: the api. host is meant to be called directly from arbitrary browser-based
+	// tooling (tournament overlays, dashboards, OBS browser sources). No credentials are ever sent
+	// (X-Admin-Key is a plain header, not a cookie), so AllowAnyOrigin is safe here.
+	private static void ConfigureCors(WebApplicationBuilder builder)
+	{
+		builder.Services.AddCors(options =>
+			options.AddPolicy(CorsPolicyName, policy => policy
+				.AllowAnyOrigin()
+				.AllowAnyMethod()
+				.AllowAnyHeader()));
+	}
 
-    // One OpenAPI document per host group (bancho/osuweb/beatmapassets/avatar/basilapi) rather than
-    // one document for the whole app — routing here is host-based (RequireHost), and several groups
-    // register the same literal path template (e.g. both the bancho and osu-web groups have their
-    // own GET /), which OpenAPI can't represent twice in one document. Routes opt into a document via
-    // .WithGroupName(...), matching AddOpenApi's default ShouldInclude filter.
-    private static void ConfigureOpenApi(WebApplicationBuilder builder)
-    {
-        AddOpenApiDocument(builder, "bancho", "osu! Client API — Bancho Protocol",
-            "The osu! stable client's binary bancho protocol — login and the packet-multiplexed " +
-            "connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
-        AddOpenApiDocument(builder, "osuweb", "osu! Client API — osu! Web",
-            "The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
-            "downloads and in-game registration. Served from the osu. subdomain.");
-        AddOpenApiDocument(builder, "beatmapassets", "osu! Client API — Beatmap Assets",
-            "Legacy beatmap thumbnail/preview asset requests, redirected to osu.ppy.sh's own CDN. " +
-            "Served from the b. subdomain.");
-        AddOpenApiDocument(builder, "avatar", "osu! Client API — Avatar Files",
-            "Locally-stored player avatar images. Served from the a. subdomain.");
-        AddOpenApiDocument(builder, "basilapi", "Basil API",
-            "Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
-            "beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
-            "api. subdomain.",
-            BasilApiTagGroups);
-    }
+	// One OpenAPI document per host group (bancho/osuweb/beatmapassets/avatar/basilapi) rather than
+	// one document for the whole app — routing here is host-based (RequireHost), and several groups
+	// register the same literal path template (e.g. both the bancho and osu-web groups have their
+	// own GET /), which OpenAPI can't represent twice in one document. Routes opt into a document via
+	// .WithGroupName(...), matching AddOpenApi's default ShouldInclude filter.
+	private static void ConfigureOpenApi(WebApplicationBuilder builder)
+	{
+		AddOpenApiDocument(builder, "bancho", "osu! Client API — Bancho Protocol",
+			"The osu! stable client's binary bancho protocol — login and the packet-multiplexed " +
+			"connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
+		AddOpenApiDocument(builder, "osuweb", "osu! Client API — osu! Web",
+			"The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
+			"downloads and in-game registration. Served from the osu. subdomain.");
+		AddOpenApiDocument(builder, "beatmapassets", "osu! Client API — Beatmap Assets",
+			"Legacy beatmap thumbnail/preview asset requests, redirected to osu.ppy.sh's own CDN. " +
+			"Served from the b. subdomain.");
+		AddOpenApiDocument(builder, "avatar", "osu! Client API — Avatar Files",
+			"Locally-stored player avatar images. Served from the a. subdomain.");
+		AddOpenApiDocument(builder, "basilapi", "Basil API",
+			"Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
+			"beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
+			"api. subdomain.",
+			BasilApiTagGroups);
+	}
 
-    private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
-        string description, (string Group, (string Tag, string Description)[] Tags)[]? tagGroups = null)
-    {
-        builder.Services.AddOpenApi(documentName, options =>
-        {
-            options.AddDocumentTransformer((document, _, _) =>
-            {
-                document.Info.Title = title;
-                document.Info.Description = description;
-                document.Info.Version = "v1";
+	private static void AddOpenApiDocument(WebApplicationBuilder builder, string documentName, string title,
+		string description, (string Group, (string Tag, string Description)[] Tags)[]? tagGroups = null)
+	{
+		builder.Services.AddOpenApi(documentName, options =>
+		{
+			options.AddDocumentTransformer((document, _, _) =>
+			{
+				document.Info.Title = title;
+				document.Info.Description = description;
+				document.Info.Version = "v1";
 
-                if (tagGroups is not null)
-                {
-                    document.Tags = tagGroups
-                        .SelectMany(g => g.Tags)
-                        .Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
-                        .ToHashSet();
+				if (tagGroups is not null)
+				{
+					document.Tags = tagGroups
+						.SelectMany(g => g.Tags)
+						.Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
+						.ToHashSet();
 
-                    var tagGroupsJson = new JsonArray(tagGroups.Select(JsonNode (g) =>
-                        new JsonObject
-                        {
-                            ["name"] = g.Group,
-                            ["tags"] = new JsonArray(
-                                g.Tags.Select(t => (JsonNode)t.Tag).ToArray())
-                        }).ToArray());
-                    document.Extensions ??= new Dictionary<string, IOpenApiExtension>();
-                    document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
+					var tagGroupsJson = new JsonArray(tagGroups.Select(JsonNode (g) =>
+						new JsonObject
+						{
+							["name"] = g.Group,
+							["tags"] = new JsonArray(
+								g.Tags.Select(t => (JsonNode)t.Tag).ToArray())
+						}).ToArray());
+					document.Extensions ??= new Dictionary<string, IOpenApiExtension>();
+					document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
 
-                    // Scalar's sidebar buckets each tag's operations by their position in the document,
-                    // not alphabetically — reorder Paths (shortest/most general route first per tag
-                    // section) without touching the actual C# route-registration order in Routing/*.cs.
-                    var reordered = new OpenApiPaths();
-                    foreach (var (path, item) in document.Paths
-                                 .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
-                                 .ThenBy(kvp => kvp.Key.Length)
-                                 .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
-                        reordered[path] = item;
-                    document.Paths = reordered;
-                }
+					// Scalar's sidebar buckets each tag's operations by their position in the document,
+					// not alphabetically — reorder Paths (shortest/most general route first per tag
+					// section) without touching the actual C# route-registration order in Routing/*.cs.
+					var reordered = new OpenApiPaths();
+					foreach (var (path, item) in document.Paths
+						         .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
+						         .ThenBy(kvp => kvp.Key.Length)
+						         .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
+						reordered[path] = item;
+					document.Paths = reordered;
+				}
 
-                return Task.CompletedTask;
-            });
+				return Task.CompletedTask;
+			});
 
-            // Applies to every document — a generator-default artifact of how .NET's OpenAPI schema
-            // builder represents integers/numbers, not specific to basilapi's own types.
-            options.AddNumericSchemaSimplificationTransformer();
+			// Applies to every document — a generator-default artifact of how .NET's OpenAPI schema
+			// builder represents integers/numbers, not specific to basilapi's own types.
+			options.AddNumericSchemaSimplificationTransformer();
 
-            // Only the basilapi document is enveloped/admin-key-gated — every other document (bancho/
-            // osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
-            if (tagGroups is not null)
-            {
-                options.AddAdminKeyDocumentTransformer();
-                options.AddCustomConverterSchemaTransformer();
-                options.AddEnumValuesSchemaTransformer();
-                options.AddEnvelopeSchemaTransformer();
-            }
-        });
-    }
+			// Only the basilapi document is enveloped/admin-key-gated — every other document (bancho/
+			// osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
+			if (tagGroups is not null)
+			{
+				options.AddAdminKeyDocumentTransformer();
+				options.AddCustomConverterSchemaTransformer();
+				options.AddEnumValuesSchemaTransformer();
+				options.AddEnvelopeSchemaTransformer();
+			}
+		});
+	}
 
-    // Test hosts (WebApplicationFactory) explicitly set Database:Path to "" so there's no real file
-    // to migrate/query against — skip migration, channel fetch, ingestion, and bot bootstrap rather
-    // than fail startup. A real deployment always has a non-empty Path (DatabaseOptions defaults it
-    // to "basil.db" next to the executable). channelRegistry.Seed is still always called (with an
-    // empty list when there's no database), so the registry is never left unseeded.
-    private static async Task InitializeDataAsync(WebApplication app)
-    {
-        using var scope = app.Services.CreateScope();
+	// Test hosts (WebApplicationFactory) explicitly set Database:Path to "" so there's no real file
+	// to migrate/query against — skip migration, channel fetch, ingestion, and bot bootstrap rather
+	// than fail startup. A real deployment always has a non-empty Path (DatabaseOptions defaults it
+	// to "basil.db" next to the executable). channelRegistry.Seed is still always called (with an
+	// empty list when there's no database), so the registry is never left unseeded.
+	private static async Task InitializeDataAsync(WebApplication app)
+	{
+		using var scope = app.Services.CreateScope();
 
-        var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-        var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
+		var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+		var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
 
-        var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
-        foreach (var path in new[]
-                 {
-                     storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
-                     storageOptions.SeasonalsPath, storageOptions.FaqsPath
-                 })
-            Directory.CreateDirectory(path);
+		var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+		foreach (var path in new[]
+		         {
+			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
+			         storageOptions.SeasonalsPath, storageOptions.FaqsPath
+		         })
+			Directory.CreateDirectory(path);
 
-        var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
-        var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
-        IReadOnlyList<Channel> autoJoinChannels = [];
+		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
+		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
+		IReadOnlyList<Channel> autoJoinChannels = [];
 
-        if (hasDatabase)
-        {
-            var connectionString = DatabaseConnectionStringBuilder.Build(dbOptions);
-            Directory.CreateDirectory(Path.GetDirectoryName(DatabaseConnectionStringBuilder.ResolvePath(dbOptions))!);
-            SqlMigrationRunner.RunMigrations(connectionString);
+		if (hasDatabase)
+		{
+			var connectionString = DatabaseConnectionStringBuilder.Build(dbOptions);
+			Directory.CreateDirectory(Path.GetDirectoryName(DatabaseConnectionStringBuilder.ResolvePath(dbOptions))!);
+			SqlMigrationRunner.RunMigrations(connectionString);
 
-            autoJoinChannels = await channelRepository.FetchAllAutoJoinAsync();
-        }
+			autoJoinChannels = await channelRepository.FetchAllAutoJoinAsync();
+		}
 
-        channelRegistry.Seed(autoJoinChannels);
+		channelRegistry.Seed(autoJoinChannels);
 
-        if (hasDatabase)
-        {
-            var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
-            await ingestionService.ReconcileAllAsync();
+		if (hasDatabase)
+		{
+			var ingestionService = scope.ServiceProvider.GetRequiredService<BeatmapIngestionService>();
+			await ingestionService.ReconcileAllAsync();
 
-            var botBootstrap = scope.ServiceProvider.GetRequiredService<BotBootstrapService>();
-            await botBootstrap.BootstrapAsync();
+			var botBootstrap = scope.ServiceProvider.GetRequiredService<BotBootstrapService>();
+			await botBootstrap.BootstrapAsync();
 
-            var recoveryService = scope.ServiceProvider.GetRequiredService<MatchRecoveryService>();
-            await recoveryService.RecoverAsync();
-        }
-    }
+			var recoveryService = scope.ServiceProvider.GetRequiredService<MatchRecoveryService>();
+			await recoveryService.RecoverAsync();
+		}
+	}
 }

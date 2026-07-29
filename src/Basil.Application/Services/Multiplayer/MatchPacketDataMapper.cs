@@ -12,23 +12,23 @@ namespace Basil.Application.Services.Multiplayer;
 /// </summary>
 public static class MatchPacketDataMapper
 {
-    public static MatchPacketData ToPacketData(MatchSession match)
-    {
-        return new MatchPacketData(
-            match.Id,
-            match.InProgress,
-            (int)match.Mods,
-            match.Name,
-            match.Password,
-            match.MapName,
-            match.MapId,
-            match.MapMd5,
-            [.. match.Slots.Select(s => new MatchSlotData((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
-            match.HostId,
-            (int)match.Mode,
-            (int)match.WinCondition,
-            (int)match.TeamType,
-            match.Freemods,
-            match.Seed);
-    }
+	public static MatchPacketData ToPacketData(MatchSession match)
+	{
+		return new MatchPacketData(
+			match.Id,
+			match.InProgress,
+			(int)match.Mods,
+			match.Name,
+			match.Password,
+			match.MapName,
+			match.MapId,
+			match.MapMd5,
+			[.. match.Slots.Select(s => new MatchSlotData((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
+			match.HostId,
+			(int)match.Mode,
+			(int)match.WinCondition,
+			(int)match.TeamType,
+			match.Freemods,
+			match.Seed);
+	}
 }

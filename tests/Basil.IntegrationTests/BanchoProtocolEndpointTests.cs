@@ -18,65 +18,64 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Program> _factory;
 
-    public BanchoProtocolEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton(TestDoubles.NullChannelRepository());
-            });
-        });
-    }
+	public BanchoProtocolEndpointTests(WebApplicationFactory<Program> factory)
+	{
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.NullChannelRepository());
+			});
+		});
+	}
 
-    [Fact]
-    public async Task UnknownToken_ReturnsServerRestartedNotification()
-    {
-        var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };
-        request.Headers.Host = "c.test.local";
-        request.Headers.Add("osu-token", "does-not-exist");
+	[Fact]
+	public async Task UnknownToken_ReturnsServerRestartedNotification()
+	{
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };
+		request.Headers.Host = "c.test.local";
+		request.Headers.Add("osu-token", "does-not-exist");
 
-        var response = await client.SendAsync(request);
-        var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request);
+		var body = await response.Content.ReadAsByteArrayAsync();
 
-        var expected = ServerPacketWriter.Notification("Server has restarted.")
-            .Concat(ServerPacketWriter.RestartServer(0))
-            .ToArray();
-        Assert.Equal(expected, body);
-    }
+		var expected = ServerPacketWriter.Notification("Server has restarted.")
+			.Concat(ServerPacketWriter.RestartServer(0))
+			.ToArray();
+		Assert.Equal(expected, body);
+	}
 
-    [Fact]
-    public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
-    {
-        var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-        var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
-            DateTimeOffset.UnixEpoch);
-        session.Enqueue(ServerPacketWriter.Notification("hello"));
-        sessionRegistry.Add(session);
+	[Fact]
+	public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
+	{
+		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
+		var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
+			DateTimeOffset.UnixEpoch);
+		session.Enqueue(ServerPacketWriter.Notification("hello"));
+		sessionRegistry.Add(session);
 
-        var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };
-        request.Headers.Host = "c.test.local";
-        request.Headers.Add("osu-token", "known-token");
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };
+		request.Headers.Host = "c.test.local";
+		request.Headers.Add("osu-token", "known-token");
 
-        var response = await client.SendAsync(request);
-        var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request);
+		var body = await response.Content.ReadAsByteArrayAsync();
 
-        Assert.Equal(ServerPacketWriter.Notification("hello"), body);
-    }
-
+		Assert.Equal(ServerPacketWriter.Notification("hello"), body);
+	}
 }

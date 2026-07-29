@@ -16,106 +16,106 @@ namespace Basil.Application.Sessions.Channels;
 /// </summary>
 public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegistry, IChannelRegistry channelRegistry)
 {
-    public bool Join(PlayerSession player, ChannelSession channel)
-    {
-        if (player.InChannel(channel.Name) || !channel.CanRead(player.Privilege)) return false;
+	public bool Join(PlayerSession player, ChannelSession channel)
+	{
+		if (player.InChannel(channel.Name) || !channel.CanRead(player.Privilege)) return false;
 
-        channel.Join(player.Id);
-        player.JoinChannel(channel.Name);
-        player.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
+		channel.Join(player.Id);
+		player.JoinChannel(channel.Name);
+		player.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
 
-        BroadcastChannelInfo(channel);
+		BroadcastChannelInfo(channel);
 
-        var joinMessage = IrcMessageWriter.Join(player.Name, player.Id, channel.Name);
-        foreach (var memberId in channel.MemberIds)
-            sessionRegistry.GetById(memberId)?.IrcConnection.Send(joinMessage);
+		var joinMessage = IrcMessageWriter.Join(player.Name, player.Id, channel.Name);
+		foreach (var memberId in channel.MemberIds)
+			sessionRegistry.GetById(memberId)?.IrcConnection.Send(joinMessage);
 
-        return true;
-    }
+		return true;
+	}
 
-    public void Part(PlayerSession player, ChannelSession channel, bool kick = true)
-    {
-        if (!player.InChannel(channel.Name)) return;
+	public void Part(PlayerSession player, ChannelSession channel, bool kick = true)
+	{
+		if (!player.InChannel(channel.Name)) return;
 
-        var partMessage = IrcMessageWriter.Part(player.Name, player.Id, channel.Name);
-        foreach (var memberId in channel.MemberIds)
-            sessionRegistry.GetById(memberId)?.IrcConnection.Send(partMessage);
+		var partMessage = IrcMessageWriter.Part(player.Name, player.Id, channel.Name);
+		foreach (var memberId in channel.MemberIds)
+			sessionRegistry.GetById(memberId)?.IrcConnection.Send(partMessage);
 
-        channel.Part(player.Id);
-        player.LeaveChannel(channel.Name);
+		channel.Part(player.Id);
+		player.LeaveChannel(channel.Name);
 
-        if (kick) player.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
+		if (kick) player.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
 
-        BroadcastChannelInfo(channel);
-    }
+		BroadcastChannelInfo(channel);
+	}
 
-    /// <summary>
-    ///     Cleans up every channel <paramref name="player" /> is in and notifies the remaining IRC-shaped
-    ///     connections with a single QUIT each (deduped across shared channels) — called when a real IRC
-    ///     TCP connection disconnects. Bancho sessions never call this (they leave via GhostDisconnectService,
-    ///     which doesn't need a QUIT broadcast since bancho clients only ever saw ChannelInfo counts).
-    /// </summary>
-    public void Quit(PlayerSession player, string reason)
-    {
-        var quitMessage = IrcMessageWriter.Quit(player.Name, player.Id, reason);
-        var notified = new HashSet<int>();
+	/// <summary>
+	///     Cleans up every channel <paramref name="player" /> is in and notifies the remaining IRC-shaped
+	///     connections with a single QUIT each (deduped across shared channels) — called when a real IRC
+	///     TCP connection disconnects. Bancho sessions never call this (they leave via GhostDisconnectService,
+	///     which doesn't need a QUIT broadcast since bancho clients only ever saw ChannelInfo counts).
+	/// </summary>
+	public void Quit(PlayerSession player, string reason)
+	{
+		var quitMessage = IrcMessageWriter.Quit(player.Name, player.Id, reason);
+		var notified = new HashSet<int>();
 
-        foreach (var channelName in player.Channels.ToList())
-        {
-            var channel = channelRegistry.GetByName(channelName);
-            if (channel is null) continue;
+		foreach (var channelName in player.Channels.ToList())
+		{
+			var channel = channelRegistry.GetByName(channelName);
+			if (channel is null) continue;
 
-            foreach (var memberId in channel.MemberIds)
-                if (memberId != player.Id && notified.Add(memberId))
-                    sessionRegistry.GetById(memberId)?.IrcConnection.Send(quitMessage);
+			foreach (var memberId in channel.MemberIds)
+				if (memberId != player.Id && notified.Add(memberId))
+					sessionRegistry.GetById(memberId)?.IrcConnection.Send(quitMessage);
 
-            channel.Part(player.Id);
-            player.LeaveChannel(channel.Name);
-            BroadcastChannelInfo(channel);
-        }
-    }
+			channel.Part(player.Id);
+			player.LeaveChannel(channel.Name);
+			BroadcastChannelInfo(channel);
+		}
+	}
 
-    /// <summary>
-    ///     Ported from Channel.enqueue — sends raw packet bytes to every session currently in the
-    ///     channel (not everyone who merely *can read* it), optionally skipping an immune set. Used
-    ///     by multiplayer's match.enqueue/enqueue_state, which routes through the match's chat
-    ///     channel exactly like the Python source.
-    /// </summary>
-    public void BroadcastToMembers(ChannelSession channel, byte[] packet, IReadOnlyCollection<int>? immune = null)
-    {
-        foreach (var memberId in channel.MemberIds)
-        {
-            if (immune is not null && immune.Contains(memberId)) continue;
+	/// <summary>
+	///     Ported from Channel.enqueue — sends raw packet bytes to every session currently in the
+	///     channel (not everyone who merely *can read* it), optionally skipping an immune set. Used
+	///     by multiplayer's match.enqueue/enqueue_state, which routes through the match's chat
+	///     channel exactly like the Python source.
+	/// </summary>
+	public void BroadcastToMembers(ChannelSession channel, byte[] packet, IReadOnlyCollection<int>? immune = null)
+	{
+		foreach (var memberId in channel.MemberIds)
+		{
+			if (immune is not null && immune.Contains(memberId)) continue;
 
-            sessionRegistry.GetById(memberId)?.Enqueue(packet);
-        }
-    }
+			sessionRegistry.GetById(memberId)?.Enqueue(packet);
+		}
+	}
 
-    /// <summary>
-    ///     IRC-shaped counterpart of <see cref="BroadcastToMembers" /> for chat text specifically —
-    ///     routes through each member's <see cref="Sessions.Irc.IIrcConnection" /> instead of a raw
-    ///     bancho packet, so it reaches real IRC clients and bancho clients alike.
-    /// </summary>
-    public void BroadcastPrivmsg(ChannelSession channel, IrcMessage message, int? skipMemberId = null)
-    {
-        foreach (var memberId in channel.MemberIds)
-        {
-            if (memberId == skipMemberId) continue;
+	/// <summary>
+	///     IRC-shaped counterpart of <see cref="BroadcastToMembers" /> for chat text specifically —
+	///     routes through each member's <see cref="Sessions.Irc.IIrcConnection" /> instead of a raw
+	///     bancho packet, so it reaches real IRC clients and bancho clients alike.
+	/// </summary>
+	public void BroadcastPrivmsg(ChannelSession channel, IrcMessage message, int? skipMemberId = null)
+	{
+		foreach (var memberId in channel.MemberIds)
+		{
+			if (memberId == skipMemberId) continue;
 
-            sessionRegistry.GetById(memberId)?.IrcConnection.Send(message);
-        }
-    }
+			sessionRegistry.GetById(memberId)?.IrcConnection.Send(message);
+		}
+	}
 
-    private void BroadcastChannelInfo(ChannelSession channel)
-    {
-        var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
+	private void BroadcastChannelInfo(ChannelSession channel)
+	{
+		var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
 
-        if (channel.Instance)
-            foreach (var memberId in channel.MemberIds)
-                sessionRegistry.GetById(memberId)?.Enqueue(packet);
-        else
-            foreach (var session in sessionRegistry.All)
-                if (channel.CanRead(session.Privilege))
-                    session.Enqueue(packet);
-    }
+		if (channel.Instance)
+			foreach (var memberId in channel.MemberIds)
+				sessionRegistry.GetById(memberId)?.Enqueue(packet);
+		else
+			foreach (var session in sessionRegistry.All)
+				if (channel.CanRead(session.Privilege))
+					session.Enqueue(packet);
+	}
 }

@@ -11,52 +11,52 @@ namespace Basil.Application.Sessions.Channels;
 ///     given client is currently in, since multiple instances exist concurrently server-side.
 /// </summary>
 public sealed class ChannelSession(
-    int id,
-    string name,
-    string topic,
-    UserPrivileges readPrivilege,
-    UserPrivileges writePrivilege,
-    bool autoJoin,
-    string? displayName = null,
-    bool instance = false)
+	int id,
+	string name,
+	string topic,
+	UserPrivileges readPrivilege,
+	UserPrivileges writePrivilege,
+	bool autoJoin,
+	string? displayName = null,
+	bool instance = false)
 {
-    private readonly ConcurrentDictionary<int, byte> _members = new();
+	private readonly ConcurrentDictionary<int, byte> _members = new();
 
-    public int Id { get; } = id;
-    public string Name { get; } = name;
-    public string DisplayName { get; } = displayName ?? name;
-    public string Topic { get; } = topic;
-    public UserPrivileges ReadPrivilege { get; } = readPrivilege;
-    public UserPrivileges WritePrivilege { get; } = writePrivilege;
-    public bool AutoJoin { get; } = autoJoin;
-    public bool Instance { get; } = instance;
+	public int Id { get; } = id;
+	public string Name { get; } = name;
+	public string DisplayName { get; } = displayName ?? name;
+	public string Topic { get; } = topic;
+	public UserPrivileges ReadPrivilege { get; } = readPrivilege;
+	public UserPrivileges WritePrivilege { get; } = writePrivilege;
+	public bool AutoJoin { get; } = autoJoin;
+	public bool Instance { get; } = instance;
 
-    public int PlayerCount => _members.Count;
+	public int PlayerCount => _members.Count;
 
-    public IReadOnlyCollection<int> MemberIds => [.. _members.Keys];
+	public IReadOnlyCollection<int> MemberIds => [.. _members.Keys];
 
-    public bool CanRead(UserPrivileges privilege)
-    {
-        return ReadPrivilege == 0 || (privilege & ReadPrivilege) != 0;
-    }
+	public bool CanRead(UserPrivileges privilege)
+	{
+		return ReadPrivilege == 0 || (privilege & ReadPrivilege) != 0;
+	}
 
-    public bool CanWrite(UserPrivileges privilege)
-    {
-        return WritePrivilege == 0 || (privilege & WritePrivilege) != 0;
-    }
+	public bool CanWrite(UserPrivileges privilege)
+	{
+		return WritePrivilege == 0 || (privilege & WritePrivilege) != 0;
+	}
 
-    public void Join(int playerId)
-    {
-        _members[playerId] = 0;
-    }
+	public void Join(int playerId)
+	{
+		_members[playerId] = 0;
+	}
 
-    public void Part(int playerId)
-    {
-        _members.TryRemove(playerId, out _);
-    }
+	public void Part(int playerId)
+	{
+		_members.TryRemove(playerId, out _);
+	}
 
-    public bool Contains(int playerId)
-    {
-        return _members.ContainsKey(playerId);
-    }
+	public bool Contains(int playerId)
+	{
+		return _members.ContainsKey(playerId);
+	}
 }

@@ -14,50 +14,50 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 ///     submissions (see ScoreSubmissionService's doc comment for why that isn't needed here).
 /// </summary>
 public sealed class MatchCompleteHandler(
-    MatchMembershipService matchMembership,
-    IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
+	MatchMembershipService matchMembership,
+	IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.MatchComplete;
+	public ClientPackets PacketId => ClientPackets.MatchComplete;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var match = player.Match;
-        if (match is null) return;
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var match = player.Match;
+		if (match is null) return;
 
-        await match.Lock.WaitAsync();
-        try
-        {
-            var slot = match.GetSlot(player.Id);
-            if (slot is null) return;
+		await match.Lock.WaitAsync();
+		try
+		{
+			var slot = match.GetSlot(player.Id);
+			if (slot is null) return;
 
-            slot.Status = SlotStatus.Complete;
+			slot.Status = SlotStatus.Complete;
 
-            if (match.Slots.Any(s => s.Status == SlotStatus.Playing)) return;
+			if (match.Slots.Any(s => s.Status == SlotStatus.Playing)) return;
 
-            var notPlaying = match.Slots
-                .Where(s => s.PlayerId is not null && s.Status != SlotStatus.Complete)
-                .Select(s => s.PlayerId!.Value)
-                .ToList();
+			var notPlaying = match.Slots
+				.Where(s => s.PlayerId is not null && s.Status != SlotStatus.Complete)
+				.Select(s => s.PlayerId!.Value)
+				.ToList();
 
-            match.UnreadyPlayers(SlotStatus.Complete);
-            match.ResetPlayersLoadedStatus();
-            match.InProgress = false;
+			match.UnreadyPlayers(SlotStatus.Complete);
+			match.ResetPlayersLoadedStatus();
+			match.InProgress = false;
 
-            if (match.CurrentRoundId is { } roundId)
-            {
-                await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, false);
-                match.CurrentRoundId = null;
-            }
+			if (match.CurrentRoundId is { } roundId)
+			{
+				await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, false);
+				match.CurrentRoundId = null;
+			}
 
-            matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
-            await matchMembership.EnqueueStateAsync(match);
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
+			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
+			await matchMembership.EnqueueStateAsync(match);
+		}
+		finally
+		{
+			match.Lock.Release();
+		}
+	}
 }

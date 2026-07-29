@@ -11,15 +11,15 @@ namespace Basil.Application.Sessions.Irc;
 /// </summary>
 public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnection
 {
-    public PlayerSession Player { get; } = player;
+	public PlayerSession Player { get; } = player;
 
-    public bool IsExternalIrcClient => false;
+	public bool IsExternalIrcClient => false;
 
-    public void Send(IrcMessage message)
-    {
-        if (message.Command != "PRIVMSG") return;
-        if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
+	public void Send(IrcMessage message)
+	{
+		if (message.Command != "PRIVMSG") return;
+		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
 
-        Player.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], message.Params[0], senderId));
-    }
+		Player.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], message.Params[0], senderId));
+	}
 }

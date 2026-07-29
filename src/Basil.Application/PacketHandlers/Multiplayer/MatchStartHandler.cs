@@ -11,24 +11,24 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// </summary>
 public sealed class MatchStartHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.MatchStart;
+	public ClientPackets PacketId => ClientPackets.MatchStart;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var match = player.Match;
-        if (match is null || player.Id != match.HostId) return;
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var match = player.Match;
+		if (match is null || player.Id != match.HostId) return;
 
-        await match.Lock.WaitAsync();
-        try
-        {
-            await matchMembership.StartAsync(match);
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
+		await match.Lock.WaitAsync();
+		try
+		{
+			await matchMembership.StartAsync(match);
+		}
+		finally
+		{
+			match.Lock.Release();
+		}
+	}
 }

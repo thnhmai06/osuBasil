@@ -19,53 +19,53 @@ namespace Basil.Web.Middleware;
 /// </summary>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
-    private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+	private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task InvokeAsync(HttpContext context)
-    {
-        var endpoint = context.GetEndpoint();
-        var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
-        var isAlwaysSse = endpoint?.Metadata.GetMetadata<SseEndpointMarker>() is not null;
-        if (groupName != "basilapi" || isAlwaysSse)
-        {
-            await next(context);
-            return;
-        }
+	public async Task InvokeAsync(HttpContext context)
+	{
+		var endpoint = context.GetEndpoint();
+		var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
+		var isAlwaysSse = endpoint?.Metadata.GetMetadata<SseEndpointMarker>() is not null;
+		if (groupName != "basilapi" || isAlwaysSse)
+		{
+			await next(context);
+			return;
+		}
 
-        var originalBody = context.Response.Body;
-        await using var buffer = new MemoryStream();
-        context.Response.Body = buffer;
+		var originalBody = context.Response.Body;
+		await using var buffer = new MemoryStream();
+		context.Response.Body = buffer;
 
-        try
-        {
-            await next(context);
-        }
-        finally
-        {
-            context.Response.Body = originalBody;
-        }
+		try
+		{
+			await next(context);
+		}
+		finally
+		{
+			context.Response.Body = originalBody;
+		}
 
-        var contentType = context.Response.ContentType;
-        var isJsonOrEmpty = string.IsNullOrEmpty(contentType) ||
-                            contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
+		var contentType = context.Response.ContentType;
+		var isJsonOrEmpty = string.IsNullOrEmpty(contentType) ||
+		                    contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
 
-        buffer.Seek(0, SeekOrigin.Begin);
-        if (!isJsonOrEmpty)
-        {
-            await buffer.CopyToAsync(originalBody);
-            return;
-        }
+		buffer.Seek(0, SeekOrigin.Begin);
+		if (!isJsonOrEmpty)
+		{
+			await buffer.CopyToAsync(originalBody);
+			return;
+		}
 
-        if (context.Response.StatusCode == StatusCodes.Status204NoContent)
-            context.Response.StatusCode = StatusCodes.Status200OK;
+		if (context.Response.StatusCode == StatusCodes.Status204NoContent)
+			context.Response.StatusCode = StatusCodes.Status200OK;
 
-        var statusCode = context.Response.StatusCode;
-        var body = buffer.Length == 0 ? null : JsonNode.Parse(buffer);
-        var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
+		var statusCode = context.Response.StatusCode;
+		var body = buffer.Length == 0 ? null : JsonNode.Parse(buffer);
+		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
 
-        context.Response.ContentType = "application/json; charset=utf-8";
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonWebOptions);
-        context.Response.ContentLength = bytes.Length;
-        await originalBody.WriteAsync(bytes);
-    }
+		context.Response.ContentType = "application/json; charset=utf-8";
+		var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonWebOptions);
+		context.Response.ContentLength = bytes.Length;
+		await originalBody.WriteAsync(bytes);
+	}
 }

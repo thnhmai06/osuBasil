@@ -9,34 +9,34 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// <summary>Ported from app/api/domains/cho.py's MatchChangeSlot.</summary>
 public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.MatchChangeSlot;
+	public ClientPackets PacketId => ClientPackets.MatchChangeSlot;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var slotId = reader.ReadI32();
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var slotId = reader.ReadI32();
 
-        var match = player.Match;
-        if (match is null || slotId is < 0 or >= 16) return;
+		var match = player.Match;
+		if (match is null || slotId is < 0 or >= 16) return;
 
-        await match.Lock.WaitAsync();
-        try
-        {
-            if (match.Slots[slotId].Status != SlotStatus.Open) return;
+		await match.Lock.WaitAsync();
+		try
+		{
+			if (match.Slots[slotId].Status != SlotStatus.Open) return;
 
-            var slot = match.GetSlot(player.Id);
-            if (slot is null) return;
+			var slot = match.GetSlot(player.Id);
+			if (slot is null) return;
 
-            match.Slots[slotId].CopyFrom(slot);
-            slot.Reset();
+			match.Slots[slotId].CopyFrom(slot);
+			slot.Reset();
 
-            await matchMembership.EnqueueStateAsync(match);
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
+			await matchMembership.EnqueueStateAsync(match);
+		}
+		finally
+		{
+			match.Lock.Release();
+		}
+	}
 }

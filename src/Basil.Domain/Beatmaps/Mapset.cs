@@ -7,18 +7,18 @@ namespace Basil.Domain.Beatmaps;
 ///     which bumps on every re-ingestion/content change.
 /// </summary>
 public sealed record Mapset(
-    int Id,
-    string Artist,
-    string Title,
-    string Creator,
-    DateTime LastUpdate,
-    DateTime CreatedAt,
-    bool IsFrozen = false,
-    bool IsPrivate = false)
+	int Id,
+	string Artist,
+	string Title,
+	string Creator,
+	DateTime LastUpdate,
+	DateTime CreatedAt,
+	bool IsFrozen = false,
+	bool IsPrivate = false)
 {
-    /// <summary>
-    ///     Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status
-    ///     curation.
-    /// </summary>
-    public RankedStatus Status => RankedStatus.Loved;
+	/// <summary>
+	///     Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status
+	///     curation.
+	/// </summary>
+	public RankedStatus Status => RankedStatus.Loved;
 }

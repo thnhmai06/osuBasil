@@ -9,42 +9,42 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// <summary>Ported from app/api/domains/cho.py's MatchChangeMods.</summary>
 public sealed class MatchChangeModsHandler(MatchMembershipService matchMembership) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.MatchChangeMods;
+	public ClientPackets PacketId => ClientPackets.MatchChangeMods;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var mods = (Mods)reader.ReadI32();
+	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var mods = (Mods)reader.ReadI32();
 
-        var match = player.Match;
-        if (match is null) return;
+		var match = player.Match;
+		if (match is null) return;
 
-        await match.Lock.WaitAsync();
-        try
-        {
-            if (match.Freemods)
-            {
-                if (player.Id == match.HostId) match.Mods = mods & ModsExtensions.SpeedChangingMods;
+		await match.Lock.WaitAsync();
+		try
+		{
+			if (match.Freemods)
+			{
+				if (player.Id == match.HostId) match.Mods = mods & ModsExtensions.SpeedChangingMods;
 
-                var slot = match.GetSlot(player.Id);
-                if (slot is null) return;
+				var slot = match.GetSlot(player.Id);
+				if (slot is null) return;
 
-                slot.Mods = mods & ~ModsExtensions.SpeedChangingMods;
-            }
-            else
-            {
-                if (player.Id != match.HostId) return;
+				slot.Mods = mods & ~ModsExtensions.SpeedChangingMods;
+			}
+			else
+			{
+				if (player.Id != match.HostId) return;
 
-                match.Mods = mods;
-            }
+				match.Mods = mods;
+			}
 
-            await matchMembership.EnqueueStateAsync(match);
-        }
-        finally
-        {
-            match.Lock.Release();
-        }
-    }
+			await matchMembership.EnqueueStateAsync(match);
+		}
+		finally
+		{
+			match.Lock.Release();
+		}
+	}
 }

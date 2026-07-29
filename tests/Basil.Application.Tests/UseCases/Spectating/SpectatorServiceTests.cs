@@ -11,124 +11,124 @@ namespace Basil.Application.Tests.UseCases.Spectating;
 /// <summary>Ported from Player.add_spectator/remove_spectator.</summary>
 public class SpectatorServiceTests
 {
-    private readonly FakeChannelRegistry _channelRegistry = new();
-    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly FakeChannelRegistry _channelRegistry = new();
+	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
-    private SpectatorService MakeService()
-    {
-        return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
-    }
+	private SpectatorService MakeService()
+	{
+		return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+	}
 
-    private static PlayerSession MakePlayer(int id, string name)
-    {
-        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-    }
+	private static PlayerSession MakePlayer(int id, string name)
+	{
+		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+	}
 
-    private void RegisterAll(params PlayerSession[] sessions)
-    {
-        _sessionRegistry.All.Returns(sessions);
-        foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
-    }
+	private void RegisterAll(params PlayerSession[] sessions)
+	{
+		_sessionRegistry.All.Returns(sessions);
+		foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
+	}
 
-    [Fact]
-    public void AddSpectator_FirstSpectator_CreatesChannelAndNotifiesHost()
-    {
-        var host = MakePlayer(1, "host");
-        var spectator = MakePlayer(2, "alice");
-        RegisterAll(host, spectator);
+	[Fact]
+	public void AddSpectator_FirstSpectator_CreatesChannelAndNotifiesHost()
+	{
+		var host = MakePlayer(1, "host");
+		var spectator = MakePlayer(2, "alice");
+		RegisterAll(host, spectator);
 
-        MakeService().AddSpectator(host, spectator);
+		MakeService().AddSpectator(host, spectator);
 
-        Assert.NotNull(_channelRegistry.GetByName("#spec_1"));
-        Assert.Same(host, spectator.Spectating);
-        Assert.Contains(spectator, host.Spectators);
-        Assert.Contains(ServerPacketWriter.SpectatorJoined(spectator.Id), Chunk(host.Dequeue()));
-    }
+		Assert.NotNull(_channelRegistry.GetByName("#spec_1"));
+		Assert.Same(host, spectator.Spectating);
+		Assert.Contains(spectator, host.Spectators);
+		Assert.Contains(ServerPacketWriter.SpectatorJoined(spectator.Id), Chunk(host.Dequeue()));
+	}
 
-    [Fact]
-    public void AddSpectator_SecondSpectator_NotifiesExistingAndNewSpectatorsOfEachOther()
-    {
-        var host = MakePlayer(1, "host");
-        var first = MakePlayer(2, "alice");
-        var second = MakePlayer(3, "bob");
-        RegisterAll(host, first, second);
-        MakeService().AddSpectator(host, first);
-        host.Dequeue();
-        first.Dequeue();
+	[Fact]
+	public void AddSpectator_SecondSpectator_NotifiesExistingAndNewSpectatorsOfEachOther()
+	{
+		var host = MakePlayer(1, "host");
+		var first = MakePlayer(2, "alice");
+		var second = MakePlayer(3, "bob");
+		RegisterAll(host, first, second);
+		MakeService().AddSpectator(host, first);
+		host.Dequeue();
+		first.Dequeue();
 
-        MakeService().AddSpectator(host, second);
+		MakeService().AddSpectator(host, second);
 
-        Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(second.Id), Chunk(first.Dequeue()));
-        Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(first.Id), Chunk(second.Dequeue()));
-    }
+		Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(second.Id), Chunk(first.Dequeue()));
+		Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(first.Id), Chunk(second.Dequeue()));
+	}
 
-    [Fact]
-    public void AddSpectator_Stealth_DoesNotNotifyHostOrExistingSpectators()
-    {
-        var host = MakePlayer(1, "host");
-        var first = MakePlayer(2, "alice");
-        var stealthSpectator = MakePlayer(3, "admin");
-        stealthSpectator.Stealth = true;
-        RegisterAll(host, first, stealthSpectator);
-        MakeService().AddSpectator(host, first);
-        host.Dequeue();
-        first.Dequeue();
+	[Fact]
+	public void AddSpectator_Stealth_DoesNotNotifyHostOrExistingSpectators()
+	{
+		var host = MakePlayer(1, "host");
+		var first = MakePlayer(2, "alice");
+		var stealthSpectator = MakePlayer(3, "admin");
+		stealthSpectator.Stealth = true;
+		RegisterAll(host, first, stealthSpectator);
+		MakeService().AddSpectator(host, first);
+		host.Dequeue();
+		first.Dequeue();
 
-        MakeService().AddSpectator(host, stealthSpectator);
+		MakeService().AddSpectator(host, stealthSpectator);
 
-        Assert.DoesNotContain(ServerPacketWriter.SpectatorJoined(stealthSpectator.Id), Chunk(host.Dequeue()));
-        // `first` still gets the generic channel_info playercount update (channel membership
-        // mechanics don't know about stealth) but never learns a fellow spectator joined.
-        Assert.DoesNotContain(ServerPacketWriter.FellowSpectatorJoined(stealthSpectator.Id), Chunk(first.Dequeue()));
-        Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(first.Id), Chunk(stealthSpectator.Dequeue()));
-    }
+		Assert.DoesNotContain(ServerPacketWriter.SpectatorJoined(stealthSpectator.Id), Chunk(host.Dequeue()));
+		// `first` still gets the generic channel_info playercount update (channel membership
+		// mechanics don't know about stealth) but never learns a fellow spectator joined.
+		Assert.DoesNotContain(ServerPacketWriter.FellowSpectatorJoined(stealthSpectator.Id), Chunk(first.Dequeue()));
+		Assert.Contains(ServerPacketWriter.FellowSpectatorJoined(first.Id), Chunk(stealthSpectator.Dequeue()));
+	}
 
-    [Fact]
-    public void RemoveSpectator_LastSpectator_DeletesChannelAndHostLeaves()
-    {
-        var host = MakePlayer(1, "host");
-        var spectator = MakePlayer(2, "alice");
-        RegisterAll(host, spectator);
-        MakeService().AddSpectator(host, spectator);
+	[Fact]
+	public void RemoveSpectator_LastSpectator_DeletesChannelAndHostLeaves()
+	{
+		var host = MakePlayer(1, "host");
+		var spectator = MakePlayer(2, "alice");
+		RegisterAll(host, spectator);
+		MakeService().AddSpectator(host, spectator);
 
-        MakeService().RemoveSpectator(host, spectator);
+		MakeService().RemoveSpectator(host, spectator);
 
-        Assert.Null(_channelRegistry.GetByName("#spec_1"));
-        Assert.Null(spectator.Spectating);
-        Assert.DoesNotContain(spectator, host.Spectators);
-        Assert.False(host.InChannel("#spec_1"));
-    }
+		Assert.Null(_channelRegistry.GetByName("#spec_1"));
+		Assert.Null(spectator.Spectating);
+		Assert.DoesNotContain(spectator, host.Spectators);
+		Assert.False(host.InChannel("#spec_1"));
+	}
 
-    [Fact]
-    public void RemoveSpectator_OthersRemain_ChannelSurvivesAndRemainingAreNotified()
-    {
-        var host = MakePlayer(1, "host");
-        var first = MakePlayer(2, "alice");
-        var second = MakePlayer(3, "bob");
-        RegisterAll(host, first, second);
-        var service = MakeService();
-        service.AddSpectator(host, first);
-        service.AddSpectator(host, second);
-        first.Dequeue();
+	[Fact]
+	public void RemoveSpectator_OthersRemain_ChannelSurvivesAndRemainingAreNotified()
+	{
+		var host = MakePlayer(1, "host");
+		var first = MakePlayer(2, "alice");
+		var second = MakePlayer(3, "bob");
+		RegisterAll(host, first, second);
+		var service = MakeService();
+		service.AddSpectator(host, first);
+		service.AddSpectator(host, second);
+		first.Dequeue();
 
-        service.RemoveSpectator(host, second);
+		service.RemoveSpectator(host, second);
 
-        Assert.NotNull(_channelRegistry.GetByName("#spec_1"));
-        Assert.Contains(ServerPacketWriter.FellowSpectatorLeft(second.Id), Chunk(first.Dequeue()));
-    }
+		Assert.NotNull(_channelRegistry.GetByName("#spec_1"));
+		Assert.Contains(ServerPacketWriter.FellowSpectatorLeft(second.Id), Chunk(first.Dequeue()));
+	}
 
-    private static List<byte[]> Chunk(byte[] data)
-    {
-        var chunks = new List<byte[]>();
-        var offset = 0;
-        while (offset < data.Length)
-        {
-            var length = BitConverter.ToInt32(data, offset + 3);
-            var total = 7 + length;
-            chunks.Add(data[offset..(offset + total)]);
-            offset += total;
-        }
+	private static List<byte[]> Chunk(byte[] data)
+	{
+		var chunks = new List<byte[]>();
+		var offset = 0;
+		while (offset < data.Length)
+		{
+			var length = BitConverter.ToInt32(data, offset + 3);
+			var total = 7 + length;
+			chunks.Add(data[offset..(offset + total)]);
+			offset += total;
+		}
 
-        return chunks;
-    }
+		return chunks;
+	}
 }

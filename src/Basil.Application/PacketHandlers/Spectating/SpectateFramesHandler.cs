@@ -21,34 +21,34 @@ namespace Basil.Application.PacketHandlers.Spectating;
 /// </summary>
 public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.SpectateFrames;
+	public ClientPackets PacketId => ClientPackets.SpectateFrames;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var rawData = reader.ReadRaw(reader.RemainingLength);
-        var packet = ServerPacketWriter.SpectateFrames(rawData);
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var rawData = reader.ReadRaw(reader.RemainingLength);
+		var packet = ServerPacketWriter.SpectateFrames(rawData);
 
-        foreach (var spectator in player.Spectators) spectator.Enqueue(packet);
+		foreach (var spectator in player.Spectators) spectator.Enqueue(packet);
 
-        if (playerInputEvents.HasSubscribers)
-            try
-            {
-                var bundle = new BanchoPacketReader(rawData).ReadReplayFrameBundle();
-                var user = new UserBrief(player.Id, player.Name, player.Geoloc.Country);
-                var payload = JsonSerializer.SerializeToUtf8Bytes(
-                    new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
-                    BasilJsonOptions.Instance);
-                playerInputEvents.PublishInput(player.Id, payload);
-            }
-            catch (Exception)
-            {
-                // A malformed/short bundle must never break the bancho relay above — the SSE channel
-                // just misses this one update.
-            }
+		if (playerInputEvents.HasSubscribers)
+			try
+			{
+				var bundle = new BanchoPacketReader(rawData).ReadReplayFrameBundle();
+				var user = new UserBrief(player.Id, player.Name, player.Geoloc.Country);
+				var payload = JsonSerializer.SerializeToUtf8Bytes(
+					new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
+					BasilJsonOptions.Instance);
+				playerInputEvents.PublishInput(player.Id, payload);
+			}
+			catch (Exception)
+			{
+				// A malformed/short bundle must never break the bancho relay above — the SSE channel
+				// just misses this one update.
+			}
 
-        return Task.CompletedTask;
-    }
+		return Task.CompletedTask;
+	}
 }

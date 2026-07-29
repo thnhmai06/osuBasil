@@ -8,7 +8,7 @@ namespace Basil.Application.Abstractions.Scores;
 /// </summary>
 public interface IReplayStorage
 {
-    Task WriteAsync(long scoreId, byte[] data, CancellationToken cancellationToken = default);
+	Task WriteAsync(long scoreId, byte[] data, CancellationToken cancellationToken = default);
 
-    Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default);
+	Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default);
 }

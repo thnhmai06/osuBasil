@@ -12,101 +12,101 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-    private readonly SqliteUserRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteUserRepository _repository = new(fixture.ConnectionString);
 
-    [Fact]
-    public async Task FetchById_SeededBasilBot_ReturnsUser()
-    {
-        var user = await _repository.FetchByIdAsync(0);
+	[Fact]
+	public async Task FetchById_SeededBasilBot_ReturnsUser()
+	{
+		var user = await _repository.FetchByIdAsync(0);
 
-        Assert.NotNull(user);
-        Assert.Equal("BasilBot", user.Name);
-        Assert.Equal("basilbot", User.MakeSafeName(user.Name));
-        Assert.Equal(Country.Vn, user.Country);
-    }
+		Assert.NotNull(user);
+		Assert.Equal("BasilBot", user.Name);
+		Assert.Equal("basilbot", User.MakeSafeName(user.Name));
+		Assert.Equal(Country.Vn, user.Country);
+	}
 
-    [Fact]
-    public async Task FetchById_Nonexistent_ReturnsNull()
-    {
-        Assert.Null(await _repository.FetchByIdAsync(999_999));
-    }
+	[Fact]
+	public async Task FetchById_Nonexistent_ReturnsNull()
+	{
+		Assert.Null(await _repository.FetchByIdAsync(999_999));
+	}
 
-    [Theory]
-    [InlineData("BasilBot")]
-    [InlineData("basilbot")]
-    [InlineData("Basil Bot")] // spaces normalize to underscore via SafeName, but this differs from stored safe_name
-    public async Task FetchByName_IsCaseInsensitiveViaSafeName(string name)
-    {
-        // only exact safe_name matches resolve; "Basil Bot" -> "basil_bot" != "basilbot" -> null
-        var user = await _repository.FetchByNameAsync(name);
+	[Theory]
+	[InlineData("BasilBot")]
+	[InlineData("basilbot")]
+	[InlineData("Basil Bot")] // spaces normalize to underscore via SafeName, but this differs from stored safe_name
+	public async Task FetchByName_IsCaseInsensitiveViaSafeName(string name)
+	{
+		// only exact safe_name matches resolve; "Basil Bot" -> "basil_bot" != "basilbot" -> null
+		var user = await _repository.FetchByNameAsync(name);
 
-        if (name == "Basil Bot")
-        {
-            Assert.Null(user);
-        }
-        else
-        {
-            Assert.NotNull(user);
-            Assert.Equal(0, user.Id);
-        }
-    }
+		if (name == "Basil Bot")
+		{
+			Assert.Null(user);
+		}
+		else
+		{
+			Assert.NotNull(user);
+			Assert.Equal(0, user.Id);
+		}
+	}
 
-    [Fact]
-    public async Task FetchPasswordHash_SeededBasilBot_ReturnsStoredHash()
-    {
-        var hash = await _repository.FetchPasswordHashAsync(0);
+	[Fact]
+	public async Task FetchPasswordHash_SeededBasilBot_ReturnsStoredHash()
+	{
+		var hash = await _repository.FetchPasswordHashAsync(0);
 
-        Assert.Equal("_______________________my_cool_bcrypt_______________________", hash);
-    }
+		Assert.Equal("_______________________my_cool_bcrypt_______________________", hash);
+	}
 
-    [Fact]
-    public async Task FetchPasswordHash_Nonexistent_ReturnsNull()
-    {
-        Assert.Null(await _repository.FetchPasswordHashAsync(999_999));
-    }
+	[Fact]
+	public async Task FetchPasswordHash_Nonexistent_ReturnsNull()
+	{
+		Assert.Null(await _repository.FetchPasswordHashAsync(999_999));
+	}
 
-    [Fact]
-    public async Task UpdateCountry_PersistsChange()
-    {
-        var created = (await _repository.CreateAsync("country test user", "hash", Country.Xx))!;
+	[Fact]
+	public async Task UpdateCountry_PersistsChange()
+	{
+		var created = (await _repository.CreateAsync("country test user", "hash", Country.Xx))!;
 
-        await _repository.UpdateCountryAsync(created.Id, Country.Jp);
+		await _repository.UpdateCountryAsync(created.Id, Country.Jp);
 
-        var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal(Country.Jp, updated!.Country);
-    }
+		var updated = await _repository.FetchByIdAsync(created.Id);
+		Assert.Equal(Country.Jp, updated!.Country);
+	}
 
-    [Fact]
-    public async Task UpdatePrivileges_PersistsChange()
-    {
-        var created = (await _repository.CreateAsync("priv test user", "hash", Country.Xx))!;
+	[Fact]
+	public async Task UpdatePrivileges_PersistsChange()
+	{
+		var created = (await _repository.CreateAsync("priv test user", "hash", Country.Xx))!;
 
-        await _repository.UpdatePrivilegesAsync(created.Id, (UserPrivileges)3);
+		await _repository.UpdatePrivilegesAsync(created.Id, (UserPrivileges)3);
 
-        var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal((UserPrivileges)3, updated!.Privilege);
-    }
+		var updated = await _repository.FetchByIdAsync(created.Id);
+		Assert.Equal((UserPrivileges)3, updated!.Privilege);
+	}
 
-    [Fact]
-    public async Task Create_ThenFetchByName_RoundTrips()
-    {
-        var created = (await _repository.CreateAsync("Fresh Player", "some-hash", Country.Us))!;
+	[Fact]
+	public async Task Create_ThenFetchByName_RoundTrips()
+	{
+		var created = (await _repository.CreateAsync("Fresh Player", "some-hash", Country.Us))!;
 
-        Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
+		Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
 
-        var fetched = await _repository.FetchByNameAsync("fresh player");
-        Assert.Equal(created.Id, fetched!.Id);
-    }
+		var fetched = await _repository.FetchByNameAsync("fresh player");
+		Assert.Equal(created.Id, fetched!.Id);
+	}
 
-    [Fact]
-    public async Task UpdateName_PersistsNameAndSafeName()
-    {
-        var created = (await _repository.CreateAsync("rename me", "hash", Country.Xx))!;
+	[Fact]
+	public async Task UpdateName_PersistsNameAndSafeName()
+	{
+		var created = (await _repository.CreateAsync("rename me", "hash", Country.Xx))!;
 
-        await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
+		await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
 
-        var updated = await _repository.FetchByIdAsync(created.Id);
-        Assert.Equal("renamed", updated!.Name);
-        Assert.Equal("renamed", User.MakeSafeName(updated.Name));
-    }
+		var updated = await _repository.FetchByIdAsync(created.Id);
+		Assert.Equal("renamed", updated!.Name);
+		Assert.Equal("renamed", User.MakeSafeName(updated.Name));
+	}
 }

@@ -6,15 +6,15 @@ namespace Basil.Application.PacketHandlers.Core;
 /// <summary>Ported from app/api/domains/cho.py's SetAwayMessage.</summary>
 public sealed class SetAwayMessageHandler : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.SetAwayMessage;
+	public ClientPackets PacketId => ClientPackets.SetAwayMessage;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var message = reader.ReadMessage();
-        player.AwayMessage = message.Text;
-        return Task.CompletedTask;
-    }
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var message = reader.ReadMessage();
+		player.AwayMessage = message.Text;
+		return Task.CompletedTask;
+	}
 }

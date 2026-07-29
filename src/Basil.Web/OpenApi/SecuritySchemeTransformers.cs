@@ -14,44 +14,44 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class SecuritySchemeTransformers
 {
-    private const string SchemeId = "AdminKey";
+	private const string SchemeId = "AdminKey";
 
-    public static void AddAdminKeyDocumentTransformer(this OpenApiOptions options)
-    {
-        options.AddDocumentTransformer((document, _, _) =>
-        {
-            document.Components ??= new OpenApiComponents();
-            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-            document.Components.SecuritySchemes[SchemeId] = new OpenApiSecurityScheme
-            {
-                Type = SecuritySchemeType.ApiKey,
-                In = ParameterLocation.Header,
-                Name = "X-Admin-Key",
-                Description = "Admin key matching the server's configured `Server:AdminKey`. Required for " +
-                              "every management/mutation route on this host."
-            };
+	public static void AddAdminKeyDocumentTransformer(this OpenApiOptions options)
+	{
+		options.AddDocumentTransformer((document, _, _) =>
+		{
+			document.Components ??= new OpenApiComponents();
+			document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+			document.Components.SecuritySchemes[SchemeId] = new OpenApiSecurityScheme
+			{
+				Type = SecuritySchemeType.ApiKey,
+				In = ParameterLocation.Header,
+				Name = "X-Admin-Key",
+				Description = "Admin key matching the server's configured `Server:AdminKey`. Required for " +
+				              "every management/mutation route on this host."
+			};
 
-            return Task.CompletedTask;
-        });
+			return Task.CompletedTask;
+		});
 
-        options.AddOperationTransformer((operation, context, _) =>
-        {
-            var requiresAdminKey = context.Description.ActionDescriptor.EndpointMetadata
-                .OfType<IAuthorizeData>()
-                .Any(a => a.Policy == AdminKeyDefaults.Policy);
+		options.AddOperationTransformer((operation, context, _) =>
+		{
+			var requiresAdminKey = context.Description.ActionDescriptor.EndpointMetadata
+				.OfType<IAuthorizeData>()
+				.Any(a => a.Policy == AdminKeyDefaults.Policy);
 
-            if (!requiresAdminKey) return Task.CompletedTask;
+			if (!requiresAdminKey) return Task.CompletedTask;
 
-            operation.Security ??= [];
-            operation.Security.Add(new OpenApiSecurityRequirement
-            {
-                [new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = []
-            });
+			operation.Security ??= [];
+			operation.Security.Add(new OpenApiSecurityRequirement
+			{
+				[new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = []
+			});
 
-            operation.Responses ??= new OpenApiResponses();
-            operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing or invalid X-Admin-Key." });
+			operation.Responses ??= new OpenApiResponses();
+			operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing or invalid X-Admin-Key." });
 
-            return Task.CompletedTask;
-        });
-    }
+			return Task.CompletedTask;
+		});
+	}
 }

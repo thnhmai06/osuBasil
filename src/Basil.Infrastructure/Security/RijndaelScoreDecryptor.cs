@@ -15,34 +15,34 @@ namespace Basil.Infrastructure.Security;
 /// </summary>
 public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 {
-    private const int BlockSizeBits = 256;
+	private const int BlockSizeBits = 256;
 
-    public (string[] ScoreDataFields, string ClientHash) Decrypt(
-        string scoreDataBase64,
-        string clientHashBase64,
-        string ivBase64,
-        string osuVersion)
-    {
-        var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");
-        var iv = Convert.FromBase64String(ivBase64);
+	public (string[] ScoreDataFields, string ClientHash) Decrypt(
+		string scoreDataBase64,
+		string clientHashBase64,
+		string ivBase64,
+		string osuVersion)
+	{
+		var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");
+		var iv = Convert.FromBase64String(ivBase64);
 
-        var scoreData = Decrypt(Convert.FromBase64String(scoreDataBase64), key, iv);
-        var clientHash = Decrypt(Convert.FromBase64String(clientHashBase64), key, iv);
+		var scoreData = Decrypt(Convert.FromBase64String(scoreDataBase64), key, iv);
+		var clientHash = Decrypt(Convert.FromBase64String(clientHashBase64), key, iv);
 
-        return (Encoding.UTF8.GetString(scoreData).Split(':'), Encoding.UTF8.GetString(clientHash));
-    }
+		return (Encoding.UTF8.GetString(scoreData).Split(':'), Encoding.UTF8.GetString(clientHash));
+	}
 
-    private static byte[] Decrypt(byte[] ciphertext, byte[] key, byte[] iv)
-    {
-        var cipher = new PaddedBufferedBlockCipher(
-            new CbcBlockCipher(new RijndaelEngine(BlockSizeBits)),
-            new Pkcs7Padding());
-        cipher.Init(false, new ParametersWithIV(new KeyParameter(key), iv));
+	private static byte[] Decrypt(byte[] ciphertext, byte[] key, byte[] iv)
+	{
+		var cipher = new PaddedBufferedBlockCipher(
+			new CbcBlockCipher(new RijndaelEngine(BlockSizeBits)),
+			new Pkcs7Padding());
+		cipher.Init(false, new ParametersWithIV(new KeyParameter(key), iv));
 
-        var output = new byte[cipher.GetOutputSize(ciphertext.Length)];
-        var length = cipher.ProcessBytes(ciphertext, 0, ciphertext.Length, output, 0);
-        length += cipher.DoFinal(output, length);
+		var output = new byte[cipher.GetOutputSize(ciphertext.Length)];
+		var length = cipher.ProcessBytes(ciphertext, 0, ciphertext.Length, output, 0);
+		length += cipher.DoFinal(output, length);
 
-        return output[..length];
-    }
+		return output[..length];
+	}
 }

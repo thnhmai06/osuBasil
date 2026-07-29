@@ -11,27 +11,27 @@ namespace Basil.Infrastructure.Persistence;
 /// </summary>
 public static class SqlMigrationRunner
 {
-    public static void RunMigrations(string connectionString)
-    {
-        // journal_mode=WAL persists into the database file header, so this only needs to run once
-        // per database file, but running it every startup is harmless and keeps a hand-copied/older
-        // database file in WAL mode too.
-        using (var connection = new SqliteConnection(connectionString))
-        {
-            connection.Open();
-            using var pragma = connection.CreateCommand();
-            pragma.CommandText = "PRAGMA journal_mode=WAL;";
-            pragma.ExecuteNonQuery();
-        }
+	public static void RunMigrations(string connectionString)
+	{
+		// journal_mode=WAL persists into the database file header, so this only needs to run once
+		// per database file, but running it every startup is harmless and keeps a hand-copied/older
+		// database file in WAL mode too.
+		using (var connection = new SqliteConnection(connectionString))
+		{
+			connection.Open();
+			using var pragma = connection.CreateCommand();
+			pragma.CommandText = "PRAGMA journal_mode=WAL;";
+			pragma.ExecuteNonQuery();
+		}
 
-        var upgrader = DeployChanges.To
-            .SqliteDatabase(connectionString)
-            .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
-            .LogToConsole()
-            .Build();
+		var upgrader = DeployChanges.To
+			.SqliteDatabase(connectionString)
+			.WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
+			.LogToConsole()
+			.Build();
 
-        var result = upgrader.PerformUpgrade();
+		var result = upgrader.PerformUpgrade();
 
-        if (!result.Successful) throw new InvalidOperationException("SQL migration failed.", result.Error);
-    }
+		if (!result.Successful) throw new InvalidOperationException("SQL migration failed.", result.Error);
+	}
 }

@@ -11,9 +11,9 @@ namespace Basil.Application.Configuration;
 /// </summary>
 public sealed class StorageOptions
 {
-    public required string ReplaysPath { get; init; }
-    public required string AvatarsPath { get; init; }
-    public required string MapsetsPath { get; init; }
-    public required string SeasonalsPath { get; init; }
-    public required string FaqsPath { get; init; }
+	public required string ReplaysPath { get; init; }
+	public required string AvatarsPath { get; init; }
+	public required string MapsetsPath { get; init; }
+	public required string SeasonalsPath { get; init; }
+	public required string FaqsPath { get; init; }
 }

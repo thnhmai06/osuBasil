@@ -9,26 +9,26 @@ namespace Basil.Protocol.Multiplayer;
 ///     Ported from write_match in app/packets.py.
 /// </summary>
 public sealed record MatchPacketData(
-    int Id,
-    bool InProgress,
-    int Mods,
-    string Name,
-    string Password,
-    string MapName,
-    int MapId,
-    string MapMd5,
-    IReadOnlyList<MatchSlotData> Slots,
-    int HostId,
-    int Mode,
-    int WinCondition,
-    int TeamType,
-    bool FreeMods,
-    int Seed);
+	int Id,
+	bool InProgress,
+	int Mods,
+	string Name,
+	string Password,
+	string MapName,
+	int MapId,
+	string MapMd5,
+	IReadOnlyList<MatchSlotData> Slots,
+	int HostId,
+	int Mode,
+	int WinCondition,
+	int TeamType,
+	bool FreeMods,
+	int Seed);
 
 /// <summary>One of a match's 16 slots.</summary>
 public sealed record MatchSlotData(int Status, int Team, int Mods, int? PlayerId)
 {
-    public bool HasPlayer => MatchSlotStatusMask.HasPlayer(Status);
+	public bool HasPlayer => MatchSlotStatusMask.HasPlayer(Status);
 }
 
 /// <summary>
@@ -38,10 +38,10 @@ public sealed record MatchSlotData(int Status, int Team, int Mods, int? PlayerId
 /// </summary>
 internal static class MatchSlotStatusMask
 {
-    private const int HasPlayerMask = 0b0111_1100;
+	private const int HasPlayerMask = 0b0111_1100;
 
-    public static bool HasPlayer(int status)
-    {
-        return (status & HasPlayerMask) != 0;
-    }
+	public static bool HasPlayer(int status)
+	{
+		return (status & HasPlayerMask) != 0;
+	}
 }

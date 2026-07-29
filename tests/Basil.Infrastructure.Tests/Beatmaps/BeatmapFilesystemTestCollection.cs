@@ -9,5 +9,5 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 [CollectionDefinition(Name)]
 public sealed class BeatmapFilesystemTestCollection
 {
-    public const string Name = "Beatmap Filesystem Tests";
+	public const string Name = "Beatmap Filesystem Tests";
 }

@@ -5,63 +5,63 @@ namespace Basil.Infrastructure.Sessions;
 /// <inheritdoc cref="IMatchRegistry" />
 public sealed class InMemoryMatchRegistry : IMatchRegistry
 {
-    private const int MaxMatches = 64;
-    private readonly object _registryLock = new();
+	private const int MaxMatches = 64;
+	private readonly object _registryLock = new();
 
-    private readonly MatchSession?[] _slots = new MatchSession?[MaxMatches];
+	private readonly MatchSession?[] _slots = new MatchSession?[MaxMatches];
 
-    public MatchSession? GetById(int id)
-    {
-        if (id is < 0 or >= MaxMatches) return null;
+	public MatchSession? GetById(int id)
+	{
+		if (id is < 0 or >= MaxMatches) return null;
 
-        lock (_registryLock)
-        {
-            return _slots[id];
-        }
-    }
+		lock (_registryLock)
+		{
+			return _slots[id];
+		}
+	}
 
-    public MatchSession? GetByDbId(int dbId)
-    {
-        lock (_registryLock)
-        {
-            return _slots.FirstOrDefault(m => m is not null && m.DbId == dbId);
-        }
-    }
+	public MatchSession? GetByDbId(int dbId)
+	{
+		lock (_registryLock)
+		{
+			return _slots.FirstOrDefault(m => m is not null && m.DbId == dbId);
+		}
+	}
 
-    public MatchSession? TryCreate(Func<int, MatchSession> factory)
-    {
-        lock (_registryLock)
-        {
-            for (var i = 0; i < MaxMatches; i++)
-                if (_slots[i] is null)
-                {
-                    var match = factory(i);
-                    _slots[i] = match;
-                    return match;
-                }
+	public MatchSession? TryCreate(Func<int, MatchSession> factory)
+	{
+		lock (_registryLock)
+		{
+			for (var i = 0; i < MaxMatches; i++)
+				if (_slots[i] is null)
+				{
+					var match = factory(i);
+					_slots[i] = match;
+					return match;
+				}
 
-            return null;
-        }
-    }
+			return null;
+		}
+	}
 
-    public void Remove(int id)
-    {
-        if (id is < 0 or >= MaxMatches) return;
+	public void Remove(int id)
+	{
+		if (id is < 0 or >= MaxMatches) return;
 
-        lock (_registryLock)
-        {
-            _slots[id] = null;
-        }
-    }
+		lock (_registryLock)
+		{
+			_slots[id] = null;
+		}
+	}
 
-    public IReadOnlyList<MatchSession> All
-    {
-        get
-        {
-            lock (_registryLock)
-            {
-                return [.. _slots.Where(m => m is not null).Cast<MatchSession>()];
-            }
-        }
-    }
+	public IReadOnlyList<MatchSession> All
+	{
+		get
+		{
+			lock (_registryLock)
+			{
+				return [.. _slots.Where(m => m is not null).Cast<MatchSession>()];
+			}
+		}
+	}
 }

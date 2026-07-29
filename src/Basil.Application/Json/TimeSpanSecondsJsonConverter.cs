@@ -13,13 +13,13 @@ namespace Basil.Application.Json;
 /// </summary>
 public sealed class TimeSpanSecondsJsonConverter : JsonConverter<TimeSpan>
 {
-    public override TimeSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        return TimeSpan.FromSeconds(reader.GetInt32());
-    }
+	public override TimeSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	{
+		return TimeSpan.FromSeconds(reader.GetInt32());
+	}
 
-    public override void Write(Utf8JsonWriter writer, TimeSpan value, JsonSerializerOptions options)
-    {
-        writer.WriteNumberValue((int)value.TotalSeconds);
-    }
+	public override void Write(Utf8JsonWriter writer, TimeSpan value, JsonSerializerOptions options)
+	{
+		writer.WriteNumberValue((int)value.TotalSeconds);
+	}
 }

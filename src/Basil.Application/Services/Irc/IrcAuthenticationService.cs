@@ -22,91 +22,91 @@ namespace Basil.Application.Services.Irc;
 ///     MD5 here before bcrypt verify).
 /// </summary>
 public sealed class IrcAuthenticationService(
-    IUserRepository users,
-    IPlayerSessionRegistry sessionRegistry,
-    IChannelRegistry channelRegistry,
-    ChannelMembershipService channelMembership,
-    IOptions<IrcOptions> options,
-    IPasswordHasher passwordHasher)
+	IUserRepository users,
+	IPlayerSessionRegistry sessionRegistry,
+	IChannelRegistry channelRegistry,
+	ChannelMembershipService channelMembership,
+	IOptions<IrcOptions> options,
+	IPasswordHasher passwordHasher)
 {
-    public async Task<IrcLoginOutcome> AuthenticateAsync(string nick, string pass, IIrcConnection connection,
-        CancellationToken cancellationToken = default)
-    {
-        var user = await users.FetchByNameAsync(nick, cancellationToken);
-        if (user is null)
-            return IrcLoginOutcome.Failed(
-                IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-                    "Password incorrect"));
+	public async Task<IrcLoginOutcome> AuthenticateAsync(string nick, string pass, IIrcConnection connection,
+		CancellationToken cancellationToken = default)
+	{
+		var user = await users.FetchByNameAsync(nick, cancellationToken);
+		if (user is null)
+			return IrcLoginOutcome.Failed(
+				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+					"Password incorrect"));
 
-        var storedHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
-        if (storedHash is null)
-            return IrcLoginOutcome.Failed(
-                IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-                    "Password incorrect"));
+		var storedHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
+		if (storedHash is null)
+			return IrcLoginOutcome.Failed(
+				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+					"Password incorrect"));
 
-        var md5Hex = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(pass)));
-        if (!passwordHasher.Verify(Encoding.UTF8.GetBytes(md5Hex), storedHash))
-            return IrcLoginOutcome.Failed(
-                IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-                    "Password incorrect"));
+		var md5Hex = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(pass)));
+		if (!passwordHasher.Verify(Encoding.UTF8.GetBytes(md5Hex), storedHash))
+			return IrcLoginOutcome.Failed(
+				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+					"Password incorrect"));
 
-        if (sessionRegistry.GetByName(user.Name) is not null)
-            return IrcLoginOutcome.Failed(
-                IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
-                    "Nickname is already in use"));
+		if (sessionRegistry.GetByName(user.Name) is not null)
+			return IrcLoginOutcome.Failed(
+				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
+					"Nickname is already in use"));
 
-        var loginTime = DateTimeOffset.UtcNow;
-        var session = new PlayerSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
-        {
-            SilenceEnd = user.SilenceEnd,
-            IrcConnection = connection
-        };
+		var loginTime = DateTimeOffset.UtcNow;
+		var session = new PlayerSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
+		{
+			SilenceEnd = user.SilenceEnd,
+			IrcConnection = connection
+		};
 
-        sessionRegistry.Add(session);
+		sessionRegistry.Add(session);
 
-        var messages = new List<IrcMessage>
-        {
-            IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplWelcome, user.Name,
-                $"Welcome to {options.Value.Name} IRC, {user.Name}")
-        };
+		var messages = new List<IrcMessage>
+		{
+			IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplWelcome, user.Name,
+				$"Welcome to {options.Value.Name} IRC, {user.Name}")
+		};
 
-        foreach (var channel in channelRegistry.AutoJoinChannels)
-        {
-            if (!channel.CanRead(user.Privilege)) continue;
+		foreach (var channel in channelRegistry.AutoJoinChannels)
+		{
+			if (!channel.CanRead(user.Privilege)) continue;
 
-            channelMembership.Join(session, channel);
+			channelMembership.Join(session, channel);
 
-            if (!string.IsNullOrEmpty(channel.Topic))
-                messages.Add(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplTopic, user.Name,
-                    channel.Name,
-                    channel.Topic));
+			if (!string.IsNullOrEmpty(channel.Topic))
+				messages.Add(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplTopic, user.Name,
+					channel.Name,
+					channel.Topic));
 
-            messages.AddRange(BuildNamesReply(user.Name, channel));
-        }
+			messages.AddRange(BuildNamesReply(user.Name, channel));
+		}
 
-        return IrcLoginOutcome.Ok(session, messages);
-    }
+		return IrcLoginOutcome.Ok(session, messages);
+	}
 
-    private IEnumerable<IrcMessage> BuildNamesReply(string requesterName, ChannelSession channel)
-    {
-        var names = channel.MemberIds
-            .Select(sessionRegistry.GetById)
-            .Where(member => member is not null)
-            .Select(member => NamePrefix(member!) + member!.Name);
+	private IEnumerable<IrcMessage> BuildNamesReply(string requesterName, ChannelSession channel)
+	{
+		var names = channel.MemberIds
+			.Select(sessionRegistry.GetById)
+			.Where(member => member is not null)
+			.Select(member => NamePrefix(member!) + member!.Name);
 
-        yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplNamReply, requesterName, "=",
-            channel.Name,
-            string.Join(' ', names));
-        yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplEndOfNames, requesterName,
-            channel.Name,
-            "End of /NAMES list");
-    }
+		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplNamReply, requesterName, "=",
+			channel.Name,
+			string.Join(' ', names));
+		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplEndOfNames, requesterName,
+			channel.Name,
+			"End of /NAMES list");
+	}
 
-    /// <summary>Ported from help.ppy.sh's IRC page: `@` = chat moderator, `+` = connected via external IRC client.</summary>
-    private static string NamePrefix(PlayerSession member)
-    {
-        if ((member.Privilege & UserPrivileges.Moderator) != 0) return "@";
+	/// <summary>Ported from help.ppy.sh's IRC page: `@` = chat moderator, `+` = connected via external IRC client.</summary>
+	private static string NamePrefix(PlayerSession member)
+	{
+		if ((member.Privilege & UserPrivileges.Moderator) != 0) return "@";
 
-        return member.IrcConnection.IsExternalIrcClient ? "+" : "";
-    }
+		return member.IrcConnection.IsExternalIrcClient ? "+" : "";
+	}
 }

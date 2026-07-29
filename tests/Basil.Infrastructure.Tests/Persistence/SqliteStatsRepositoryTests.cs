@@ -9,24 +9,24 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-    private readonly SqliteStatsRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteStatsRepository _repository = new(fixture.ConnectionString);
 
-    [Fact]
-    public async Task FetchAllForUser_SeededBasilBot_ReturnsEightModes()
-    {
-        var stats = await _repository.FetchAllForUserAsync(0);
+	[Fact]
+	public async Task FetchAllForUser_SeededBasilBot_ReturnsEightModes()
+	{
+		var stats = await _repository.FetchAllForUserAsync(0);
 
-        Assert.Equal(8, stats.Count);
-        Assert.Contains(stats, s => (int)s.Mode == 0);
-        Assert.Contains(stats, s => (int)s.Mode == 8); // ap!std
-        Assert.All(stats, s => Assert.Equal(0, s.Id));
-    }
+		Assert.Equal(8, stats.Count);
+		Assert.Contains(stats, s => (int)s.Mode == 0);
+		Assert.Contains(stats, s => (int)s.Mode == 8); // ap!std
+		Assert.All(stats, s => Assert.Equal(0, s.Id));
+	}
 
-    [Fact]
-    public async Task FetchAllForUser_UnknownUser_ReturnsEmpty()
-    {
-        var stats = await _repository.FetchAllForUserAsync(999_999);
+	[Fact]
+	public async Task FetchAllForUser_UnknownUser_ReturnsEmpty()
+	{
+		var stats = await _repository.FetchAllForUserAsync(999_999);
 
-        Assert.Empty(stats);
-    }
+		Assert.Empty(stats);
+	}
 }

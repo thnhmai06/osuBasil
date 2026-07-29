@@ -12,35 +12,35 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class LinkExtensions
 {
-    /// <param name="builder">The route whose already-declared response gets the link entry.</param>
-    /// <param name="statusCode">The response status this link is attached to (the operation's own success status).</param>
-    /// <param name="linkName">Scalar's display name for the link (PascalCase by OpenAPI convention).</param>
-    /// <param name="targetOperationId">The `operationId` of the operation this link points to.</param>
-    /// <param name="description">Shown alongside the link in Scalar — what calling it does.</param>
-    /// <param name="parameters">
-    ///     `(targetParameterName, runtimeExpression)` pairs, e.g. `("userId", "$response.body#/data/id")`
-    ///     to feed this response's `data.id` into the target operation's `userId` path parameter.
-    /// </param>
-    public static RouteHandlerBuilder WithLink(this RouteHandlerBuilder builder, int statusCode, string linkName,
-        string targetOperationId, string description, params (string ParameterName, string Expression)[] parameters)
-    {
-        return builder.AddOpenApiOperationTransformer((operation, _, _) =>
-        {
-            if (operation.Responses?.TryGetValue(statusCode.ToString(), out var response) != true ||
-                response is not OpenApiResponse concrete)
-                return Task.CompletedTask;
+	/// <param name="builder">The route whose already-declared response gets the link entry.</param>
+	/// <param name="statusCode">The response status this link is attached to (the operation's own success status).</param>
+	/// <param name="linkName">Scalar's display name for the link (PascalCase by OpenAPI convention).</param>
+	/// <param name="targetOperationId">The `operationId` of the operation this link points to.</param>
+	/// <param name="description">Shown alongside the link in Scalar — what calling it does.</param>
+	/// <param name="parameters">
+	///     `(targetParameterName, runtimeExpression)` pairs, e.g. `("userId", "$response.body#/data/id")`
+	///     to feed this response's `data.id` into the target operation's `userId` path parameter.
+	/// </param>
+	public static RouteHandlerBuilder WithLink(this RouteHandlerBuilder builder, int statusCode, string linkName,
+		string targetOperationId, string description, params (string ParameterName, string Expression)[] parameters)
+	{
+		return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+		{
+			if (operation.Responses?.TryGetValue(statusCode.ToString(), out var response) != true ||
+			    response is not OpenApiResponse concrete)
+				return Task.CompletedTask;
 
-            concrete.Links ??= new Dictionary<string, IOpenApiLink>();
-            concrete.Links[linkName] = new OpenApiLink
-            {
-                OperationId = targetOperationId,
-                Description = description,
-                Parameters = parameters.ToDictionary(
-                    p => p.ParameterName,
-                    p => new RuntimeExpressionAnyWrapper { Expression = RuntimeExpression.Build(p.Expression) })
-            };
+			concrete.Links ??= new Dictionary<string, IOpenApiLink>();
+			concrete.Links[linkName] = new OpenApiLink
+			{
+				OperationId = targetOperationId,
+				Description = description,
+				Parameters = parameters.ToDictionary(
+					p => p.ParameterName,
+					p => new RuntimeExpressionAnyWrapper { Expression = RuntimeExpression.Build(p.Expression) })
+			};
 
-            return Task.CompletedTask;
-        });
-    }
+			return Task.CompletedTask;
+		});
+	}
 }

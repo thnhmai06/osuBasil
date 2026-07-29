@@ -8,16 +8,16 @@ namespace Basil.Application.Services.Users;
 ///     record, kept separate so the API layer doesn't serialize a domain type directly.
 /// </summary>
 public sealed record UserView(
-    int Id,
-    string Name,
-    Country Country,
-    UserPrivileges Privilege,
-    DateTimeOffset SilenceEnd);
+	int Id,
+	string Name,
+	Country Country,
+	UserPrivileges Privilege,
+	DateTimeOffset SilenceEnd);
 
 public static class UserViewMapper
 {
-    public static UserView ToView(this User user)
-    {
-        return new UserView(user.Id, user.Name, user.Country, user.Privilege, user.SilenceEnd);
-    }
+	public static UserView ToView(this User user)
+	{
+		return new UserView(user.Id, user.Name, user.Country, user.Privilege, user.SilenceEnd);
+	}
 }

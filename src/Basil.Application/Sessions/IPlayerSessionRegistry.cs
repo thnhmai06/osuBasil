@@ -6,15 +6,15 @@ namespace Basil.Application.Sessions;
 /// </summary>
 public interface IPlayerSessionRegistry
 {
-    IReadOnlyList<PlayerSession> All { get; }
-    void Add(PlayerSession session);
+	IReadOnlyList<PlayerSession> All { get; }
+	void Add(PlayerSession session);
 
-    void Remove(PlayerSession session);
+	void Remove(PlayerSession session);
 
-    PlayerSession? GetByToken(string token);
+	PlayerSession? GetByToken(string token);
 
-    PlayerSession? GetById(int id);
+	PlayerSession? GetById(int id);
 
-    /// <summary>Looks up by <see cref="Basil.Domain.Users.User.MakeSafeName" />.</summary>
-    PlayerSession? GetByName(string name);
+	/// <summary>Looks up by <see cref="Basil.Domain.Users.User.MakeSafeName" />.</summary>
+	PlayerSession? GetByName(string name);
 }

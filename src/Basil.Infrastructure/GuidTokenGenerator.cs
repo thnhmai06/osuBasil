@@ -5,8 +5,8 @@ namespace Basil.Infrastructure;
 /// <inheritdoc cref="ITokenGenerator" />
 public sealed class GuidTokenGenerator : ITokenGenerator
 {
-    public string GenerateToken()
-    {
-        return Guid.NewGuid().ToString();
-    }
+	public string GenerateToken()
+	{
+		return Guid.NewGuid().ToString();
+	}
 }

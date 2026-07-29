@@ -15,87 +15,87 @@ namespace Basil.IntegrationTests;
 ///     /d/{set_id} only redirects if an operator explicitly configures MirrorOptions:DownloadEndpoint.
 /// </summary>
 public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+	: IClassFixture<WebApplicationFactory<Program>>
 {
-    private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory,
-        string? downloadEndpoint = null)
-    {
-        return factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                var settings = new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
-                };
-                config.AddInMemoryCollection(settings);
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                if (downloadEndpoint is not null)
-                    services.AddSingleton(Options.Create(
-                        new MirrorOptions { DownloadEndpoint = downloadEndpoint }));
-                services.AddSingleton(TestDoubles.NullMapRepository());
-            });
-        });
-    }
+	private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory,
+		string? downloadEndpoint = null)
+	{
+		return factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				var settings = new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+				};
+				config.AddInMemoryCollection(settings);
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				if (downloadEndpoint is not null)
+					services.AddSingleton(Options.Create(
+						new MirrorOptions { DownloadEndpoint = downloadEndpoint }));
+				services.AddSingleton(TestDoubles.NullMapRepository());
+			});
+		});
+	}
 
-    private static HttpRequestMessage MakeRequest(string path)
-    {
-        return new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "osu.test.local" } };
-    }
+	private static HttpRequestMessage MakeRequest(string path)
+	{
+		return new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "osu.test.local" } };
+	}
 
-    [Fact]
-    public async Task Download_NoDownloadEndpointConfigured_ReturnsUnavailableMessage_NoRedirect()
-    {
-        var client = Configure(factory)
-            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+	[Fact]
+	public async Task Download_NoDownloadEndpointConfigured_ReturnsUnavailableMessage_NoRedirect()
+	{
+		var client = Configure(factory)
+			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.SendAsync(MakeRequest("/d/12345"));
-        var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest("/d/12345"));
+		var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("not available", body);
-    }
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Contains("not available", body);
+	}
 
-    [Fact]
-    public async Task Download_EndpointConfigured_RedirectsWithVideoFlag()
-    {
-        var client = Configure(factory, "https://mirror.local/d")
-            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+	[Fact]
+	public async Task Download_EndpointConfigured_RedirectsWithVideoFlag()
+	{
+		var client = Configure(factory, "https://mirror.local/d")
+			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.SendAsync(MakeRequest("/d/12345"));
+		var response = await client.SendAsync(MakeRequest("/d/12345"));
 
-        Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
-        Assert.Equal("https://mirror.local/d/12345?n=1", response.Headers.Location!.ToString());
-    }
+		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
+		Assert.Equal("https://mirror.local/d/12345?n=1", response.Headers.Location!.ToString());
+	}
 
-    [Fact]
-    public async Task Download_NoVideoFlagSuffix_StripsNAndSetsNZero()
-    {
-        var client = Configure(factory, "https://mirror.local/d")
-            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+	[Fact]
+	public async Task Download_NoVideoFlagSuffix_StripsNAndSetsNZero()
+	{
+		var client = Configure(factory, "https://mirror.local/d")
+			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.SendAsync(MakeRequest("/d/12345n"));
+		var response = await client.SendAsync(MakeRequest("/d/12345n"));
 
-        Assert.Equal("https://mirror.local/d/12345?n=0", response.Headers.Location!.ToString());
-    }
+		Assert.Equal("https://mirror.local/d/12345?n=0", response.Headers.Location!.ToString());
+	}
 
-    [Fact]
-    public async Task MapFile_ReturnsNotFound_WhenFilenameUnknown()
-    {
-        var client = Configure(factory)
-            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+	[Fact]
+	public async Task MapFile_ReturnsNotFound_WhenFilenameUnknown()
+	{
+		var client = Configure(factory)
+			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.SendAsync(MakeRequest("/web/maps/Some%20Map.osu"));
+		var response = await client.SendAsync(MakeRequest("/web/maps/Some%20Map.osu"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
 
-    // Database:Path is "" for this test host (no real DB) — /d/{setId} and /web/maps/{filename}
-    // still call IMapRepository unconditionally, so they need a stub rather than a real connection.
+	// Database:Path is "" for this test host (no real DB) — /d/{setId} and /web/maps/{filename}
+	// still call IMapRepository unconditionally, so they need a stub rather than a real connection.
 }

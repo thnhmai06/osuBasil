@@ -9,6 +9,6 @@ public sealed record IngameLogin(int Id, int UserId, string Ip, DateOnly OsuVer,
 /// </summary>
 public interface IIngameLoginRepository
 {
-    Task<IngameLogin> CreateAsync(int userId, string ip, DateOnly osuVer, string osuStream,
-        CancellationToken cancellationToken = default);
+	Task<IngameLogin> CreateAsync(int userId, string ip, DateOnly osuVer, string osuStream,
+		CancellationToken cancellationToken = default);
 }

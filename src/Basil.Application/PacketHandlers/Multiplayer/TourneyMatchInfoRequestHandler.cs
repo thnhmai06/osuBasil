@@ -10,21 +10,21 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchInfoRequest.</summary>
 public sealed class TourneyMatchInfoRequestHandler(IMatchRegistry matchRegistry) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.TournamentMatchInfoRequest;
+	public ClientPackets PacketId => ClientPackets.TournamentMatchInfoRequest;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var matchId = reader.ReadI32();
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var matchId = reader.ReadI32();
 
-        if (matchId is < 0 or >= 64 || (player.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
+		if (matchId is < 0 or >= 64 || (player.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
-        var match = matchRegistry.GetById(matchId);
-        if (match is null) return Task.CompletedTask;
+		var match = matchRegistry.GetById(matchId);
+		if (match is null) return Task.CompletedTask;
 
-        player.Enqueue(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false));
-        return Task.CompletedTask;
-    }
+		player.Enqueue(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false));
+		return Task.CompletedTask;
+	}
 }

@@ -31,72 +31,72 @@ namespace Basil.Infrastructure.DependencyInjection;
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
-        services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
-        services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
+	public static IServiceCollection AddInfrastructure(this IServiceCollection services,
+		IConfiguration configuration)
+	{
+		services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
+		services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
+		services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
 
-        // Database path is fixed to Data/Basil.db next to the executable — not configurable.
-        services.AddSingleton(Options.Create(new DatabaseOptions()));
+		// Database path is fixed to Data/Basil.db next to the executable — not configurable.
+		services.AddSingleton(Options.Create(new DatabaseOptions()));
 
-        // Storage folders are fixed under a Data/ subdirectory next to the executable.
-        services.AddSingleton(Options.Create(new StorageOptions
-        {
-            ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
-            AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
-            MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
-            SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
-            FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs")
-        }));
+		// Storage folders are fixed under a Data/ subdirectory next to the executable.
+		services.AddSingleton(Options.Create(new StorageOptions
+		{
+			ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
+			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
+			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
+			SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
+			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs")
+		}));
 
-        static string BuildConnectionString(IServiceProvider sp)
-        {
-            return DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
-        }
+		static string BuildConnectionString(IServiceProvider sp)
+		{
+			return DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
+		}
 
-        services.AddMemoryCache();
+		services.AddMemoryCache();
 
-        services.AddSingleton<IUserRepository>(sp =>
-            new CachingUserRepository(new SqliteUserRepository(BuildConnectionString(sp)),
-                sp.GetRequiredService<IMemoryCache>()));
-        services.AddSingleton<IStatsRepository>(sp => new SqliteStatsRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IClientHashRepository>(sp => new SqliteClientHashRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IIngameLoginRepository>(sp =>
-            new SqliteIngameLoginRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IRelationshipRepository>(sp =>
-            new SqliteRelationshipRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMapRepository>(sp =>
-            new CachingMapRepository(new SqliteMapRepository(BuildConnectionString(sp)),
-                sp.GetRequiredService<IMemoryCache>()));
-        services.AddSingleton<IMapsetRepository>(sp =>
-            new CachingMapsetRepository(new SqliteMapsetRepository(BuildConnectionString(sp)),
-                sp.GetRequiredService<IMemoryCache>()));
-        services.AddSingleton<IScoreRepository>(sp => new SqliteScoreRepository(BuildConnectionString(sp)));
-        services.AddSingleton<ILogRepository>(sp => new SqliteLogRepository(BuildConnectionString(sp)));
-        services.AddSingleton<IMatchPersistenceRepository>(sp =>
-            new SqliteMatchPersistenceRepository(BuildConnectionString(sp)));
-        services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
+		services.AddSingleton<IUserRepository>(sp =>
+			new CachingUserRepository(new SqliteUserRepository(BuildConnectionString(sp)),
+				sp.GetRequiredService<IMemoryCache>()));
+		services.AddSingleton<IStatsRepository>(sp => new SqliteStatsRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IClientHashRepository>(sp => new SqliteClientHashRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IIngameLoginRepository>(sp =>
+			new SqliteIngameLoginRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IRelationshipRepository>(sp =>
+			new SqliteRelationshipRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IMapRepository>(sp =>
+			new CachingMapRepository(new SqliteMapRepository(BuildConnectionString(sp)),
+				sp.GetRequiredService<IMemoryCache>()));
+		services.AddSingleton<IMapsetRepository>(sp =>
+			new CachingMapsetRepository(new SqliteMapsetRepository(BuildConnectionString(sp)),
+				sp.GetRequiredService<IMemoryCache>()));
+		services.AddSingleton<IScoreRepository>(sp => new SqliteScoreRepository(BuildConnectionString(sp)));
+		services.AddSingleton<ILogRepository>(sp => new SqliteLogRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IMatchPersistenceRepository>(sp =>
+			new SqliteMatchPersistenceRepository(BuildConnectionString(sp)));
+		services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
 
-        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
-        services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
-        services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
-        services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
-        services.AddSingleton<BeatmapIngestionService>();
-        services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
+		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
+		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
+		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
+		services.AddSingleton<BeatmapIngestionService>();
+		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
-        services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
-        services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
-        services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
-        services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
-        services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
+		services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
+		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
+		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
+		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
+		services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
 
-        services.AddHostedService<TcpIrcListener>();
-        services.AddHostedService<BeatmapWatcherService>();
-        services.AddHostedService<MapsetGarbageCollectorService>();
+		services.AddHostedService<TcpIrcListener>();
+		services.AddHostedService<BeatmapWatcherService>();
+		services.AddHostedService<MapsetGarbageCollectorService>();
 
-        return services;
-    }
+		return services;
+	}
 }

@@ -1,6 +1,5 @@
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
@@ -22,536 +21,536 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 /// <summary>Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
 public class MatchMembershipServiceTests
 {
-    private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
-
-    /// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
-    private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
-
-    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
-    private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
-    private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
-
-    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
-
-    public MatchMembershipServiceTests()
-    {
-        _mapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
-            Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
-    }
-
-    private MatchMembershipService MakeService()
-    {
-        return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-            new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-            Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository);
-    }
-
-    /// <summary>
-    ///     The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous
-    ///     shape.
-    /// </summary>
-    private static MatchSession? Create(MatchMembershipService service, PlayerSession host, ReadMatchResult data)
-    {
-        return service.CreateAsync(host, data).GetAwaiter().GetResult();
-    }
-
-    private static PlayerSession MakePlayer(int id, string name)
-    {
-        return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-    }
-
-    private void RegisterAll(params PlayerSession[] sessions)
-    {
-        _sessionRegistry.All.Returns(sessions);
-        foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
-    }
-
-    private static ReadMatchResult MakeMatchData(int hostId, string name = "test match", string password = "",
-        bool freeMods = false)
-    {
-        return new ReadMatchResult(
-            0, false, 0, 0, name, password,
-            "Some Map", 100, new string('a', 32),
-            [], [], [], hostId, 0,
-            0, 0, freeMods, [], 0);
-    }
-
-    [Fact]
-    public void Create_RegistersMatchAndJoinsHostIntoSlotZero()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-
-        var match = Create(MakeService(), host, MakeMatchData(host.Id));
-
-        Assert.NotNull(match);
-        Assert.Same(match, host.Match);
-        Assert.Equal(host.Id, match.Slots[0].PlayerId);
-        Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
-    }
-
-    [Fact]
-    public void Create_KeepsPasswordAsIs_NoPrivateHistoryConcept()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-
-        var match = Create(MakeService(), host, MakeMatchData(host.Id, password: "secret"));
-
-        Assert.Equal("secret", match!.Password);
-    }
-
-    [Fact]
-    public async Task CreateEmptyAsync_CreatesMatchWithNoHostAndNoOccupants()
-    {
-        var service = MakeService();
-
-        var match = await service.CreateEmptyAsync(MakeMatchData(0));
-
-        Assert.NotNull(match);
-        Assert.Equal(0, match.HostId);
-        Assert.Empty(match.Referees);
-        Assert.All(match.Slots, slot => Assert.True(slot.Empty));
-        Assert.True(match.CreatedViaMakeCommand);
-        Assert.True(match.DbId > 0);
-    }
-
-    [Fact]
-    public void Create_RegistryFull_ReturnsNull()
-    {
-        var service = MakeService();
-        for (var i = 0; i < 64; i++)
-        {
-            var host = MakePlayer(i + 1, $"host{i}");
-            RegisterAll(host);
-            Assert.NotNull(Create(service, host, MakeMatchData(host.Id)));
-        }
-
-        var overflowHost = MakePlayer(1000, "overflow");
-        RegisterAll(overflowHost);
-
-        Assert.Null(Create(service, overflowHost, MakeMatchData(overflowHost.Id)));
-    }
-
-    [Fact]
-    public async Task Join_CorrectPassword_OccupiesFreeSlotAndSendsMatchJoinSuccess()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
-        host.Dequeue();
-
-        var joined = await service.JoinAsync(guest, match, "pw", default);
-
-        Assert.True(joined);
-        Assert.Same(match, guest.Match);
-        Assert.Equal(1, match.GetSlotId(guest.Id));
-        Assert.Contains(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)),
-            Chunk(guest.Dequeue()));
-    }
-
-    [Fact]
-    public async Task Join_WrongPassword_FailsAndSendsMatchJoinFail()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
-
-        var joined = await service.JoinAsync(guest, match, "wrong", default);
-
-        Assert.False(joined);
-        Assert.Null(guest.Match);
-        Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
-    }
-
-    [Fact]
-    public async Task Join_StaffBypassesWrongPassword()
-    {
-        var host = MakePlayer(1, "host");
-        var staff = MakePlayer(2, "mod");
-        staff.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
-        RegisterAll(host, staff);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
-
-        Assert.True(await service.JoinAsync(staff, match, "wrong", default));
-    }
-
-    [Fact]
-    public async Task Join_AlreadyInAnotherMatch_Fails()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var matchA = Create(service, host, MakeMatchData(host.Id))!;
-        var otherHost = MakePlayer(3, "other");
-        RegisterAll(host, guest, otherHost);
-        var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
-        await service.JoinAsync(guest, matchA, "", default);
-
-        Assert.False(await service.JoinAsync(guest, matchB, "", default));
-    }
-
-    [Fact]
-    public async Task Join_MatchFull_FailsAndSendsMatchJoinFail()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        for (var i = 1; i < 16; i++)
-        {
-            match.Slots[i].Status = SlotStatus.NotReady;
-            match.Slots[i].PlayerId = 100 + i;
-        }
-
-        var overflow = MakePlayer(2, "overflow");
-        RegisterAll(host, overflow);
-
-        Assert.False(await service.JoinAsync(overflow, match, "", default));
-        Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
-    }
-
-    [Fact]
-    public async Task Join_TeamVsMode_AssignsRedTeamToJoiningPlayer()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        match.TeamType = MatchTeamType.TeamVs;
-
-        await service.JoinAsync(guest, match, "", default);
-
-        Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
-    }
-
-    [Fact]
-    public async Task Leave_LastPlayer_RemovesMatchAndChannelAndDisposesToLobby()
-    {
-        var host = MakePlayer(1, "host");
-        var lobbyMember = MakePlayer(2, "lobbyguy");
-        RegisterAll(host, lobbyMember);
-        _channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        var lobby = _channelRegistry.GetByName("#lobby")!;
-        var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
-        membership.Join(lobbyMember, lobby);
-        lobbyMember.Dequeue();
-
-        await service.LeaveAsync(host, match, default);
-
-        Assert.Null(_matchRegistry.GetById(match.Id));
-        Assert.Null(_channelRegistry.GetByName("#multi_0"));
-        Assert.Null(host.Match);
-        Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
-        Assert.Contains(match.DbId, _matchPersistence.EndedMatchIds);
-    }
-
-    [Fact]
-    public async Task Leave_HostLeaves_TransfersHostToFirstOccupiedSlot()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        await service.JoinAsync(guest, match, "", default);
-        guest.Dequeue();
-
-        await service.LeaveAsync(host, match, default);
-
-        Assert.Equal(guest.Id, match.HostId);
-        Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
-    }
-
-    [Fact]
-    public async Task Leave_SlotWasLocked_StaysLockedAfterReset()
-    {
-        var host = MakePlayer(1, "host");
-        var guest = MakePlayer(2, "guest");
-        RegisterAll(host, guest);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        await service.JoinAsync(guest, match, "", default);
-        match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
-
-        await service.LeaveAsync(guest, match, default);
-
-        Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
-        Assert.True(match.Slots[1].Empty);
-    }
-
-    [Fact]
-    public async Task EnqueueState_BroadcastsToLobbyOnlyWhenLobbyHasMembers()
-    {
-        var host = MakePlayer(1, "host");
-        var lobbyMember = MakePlayer(2, "lobbyguy");
-        RegisterAll(host, lobbyMember);
-        _channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        host.Dequeue();
-
-        await service.EnqueueStateAsync(match);
-        Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
-
-        var lobby = _channelRegistry.GetByName("#lobby")!;
-        new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
-        lobbyMember.Dequeue();
-
-        await service.EnqueueStateAsync(match);
-        Assert.NotEmpty(lobbyMember.Dequeue());
-    }
-
-    /// <summary>
-    ///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.JoinAsync" />
-    ///     (which itself calls <see cref="MatchMembershipService.EnqueueStateAsync" />) for the host, so
-    ///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
-    ///     <c>Create</c> returns — <see cref="Services.Multiplayer.SnapshotChannelTests" /> covers that
-    ///     "first publish is full" behavior standalone. This test covers what happens after that: a
-    ///     call with no changes publishes an empty patch, and a call after an actual change publishes
-    ///     only the changed field.
-    /// </summary>
-    [Fact]
-    public async Task EnqueueState_CalledAgainAfterAChange_PublishesDeltaOnly()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var events = Substitute.For<IMatchLiveEvents>();
-        var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-            new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
-            _mapRepository, _userRepository);
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-
-        var payloads = new List<byte[]>();
-        events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
-            .Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
-
-        await service.EnqueueStateAsync(match);
-        match.Name = "Renamed";
-        await service.EnqueueStateAsync(match);
-
-        Assert.Equal(2, payloads.Count);
-        Assert.Equal("{}", Encoding.UTF8.GetString(payloads[0]));
-
-        var secondJson = Encoding.UTF8.GetString(payloads[1]);
-        Assert.Contains("\"name\":\"Renamed\"", secondJson);
-        Assert.DoesNotContain("\"referees\"", secondJson);
-    }
-
-    /// <summary>
-    ///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the exact same
-    ///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
-    ///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead
-    ///     of a direct packet build.
-    /// </summary>
-    [Fact]
-    public void EnqueueChat_BroadcastsBanchoSendMessageToMatchChannelMembers()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        _sessionRegistry.GetById(host.Id).Returns(host);
-        host.Dequeue();
-
-        service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
-
-        Assert.Equal(
-            ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", match.ChatChannelName,
-                BotBootstrapService.BotId),
-            host.Dequeue());
-    }
-
-    [Fact]
-    public void CancelQueuedAutoStart_PendingAutoStartTimer_CancelsAndAnnounces()
-    {
-        var host = MakePlayer(1, "host");
-        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
-        RegisterAll(host, bot);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        var cts = new CancellationTokenSource();
-        match.PendingTimer = cts;
-        match.PendingTimerIsAutoStart = true;
-        host.Dequeue();
-
-        service.CancelQueuedAutoStart(match);
-
-        Assert.Null(match.PendingTimer);
-        Assert.False(match.PendingTimerIsAutoStart);
-        Assert.True(cts.IsCancellationRequested);
-        Assert.Contains(
-            ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
-                match.ChatChannelName, bot.Id),
-            Chunk(host.Dequeue()));
-    }
-
-    [Fact]
-    public void CancelQueuedAutoStart_PendingPlainTimer_LeavesItRunning()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        var cts = new CancellationTokenSource();
-        match.PendingTimer = cts;
-        match.PendingTimerIsAutoStart = false;
-
-        service.CancelQueuedAutoStart(match);
-
-        Assert.Same(cts, match.PendingTimer);
-        Assert.False(cts.IsCancellationRequested);
-    }
-
-    [Fact]
-    public void CancelQueuedAutoStart_NoPendingTimer_NoOp()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-
-        service.CancelQueuedAutoStart(match);
-
-        Assert.Null(match.PendingTimer);
-    }
-
-    [Fact]
-    public async Task StartAsync_BeatmapExists_StartsMatch()
-    {
-        var host = MakePlayer(1, "host");
-        RegisterAll(host);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-
-        var started = await service.StartAsync(match);
-
-        Assert.True(started);
-        Assert.True(match.InProgress);
-        Assert.NotNull(match.CurrentRoundId);
-    }
-
-    [Fact]
-    public async Task StartAsync_BeatmapMissingFromDb_DoesNotStartAndAnnouncesError()
-    {
-        var host = MakePlayer(1, "host");
-        var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
-        RegisterAll(host, bot);
-        var service = MakeService();
-        var match = Create(service, host, MakeMatchData(host.Id))!;
-        _mapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((Beatmap?)null);
-        host.Dequeue();
-
-        var started = await service.StartAsync(match);
-
-        Assert.False(started);
-        Assert.False(match.InProgress);
-        Assert.Null(match.CurrentRoundId);
-        Assert.Contains(
-            ServerPacketWriter.SendMessage(bot.Name,
-                "Match cannot start because the beatmap does not exist on the server.",
-                match.ChatChannelName, bot.Id),
-            Chunk(host.Dequeue()));
-    }
-
-    private static List<byte[]> Chunk(byte[] data)
-    {
-        var chunks = new List<byte[]>();
-        var offset = 0;
-        while (offset < data.Length)
-        {
-            var length = BitConverter.ToInt32(data, offset + 3);
-            var total = 7 + length;
-            chunks.Add(data[offset..(offset + total)]);
-            offset += total;
-        }
-
-        return chunks;
-    }
-
-    private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
-    {
-        private int _nextMatchId = 1;
-        private int _nextRoundId = 1;
-
-        public List<int> EndedMatchIds { get; } = [];
-
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_nextMatchId++);
-        }
-
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            EndedMatchIds.Add(matchId);
-            return Task.CompletedTask;
-        }
-
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_nextRoundId++);
-        }
-
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<MatchRow?>(null);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
-
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-    }
+	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
+
+	/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
+	private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
+
+	private readonly FakeMatchPersistenceRepository _matchPersistence = new();
+	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
+	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+
+	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+
+	public MatchMembershipServiceTests()
+	{
+		_mapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
+	}
+
+	private MatchMembershipService MakeService()
+	{
+		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
+			Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository);
+	}
+
+	/// <summary>
+	///     The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous
+	///     shape.
+	/// </summary>
+	private static MatchSession? Create(MatchMembershipService service, PlayerSession host, ReadMatchResult data)
+	{
+		return service.CreateAsync(host, data).GetAwaiter().GetResult();
+	}
+
+	private static PlayerSession MakePlayer(int id, string name)
+	{
+		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+	}
+
+	private void RegisterAll(params PlayerSession[] sessions)
+	{
+		_sessionRegistry.All.Returns(sessions);
+		foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
+	}
+
+	private static ReadMatchResult MakeMatchData(int hostId, string name = "test match", string password = "",
+		bool freeMods = false)
+	{
+		return new ReadMatchResult(
+			0, false, 0, 0, name, password,
+			"Some Map", 100, new string('a', 32),
+			[], [], [], hostId, 0,
+			0, 0, freeMods, [], 0);
+	}
+
+	[Fact]
+	public void Create_RegistersMatchAndJoinsHostIntoSlotZero()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+
+		var match = Create(MakeService(), host, MakeMatchData(host.Id));
+
+		Assert.NotNull(match);
+		Assert.Same(match, host.Match);
+		Assert.Equal(host.Id, match.Slots[0].PlayerId);
+		Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
+	}
+
+	[Fact]
+	public void Create_KeepsPasswordAsIs_NoPrivateHistoryConcept()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+
+		var match = Create(MakeService(), host, MakeMatchData(host.Id, password: "secret"));
+
+		Assert.Equal("secret", match!.Password);
+	}
+
+	[Fact]
+	public async Task CreateEmptyAsync_CreatesMatchWithNoHostAndNoOccupants()
+	{
+		var service = MakeService();
+
+		var match = await service.CreateEmptyAsync(MakeMatchData(0));
+
+		Assert.NotNull(match);
+		Assert.Equal(0, match.HostId);
+		Assert.Empty(match.Referees);
+		Assert.All(match.Slots, slot => Assert.True(slot.Empty));
+		Assert.True(match.CreatedViaMakeCommand);
+		Assert.True(match.DbId > 0);
+	}
+
+	[Fact]
+	public void Create_RegistryFull_ReturnsNull()
+	{
+		var service = MakeService();
+		for (var i = 0; i < 64; i++)
+		{
+			var host = MakePlayer(i + 1, $"host{i}");
+			RegisterAll(host);
+			Assert.NotNull(Create(service, host, MakeMatchData(host.Id)));
+		}
+
+		var overflowHost = MakePlayer(1000, "overflow");
+		RegisterAll(overflowHost);
+
+		Assert.Null(Create(service, overflowHost, MakeMatchData(overflowHost.Id)));
+	}
+
+	[Fact]
+	public async Task Join_CorrectPassword_OccupiesFreeSlotAndSendsMatchJoinSuccess()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+		host.Dequeue();
+
+		var joined = await service.JoinAsync(guest, match, "pw");
+
+		Assert.True(joined);
+		Assert.Same(match, guest.Match);
+		Assert.Equal(1, match.GetSlotId(guest.Id));
+		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)),
+			Chunk(guest.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Join_WrongPassword_FailsAndSendsMatchJoinFail()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+
+		var joined = await service.JoinAsync(guest, match, "wrong");
+
+		Assert.False(joined);
+		Assert.Null(guest.Match);
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Join_StaffBypassesWrongPassword()
+	{
+		var host = MakePlayer(1, "host");
+		var staff = MakePlayer(2, "mod");
+		staff.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
+		RegisterAll(host, staff);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+
+		Assert.True(await service.JoinAsync(staff, match, "wrong"));
+	}
+
+	[Fact]
+	public async Task Join_AlreadyInAnotherMatch_Fails()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var matchA = Create(service, host, MakeMatchData(host.Id))!;
+		var otherHost = MakePlayer(3, "other");
+		RegisterAll(host, guest, otherHost);
+		var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
+		await service.JoinAsync(guest, matchA, "");
+
+		Assert.False(await service.JoinAsync(guest, matchB, ""));
+	}
+
+	[Fact]
+	public async Task Join_MatchFull_FailsAndSendsMatchJoinFail()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		for (var i = 1; i < 16; i++)
+		{
+			match.Slots[i].Status = SlotStatus.NotReady;
+			match.Slots[i].PlayerId = 100 + i;
+		}
+
+		var overflow = MakePlayer(2, "overflow");
+		RegisterAll(host, overflow);
+
+		Assert.False(await service.JoinAsync(overflow, match, ""));
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Join_TeamVsMode_AssignsRedTeamToJoiningPlayer()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		match.TeamType = MatchTeamType.TeamVs;
+
+		await service.JoinAsync(guest, match, "");
+
+		Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
+	}
+
+	[Fact]
+	public async Task Leave_LastPlayer_RemovesMatchAndChannelAndDisposesToLobby()
+	{
+		var host = MakePlayer(1, "host");
+		var lobbyMember = MakePlayer(2, "lobbyguy");
+		RegisterAll(host, lobbyMember);
+		_channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var lobby = _channelRegistry.GetByName("#lobby")!;
+		var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
+		membership.Join(lobbyMember, lobby);
+		lobbyMember.Dequeue();
+
+		await service.LeaveAsync(host, match);
+
+		Assert.Null(_matchRegistry.GetById(match.Id));
+		Assert.Null(_channelRegistry.GetByName("#multi_0"));
+		Assert.Null(host.Match);
+		Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
+		Assert.Contains(match.DbId, _matchPersistence.EndedMatchIds);
+	}
+
+	[Fact]
+	public async Task Leave_HostLeaves_TransfersHostToFirstOccupiedSlot()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		await service.JoinAsync(guest, match, "");
+		guest.Dequeue();
+
+		await service.LeaveAsync(host, match);
+
+		Assert.Equal(guest.Id, match.HostId);
+		Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Leave_SlotWasLocked_StaysLockedAfterReset()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		await service.JoinAsync(guest, match, "");
+		match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
+
+		await service.LeaveAsync(guest, match);
+
+		Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
+		Assert.True(match.Slots[1].Empty);
+	}
+
+	[Fact]
+	public async Task EnqueueState_BroadcastsToLobbyOnlyWhenLobbyHasMembers()
+	{
+		var host = MakePlayer(1, "host");
+		var lobbyMember = MakePlayer(2, "lobbyguy");
+		RegisterAll(host, lobbyMember);
+		_channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		host.Dequeue();
+
+		await service.EnqueueStateAsync(match);
+		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
+
+		var lobby = _channelRegistry.GetByName("#lobby")!;
+		new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
+		lobbyMember.Dequeue();
+
+		await service.EnqueueStateAsync(match);
+		Assert.NotEmpty(lobbyMember.Dequeue());
+	}
+
+	/// <summary>
+	///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.JoinAsync" />
+	///     (which itself calls <see cref="MatchMembershipService.EnqueueStateAsync" />) for the host, so
+	///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
+	///     <c>Create</c> returns — <see cref="Services.Multiplayer.SnapshotChannelTests" /> covers that
+	///     "first publish is full" behavior standalone. This test covers what happens after that: a
+	///     call with no changes publishes an empty patch, and a call after an actual change publishes
+	///     only the changed field.
+	/// </summary>
+	[Fact]
+	public async Task EnqueueState_CalledAgainAfterAChange_PublishesDeltaOnly()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var events = Substitute.For<IMatchLiveEvents>();
+		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
+			_mapRepository, _userRepository);
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+
+		var payloads = new List<byte[]>();
+		events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
+			.Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
+
+		await service.EnqueueStateAsync(match);
+		match.Name = "Renamed";
+		await service.EnqueueStateAsync(match);
+
+		Assert.Equal(2, payloads.Count);
+		Assert.Equal("{}", Encoding.UTF8.GetString(payloads[0]));
+
+		var secondJson = Encoding.UTF8.GetString(payloads[1]);
+		Assert.Contains("\"name\":\"Renamed\"", secondJson);
+		Assert.DoesNotContain("\"referees\"", secondJson);
+	}
+
+	/// <summary>
+	///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the exact same
+	///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
+	///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead
+	///     of a direct packet build.
+	/// </summary>
+	[Fact]
+	public void EnqueueChat_BroadcastsBanchoSendMessageToMatchChannelMembers()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		_sessionRegistry.GetById(host.Id).Returns(host);
+		host.Dequeue();
+
+		service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
+
+		Assert.Equal(
+			ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", match.ChatChannelName,
+				BotBootstrapService.BotId),
+			host.Dequeue());
+	}
+
+	[Fact]
+	public void CancelQueuedAutoStart_PendingAutoStartTimer_CancelsAndAnnounces()
+	{
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		RegisterAll(host, bot);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var cts = new CancellationTokenSource();
+		match.PendingTimer = cts;
+		match.PendingTimerIsAutoStart = true;
+		host.Dequeue();
+
+		service.CancelQueuedAutoStart(match);
+
+		Assert.Null(match.PendingTimer);
+		Assert.False(match.PendingTimerIsAutoStart);
+		Assert.True(cts.IsCancellationRequested);
+		Assert.Contains(
+			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+				match.ChatChannelName, bot.Id),
+			Chunk(host.Dequeue()));
+	}
+
+	[Fact]
+	public void CancelQueuedAutoStart_PendingPlainTimer_LeavesItRunning()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var cts = new CancellationTokenSource();
+		match.PendingTimer = cts;
+		match.PendingTimerIsAutoStart = false;
+
+		service.CancelQueuedAutoStart(match);
+
+		Assert.Same(cts, match.PendingTimer);
+		Assert.False(cts.IsCancellationRequested);
+	}
+
+	[Fact]
+	public void CancelQueuedAutoStart_NoPendingTimer_NoOp()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+
+		service.CancelQueuedAutoStart(match);
+
+		Assert.Null(match.PendingTimer);
+	}
+
+	[Fact]
+	public async Task StartAsync_BeatmapExists_StartsMatch()
+	{
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+
+		var started = await service.StartAsync(match);
+
+		Assert.True(started);
+		Assert.True(match.InProgress);
+		Assert.NotNull(match.CurrentRoundId);
+	}
+
+	[Fact]
+	public async Task StartAsync_BeatmapMissingFromDb_DoesNotStartAndAnnouncesError()
+	{
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		RegisterAll(host, bot);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		_mapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
+			.Returns((Beatmap?)null);
+		host.Dequeue();
+
+		var started = await service.StartAsync(match);
+
+		Assert.False(started);
+		Assert.False(match.InProgress);
+		Assert.Null(match.CurrentRoundId);
+		Assert.Contains(
+			ServerPacketWriter.SendMessage(bot.Name,
+				"Match cannot start because the beatmap does not exist on the server.",
+				match.ChatChannelName, bot.Id),
+			Chunk(host.Dequeue()));
+	}
+
+	private static List<byte[]> Chunk(byte[] data)
+	{
+		var chunks = new List<byte[]>();
+		var offset = 0;
+		while (offset < data.Length)
+		{
+			var length = BitConverter.ToInt32(data, offset + 3);
+			var total = 7 + length;
+			chunks.Add(data[offset..(offset + total)]);
+			offset += total;
+		}
+
+		return chunks;
+	}
+
+	private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+	{
+		private int _nextMatchId = 1;
+		private int _nextRoundId = 1;
+
+		public List<int> EndedMatchIds { get; } = [];
+
+		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(_nextMatchId++);
+		}
+
+		public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+		{
+			EndedMatchIds.Add(matchId);
+			return Task.CompletedTask;
+		}
+
+		public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
+			GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+			Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(_nextRoundId++);
+		}
+
+		public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<MatchRow?>(null);
+		}
+
+		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
+
+		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
+
+		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+		}
+
+		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
+
+		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
+	}
 }

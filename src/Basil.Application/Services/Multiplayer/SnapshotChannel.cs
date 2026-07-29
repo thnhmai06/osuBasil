@@ -17,28 +17,28 @@ namespace Basil.Application.Services.Multiplayer;
 /// </summary>
 public sealed class SnapshotChannel<T> where T : class
 {
-    private static readonly JsonSerializerOptions JsonOptions = BasilJsonOptions.Instance;
+	private static readonly JsonSerializerOptions JsonOptions = BasilJsonOptions.Instance;
 
-    private T? _latest;
+	private T? _latest;
 
-    /// <summary>The most recently published full state, or default if nothing has been published yet.</summary>
-    public T? Latest => Volatile.Read(ref _latest);
+	/// <summary>The most recently published full state, or default if nothing has been published yet.</summary>
+	public T? Latest => Volatile.Read(ref _latest);
 
-    /// <summary>
-    ///     Computes the RFC 7396 JSON Merge Patch from the previously published state to
-    ///     <paramref name="current" />, atomically stores <paramref name="current" /> as the new
-    ///     latest snapshot, and returns the patch as UTF-8 JSON bytes to broadcast to
-    ///     already-subscribed connections. The very first call (no previous state) has nothing to
-    ///     diff against, so it returns <paramref name="current" /> serialized in full — harmless even
-    ///     though no subscriber can realistically exist yet for a match's very first state.
-    /// </summary>
-    public byte[] Publish(T current)
-    {
-        var previous = Volatile.Read(ref _latest);
-        var patch = previous is null
-            ? JsonSerializer.SerializeToNode(current, JsonOptions)
-            : JsonMergePatch.Diff(previous, current, JsonOptions);
-        Volatile.Write(ref _latest, current);
-        return JsonSerializer.SerializeToUtf8Bytes((JsonNode?)patch ?? new JsonObject(), JsonOptions);
-    }
+	/// <summary>
+	///     Computes the RFC 7396 JSON Merge Patch from the previously published state to
+	///     <paramref name="current" />, atomically stores <paramref name="current" /> as the new
+	///     latest snapshot, and returns the patch as UTF-8 JSON bytes to broadcast to
+	///     already-subscribed connections. The very first call (no previous state) has nothing to
+	///     diff against, so it returns <paramref name="current" /> serialized in full — harmless even
+	///     though no subscriber can realistically exist yet for a match's very first state.
+	/// </summary>
+	public byte[] Publish(T current)
+	{
+		var previous = Volatile.Read(ref _latest);
+		var patch = previous is null
+			? JsonSerializer.SerializeToNode(current, JsonOptions)
+			: JsonMergePatch.Diff(previous, current, JsonOptions);
+		Volatile.Write(ref _latest, current);
+		return JsonSerializer.SerializeToUtf8Bytes((JsonNode?)patch ?? new JsonObject(), JsonOptions);
+	}
 }

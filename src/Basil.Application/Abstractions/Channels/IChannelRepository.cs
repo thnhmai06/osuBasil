@@ -4,12 +4,12 @@ namespace Basil.Application.Abstractions.Channels;
 
 /// <summary>Ported from app/repositories/channels.py's Channel dataclass.</summary>
 public sealed record Channel(
-    int Id,
-    string Name,
-    string Topic,
-    UserPrivileges ReadPrivilege,
-    UserPrivileges WritePrivilege,
-    bool AutoJoin);
+	int Id,
+	string Name,
+	string Topic,
+	UserPrivileges ReadPrivilege,
+	UserPrivileges WritePrivilege,
+	bool AutoJoin);
 
 /// <summary>
 ///     Ported from app/repositories/channels.py's ChannelsRepository, scoped to what login needs:
@@ -17,7 +17,7 @@ public sealed record Channel(
 /// </summary>
 public interface IChannelRepository
 {
-    Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default);
 
-    Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default);
+	Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default);
 }

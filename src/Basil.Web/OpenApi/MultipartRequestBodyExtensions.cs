@@ -9,32 +9,32 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class MultipartRequestBodyExtensions
 {
-    public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder,
-        string fieldName = "file")
-    {
-        return builder.AddOpenApiOperationTransformer((operation, _, _) =>
-        {
-            operation.RequestBody = new OpenApiRequestBody
-            {
-                Required = true,
-                Content = new Dictionary<string, OpenApiMediaType>
-                {
-                    ["multipart/form-data"] = new()
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Required = new HashSet<string> { fieldName },
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                [fieldName] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" }
-                            }
-                        }
-                    }
-                }
-            };
+	public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder,
+		string fieldName = "file")
+	{
+		return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+		{
+			operation.RequestBody = new OpenApiRequestBody
+			{
+				Required = true,
+				Content = new Dictionary<string, OpenApiMediaType>
+				{
+					["multipart/form-data"] = new()
+					{
+						Schema = new OpenApiSchema
+						{
+							Type = JsonSchemaType.Object,
+							Required = new HashSet<string> { fieldName },
+							Properties = new Dictionary<string, IOpenApiSchema>
+							{
+								[fieldName] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" }
+							}
+						}
+					}
+				}
+			};
 
-            return Task.CompletedTask;
-        });
-    }
+			return Task.CompletedTask;
+		});
+	}
 }

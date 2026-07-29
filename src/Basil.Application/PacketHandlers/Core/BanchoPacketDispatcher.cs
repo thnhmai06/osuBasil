@@ -10,29 +10,29 @@ namespace Basil.Application.PacketHandlers.Core;
 /// </summary>
 public sealed class BanchoPacketDispatcher
 {
-    private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _all;
-    private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _restrictedAllowed;
+	private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _all;
+	private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _restrictedAllowed;
 
-    public BanchoPacketDispatcher(IEnumerable<IBanchoPacketHandler> handlers)
-    {
-        var handlerList = handlers.ToList();
-        _all = handlerList.ToDictionary(h => h.PacketId);
-        _restrictedAllowed = handlerList.Where(h => h.AllowedWhenRestricted).ToDictionary(h => h.PacketId);
-    }
+	public BanchoPacketDispatcher(IEnumerable<IBanchoPacketHandler> handlers)
+	{
+		var handlerList = handlers.ToList();
+		_all = handlerList.ToDictionary(h => h.PacketId);
+		_restrictedAllowed = handlerList.Where(h => h.AllowedWhenRestricted).ToDictionary(h => h.PacketId);
+	}
 
-    public async Task DispatchAsync(PlayerSession player, byte[] body, CancellationToken cancellationToken = default)
-    {
-        var reader = new BanchoPacketReader(body);
-        var handlerMap = player.Restricted ? _restrictedAllowed : _all;
+	public async Task DispatchAsync(PlayerSession player, byte[] body, CancellationToken cancellationToken = default)
+	{
+		var reader = new BanchoPacketReader(body);
+		var handlerMap = player.Restricted ? _restrictedAllowed : _all;
 
-        while (reader.RemainingLength > 0)
-        {
-            var (type, length) = reader.ReadHeader();
+		while (reader.RemainingLength > 0)
+		{
+			var (type, length) = reader.ReadHeader();
 
-            if (handlerMap.TryGetValue(type, out var handler))
-                await handler.HandleAsync(player, reader, cancellationToken);
-            else
-                reader.SkipRaw(length);
-        }
-    }
+			if (handlerMap.TryGetValue(type, out var handler))
+				await handler.HandleAsync(player, reader, cancellationToken);
+			else
+				reader.SkipRaw(length);
+		}
+	}
 }

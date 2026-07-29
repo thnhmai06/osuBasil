@@ -8,122 +8,122 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IMapsetRepository" />
 public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRepository
 {
-    public async Task<Mapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        var row = await connection.QuerySingleOrDefaultAsync<MapsetRow>(
-            "SELECT * FROM Mapsets WHERE Id = @Id", new { Id = id });
-        return row?.ToMapset();
-    }
+	public async Task<Mapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		var row = await connection.QuerySingleOrDefaultAsync<MapsetRow>(
+			"SELECT * FROM Mapsets WHERE Id = @Id", new { Id = id });
+		return row?.ToMapset();
+	}
 
-    public async Task<Mapset> UpsertAsync(Mapset mapset, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        // INSERT ... ON CONFLICT DO UPDATE, not REPLACE INTO: REPLACE deletes-then-reinserts on a
-        // PK conflict, and that delete cascades via Beatmaps_Mapsets_Id_fk (on delete cascade),
-        // wiping every Beatmap under this Mapset on every re-upsert (e.g. every reconcile pass).
-        // IsFrozen/IsPrivate are deliberately absent from the UPDATE SET clause — a re-ingestion
-        // pass must never clear an admin-set freeze lock or privacy flag.
-        await connection.ExecuteAsync(
-            """
-            INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate)
-            VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate)
-            ON CONFLICT(Id) DO UPDATE SET
-                Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
-                LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
-            """,
-            new
-            {
-                mapset.Id,
-                mapset.Artist,
-                mapset.Title,
-                mapset.Creator,
-                mapset.LastUpdate,
-                mapset.CreatedAt,
-                mapset.IsFrozen,
-                mapset.IsPrivate
-            });
+	public async Task<Mapset> UpsertAsync(Mapset mapset, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		// INSERT ... ON CONFLICT DO UPDATE, not REPLACE INTO: REPLACE deletes-then-reinserts on a
+		// PK conflict, and that delete cascades via Beatmaps_Mapsets_Id_fk (on delete cascade),
+		// wiping every Beatmap under this Mapset on every re-upsert (e.g. every reconcile pass).
+		// IsFrozen/IsPrivate are deliberately absent from the UPDATE SET clause — a re-ingestion
+		// pass must never clear an admin-set freeze lock or privacy flag.
+		await connection.ExecuteAsync(
+			"""
+			INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate)
+			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate)
+			ON CONFLICT(Id) DO UPDATE SET
+			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
+			    LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
+			""",
+			new
+			{
+				mapset.Id,
+				mapset.Artist,
+				mapset.Title,
+				mapset.Creator,
+				mapset.LastUpdate,
+				mapset.CreatedAt,
+				mapset.IsFrozen,
+				mapset.IsPrivate
+			});
 
-        return (await FetchByIdAsync(mapset.Id, cancellationToken))!;
-    }
+		return (await FetchByIdAsync(mapset.Id, cancellationToken))!;
+	}
 
-    public async Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
-            new { Id = id, Frozen = frozen });
-    }
+	public async Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
+			new { Id = id, Frozen = frozen });
+	}
 
-    public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        await connection.ExecuteAsync("UPDATE Mapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
-            new { Id = id, IsPrivate = isPrivate });
-    }
+	public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		await connection.ExecuteAsync("UPDATE Mapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
+			new { Id = id, IsPrivate = isPrivate });
+	}
 
-    public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        // Beatmaps rows cascade via Beatmaps_Mapsets_Id_fk (on delete cascade) — no manual cleanup needed.
-        await connection.ExecuteAsync("DELETE FROM Mapsets WHERE Id = @Id", new { Id = id });
-    }
+	public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		// Beatmaps rows cascade via Beatmaps_Mapsets_Id_fk (on delete cascade) — no manual cleanup needed.
+		await connection.ExecuteAsync("DELETE FROM Mapsets WHERE Id = @Id", new { Id = id });
+	}
 
-    public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Mapsets");
-    }
+	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Mapsets");
+	}
 
-    public async Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        var ids = await connection.QueryAsync<int>("SELECT Id FROM Mapsets");
-        return [.. ids];
-    }
+	public async Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		var ids = await connection.QueryAsync<int>("SELECT Id FROM Mapsets");
+		return [.. ids];
+	}
 
-    public async Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
-        CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
-        var rows = await connection.QueryAsync<MapsetRow>(
-            $"""
-             SELECT m.* FROM Mapsets m
-             {whereClause}
-             ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
-             """,
-            new { Limit = limit, Offset = offset });
-        return [.. rows.Select(r => r.ToMapset())];
-    }
+	public async Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
+		CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
+		var rows = await connection.QueryAsync<MapsetRow>(
+			$"""
+			 SELECT m.* FROM Mapsets m
+			 {whereClause}
+			 ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
+			 """,
+			new { Limit = limit, Offset = offset });
+		return [.. rows.Select(r => r.ToMapset())];
+	}
 
-    public async Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
-    {
-        await using var connection = Connect();
-        return await connection.ExecuteScalarAsync<int>(
-            "SELECT Value FROM Counters WHERE Name = @Name",
-            new { Name = includePrivate ? "Mapsets:Total" : "Mapsets:Public" });
-    }
+	public async Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>(
+			"SELECT Value FROM Counters WHERE Name = @Name",
+			new { Name = includePrivate ? "Mapsets:Total" : "Mapsets:Public" });
+	}
 
-    private SqliteConnection Connect()
-    {
-        return new SqliteConnection(connectionString);
-    }
+	private SqliteConnection Connect()
+	{
+		return new SqliteConnection(connectionString);
+	}
 
-    // Mutable DTO so Dapper maps by property name instead of strict positional-constructor-type matching.
-    private sealed class MapsetRow
-    {
-        public int Id { get; set; }
-        public string Artist { get; set; } = "";
-        public string Title { get; set; } = "";
-        public string Creator { get; set; } = "";
-        public DateTime LastUpdate { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public bool IsFrozen { get; set; }
-        public bool IsPrivate { get; set; }
+	// Mutable DTO so Dapper maps by property name instead of strict positional-constructor-type matching.
+	private sealed class MapsetRow
+	{
+		public int Id { get; set; }
+		public string Artist { get; set; } = "";
+		public string Title { get; set; } = "";
+		public string Creator { get; set; } = "";
+		public DateTime LastUpdate { get; set; }
+		public DateTime CreatedAt { get; set; }
+		public bool IsFrozen { get; set; }
+		public bool IsPrivate { get; set; }
 
-        public Mapset ToMapset()
-        {
-            return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
-        }
-    }
+		public Mapset ToMapset()
+		{
+			return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
+		}
+	}
 }

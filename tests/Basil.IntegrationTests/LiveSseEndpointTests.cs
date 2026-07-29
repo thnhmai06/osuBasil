@@ -28,228 +28,228 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Program> _factory;
 
-    public LiveSseEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Basil:Server:Domain"] = "test.local",
-                    ["Basil:Bot:CommandPrefix"] = "!",
-                    ["Basil:Server:MenuIconPath"] = "icon.png",
-                    ["Basil:Server:MenuOnclickUrl"] = "https://example.test"
-                });
-            });
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                // A stub avoids needing a real SQLite file for these plumbing tests (IMatchPersistenceRepository
-                // is still resolved by other services in the DI graph even though the main SSE route itself
-                // no longer touches it — see RegisterLiveMatch, which registers matches directly against
-                // IMatchRegistry instead of going through the real persistence-backed creation flow).
-                services.AddSingleton<IMatchPersistenceRepository>(new NeverPersistedMatchRepository());
-            });
-        });
-    }
+	public LiveSseEndpointTests(WebApplicationFactory<Program> factory)
+	{
+		_factory = factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureAppConfiguration((_, config) =>
+			{
+				config.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["Basil:Server:Domain"] = "test.local",
+					["Basil:Bot:CommandPrefix"] = "!",
+					["Basil:Server:MenuIconPath"] = "icon.png",
+					["Basil:Server:MenuOnclickUrl"] = "https://example.test"
+				});
+			});
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				// A stub avoids needing a real SQLite file for these plumbing tests (IMatchPersistenceRepository
+				// is still resolved by other services in the DI graph even though the main SSE route itself
+				// no longer touches it — see RegisterLiveMatch, which registers matches directly against
+				// IMatchRegistry instead of going through the real persistence-backed creation flow).
+				services.AddSingleton<IMatchPersistenceRepository>(new NeverPersistedMatchRepository());
+			});
+		});
+	}
 
-    [Fact]
-    public async Task MainChannel_ReceivesWhateverIsPublishedForThatMatchId()
-    {
-        var matchId = RegisterLiveMatch(5);
-        var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+	[Fact]
+	public async Task MainChannel_ReceivesWhateverIsPublishedForThatMatchId()
+	{
+		var matchId = RegisterLiveMatch(5);
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
-            () => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
+		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+			() => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
 
-        Assert.Equal("main", eventType);
-        Assert.Contains("world", data);
-    }
+		Assert.Equal("main", eventType);
+		Assert.Contains("world", data);
+	}
 
-    [Fact]
-    public async Task SpecChannel_ReceivesWhateverIsPublishedForThatPlayerId()
-    {
-        var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
+	[Fact]
+	public async Task SpecChannel_ReceivesWhateverIsPublishedForThatPlayerId()
+	{
+		var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (eventType, data) = await ReceiveAfterPublishAsync("/users/7/live",
-            () => events.PublishInput(7, [.. "frame-data"u8]));
+		var (eventType, data) = await ReceiveAfterPublishAsync("/users/7/live",
+			() => events.PublishInput(7, [.. "frame-data"u8]));
 
-        Assert.Equal("input", eventType);
-        Assert.Equal("frame-data", data);
-    }
+		Assert.Equal("input", eventType);
+		Assert.Equal("frame-data", data);
+	}
 
-    [Fact]
-    public async Task SpecChannel_IgnoresPublishesForOtherPlayerIds()
-    {
-        var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
+	[Fact]
+	public async Task SpecChannel_IgnoresPublishesForOtherPlayerIds()
+	{
+		var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync("/users/7/live", () =>
-        {
-            events.PublishInput(8, [.. "not for player 7"u8]);
-            events.PublishInput(7, [.. "for player 7"u8]);
-        });
+		var (_, data) = await ReceiveAfterPublishAsync("/users/7/live", () =>
+		{
+			events.PublishInput(8, [.. "not for player 7"u8]);
+			events.PublishInput(7, [.. "for player 7"u8]);
+		});
 
-        Assert.Equal("for player 7", data);
-    }
+		Assert.Equal("for player 7", data);
+	}
 
-    [Fact]
-    public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
-    {
-        var matchId = RegisterLiveMatch(11);
-        var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+	[Fact]
+	public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
+	{
+		var matchId = RegisterLiveMatch(11);
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-        var (_, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
-        {
-            events.PublishMain(12, [.. "wrong match"u8]);
-            events.PublishMain(matchId, [.. "right match"u8]);
-        });
+		var (_, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
+		{
+			events.PublishMain(12, [.. "wrong match"u8]);
+			events.PublishMain(matchId, [.. "right match"u8]);
+		});
 
-        Assert.Equal("right match", data);
-    }
+		Assert.Equal("right match", data);
+	}
 
-    /// <summary>
-    ///     Directly registers a live <see cref="MatchSession" /> against the real, DI-resolved
-    ///     <see cref="IMatchRegistry" /> — this test file has no admin key configured (it only cares
-    ///     about the SSE plumbing, not the write routes), so matches can't be created through
-    ///     `POST /matches`, but `GET /matches/{matchId}/live` now 409s unless the match is actually
-    ///     tracked in memory. Returns the assigned <see cref="MatchSession.DbId" /> (== <paramref name="dbId" />).
-    /// </summary>
-    private int RegisterLiveMatch(int dbId)
-    {
-        var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-        var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
-            0);
-        var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, 0))!;
-        match.DbId = dbId;
-        return match.DbId;
-    }
+	/// <summary>
+	///     Directly registers a live <see cref="MatchSession" /> against the real, DI-resolved
+	///     <see cref="IMatchRegistry" /> — this test file has no admin key configured (it only cares
+	///     about the SSE plumbing, not the write routes), so matches can't be created through
+	///     `POST /matches`, but `GET /matches/{matchId}/live` now 409s unless the match is actually
+	///     tracked in memory. Returns the assigned <see cref="MatchSession.DbId" /> (== <paramref name="dbId" />).
+	/// </summary>
+	private int RegisterLiveMatch(int dbId)
+	{
+		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
+			0);
+		var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, 0))!;
+		match.DbId = dbId;
+		return match.DbId;
+	}
 
-    /// <summary>
-    ///     Connects a streamed GET to <paramref name="path" /> with an EventSource-style Accept
-    ///     header, calls <paramref name="publish" /> repeatedly (every 50ms) until the next SSE
-    ///     message arrives or 10s elapse, and returns that message's `event:`/`data:` lines.
-    ///     Publishing has to keep running across BOTH the initial connect and the first read — an
-    ///     SSE response apparently doesn't flush its headers until its first write, so awaiting
-    ///     SendAsync before ever publishing anything would deadlock (nothing would ever trigger that
-    ///     first write).
-    /// </summary>
-    private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish)
-    {
-        var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+	/// <summary>
+	///     Connects a streamed GET to <paramref name="path" /> with an EventSource-style Accept
+	///     header, calls <paramref name="publish" /> repeatedly (every 50ms) until the next SSE
+	///     message arrives or 10s elapse, and returns that message's `event:`/`data:` lines.
+	///     Publishing has to keep running across BOTH the initial connect and the first read — an
+	///     SSE response apparently doesn't flush its headers until its first write, so awaiting
+	///     SendAsync before ever publishing anything would deadlock (nothing would ever trigger that
+	///     first write).
+	/// </summary>
+	private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish)
+	{
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var pipelineTask = ConnectAndReadOneEventAsync(client, request, cts.Token);
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+		var pipelineTask = ConnectAndReadOneEventAsync(client, request, cts.Token);
 
-        while (!pipelineTask.IsCompleted)
-        {
-            publish();
-            await Task.WhenAny(pipelineTask, Task.Delay(50, CancellationToken.None));
-        }
+		while (!pipelineTask.IsCompleted)
+		{
+			publish();
+			await Task.WhenAny(pipelineTask, Task.Delay(50, CancellationToken.None));
+		}
 
-        return await pipelineTask;
-    }
+		return await pipelineTask;
+	}
 
-    private static async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(
-        HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        using var response =
-            await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var reader = new StreamReader(stream);
+	private static async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(
+		HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
+	{
+		using var response =
+			await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+		response.EnsureSuccessStatusCode();
+		await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+		using var reader = new StreamReader(stream);
 
-        return await ReadNextEventAsync(reader, cancellationToken);
-    }
+		return await ReadNextEventAsync(reader, cancellationToken);
+	}
 
-    private static async Task<(string? EventType, string Data)> ReadNextEventAsync(StreamReader reader,
-        CancellationToken cancellationToken)
-    {
-        string? eventType = null;
-        while (true)
-        {
-            var line = await reader.ReadLineAsync(cancellationToken);
-            if (line is null) throw new IOException("Stream ended unexpectedly.");
+	private static async Task<(string? EventType, string Data)> ReadNextEventAsync(StreamReader reader,
+		CancellationToken cancellationToken)
+	{
+		string? eventType = null;
+		while (true)
+		{
+			var line = await reader.ReadLineAsync(cancellationToken);
+			if (line is null) throw new IOException("Stream ended unexpectedly.");
 
-            if (line.StartsWith("event: ", StringComparison.Ordinal))
-                eventType = line["event: ".Length..];
-            else if (line.StartsWith("data: ", StringComparison.Ordinal))
-                return (eventType, line["data: ".Length..]);
-        }
-    }
+			if (line.StartsWith("event: ", StringComparison.Ordinal))
+				eventType = line["event: ".Length..];
+			else if (line.StartsWith("data: ", StringComparison.Ordinal))
+				return (eventType, line["data: ".Length..]);
+		}
+	}
 
-    /// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
-    private sealed class NeverPersistedMatchRepository : IMatchPersistenceRepository
-    {
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+	/// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
+	private sealed class NeverPersistedMatchRepository : IMatchPersistenceRepository
+	{
+		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+		public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+		public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
+			GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
+			Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
+		public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<MatchRow?>(null);
-        }
+		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<MatchRow?>(null);
+		}
 
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
+		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
 
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
 
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
 
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+		}
 
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
+		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+		}
 
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-    }
+		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+		}
+	}
 }

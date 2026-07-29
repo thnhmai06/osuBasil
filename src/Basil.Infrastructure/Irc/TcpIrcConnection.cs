@@ -19,180 +19,180 @@ namespace Basil.Infrastructure.Irc;
 ///     stall a broadcast still holding a lock elsewhere in the chat core.
 /// </summary>
 public sealed class TcpIrcConnection(
-    TcpClient client,
-    IrcAuthenticationService authService,
-    ChatDispatchService chatDispatch,
-    ChannelMembershipService channelMembership,
-    IChannelRegistry channelRegistry,
-    IPlayerSessionRegistry sessionRegistry,
-    IOptions<IrcOptions> options) : IIrcConnection
+	TcpClient client,
+	IrcAuthenticationService authService,
+	ChatDispatchService chatDispatch,
+	ChannelMembershipService channelMembership,
+	IChannelRegistry channelRegistry,
+	IPlayerSessionRegistry sessionRegistry,
+	IOptions<IrcOptions> options) : IIrcConnection
 {
-    private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
+	private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
 
-    private readonly Channel<IrcMessage> _outbox = Channel.CreateBounded<IrcMessage>(
-        new BoundedChannelOptions(64) { FullMode = BoundedChannelFullMode.DropOldest });
+	private readonly Channel<IrcMessage> _outbox = Channel.CreateBounded<IrcMessage>(
+		new BoundedChannelOptions(64) { FullMode = BoundedChannelFullMode.DropOldest });
 
-    private bool _registered;
+	private bool _registered;
 
-    public PlayerSession Player { get; private set; } = null!;
+	public PlayerSession Player { get; private set; } = null!;
 
-    public bool IsExternalIrcClient => true;
+	public bool IsExternalIrcClient => true;
 
-    public void Send(IrcMessage message)
-    {
-        _outbox.Writer.TryWrite(message);
-    }
+	public void Send(IrcMessage message)
+	{
+		_outbox.Writer.TryWrite(message);
+	}
 
-    public async Task RunAsync(CancellationToken cancellationToken)
-    {
-        await using var stream = client.GetStream();
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        await using var writer = new StreamWriter(stream, Encoding.UTF8);
-        writer.AutoFlush = true;
-        writer.NewLine = "\r\n";
+	public async Task RunAsync(CancellationToken cancellationToken)
+	{
+		await using var stream = client.GetStream();
+		using var reader = new StreamReader(stream, Encoding.UTF8);
+		await using var writer = new StreamWriter(stream, Encoding.UTF8);
+		writer.AutoFlush = true;
+		writer.NewLine = "\r\n";
 
-        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var writePump = PumpWritesAsync(writer, lifetime.Token);
-        var pingLoop = PingLoopAsync(lifetime.Token);
+		using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		var writePump = PumpWritesAsync(writer, lifetime.Token);
+		var pingLoop = PingLoopAsync(lifetime.Token);
 
-        try
-        {
-            await ReadLoopAsync(reader, lifetime.Token);
-        }
-        finally
-        {
-            await lifetime.CancelAsync();
-            _outbox.Writer.TryComplete();
-            await Task.WhenAll(writePump, pingLoop);
+		try
+		{
+			await ReadLoopAsync(reader, lifetime.Token);
+		}
+		finally
+		{
+			await lifetime.CancelAsync();
+			_outbox.Writer.TryComplete();
+			await Task.WhenAll(writePump, pingLoop);
 
-            if (_registered)
-            {
-                channelMembership.Quit(Player, "Connection closed");
-                sessionRegistry.Remove(Player);
-            }
-        }
-    }
+			if (_registered)
+			{
+				channelMembership.Quit(Player, "Connection closed");
+				sessionRegistry.Remove(Player);
+			}
+		}
+	}
 
-    private async Task ReadLoopAsync(StreamReader reader, CancellationToken cancellationToken)
-    {
-        string? nick = null;
-        string? pass = null;
+	private async Task ReadLoopAsync(StreamReader reader, CancellationToken cancellationToken)
+	{
+		string? nick = null;
+		string? pass = null;
 
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var line = await reader.ReadLineAsync(cancellationToken);
-            if (line is null) return; // client closed the socket
+		while (!cancellationToken.IsCancellationRequested)
+		{
+			var line = await reader.ReadLineAsync(cancellationToken);
+			if (line is null) return; // client closed the socket
 
-            if (!IrcMessageParser.TryParse(line, out var message) || message is null) continue;
+			if (!IrcMessageParser.TryParse(line, out var message) || message is null) continue;
 
-            if (_registered)
-            {
-                Player.LastRecvTime = DateTimeOffset.UtcNow;
-                if (!await HandleRegisteredCommandAsync(message, cancellationToken)) return;
+			if (_registered)
+			{
+				Player.LastRecvTime = DateTimeOffset.UtcNow;
+				if (!await HandleRegisteredCommandAsync(message, cancellationToken)) return;
 
-                continue;
-            }
+				continue;
+			}
 
-            switch (message.Command)
-            {
-                case "PASS":
-                    pass = message.Params.Count > 0 ? message.Params[0] : null;
-                    break;
-                case "NICK":
-                    nick = message.Params.Count > 0 ? message.Params[0] : null;
-                    break;
-                case "PING":
-                    Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
-                    break;
-                    // USER's real-name/hostname fields carry nothing Basil needs — PASS+NICK are enough.
-            }
+			switch (message.Command)
+			{
+				case "PASS":
+					pass = message.Params.Count > 0 ? message.Params[0] : null;
+					break;
+				case "NICK":
+					nick = message.Params.Count > 0 ? message.Params[0] : null;
+					break;
+				case "PING":
+					Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
+					break;
+				// USER's real-name/hostname fields carry nothing Basil needs — PASS+NICK are enough.
+			}
 
-            if (!_registered && nick is not null && pass is not null)
-                await TryRegisterAsync(nick, pass, cancellationToken);
-        }
-    }
+			if (!_registered && nick is not null && pass is not null)
+				await TryRegisterAsync(nick, pass, cancellationToken);
+		}
+	}
 
-    /// <summary>Returns false when the connection should close (QUIT).</summary>
-    private async Task<bool> HandleRegisteredCommandAsync(IrcMessage message, CancellationToken cancellationToken)
-    {
-        switch (message.Command)
-        {
-            case "PRIVMSG" when message.Params.Count >= 2:
-                await chatDispatch.SendPrivmsgAsync(Player, message.Params[0], message.Params[1], cancellationToken);
-                break;
+	/// <summary>Returns false when the connection should close (QUIT).</summary>
+	private async Task<bool> HandleRegisteredCommandAsync(IrcMessage message, CancellationToken cancellationToken)
+	{
+		switch (message.Command)
+		{
+			case "PRIVMSG" when message.Params.Count >= 2:
+				await chatDispatch.SendPrivmsgAsync(Player, message.Params[0], message.Params[1], cancellationToken);
+				break;
 
-            case "JOIN" when message.Params.Count >= 1:
-                var joinTarget = channelRegistry.GetByName(message.Params[0]);
-                if (joinTarget is not null) channelMembership.Join(Player, joinTarget);
-                break;
+			case "JOIN" when message.Params.Count >= 1:
+				var joinTarget = channelRegistry.GetByName(message.Params[0]);
+				if (joinTarget is not null) channelMembership.Join(Player, joinTarget);
+				break;
 
-            case "PART" when message.Params.Count >= 1:
-                var partTarget = channelRegistry.GetByName(message.Params[0]);
-                if (partTarget is not null) channelMembership.Part(Player, partTarget, false);
-                break;
+			case "PART" when message.Params.Count >= 1:
+				var partTarget = channelRegistry.GetByName(message.Params[0]);
+				if (partTarget is not null) channelMembership.Part(Player, partTarget, false);
+				break;
 
-            case "AWAY":
-                Player.AwayMessage = message.Params.Count > 0 ? message.Params[0] : null;
-                break;
+			case "AWAY":
+				Player.AwayMessage = message.Params.Count > 0 ? message.Params[0] : null;
+				break;
 
-            case "PING":
-                Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
-                break;
+			case "PING":
+				Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
+				break;
 
-            case "NICK":
-                // "Can I use another username? No." (osu!Bancho IRC FAQ) — nick is fixed at login.
-                Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrUnknownCommand,
-                    Player.Name, "NICK", "Changing nickname is not supported"));
-                break;
+			case "NICK":
+				// "Can I use another username? No." (osu!Bancho IRC FAQ) — nick is fixed at login.
+				Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrUnknownCommand,
+					Player.Name, "NICK", "Changing nickname is not supported"));
+				break;
 
-            case "QUIT":
-                return false;
-        }
+			case "QUIT":
+				return false;
+		}
 
-        return true;
-    }
+		return true;
+	}
 
-    private async Task TryRegisterAsync(string nick, string pass, CancellationToken cancellationToken)
-    {
-        var outcome = await authService.AuthenticateAsync(nick, pass, this, cancellationToken);
-        foreach (var reply in outcome.Messages) Send(reply);
+	private async Task TryRegisterAsync(string nick, string pass, CancellationToken cancellationToken)
+	{
+		var outcome = await authService.AuthenticateAsync(nick, pass, this, cancellationToken);
+		foreach (var reply in outcome.Messages) Send(reply);
 
-        if (!outcome.Success) return;
+		if (!outcome.Success) return;
 
-        Player = outcome.Session!;
-        _registered = true;
-    }
+		Player = outcome.Session!;
+		_registered = true;
+	}
 
-    private async Task PumpWritesAsync(StreamWriter writer, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (var message in _outbox.Reader.ReadAllAsync(cancellationToken))
-                await writer.WriteLineAsync(IrcMessageWriter.Format(message));
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on disconnect/shutdown.
-        }
-        catch (IOException)
-        {
-            // The client went away mid-write.
-        }
-    }
+	private async Task PumpWritesAsync(StreamWriter writer, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await foreach (var message in _outbox.Reader.ReadAllAsync(cancellationToken))
+				await writer.WriteLineAsync(IrcMessageWriter.Format(message));
+		}
+		catch (OperationCanceledException)
+		{
+			// Expected on disconnect/shutdown.
+		}
+		catch (IOException)
+		{
+			// The client went away mid-write.
+		}
+	}
 
-    private async Task PingLoopAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(PingInterval, cancellationToken);
-                if (_registered) Send(IrcMessageWriter.Ping(options.Value.Name));
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on disconnect/shutdown.
-        }
-    }
+	private async Task PingLoopAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				await Task.Delay(PingInterval, cancellationToken);
+				if (_registered) Send(IrcMessageWriter.Ping(options.Value.Name));
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Expected on disconnect/shutdown.
+		}
+	}
 }

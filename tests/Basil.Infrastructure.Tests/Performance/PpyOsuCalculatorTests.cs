@@ -13,55 +13,55 @@ namespace Basil.Infrastructure.Tests.Performance;
 /// </summary>
 public class PpyOsuCalculatorTests
 {
-    private static string FixturePath =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu");
+	private static string FixturePath =>
+		Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu");
 
-    [Theory]
-    [InlineData(Mods.NoMod, 4.8750450142072701)]
-    [InlineData(Mods.HardRock, 5.9296060838721534)]
-    [InlineData(Mods.DoubleTime, 7.0477415498633968)]
-    [InlineData(Mods.Hidden | Mods.DoubleTime, 7.2215498802893343)]
-    public void Analyze_StarRating_MatchesRecordedReference(Mods mods, double expectedStars)
-    {
-        var calculator = new PpyOsuCalculator();
+	[Theory]
+	[InlineData(Mods.NoMod, 4.8750450142072701)]
+	[InlineData(Mods.HardRock, 5.9296060838721534)]
+	[InlineData(Mods.DoubleTime, 7.0477415498633968)]
+	[InlineData(Mods.Hidden | Mods.DoubleTime, 7.2215498802893343)]
+	public void Analyze_StarRating_MatchesRecordedReference(Mods mods, double expectedStars)
+	{
+		var calculator = new PpyOsuCalculator();
 
-        var analysis = calculator.Analyze(FixturePath, GameMode.Standard, mods);
+		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, mods);
 
-        Assert.Equal(expectedStars, analysis.StarRating, 10);
-    }
+		Assert.Equal(expectedStars, analysis.StarRating, 10);
+	}
 
-    [Fact]
-    public void Analyze_NonexistentFile_Throws()
-    {
-        var calculator = new PpyOsuCalculator();
+	[Fact]
+	public void Analyze_NonexistentFile_Throws()
+	{
+		var calculator = new PpyOsuCalculator();
 
-        Assert.Throws<InvalidOperationException>(() =>
-            calculator.Analyze(
-                Path.Combine(AppContext.BaseDirectory, "Fixtures", "does-not-exist.osu"),
-                GameMode.Standard,
-                Mods.NoMod));
-    }
+		Assert.Throws<InvalidOperationException>(() =>
+			calculator.Analyze(
+				Path.Combine(AppContext.BaseDirectory, "Fixtures", "does-not-exist.osu"),
+				GameMode.Standard,
+				Mods.NoMod));
+	}
 
-    [Fact]
-    public void Analyze_StandardFixture_ReturnsNonEmptyObjectCounts()
-    {
-        var calculator = new PpyOsuCalculator();
+	[Fact]
+	public void Analyze_StandardFixture_ReturnsNonEmptyObjectCounts()
+	{
+		var calculator = new PpyOsuCalculator();
 
-        var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
+		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
-        Assert.NotEmpty(analysis.ObjectCounts);
-        Assert.True(analysis.ObjectCounts.Values.Sum() > 0);
-    }
+		Assert.NotEmpty(analysis.ObjectCounts);
+		Assert.True(analysis.ObjectCounts.Values.Sum() > 0);
+	}
 
-    [Fact]
-    public void ComputeBeatmapMd5_MatchesRawFileHash()
-    {
-        var calculator = new PpyOsuCalculator();
-        var bytes = File.ReadAllBytes(FixturePath);
-        var expected = Convert.ToHexStringLower(MD5.HashData(bytes));
+	[Fact]
+	public void ComputeBeatmapMd5_MatchesRawFileHash()
+	{
+		var calculator = new PpyOsuCalculator();
+		var bytes = File.ReadAllBytes(FixturePath);
+		var expected = Convert.ToHexStringLower(MD5.HashData(bytes));
 
-        var md5 = calculator.ComputeBeatmapMd5(bytes);
+		var md5 = calculator.ComputeBeatmapMd5(bytes);
 
-        Assert.Equal(expected, md5, true);
-    }
+		Assert.Equal(expected, md5, true);
+	}
 }

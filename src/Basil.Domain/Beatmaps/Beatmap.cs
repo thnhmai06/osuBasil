@@ -9,88 +9,88 @@ namespace Basil.Domain.Beatmaps;
 /// </summary>
 public sealed record Beatmap(
 
-#region Identity
+	#region Identity
 
-    string Md5,
-    int Id,
-    Mapset Mapset,
+	string Md5,
+	int Id,
+	Mapset Mapset,
 
-#endregion
+	#endregion
 
-#region Metadata
+	#region Metadata
 
-    string Version,
-    [property: JsonIgnore] string Filename,
+	string Version,
+	[property: JsonIgnore] string Filename,
 
-#endregion
+	#endregion
 
-#region Stats
+	#region Stats
 
-    TimeSpan TotalLength,
-    int MaxCombo,
-    Difficulty Difficulty,
-    IReadOnlyDictionary<string, int> ObjectCounts,
+	TimeSpan TotalLength,
+	int MaxCombo,
+	Difficulty Difficulty,
+	IReadOnlyDictionary<string, int> ObjectCounts,
 
-#endregion
+	#endregion
 
-#region Background
+	#region Background
 
-    [property: JsonIgnore] string? BackgroundFile = null
+	[property: JsonIgnore] string? BackgroundFile = null
 
-#endregion
+	#endregion
 
 )
 {
-    //! Real osu! online ids are still well under this in 2026; a private-server-only
-    //! local id range this far up the int32 space keeps collisions with real ids implausible
-    //! without needing a dedicated id-space reservation table.
-    public const int LocalIdFloor = 1_000_000_000;
+	//! Real osu! online ids are still well under this in 2026; a private-server-only
+	//! local id range this far up the int32 space keeps collisions with real ids implausible
+	//! without needing a dedicated id-space reservation table.
+	public const int LocalIdFloor = 1_000_000_000;
 
-    /// <summary>True for maps ingested without a real osu! online id (see <see cref="LocalIdFloor" />).</summary>
-    public bool IsLocallyIngested => Id >= LocalIdFloor;
+	/// <summary>True for maps ingested without a real osu! online id (see <see cref="LocalIdFloor" />).</summary>
+	public bool IsLocallyIngested => Id >= LocalIdFloor;
 
-    /// <summary>Ported from Beatmap.full_name.</summary>
-    public string FullName => $"{Mapset.Artist} - {Mapset.Title} [{Version}]";
+	/// <summary>Ported from Beatmap.full_name.</summary>
+	public string FullName => $"{Mapset.Artist} - {Mapset.Title} [{Version}]";
 
-    /// <summary>
-    ///     Hand-written to replace the compiler-generated record equality: <see cref="ObjectCounts" />
-    ///     is a plain <see cref="IReadOnlyDictionary{TKey,TValue}" />, which has no structural
-    ///     <c>Equals</c>/<c>GetHashCode</c> of its own (two dictionaries with identical entries but
-    ///     different instances would otherwise compare unequal, exactly the case after a DB
-    ///     round-trip deserializes a fresh dictionary).
-    /// </summary>
-    public bool Equals(Beatmap? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+	/// <summary>
+	///     Hand-written to replace the compiler-generated record equality: <see cref="ObjectCounts" />
+	///     is a plain <see cref="IReadOnlyDictionary{TKey,TValue}" />, which has no structural
+	///     <c>Equals</c>/<c>GetHashCode</c> of its own (two dictionaries with identical entries but
+	///     different instances would otherwise compare unequal, exactly the case after a DB
+	///     round-trip deserializes a fresh dictionary).
+	/// </summary>
+	public bool Equals(Beatmap? other)
+	{
+		if (other is null) return false;
+		if (ReferenceEquals(this, other)) return true;
 
-        return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
-               Version == other.Version && Filename == other.Filename &&
-               TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
-               Difficulty == other.Difficulty &&
-               BackgroundFile == other.BackgroundFile &&
-               ObjectCounts.Count == other.ObjectCounts.Count &&
-               ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
-    }
+		return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
+		       Version == other.Version && Filename == other.Filename &&
+		       TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
+		       Difficulty == other.Difficulty &&
+		       BackgroundFile == other.BackgroundFile &&
+		       ObjectCounts.Count == other.ObjectCounts.Count &&
+		       ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
+	}
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Md5);
-        hash.Add(Id);
-        hash.Add(Mapset);
-        hash.Add(Version);
-        hash.Add(Filename);
-        hash.Add(TotalLength);
-        hash.Add(MaxCombo);
-        hash.Add(Difficulty);
-        hash.Add(BackgroundFile);
-        foreach (var kv in ObjectCounts.OrderBy(kv => kv.Key))
-        {
-            hash.Add(kv.Key);
-            hash.Add(kv.Value);
-        }
+	public override int GetHashCode()
+	{
+		var hash = new HashCode();
+		hash.Add(Md5);
+		hash.Add(Id);
+		hash.Add(Mapset);
+		hash.Add(Version);
+		hash.Add(Filename);
+		hash.Add(TotalLength);
+		hash.Add(MaxCombo);
+		hash.Add(Difficulty);
+		hash.Add(BackgroundFile);
+		foreach (var kv in ObjectCounts.OrderBy(kv => kv.Key))
+		{
+			hash.Add(kv.Key);
+			hash.Add(kv.Value);
+		}
 
-        return hash.ToHashCode();
-    }
+		return hash.ToHashCode();
+	}
 }

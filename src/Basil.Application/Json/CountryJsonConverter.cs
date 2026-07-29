@@ -14,16 +14,16 @@ namespace Basil.Application.Json;
 /// </summary>
 public sealed class CountryJsonConverter : JsonConverter<Country>
 {
-    public override Country Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        var value = reader.GetString();
-        return value is not null && Enum.TryParse<Country>(value, true, out var country)
-            ? country
-            : Country.Xx;
-    }
+	public override Country Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	{
+		var value = reader.GetString();
+		return value is not null && Enum.TryParse<Country>(value, true, out var country)
+			? country
+			: Country.Xx;
+	}
 
-    public override void Write(Utf8JsonWriter writer, Country value, JsonSerializerOptions options)
-    {
-        writer.WriteStringValue(value.ToAcronym());
-    }
+	public override void Write(Utf8JsonWriter writer, Country value, JsonSerializerOptions options)
+	{
+		writer.WriteStringValue(value.ToAcronym());
+	}
 }

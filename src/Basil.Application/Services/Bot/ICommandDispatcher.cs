@@ -11,23 +11,23 @@ namespace Basil.Application.Services.Bot;
 /// </summary>
 public interface ICommandDispatcher
 {
-    /// <param name="sender">The player who sent the message.</param>
-    /// <param name="rawMessage">The message text exactly as sent, prefix included if present.</param>
-    /// <param name="matchScope">
-    ///     The sender's current match, but ONLY when the message was sent in that match's own chat
-    ///     channel — null otherwise (including for private messages, which are never a match channel).
-    ///     Every `!mp` subcommand requires this to be non-null, mirroring bancho.py's ensure_match
-    ///     check — EXCEPT `!mp make`/`!mp makeprivate`, which create the match and so are the one pair
-    ///     of subcommands reachable with a null scope (e.g. via PM to the bot).
-    /// </param>
-    /// <param name="prefixOptional">
-    ///     When true, a message with no command prefix is treated as if it had one (e.g. "help" behaves
-    ///     like "!help"). Only safe for private messages to the bot — every DM to the bot is already a
-    ///     command-dispatch attempt with no other fallback (see
-    ///     <see cref="Basil.Application.PacketHandlers.Channels.SendPrivateMessageHandler" />), so
-    ///     relaxing the prefix there doesn't risk swallowing ordinary chat.
-    /// </param>
-    /// <param name="cancellationToken">Propagated to whatever repository/service calls the matched command needs.</param>
-    Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
-        bool prefixOptional = false, CancellationToken cancellationToken = default);
+	/// <param name="sender">The player who sent the message.</param>
+	/// <param name="rawMessage">The message text exactly as sent, prefix included if present.</param>
+	/// <param name="matchScope">
+	///     The sender's current match, but ONLY when the message was sent in that match's own chat
+	///     channel — null otherwise (including for private messages, which are never a match channel).
+	///     Every `!mp` subcommand requires this to be non-null, mirroring bancho.py's ensure_match
+	///     check — EXCEPT `!mp make`/`!mp makeprivate`, which create the match and so are the one pair
+	///     of subcommands reachable with a null scope (e.g. via PM to the bot).
+	/// </param>
+	/// <param name="prefixOptional">
+	///     When true, a message with no command prefix is treated as if it had one (e.g. "help" behaves
+	///     like "!help"). Only safe for private messages to the bot — every DM to the bot is already a
+	///     command-dispatch attempt with no other fallback (see
+	///     <see cref="Basil.Application.PacketHandlers.Channels.SendPrivateMessageHandler" />), so
+	///     relaxing the prefix there doesn't risk swallowing ordinary chat.
+	/// </param>
+	/// <param name="cancellationToken">Propagated to whatever repository/service calls the matched command needs.</param>
+	Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
+		bool prefixOptional = false, CancellationToken cancellationToken = default);
 }

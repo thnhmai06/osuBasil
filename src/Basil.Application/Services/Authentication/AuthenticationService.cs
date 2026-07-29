@@ -13,19 +13,19 @@ namespace Basil.Application.Services.Authentication;
 ///     it here gets the same near-zero-cost repeat-check behavior for free.
 /// </summary>
 public sealed class AuthenticationService(
-    IPlayerSessionRegistry sessionRegistry,
-    IUserRepository users,
-    IPasswordHasher passwordHasher)
+	IPlayerSessionRegistry sessionRegistry,
+	IUserRepository users,
+	IPasswordHasher passwordHasher)
 {
-    public async Task<PlayerSession?> AuthenticateOnlinePlayerAsync(
-        string username, string passwordMd5, CancellationToken cancellationToken = default)
-    {
-        var session = sessionRegistry.GetByName(username);
-        if (session is null) return null;
+	public async Task<PlayerSession?> AuthenticateOnlinePlayerAsync(
+		string username, string passwordMd5, CancellationToken cancellationToken = default)
+	{
+		var session = sessionRegistry.GetByName(username);
+		if (session is null) return null;
 
-        var passwordHash = await users.FetchPasswordHashAsync(session.Id, cancellationToken);
-        if (passwordHash is null) return null;
+		var passwordHash = await users.FetchPasswordHashAsync(session.Id, cancellationToken);
+		if (passwordHash is null) return null;
 
-        return passwordHasher.Verify(Encoding.UTF8.GetBytes(passwordMd5), passwordHash) ? session : null;
-    }
+		return passwordHasher.Verify(Encoding.UTF8.GetBytes(passwordMd5), passwordHash) ? session : null;
+	}
 }

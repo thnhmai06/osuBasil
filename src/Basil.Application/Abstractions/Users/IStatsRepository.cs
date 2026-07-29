@@ -14,5 +14,5 @@ public sealed record Stats(int Id, GameMode Mode, long Tscore, long Rscore, int 
 /// </summary>
 public interface IStatsRepository
 {
-    Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId, CancellationToken cancellationToken = default);
 }

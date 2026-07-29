@@ -8,6 +8,6 @@ namespace Basil.Application.Abstractions.Social;
 /// </summary>
 public interface ILogRepository
 {
-    Task CreateAsync(int fromId, int toId, string action, string message,
-        CancellationToken cancellationToken = default);
+	Task CreateAsync(int fromId, int toId, string action, string message,
+		CancellationToken cancellationToken = default);
 }

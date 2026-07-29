@@ -8,5 +8,5 @@ namespace Basil.Application.Configuration;
 /// </summary>
 public sealed class DatabaseOptions
 {
-    public string Path { get; init; } = System.IO.Path.Combine("Data", "Basil.db");
+	public string Path { get; init; } = System.IO.Path.Combine("Data", "Basil.db");
 }

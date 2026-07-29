@@ -14,22 +14,22 @@ namespace Basil.Application.PacketHandlers.Channels;
 ///     server-initiated joins (spectator, multiplayer) and real IRC connections.
 /// </summary>
 public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
-    : IBanchoPacketHandler
+	: IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.ChannelJoin;
+	public ClientPackets PacketId => ClientPackets.ChannelJoin;
 
-    public bool AllowedWhenRestricted => true;
+	public bool AllowedWhenRestricted => true;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var name = reader.ReadString();
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var name = reader.ReadString();
 
-        if (name is "#highlight" or "#userlog") return Task.CompletedTask;
+		if (name is "#highlight" or "#userlog") return Task.CompletedTask;
 
-        var channel = channelRegistry.GetByName(name);
-        if (channel is not null) channelMembership.Join(player, channel);
+		var channel = channelRegistry.GetByName(name);
+		if (channel is not null) channelMembership.Join(player, channel);
 
-        return Task.CompletedTask;
-    }
+		return Task.CompletedTask;
+	}
 }

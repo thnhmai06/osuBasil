@@ -9,29 +9,29 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchJoinChannel.</summary>
 public sealed class TourneyMatchJoinChannelHandler(
-    IMatchRegistry matchRegistry,
-    IChannelRegistry channelRegistry,
-    ChannelMembershipService channelMembership) : IBanchoPacketHandler
+	IMatchRegistry matchRegistry,
+	IChannelRegistry channelRegistry,
+	ChannelMembershipService channelMembership) : IBanchoPacketHandler
 {
-    public ClientPackets PacketId => ClientPackets.TournamentJoinMatchChannel;
+	public ClientPackets PacketId => ClientPackets.TournamentJoinMatchChannel;
 
-    public bool AllowedWhenRestricted => false;
+	public bool AllowedWhenRestricted => false;
 
-    public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
-        CancellationToken cancellationToken = default)
-    {
-        var matchId = reader.ReadI32();
+	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var matchId = reader.ReadI32();
 
-        if (matchId is < 0 or >= 64 || (player.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
+		if (matchId is < 0 or >= 64 || (player.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
-        var match = matchRegistry.GetById(matchId);
-        if (match is null) return Task.CompletedTask;
+		var match = matchRegistry.GetById(matchId);
+		if (match is null) return Task.CompletedTask;
 
-        if (match.Slots.Any(s => s.PlayerId == player.Id)) return Task.CompletedTask; // already playing in the match
+		if (match.Slots.Any(s => s.PlayerId == player.Id)) return Task.CompletedTask; // already playing in the match
 
-        var channel = channelRegistry.GetByName(match.ChatChannelName);
-        if (channel is not null && channelMembership.Join(player, channel)) match.AddTourneyClient(player.Id);
+		var channel = channelRegistry.GetByName(match.ChatChannelName);
+		if (channel is not null && channelMembership.Join(player, channel)) match.AddTourneyClient(player.Id);
 
-        return Task.CompletedTask;
-    }
+		return Task.CompletedTask;
+	}
 }

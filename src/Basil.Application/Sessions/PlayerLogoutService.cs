@@ -12,51 +12,51 @@ namespace Basil.Application.Sessions;
 ///     Shared with !reconnect, which forces the same cleanup on a session outside of that packet.
 /// </summary>
 public sealed class PlayerLogoutService(
-    IPlayerSessionRegistry sessionRegistry,
-    IChannelRegistry channelRegistry,
-    SpectatorService spectatorService,
-    MatchMembershipService matchMembership)
+	IPlayerSessionRegistry sessionRegistry,
+	IChannelRegistry channelRegistry,
+	SpectatorService spectatorService,
+	MatchMembershipService matchMembership)
 {
-    public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
-    {
-        if (player.Match is { } match)
-        {
-            await match.Lock.WaitAsync(cancellationToken);
-            try
-            {
-                await matchMembership.LeaveAsync(player, match, cancellationToken);
-            }
-            finally
-            {
-                match.Lock.Release();
-            }
-        }
+	public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
+	{
+		if (player.Match is { } match)
+		{
+			await match.Lock.WaitAsync(cancellationToken);
+			try
+			{
+				await matchMembership.LeaveAsync(player, match, cancellationToken);
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
+		}
 
-        if (player.Spectating is { } host) spectatorService.RemoveSpectator(host, player);
+		if (player.Spectating is { } host) spectatorService.RemoveSpectator(host, player);
 
-        // #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
-        // BasilBot's own watch of this departing player now, or the channel would be left with a
-        // dead member reference until this same user logs back in and re-triggers AddSpectator.
-        var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-        if (bot is not null) spectatorService.RemoveSpectator(player, bot);
+		// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
+		// BasilBot's own watch of this departing player now, or the channel would be left with a
+		// dead member reference until this same user logs back in and re-triggers AddSpectator.
+		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+		if (bot is not null) spectatorService.RemoveSpectator(player, bot);
 
-        foreach (var channelName in player.Channels.ToArray())
-        {
-            var channel = channelRegistry.GetByName(channelName);
-            if (channel is null) continue;
+		foreach (var channelName in player.Channels.ToArray())
+		{
+			var channel = channelRegistry.GetByName(channelName);
+			if (channel is null) continue;
 
-            channel.Part(player.Id);
-            player.LeaveChannel(channelName);
+			channel.Part(player.Id);
+			player.LeaveChannel(channelName);
 
-            foreach (var session in sessionRegistry.All)
-                if (channel.CanRead(session.Privilege))
-                    session.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
-        }
+			foreach (var session in sessionRegistry.All)
+				if (channel.CanRead(session.Privilege))
+					session.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+		}
 
-        sessionRegistry.Remove(player);
+		sessionRegistry.Remove(player);
 
-        if (!player.Restricted)
-            foreach (var other in sessionRegistry.All)
-                other.Enqueue(ServerPacketWriter.Logout(player.Id));
-    }
+		if (!player.Restricted)
+			foreach (var other in sessionRegistry.All)
+				other.Enqueue(ServerPacketWriter.Logout(player.Id));
+	}
 }

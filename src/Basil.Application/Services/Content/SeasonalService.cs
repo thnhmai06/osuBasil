@@ -11,64 +11,64 @@ namespace Basil.Application.Services.Content;
 /// </summary>
 public sealed class SeasonalService(IOptions<StorageOptions> storage)
 {
-    public enum CreateResult
-    {
-        Created,
-        AlreadyExists
-    }
+	public enum CreateResult
+	{
+		Created,
+		AlreadyExists
+	}
 
-    public enum ReplaceResult
-    {
-        Replaced,
-        NotFound
-    }
+	public enum ReplaceResult
+	{
+		Replaced,
+		NotFound
+	}
 
-    public IReadOnlyList<string> ListFileNames()
-    {
-        Directory.CreateDirectory(storage.Value.SeasonalsPath);
-        return
-        [
-            .. Directory.EnumerateFiles(storage.Value.SeasonalsPath)
-                .Select(path => Path.GetFileName(path))
-                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-        ];
-    }
+	public IReadOnlyList<string> ListFileNames()
+	{
+		Directory.CreateDirectory(storage.Value.SeasonalsPath);
+		return
+		[
+			.. Directory.EnumerateFiles(storage.Value.SeasonalsPath)
+				.Select(path => Path.GetFileName(path))
+				.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+		];
+	}
 
-    public string? FindFilePath(string fileName)
-    {
-        var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
-        return File.Exists(path) ? path : null;
-    }
+	public string? FindFilePath(string fileName)
+	{
+		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		return File.Exists(path) ? path : null;
+	}
 
-    public async Task<CreateResult> CreateAsync(string fileName, Stream content,
-        CancellationToken cancellationToken = default)
-    {
-        Directory.CreateDirectory(storage.Value.SeasonalsPath);
-        var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
-        if (File.Exists(path)) return CreateResult.AlreadyExists;
+	public async Task<CreateResult> CreateAsync(string fileName, Stream content,
+		CancellationToken cancellationToken = default)
+	{
+		Directory.CreateDirectory(storage.Value.SeasonalsPath);
+		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		if (File.Exists(path)) return CreateResult.AlreadyExists;
 
-        await using var fileStream = File.Create(path);
-        await content.CopyToAsync(fileStream, cancellationToken);
-        return CreateResult.Created;
-    }
+		await using var fileStream = File.Create(path);
+		await content.CopyToAsync(fileStream, cancellationToken);
+		return CreateResult.Created;
+	}
 
-    public async Task<ReplaceResult> ReplaceAsync(string fileName, Stream content,
-        CancellationToken cancellationToken = default)
-    {
-        var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
-        if (!File.Exists(path)) return ReplaceResult.NotFound;
+	public async Task<ReplaceResult> ReplaceAsync(string fileName, Stream content,
+		CancellationToken cancellationToken = default)
+	{
+		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		if (!File.Exists(path)) return ReplaceResult.NotFound;
 
-        await using var fileStream = File.Create(path);
-        await content.CopyToAsync(fileStream, cancellationToken);
-        return ReplaceResult.Replaced;
-    }
+		await using var fileStream = File.Create(path);
+		await content.CopyToAsync(fileStream, cancellationToken);
+		return ReplaceResult.Replaced;
+	}
 
-    public bool Delete(string fileName)
-    {
-        var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
-        if (!File.Exists(path)) return false;
+	public bool Delete(string fileName)
+	{
+		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		if (!File.Exists(path)) return false;
 
-        File.Delete(path);
-        return true;
-    }
+		File.Delete(path);
+		return true;
+	}
 }

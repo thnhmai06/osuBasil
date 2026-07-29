@@ -10,49 +10,49 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// </summary>
 public interface IMatchLiveEvents
 {
-    /// <summary>Fires for a match's general state channel (SSE GET /match/{id}). (matchDbId, payload)</summary>
-    event Action<int, byte[]> MainPublished;
+	/// <summary>
+	///     Whether anything is currently subscribed to <see cref="PlayerScorePublished" /> — lets a
+	///     caller skip decoding/serializing a payload nobody will receive.
+	/// </summary>
+	bool HasPlayerScoreSubscribers { get; }
 
-    /// <summary>Fires for one player's live score channel (SSE GET /match/{id}/{playerName}). (matchDbId, playerName, payload)</summary>
-    event Action<int, string, byte[]> PlayerScorePublished;
+	/// <summary>Fires for a match's general state channel (SSE GET /match/{id}). (matchDbId, payload)</summary>
+	event Action<int, byte[]> MainPublished;
 
-    /// <summary>
-    ///     Whether anything is currently subscribed to <see cref="PlayerScorePublished" /> — lets a
-    ///     caller skip decoding/serializing a payload nobody will receive.
-    /// </summary>
-    bool HasPlayerScoreSubscribers { get; }
+	/// <summary>Fires for one player's live score channel (SSE GET /match/{id}/{playerName}). (matchDbId, playerName, payload)</summary>
+	event Action<int, string, byte[]> PlayerScorePublished;
 
-    /// <summary>Fires for a match's settings channel (SSE GET /match/{id}/settings). (matchDbId, payload)</summary>
-    event Action<int, byte[]> SettingsPublished;
+	/// <summary>Fires for a match's settings channel (SSE GET /match/{id}/settings). (matchDbId, payload)</summary>
+	event Action<int, byte[]> SettingsPublished;
 
-    /// <summary>
-    ///     Fires for one slot's state (SSE GET /match/{id}/live/{slotIndex}, "slot" sub-event). (matchDbId, slotIndex,
-    ///     payload)
-    /// </summary>
-    event Action<int, int, byte[]> SlotPublished;
+	/// <summary>
+	///     Fires for one slot's state (SSE GET /match/{id}/live/{slotIndex}, "slot" sub-event). (matchDbId, slotIndex,
+	///     payload)
+	/// </summary>
+	event Action<int, int, byte[]> SlotPublished;
 
-    /// <summary>Fires for a match's host channel (SSE GET /matches/{matchId}/hosts). (matchDbId, payload)</summary>
-    event Action<int, byte[]> HostPublished;
+	/// <summary>Fires for a match's host channel (SSE GET /matches/{matchId}/hosts). (matchDbId, payload)</summary>
+	event Action<int, byte[]> HostPublished;
 
-    /// <summary>Fires for a match's referee list channel (SSE GET /matches/{matchId}/refs). (matchDbId, payload)</summary>
-    event Action<int, byte[]> RefsPublished;
+	/// <summary>Fires for a match's referee list channel (SSE GET /matches/{matchId}/refs). (matchDbId, payload)</summary>
+	event Action<int, byte[]> RefsPublished;
 
-    /// <summary>Fires for a match's ban list channel (SSE GET /matches/{matchId}/ban). (matchDbId, payload)</summary>
-    event Action<int, byte[]> BansPublished;
+	/// <summary>Fires for a match's ban list channel (SSE GET /matches/{matchId}/ban). (matchDbId, payload)</summary>
+	event Action<int, byte[]> BansPublished;
 
-    /// <summary>Fires for a match's countdown timer channel (SSE GET /matches/{matchId}/timer). (matchDbId, payload)</summary>
-    event Action<int, byte[]> TimerPublished;
+	/// <summary>Fires for a match's countdown timer channel (SSE GET /matches/{matchId}/timer). (matchDbId, payload)</summary>
+	event Action<int, byte[]> TimerPublished;
 
-    /// <summary>Fires for a match's slots channel (SSE GET /matches/{matchId}/slots). (matchDbId, payload)</summary>
-    event Action<int, byte[]> SlotsPublished;
+	/// <summary>Fires for a match's slots channel (SSE GET /matches/{matchId}/slots). (matchDbId, payload)</summary>
+	event Action<int, byte[]> SlotsPublished;
 
-    void PublishMain(int matchDbId, byte[] payload);
-    void PublishPlayer(int matchDbId, string playerName, byte[] payload);
-    void PublishSettings(int matchDbId, byte[] payload);
-    void PublishSlot(int matchDbId, int slotIndex, byte[] payload);
-    void PublishHost(int matchDbId, byte[] payload);
-    void PublishRefs(int matchDbId, byte[] payload);
-    void PublishBans(int matchDbId, byte[] payload);
-    void PublishTimer(int matchDbId, byte[] payload);
-    void PublishSlots(int matchDbId, byte[] payload);
+	void PublishMain(int matchDbId, byte[] payload);
+	void PublishPlayer(int matchDbId, string playerName, byte[] payload);
+	void PublishSettings(int matchDbId, byte[] payload);
+	void PublishSlot(int matchDbId, int slotIndex, byte[] payload);
+	void PublishHost(int matchDbId, byte[] payload);
+	void PublishRefs(int matchDbId, byte[] payload);
+	void PublishBans(int matchDbId, byte[] payload);
+	void PublishTimer(int matchDbId, byte[] payload);
+	void PublishSlots(int matchDbId, byte[] payload);
 }
