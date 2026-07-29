@@ -1,0 +1,15 @@
+<Project>
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <!-- CS1591 (missing XML doc comment) is intentionally not enforced solution-wide: only
+             existing-but-wrong XML docs (CS1574/CS1573/CS1734) are treated as build issues here,
+             not every undocumented public member. -->
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+    </PropertyGroup>
+
+</Project>

@@ -9,25 +9,22 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="BCrypt.Net-Next" Version="4.2.0"/>
-        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2"/>
-        <PackageReference Include="Dapper" Version="2.1.79"/>
-        <PackageReference Include="dbup-sqlite" Version="6.0.4"/>
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="*"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="*"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="*"/>
-        <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="*"/>
+        <PackageReference Include="BCrypt.Net-Next"/>
+        <PackageReference Include="BouncyCastle.Cryptography"/>
+        <PackageReference Include="Dapper"/>
+        <PackageReference Include="dbup-sqlite"/>
+        <PackageReference Include="Microsoft.Data.Sqlite"/>
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
+        <PackageReference Include="Microsoft.Extensions.Http"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
     </ItemGroup>
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <PublishTrimmed>true</PublishTrimmed>
     </PropertyGroup>
