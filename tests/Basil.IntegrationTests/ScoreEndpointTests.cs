@@ -80,7 +80,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         response.EnsureSuccessStatusCode();
         var body = envelope!.Data;
         Assert.NotNull(body);
-        Assert.Equal(42, body!.Id);
+        Assert.Equal(42, body.Id);
         Assert.Equal(900_000, body.TotalScore);
         Assert.Equal(7, body.User.Id);
     }

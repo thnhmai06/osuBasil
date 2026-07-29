@@ -76,6 +76,6 @@ public class StopSpectatingHandlerTests
         }
 
         public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
-        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
+        public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
     }
 }

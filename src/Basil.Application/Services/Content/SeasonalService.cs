@@ -26,10 +26,12 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
     public IReadOnlyList<string> ListFileNames()
     {
         Directory.CreateDirectory(storage.Value.SeasonalsPath);
-        return Directory.EnumerateFiles(storage.Value.SeasonalsPath)
-            .Select(path => Path.GetFileName(path)!)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. Directory.EnumerateFiles(storage.Value.SeasonalsPath)
+                .Select(path => Path.GetFileName(path))
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     public string? FindFilePath(string fileName)

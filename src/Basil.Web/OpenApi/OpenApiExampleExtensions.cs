@@ -48,7 +48,7 @@ internal static class OpenApiExampleExtensions
                 var isSseSuccessPayload = statusCode < 400 && context.Description.ActionDescriptor.EndpointMetadata
                     .OfType<SseEndpointMarker>().Any();
 
-                mediaType!.Example = context.DocumentName == "basilapi" && !isSseSuccessPayload
+                mediaType.Example = context.DocumentName == "basilapi" && !isSseSuccessPayload
                     ? BuildEnvelope(statusCode, context.Description.HttpMethod, example)
                     : JsonSerializer.SerializeToNode(example, JsonWebOptions);
             }

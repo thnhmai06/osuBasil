@@ -103,7 +103,7 @@ public static class BeatmapViewMapper
     {
         return new BeatmapsetDetail(mapset.Id, mapset.Artist, mapset.Title, mapset.Creator, mapset.LastUpdate,
             mapset.CreatedAt, mapset.IsFrozen, mapset.IsPrivate, mapset.Status,
-            beatmaps.Select(b => b.ToInSet()).ToList());
+            [.. beatmaps.Select(b => b.ToInSet())]);
     }
 
     public static BeatmapInSet ToInSet(this Beatmap beatmap)

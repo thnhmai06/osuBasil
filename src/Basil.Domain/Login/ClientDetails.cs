@@ -46,7 +46,7 @@ public sealed record ClientDetails(
     {
         if (adaptersString == WineAdapterSentinel) return [WineAdapterSentinel];
         return adaptersString.EndsWith('.')
-            ? adaptersString[..^1].Split('.').ToImmutableList()
+            ? [.. adaptersString[..^1].Split('.')]
             : throw new FormatException("Adapter list is missing trailing delimiter");
     }
 }

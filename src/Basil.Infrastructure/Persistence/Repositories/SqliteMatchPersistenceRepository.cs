@@ -75,14 +75,14 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         await using var connection = Connect();
         var rows = await connection.QueryAsync<RoundRowDto>(
             "SELECT * FROM Rounds WHERE MatchId = @MatchId ORDER BY RoundIndex ASC", new { MatchId = matchId });
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = Connect();
         var rows = await connection.QueryAsync<MatchRowDto>("SELECT * FROM Matches ORDER BY Id DESC");
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -124,7 +124,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         var rows = await connection.QueryAsync<MatchEventRowDto>(
             "SELECT * FROM MatchEvents WHERE MatchId = @MatchId ORDER BY Timestamp ASC, Id ASC",
             new { MatchId = matchId });
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(
@@ -133,7 +133,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         await using var connection = Connect();
         var rows = await connection.QueryAsync<MatchRowDto>(
             "SELECT * FROM Matches WHERE EndedAt IS NULL ORDER BY Id ASC");
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
@@ -143,7 +143,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
         var rows = await connection.QueryAsync<RoundRowDto>(
             "SELECT * FROM Rounds WHERE MatchId = @MatchId AND EndedAt IS NULL ORDER BY RoundIndex ASC",
             new { MatchId = matchId });
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     private SqliteConnection Connect()

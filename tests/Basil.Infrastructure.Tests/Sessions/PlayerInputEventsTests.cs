@@ -14,7 +14,7 @@ public class PlayerInputEventsTests
     {
         var events = new PlayerInputEvents();
 
-        var exception = Record.Exception(() => events.PublishInput(1, "payload"u8.ToArray()));
+        var exception = Record.Exception(() => events.PublishInput(1, [.. "payload"u8]));
 
         Assert.Null(exception);
     }
@@ -28,7 +28,7 @@ public class PlayerInputEventsTests
         events.InputPublished += (id, payload) => received1.Add((id, payload));
         events.InputPublished += (id, payload) => received2.Add((id, payload));
 
-        events.PublishInput(7, "frame"u8.ToArray());
+        events.PublishInput(7, [.. "frame"u8]);
 
         Assert.Single(received1);
         Assert.Single(received2);
@@ -50,7 +50,7 @@ public class PlayerInputEventsTests
         events.InputPublished += Handler;
         events.InputPublished -= Handler;
 
-        events.PublishInput(1, "payload"u8.ToArray());
+        events.PublishInput(1, [.. "payload"u8]);
 
         Assert.Empty(received);
     }

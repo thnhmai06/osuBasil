@@ -80,7 +80,7 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
     public bool Stealth { get; set; }
 
     /// <summary>Ported from Player.spectators — the sessions currently spectating this player.</summary>
-    public IReadOnlyCollection<PlayerSession> Spectators => _spectators.Values.ToArray();
+    public IReadOnlyCollection<PlayerSession> Spectators => [.. _spectators.Values];
 
     public PlayerStatus Status { get; } = new();
 
@@ -123,7 +123,7 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
     public bool Silenced => RemainingSilence != TimeSpan.Zero;
 
     /// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
-    public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
+    public IReadOnlyCollection<string> Channels => [.. _channels.Keys];
 
     /// <summary>
     ///     The IRC-shaped transport chat is routed through for this session — a bancho packet bridge by

@@ -104,7 +104,7 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
                 {
                     ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = ""
                 },
-                beatmap!.Mapset);
+                beatmap.Mapset);
             Directory.Move(folder, resolvedFolder);
 
             var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
@@ -113,10 +113,10 @@ public class BeatmapWatcherServiceTests : IClassFixture<SqliteFixture>, IDisposa
 
             var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < deleteDeadline &&
-                   await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true) is not null)
+                   await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
                 await Task.Delay(200);
 
-            Assert.Null(await _maps.FetchOneAsync(setId: beatmap!.Mapset.Id, includePrivate: true));
+            Assert.Null(await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
         }
         finally
         {

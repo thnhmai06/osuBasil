@@ -72,7 +72,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 
         response.EnsureSuccessStatusCode();
         Assert.NotNull(body);
-        Assert.NotNull(body!.Meta);
+        Assert.NotNull(body.Meta);
         Assert.Equal(1, body.Meta!.Page);
         Assert.Equal(Pagination.DefaultPageSize, body.Meta.PageSize);
         Assert.Empty(body.Data!);
@@ -152,7 +152,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
         public Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<ScoreRow>>(Rows.Skip(offset).Take(limit).ToList());
+            return Task.FromResult<IReadOnlyList<ScoreRow>>([.. Rows.Skip(offset).Take(limit)]);
         }
 
         public Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,

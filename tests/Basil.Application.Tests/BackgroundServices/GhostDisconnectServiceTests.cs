@@ -168,6 +168,6 @@ public class GhostDisconnectServiceTests
             return _byToken.Values.FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
         }
 
-        public IReadOnlyList<PlayerSession> All => _byToken.Values.ToList();
+        public IReadOnlyList<PlayerSession> All => [.. _byToken.Values];
     }
 }

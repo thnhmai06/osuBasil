@@ -297,7 +297,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 
         public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<MatchRow>>(_matches.Values.OrderByDescending(m => m.Id).ToList());
+            return Task.FromResult<IReadOnlyList<MatchRow>>([.. _matches.Values.OrderByDescending(m => m.Id)]);
         }
 
         public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)

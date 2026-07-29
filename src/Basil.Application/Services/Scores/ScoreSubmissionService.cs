@@ -85,7 +85,7 @@ public sealed class ScoreSubmissionService(
             await authentication.AuthenticateOnlinePlayerAsync(username, request.PasswordMd5, cancellationToken);
         if (player is null) return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.PlayerNotFound);
 
-        var score = ScoreSubmission.FromSubmission(request.ScoreDataFields.Skip(2).ToArray()) with
+        var score = ScoreSubmission.FromSubmission([.. request.ScoreDataFields.Skip(2)]) with
         {
             BeatmapMd5 = beatmap.Md5,
             UserId = player.Id,

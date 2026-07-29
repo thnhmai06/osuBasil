@@ -321,9 +321,11 @@ public static class BanchoHostGroups
                         var session = sessionRegistry.GetByToken(token);
                         if (session is null)
                         {
-                            responseBody = ServerPacketWriter.Notification("Server has restarted.")
-                                .Concat(ServerPacketWriter.RestartServer(0))
-                                .ToArray();
+                            responseBody =
+                            [
+                                .. ServerPacketWriter.Notification("Server has restarted."),
+                                .. ServerPacketWriter.RestartServer(0)
+                            ];
                         }
                         else
                         {

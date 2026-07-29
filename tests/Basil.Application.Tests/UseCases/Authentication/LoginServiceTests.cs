@@ -317,7 +317,8 @@ public class LoginServiceTests
         // first login grants VERIFIED (user.Id=10 here, not FIRST_USER_ID=3, so no bonus staff privs)
         await _users.Received(1).UpdatePrivilegesAsync(user.Id, UserPrivileges.Unrestricted | UserPrivileges.Verified,
             Arg.Any<CancellationToken>());
-        _sessionRegistry.Received(1).Add(Arg.Is<PlayerSession>(s => s.Id == user.Id && s.Token == "generated-token"));
+        _sessionRegistry.Received(1)
+            .Add(Arg.Is<PlayerSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
     }
 
     [Fact]
@@ -482,6 +483,6 @@ public class LoginServiceTests
 
     private static byte[] Concat(params byte[][] parts)
     {
-        return parts.SelectMany(p => p).ToArray();
+        return [.. parts.SelectMany(p => p)];
     }
 }

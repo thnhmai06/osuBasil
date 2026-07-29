@@ -97,7 +97,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
     {
         await using var connection = Connect();
         var rows = await connection.QueryAsync<UserRow>("SELECT * FROM Users ORDER BY Id");
-        return rows.Select(r => r.ToUser()).ToList();
+        return [.. rows.Select(r => r.ToUser())];
     }
 
     private SqliteConnection Connect()

@@ -60,7 +60,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
         {
             lock (_registryLock)
             {
-                return _slots.Where(m => m is not null).Cast<MatchSession>().ToList();
+                return [.. _slots.Where(m => m is not null).Cast<MatchSession>()];
             }
         }
     }

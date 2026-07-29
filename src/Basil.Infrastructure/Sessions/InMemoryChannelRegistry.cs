@@ -33,7 +33,7 @@ public sealed class InMemoryChannelRegistry : IChannelRegistry
     }
 
     public IReadOnlyList<ChannelSession> AutoJoinChannels =>
-        _byName.Values.Where(c => c.AutoJoin).ToList();
+        [.. _byName.Values.Where(c => c.AutoJoin)];
 
-    public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
+    public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
 }

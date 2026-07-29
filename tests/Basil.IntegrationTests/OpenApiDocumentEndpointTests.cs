@@ -67,7 +67,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
         var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
 
         Assert.NotNull(document);
-        Assert.Equal(expectedTitle, document!.Info.Title);
+        Assert.Equal(expectedTitle, document.Info.Title);
         foreach (var path in expectedPaths) Assert.Contains(path, document.Paths.Keys);
     }
 
@@ -80,7 +80,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
         var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
 
         Assert.NotNull(document);
-        Assert.DoesNotContain(document!.Paths.Keys, path => path.Contains("{id}") || path.Contains("{id:"));
+        Assert.DoesNotContain(document.Paths.Keys, path => path.Contains("{id}") || path.Contains("{id:"));
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
         var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
 
         Assert.NotNull(document);
-        Assert.DoesNotContain("/web/osu-search.php", document!.Paths.Keys);
+        Assert.DoesNotContain("/web/osu-search.php", document.Paths.Keys);
     }
 
     [Theory]
@@ -161,7 +161,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
             .GetProperty("properties").EnumerateObject().Select(p => p.Name);
         var dataProps = allOf[1].GetProperty("properties").EnumerateObject().Select(p => p.Name);
 
-        Assert.Equal(new HashSet<string> { "success", "code", "message", "data", "meta", "errors", "timestamp" },
+        Assert.Equal(["success", "code", "message", "data", "meta", "errors", "timestamp"],
             envelopeProps.Concat(dataProps).ToHashSet());
     }
 
@@ -224,7 +224,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
         Assert.False(schemas.GetProperty("UpdateUserRequest").TryGetProperty("required", out _));
         var replaceRequired = schemas.GetProperty("ReplaceUserRequest").GetProperty("required")
             .EnumerateArray().Select(e => e.GetString()!).ToHashSet();
-        Assert.Equal(new HashSet<string> { "name", "country", "privilege" }, replaceRequired);
+        Assert.Equal(["name", "country", "privilege"], replaceRequired);
     }
 
     private sealed record HealthShape(string Status);

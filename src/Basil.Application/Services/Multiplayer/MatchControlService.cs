@@ -436,13 +436,15 @@ public sealed class MatchControlService(
             .Select(k => k * PeriodicReminderIntervalSeconds)
             .TakeWhile(c => c < totalSeconds);
 
-        return TimerCheckpoints
-            .Concat(periodic)
-            .Where(c => c < totalSeconds)
-            .Distinct()
-            .Where(c => c % PeriodicReminderIntervalSeconds != 0 || totalSeconds - c > NearTotalIgnoreWindowSeconds)
-            .OrderByDescending(c => c)
-            .ToList();
+        return
+        [
+            .. TimerCheckpoints
+                .Concat(periodic)
+                .Where(c => c < totalSeconds)
+                .Distinct()
+                .Where(c => c % PeriodicReminderIntervalSeconds != 0 || totalSeconds - c > NearTotalIgnoreWindowSeconds)
+                .OrderByDescending(c => c)
+        ];
     }
 
     /// <summary>

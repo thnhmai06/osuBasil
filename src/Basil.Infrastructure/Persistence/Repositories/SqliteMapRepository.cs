@@ -161,9 +161,9 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
             splitOn: "Id");
 
         var mapsBySet = rows.GroupBy(b => b.Mapset.Id)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)g.ToList());
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)[.. g]);
 
-        return setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id]).ToList();
+        return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
     }
 
     public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
@@ -193,7 +193,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
             (b, m) => b.ToBeatmap(m.ToMapset()),
             new { MapsetId = setId },
             splitOn: "Id");
-        return rows.ToList();
+        return [.. rows];
     }
 
     private SqliteConnection Connect()

@@ -33,7 +33,7 @@ public sealed class ChannelSession(
 
     public int PlayerCount => _members.Count;
 
-    public IReadOnlyCollection<int> MemberIds => _members.Keys.ToArray();
+    public IReadOnlyCollection<int> MemberIds => [.. _members.Keys];
 
     public bool CanRead(UserPrivileges privilege)
     {

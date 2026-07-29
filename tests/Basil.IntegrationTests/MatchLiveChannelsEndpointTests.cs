@@ -127,8 +127,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
         // not a published delta.
         var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
         {
-            events.PublishSlot(matchId, 5, "wrong slot"u8.ToArray());
-            events.PublishSlot(matchId, 0, "right slot"u8.ToArray());
+            events.PublishSlot(matchId, 5, [.. "wrong slot"u8]);
+            events.PublishSlot(matchId, 0, [.. "right slot"u8]);
         }, true);
 
         Assert.Equal("slot", eventType);

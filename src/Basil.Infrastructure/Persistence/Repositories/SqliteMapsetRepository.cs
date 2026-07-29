@@ -78,7 +78,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
     {
         await using var connection = Connect();
         var ids = await connection.QueryAsync<int>("SELECT Id FROM Mapsets");
-        return ids.ToList();
+        return [.. ids];
     }
 
     public async Task<IReadOnlyList<Mapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
@@ -93,7 +93,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
              ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
              """,
             new { Limit = limit, Offset = offset });
-        return rows.Select(r => r.ToMapset()).ToList();
+        return [.. rows.Select(r => r.ToMapset())];
     }
 
     public async Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)

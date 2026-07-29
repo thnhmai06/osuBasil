@@ -28,10 +28,12 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
     {
         if (!Directory.Exists(storage.Value.FaqsPath)) return [];
 
-        return Directory.EnumerateFiles(storage.Value.FaqsPath, "*.txt")
-            .Select(path => Path.GetFileNameWithoutExtension(path)!)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. Directory.EnumerateFiles(storage.Value.FaqsPath, "*.txt")
+                .Select(path => Path.GetFileNameWithoutExtension(path)!)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     /// <summary>

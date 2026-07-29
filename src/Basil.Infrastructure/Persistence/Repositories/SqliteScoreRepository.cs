@@ -96,7 +96,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             LIMIT @Limit OFFSET @Offset
             """,
             new { Limit = limit, Offset = offset });
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
@@ -113,7 +113,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
             ORDER BY s.Score DESC
             """,
             new { RoundId = roundId });
-        return rows.Select(r => r.ToRow()).ToList();
+        return [.. rows.Select(r => r.ToRow())];
     }
 
     public async Task<int> FetchCountAsync(CancellationToken cancellationToken = default)

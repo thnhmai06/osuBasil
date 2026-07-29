@@ -15,7 +15,7 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
         var rows = await connection.QueryAsync<StatsRow>(
             "SELECT * FROM UserStats WHERE Id = @UserId",
             new { UserId = userId });
-        return rows.Select(r => r.ToStats()).ToList();
+        return [.. rows.Select(r => r.ToStats())];
     }
 
     private SqliteConnection Connect()

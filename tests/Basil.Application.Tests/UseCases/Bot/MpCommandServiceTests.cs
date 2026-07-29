@@ -503,11 +503,12 @@ public class MpCommandServiceTests
         var reply = await MakeService().HandleAsync(host, match, "start", ["30"]);
 
         Assert.False(match.InProgress);
-        Assert.NotNull(match.PendingTimer);
+        var timer = match.PendingTimer;
+        Assert.NotNull(timer);
         Assert.True(match.PendingTimerIsAutoStart);
         Assert.Equal("Match starts in 30 seconds", reply);
 
-        await match.PendingTimer?.CancelAsync();
+        await timer.CancelAsync();
     }
 
     [Fact]
@@ -519,12 +520,13 @@ public class MpCommandServiceTests
 
         var reply = await MakeService().HandleAsync(host, match, "timer", ["10"]);
 
-        Assert.NotNull(match.PendingTimer);
+        var timer = match.PendingTimer;
+        Assert.NotNull(timer);
         Assert.False(match.InProgress);
         Assert.False(match.PendingTimerIsAutoStart);
         Assert.Equal("Countdown started: 10 seconds", reply);
 
-        await match.PendingTimer?.CancelAsync();
+        await timer.CancelAsync();
     }
 
     [Fact]
@@ -538,7 +540,9 @@ public class MpCommandServiceTests
 
         Assert.Equal("Countdown started: 30 seconds", reply);
 
-        await match.PendingTimer?.CancelAsync();
+        var timer = match.PendingTimer;
+        Assert.NotNull(timer);
+        await timer.CancelAsync();
     }
 
     [Fact]

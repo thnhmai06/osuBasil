@@ -75,7 +75,7 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
             sql,
             new { UserId = userId, Adapters = adapters, UninstallId = uninstallId, DiskSerial = diskSerial });
 
-        return rows.Select(r => r.ToClientHashWithPlayer()).ToList();
+        return [.. rows.Select(r => r.ToClientHashWithPlayer())];
     }
 
     private SqliteConnection Connect()

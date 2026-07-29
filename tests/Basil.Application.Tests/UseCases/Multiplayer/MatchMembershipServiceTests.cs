@@ -109,7 +109,7 @@ public class MatchMembershipServiceTests
         var match = await service.CreateEmptyAsync(MakeMatchData(0));
 
         Assert.NotNull(match);
-        Assert.Equal(0, match!.HostId);
+        Assert.Equal(0, match.HostId);
         Assert.Empty(match.Referees);
         Assert.All(match.Slots, slot => Assert.True(slot.Empty));
         Assert.True(match.CreatedViaMakeCommand);
@@ -505,7 +505,7 @@ public class MatchMembershipServiceTests
 
         public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
 
-        public IReadOnlyList<ChannelSession> All => _byName.Values.ToList();
+        public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
     }
 
     private sealed class FakeMatchRegistry : IMatchRegistry
@@ -538,7 +538,7 @@ public class MatchMembershipServiceTests
             _byId.Remove(id);
         }
 
-        public IReadOnlyList<MatchSession> All => _byId.Values.ToList();
+        public IReadOnlyList<MatchSession> All => [.. _byId.Values];
     }
 
     private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository

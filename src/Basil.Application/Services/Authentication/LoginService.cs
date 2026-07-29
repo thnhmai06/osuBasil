@@ -269,6 +269,6 @@ public sealed class LoginService(
 
     private static byte[] Concat(params byte[][] parts)
     {
-        return parts.SelectMany(p => p).ToArray();
+        return [.. parts.SelectMany(p => p)];
     }
 }

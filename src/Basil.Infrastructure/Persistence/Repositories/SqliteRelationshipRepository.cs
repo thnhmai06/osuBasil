@@ -28,7 +28,7 @@ public sealed class SqliteRelationshipRepository(string connectionString) : IRel
         var rows = await connection.QueryAsync<RelationshipRow>(
             sql,
             new { User1 = user1, Type = type is null ? null : TypeColumn(type.Value) });
-        return rows.Select(r => r.ToRelationship()).ToList();
+        return [.. rows.Select(r => r.ToRelationship())];
     }
 
     public async Task<Relationship?> FetchOneAsync(int user1, int user2, CancellationToken cancellationToken = default)

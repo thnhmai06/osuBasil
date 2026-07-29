@@ -133,7 +133,7 @@ internal static class SchemaTypeTransformers
             .Select(v => (Name: v.ToString()!, Value: Convert.ToInt64(v)))
             .ToList();
 
-        schema.Enum = members.Select(m => (JsonNode)JsonValue.Create(m.Value)).ToList();
+        schema.Enum = [.. members.Select(m => (JsonNode)JsonValue.Create(m.Value))];
         var mapping = string.Join(", ", members.Select(m => $"{m.Value} = {m.Name}"));
         schema.Description = schema.Description is { Length: > 0 } ? $"{schema.Description} ({mapping})" : mapping;
     }

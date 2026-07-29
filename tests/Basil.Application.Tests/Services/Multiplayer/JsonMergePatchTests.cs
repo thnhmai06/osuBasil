@@ -17,7 +17,7 @@ public class JsonMergePatchTests
         var patch = JsonMergePatch.Diff(previous, current, CamelCase);
 
         Assert.IsType<JsonObject>(patch);
-        Assert.Empty((JsonObject)patch!);
+        Assert.Empty((JsonObject)patch);
     }
 
     [Fact]

@@ -120,7 +120,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     {
         var request = MakeRequest(HttpMethod.Post, "/faqs/", adminKey);
         request.Content = new MultipartFormDataContent
-            { { new ByteArrayContent("hi"u8.ToArray()), "file", "rules.txt" } };
+            { { new ByteArrayContent([.. "hi"u8]), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -132,7 +132,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     {
         var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
         request.Content = new MultipartFormDataContent
-            { { new ByteArrayContent("hello"u8.ToArray()), "file", "rules.txt" } };
+            { { new ByteArrayContent([.. "hello"u8]), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -148,7 +148,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 
         var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
         request.Content = new MultipartFormDataContent
-            { { new ByteArrayContent("new"u8.ToArray()), "file", "rules.txt" } };
+            { { new ByteArrayContent([.. "new"u8]), "file", "rules.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -160,7 +160,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
     public async Task PutFaq_NotFound_ReturnsNotFound()
     {
         var request = MakeRequest(HttpMethod.Put, "/faqs/nonexistent", AdminKey);
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent("new"u8.ToArray()), "file", "x.txt" } };
+        request.Content = new MultipartFormDataContent { { new ByteArrayContent([.. "new"u8]), "file", "x.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 
@@ -174,7 +174,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
         await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "old");
 
         var request = MakeRequest(HttpMethod.Put, "/faqs/rules", AdminKey);
-        request.Content = new MultipartFormDataContent { { new ByteArrayContent("new"u8.ToArray()), "file", "x.txt" } };
+        request.Content = new MultipartFormDataContent { { new ByteArrayContent([.. "new"u8]), "file", "x.txt" } };
 
         var response = await _factory.CreateClient().SendAsync(request);
 

@@ -35,5 +35,5 @@ public sealed class InMemoryPlayerSessionRegistry : IPlayerSessionRegistry
         return _byToken.Values.FirstOrDefault(s => s.SafeName == safeName);
     }
 
-    public IReadOnlyList<PlayerSession> All => _byToken.Values.ToList();
+    public IReadOnlyList<PlayerSession> All => [.. _byToken.Values];
 }

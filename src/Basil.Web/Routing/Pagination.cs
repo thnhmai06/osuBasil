@@ -43,7 +43,7 @@ public static class Pagination
     /// </summary>
     public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize, int totalRecords)
     {
-        var items = overqueried.Count > pageSize ? overqueried.Take(pageSize).ToList() : overqueried;
+        var items = overqueried.Count > pageSize ? [.. overqueried.Take(pageSize)] : overqueried;
         return new PagedResult<T>(page, pageSize, totalRecords, items);
     }
 }

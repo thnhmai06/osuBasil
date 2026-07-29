@@ -246,15 +246,15 @@ public class BanchoPacketReaderTests
         Assert.Equal("Some Map", match.MapName);
         Assert.Equal(33852, match.MapId);
         Assert.Equal("60b725f10c9c85c70d97880dfe8191b3", match.MapMd5);
-        Assert.Equal(new[] { 4, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, match.SlotStatuses);
-        Assert.Equal(new[] { 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, match.SlotTeams);
-        Assert.Equal(new[] { 1001, 32 }, match.SlotIds);
+        Assert.Equal([4, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], match.SlotStatuses);
+        Assert.Equal([1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotTeams);
+        Assert.Equal([1001, 32], match.SlotIds);
         Assert.Equal(32, match.HostId);
         Assert.Equal(0, match.Mode);
         Assert.Equal(2, match.WinCondition);
         Assert.Equal(2, match.TeamType);
         Assert.True(match.FreeMods);
-        Assert.Equal(new[] { 64, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, match.SlotMods);
+        Assert.Equal([64, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], match.SlotMods);
         Assert.Equal(123_456, match.Seed);
     }
 }

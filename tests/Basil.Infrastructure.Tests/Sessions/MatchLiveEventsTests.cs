@@ -13,7 +13,7 @@ public class MatchLiveEventsTests
     {
         var events = new MatchLiveEvents();
 
-        var exception = Record.Exception(() => events.PublishMain(1, "payload"u8.ToArray()));
+        var exception = Record.Exception(() => events.PublishMain(1, [.. "payload"u8]));
 
         Assert.Null(exception);
     }
@@ -27,7 +27,7 @@ public class MatchLiveEventsTests
         events.MainPublished += (id, payload) => received1.Add((id, payload));
         events.MainPublished += (id, payload) => received2.Add((id, payload));
 
-        events.PublishMain(5, "hello"u8.ToArray());
+        events.PublishMain(5, [.. "hello"u8]);
 
         Assert.Single(received1);
         Assert.Single(received2);
@@ -49,7 +49,7 @@ public class MatchLiveEventsTests
         events.MainPublished += Handler;
         events.MainPublished -= Handler;
 
-        events.PublishMain(1, "payload"u8.ToArray());
+        events.PublishMain(1, [.. "payload"u8]);
 
         Assert.Empty(received);
     }
@@ -61,7 +61,7 @@ public class MatchLiveEventsTests
         (int MatchDbId, string PlayerName, byte[] Payload)? received = null;
         events.PlayerScorePublished += (id, name, payload) => received = (id, name, payload);
 
-        events.PublishPlayer(9, "alice", "score"u8.ToArray());
+        events.PublishPlayer(9, "alice", [.. "score"u8]);
 
         Assert.NotNull(received);
         Assert.Equal(9, received!.Value.MatchDbId);
@@ -74,7 +74,7 @@ public class MatchLiveEventsTests
     {
         var events = new MatchLiveEvents();
 
-        var exception = Record.Exception(() => events.PublishPlayer(1, "alice", "payload"u8.ToArray()));
+        var exception = Record.Exception(() => events.PublishPlayer(1, "alice", [.. "payload"u8]));
 
         Assert.Null(exception);
     }

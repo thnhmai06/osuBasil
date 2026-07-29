@@ -13,7 +13,7 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
         await using var connection = Connect();
         var rows = await connection.QueryAsync<ChannelRow>(
             "SELECT * FROM Channels WHERE AutoJoin = @AutoJoin", new { AutoJoin = true });
-        return rows.Select(r => r.ToChannel()).ToList();
+        return [.. rows.Select(r => r.ToChannel())];
     }
 
     public async Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)

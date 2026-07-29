@@ -39,11 +39,11 @@ public sealed partial class BeatmapIngestionService(
     /// </summary>
     public const string DeletedFolderInfix = ".deleted_";
 
-    // Platform-provided, not a hardcoded Windows list — on Linux (a supported deploy target, see
+    // Platform-provided, not a hardcoded Windows list — on Linux (a supported deployment target, see
     // CLAUDE.md's win-x64/linux-x64 publish commands) this is just { '\0', '/' }, so e.g. "|" in a
     // beatmap's title is a perfectly valid path character there and is left alone.
     private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
-    private static readonly Regex LeadingIdPattern = MyRegex();
+    private static readonly Regex LeadingIdPattern = LeadingIdRegex();
 
     public static string MapsetFolderName(Mapset mapset)
     {
@@ -140,13 +140,13 @@ public sealed partial class BeatmapIngestionService(
         CancellationToken cancellationToken = default)
     {
         var decoded = new List<DecodedFile>();
-        await using (var archive = ZipFile.OpenRead(oszPath))
+        await using (var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken))
         {
             foreach (var entry in archive.Entries)
             {
                 if (!entry.Name.EndsWith(".osu", StringComparison.OrdinalIgnoreCase)) continue;
 
-                await using var entryStream = entry.Open();
+                await using var entryStream = await entry.OpenAsync(cancellationToken);
                 using var buffer = new MemoryStream();
                 await entryStream.CopyToAsync(buffer, cancellationToken);
                 var osuBytes = buffer.ToArray();
@@ -248,7 +248,9 @@ public sealed partial class BeatmapIngestionService(
                 info.DifficultyName,
                 file.OriginalFilename,
                 TimeSpan.FromMilliseconds(info.Length),
+#pragma warning disable CS0618 // display-only metadata; async ScoreManager replacement isn't available in this ingestion path
                 info.MaxCombo ?? 0,
+#pragma warning restore CS0618
                 new Difficulty(
                     mode, info.BPM, info.Difficulty.CircleSize,
                     info.Difficulty.ApproachRate, info.Difficulty.OverallDifficulty, info.Difficulty.DrainRate,
@@ -371,7 +373,7 @@ public sealed partial class BeatmapIngestionService(
     }
 
     [GeneratedRegex(@"^(\d+)")]
-    private static partial Regex MyRegex();
+    private static partial Regex LeadingIdRegex();
 
     private sealed record DecodedFile(string OriginalFilename, byte[] Bytes, string Md5, LazerBeatmap Parsed);
 }

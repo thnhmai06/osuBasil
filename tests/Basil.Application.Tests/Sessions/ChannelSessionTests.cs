@@ -78,7 +78,7 @@ public class ChannelSessionTests
         channel.Join(1);
         channel.Join(2);
 
-        Assert.Equal(new[] { 1, 2 }, channel.MemberIds.OrderBy(id => id));
+        Assert.Equal([1, 2], channel.MemberIds.OrderBy(id => id));
 
         channel.Part(1);
 

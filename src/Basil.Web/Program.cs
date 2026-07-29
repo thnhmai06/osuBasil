@@ -303,7 +303,7 @@ public sealed class Program
 
         var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
         var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
-        IReadOnlyList<Channel> autoJoinChannels = Array.Empty<Channel>();
+        IReadOnlyList<Channel> autoJoinChannels = [];
 
         if (hasDatabase)
         {

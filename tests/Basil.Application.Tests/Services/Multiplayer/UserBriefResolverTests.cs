@@ -24,7 +24,7 @@ public class UserBriefResolverTests
         var brief = await UserBriefResolver.ResolveAsync(7, _sessionRegistry, _users);
 
         Assert.NotNull(brief);
-        Assert.Equal(7, brief!.Id);
+        Assert.Equal(7, brief.Id);
         Assert.Equal("Alice", brief.Name);
         Assert.Equal(Country.Vn, brief.Country);
         await _users.DidNotReceive().FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
@@ -40,7 +40,7 @@ public class UserBriefResolverTests
         var brief = await UserBriefResolver.ResolveAsync(9, _sessionRegistry, _users);
 
         Assert.NotNull(brief);
-        Assert.Equal(9, brief!.Id);
+        Assert.Equal(9, brief.Id);
         Assert.Equal("Carol", brief.Name);
         Assert.Equal(Country.Us, brief.Country);
     }
