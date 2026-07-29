@@ -3,6 +3,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Web;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Basil.IntegrationTests;
 
@@ -23,6 +25,19 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
     public MatchReportEndpointTests(WebApplicationFactory<Program> factory)
     {
         var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+        // Never exercised by this read-only report suite -- throw, matching the old fake, instead of
+        // the NSubstitute default of a silently-completed task.
+        matchPersistence.CreateMatchAsync(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        matchPersistence.SetMatchEndedAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        matchPersistence.CreateRoundAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<GameMode>(),
+                Arg.Any<MatchWinCondition>(), Arg.Any<MatchTeamType>(), Arg.Any<Mods>(), Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        matchPersistence.SetRoundEndedAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
         matchPersistence.FetchMatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(call => _match?.Id == call.ArgAt<int>(0) ? _match : null);
         matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -37,6 +52,19 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
             .Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
 
         var scores = Substitute.For<IScoreRepository>();
+        // Never exercised by this read-only report suite -- throw, matching the old fake.
+        scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        scores.ExistsByOnlineChecksumAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        scores.FetchFirstPlaceScoreAsync(Arg.Any<string>(), Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        scores.FetchByIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
         scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
         scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));

@@ -4,14 +4,17 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Configuration;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Basil.IntegrationTests;
 
@@ -33,6 +36,15 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
         var matches = new Dictionary<int, MatchRow>();
         var nextId = 1;
         var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+        // Never exercised by these tests -- throw, matching the old fake, instead of the NSubstitute
+        // default of a silently-completed Task<0>.
+        matchPersistence.CreateRoundAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<GameMode>(),
+                Arg.Any<MatchWinCondition>(), Arg.Any<MatchTeamType>(), Arg.Any<Mods>(), Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
+        matchPersistence.SetRoundEndedAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Throws(new NotSupportedException());
         matchPersistence.CreateMatchAsync(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
