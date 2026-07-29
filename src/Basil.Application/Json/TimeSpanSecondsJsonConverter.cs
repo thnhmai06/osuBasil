@@ -4,7 +4,8 @@ using System.Text.Json.Serialization;
 namespace Basil.Application.Json;
 
 /// <summary>
-///     Wire format for <see cref="BeatmapView.TotalLength" />: a whole-second integer (e.g. <c>225</c>)
+///     Wire format for <see cref="Basil.Application.Services.Beatmaps.BeatmapView.TotalLength" />: a
+///     whole-second integer (e.g. <c>225</c>)
 ///     instead of System.Text.Json's default <see cref="TimeSpan" /> string (<c>"00:03:45"</c>) — the
 ///     domain/repository/ingestion layers keep <see cref="TimeSpan" /> unchanged, only this one API
 ///     response property carries the converter, via <c>[property: JsonConverter(typeof(...))]</c>, so

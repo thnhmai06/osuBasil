@@ -17,7 +17,7 @@ namespace Basil.Web.OpenApi;
 ///     lets every documented case (<c>.Produces&lt;T&gt;</c>/<c>.Produces&lt;ErrorResponse&gt;</c>) carry a
 ///     concrete illustration instead of just a schema. Must run after the status code's response entry
 ///     already exists (i.e. after the matching <c>.Produces</c> call in the same fluent chain) — a
-///     no-op otherwise. On the <c>basilapi</c> document, the raw <paramref name="example" /> is wrapped
+///     no-op otherwise. On the <c>basilapi</c> document, the raw <c>example</c> is wrapped
 ///     in the Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
 ///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> actually does to the response body at
 ///     runtime — every other document's examples pass through unwrapped, since only basilapi routes are

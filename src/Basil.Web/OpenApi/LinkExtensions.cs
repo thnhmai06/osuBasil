@@ -12,6 +12,7 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class LinkExtensions
 {
+    /// <param name="builder">The route whose already-declared response gets the link entry.</param>
     /// <param name="statusCode">The response status this link is attached to (the operation's own success status).</param>
     /// <param name="linkName">Scalar's display name for the link (PascalCase by OpenAPI convention).</param>
     /// <param name="targetOperationId">The `operationId` of the operation this link points to.</param>

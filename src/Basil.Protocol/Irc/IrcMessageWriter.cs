@@ -23,7 +23,7 @@ public static class IrcMessageWriter
 
     /// <summary>
     ///     Builds a user-hostmask prefix ("nick!id@host") for JOIN/PART/QUIT/PRIVMSG originating from a user.
-    ///     The "user" slot carries the sender's <see cref="Basil.Application" /> player id (not a real ident) so
+    ///     The "user" slot carries the sender's <c>PlayerSession</c> id (not a real ident) so
     ///     <c>BanchoIrcBridgeConnection</c> can recover it without a session-registry lookup — a real IRC client
     ///     just displays it as an ordinary hostmask.
     /// </summary>

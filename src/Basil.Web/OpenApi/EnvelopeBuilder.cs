@@ -76,7 +76,7 @@ internal static class EnvelopeBuilder
     }
 
     /// <summary>
-    ///     Structurally detects the internal paged shape (see <see cref="IPagedResult" />/
+    ///     Structurally detects the internal paged shape (see <see cref="Basil.Web.Routing.IPagedResult" />/
     ///     <see cref="Basil.Web.Routing.PagedResult{T}" />) by an exact 4-key match — no per-route marker needed.
     /// </summary>
     public static bool IsPagedShape(JsonNode? body, out JsonObject? paged)

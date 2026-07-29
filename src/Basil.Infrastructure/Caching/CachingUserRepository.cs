@@ -57,9 +57,9 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
     }
 
     /// <summary>
-    ///     Fetches the pre-rename row directly from <paramref name="inner" /> (bypassing the cache is
-    ///     fine — a rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a
-    ///     lookup by the old (now-freed) name could keep resolving to this user until the TTL expires.
+    ///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine — a
+    ///     rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a lookup
+    ///     by the old (now-freed) name could keep resolving to this user until the TTL expires.
     /// </summary>
     public async Task UpdateNameAsync(int id, string name, string safeName,
         CancellationToken cancellationToken = default)

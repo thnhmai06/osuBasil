@@ -56,7 +56,8 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 ///     score branch here), its 100%-offline scope (no `.osu` file fetch), and its fixed-stats scope
 ///     (no per-user stats/rank update on submission — see docs/working-scopes.md). If the submitting
 ///     player is currently in a multiplayer match, the score is linked to the match's current Round
-///     (<see cref="MatchSession.CurrentRoundId" />) with the player's slot team — this is what lets
+///     (<see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" />) with the
+///     player's slot team — this is what lets
 ///     the TRT and Scores read paths reconstruct a match's results, without any gather/wait step:
 ///     submission and MatchComplete arrive on separate connections with no ordering guarantee, so the
 ///     link is written at submission time rather than collected later.

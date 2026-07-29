@@ -14,8 +14,9 @@ namespace Basil.Application.Services.Irc;
 /// <summary>
 ///     Authenticates a real IRC connection's PASS/NICK/USER handshake and, on success, wires up a
 ///     virtual <see cref="PlayerSession" /> the same way <c>BotBootstrapService</c> does for
-///     BanchoBot — no bancho socket behind it, just a session <see cref="ICommandDispatcher" /> and
-///     the rest of the chat core can treat identically to a real osu! client.
+///     BanchoBot — no bancho socket behind it, just a session
+///     <see cref="Basil.Application.Services.Bot.ICommandDispatcher" /> and the rest of the chat core
+///     can treat identically to a real osu! client.
 ///     PASS is checked against the user's account password (same bcrypt/MD5 flow as osu! client
 ///     login — the client sends MD5(password) hex at login, IRC sends plaintext PASS which we
 ///     MD5 here before bcrypt verify).
