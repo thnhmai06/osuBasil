@@ -3,18 +3,15 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
@@ -28,10 +25,42 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 {
     private const string AdminKey = "correct-key";
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly FakeMatchPersistenceRepository _matchPersistence = new();
 
     public MatchManagementEndpointTests(WebApplicationFactory<Program> factory)
     {
+        // Minimal in-memory fake so CreateMatchAsync/FetchAllMatchesAsync/DeleteMatchAsync behave
+        // realistically without a real SQLite file.
+        var matches = new Dictionary<int, MatchRow>();
+        var nextId = 1;
+        var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+        matchPersistence.CreateMatchAsync(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var id = nextId++;
+                matches[id] = new MatchRow(id, call.ArgAt<string>(0), call.ArgAt<DateTime>(1), null);
+                return id;
+            });
+        matchPersistence.WhenForAnyArgs(m => m.SetMatchEndedAsync(default, default))
+            .Do(call =>
+            {
+                if (matches.TryGetValue(call.ArgAt<int>(0), out var row))
+                    matches[call.ArgAt<int>(0)] = row with { EndedAt = call.ArgAt<DateTime>(1) };
+            });
+        matchPersistence.FetchMatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => matches.GetValueOrDefault(call.ArgAt<int>(0)));
+        matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+        matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<MatchRow>)[.. matches.Values.OrderByDescending(m => m.Id)]);
+        matchPersistence.WhenForAnyArgs(m => m.DeleteMatchAsync(default))
+            .Do(call => matches.Remove(call.ArgAt<int>(0)));
+        matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MatchEventRow>>([]));
+        matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<MatchRow>>([]));
+        matchPersistence.FetchUnrecoveredRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -48,8 +77,8 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IMatchPersistenceRepository>(_matchPersistence);
-                services.AddSingleton<IUserRepository>(new NoopUserRepository());
+                services.AddSingleton(matchPersistence);
+                services.AddSingleton(TestDoubles.NullUserRepository());
             });
         });
     }
@@ -244,139 +273,6 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
                 eventType = line["event: ".Length..];
             else if (line.StartsWith("data: ", StringComparison.Ordinal))
                 return (eventType, line["data: ".Length..]);
-        }
-    }
-
-    /// <summary>
-    ///     Minimal in-memory fake so CreateEmptyAsync/FetchAllMatchesAsync/DeleteMatchAsync behave realistically without
-    ///     a real SQLite file.
-    /// </summary>
-    private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
-    {
-        private readonly Dictionary<int, MatchRow> _matches = [];
-        private int _nextId = 1;
-
-        public Task<int> CreateMatchAsync(string name, DateTime createdAt,
-            CancellationToken cancellationToken = default)
-        {
-            var id = _nextId++;
-            _matches[id] = new MatchRow(id, name, createdAt, null);
-            return Task.FromResult(id);
-        }
-
-        public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
-        {
-            if (_matches.TryGetValue(matchId, out var row))
-                _matches[matchId] = row with { EndedAt = endedAt };
-            return Task.CompletedTask;
-        }
-
-        public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,
-            GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
-            Mods mods, DateTime startedAt, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_matches.GetValueOrDefault(matchId));
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([.. _matches.Values.OrderByDescending(m => m.Id)]);
-        }
-
-        public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
-        {
-            _matches.Remove(matchId);
-            return Task.CompletedTask;
-        }
-
-        public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
-        }
-
-        public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<MatchRow>>([]);
-        }
-
-        public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<RoundRow>>([]);
-        }
-    }
-
-    /// <summary>
-    ///     Stands in for the real DB-backed <see cref="IUserRepository" /> so an offline/unregistered id
-    ///     referenced by these tests resolves to "no account" — UserBriefResolver's documented fallback —
-    ///     instead of hitting the real SQLite path these tests otherwise never need a working database
-    ///     connection for.
-    /// </summary>
-    private sealed class NoopUserRepository : IUserRepository
-    {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<User>>([]);
         }
     }
 }
