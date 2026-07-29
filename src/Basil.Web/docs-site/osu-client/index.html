@@ -4,21 +4,403 @@
 	<meta charset="utf-8">
 	<meta content="width=device-width, initial-scale=1" name="viewport">
 	<title>osu! Client API — Basil</title>
+	<style>
+		:root {
+			color-scheme: light dark;
+		}
+
+		body {
+			max-width: 1000px;
+			margin: 0 auto;
+			padding: 2rem 1.25rem 4rem;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			line-height: 1.55;
+			color: #1b1b1f;
+			background: #fff;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				color: #e4e4e7;
+				background: #17171a;
+			}
+
+			table {
+				border-color: #3a3a40 !important;
+			}
+
+			th, td {
+				border-color: #3a3a40 !important;
+			}
+
+			thead {
+				background: #232327 !important;
+			}
+
+			code {
+				background: #232327 !important;
+				color: #e4e4e7 !important;
+			}
+
+			a {
+				color: #8ab4ff;
+			}
+
+			.legend {
+				background: #1f1f23 !important;
+				border-color: #3a3a40 !important;
+			}
+		}
+
+		h1 {
+			font-size: 1.9rem;
+			margin-bottom: .25rem;
+		}
+
+		h2 {
+			font-size: 1.4rem;
+			margin-top: 2.5rem;
+			border-bottom: 1px solid #ddd;
+			padding-bottom: .35rem;
+		}
+
+		p.subtitle {
+			color: #666;
+			margin-top: 0;
+		}
+
+		table {
+			border-collapse: collapse;
+			width: 100%;
+			margin: 1rem 0 2rem;
+			font-size: .88rem;
+		}
+
+		th, td {
+			border: 1px solid #ddd;
+			padding: .5rem .6rem;
+			text-align: left;
+			vertical-align: top;
+		}
+
+		thead {
+			background: #f5f5f7;
+		}
+
+		th:nth-child(1), td:nth-child(1) {
+			width: 24%;
+		}
+
+		th:nth-child(2), td:nth-child(2) {
+			width: 30%;
+		}
+
+		th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) {
+			width: 23%;
+		}
+
+		code {
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			background: #f2f2f4;
+			padding: .1rem .35rem;
+			border-radius: 4px;
+			font-size: .9em;
+		}
+
+		nav.top {
+			margin-bottom: 1.5rem;
+			font-size: .9rem;
+		}
+
+		.legend {
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			padding: .9rem 1.1rem;
+			margin: 1.25rem 0;
+			font-size: .88rem;
+		}
+
+		.legend dt {
+			display: inline-block;
+			width: 1.6em;
+		}
+	</style>
 </head>
 <body>
-<div id="app"></div>
-<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-<script>
-	Scalar.createApiReference('#app', {
-		sources: [
-			{title: 'Bancho Protocol', url: 'bancho.json'},
-			{title: 'osu! Web', url: 'osuweb.json'},
-			{title: 'Beatmap Assets', url: 'beatmapassets.json'},
-			{title: 'Avatar Files', url: 'avatar.json'}
-		],
-		// No live backend behind this static build — hide the interactive request button.
-		hideTestRequestButton: true
-	})
-</script>
+
+<nav class="top"><a href="../">&larr; Basil API docs</a></nav>
+
+<h1>bancho.py vs osuBasil</h1>
+<p class="subtitle">A side-by-side comparison of every osu! client-facing endpoint bancho.py exposes, against
+	osuBasil's own implementation. Scoped to the non-<code>api.</code> hosts (<code>c./ce./c4./c5./c6.</code>,
+	<code>osu.</code>, <code>b.</code>, <code>a.</code>) — <code>api.</code> is Basil's own tournament API, with no
+	real bancho.py counterpart, so it's out of scope here. Current as of 2026-07-29.</p>
+
+<div class="legend">
+	<dl>
+		<dt>✅</dt>
+		<dd style="display:inline">Same behavior as bancho.py, or an improvement (noted in the cell).</dd>
+		<br>
+		<dt>⚠️</dt>
+		<dd style="display:inline">Still handled, but the behavior differs from bancho.py's.</dd>
+		<br>
+		<dt>❌</dt>
+		<dd style="display:inline">Missing, or a stub that returns a hardcoded/empty response.</dd>
+	</dl>
+</div>
+
+<h2 id="bancho">Bancho Protocol (<code>c./ce./c4./c5./c6.&lt;domain&gt;</code>)</h2>
+<table>
+	<thead>
+	<tr>
+		<th>Endpoint</th>
+		<th>Description</th>
+		<th>bancho.py</th>
+		<th>osuBasil</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>GET /</code></td>
+		<td>Status page for the bancho host.</td>
+		<td>✅ An HTML page with online player/match counts and the full list of handled packets.</td>
+		<td>⚠️ Returns the literal string <code>"cho"</code>. Not called by the real osu! client either
+			way.
+		</td>
+	</tr>
+	<tr>
+		<td><code>GET /online</code></td>
+		<td>List of currently online players.</td>
+		<td>✅ HTML list of online users and bots.</td>
+		<td>❌ No route.</td>
+	</tr>
+	<tr>
+		<td><code>GET /matches</code></td>
+		<td>List of ongoing multiplayer matches.</td>
+		<td>✅ HTML list of active matches.</td>
+		<td>❌ No route.</td>
+	</tr>
+	<tr>
+		<td><code>POST /</code></td>
+		<td>Login (no <code>osu-token</code> header) or packet dispatch (with one).</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>PART_LOBBY</code> / <code>JOIN_LOBBY</code> packets</td>
+		<td>Enter/leave the multiplayer lobby's live match list.</td>
+		<td>✅ Toggles <code>player.in_lobby</code>; <code>JOIN_LOBBY</code> also sends every active
+			match.
+		</td>
+		<td>❌ Not handled — both packets are silently skipped.</td>
+	</tr>
+	<tr>
+		<td>Every other client packet</td>
+		<td>Login/logout, chat, spectating, multiplayer, channels, friends, tournament client — 42
+			packets in total.
+		</td>
+		<td>✅</td>
+		<td>✅ One handler per packet, matching bancho.py's names and behavior.</td>
+	</tr>
+	</tbody>
+</table>
+
+<h2 id="osuweb">osu! Web (<code>osu.&lt;domain&gt;</code>)</h2>
+<table>
+	<thead>
+	<tr>
+		<th>Endpoint</th>
+		<th>Description</th>
+		<th>bancho.py</th>
+		<th>osuBasil</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>GET /</code></td>
+		<td>Health-check stub.</td>
+		<td>❌ No root route registered.</td>
+		<td>✅ Returns the literal string <code>"osu"</code> (osuBasil-only addition).</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-osz2-getscores.php</code></td>
+		<td>A beatmap's leaderboard.</td>
+		<td>✅ Real leaderboard, scores and all.</td>
+		<td>⚠️ Status-only reply (the map's real <code>RankedStatus</code>, no score rows) — by
+			design, this server has no online leaderboard, only tournament match reports.
+		</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-search.php</code> / <code>osu-search-set.php</code></td>
+		<td>Beatmap search / a set's info by any beatmap in it.</td>
+		<td>✅ Proxies an external mirror API.</td>
+		<td>✅ Queries the local database — no external mirror dependency, works fully offline.</td>
+	</tr>
+	<tr>
+		<td><code>GET /d/{mapSetId}</code></td>
+		<td>Download a beatmapset archive.</td>
+		<td>✅</td>
+		<td>✅ Built on the fly from local storage instead of a mirror.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/maps/{mapFilename}</code></td>
+		<td>A single <code>.osu</code> difficulty file, by filename.</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>POST /web/osu-submit-modular-selector.php</code></td>
+		<td>Score submission.</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-getreplay.php</code></td>
+		<td>Replay download.</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>POST /web/osu-getbeatmapinfo.php</code></td>
+		<td>Per-map grade and ranked-status lookup, batched.</td>
+		<td>✅ Full lookup.</td>
+		<td>⚠️ Checks the requester is logged in, then returns an empty result.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/lastfm.php</code></td>
+		<td>Client-integrity flag reporting.</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-markasread.php</code></td>
+		<td>Mark an offline message as read.</td>
+		<td>✅</td>
+		<td>❌ No-op — this server has no offline mail system.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-getseasonal.php</code> / <code>GET /seasonal/{fileName}</code></td>
+		<td>Seasonal background images.</td>
+		<td>✅</td>
+		<td>✅</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/bancho_connect.php</code></td>
+		<td>Client connectivity check on startup.</td>
+		<td>✅ Empty stub.</td>
+		<td>✅ Empty stub.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/check-updates.php</code></td>
+		<td>Client update check.</td>
+		<td>✅ Empty stub.</td>
+		<td>✅ Empty stub.</td>
+	</tr>
+	<tr>
+		<td><code>POST /web/osu-screenshot.php</code></td>
+		<td>Screenshot upload.</td>
+		<td>✅ Full upload and validation.</td>
+		<td>❌ Always rejected with a 400 "not supported" response.</td>
+	</tr>
+	<tr>
+		<td><code>GET /ss/{screenshotId}.{ext}</code></td>
+		<td>Serve an uploaded screenshot.</td>
+		<td>✅</td>
+		<td>❌ No route — consistent with uploads being rejected above.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-getfavourites.php</code> / <code>osu-addfavourite.php</code></td>
+		<td>A player's favourited beatmaps.</td>
+		<td>✅ Real persistence.</td>
+		<td>❌ Empty stub, nothing is stored.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-rate.php</code></td>
+		<td>Rate a beatmap.</td>
+		<td>✅ Real rating persistence.</td>
+		<td>❌ Always replies <code>"not ranked"</code>.</td>
+	</tr>
+	<tr>
+		<td><code>POST /web/osu-comment.php</code></td>
+		<td>In-replay comments.</td>
+		<td>✅ Real comment persistence.</td>
+		<td>❌ Empty stub.</td>
+	</tr>
+	<tr>
+		<td><code>GET /web/osu-getfriends.php</code></td>
+		<td>A player's friend list, by id.</td>
+		<td>✅</td>
+		<td>❌ No route.</td>
+	</tr>
+	<tr>
+		<td><code>GET /p/doyoureallywanttoaskpeppy</code></td>
+		<td>Easter-egg DM from peppy.</td>
+		<td>✅</td>
+		<td>❌ No route.</td>
+	</tr>
+	<tr>
+		<td><code>POST /users</code></td>
+		<td>In-game account registration.</td>
+		<td>✅ Gated by allowed email domains.</td>
+		<td>✅ Gated by an admin key sent in the email field instead.</td>
+	</tr>
+	<tr>
+		<td><code>POST /difficulty-rating</code></td>
+		<td>Star rating for a beatmap/mod combination.</td>
+		<td>⚠️ Redirects to the rating page on osu.ppy.sh rather than computing anything itself.</td>
+		<td>✅ Computed locally with ppy's own osu!lazer ruleset libraries — no internet
+			dependency.
+		</td>
+	</tr>
+	</tbody>
+</table>
+
+<h2 id="beatmap-assets">Beatmap Assets (<code>b.&lt;domain&gt;</code>)</h2>
+<table>
+	<thead>
+	<tr>
+		<th>Endpoint</th>
+		<th>Description</th>
+		<th>bancho.py</th>
+		<th>osuBasil</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>GET /thumb/{setId}l.jpg</code> / <code>{setId}.jpg</code></td>
+		<td>Beatmapset thumbnail/preview image.</td>
+		<td>✅ Redirects to <code>b.ppy.sh</code>'s real CDN, on the request path as-is.</td>
+		<td>✅ Redirects to the <code>api.</code> host's own locally-stored preview image — no
+			internet dependency, but narrower: any path other than these two 404s locally instead of
+			passing through.
+		</td>
+	</tr>
+	</tbody>
+</table>
+
+<h2 id="avatar">Avatar Files (<code>a.&lt;domain&gt;</code>)</h2>
+<table>
+	<thead>
+	<tr>
+		<th>Endpoint</th>
+		<th>Description</th>
+		<th>bancho.py</th>
+		<th>osuBasil</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>GET /{userId}</code></td>
+		<td>A player's avatar image.</td>
+		<td>⚠️ Served by nginx as static files, not by any Python route — present, but at a
+			different layer of the stack than the rest of this table.
+		</td>
+		<td>✅ An application route with a built-in fallback: BasilBot's own icon for id <code>0</code>,
+			a generic default avatar for everyone else.
+		</td>
+	</tr>
+	</tbody>
+</table>
+
 </body>
 </html>

@@ -60,10 +60,6 @@ jobs:
           SITE=site
           rm -rf "$SITE"
           cp -r src/Basil.Web/docs-site "$SITE"
-          cp src/Basil.Web/obj/Basil.Web_bancho.json "$SITE/osu-client/bancho.json"
-          cp src/Basil.Web/obj/Basil.Web_osuweb.json "$SITE/osu-client/osuweb.json"
-          cp src/Basil.Web/obj/Basil.Web_beatmapassets.json "$SITE/osu-client/beatmapassets.json"
-          cp src/Basil.Web/obj/Basil.Web_avatar.json "$SITE/osu-client/avatar.json"
           cp src/Basil.Web/obj/Basil.Web_basilapi.json "$SITE/basil-api/basilapi.json"
 
       - name: Upload Pages artifact
