@@ -109,7 +109,7 @@ public class DirectSearchServiceTests
     public void Format_100Sets_ReportsCountAs101()
     {
         var sets = Enumerable.Range(0, 100)
-            .Select(i => (IReadOnlyList<Beatmap>)new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+            .Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
 
         var response = DirectSearchService.Format(sets);
 
@@ -120,7 +120,7 @@ public class DirectSearchServiceTests
     public void Format_99Sets_ReportsLiteralCount()
     {
         var sets = Enumerable.Range(0, 99)
-            .Select(i => (IReadOnlyList<Beatmap>)new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+            .Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
 
         var response = DirectSearchService.Format(sets);
 

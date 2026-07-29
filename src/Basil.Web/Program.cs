@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
@@ -141,7 +140,7 @@ public sealed class Program
             options.ConfigureEndpointDefaults(listenOptions =>
                 listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
 
-            options.Listen(IPAddress.Any, port, listenOptions =>
+            options.ListenAnyIP(port, listenOptions =>
             {
                 if (!string.IsNullOrEmpty(certPath))
                     listenOptions.UseHttps(certPath, certPassword);
@@ -237,8 +236,8 @@ public sealed class Program
                         .Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
                         .ToHashSet();
 
-                    var tagGroupsJson = new JsonArray(tagGroups.Select(g =>
-                        (JsonNode)new JsonObject
+                    var tagGroupsJson = new JsonArray(tagGroups.Select(JsonNode (g) =>
+                        new JsonObject
                         {
                             ["name"] = g.Group,
                             ["tags"] = new JsonArray(
@@ -250,16 +249,13 @@ public sealed class Program
                     // Scalar's sidebar buckets each tag's operations by their position in the document,
                     // not alphabetically — reorder Paths (shortest/most general route first per tag
                     // section) without touching the actual C# route-registration order in Routing/*.cs.
-                    if (document.Paths is not null)
-                    {
-                        var reordered = new OpenApiPaths();
-                        foreach (var (path, item) in document.Paths
-                                     .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
-                                     .ThenBy(kvp => kvp.Key.Length)
-                                     .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
-                            reordered[path] = item;
-                        document.Paths = reordered;
-                    }
+                    var reordered = new OpenApiPaths();
+                    foreach (var (path, item) in document.Paths
+                                 .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
+                                 .ThenBy(kvp => kvp.Key.Length)
+                                 .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
+                        reordered[path] = item;
+                    document.Paths = reordered;
                 }
 
                 return Task.CompletedTask;
