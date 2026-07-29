@@ -1,8 +1,6 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Configuration;
-using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -42,7 +40,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IMapRepository, NullMapRepository>();
+                services.AddSingleton(TestDoubles.NullMapRepository());
             });
         });
     }
@@ -239,44 +237,4 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 
     // Database:Path is "" for this test host (no real DB) — /difficulty-rating still calls
     // IMapRepository unconditionally, so it needs a stub rather than a real connection.
-    private sealed class NullMapRepository : IMapRepository
-    {
-        public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
-            int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Beatmap?>(null);
-        }
-
-        public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(beatmap);
-        }
-
-        public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode,
-            int offset, int amount, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
-        }
-
-        public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0);
-        }
-
-        public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<Beatmap>>([]);
-        }
-    }
 }

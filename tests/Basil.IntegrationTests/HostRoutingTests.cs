@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configuration;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -37,7 +36,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IChannelRepository, NullChannelRepository>();
+                services.AddSingleton(TestDoubles.NullChannelRepository());
             });
         });
     }
@@ -115,17 +114,4 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
         return await client.SendAsync(request);
     }
 
-    /// <summary>Avoids the real MySQL repo so Program.cs's startup channel-seeding doesn't need a live DB.</summary>
-    private sealed class NullChannelRepository : IChannelRepository
-    {
-        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<Channel>>([]);
-        }
-
-        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Channel?>(null);
-        }
-    }
 }

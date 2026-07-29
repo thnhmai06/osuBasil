@@ -1,4 +1,3 @@
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
@@ -38,7 +37,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IChannelRepository, NullChannelRepository>();
+                services.AddSingleton(TestDoubles.NullChannelRepository());
             });
         });
     }
@@ -80,16 +79,4 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(ServerPacketWriter.Notification("hello"), body);
     }
 
-    private sealed class NullChannelRepository : IChannelRepository
-    {
-        public Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<Channel>>([]);
-        }
-
-        public Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<Channel?>(null);
-        }
-    }
 }

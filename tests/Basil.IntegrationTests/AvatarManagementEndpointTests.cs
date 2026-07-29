@@ -1,8 +1,6 @@
 using System.Net;
-using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Domain.Login;
-using Basil.Domain.Users;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -40,7 +38,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-                services.AddSingleton<IUserRepository>(new StubUserRepository());
+                services.AddSingleton(TestDoubles.NullUserRepository());
                 services.AddSingleton(Options.Create(new StorageOptions
                 {
                     ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -127,50 +125,5 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
         var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Post, 3));
 
         Assert.False(response.IsSuccessStatusCode);
-    }
-
-    private sealed class StubUserRepository : IUserRepository
-    {
-        public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<User?>(null);
-        }
-
-        public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        public Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<User>>([]);
-        }
     }
 }
