@@ -43,18 +43,19 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 
             matchMembership.Enqueue(match, packet, false);
 
-            try
-            {
-                var frame = new BanchoPacketReader(playData).ReadScoreFrame();
-                var payload = JsonSerializer.SerializeToUtf8Bytes(
-                    MatchLiveSnapshotBuilder.BuildPlayerScore(player, frame), BasilJsonOptions.Instance);
-                eventBus.PublishPlayer(match.DbId, player.Name, payload);
-            }
-            catch (Exception)
-            {
-                // A malformed/short scoreframe must never break the bancho relay above — the live
-                // WS channel just misses this one update.
-            }
+            if (eventBus.HasPlayerScoreSubscribers)
+                try
+                {
+                    var frame = new BanchoPacketReader(playData).ReadScoreFrame();
+                    var payload = JsonSerializer.SerializeToUtf8Bytes(
+                        MatchLiveSnapshotBuilder.BuildPlayerScore(player, frame), BasilJsonOptions.Instance);
+                    eventBus.PublishPlayer(match.DbId, player.Name, payload);
+                }
+                catch (Exception)
+                {
+                    // A malformed/short scoreframe must never break the bancho relay above — the live
+                    // WS channel just misses this one update.
+                }
         }
         finally
         {

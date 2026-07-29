@@ -253,6 +253,9 @@ internal static class MultiplayerTestSupport
 
         public event Action<int, byte[]>? MainPublished;
         public event Action<int, string, byte[]>? PlayerScorePublished;
+
+        /// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+        public bool HasPlayerScoreSubscribers => true;
         public event Action<int, byte[]>? SettingsPublished;
         public event Action<int, int, byte[]>? SlotPublished;
         public event Action<int, byte[]>? HostPublished;
@@ -330,6 +333,9 @@ internal static class MultiplayerTestSupport
         public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
 
         public event Action<int, byte[]>? InputPublished;
+
+        /// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+        public bool HasSubscribers => true;
 
         public void PublishInput(int playerId, byte[] payload)
         {

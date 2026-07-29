@@ -7,6 +7,8 @@ public sealed class MatchLiveEvents : IMatchLiveEvents
 {
     public event Action<int, byte[]>? MainPublished;
     public event Action<int, string, byte[]>? PlayerScorePublished;
+
+    public bool HasPlayerScoreSubscribers => PlayerScorePublished is not null;
     public event Action<int, byte[]>? SettingsPublished;
     public event Action<int, int, byte[]>? SlotPublished;
     public event Action<int, byte[]>? HostPublished;

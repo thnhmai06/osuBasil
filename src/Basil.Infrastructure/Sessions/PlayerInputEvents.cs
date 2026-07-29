@@ -7,6 +7,8 @@ public sealed class PlayerInputEvents : IPlayerInputEvents
 {
     public event Action<int, byte[]>? InputPublished;
 
+    public bool HasSubscribers => InputPublished is not null;
+
     public void PublishInput(int playerId, byte[] payload)
     {
         InputPublished?.Invoke(playerId, payload);

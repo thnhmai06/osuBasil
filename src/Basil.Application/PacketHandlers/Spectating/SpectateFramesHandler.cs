@@ -32,20 +32,21 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 
         foreach (var spectator in player.Spectators) spectator.Enqueue(packet);
 
-        try
-        {
-            var bundle = new BanchoPacketReader(rawData).ReadReplayFrameBundle();
-            var user = new UserBrief(player.Id, player.Name, player.Geoloc.Country);
-            var payload = JsonSerializer.SerializeToUtf8Bytes(
-                new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
-                BasilJsonOptions.Instance);
-            playerInputEvents.PublishInput(player.Id, payload);
-        }
-        catch (Exception)
-        {
-            // A malformed/short bundle must never break the bancho relay above — the SSE channel
-            // just misses this one update.
-        }
+        if (playerInputEvents.HasSubscribers)
+            try
+            {
+                var bundle = new BanchoPacketReader(rawData).ReadReplayFrameBundle();
+                var user = new UserBrief(player.Id, player.Name, player.Geoloc.Country);
+                var payload = JsonSerializer.SerializeToUtf8Bytes(
+                    new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
+                    BasilJsonOptions.Instance);
+                playerInputEvents.PublishInput(player.Id, payload);
+            }
+            catch (Exception)
+            {
+                // A malformed/short bundle must never break the bancho relay above — the SSE channel
+                // just misses this one update.
+            }
 
         return Task.CompletedTask;
     }

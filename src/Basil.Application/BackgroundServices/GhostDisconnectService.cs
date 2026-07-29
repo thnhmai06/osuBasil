@@ -24,8 +24,9 @@ public sealed class GhostDisconnectService(
     public void RunOnce()
     {
         var currentTime = DateTimeOffset.UtcNow;
+        var allPlayers = sessionRegistry.All;
 
-        foreach (var player in sessionRegistry.All)
+        foreach (var player in allPlayers)
             if (!player.IsBot && currentTime - player.LastRecvTime >
                 TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
             {
@@ -43,7 +44,7 @@ public sealed class GhostDisconnectService(
                 sessionRegistry.Remove(player);
 
                 if (!player.Restricted)
-                    foreach (var other in sessionRegistry.All)
+                    foreach (var other in allPlayers)
                         other.Enqueue(ServerPacketWriter.Logout(player.Id));
             }
     }

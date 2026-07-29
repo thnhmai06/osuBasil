@@ -37,9 +37,9 @@ public static class ServerPacketWriter
 
     private static byte[] WriteChannelPayload(string name, string topic, int playerCount)
     {
-        var result = new byte[PacketWriter.WriteString(name).Length + PacketWriter.WriteString(topic).Length + 2];
         var nameBytes = PacketWriter.WriteString(name);
         var topicBytes = PacketWriter.WriteString(topic);
+        var result = new byte[nameBytes.Length + topicBytes.Length + 2];
         nameBytes.CopyTo(result, 0);
         topicBytes.CopyTo(result, nameBytes.Length);
         BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(nameBytes.Length + topicBytes.Length),

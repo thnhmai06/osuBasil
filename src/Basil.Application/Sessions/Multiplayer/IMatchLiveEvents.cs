@@ -16,6 +16,12 @@ public interface IMatchLiveEvents
     /// <summary>Fires for one player's live score channel (SSE GET /match/{id}/{playerName}). (matchDbId, playerName, payload)</summary>
     event Action<int, string, byte[]> PlayerScorePublished;
 
+    /// <summary>
+    ///     Whether anything is currently subscribed to <see cref="PlayerScorePublished" /> — lets a
+    ///     caller skip decoding/serializing a payload nobody will receive.
+    /// </summary>
+    bool HasPlayerScoreSubscribers { get; }
+
     /// <summary>Fires for a match's settings channel (SSE GET /match/{id}/settings). (matchDbId, payload)</summary>
     event Action<int, byte[]> SettingsPublished;
 

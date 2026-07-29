@@ -171,24 +171,11 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
     /// <summary>Drains and concatenates all queued outgoing packet bytes, clearing the queue.</summary>
     public byte[] Dequeue()
     {
-        var chunks = new List<byte[]>();
-        var totalLength = 0;
-
+        using var buffer = new MemoryStream();
         while (_packetQueue.TryDequeue(out var chunk))
-        {
-            chunks.Add(chunk);
-            totalLength += chunk.Length;
-        }
+            buffer.Write(chunk, 0, chunk.Length);
 
-        var result = new byte[totalLength];
-        var offset = 0;
-        foreach (var chunk in chunks)
-        {
-            chunk.CopyTo(result, offset);
-            offset += chunk.Length;
-        }
-
-        return result;
+        return buffer.ToArray();
     }
 }
 
