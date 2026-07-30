@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Scores;
@@ -14,6 +15,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Authentication;
@@ -36,7 +38,8 @@ public sealed class LoginService(
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
 	MenuIconService menuIconService,
-	IOptions<ServerOptions> serverOptions)
+	IOptions<ServerOptions> serverOptions,
+	ILogger<LoginService> logger)
 {
 	private static readonly string MotdPath = Path.Combine("Data", "MOTD.txt");
 
@@ -53,7 +56,7 @@ public sealed class LoginService(
 		}
 		catch (ArgumentException)
 		{
-			return InvalidRequestFailure();
+			return InvalidRequestFailure("invalid-request");
 		}
 		catch (FormatException)
 		{
@@ -82,21 +85,25 @@ public sealed class LoginService(
 			var staleBot = sessionRegistry.GetById(BotBootstrapService.BotId);
 			if (staleBot is not null) spectatorService.RemoveSpectator(existingSession, staleBot);
 
+			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
 			sessionRegistry.Remove(existingSession);
 		}
 
 		var user = await users.FetchByNameAsync(loginData.Username, cancellationToken);
-		if (user is null) return IncorrectCredentials();
+		if (user is null) return IncorrectCredentials(loginData.Username, request.Ip);
 
 		var passwordHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
 		if (passwordHash is null
 		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginData.PasswordMd5), passwordHash))
-			return IncorrectCredentials();
+			return IncorrectCredentials(loginData.Username, request.Ip);
 
 		if (loginData.OsuVersion.Stream == OsuStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
+		{
+			logger.LogDebug("Tourney client rejected: not donator/unrestricted. Username={Username}", user.Name);
 			return new LoginResult("no",
 				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
+		}
 
 		/* login credentials verified */
 
@@ -119,9 +126,15 @@ public sealed class LoginService(
 		if (hardwareMatches.Count > 0
 		    && (user.Privilege & UserPrivileges.Verified) == 0
 		    && hardwareMatches.Any(m => (m.Privilege & UserPrivileges.Unrestricted) == 0))
+		{
+			logger.LogInformation(
+				"Login blocked: hardware ban match, unverified account. UserId={UserId} Username={Username} " +
+				"MatchedUserIds={MatchedUserIds}",
+				user.Id, user.Name, hardwareMatches.Select(m => m.UserId));
 			return new LoginResult("contact-staff", Concat(
 				ServerPacketWriter.Notification("Please contact staff directly to create an account."),
 				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
+		}
 
 		/* all checks passed, player is safe to login */
 
@@ -235,6 +248,8 @@ public sealed class LoginService(
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
 
+		logger.LogInformation("User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
+			session.Id, session.Name, request.Ip, geolocation.Country);
 		return new LoginResult(session.Token, Concat([.. data]));
 	}
 
@@ -259,15 +274,17 @@ public sealed class LoginService(
 		return !string.IsNullOrEmpty(text) ? ServerPacketWriter.Notification(text) : null;
 	}
 
-	private static LoginResult InvalidRequestFailure(string tokenOverride = "invalid-request")
+	private LoginResult InvalidRequestFailure(string tokenOverride)
 	{
+		logger.LogDebug("Login request rejected: malformed body. Reason={Reason}", tokenOverride);
 		return new LoginResult(tokenOverride, Concat(
 			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
 			ServerPacketWriter.Notification("Please restart your osu! and try again.")));
 	}
 
-	private static LoginResult IncorrectCredentials()
+	private LoginResult IncorrectCredentials(string username, IPAddress ip)
 	{
+		logger.LogInformation("Login failed: incorrect credentials. Username={Username} Ip={Ip}", username, ip);
 		return new LoginResult("incorrect-credentials", Concat(
 			ServerPacketWriter.Notification(
 				"Incorrect credentials. Please contact to the staffs if you don't know or forget the username/password."),

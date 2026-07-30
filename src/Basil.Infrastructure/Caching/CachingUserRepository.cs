@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Caching;
 
@@ -12,7 +13,11 @@ namespace Basil.Infrastructure.Caching;
 ///     immediately; the TTL is only a safety net bounding staleness/memory if an invalidation path is
 ///     ever missed, not a substitute for it.
 /// </summary>
-public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache cache, TimeSpan? ttl = null)
+public sealed class CachingUserRepository(
+	IUserRepository inner,
+	IMemoryCache cache,
+	ILogger<CachingUserRepository> logger,
+	TimeSpan? ttl = null)
 	: IUserRepository
 {
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
@@ -20,8 +25,13 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
 	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
 		var key = IdKey(id);
-		if (cache.TryGetValue(key, out User? cached)) return cached;
+		if (cache.TryGetValue(key, out User? cached))
+		{
+			logger.LogDebug("Cache hit {Key}", key);
+			return cached;
+		}
 
+		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByIdAsync(id, cancellationToken);
 		if (user is not null) cache.Set(key, user, _ttl);
 		return user;
@@ -30,8 +40,13 @@ public sealed class CachingUserRepository(IUserRepository inner, IMemoryCache ca
 	public async Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		var key = NameKey(name);
-		if (cache.TryGetValue(key, out User? cached)) return cached;
+		if (cache.TryGetValue(key, out User? cached))
+		{
+			logger.LogDebug("Cache hit {Key}", key);
+			return cached;
+		}
 
+		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByNameAsync(name, cancellationToken);
 		if (user is not null) cache.Set(key, user, _ttl);
 		return user;

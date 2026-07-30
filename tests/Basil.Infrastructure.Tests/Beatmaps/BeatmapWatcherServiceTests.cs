@@ -4,6 +4,7 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Tests.Beatmaps;
@@ -35,8 +36,8 @@ public class BeatmapWatcherServiceTests : IDisposable
 		var connectionString = $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5;Pooling=False";
 		SqlMigrationRunner.RunMigrations(connectionString);
 
-		_maps = new SqliteMapRepository(connectionString);
-		var mapsets = new SqliteMapsetRepository(connectionString);
+		_maps = new SqliteMapRepository(connectionString, NullLogger<SqliteMapRepository>.Instance);
+		var mapsets = new SqliteMapsetRepository(connectionString, NullLogger<SqliteMapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
 

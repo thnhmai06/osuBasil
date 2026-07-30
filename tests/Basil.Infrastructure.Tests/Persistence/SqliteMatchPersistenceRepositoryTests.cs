@@ -2,6 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
@@ -9,7 +10,9 @@ namespace Basil.Infrastructure.Tests.Persistence;
 public class SqliteMatchPersistenceRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private static readonly DateTime FixedTime = new(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
-	private readonly SqliteMatchPersistenceRepository _repository = new(fixture.ConnectionString);
+
+	private readonly SqliteMatchPersistenceRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteMatchPersistenceRepository>.Instance);
 
 	[Fact]
 	public async Task CreateMatchThenFetch_RoundTrips()

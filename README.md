@@ -34,6 +34,7 @@
 | Runtime | [.NET](https://dot.net/) 10 with [ASP.NET](https://asp.net/), runs as a standalone executable — no Docker required |
 | Database | [SQLite](https://www.sqlite.org/) (1 file next to the executable), accessed via [Dapper](https://github.com/DapperLib/Dapper), schema managed by [DbUp](https://dbup.readthedocs.io/) |
 | Star rating | References [osu!lazer](https://github.com/ppy/osu)'s own calculation algorithms directly |
+| Logging | [Serilog](https://serilog.net/) — console + rolling file sinks (`Logs/full`, `Logs/errors`, each with a `latest.log`/`errors_latest.log` hardlink to the current file), structured scopes (`RequestId`, `MatchId`, `UserId`, `ScoreId`, IRC `ConnectionId`, ...) |
 | Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) to enforce layer boundaries |
 
 ## Credits

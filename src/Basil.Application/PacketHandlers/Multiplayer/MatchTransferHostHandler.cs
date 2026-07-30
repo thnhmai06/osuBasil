@@ -3,13 +3,15 @@ using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
 public sealed class MatchTransferHostHandler(
 	IPlayerSessionRegistry sessionRegistry,
 	MatchMembershipService matchMembership,
-	IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
+	IMatchPersistenceRepository matchPersistence,
+	ILogger<MatchTransferHostHandler> logger) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchTransferHost;
 
@@ -31,6 +33,8 @@ public sealed class MatchTransferHostHandler(
 
 			var prevHostId = match.HostId;
 			match.HostId = targetId.Value;
+			logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
+				match.DbId, prevHostId, targetId.Value);
 
 			var targetPlayer = sessionRegistry.GetById(targetId.Value);
 			targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());

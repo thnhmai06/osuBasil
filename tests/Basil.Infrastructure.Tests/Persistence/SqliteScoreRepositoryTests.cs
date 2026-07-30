@@ -7,12 +7,14 @@ using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
 public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteScoreRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteScoreRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteScoreRepository>.Instance);
 
 	private async Task InsertUserAsync(int id, string name, string country = "xx", bool restricted = false)
 	{
@@ -182,7 +184,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		try
 		{
 			SqlMigrationRunner.RunMigrations(connectionString);
-			var repository = new SqliteScoreRepository(connectionString);
+			var repository = new SqliteScoreRepository(connectionString, NullLogger<SqliteScoreRepository>.Instance);
 
 			await using (var connection = new SqliteConnection(connectionString))
 			{
@@ -264,7 +266,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		try
 		{
 			SqlMigrationRunner.RunMigrations(connectionString);
-			var repository = new SqliteScoreRepository(connectionString);
+			var repository = new SqliteScoreRepository(connectionString, NullLogger<SqliteScoreRepository>.Instance);
 
 			Assert.Equal(0, await repository.FetchCountAsync());
 

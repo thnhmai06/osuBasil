@@ -18,6 +18,7 @@ using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Security;
 using Basil.Infrastructure.Sessions;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Tests.Irc;
@@ -50,7 +51,8 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
 
@@ -66,7 +68,7 @@ public class TcpIrcConnectionTests
 			{
 				var client = await listener.AcceptTcpClientAsync(cts.Token);
 				var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-					channelRegistry, sessionRegistry, _fakeIrcOptions);
+					channelRegistry, sessionRegistry, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, i);
 				_ = connection.RunAsync(cts.Token);
 			}
 		}, cts.Token);
@@ -117,7 +119,8 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher());
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
 
@@ -138,7 +141,7 @@ public class TcpIrcConnectionTests
 		{
 			var client = await listener.AcceptTcpClientAsync(cts.Token);
 			var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-				channelRegistry, sessionRegistry, _fakeIrcOptions);
+				channelRegistry, sessionRegistry, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, 1);
 			_ = connection.RunAsync(cts.Token);
 		}, cts.Token);
 

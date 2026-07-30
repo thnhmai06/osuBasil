@@ -1,11 +1,13 @@
 using Basil.Application.Abstractions.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IIngameLoginRepository" />
-public sealed class SqliteIngameLoginRepository(string connectionString) : IIngameLoginRepository
+public sealed class SqliteIngameLoginRepository(string connectionString, ILogger<SqliteIngameLoginRepository> logger)
+	: IIngameLoginRepository
 {
 	public async Task<IngameLogin> CreateAsync(int userId, string ip, DateOnly osuVer, string osuStream,
 		CancellationToken cancellationToken = default)
@@ -18,6 +20,7 @@ public sealed class SqliteIngameLoginRepository(string connectionString) : IInga
 			SELECT last_insert_rowid();
 			""",
 			new { UserId = userId, Ip = ip, OsuVer = osuVer.ToDateTime(TimeOnly.MinValue), OsuStream = osuStream });
+		logger.LogDebug("IngameLogin created for UserId={UserId}", userId);
 
 		var row = await connection.QuerySingleAsync<IngameLoginRow>(
 			"SELECT * FROM IngameLogins WHERE Id = @Id",

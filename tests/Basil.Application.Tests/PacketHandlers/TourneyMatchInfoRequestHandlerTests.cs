@@ -2,6 +2,7 @@ using Basil.Application.PacketHandlers.Multiplayer;
 using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -22,7 +23,8 @@ public class TourneyMatchInfoRequestHandlerTests
 		var requester = MakePlayer(2, "req");
 		fixture.RegisterAll(host, requester);
 		var match = fixture.CreateMatch(host);
-		var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry);
+		var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry,
+			NullLogger<TourneyMatchInfoRequestHandler>.Instance);
 
 		await handler.HandleAsync(requester, ReaderFor(match.Id));
 
@@ -38,7 +40,8 @@ public class TourneyMatchInfoRequestHandlerTests
 		requester.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 		fixture.RegisterAll(host, requester);
 		var match = fixture.CreateMatch(host);
-		var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry);
+		var handler = new TourneyMatchInfoRequestHandler(fixture.MatchRegistry,
+			NullLogger<TourneyMatchInfoRequestHandler>.Instance);
 
 		await handler.HandleAsync(requester, ReaderFor(match.Id));
 

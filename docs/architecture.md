@@ -170,6 +170,39 @@ Every `PlayerSession` has an `IIrcConnection` (`Sessions/Irc/`):
 
 Bot replies are broadcast via `ChannelMembershipService.BroadcastPrivmsg` (IRC-shaped) rather than building packets directly — so real IRC clients in the channel also see BasilBot's responses.
 
+## Logging
+
+Serilog is wired entirely in code (`Basil.Web/Program.cs`'s `ConfigureSerilog`, called first thing in `Main`, before any other startup logic) — no `Serilog.Settings.Configuration` package, no standard ASP.NET Core `Logging` section. The one configurable knob is the minimum level for stdout + the full file, read from `Basil:Logging:MinimumLevel` in `appsettings.json` (any `Serilog.Events.LogEventLevel` name, defaults to `Information`) — the errors file always stays fixed at Error+ regardless. Two sinks besides stdout, both plain-text, both daily-rolling with 30-day retention:
+
+| Sink | Path | Minimum level |
+| --- | --- | --- |
+| Full | `Logs/full/basil-<date>.log` | Information |
+| Errors | `Logs/errors/basil-<date>.log` | Error (and Fatal) |
+
+Each sink also maintains a fixed pointer file — `Logs/latest.log` / `Logs/errors_latest.log` — that's a **hardlink** (not a copy) to whichever dated file is currently open, recreated via a custom `Serilog.Sinks.File.FileLifecycleHooks` (`Basil.Web/Logging/HardLinkFileLifecycleHooks`) every time the sink rolls to a new file. The actual hardlink syscall (`CreateHardLinkW`/POSIX `link()`) lives in `Basil.Infrastructure/Logging/HardLink.cs`.
+
+**Scopes** — correlation ids pushed via `Serilog.Context.LogContext`/`ILogger.BeginScope`, rendered through the template's `{Properties}` token so they only appear on lines that actually carry them:
+
+| Scope | Where it's pushed | Notes |
+| --- | --- | --- |
+| `RequestId` | `RequestIdLoggingMiddleware`, first middleware in the pipeline | `HttpContext.TraceIdentifier`, wraps the whole request including `UseSerilogRequestLogging()`'s own summary line |
+| `RemoteIp` | Same middleware | Resolved via `Geolocation.PhraseIpAddress` (proxy headers), not the raw Kestrel connection address |
+| `UserId` / `PacketType` / `MatchId` | `BanchoPacketDispatcher.DispatchAsync`, one push per packet | `MatchId` only when `player.Match` is set; 3 handlers that resolve a match without touching `player.Match` (`TourneyMatchInfoRequestHandler`/`JoinChannel`/`LeaveChannel`) push it separately |
+| `MatchId` + `Subcommand` | `MpCommandService.TryHandleAsync` | Uses the *effective* target match (correct for `!mp in`-scoped referees), overriding the dispatcher's physical-match push when they differ |
+| `ScoreId` | `ScoreSubmissionService.SubmitAsync`, right after the DB insert | Every earlier failure branch returns before an id exists, so it logs plain properties instead |
+| `ConnectionId` | `TcpIrcConnection.RunAsync` | IRC only — the bancho binary protocol is HTTP long-poll (a fresh request per poll, no held socket), so it has no connection-lifetime concept of its own; `RequestId`+`UserId` cover that case instead |
+
+**Fixed categories** — a `Category` property added by `Basil.Web/Logging/CategoryEnricher` based on `SourceContext` (the class name `ILogger<T>` already carries), not a per-call push:
+
+| Category | Matches |
+| --- | --- |
+| `Database` | Any `Basil.Infrastructure.Persistence.Repositories.*` class |
+| `Cache` | Any `Basil.Infrastructure.Caching.*` class |
+| `Background` | Exactly `BeatmapWatcherService`/`MapsetGarbageCollectorService` (not the whole `Beatmaps` namespace) |
+| `Host` | `Basil.Web.Program` and the framework's own `Microsoft.Hosting.Lifetime` — server startup/shutdown |
+
+Business-event logging follows one rule to avoid triple-logging: for multiplayer, log inside the shared `MatchMembershipService`/`MatchControlService` methods, not in the bancho packet handler / `!mp` subcommand / HTTP route that calls into them — all three surfaces converge on the same service call.
+
 ## TL;DR
 
 When adding a new feature, remember:

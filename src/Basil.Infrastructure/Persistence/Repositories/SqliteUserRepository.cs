@@ -3,11 +3,13 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IUserRepository" />
-public sealed class SqliteUserRepository(string connectionString) : IUserRepository
+public sealed class SqliteUserRepository(string connectionString, ILogger<SqliteUserRepository> logger)
+	: IUserRepository
 {
 	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
@@ -41,6 +43,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
 		await connection.ExecuteAsync(
 			"UPDATE Users SET Country = @Country WHERE Id = @Id",
 			new { Id = id, Country = country.ToAcronym() });
+		logger.LogDebug("User row updated: Id={Id} Country={Country}", id, country);
 	}
 
 	public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
@@ -50,6 +53,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
 		await connection.ExecuteAsync(
 			"UPDATE Users SET Privilege = @Privilege WHERE Id = @Id",
 			new { Id = id, Privilege = (int)privilege });
+		logger.LogDebug("User row updated: Id={Id} Privilege={Privilege}", id, privilege);
 	}
 
 	public async Task UpdateNameAsync(int id, string name, string safeName,
@@ -59,6 +63,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
 		await connection.ExecuteAsync(
 			"UPDATE Users SET Name = @Name, SafeName = @SafeName WHERE Id = @Id",
 			new { Id = id, Name = name, SafeName = safeName });
+		logger.LogDebug("User row updated: Id={Id} Name={Name}", id, name);
 	}
 
 	public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country,
@@ -90,6 +95,7 @@ public sealed class SqliteUserRepository(string connectionString) : IUserReposit
 			return null;
 		}
 
+		logger.LogDebug("User row created: Id={Id} Name={Name}", id, name);
 		return (await FetchByIdAsync(id, cancellationToken))!;
 	}
 

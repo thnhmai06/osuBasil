@@ -5,11 +5,13 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IScoreRepository" />
-public sealed class SqliteScoreRepository(string connectionString) : IScoreRepository
+public sealed class SqliteScoreRepository(string connectionString, ILogger<SqliteScoreRepository> logger)
+	: IScoreRepository
 {
 	public async Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
 	{
@@ -23,7 +25,7 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
 	public async Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		return await connection.QuerySingleAsync<long>(
+		var id = await connection.QuerySingleAsync<long>(
 			"""
 			INSERT INTO Scores
 			    (MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
@@ -34,6 +36,8 @@ public sealed class SqliteScoreRepository(string connectionString) : IScoreRepos
 			SELECT last_insert_rowid();
 			""",
 			row);
+		logger.LogDebug("Score row created: Id={Id} UserId={UserId}", id, row.UserId);
+		return id;
 	}
 
 	public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,

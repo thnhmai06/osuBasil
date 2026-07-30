@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Caching;
 
@@ -20,7 +21,8 @@ public class CachingMapRepositoryTests
 		var beatmap = MakeBeatmap(1, new string('a', 32));
 		var inner = new CountingMapRepository();
 		inner.ById[1] = beatmap;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapRepository>.Instance);
 
 		await repo.FetchOneAsync(1);
 		await repo.FetchOneAsync(1);
@@ -34,7 +36,8 @@ public class CachingMapRepositoryTests
 		var beatmap = MakeBeatmap(1, new string('a', 32));
 		var inner = new CountingMapRepository();
 		inner.ByMd5[beatmap.Md5] = beatmap;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapRepository>.Instance);
 
 		await repo.FetchOneAsync(md5: beatmap.Md5);
 		await repo.FetchOneAsync(md5: beatmap.Md5);
@@ -46,7 +49,8 @@ public class CachingMapRepositoryTests
 	public async Task FetchOneAsync_ByFilenameAndSetId_AlwaysPassesThrough()
 	{
 		var inner = new CountingMapRepository();
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapRepository>.Instance);
 
 		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
 		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
@@ -61,7 +65,8 @@ public class CachingMapRepositoryTests
 		var inner = new CountingMapRepository();
 		inner.ById[1] = original;
 		inner.ByMd5[original.Md5] = original;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapRepository>.Instance);
 
 		await repo.FetchOneAsync(1);
 		await repo.FetchOneAsync(md5: original.Md5);

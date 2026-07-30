@@ -3,6 +3,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Caching;
 
@@ -17,7 +18,8 @@ public class CachingUserRepositoryTests
 	public async Task FetchByIdAsync_SecondCall_DoesNotHitInner()
 	{
 		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
-		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingUserRepository>.Instance);
 
 		await repo.FetchByIdAsync(7);
 		await repo.FetchByIdAsync(7);
@@ -31,7 +33,8 @@ public class CachingUserRepositoryTests
 		var inner = new CountingUserRepository();
 		inner.UsersById[7] = MakeUser(7, "Alice");
 		inner.UsersById[8] = MakeUser(8, "Bob");
-		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingUserRepository>.Instance);
 
 		await repo.FetchByIdAsync(7);
 		await repo.FetchByIdAsync(8);
@@ -43,7 +46,8 @@ public class CachingUserRepositoryTests
 	public async Task UpdateCountryAsync_InvalidatesCachedEntry()
 	{
 		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
-		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingUserRepository>.Instance);
 
 		await repo.FetchByIdAsync(7);
 		await repo.UpdateCountryAsync(7, Country.Us);
@@ -57,7 +61,8 @@ public class CachingUserRepositoryTests
 	{
 		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
 		inner.UsersByName["alice"] = MakeUser(7, "Alice");
-		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingUserRepository>.Instance);
 
 		await repo.FetchByNameAsync("Alice");
 		await repo.UpdateNameAsync(7, "Alicia", "alicia");
@@ -72,7 +77,7 @@ public class CachingUserRepositoryTests
 	{
 		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
 		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
-			TimeSpan.FromMilliseconds(20));
+			NullLogger<CachingUserRepository>.Instance, TimeSpan.FromMilliseconds(20));
 
 		await repo.FetchByIdAsync(7);
 		await Task.Delay(100);

@@ -17,10 +17,6 @@
 
 	<ItemGroup>
 		<Content Include="Data\MOTD.txt" CopyToOutputDirectory="PreserveNewest"/>
-		<None Remove="Assets\icon.png"/>
-		<Content Include="Assets\icon.png">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
 		<Content Include="docs-site\**" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 
@@ -32,6 +28,9 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.OpenApi"/>
 		<PackageReference Include="Scalar.AspNetCore"/>
+		<PackageReference Include="Serilog.AspNetCore"/>
+		<PackageReference Include="Serilog.Sinks.Console"/>
+		<PackageReference Include="Serilog.Sinks.File"/>
 	</ItemGroup>
 
 </Project>

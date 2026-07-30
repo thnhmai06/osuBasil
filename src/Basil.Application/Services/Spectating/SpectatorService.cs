@@ -1,6 +1,7 @@
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Spectating;
 
@@ -15,7 +16,10 @@ namespace Basil.Application.Services.Spectating;
 ///     This port relies on ChannelMembershipService's single broadcast and layers only the
 ///     spectator-specific notifications (spectator_joined/fellow_spectator_joined/etc.) on top.
 /// </summary>
-public sealed class SpectatorService(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
+public sealed class SpectatorService(
+	IChannelRegistry channelRegistry,
+	ChannelMembershipService channelMembership,
+	ILogger<SpectatorService> logger)
 {
 	private static string ChannelNameFor(int hostId)
 	{
@@ -57,6 +61,7 @@ public sealed class SpectatorService(IChannelRegistry channelRegistry, ChannelMe
 
 		host.AddSpectator(spectator);
 		spectator.Spectating = host;
+		logger.LogDebug("Spectator joined: HostId={HostId} SpectatorId={SpectatorId}", host.Id, spectator.Id);
 	}
 
 	public void RemoveSpectator(PlayerSession host, PlayerSession spectator)
@@ -73,8 +78,13 @@ public sealed class SpectatorService(IChannelRegistry channelRegistry, ChannelMe
 		{
 			channelMembership.Part(host, channel);
 			channelRegistry.Remove(channel.Name);
+			logger.LogDebug("Spectator left: HostId={HostId} SpectatorId={SpectatorId} ChannelTornDown=true",
+				host.Id, spectator.Id);
 			return;
 		}
+
+		logger.LogDebug("Spectator left: HostId={HostId} SpectatorId={SpectatorId} ChannelTornDown=false",
+			host.Id, spectator.Id);
 
 		var fellowLeft = ServerPacketWriter.FellowSpectatorLeft(spectator.Id);
 		foreach (var remaining in host.Spectators) remaining.Enqueue(fellowLeft);

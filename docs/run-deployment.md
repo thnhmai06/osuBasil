@@ -1,7 +1,7 @@
 # Run & Deployment
 
 Basil is one ASP.NET Core process. No Docker, no separate DB/cache service — SQLite is a single
-file, and everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text) is a plain
+file, and everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text, logs) is a plain
 folder next to the executable, auto-created on first startup. This doc has three parts: **Deployment**
 (a real LAN tournament server other machines connect to), **Development** (working on Basil itself),
 and **Client** (pointing an actual osu! stable install at either of the above).
@@ -13,7 +13,7 @@ checkout) — no rebuild needed after editing either, just restart the process:
 
 | File                | Owns                                                                                                      |
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `appsettings.json`  | Framework config only — `Logging`, `AllowedHosts`. Standard ASP.NET Core convention, untouched.              |
+| `appsettings.json`  | Framework config only — `AllowedHosts`. No standard ASP.NET Core `Logging` section — Serilog is wired in code (`Program.cs`'s `ConfigureSerilog`); the only logging setting is `Basil:Logging:MinimumLevel` (default `"Information"`), see "Logging" further down this page. |
 | `Settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Database`. Same file for development and deployment; edit it and restart. |
 
 There is **no environment-variable override layer** — `Settings.toml` is the single source of
@@ -49,8 +49,35 @@ Created automatically next to the executable on startup if missing — no manual
 | `Faqs/`       | `!faq <entry>` text files (`<entry>.txt`).                               |
 | `MenuIcon.{ext}` / `MenuIconUrl.txt` | The in-game main menu icon and its click-through URL — not config, managed at runtime via `PUT`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url` on the `api.` host. Deleting the icon file (or `DELETE /menuicon/icon`) turns the menu icon off entirely. |
 
+### Logging
+
+`Logs/` is created next to the executable on startup, same convention as the data folders above —
+but kept as its own top-level folder (not under `Data/`), since logs are operational output, not
+application data. The **folder layout and sinks are fixed**; the one thing that's configurable is
+the minimum level, via `appsettings.json`:
+
+```json
+{ "Basil": { "Logging": { "MinimumLevel": "Information" } } }
+```
+
+Any [`Serilog.Events.LogEventLevel`](https://github.com/serilog/serilog/wiki/Configuration-Basics) name works (`Verbose`, `Debug`, `Information`, `Warning`, `Error`, `Fatal`), case-insensitive. Defaults to `Information` if unset or unparseable. Lowering it to `Debug` surfaces the many `LogDebug` call sites already in the codebase (room-setting tweaks, cache hit/miss, per-packet dispatch, ...) without a rebuild — restart the process after editing. This only affects stdout and `Logs/full/` — `Logs/errors/` always stays Error-and-above regardless.
+
+| Path                      | Contents                                                                 |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `Logs/full/basil-*.log`   | Every log line, Information level and above. Daily rolling, 30 days retained. |
+| `Logs/latest.log`         | Hardlink (not a copy) to today's `full/` file — always points at the current day without knowing the date. |
+| `Logs/errors/basil-*.log` | Error/Fatal only. Same daily rolling/retention as `full/`.               |
+| `Logs/errors_latest.log`  | Hardlink to today's `errors/` file, same idea as `latest.log`.           |
+
+Every line also goes to stdout. Every request carries a `RequestId`; bancho packets additionally
+carry `UserId`/`PacketType`/`MatchId` (when in a match); a real IRC TCP connection carries its own
+`ConnectionId` instead (the bancho binary protocol is HTTP long-poll, not a held connection, so it
+has no `ConnectionId` of its own). See `docs/architecture.md`'s Logging section for the full scope
+list and `Basil.Web/Program.cs`'s `ConfigureSerilog` for the sink configuration itself.
+
 To move a deployment to another machine: stop the server, copy the whole executable directory
-(including `basil.db*` and the five folders above) to the target, start it there.
+(including `basil.db*` and the five data folders above — `Logs/` doesn't need to move, it's
+operational history, not state) to the target, start it there.
 
 ---
 

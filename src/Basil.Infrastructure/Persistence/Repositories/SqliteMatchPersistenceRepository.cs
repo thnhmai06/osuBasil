@@ -4,23 +4,28 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMatchPersistenceRepository" />
-public sealed class SqliteMatchPersistenceRepository(string connectionString) : IMatchPersistenceRepository
+public sealed class SqliteMatchPersistenceRepository(
+	string connectionString,
+	ILogger<SqliteMatchPersistenceRepository> logger) : IMatchPersistenceRepository
 {
 	public async Task<int> CreateMatchAsync(
 		string name, DateTime createdAt, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		return await connection.QuerySingleAsync<int>(
+		var id = await connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Matches (Name, CreatedAt)
 			VALUES (@Name, @CreatedAt);
 			SELECT last_insert_rowid();
 			""",
 			new { Name = name, CreatedAt = createdAt });
+		logger.LogDebug("Match row created: Id={Id}", id);
+		return id;
 	}
 
 	public async Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
@@ -29,6 +34,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 		await connection.ExecuteAsync(
 			"UPDATE Matches SET EndedAt = @EndedAt WHERE Id = @MatchId",
 			new { MatchId = matchId, EndedAt = endedAt });
+		logger.LogDebug("Match row ended: MatchId={MatchId}", matchId);
 	}
 
 	public async Task<int> CreateRoundAsync(
@@ -38,7 +44,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		return await connection.QuerySingleAsync<int>(
+		var id = await connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
 			VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @StartedAt);
@@ -55,6 +61,8 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 				Mods = mods,
 				StartedAt = startedAt
 			});
+		logger.LogDebug("Round row created: Id={Id} MatchId={MatchId}", id, matchId);
+		return id;
 	}
 
 	public async Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
@@ -64,6 +72,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 		await connection.ExecuteAsync(
 			"UPDATE Rounds SET EndedAt = @EndedAt, Aborted = @Aborted WHERE Id = @RoundId",
 			new { RoundId = roundId, EndedAt = endedAt, Aborted = aborted });
+		logger.LogDebug("Round row ended: RoundId={RoundId} Aborted={Aborted}", roundId, aborted);
 	}
 
 	public async Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -105,6 +114,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 		await connection.ExecuteAsync("DELETE FROM Matches WHERE Id = @MatchId", new { MatchId = matchId },
 			transaction);
 		await transaction.CommitAsync(cancellationToken);
+		logger.LogDebug("Match row deleted (with scores/events/rounds): MatchId={MatchId}", matchId);
 	}
 
 	public async Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
@@ -126,6 +136,7 @@ public sealed class SqliteMatchPersistenceRepository(string connectionString) : 
 				row.Timestamp,
 				row.Detail
 			});
+		logger.LogDebug("MatchEvent row created: MatchId={MatchId} EventType={EventType}", row.MatchId, row.EventType);
 	}
 
 	public async Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,

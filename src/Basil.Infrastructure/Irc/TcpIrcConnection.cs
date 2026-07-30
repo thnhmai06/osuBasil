@@ -8,6 +8,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
 using Basil.Protocol.Irc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Irc;
@@ -25,7 +26,9 @@ public sealed class TcpIrcConnection(
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
 	IPlayerSessionRegistry sessionRegistry,
-	IOptions<IrcOptions> options) : IIrcConnection
+	IOptions<IrcOptions> options,
+	ILogger<TcpIrcConnection> logger,
+	long connectionId) : IIrcConnection
 {
 	private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
 
@@ -45,6 +48,8 @@ public sealed class TcpIrcConnection(
 
 	public async Task RunAsync(CancellationToken cancellationToken)
 	{
+		using var _ = logger.BeginScope(new Dictionary<string, object> { ["ConnectionId"] = connectionId });
+
 		await using var stream = client.GetStream();
 		using var reader = new StreamReader(stream, Encoding.UTF8);
 		await using var writer = new StreamWriter(stream, Encoding.UTF8);
@@ -67,6 +72,7 @@ public sealed class TcpIrcConnection(
 
 			if (_registered)
 			{
+				logger.LogInformation("IRC client disconnected: UserId={UserId} Nick={Nick}", Player.Id, Player.Name);
 				channelMembership.Quit(Player, "Connection closed");
 				sessionRegistry.Remove(Player);
 			}
@@ -146,6 +152,7 @@ public sealed class TcpIrcConnection(
 				break;
 
 			case "QUIT":
+				logger.LogDebug("IRC client sent explicit QUIT: UserId={UserId}", Player.Id);
 				return false;
 		}
 
@@ -157,10 +164,15 @@ public sealed class TcpIrcConnection(
 		var outcome = await authService.AuthenticateAsync(nick, pass, this, cancellationToken);
 		foreach (var reply in outcome.Messages) Send(reply);
 
-		if (!outcome.Success) return;
+		if (!outcome.Success)
+		{
+			logger.LogInformation("IRC login failed: Nick={Nick}", nick);
+			return;
+		}
 
 		Player = outcome.Session!;
 		_registered = true;
+		logger.LogInformation("IRC login succeeded: UserId={UserId} Nick={Nick}", Player.Id, Player.Name);
 	}
 
 	private async Task PumpWritesAsync(StreamWriter writer, CancellationToken cancellationToken)

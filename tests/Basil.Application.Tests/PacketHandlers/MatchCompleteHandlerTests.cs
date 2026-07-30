@@ -1,6 +1,7 @@
 using Basil.Application.PacketHandlers.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -25,7 +26,8 @@ public class MatchCompleteHandlerTests
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence);
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence,
+			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -53,7 +55,8 @@ public class MatchCompleteHandlerTests
 		host.Dequeue();
 		guest.Dequeue();
 		spectatorish.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence);
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence,
+			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 		await handler.HandleAsync(guest, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));

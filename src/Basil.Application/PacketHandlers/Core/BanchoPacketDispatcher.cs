@@ -1,5 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Core;
 
@@ -11,13 +12,15 @@ namespace Basil.Application.PacketHandlers.Core;
 public sealed class BanchoPacketDispatcher
 {
 	private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _all;
+	private readonly ILogger<BanchoPacketDispatcher> _logger;
 	private readonly Dictionary<ClientPackets, IBanchoPacketHandler> _restrictedAllowed;
 
-	public BanchoPacketDispatcher(IEnumerable<IBanchoPacketHandler> handlers)
+	public BanchoPacketDispatcher(IEnumerable<IBanchoPacketHandler> handlers, ILogger<BanchoPacketDispatcher> logger)
 	{
 		var handlerList = handlers.ToList();
 		_all = handlerList.ToDictionary(h => h.PacketId);
 		_restrictedAllowed = handlerList.Where(h => h.AllowedWhenRestricted).ToDictionary(h => h.PacketId);
+		_logger = logger;
 	}
 
 	public async Task DispatchAsync(PlayerSession player, byte[] body, CancellationToken cancellationToken = default)
@@ -30,9 +33,21 @@ public sealed class BanchoPacketDispatcher
 			var (type, length) = reader.ReadHeader();
 
 			if (handlerMap.TryGetValue(type, out var handler))
+			{
+				var scopeProperties = new Dictionary<string, object>
+				{
+					["UserId"] = player.Id,
+					["PacketType"] = type.ToString()
+				};
+				if (player.Match is { } match) scopeProperties["MatchId"] = match.DbId;
+
+				using var _ = _logger.BeginScope(scopeProperties);
 				await handler.HandleAsync(player, reader, cancellationToken);
+			}
 			else
+			{
 				reader.SkipRaw(length);
+			}
 		}
 	}
 }

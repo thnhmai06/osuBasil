@@ -1,6 +1,7 @@
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Multiplayer;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Tests.Services.Multiplayer;
 
@@ -17,7 +18,7 @@ public class MatchControlServiceGuardTests
 	private MatchControlService MakeService()
 	{
 		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchPersistence, _fixture.MapRepository,
-			_fixture.SessionRegistry);
+			_fixture.SessionRegistry, NullLogger<MatchControlService>.Instance);
 	}
 
 	[Fact]

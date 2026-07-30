@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Authentication;
@@ -15,7 +16,8 @@ public class AuthenticationServiceTests
 
 	private AuthenticationService MakeService()
 	{
-		return new AuthenticationService(_sessionRegistry, _users, _passwordHasher);
+		return new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
+			NullLogger<AuthenticationService>.Instance);
 	}
 
 	[Fact]

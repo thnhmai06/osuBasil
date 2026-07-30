@@ -1,5 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
 	</ItemGroup>
@@ -17,6 +21,7 @@
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
 		<PackageReference Include="Microsoft.Extensions.Http"/>
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>

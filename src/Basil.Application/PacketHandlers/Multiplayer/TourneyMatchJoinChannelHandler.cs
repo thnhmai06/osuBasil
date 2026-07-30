@@ -4,6 +4,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
@@ -11,7 +12,8 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 public sealed class TourneyMatchJoinChannelHandler(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
-	ChannelMembershipService channelMembership) : IBanchoPacketHandler
+	ChannelMembershipService channelMembership,
+	ILogger<TourneyMatchJoinChannelHandler> logger) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.TournamentJoinMatchChannel;
 
@@ -26,6 +28,8 @@ public sealed class TourneyMatchJoinChannelHandler(
 
 		var match = matchRegistry.GetById(matchId);
 		if (match is null) return Task.CompletedTask;
+
+		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
 		if (match.Slots.Any(s => s.PlayerId == player.Id)) return Task.CompletedTask; // already playing in the match
 

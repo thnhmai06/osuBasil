@@ -20,6 +20,12 @@ namespace Basil.Web.Routing;
 ///     <see cref="BeatmapIngestionService.DeletedFolderInfix" /> for how delete's atomic rename-in-place
 ///     is recognized as "gone" before the physical folder is actually reclaimed.
 /// </summary>
+/// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="BeatmapsetRoutes" /> is static and can't be a
+///     type argument.
+/// </summary>
+internal sealed class BeatmapsetRoutesLog;
+
 internal static class BeatmapsetRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -245,7 +251,7 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleCreate(HttpContext context, IOptions<StorageOptions> storage,
-		BeatmapIngestionService ingestion, CancellationToken cancellationToken)
+		BeatmapIngestionService ingestion, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -268,6 +274,7 @@ internal static class BeatmapsetRoutes
 		}
 
 		var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
+		logger.LogInformation("Beatmapset created via admin API: IngestedCount={IngestedCount}", ingested);
 		// No single canonical Location: one .osz upload can ingest/update more than one mapset via the
 		// full reconciliation pass, so this can't point at one specific created resource like a normal
 		// 201 would.
@@ -288,7 +295,7 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleReplace(int mapsetId, HttpContext context, IMapsetRepository mapsets,
-		IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
 		if (mapset is null) return Results.NotFound();
@@ -321,11 +328,12 @@ internal static class BeatmapsetRoutes
 			File.Delete(tempOszPath);
 		}
 
+		logger.LogInformation("Beatmapset replace accepted via admin API: MapsetId={MapsetId}", mapsetId);
 		return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "replace"));
 	}
 
 	private static async Task<IResult> HandleDelete(int mapsetId, IMapsetRepository mapsets,
-		IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
 		if (mapset is null) return Results.NotFound();
@@ -344,16 +352,20 @@ internal static class BeatmapsetRoutes
 			return Results.Conflict(new ErrorResponse("The mapset's files are currently in use; try again shortly."));
 		}
 
+		logger.LogInformation("Beatmapset delete accepted via admin API: MapsetId={MapsetId}", mapsetId);
 		return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "delete"));
 	}
 
 	private static async Task<IResult> HandlePatch(int mapsetId, BeatmapsetPatchBody body,
-		IMapsetRepository mapsets, IMapRepository maps, CancellationToken cancellationToken)
+		IMapsetRepository mapsets, IMapRepository maps, ILogger<BeatmapsetRoutesLog> logger,
+		CancellationToken cancellationToken)
 	{
 		if (await mapsets.FetchByIdAsync(mapsetId, cancellationToken) is null) return Results.NotFound();
 
 		if (body.Frozen is not null) await mapsets.SetFrozenAsync(mapsetId, body.Frozen.Value, cancellationToken);
 		if (body.Private is not null) await mapsets.SetPrivateAsync(mapsetId, body.Private.Value, cancellationToken);
+		logger.LogInformation("Beatmapset updated via admin API: MapsetId={MapsetId} Frozen={Frozen} Private={Private}",
+			mapsetId, body.Frozen, body.Private);
 
 		var updated = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
 		var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, true,

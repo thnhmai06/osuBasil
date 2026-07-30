@@ -3,6 +3,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions.Channels;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Sessions;
 
@@ -15,10 +16,13 @@ public sealed class PlayerLogoutService(
 	IPlayerSessionRegistry sessionRegistry,
 	IChannelRegistry channelRegistry,
 	SpectatorService spectatorService,
-	MatchMembershipService matchMembership)
+	MatchMembershipService matchMembership,
+	ILogger<PlayerLogoutService> logger)
 {
 	public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
 	{
+		logger.LogInformation("User logged out: UserId={UserId} Username={Username}", player.Id, player.Name);
+
 		if (player.Match is { } match)
 		{
 			await match.Lock.WaitAsync(cancellationToken);

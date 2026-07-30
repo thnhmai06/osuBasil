@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Caching;
 
@@ -10,7 +11,11 @@ namespace Basil.Infrastructure.Caching;
 ///     <see cref="CachingUserRepository" />, keyed by <c>Id</c> only (a mapset has no md5 concept).
 ///     Every write invalidates the affected entry immediately; the TTL is only a safety net.
 /// </summary>
-public sealed class CachingMapsetRepository(IMapsetRepository inner, IMemoryCache cache, TimeSpan? ttl = null)
+public sealed class CachingMapsetRepository(
+	IMapsetRepository inner,
+	IMemoryCache cache,
+	ILogger<CachingMapsetRepository> logger,
+	TimeSpan? ttl = null)
 	: IMapsetRepository
 {
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
@@ -18,8 +23,13 @@ public sealed class CachingMapsetRepository(IMapsetRepository inner, IMemoryCach
 	public async Task<Mapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
 		var key = IdKey(id);
-		if (cache.TryGetValue(key, out Mapset? cached)) return cached;
+		if (cache.TryGetValue(key, out Mapset? cached))
+		{
+			logger.LogDebug("Cache hit {Key}", key);
+			return cached;
+		}
 
+		logger.LogDebug("Cache miss {Key}", key);
 		var mapset = await inner.FetchByIdAsync(id, cancellationToken);
 		if (mapset is not null) cache.Set(key, mapset, _ttl);
 		return mapset;

@@ -4,6 +4,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -30,7 +31,9 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.GetById(999).Returns((PlayerSession?)null);
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry())));
+				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()),
+				NullLogger<SpectatorService>.Instance),
+			NullLogger<StartSpectatingHandler>.Instance);
 		var player = MakePlayer(1, "alice");
 
 		await handler.HandleAsync(player, TargetIdReader(999));
@@ -48,7 +51,9 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.GetById(1).Returns(player);
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry())));
+				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()),
+				NullLogger<SpectatorService>.Instance),
+			NullLogger<StartSpectatingHandler>.Instance);
 
 		await handler.HandleAsync(player, TargetIdReader(2));
 
@@ -66,8 +71,10 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.All.Returns([host, player]);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()));
-		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService);
+				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()),
+				NullLogger<SpectatorService>.Instance);
+		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,
+			NullLogger<StartSpectatingHandler>.Instance);
 		await handler.HandleAsync(player, TargetIdReader(2));
 		host.Dequeue();
 

@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Beatmaps;
@@ -15,7 +16,8 @@ public class DirectSearchServiceTests
 	{
 		_maps.SearchAsync(null, null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", -1, 0));
+		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("Newest", -1, 0));
 
 		await _maps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -25,7 +27,8 @@ public class DirectSearchServiceTests
 	{
 		_maps.SearchAsync("camellia", null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("camellia", -1, 0));
+		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("camellia", -1, 0));
 
 		await _maps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -35,7 +38,8 @@ public class DirectSearchServiceTests
 	{
 		_maps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", 1, 0));
+		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("Newest", 1, 0));
 
 		await _maps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -45,7 +49,8 @@ public class DirectSearchServiceTests
 	{
 		_maps.SearchAsync(null, null, 200, 100).Returns([]);
 
-		await new DirectSearchService(_maps).SearchAsync(new DirectSearchRequest("Newest", -1, 2));
+		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("Newest", -1, 2));
 
 		await _maps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
 	}

@@ -14,6 +14,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Multiplayer;
@@ -42,7 +43,8 @@ public class MatchMembershipServiceTests
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-			Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository);
+			Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository,
+			NullLogger<MatchMembershipService>.Instance);
 	}
 
 	/// <summary>
@@ -327,7 +329,7 @@ public class MatchMembershipServiceTests
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
-			_mapRepository, _userRepository);
+			_mapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
 		var payloads = new List<byte[]>();

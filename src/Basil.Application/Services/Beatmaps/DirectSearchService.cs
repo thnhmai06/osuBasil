@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Beatmaps;
 
@@ -15,7 +16,7 @@ public sealed record DirectSearchRequest(string Query, int Mode, int PageNum);
 ///     not mirror-specific, it protects the pipe-delimited wire format from any locally-stored
 ///     artist/title/diffname that happens to contain a literal "|".
 /// </summary>
-public sealed class DirectSearchService(IMapRepository maps)
+public sealed class DirectSearchService(IMapRepository maps, ILogger<DirectSearchService> logger)
 {
 	/// <summary>A full page signals "there may be more" to the client (reported as 101 rather than the literal count).</summary>
 	private const int PageSize = 100;
@@ -31,8 +32,11 @@ public sealed class DirectSearchService(IMapRepository maps)
 		var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;
 		GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
 
-		return await maps.SearchAsync(queryText, mode, request.PageNum * PageSize, PageSize,
+		var results = await maps.SearchAsync(queryText, mode, request.PageNum * PageSize, PageSize,
 			cancellationToken);
+		logger.LogDebug("osu!direct search: Query={Query} Mode={Mode} PageNum={PageNum} ResultCount={ResultCount}",
+			queryText, mode, request.PageNum, results.Count);
+		return results;
 	}
 
 	/// <summary>

@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Caching;
 
@@ -13,7 +14,11 @@ namespace Basil.Infrastructure.Caching;
 ///     paths this decorator exists for. Every write invalidates the affected entry immediately; the
 ///     TTL is only a safety net, not a substitute for it.
 /// </summary>
-public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cache, TimeSpan? ttl = null)
+public sealed class CachingMapRepository(
+	IMapRepository inner,
+	IMemoryCache cache,
+	ILogger<CachingMapRepository> logger,
+	TimeSpan? ttl = null)
 	: IMapRepository
 {
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
@@ -75,8 +80,13 @@ public sealed class CachingMapRepository(IMapRepository inner, IMemoryCache cach
 
 	private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
 	{
-		if (cache.TryGetValue(key, out Beatmap? cached)) return cached;
+		if (cache.TryGetValue(key, out Beatmap? cached))
+		{
+			logger.LogDebug("Cache hit {Key}", key);
+			return cached;
+		}
 
+		logger.LogDebug("Cache miss {Key}", key);
 		var beatmap = await fetch();
 		if (beatmap is not null) cache.Set(key, beatmap, _ttl);
 		return beatmap;

@@ -4,6 +4,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -22,7 +23,8 @@ public class StopSpectatingHandlerTests
 	{
 		var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 		var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
-			new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry())));
+			new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry()),
+			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
 
 		await handler.HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
@@ -41,7 +43,8 @@ public class StopSpectatingHandlerTests
 		sessionRegistry.GetById(1).Returns(player);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry()));
+				new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry()),
+				NullLogger<SpectatorService>.Instance);
 		spectatorService.AddSpectator(host, player);
 		var handler = new StopSpectatingHandler(spectatorService);
 

@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Sessions;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Authentication;
 
@@ -15,17 +16,29 @@ namespace Basil.Application.Services.Authentication;
 public sealed class AuthenticationService(
 	IPlayerSessionRegistry sessionRegistry,
 	IUserRepository users,
-	IPasswordHasher passwordHasher)
+	IPasswordHasher passwordHasher,
+	ILogger<AuthenticationService> logger)
 {
 	public async Task<PlayerSession?> AuthenticateOnlinePlayerAsync(
 		string username, string passwordMd5, CancellationToken cancellationToken = default)
 	{
 		var session = sessionRegistry.GetByName(username);
-		if (session is null) return null;
+		if (session is null)
+		{
+			logger.LogDebug("Online-player authentication failed: Username={Username} (not online)", username);
+			return null;
+		}
 
 		var passwordHash = await users.FetchPasswordHashAsync(session.Id, cancellationToken);
-		if (passwordHash is null) return null;
+		if (passwordHash is null)
+		{
+			logger.LogDebug("Online-player authentication failed: Username={Username} (no password hash)", username);
+			return null;
+		}
 
-		return passwordHasher.Verify(Encoding.UTF8.GetBytes(passwordMd5), passwordHash) ? session : null;
+		if (passwordHasher.Verify(Encoding.UTF8.GetBytes(passwordMd5), passwordHash)) return session;
+
+		logger.LogDebug("Online-player authentication failed: Username={Username} (bad password)", username);
+		return null;
 	}
 }

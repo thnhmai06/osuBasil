@@ -7,6 +7,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -29,7 +30,8 @@ public class SendPublicMessageHandlerTests
 	{
 		var channelMembership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
 		var chatDispatch = new ChatDispatchService(_channelRegistry, _sessionRegistry, channelMembership,
-			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher);
+			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
+			NullLogger<ChatDispatchService>.Instance);
 		return new SendPublicMessageHandler(chatDispatch);
 	}
 

@@ -5,6 +5,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.BackgroundServices;
@@ -34,7 +35,8 @@ public class GhostDisconnectServiceTests
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
-		return new SpectatorService(channelRegistry, new ChannelMembershipService(registry, channelRegistry));
+		return new SpectatorService(channelRegistry, new ChannelMembershipService(registry, channelRegistry),
+			NullLogger<SpectatorService>.Instance);
 	}
 
 	[Fact]

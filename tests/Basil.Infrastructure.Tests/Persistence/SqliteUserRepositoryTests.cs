@@ -1,6 +1,7 @@
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
@@ -12,7 +13,8 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteUserRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteUserRepository _repository =
+		new(fixture.ConnectionString, NullLogger<SqliteUserRepository>.Instance);
 
 	[Fact]
 	public async Task FetchById_SeededBasilBot_ReturnsUser()

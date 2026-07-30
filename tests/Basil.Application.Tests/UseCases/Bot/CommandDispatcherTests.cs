@@ -2,9 +2,11 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -28,10 +30,11 @@ public class CommandDispatcherTests
 		fixture ??= new MultiplayerTestSupport.Fixture();
 		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchPersistence,
 			_maps,
-			fixture.SessionRegistry, Substitute.For<IUserRepository>());
+			fixture.SessionRegistry, Substitute.For<IUserRepository>(), NullLogger<MpCommandService>.Instance,
+			NullLogger<MatchControlService>.Instance);
 		return new CommandDispatcher(options, mpCommands, _users,
 			Options.Create(storageOptions ?? MakeStorageOptions()),
-			fixture.MatchRegistry);
+			fixture.MatchRegistry, NullLogger<CommandDispatcher>.Instance);
 	}
 
 	[Fact]

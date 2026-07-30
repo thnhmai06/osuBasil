@@ -29,6 +29,12 @@ using Scalar.AspNetCore;
 namespace Basil.Web.Routing;
 
 /// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="BanchoHostGroups" /> is static and can't be a
+///     type argument.
+/// </summary>
+internal sealed class BanchoHostGroupsLog;
+
+/// <summary>
 ///     Ports bancho.py's app/api/init_api.py:init_routes — routes are selected by hostname, not
 ///     path prefix. For every domain in ("ppy.sh", configured DOMAIN): c./ce./c4./c5./c6.{domain}
 ///     serve the bancho realtime protocol, osu.{domain} serves the osu! web endpoints, b.{domain}
@@ -844,7 +850,7 @@ public static class BanchoHostGroups
 			// (Unrestricted | Verified | Supporter).
 			group.MapPost("/users", async (HttpContext context, IUserRepository users,
 					IPasswordHasher passwordHasher, IOptions<ServerOptions> serverOptions,
-					CancellationToken cancellationToken) =>
+					ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken) =>
 				{
 					var username = context.Request.Form["user[username]"].FirstOrDefault();
 					var email = context.Request.Form["user[user_email]"].FirstOrDefault();
@@ -877,6 +883,13 @@ public static class BanchoHostGroups
 							statusCode: StatusCodes.Status400BadRequest);
 
 					if (string.IsNullOrEmpty(email) || email != adminKey)
+					{
+						// Only log on the real submit (check=="0") — per-field live-validation POSTs fire on
+						// every blur while the form is still being filled in, and would otherwise log this
+						// branch many times per genuine registration attempt.
+						if (check == "0")
+							logger.LogInformation("Registration rejected: invalid AdminKey. Username={Username}",
+								username);
 						return Results.Json(
 							new
 							{
@@ -892,6 +905,7 @@ public static class BanchoHostGroups
 								}
 							},
 							statusCode: StatusCodes.Status400BadRequest);
+					}
 
 					if (await users.FetchByNameAsync(username, cancellationToken) is not null)
 						return Results.Json(
@@ -910,6 +924,8 @@ public static class BanchoHostGroups
 							new { form_error = new { user = new { username = new[] { "Username already taken." } } } },
 							statusCode: StatusCodes.Status409Conflict);
 
+					logger.LogInformation("User registered in-game: NewUserId={NewUserId} Username={Username}",
+						user.Id, user.Name);
 					return Results.Json(new { id = user.Id, name = user.Name });
 				})
 				.WithGroupName("osuweb")

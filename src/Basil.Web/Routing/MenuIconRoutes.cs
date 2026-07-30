@@ -13,6 +13,12 @@ namespace Basil.Web.Routing;
 ///     singletons (no `{name}`/`{entry}` segment, unlike `/faqs`/`/seasonals`) — `PUT` is an upsert,
 ///     not create-only. Backed by <see cref="MenuIconService" />.
 /// </summary>
+/// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="MenuIconRoutes" /> is static and can't be a
+///     type argument.
+/// </summary>
+internal sealed class MenuIconRoutesLog;
+
 internal static class MenuIconRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -59,9 +65,10 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-		group.MapDelete("/menuicon/icon", (MenuIconService menuIcon) =>
+		group.MapDelete("/menuicon/icon", (MenuIconService menuIcon, ILogger<MenuIconRoutesLog> logger) =>
 			{
 				menuIcon.DeleteIcon();
+				logger.LogInformation("Menu icon deleted via admin API");
 				return Results.Json(new MenuIconChangedView(true,
 					$"Menu icon removed.{LoginEffectNote}"));
 			})
@@ -93,9 +100,10 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK, new MenuIconUrlView("https://github.com/thnhmai06/osuBasil"));
 
 		group.MapPut("/menuicon/url", async (MenuIconUrlBody body, MenuIconService menuIcon,
-				CancellationToken cancellationToken) =>
+				ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				await menuIcon.SaveUrlAsync(body.Url, cancellationToken);
+				logger.LogInformation("Menu icon URL updated via admin API");
 				return Results.Json(new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -112,7 +120,7 @@ internal static class MenuIconRoutes
 	}
 
 	private static async Task<IResult> HandleReplaceIcon(HttpContext context, MenuIconService menuIcon,
-		CancellationToken cancellationToken)
+		ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -127,6 +135,7 @@ internal static class MenuIconRoutes
 
 		await using var stream = file.OpenReadStream();
 		await menuIcon.SaveIconAsync(stream, extension, cancellationToken);
+		logger.LogInformation("Menu icon updated via admin API");
 		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));
 	}
 

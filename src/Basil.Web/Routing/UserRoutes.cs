@@ -27,6 +27,12 @@ namespace Basil.Web.Routing;
 ///     Block/unblock (`POST`/`DELETE /users/{id}/block/{targetId}`) is dropped entirely — no
 ///     replacement.
 /// </summary>
+/// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="UserRoutes" /> is static and can't be a type
+///     argument.
+/// </summary>
+internal sealed class UserRoutesLog;
+
 internal static class UserRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -65,7 +71,7 @@ internal static class UserRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		admin.MapPost("", async (CreateUserRequest body, IUserRepository users,
-				IPasswordHasher passwordHasher, CancellationToken cancellationToken) =>
+				IPasswordHasher passwordHasher, ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (!User.ValidateUsername(body.Name, out var usernameError))
 					return Results.BadRequest(new ErrorResponse(usernameError));
@@ -77,9 +83,11 @@ internal static class UserRoutes
 				var pwBcrypt = passwordHasher.Hash(Encoding.UTF8.GetBytes(passwordMd5));
 				var user = await users.CreateAsync(body.Name, pwBcrypt, body.Country, body.Privilege,
 					cancellationToken);
-				return user is null
-					? Results.Conflict(new ErrorResponse("Username already exists."))
-					: Results.Created($"/users/{user.Id}", user.ToView());
+				if (user is null) return Results.Conflict(new ErrorResponse("Username already exists."));
+
+				logger.LogInformation("User created via admin API: NewUserId={NewUserId} Username={Username}",
+					user.Id, user.Name);
+				return Results.Created($"/users/{user.Id}", user.ToView());
 			})
 			.WithGroupName("basilapi")
 			.WithName("createUser")
@@ -108,11 +116,12 @@ internal static class UserRoutes
 				("userId", "$response.body#/data/id"));
 
 		admin.MapPut("/{userId:int}", async (int userId, ReplaceUserRequest body, IUserRepository users,
-				CancellationToken cancellationToken) =>
+				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapServiceBotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
-				if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
+				var before = await users.FetchByIdAsync(userId, cancellationToken);
+				if (before is null) return Results.NotFound();
 
 				if (!User.ValidateUsername(body.Name, out var usernameError))
 					return Results.BadRequest(new ErrorResponse(usernameError));
@@ -120,6 +129,10 @@ internal static class UserRoutes
 				await users.UpdateNameAsync(userId, body.Name, User.MakeSafeName(body.Name), cancellationToken);
 				await users.UpdateCountryAsync(userId, body.Country, cancellationToken);
 				await users.UpdatePrivilegesAsync(userId, body.Privilege, cancellationToken);
+				logger.LogInformation(
+					"User replaced via admin API: UserId={UserId} OldPrivilege={OldPrivilege} NewPrivilege={NewPrivilege} " +
+					"NewName={NewName} NewCountry={NewCountry}",
+					userId, before.Privilege, body.Privilege, body.Name, body.Country);
 
 				return Results.Json((await users.FetchByIdAsync(userId, cancellationToken))!.ToView());
 			})
@@ -139,11 +152,12 @@ internal static class UserRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		admin.MapPatch("/{userId:int}", async (int userId, UpdateUserRequest body, IUserRepository users,
-				CancellationToken cancellationToken) =>
+				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapServiceBotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
-				if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
+				var before = await users.FetchByIdAsync(userId, cancellationToken);
+				if (before is null) return Results.NotFound();
 
 				if (body.Name is not null)
 				{
@@ -159,6 +173,10 @@ internal static class UserRoutes
 				if (body.Privilege is not null)
 					await users.UpdatePrivilegesAsync(userId, body.Privilege.Value, cancellationToken);
 
+				logger.LogInformation(
+					"User updated via admin API: UserId={UserId} OldPrivilege={OldPrivilege} NewPrivilege={NewPrivilege} " +
+					"NewName={NewName} NewCountry={NewCountry}",
+					userId, before.Privilege, body.Privilege, body.Name, body.Country);
 				return Results.Json((await users.FetchByIdAsync(userId, cancellationToken))!.ToView());
 			})
 			.WithGroupName("basilapi")
@@ -177,7 +195,8 @@ internal static class UserRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
-				IOptions<ServerOptions> serverOptions, CancellationToken cancellationToken) =>
+				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger,
+				CancellationToken cancellationToken) =>
 			{
 				if (!context.Request.HasFormContentType)
 					return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -195,6 +214,7 @@ internal static class UserRoutes
 				await using var fileStream = File.Create(destination);
 				await file.CopyToAsync(fileStream, cancellationToken);
 
+				logger.LogDebug("User avatar uploaded: UserId={UserId}", userId);
 				return Results.Json(new AvatarView(userId, $"https://a.{serverOptions.Value.Domain}/{userId}"));
 			})
 			.WithGroupName("basilapi")
@@ -210,12 +230,13 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
 		admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage,
-				IOptions<ServerOptions> serverOptions) =>
+				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger) =>
 			{
 				if (Directory.Exists(storage.Value.AvatarsPath))
 					foreach (var existing in Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*"))
 						File.Delete(existing);
 
+				logger.LogDebug("User avatar reset: UserId={UserId}", userId);
 				return Results.Json(new AvatarView(userId, $"https://a.{serverOptions.Value.Domain}/{userId}"));
 			})
 			.WithGroupName("basilapi")
@@ -248,7 +269,8 @@ internal static class UserRoutes
 		// history referencing this user's id stays intact — matches how restriction/ban already
 		// works in this server (a privilege bit, never a hard delete).
 		admin.MapDelete("/{userId:int}",
-				async (int userId, IUserRepository users, CancellationToken cancellationToken) =>
+				async (int userId, IUserRepository users, ILogger<UserRoutesLog> logger,
+					CancellationToken cancellationToken) =>
 				{
 					if (userId == BotBootstrapServiceBotId)
 						return Results.BadRequest(new ErrorResponse("Cannot delete BasilBot."));
@@ -256,6 +278,7 @@ internal static class UserRoutes
 
 					await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);
 					var deleted = await users.FetchByIdAsync(userId, cancellationToken);
+					logger.LogInformation("User deleted via admin API: UserId={UserId}", userId);
 					return Results.Json(deleted!.ToView());
 				})
 			.WithGroupName("basilapi")

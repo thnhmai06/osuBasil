@@ -35,6 +35,7 @@ public class CompositionRootTests
 			.Build();
 
 		var services = new ServiceCollection();
+		services.AddLogging();
 		services.AddInfrastructure(configuration);
 		services.AddApplication();
 		_provider = services.BuildServiceProvider();

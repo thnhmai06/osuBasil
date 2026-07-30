@@ -1,11 +1,13 @@
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/ingame_logins.py, scoped to what login needs: recording a login entry.</summary>
 public class SqliteIngameLoginRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteIngameLoginRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteIngameLoginRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteIngameLoginRepository>.Instance);
 
 	[Fact]
 	public async Task Create_ReturnsPersistedEntryWithGeneratedId()

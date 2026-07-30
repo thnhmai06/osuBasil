@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Caching;
 
@@ -17,7 +18,8 @@ public class CachingMapsetRepositoryTests
 	{
 		var inner = new CountingMapsetRepository();
 		inner.ById[1] = MakeMapset(1);
-		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapsetRepository>.Instance);
 
 		await repo.FetchByIdAsync(1);
 		await repo.FetchByIdAsync(1);
@@ -30,7 +32,8 @@ public class CachingMapsetRepositoryTests
 	{
 		var inner = new CountingMapsetRepository();
 		inner.ById[1] = MakeMapset(1);
-		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapsetRepository>.Instance);
 
 		await repo.FetchByIdAsync(1);
 		await repo.SetFrozenAsync(1, true);
@@ -44,7 +47,8 @@ public class CachingMapsetRepositoryTests
 	{
 		var inner = new CountingMapsetRepository();
 		inner.ById[1] = MakeMapset(1);
-		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapsetRepository>.Instance);
 
 		await repo.FetchByIdAsync(1);
 		await repo.SetPrivateAsync(1, true);
@@ -58,7 +62,8 @@ public class CachingMapsetRepositoryTests
 	{
 		var inner = new CountingMapsetRepository();
 		inner.ById[1] = MakeMapset(1);
-		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapsetRepository>.Instance);
 
 		await repo.FetchByIdAsync(1);
 		await repo.SetBackgroundFileAsync(1, "bg.jpg");
@@ -73,7 +78,8 @@ public class CachingMapsetRepositoryTests
 		var inner = new CountingMapsetRepository();
 		var original = MakeMapset(1);
 		inner.ById[1] = original;
-		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()));
+		var repo = new CachingMapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingMapsetRepository>.Instance);
 
 		await repo.FetchByIdAsync(1);
 		var updated = original with { Artist = "New Artist" };

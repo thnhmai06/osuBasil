@@ -4,6 +4,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Bot;
@@ -17,7 +18,8 @@ public sealed class BotBootstrapService(
 	IUserRepository users,
 	IPlayerSessionRegistry sessionRegistry,
 	IChannelRegistry channelRegistry,
-	IOptions<BotOptions> botOptions)
+	IOptions<BotOptions> botOptions,
+	ILogger<BotBootstrapService> logger)
 {
 	public const int BotId = 0;
 	private const string BotToken = "bancho-bot-session";
@@ -25,7 +27,11 @@ public sealed class BotBootstrapService(
 	public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await users.FetchByIdAsync(BotId, cancellationToken);
-		if (user is null) return null;
+		if (user is null)
+		{
+			logger.LogWarning("BasilBot user row (id=0) missing — chat bot unavailable");
+			return null;
+		}
 
 		var configuredName = botOptions.Value.Name;
 		if (user.Name != configuredName)
@@ -53,6 +59,7 @@ public sealed class BotBootstrapService(
 		}
 
 		sessionRegistry.Add(session);
+		logger.LogInformation("Bot session created: BotId={BotId}", BotId);
 		return session;
 	}
 }

@@ -3,11 +3,13 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMapRepository" />
-public sealed class SqliteMapRepository(string connectionString) : IMapRepository
+public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteMapRepository> logger)
+	: IMapRepository
 {
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
@@ -106,6 +108,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 				resolved.BackgroundFile,
 				ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
 			});
+		logger.LogDebug("Beatmap upserted: Id={Id} Md5={Md5}", resolved.Id, resolved.Md5);
 
 		return resolved;
 	}
@@ -114,6 +117,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 	{
 		await using var connection = Connect();
 		await connection.ExecuteAsync("DELETE FROM Beatmaps WHERE Md5 = @Md5", new { Md5 = md5 });
+		logger.LogDebug("Beatmap deleted: Md5={Md5}", md5);
 	}
 
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
@@ -176,6 +180,7 @@ public sealed class SqliteMapRepository(string connectionString) : IMapRepositor
 	{
 		await using var connection = Connect();
 		await connection.ExecuteAsync("UPDATE Beatmaps SET Sr = @Sr WHERE Id = @Id", new { Id = id, Sr = diff });
+		logger.LogDebug("Beatmap diff updated: Id={Id} Sr={Sr}", id, diff);
 	}
 
 	public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,

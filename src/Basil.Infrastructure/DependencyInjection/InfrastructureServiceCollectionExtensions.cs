@@ -21,6 +21,7 @@ using Basil.Infrastructure.Storage;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.DependencyInjection;
@@ -59,25 +60,39 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddMemoryCache();
 
 		services.AddSingleton<IUserRepository>(sp =>
-			new CachingUserRepository(new SqliteUserRepository(BuildConnectionString(sp)),
-				sp.GetRequiredService<IMemoryCache>()));
+			new CachingUserRepository(
+				new SqliteUserRepository(BuildConnectionString(sp),
+					sp.GetRequiredService<ILogger<SqliteUserRepository>>()),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingUserRepository>>()));
 		services.AddSingleton<IStatsRepository>(sp => new SqliteStatsRepository(BuildConnectionString(sp)));
-		services.AddSingleton<IClientHashRepository>(sp => new SqliteClientHashRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IClientHashRepository>(sp =>
+			new SqliteClientHashRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteClientHashRepository>>()));
 		services.AddSingleton<IIngameLoginRepository>(sp =>
-			new SqliteIngameLoginRepository(BuildConnectionString(sp)));
+			new SqliteIngameLoginRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteIngameLoginRepository>>()));
 		services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
 		services.AddSingleton<IRelationshipRepository>(sp =>
-			new SqliteRelationshipRepository(BuildConnectionString(sp)));
+			new SqliteRelationshipRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteRelationshipRepository>>()));
 		services.AddSingleton<IMapRepository>(sp =>
-			new CachingMapRepository(new SqliteMapRepository(BuildConnectionString(sp)),
-				sp.GetRequiredService<IMemoryCache>()));
+			new CachingMapRepository(
+				new SqliteMapRepository(BuildConnectionString(sp),
+					sp.GetRequiredService<ILogger<SqliteMapRepository>>()),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingMapRepository>>()));
 		services.AddSingleton<IMapsetRepository>(sp =>
-			new CachingMapsetRepository(new SqliteMapsetRepository(BuildConnectionString(sp)),
-				sp.GetRequiredService<IMemoryCache>()));
-		services.AddSingleton<IScoreRepository>(sp => new SqliteScoreRepository(BuildConnectionString(sp)));
-		services.AddSingleton<ILogRepository>(sp => new SqliteLogRepository(BuildConnectionString(sp)));
+			new CachingMapsetRepository(
+				new SqliteMapsetRepository(BuildConnectionString(sp),
+					sp.GetRequiredService<ILogger<SqliteMapsetRepository>>()),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingMapsetRepository>>()));
+		services.AddSingleton<IScoreRepository>(sp =>
+			new SqliteScoreRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteScoreRepository>>()));
+		services.AddSingleton<ILogRepository>(sp =>
+			new SqliteLogRepository(BuildConnectionString(sp), sp.GetRequiredService<ILogger<SqliteLogRepository>>()));
 		services.AddSingleton<IMatchPersistenceRepository>(sp =>
-			new SqliteMatchPersistenceRepository(BuildConnectionString(sp)));
+			new SqliteMatchPersistenceRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteMatchPersistenceRepository>>()));
 		services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
 
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();

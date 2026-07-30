@@ -3,6 +3,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Scores;
 using Basil.Protocol.Irc;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Anticheat;
 
@@ -23,7 +24,8 @@ public enum ClientIntegrityResult : byte
 /// </summary>
 public sealed class ClientIntegrityService(
 	IPlayerSessionRegistry sessionRegistry,
-	MatchMembershipService matchMembership)
+	MatchMembershipService matchMembership,
+	ILogger<ClientIntegrityService> logger)
 {
 	public Task<ClientIntegrityResult> HandleLastFmFlagsAsync(
 		PlayerSession player, string beatmapIdOrHiddenFlag, CancellationToken cancellationToken = default)
@@ -40,12 +42,16 @@ public sealed class ClientIntegrityService(
 
 		if ((flags & (LastFmFlags.HqAssembly | LastFmFlags.HqFile)) != 0)
 		{
+			logger.LogInformation("Anticheat flag: UserId={UserId} Username={Username} Flags={Flags} MatchId={MatchId}",
+				player.Id, player.Name, flags, player.Match?.DbId);
 			ReportFlag(player, $"hq!osu running ({flags})");
 			return Task.FromResult(ClientIntegrityResult.StopSending);
 		}
 
 		if ((flags & LastFmFlags.RegistryEdits) != 0)
 		{
+			logger.LogInformation("Anticheat flag: UserId={UserId} Username={Username} Flags={Flags} MatchId={MatchId}",
+				player.Id, player.Name, flags, player.Match?.DbId);
 			ReportFlag(player, "hq!osu tool registry edits detected");
 			return Task.FromResult(ClientIntegrityResult.StopSending);
 		}
@@ -56,7 +62,12 @@ public sealed class ClientIntegrityService(
 	private void ReportFlag(PlayerSession player, string reason)
 	{
 		var match = player.Match;
-		if (match is null) return;
+		if (match is null)
+		{
+			logger.LogInformation("Anticheat flag had no effect: UserId={UserId} Reason={Reason} (not in a match)",
+				player.Id, reason);
+			return;
+		}
 
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is null) return;
@@ -64,6 +75,8 @@ public sealed class ClientIntegrityService(
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {player.Name}: {reason}");
 
 		var dm = $"Anti-cheat flag in match #{match.DbId} {match.Name}: {player.Name} — {reason}";
+		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",
+			match.DbId, match.Referees);
 		foreach (var refereeId in match.Referees)
 		{
 			var referee = sessionRegistry.GetById(refereeId);

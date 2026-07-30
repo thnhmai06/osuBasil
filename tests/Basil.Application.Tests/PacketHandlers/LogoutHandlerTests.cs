@@ -9,6 +9,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -29,13 +30,15 @@ public class LogoutHandlerTests
 			_sessionRegistry, _channelRegistry,
 			new SpectatorService(Substitute.For<IChannelRegistry>(),
 				new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(),
-					Substitute.For<IChannelRegistry>())),
+					Substitute.For<IChannelRegistry>()), NullLogger<SpectatorService>.Instance),
 			new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
 				Substitute.For<IPlayerSessionRegistry>(),
 				new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(),
 					Substitute.For<IChannelRegistry>()),
 				Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
-				Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>())));
+				Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+				NullLogger<MatchMembershipService>.Instance),
+			NullLogger<PlayerLogoutService>.Instance), NullLogger<LogoutHandler>.Instance);
 	}
 
 	[Fact]

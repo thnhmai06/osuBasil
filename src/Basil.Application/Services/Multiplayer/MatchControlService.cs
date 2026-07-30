@@ -7,6 +7,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Multiplayer;
 
@@ -26,7 +27,8 @@ public sealed class MatchControlService(
 	MatchMembershipService matchMembership,
 	IMatchPersistenceRepository matchPersistence,
 	IMapRepository mapRepository,
-	IPlayerSessionRegistry sessionRegistry)
+	IPlayerSessionRegistry sessionRegistry,
+	ILogger<MatchControlService> logger)
 {
 	public enum AbortResult
 	{
@@ -132,6 +134,7 @@ public sealed class MatchControlService(
 	public async Task SetPrivateAsync(MatchSession match, bool isPrivate, CancellationToken cancellationToken = default)
 	{
 		match.IsPrivate = isPrivate;
+		logger.LogDebug("Room settings changed: MatchId={MatchId} IsPrivate={IsPrivate}", match.DbId, isPrivate);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
@@ -139,6 +142,7 @@ public sealed class MatchControlService(
 	{
 		size = Math.Clamp(size, 1, 16);
 		ApplySize(match, size);
+		logger.LogDebug("Room settings changed: MatchId={MatchId} Size={Size}", match.DbId, size);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 	}
@@ -176,6 +180,8 @@ public sealed class MatchControlService(
 	{
 		var prevHostId = match.HostId;
 		match.HostId = target.Id;
+		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
+			match.DbId, prevHostId, target.Id);
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
@@ -224,6 +230,8 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		match.AddReferee(target.Id);
+		logger.LogInformation("Referee added: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
+			match.DbId, actorId, target.Id);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.RefAdded,
@@ -295,6 +303,8 @@ public sealed class MatchControlService(
 		if (match.Referees.Count == 1) return RemoveRefereeResult.WouldLeaveEmpty;
 
 		match.RemoveReferee(target.Id);
+		logger.LogInformation("Referee removed: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
+			match.DbId, actorId, target.Id);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.RefRemoved,
@@ -312,6 +322,8 @@ public sealed class MatchControlService(
 		if (slot is null) return TeamResult.TargetNotInMatch;
 
 		slot.Team = team;
+		logger.LogDebug("Room settings changed: MatchId={MatchId} UserId={UserId} Team={Team}",
+			match.DbId, target.Id, team);
 		await matchMembership.EnqueueStateAsync(match, false, cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 		return TeamResult.Ok;
@@ -338,6 +350,9 @@ public sealed class MatchControlService(
 		ApplyTeamType(match, teamType);
 		if (winCondition is { } wc) match.WinCondition = wc;
 		if (size is { } s) ApplySize(match, s);
+		logger.LogDebug(
+			"Room settings changed: MatchId={MatchId} TeamType={TeamType} WinCondition={WinCondition} Size={Size}",
+			match.DbId, teamType, winCondition, size);
 
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
@@ -355,6 +370,7 @@ public sealed class MatchControlService(
 		match.MapMd5 = bmap.Md5;
 		match.MapName = bmap.FullName;
 		match.Mode = bmap.Difficulty.Mode;
+		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, bmap.Id);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 		return (SetMapResult.Ok, bmap);
@@ -371,6 +387,7 @@ public sealed class MatchControlService(
 		if (enableFreemod)
 		{
 			EnableFreemods(match);
+			logger.LogDebug("Room settings changed: MatchId={MatchId} Freemod=true", match.DbId);
 			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 			return;
 		}
@@ -378,6 +395,7 @@ public sealed class MatchControlService(
 		if (match.Freemods) DisableFreemods(match);
 
 		match.Mods = mods;
+		logger.LogDebug("Room settings changed: MatchId={MatchId} Mods={Mods}", match.DbId, mods);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
@@ -424,6 +442,7 @@ public sealed class MatchControlService(
 	/// <summary>Backs `!mp timer` — a countdown that never auto-starts the match when it finishes.</summary>
 	public void Timer(MatchSession match, int seconds)
 	{
+		logger.LogDebug("Timer started: MatchId={MatchId} Seconds={Seconds}", match.DbId, seconds);
 		BeginCountdown(match, seconds, false);
 	}
 
@@ -467,13 +486,23 @@ public sealed class MatchControlService(
 		match.TimerStartedAt = DateTimeOffset.UtcNow;
 		match.TimerTotalSeconds = totalSeconds;
 		matchMembership.PublishTimer(match);
+		logger.LogDebug("Countdown queued: MatchId={MatchId} Seconds={Seconds} AutoStart={AutoStart}",
+			match.DbId, totalSeconds, autoStart);
 
-		_ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
+		// Cuts the countdown loop's AsyncLocal inheritance (RequestId/etc.) from the request that
+		// triggered it — the loop can run up to `totalSeconds` after that request has ended, so it
+		// must not carry a now-stale RequestId. It pushes its own MatchId scope below instead.
+		using (ExecutionContext.SuppressFlow())
+		{
+			_ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
+		}
 	}
 
 	private async Task CountdownLoopAsync(MatchSession match, int totalSeconds, bool autoStart,
 		CancellationTokenSource cts)
 	{
+		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
+
 		var token = cts.Token;
 		Announce(match, $"Queued the match to start in {totalSeconds} seconds");
 
@@ -549,6 +578,7 @@ public sealed class MatchControlService(
 		match.PendingTimerIsAutoStart = false;
 		match.TimerStartedAt = null;
 		match.TimerTotalSeconds = null;
+		logger.LogDebug("Timer aborted: MatchId={MatchId}", match.DbId);
 		matchMembership.PublishTimer(match);
 		return AbortTimerResult.Ok;
 	}
@@ -561,13 +591,15 @@ public sealed class MatchControlService(
 		match.ResetPlayersLoadedStatus();
 		match.InProgress = false;
 
-		if (match.CurrentRoundId is { } roundId)
+		var roundId = match.CurrentRoundId;
+		if (roundId is { } id)
 		{
-			await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, true,
+			await matchPersistence.SetRoundEndedAsync(id, DateTimeOffset.UtcNow.UtcDateTime, true,
 				cancellationToken);
 			match.CurrentRoundId = null;
 		}
 
+		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 		matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		return AbortResult.Ok;
@@ -580,6 +612,9 @@ public sealed class MatchControlService(
 
 		await matchMembership.LeaveAsync(target, match, cancellationToken);
 		target.Enqueue(ServerPacketWriter.MatchJoinFail());
+		logger.LogInformation(
+			"Player kicked: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId} Reason=Kicked",
+			match.DbId, actorId, target.Id);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Kicked,
@@ -597,6 +632,9 @@ public sealed class MatchControlService(
 		match.AddBan(target.Id);
 		await matchMembership.LeaveAsync(target, match, cancellationToken);
 		target.Enqueue(ServerPacketWriter.MatchJoinFail());
+		logger.LogInformation(
+			"Player kicked: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId} Reason=Banned",
+			match.DbId, actorId, target.Id);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Kicked,
@@ -613,6 +651,7 @@ public sealed class MatchControlService(
 		if (!match.BannedIds.Contains(targetUserId)) return UnbanResult.NotBanned;
 
 		match.RemoveBan(targetUserId);
+		logger.LogInformation("Player unbanned: MatchId={MatchId} TargetId={TargetId}", match.DbId, targetUserId);
 		await matchMembership.PublishBansAsync(match, cancellationToken);
 		return UnbanResult.Ok;
 	}
@@ -749,6 +788,8 @@ public sealed class MatchControlService(
 				slot.Status = locked ? SlotStatus.Locked : SlotStatus.Open;
 		}
 
+		logger.LogDebug("Room settings changed: MatchId={MatchId} SlotsChanged={SlotsChanged}",
+			match.DbId, entries.Count);
 		await matchMembership.PublishSlotsAsync(match, cancellationToken);
 		return SetSlotsResult.Ok;
 	}

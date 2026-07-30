@@ -6,6 +6,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Chat;
 
@@ -26,14 +27,19 @@ public sealed class ChatDispatchService(
 	ChannelMembershipService channelMembership,
 	IUserRepository users,
 	IRelationshipRepository relationships,
-	ICommandDispatcher commandDispatcher)
+	ICommandDispatcher commandDispatcher,
+	ILogger<ChatDispatchService> logger)
 {
 	private const int MaxMessageLength = 2000;
 
 	public async Task SendPrivmsgAsync(PlayerSession sender, string channelOrNick, string text,
 		CancellationToken cancellationToken = default)
 	{
-		if (sender.Silenced) return;
+		if (sender.Silenced)
+		{
+			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=Silenced", sender.Id);
+			return;
+		}
 
 		if (channelOrNick.StartsWith('#'))
 		{
@@ -55,7 +61,11 @@ public sealed class ChatDispatchService(
 		CancellationToken cancellationToken)
 	{
 		var channel = channelRegistry.GetByName(channelName);
-		if (channel is null || !channel.Contains(sender.Id) || !channel.CanWrite(sender.Privilege)) return;
+		if (channel is null || !channel.Contains(sender.Id) || !channel.CanWrite(sender.Privilege))
+		{
+			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=ChannelWriteDenied", sender.Id);
+			return;
+		}
 
 		var truncated = text.Length > MaxMessageLength ? text[..MaxMessageLength] : text;
 
@@ -112,6 +122,7 @@ public sealed class ChatDispatchService(
 		var relationship = await relationships.FetchOneAsync(targetId, sender.Id, cancellationToken);
 		if (relationship?.Type == RelationshipType.Block)
 		{
+			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=Blocked", sender.Id);
 			sender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
 			return;
 		}
@@ -120,12 +131,14 @@ public sealed class ChatDispatchService(
 		{
 			if (target.PmPrivate && relationship?.Type != RelationshipType.Friend)
 			{
+				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=PmPrivate", sender.Id);
 				sender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
 				return;
 			}
 
 			if (target.Silenced)
 			{
+				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=TargetSilenced", sender.Id);
 				sender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
 				return;
 			}

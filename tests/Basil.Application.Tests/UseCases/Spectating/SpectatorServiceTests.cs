@@ -3,6 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -16,7 +17,8 @@ public class SpectatorServiceTests
 
 	private SpectatorService MakeService()
 	{
-		return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+		return new SpectatorService(_channelRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry),
+			NullLogger<SpectatorService>.Instance);
 	}
 
 	private static PlayerSession MakePlayer(int id, string name)

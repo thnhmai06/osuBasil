@@ -9,6 +9,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Bot;
 
@@ -36,7 +37,9 @@ public sealed class MpCommandService(
 	IMatchPersistenceRepository matchPersistence,
 	IMapRepository mapRepository,
 	IPlayerSessionRegistry sessionRegistry,
-	IUserRepository userRepository)
+	IUserRepository userRepository,
+	ILogger<MpCommandService> logger,
+	ILogger<MatchControlService> matchControlLogger)
 {
 	private const int MaxMatchNameLength = 50;
 
@@ -84,7 +87,7 @@ public sealed class MpCommandService(
 	private static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchPersistence, mapRepository, sessionRegistry);
+		new(matchMembership, matchPersistence, mapRepository, sessionRegistry, matchControlLogger);
 
 	public async Task<string?> HandleAsync(PlayerSession sender, MatchSession match, string subcommand,
 		IReadOnlyList<string> args, CancellationToken cancellationToken = default)
@@ -104,7 +107,18 @@ public sealed class MpCommandService(
 	{
 		if (subcommand is "" or "help") return (true, HelpText);
 
-		if (!match.IsReferee(sender.Id)) return (false, null);
+		using var _ = logger.BeginScope(new Dictionary<string, object>
+		{
+			["MatchId"] = match.DbId,
+			["Subcommand"] = subcommand
+		});
+
+		if (!match.IsReferee(sender.Id))
+		{
+			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
+				match.DbId);
+			return (false, null);
+		}
 
 		return subcommand switch
 		{

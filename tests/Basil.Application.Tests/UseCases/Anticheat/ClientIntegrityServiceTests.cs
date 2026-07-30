@@ -5,6 +5,7 @@ using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Tests.UseCases.Anticheat;
 
@@ -21,7 +22,8 @@ public class ClientIntegrityServiceTests
 
 	private ClientIntegrityService MakeService()
 	{
-		return new ClientIntegrityService(_fixture.SessionRegistry, _fixture.MatchMembership);
+		return new ClientIntegrityService(_fixture.SessionRegistry, _fixture.MatchMembership,
+			NullLogger<ClientIntegrityService>.Instance);
 	}
 
 	[Fact]

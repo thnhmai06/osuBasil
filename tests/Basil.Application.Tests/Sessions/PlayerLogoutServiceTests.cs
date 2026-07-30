@@ -10,6 +10,7 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Sessions;
@@ -29,16 +30,19 @@ public class PlayerLogoutServiceTests
 		Substitute.For<IPlayerSessionRegistry>(),
 		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
 		Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
-		Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>());
+		Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+		NullLogger<MatchMembershipService>.Instance);
 
 	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
 
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
-		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()));
+		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
+		NullLogger<SpectatorService>.Instance);
 
 	private PlayerLogoutService MakeService()
 	{
-		return new PlayerLogoutService(_sessionRegistry, _channelRegistry, _spectatorService, _matchMembership);
+		return new PlayerLogoutService(_sessionRegistry, _channelRegistry, _spectatorService, _matchMembership,
+			NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -132,12 +136,14 @@ public class PlayerLogoutServiceTests
 			new ChannelMembershipService(sessionRegistry, channelRegistry),
 			new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
-			Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>());
+			Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+			NullLogger<MatchMembershipService>.Instance);
 		var host = new PlayerSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.All.Returns([host]);
 		sessionRegistry.GetById(1).Returns(host);
 		var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
-		var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership);
+		var service = new PlayerLogoutService(sessionRegistry, channelRegistry, _spectatorService, matchMembership,
+			NullLogger<PlayerLogoutService>.Instance);
 
 		await service.LogoutAsync(host);
 

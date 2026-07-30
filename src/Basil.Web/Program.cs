@@ -10,6 +10,7 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
+using Basil.Web.Logging;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
 using Basil.Web.Routing;
@@ -17,6 +18,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using Serilog;
+using Serilog.Events;
 
 namespace Basil.Web;
 
@@ -89,6 +92,7 @@ public sealed class Program
 	public static async Task Main(string[] args)
 	{
 		var builder = WebApplication.CreateBuilder(args);
+		ConfigureSerilog(builder);
 
 		ConfigureConfiguration(builder, args);
 		ConfigureKestrel(builder);
@@ -102,6 +106,9 @@ public sealed class Program
 		ConfigureCors(builder);
 
 		var app = builder.Build();
+		app.UseMiddleware<RequestIdLoggingMiddleware>();
+		app.UseSerilogRequestLogging();
+		app.UseMiddleware<ExceptionLoggingMiddleware>();
 		app.UseWebSockets();
 		app.UseCors(CorsPolicyName);
 		app.UseAuthentication();
@@ -111,8 +118,52 @@ public sealed class Program
 		var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
 		BanchoHostGroups.MapAll(app, domain);
 
+		var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+		var hostLogger = app.Services.GetRequiredService<ILogger<Program>>();
+		lifetime.ApplicationStopping.Register(() => hostLogger.LogInformation("Server shutting down"));
+
 		await InitializeDataAsync(app);
 		await app.RunAsync();
+	}
+
+	// Fixed at Logs/ next to the executable (not under Data/ — logs are operational output, not
+	// application data) — not bound from appsettings, not configurable. Serilog.Sinks.File creates
+	// Logs/full and Logs/errors (and therefore their parent Logs/, which the hardlink pointer files
+	// also live directly under) itself on first write, so no explicit Directory.CreateDirectory here.
+	// Minimum level (stdout + full file — the errors file always stays Error-only regardless) reads
+	// from Basil:Logging:MinimumLevel, defaulting to Information — WebApplication.CreateBuilder
+	// already loads appsettings.json before this runs, so the value is available here even though
+	// ConfigureConfiguration (which re-layers it plus command-line args) hasn't run yet.
+	private static void ConfigureSerilog(WebApplicationBuilder builder)
+	{
+		var logsPath = Path.Combine(AppContext.BaseDirectory, "Logs");
+		const string template =
+			"[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{RequestId}] {SourceContext}: {Message:lj} {Properties}{NewLine}{Exception}";
+
+		var minimumLevel = Enum.TryParse<LogEventLevel>(
+			builder.Configuration["Basil:Logging:MinimumLevel"], true, out var configuredLevel)
+			? configuredLevel
+			: LogEventLevel.Information;
+
+		builder.Services.AddSerilog(lc => lc
+			.Enrich.FromLogContext()
+			.Enrich.With<CategoryEnricher>()
+			.MinimumLevel.Is(minimumLevel)
+			.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+			.WriteTo.Console(outputTemplate: template)
+			.WriteTo.File(
+				Path.Combine(logsPath, "full", "basil-.log"),
+				rollingInterval: RollingInterval.Day,
+				retainedFileCountLimit: 30,
+				outputTemplate: template,
+				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "latest.log")))
+			.WriteTo.File(
+				Path.Combine(logsPath, "errors", "basil-.log"),
+				LogEventLevel.Error,
+				rollingInterval: RollingInterval.Day,
+				retainedFileCountLimit: 30,
+				outputTemplate: template,
+				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "errors_latest.log"))));
 	}
 
 	// appsettings.json carries all Basil settings under a "Basil" section alongside standard
@@ -289,6 +340,7 @@ public sealed class Program
 	private static async Task InitializeDataAsync(WebApplication app)
 	{
 		using var scope = app.Services.CreateScope();
+		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
 		var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
 		var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
@@ -300,6 +352,7 @@ public sealed class Program
 			         storageOptions.SeasonalsPath, storageOptions.FaqsPath
 		         })
 			Directory.CreateDirectory(path);
+		logger.LogInformation("Storage folders ready");
 
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
 		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
@@ -309,7 +362,9 @@ public sealed class Program
 		{
 			var connectionString = DatabaseConnectionStringBuilder.Build(dbOptions);
 			Directory.CreateDirectory(Path.GetDirectoryName(DatabaseConnectionStringBuilder.ResolvePath(dbOptions))!);
+			logger.LogInformation("Running database migrations");
 			SqlMigrationRunner.RunMigrations(connectionString);
+			logger.LogInformation("Database migrations complete");
 
 			autoJoinChannels = await channelRepository.FetchAllAutoJoinAsync();
 		}

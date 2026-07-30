@@ -15,6 +15,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -43,7 +44,7 @@ public class LoginServiceTests
 	public LoginServiceTests()
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
 	}
 
 	private LoginService MakeUseCase()
@@ -55,7 +56,7 @@ public class LoginServiceTests
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
-			}));
+			}), NullLogger<LoginService>.Instance);
 	}
 
 	private static PlayerSession MakeBot()

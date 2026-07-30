@@ -10,6 +10,12 @@ namespace Basil.Web.Routing;
 ///     is already taken), `PUT` only replaces an existing one (404 if it isn't). Backed by
 ///     <see cref="FaqService" />, shared with <see cref="Basil.Application.Services.Bot.CommandDispatcher" />.
 /// </summary>
+/// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="FaqRoutes" /> is static and can't be a type
+///     argument.
+/// </summary>
+internal sealed class FaqRoutesLog;
+
 internal static class FaqRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -71,8 +77,12 @@ internal static class FaqRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/faqs/{entry}", (string entry, FaqService faq) =>
-				faq.DeleteEntry(entry) ? Results.Json(new FaqDeletedView(entry, true)) : Results.NotFound())
+		group.MapDelete("/faqs/{entry}", (string entry, FaqService faq, ILogger<FaqRoutesLog> logger) =>
+			{
+				if (!faq.DeleteEntry(entry)) return Results.NotFound();
+				logger.LogDebug("FAQ entry deleted via admin API: Entry={Entry}", entry);
+				return Results.Json(new FaqDeletedView(entry, true));
+			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteFaq")
@@ -85,7 +95,7 @@ internal static class FaqRoutes
 	}
 
 	private static async Task<IResult> HandleCreate(HttpContext context, FaqService faq,
-		CancellationToken cancellationToken)
+		ILogger<FaqRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -99,16 +109,20 @@ internal static class FaqRoutes
 		var entry = Path.GetFileNameWithoutExtension(file.FileName);
 		await using var stream = file.OpenReadStream();
 		var result = await faq.CreateEntryAsync(entry, stream, cancellationToken);
-		return result switch
-		{
-			FaqService.CreateResult.AlreadyExists => Results.Conflict(new ErrorResponse($"'{entry}' already exists.")),
-			FaqService.CreateResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
-			_ => Results.Created($"/faqs/{entry}", new FaqCreatedView(entry, true))
-		};
+		if (result is FaqService.CreateResult.AlreadyExists or FaqService.CreateResult.InvalidName)
+			return result switch
+			{
+				FaqService.CreateResult.AlreadyExists =>
+					Results.Conflict(new ErrorResponse($"'{entry}' already exists.")),
+				_ => Results.BadRequest(new ErrorResponse("Invalid entry name."))
+			};
+
+		logger.LogDebug("FAQ entry created via admin API: Entry={Entry}", entry);
+		return Results.Created($"/faqs/{entry}", new FaqCreatedView(entry, true));
 	}
 
 	private static async Task<IResult> HandleReplace(string entry, HttpContext context, FaqService faq,
-		CancellationToken cancellationToken)
+		ILogger<FaqRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -119,12 +133,13 @@ internal static class FaqRoutes
 
 		await using var stream = file.OpenReadStream();
 		var result = await faq.ReplaceEntryAsync(entry, stream, cancellationToken);
-		return result switch
-		{
-			FaqService.ReplaceResult.NotFound => Results.NotFound(),
-			FaqService.ReplaceResult.InvalidName => Results.BadRequest(new ErrorResponse("Invalid entry name.")),
-			_ => Results.Json(new FaqReplacedView(entry, true))
-		};
+		if (result is FaqService.ReplaceResult.NotFound or FaqService.ReplaceResult.InvalidName)
+			return result == FaqService.ReplaceResult.NotFound
+				? Results.NotFound()
+				: Results.BadRequest(new ErrorResponse("Invalid entry name."));
+
+		logger.LogDebug("FAQ entry replaced via admin API: Entry={Entry}", entry);
+		return Results.Json(new FaqReplacedView(entry, true));
 	}
 
 	/// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>

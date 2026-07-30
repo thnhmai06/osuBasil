@@ -2,11 +2,13 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMapsetRepository" />
-public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRepository
+public sealed class SqliteMapsetRepository(string connectionString, ILogger<SqliteMapsetRepository> logger)
+	: IMapsetRepository
 {
 	public async Task<Mapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
@@ -47,6 +49,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
 				mapset.IsPrivate,
 				mapset.BackgroundFile
 			});
+		logger.LogDebug("Mapset upserted: Id={Id}", mapset.Id);
 
 		return (await FetchByIdAsync(mapset.Id, cancellationToken))!;
 	}
@@ -56,6 +59,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
 		await using var connection = Connect();
 		await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
 			new { Id = id, Frozen = frozen });
+		logger.LogDebug("Mapset frozen flag set: Id={Id} Frozen={Frozen}", id, frozen);
 	}
 
 	public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
@@ -63,6 +67,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
 		await using var connection = Connect();
 		await connection.ExecuteAsync("UPDATE Mapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
 			new { Id = id, IsPrivate = isPrivate });
+		logger.LogDebug("Mapset private flag set: Id={Id} IsPrivate={IsPrivate}", id, isPrivate);
 	}
 
 	public async Task SetBackgroundFileAsync(int id, string? backgroundFile,
@@ -71,6 +76,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
 		await using var connection = Connect();
 		await connection.ExecuteAsync("UPDATE Mapsets SET BackgroundFile = @BackgroundFile WHERE Id = @Id",
 			new { Id = id, BackgroundFile = backgroundFile });
+		logger.LogDebug("Mapset background file set: Id={Id}", id);
 	}
 
 	public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
@@ -78,6 +84,7 @@ public sealed class SqliteMapsetRepository(string connectionString) : IMapsetRep
 		await using var connection = Connect();
 		// Beatmaps rows cascade via Beatmaps_Mapsets_Id_fk (on delete cascade) — no manual cleanup needed.
 		await connection.ExecuteAsync("DELETE FROM Mapsets WHERE Id = @Id", new { Id = id });
+		logger.LogDebug("Mapset deleted: Id={Id}", id);
 	}
 
 	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

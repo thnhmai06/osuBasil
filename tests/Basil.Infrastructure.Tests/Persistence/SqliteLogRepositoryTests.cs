@@ -1,13 +1,15 @@
 using Basil.Infrastructure.Persistence.Repositories;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/logs.py, scoped to the single append-only insert ClientIntegrityService needs.</summary>
 public class SqliteLogRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteLogRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteLogRepository _repository =
+		new(fixture.ConnectionString, NullLogger<SqliteLogRepository>.Instance);
 
 	[Fact]
 	public async Task CreateAsync_InsertsARowReadableBackFromTheLogsTable()

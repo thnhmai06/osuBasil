@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Scores;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Scores;
 
@@ -14,15 +15,24 @@ public enum ReplayFetchResultCode
 
 public sealed record ReplayFetchResult(ReplayFetchResultCode Code, byte[]? Data);
 
-public sealed class ReplayService(IScoreRepository scores, IReplayStorage replayStorage)
+public sealed class ReplayService(
+	IScoreRepository scores,
+	IReplayStorage replayStorage,
+	ILogger<ReplayService> logger)
 {
 	public async Task<ReplayFetchResult> FetchReplayFileAsync(long scoreId,
 		CancellationToken cancellationToken = default)
 	{
 		var owner = await scores.FetchOwnerAsync(scoreId, cancellationToken);
-		if (owner is null) return new ReplayFetchResult(ReplayFetchResultCode.NotFound, null);
+		if (owner is null)
+		{
+			logger.LogDebug("Replay not found: ScoreId={ScoreId} (no owner)", scoreId);
+			return new ReplayFetchResult(ReplayFetchResultCode.NotFound, null);
+		}
 
 		var data = await replayStorage.ReadAsync(scoreId, cancellationToken);
+		if (data is null) logger.LogDebug("Replay not found: ScoreId={ScoreId} (no file)", scoreId);
+
 		return data is not null
 			? new ReplayFetchResult(ReplayFetchResultCode.Found, data)
 			: new ReplayFetchResult(ReplayFetchResultCode.NotFound, null);

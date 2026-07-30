@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Beatmaps;
@@ -9,6 +10,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Bot;
@@ -28,7 +30,8 @@ public class MpCommandServiceTests
 	private MpCommandService MakeService()
 	{
 		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchPersistence, _maps,
-			_fixture.SessionRegistry, _users);
+			_fixture.SessionRegistry, _users, NullLogger<MpCommandService>.Instance,
+			NullLogger<MatchControlService>.Instance);
 	}
 
 	[Fact]

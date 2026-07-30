@@ -5,6 +5,7 @@ using Basil.Application.Services.Authentication;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Scores;
 
@@ -66,7 +67,8 @@ public sealed class ScoreSubmissionService(
 	IMapRepository maps,
 	IScoreRepository scores,
 	AuthenticationService authentication,
-	IReplayStorage replayStorage)
+	IReplayStorage replayStorage,
+	ILogger<ScoreSubmissionService> logger)
 {
 	private const int MinReplaySize = 24;
 
@@ -79,12 +81,20 @@ public sealed class ScoreSubmissionService(
 	{
 		var beatmapMd5 = request.ScoreDataFields[0];
 		var beatmap = await maps.FetchOneAsync(md5: beatmapMd5, cancellationToken: cancellationToken);
-		if (beatmap is null) return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.BeatmapNotFound);
+		if (beatmap is null)
+		{
+			logger.LogInformation("Score submission rejected: BeatmapMd5={BeatmapMd5} not found", beatmapMd5);
+			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.BeatmapNotFound);
+		}
 
 		var username = ExtractUsername(request.ScoreDataFields[1]);
 		var player =
 			await authentication.AuthenticateOnlinePlayerAsync(username, request.PasswordMd5, cancellationToken);
-		if (player is null) return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.PlayerNotFound);
+		if (player is null)
+		{
+			logger.LogInformation("Score submission rejected: Username={Username} not authenticated", username);
+			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.PlayerNotFound);
+		}
 
 		var score = ScoreSubmission.FromSubmission([.. request.ScoreDataFields.Skip(2)]) with
 		{
@@ -101,9 +111,11 @@ public sealed class ScoreSubmissionService(
 				player.Client, player.OsuVersion.Date, player.Name, request.OsuVersion, request.ClientHash,
 				request.UniqueIds, request.StoryboardMd5, beatmapMd5, request.UpdatedBeatmapHash);
 		}
-		catch (ScoreSubmissionIntegrityException)
+		catch (ScoreSubmissionIntegrityException e)
 		{
 			// Non-fatal: bancho.py only logs + records a metric here — ported as-is.
+			logger.LogInformation("Score submission integrity check failed: UserId={UserId} Reason={Reason}",
+				player.Id, e.Message);
 		}
 
 		if (score.Mode != player.Status.Mode)
@@ -124,26 +136,45 @@ public sealed class ScoreSubmissionService(
 		// Multiplayer-only scope: a score played outside a room, or inside a room with no round
 		// currently in progress, is neither processed nor persisted (no lock, no dedupe check, no
 		// DB row, no replay, no play-count increment).
-		if (roundId is null) return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.NotInMultiplayer);
+		if (roundId is null)
+		{
+			logger.LogDebug(
+				"Score submission discarded: UserId={UserId} BeatmapMd5={BeatmapMd5} Reason=NotInMultiplayer",
+				player.Id, beatmapMd5);
+			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.NotInMultiplayer);
+		}
 
 		var checksumLock = ChecksumLocks.GetOrAdd(score.ClientChecksum, static _ => new SemaphoreSlim(1, 1));
 		await checksumLock.WaitAsync(cancellationToken);
 		try
 		{
 			if (await scores.ExistsByOnlineChecksumAsync(score.ClientChecksum, cancellationToken))
+			{
+				logger.LogInformation("Score submission rejected: UserId={UserId} ClientChecksum={ClientChecksum} " +
+				                      "Reason=Duplicate", player.Id, score.ClientChecksum);
 				return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.DuplicateSubmission);
+			}
 
 			var (updatedScore, rank) = CalculateSubmissionStatus(score, request.ScoreTime, request.FailTime);
 			score = updatedScore;
 
 			var replayData = score.IsPassed ? request.ReplayData : null;
 			if (replayData is not null && replayData.Length < MinReplaySize)
+			{
 				// No restriction/moderation system — only the replay is discarded; the score still counts.
+				logger.LogDebug("Replay discarded (under MinReplaySize): UserId={UserId}", player.Id);
 				replayData = null;
+			}
 
 			var scoreId = await scores.CreateAsync(BuildInsertRow(score, roundId, team), cancellationToken);
 
-			if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
+			using (logger.BeginScope(new Dictionary<string, object> { ["ScoreId"] = scoreId }))
+			{
+				if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
+				logger.LogInformation(
+					"Score submitted: UserId={UserId} BeatmapMd5={BeatmapMd5} MatchId={MatchId} Score={Score}",
+					player.Id, beatmap.Md5, match?.DbId, score.Score);
+			}
 
 			return new ScoreSubmissionOutcome(
 				ScoreSubmissionResultCode.Success,

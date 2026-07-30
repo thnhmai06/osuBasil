@@ -24,8 +24,13 @@ public sealed class TcpIrcListener(
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
 	IPlayerSessionRegistry sessionRegistry,
-	ILogger<TcpIrcListener> logger) : BackgroundService
+	ILogger<TcpIrcListener> logger,
+	ILogger<TcpIrcConnection> connectionLogger) : BackgroundService
 {
+	// Unique for the lifetime of this server process — never persisted, never reused, per the
+	// ConnectionId contract (see docs on TcpIrcConnection).
+	private static long _nextConnectionId;
+
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		var listener = new TcpListener(IPAddress.Any, options.Value.Port);
@@ -48,10 +53,15 @@ public sealed class TcpIrcListener(
 			while (!stoppingToken.IsCancellationRequested)
 			{
 				var client = await listener.AcceptTcpClientAsync(stoppingToken);
-				var connection = new TcpIrcConnection(
-					client, authService, chatDispatch, channelMembership, channelRegistry, sessionRegistry, options);
+				var connectionId = Interlocked.Increment(ref _nextConnectionId);
+				logger.LogDebug("IRC connection accepted: ConnectionId={ConnectionId} RemoteEndPoint={RemoteEndPoint}",
+					connectionId, client.Client.RemoteEndPoint);
 
-				_ = RunConnectionAsync(connection, client, stoppingToken);
+				var connection = new TcpIrcConnection(
+					client, authService, chatDispatch, channelMembership, channelRegistry, sessionRegistry, options,
+					connectionLogger, connectionId);
+
+				_ = RunConnectionAsync(connection, client, connectionId, stoppingToken);
 			}
 		}
 		catch (OperationCanceledException)
@@ -64,7 +74,7 @@ public sealed class TcpIrcListener(
 		}
 	}
 
-	private static async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client,
+	private async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client, long connectionId,
 		CancellationToken stoppingToken)
 	{
 		try
@@ -74,10 +84,12 @@ public sealed class TcpIrcListener(
 		catch (IOException)
 		{
 			// The client dropped the connection mid-read/write.
+			logger.LogDebug("IRC connection dropped mid-read/write: ConnectionId={ConnectionId}", connectionId);
 		}
 		catch (SocketException)
 		{
 			// Same as above, at the socket layer.
+			logger.LogDebug("IRC connection dropped (socket error): ConnectionId={ConnectionId}", connectionId);
 		}
 		finally
 		{

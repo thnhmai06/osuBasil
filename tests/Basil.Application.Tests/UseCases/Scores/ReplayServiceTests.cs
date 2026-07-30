@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Services.Scores;
 using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Scores;
@@ -13,7 +14,7 @@ public class ReplayServiceTests
 
 	public ReplayServiceTests()
 	{
-		_service = new ReplayService(_scores, _replayStorage);
+		_service = new ReplayService(_scores, _replayStorage, NullLogger<ReplayService>.Instance);
 	}
 
 	[Fact]

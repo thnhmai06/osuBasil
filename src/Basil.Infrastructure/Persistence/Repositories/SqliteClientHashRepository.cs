@@ -2,11 +2,13 @@ using Basil.Application.Abstractions.Users;
 using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IClientHashRepository" />
-public sealed class SqliteClientHashRepository(string connectionString) : IClientHashRepository
+public sealed class SqliteClientHashRepository(string connectionString, ILogger<SqliteClientHashRepository> logger)
+	: IClientHashRepository
 {
 	public async Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default)
@@ -27,6 +29,7 @@ public sealed class SqliteClientHashRepository(string connectionString) : IClien
 				UninstallId = uninstallId,
 				DiskSerial = diskSerial
 			});
+		logger.LogDebug("ClientHash upserted for UserId={UserId}", userId);
 
 		var row = await connection.QuerySingleAsync<ClientHashRow>(
 			"""

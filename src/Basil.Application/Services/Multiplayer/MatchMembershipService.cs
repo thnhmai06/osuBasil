@@ -12,6 +12,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Multiplayer;
 
@@ -29,7 +30,8 @@ public sealed class MatchMembershipService(
 	IMatchPersistenceRepository matchPersistence,
 	IMatchLiveEvents eventBus,
 	IMapRepository mapRepo,
-	IUserRepository userRepo)
+	IUserRepository userRepo,
+	ILogger<MatchMembershipService> logger)
 {
 	private const int MaxMatchNameLength = 50;
 
@@ -84,6 +86,8 @@ public sealed class MatchMembershipService(
 
 		match.DbId = await matchPersistence.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
+		logger.LogInformation("Match created: MatchId={MatchId} HostId={HostId} Name={Name}",
+			match.DbId, host.Id, match.Name);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Created,
@@ -125,6 +129,8 @@ public sealed class MatchMembershipService(
 
 		match.DbId = await matchPersistence.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
+		logger.LogInformation("Match created: MatchId={MatchId} HostId=0 Name={Name} (via HTTP)",
+			match.DbId, match.Name);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Created,
@@ -140,12 +146,19 @@ public sealed class MatchMembershipService(
 		    match.BannedIds.Contains(player.Id) ||
 		    match.IsLocked)
 		{
+			var reason = player.Match is not null ? "AlreadyInMatch"
+				: match.TourneyClients.Contains(player.Id) ? "TourneyClient"
+				: match.BannedIds.Contains(player.Id) ? "Banned"
+				: "Locked";
+			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason={Reason}",
+				match.DbId, player.Id, reason);
 			player.Enqueue(ServerPacketWriter.MatchJoinFail());
 			return false;
 		}
 
 		if (match.IsPrivate && (player.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(player.Id))
 		{
+			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId, player.Id);
 			player.Enqueue(ServerPacketWriter.MatchJoinFail());
 			return false;
 		}
@@ -155,6 +168,8 @@ public sealed class MatchMembershipService(
 		{
 			if (password != match.Password && (player.Privilege & UserPrivileges.Staff) == 0)
 			{
+				logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=WrongPassword",
+					match.DbId, player.Id);
 				player.Enqueue(ServerPacketWriter.MatchJoinFail());
 				return false;
 			}
@@ -162,6 +177,7 @@ public sealed class MatchMembershipService(
 			var free = match.GetFreeSlotId();
 			if (free is null)
 			{
+				logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId, player.Id);
 				player.Enqueue(ServerPacketWriter.MatchJoinFail());
 				return false;
 			}
@@ -214,6 +230,9 @@ public sealed class MatchMembershipService(
 		player.Enqueue(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)));
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
+		logger.LogInformation("Player joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
+			match.DbId, player.Id, slotId);
+
 		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.PlayerJoined,
 			player.Id, player.Name, null, null, DateTimeOffset.UtcNow.UtcDateTime, null));
@@ -242,6 +261,7 @@ public sealed class MatchMembershipService(
 
 		if (match.Slots.All(s => s.Empty) && !match.CreatedViaMakeCommand)
 		{
+			logger.LogInformation("Match auto-torn-down (empty): MatchId={MatchId}", match.DbId);
 			TeardownMatch(match, channel);
 		}
 		else
@@ -264,12 +284,18 @@ public sealed class MatchMembershipService(
 
 		player.Match = null;
 
+		logger.LogInformation("Player left match: MatchId={MatchId} UserId={UserId}", match.DbId, player.Id);
+
 		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.PlayerLeft,
 			player.Id, player.Name, null, null, DateTimeOffset.UtcNow.UtcDateTime, null));
 
 		if (hostTransfer)
 		{
+			logger.LogInformation(
+				"Host transferred on leave: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
+				match.DbId, prevHostId, newHostId);
+
 			var prevHostName = prevHostId is not null
 				? sessionRegistry.GetById(prevHostId.Value)?.Name
 				: null;
@@ -300,6 +326,7 @@ public sealed class MatchMembershipService(
 		}
 
 		TeardownMatch(match, channel);
+		logger.LogInformation("Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Closed,
@@ -348,6 +375,8 @@ public sealed class MatchMembershipService(
 
 		if (match.MapId > 0 && bmap is null)
 		{
+			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
+				match.DbId, match.MapId);
 			var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 			if (bot is not null)
 				EnqueueChat(match, bot.Name, bot.Id,
@@ -374,6 +403,7 @@ public sealed class MatchMembershipService(
 
 		Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		logger.LogInformation("Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
 	}
 

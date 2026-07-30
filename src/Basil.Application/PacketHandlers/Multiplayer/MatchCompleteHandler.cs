@@ -4,6 +4,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
@@ -15,7 +16,8 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// </summary>
 public sealed class MatchCompleteHandler(
 	MatchMembershipService matchMembership,
-	IMatchPersistenceRepository matchPersistence) : IBanchoPacketHandler
+	IMatchPersistenceRepository matchPersistence,
+	ILogger<MatchCompleteHandler> logger) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchComplete;
 
@@ -46,12 +48,14 @@ public sealed class MatchCompleteHandler(
 			match.ResetPlayersLoadedStatus();
 			match.InProgress = false;
 
-			if (match.CurrentRoundId is { } roundId)
+			var roundId = match.CurrentRoundId;
+			if (roundId is { } id)
 			{
-				await matchPersistence.SetRoundEndedAsync(roundId, DateTimeOffset.UtcNow.UtcDateTime, false);
+				await matchPersistence.SetRoundEndedAsync(id, DateTimeOffset.UtcNow.UtcDateTime, false);
 				match.CurrentRoundId = null;
 			}
 
+			logger.LogInformation("Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
 			await matchMembership.EnqueueStateAsync(match);
 		}

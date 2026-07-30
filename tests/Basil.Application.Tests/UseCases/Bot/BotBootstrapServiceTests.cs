@@ -5,6 +5,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -26,7 +27,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns((User?)null);
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			Options.Create(new BotOptions { CommandPrefix = "!" }));
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
 
@@ -39,7 +40,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			Options.Create(new BotOptions { CommandPrefix = "!" }));
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
 
@@ -55,7 +56,8 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }));
+			Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }),
+			NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
 
@@ -70,7 +72,7 @@ public class BotBootstrapServiceTests
 		var osu = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		_channelRegistry.AutoJoinChannels.Returns([osu]);
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			Options.Create(new BotOptions { CommandPrefix = "!" }));
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
 

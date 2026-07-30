@@ -1,11 +1,13 @@
 using Basil.Application.Abstractions.Social;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IRelationshipRepository" />
-public sealed class SqliteRelationshipRepository(string connectionString) : IRelationshipRepository
+public sealed class SqliteRelationshipRepository(string connectionString, ILogger<SqliteRelationshipRepository> logger)
+	: IRelationshipRepository
 {
 	public async Task<Relationship> CreateAsync(int user1, int user2, RelationshipType type,
 		CancellationToken cancellationToken = default)
@@ -14,6 +16,7 @@ public sealed class SqliteRelationshipRepository(string connectionString) : IRel
 		await connection.ExecuteAsync(
 			"INSERT INTO Relationships (User1, User2, Type) VALUES (@User1, @User2, @Type)",
 			new { User1 = user1, User2 = user2, Type = TypeColumn(type) });
+		logger.LogDebug("Relationship created: User1={User1} User2={User2} Type={Type}", user1, user2, type);
 
 		return (await FetchOneAsync(user1, user2, cancellationToken))!;
 	}
@@ -46,6 +49,7 @@ public sealed class SqliteRelationshipRepository(string connectionString) : IRel
 		await connection.ExecuteAsync(
 			"DELETE FROM Relationships WHERE User1 = @User1 AND User2 = @User2",
 			new { User1 = user1, User2 = user2 });
+		logger.LogDebug("Relationship deleted: User1={User1} User2={User2}", user1, user2);
 	}
 
 	private static string TypeColumn(RelationshipType type)

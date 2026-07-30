@@ -1,5 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
@@ -9,8 +10,11 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteMapsetRepository _mapsetRepository = new(fixture.ConnectionString);
-	private readonly SqliteMapRepository _repository = new(fixture.ConnectionString);
+	private readonly SqliteMapsetRepository _mapsetRepository =
+		new(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
+
+	private readonly SqliteMapRepository _repository =
+		new(fixture.ConnectionString, NullLogger<SqliteMapRepository>.Instance);
 
 	private static Mapset MakeMapset(int id, string artist = "Camellia",
 		string title = "Exit This Earth's Atomosphere", string creator = "cmyui", bool isPrivate = false)

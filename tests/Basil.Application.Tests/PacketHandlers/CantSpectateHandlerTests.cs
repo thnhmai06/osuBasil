@@ -2,6 +2,7 @@ using Basil.Application.PacketHandlers.Spectating;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -18,7 +19,8 @@ public class CantSpectateHandlerTests
 	{
 		var player = MakePlayer(1, "alice");
 
-		await new CantSpectateHandler().HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Empty(player.Dequeue());
 	}
@@ -33,7 +35,8 @@ public class CantSpectateHandlerTests
 		host.AddSpectator(fellow);
 		player.Spectating = host;
 
-		await new CantSpectateHandler().HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 
 		var expected = ServerPacketWriter.SpectatorCantSpectate(player.Id);
 		Assert.Equal(expected, host.Dequeue());
@@ -49,7 +52,8 @@ public class CantSpectateHandlerTests
 		player.Spectating = host;
 		player.Stealth = true;
 
-		await new CantSpectateHandler().HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Empty(host.Dequeue());
 	}

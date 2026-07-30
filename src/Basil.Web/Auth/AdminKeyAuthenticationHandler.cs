@@ -30,8 +30,16 @@ public sealed class AdminKeyAuthenticationHandler(
 		var provided = Request.Headers["X-Admin-Key"].FirstOrDefault();
 
 		if (string.IsNullOrEmpty(adminKey) || string.IsNullOrEmpty(provided) || provided != adminKey)
+		{
+			// Only log when a key was actually attempted — most requests to the api. host carry no
+			// X-Admin-Key at all (the soft private/frozen-visibility check runs on every request),
+			// and logging that as a "failure" would be pure noise.
+			if (!string.IsNullOrEmpty(provided))
+				Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
 			return Task.FromResult(AuthenticateResult.NoResult());
+		}
 
+		Logger.LogInformation("Admin auth succeeded: Path={Path}", Request.Path);
 		var identity = new ClaimsIdentity([new Claim(ClaimTypes.Role, AdminKeyDefaults.Role)], Scheme.Name);
 		var principal = new ClaimsPrincipal(identity);
 		var ticket = new AuthenticationTicket(principal, Scheme.Name);

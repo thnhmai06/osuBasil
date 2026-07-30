@@ -3,6 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -30,7 +31,8 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry));
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry),
+			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 		host.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 
 		await handler.HandleAsync(host, ReaderFor(match.Id));
@@ -47,7 +49,8 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host, observer);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry));
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry),
+			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 
 		await handler.HandleAsync(observer, ReaderFor(match.Id));
 

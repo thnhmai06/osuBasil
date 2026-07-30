@@ -6,6 +6,7 @@ using Basil.Application.Services.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Login;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Bot;
@@ -16,7 +17,8 @@ public sealed class CommandDispatcher(
 	MpCommandService mpCommands,
 	IUserRepository userRepository,
 	IOptions<StorageOptions> storageOptions,
-	IMatchRegistry matchRegistry)
+	IMatchRegistry matchRegistry,
+	ILogger<CommandDispatcher> logger)
 	: ICommandDispatcher
 {
 	private const int RollMaxCap = int.MaxValue; // highest value int.TryParse can produce
@@ -113,6 +115,8 @@ public sealed class CommandDispatcher(
 			case "roll":
 				return Roll(sender, args);
 			default:
+				logger.LogDebug("Command not recognized: UserId={UserId} RawMessage={RawMessage}",
+					sender.Id, Truncate(rawMessage));
 				return null;
 		}
 	}
@@ -155,15 +159,27 @@ public sealed class CommandDispatcher(
 		foreach (var segment in segments)
 		{
 			if (!segment.Text.StartsWith(prefix, StringComparison.Ordinal))
+			{
+				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
+					sender.Id, segment.Text);
 				return $"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.";
+			}
 
 			var segParts = segment.Text[prefix.Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
 			if (segParts.Length == 0 || !segParts[0].Equals("mp", StringComparison.OrdinalIgnoreCase))
+			{
+				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
+					sender.Id, segment.Text);
 				return $"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.";
+			}
 
 			var subcommand = segParts.Length > 1 ? segParts[1].ToLowerInvariant() : "";
 			if (NonChainableMpSubcommands.Contains(subcommand))
+			{
+				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
+					sender.Id, segment.Text);
 				return $"`{prefix}mp {subcommand}` can't be chained — rejected at: '{segment.Text}'.";
+			}
 
 			parsed.Add((subcommand, segParts[2..], segment.Operator));
 		}
@@ -246,6 +262,11 @@ public sealed class CommandDispatcher(
 		return entries.Count == 0
 			? "No FAQ entries available."
 			: $"Available FAQ entries: {string.Join(", ", entries)}";
+	}
+
+	private static string Truncate(string text, int maxLength = 100)
+	{
+		return text.Length <= maxLength ? text : text[..maxLength] + "…";
 	}
 
 	/// <summary>One entry in the auto-generated `!help` listing — usage plus a one-line description.</summary>

@@ -9,6 +9,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Scores;
@@ -26,8 +27,9 @@ public class ScoreSubmissionServiceTests
 	{
 		return new ScoreSubmissionService(
 			_maps, _scores,
-			new AuthenticationService(_sessionRegistry, _users, _passwordHasher),
-			_replayStorage);
+			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
+				NullLogger<AuthenticationService>.Instance),
+			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
 	}
 
 	private static Beatmap MakeBeatmap()

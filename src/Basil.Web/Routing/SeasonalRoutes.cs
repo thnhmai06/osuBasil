@@ -12,6 +12,12 @@ namespace Basil.Web.Routing;
 ///     it isn't). Backed by <see cref="SeasonalService" />, replacing the old admin-only `/seasonals`
 ///     surface.
 /// </summary>
+/// <summary>
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="SeasonalRoutes" /> is static and can't be a
+///     type argument.
+/// </summary>
+internal sealed class SeasonalRoutesLog;
+
 internal static class SeasonalRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -83,8 +89,13 @@ internal static class SeasonalRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
-				seasonal.Delete(fileName) ? Results.Json(new SeasonalDeletedView(fileName, true)) : Results.NotFound())
+		group.MapDelete("/seasonals/{fileName}", (string fileName, SeasonalService seasonal,
+				ILogger<SeasonalRoutesLog> logger) =>
+			{
+				if (!seasonal.Delete(fileName)) return Results.NotFound();
+				logger.LogDebug("Seasonal background deleted via admin API: FileName={FileName}", fileName);
+				return Results.Json(new SeasonalDeletedView(fileName, true));
+			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteSeasonalBackground")
@@ -97,7 +108,7 @@ internal static class SeasonalRoutes
 	}
 
 	private static async Task<IResult> HandleCreate(HttpContext context, SeasonalService seasonal,
-		CancellationToken cancellationToken)
+		ILogger<SeasonalRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -109,13 +120,15 @@ internal static class SeasonalRoutes
 		var fileName = Path.GetFileName(file.FileName);
 		await using var stream = file.OpenReadStream();
 		var result = await seasonal.CreateAsync(file.FileName, stream, cancellationToken);
-		return result == SeasonalService.CreateResult.AlreadyExists
-			? Results.Conflict(new ErrorResponse($"'{fileName}' already exists."))
-			: Results.Created($"/seasonals/{fileName}", new SeasonalCreatedView(fileName, true));
+		if (result == SeasonalService.CreateResult.AlreadyExists)
+			return Results.Conflict(new ErrorResponse($"'{fileName}' already exists."));
+
+		logger.LogDebug("Seasonal background created via admin API: FileName={FileName}", fileName);
+		return Results.Created($"/seasonals/{fileName}", new SeasonalCreatedView(fileName, true));
 	}
 
 	private static async Task<IResult> HandleReplace(string fileName, HttpContext context, SeasonalService seasonal,
-		CancellationToken cancellationToken)
+		ILogger<SeasonalRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
@@ -126,9 +139,10 @@ internal static class SeasonalRoutes
 
 		await using var stream = file.OpenReadStream();
 		var result = await seasonal.ReplaceAsync(fileName, stream, cancellationToken);
-		return result == SeasonalService.ReplaceResult.NotFound
-			? Results.NotFound()
-			: Results.Json(new SeasonalReplacedView(fileName, true));
+		if (result == SeasonalService.ReplaceResult.NotFound) return Results.NotFound();
+
+		logger.LogDebug("Seasonal background replaced via admin API: FileName={FileName}", fileName);
+		return Results.Json(new SeasonalReplacedView(fileName, true));
 	}
 
 	/// <summary>Confirmation body for `DELETE /seasonals/{fileName}`.</summary>

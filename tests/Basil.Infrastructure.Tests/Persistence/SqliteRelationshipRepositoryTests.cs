@@ -1,14 +1,18 @@
 using Basil.Application.Abstractions.Social;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/relationships.py — friends/blocks between users.</summary>
 public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteRelationshipRepository _repository = new(fixture.ConnectionString);
-	private readonly SqliteUserRepository _users = new(fixture.ConnectionString);
+	private readonly SqliteRelationshipRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteRelationshipRepository>.Instance);
+
+	private readonly SqliteUserRepository _users = new(fixture.ConnectionString,
+		NullLogger<SqliteUserRepository>.Instance);
 
 	[Fact]
 	public async Task Create_ThenFetchOne_ReturnsRelationship()

@@ -3,6 +3,7 @@ using Basil.Application.PacketHandlers.Core;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -31,7 +32,7 @@ public class BanchoPacketDispatcherTests
 	{
 		var called = false;
 		var handler = new FakeHandler(ClientPackets.Ping, true, (_, _) => called = true);
-		var dispatcher = new BanchoPacketDispatcher([handler]);
+		var dispatcher = new BanchoPacketDispatcher([handler], NullLogger<BanchoPacketDispatcher>.Instance);
 		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.Ping, []));
@@ -42,7 +43,7 @@ public class BanchoPacketDispatcherTests
 	[Fact]
 	public async Task Dispatch_UnknownPacket_SkippedWithoutError()
 	{
-		var dispatcher = new BanchoPacketDispatcher([]);
+		var dispatcher = new BanchoPacketDispatcher([], NullLogger<BanchoPacketDispatcher>.Instance);
 		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.CantSpectate, [1, 2, 3, 4]));
@@ -59,7 +60,8 @@ public class BanchoPacketDispatcherTests
 			r.ReadI32();
 			calls.Add(ClientPackets.Logout);
 		});
-		var dispatcher = new BanchoPacketDispatcher([pingHandler, logoutHandler]);
+		var dispatcher =
+			new BanchoPacketDispatcher([pingHandler, logoutHandler], NullLogger<BanchoPacketDispatcher>.Instance);
 		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var body = PacketBytes(ClientPackets.Ping, [])
 			.Concat(PacketBytes(ClientPackets.Logout, PacketWriter.WriteInt32(0))).ToArray();
@@ -76,7 +78,8 @@ public class BanchoPacketDispatcherTests
 		var chatCalled = false;
 		var pingHandler = new FakeHandler(ClientPackets.Ping, true, (_, _) => pingCalled = true);
 		var chatHandler = new FakeHandler(ClientPackets.SendPublicMessage, false, (_, _) => chatCalled = true);
-		var dispatcher = new BanchoPacketDispatcher([pingHandler, chatHandler]);
+		var dispatcher =
+			new BanchoPacketDispatcher([pingHandler, chatHandler], NullLogger<BanchoPacketDispatcher>.Instance);
 		var restrictedSession =
 			new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 

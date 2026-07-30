@@ -1,5 +1,6 @@
 using Basil.Domain.Login;
 using Basil.Infrastructure.Persistence.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
@@ -9,8 +10,11 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteClientHashRepository _repository = new(fixture.ConnectionString);
-	private readonly SqliteUserRepository _users = new(fixture.ConnectionString);
+	private readonly SqliteClientHashRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteClientHashRepository>.Instance);
+
+	private readonly SqliteUserRepository _users = new(fixture.ConnectionString,
+		NullLogger<SqliteUserRepository>.Instance);
 
 	[Fact]
 	public async Task Create_FirstTime_OccurrencesIsOne()

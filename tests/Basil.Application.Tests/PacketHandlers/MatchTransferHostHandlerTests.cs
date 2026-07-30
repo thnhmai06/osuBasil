@@ -1,5 +1,6 @@
 using Basil.Application.PacketHandlers.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -22,7 +23,7 @@ public class MatchTransferHostHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence);
+			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(guest, ReaderFor(1));
 
@@ -40,7 +41,7 @@ public class MatchTransferHostHandlerTests
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		guest.Dequeue();
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence);
+			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(host, ReaderFor(1));
 
@@ -56,7 +57,7 @@ public class MatchTransferHostHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence);
+			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(host, ReaderFor(4));
 

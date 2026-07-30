@@ -12,6 +12,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Channel = Basil.Application.Abstractions.Channels.Channel;
 
@@ -355,7 +356,7 @@ internal static class MultiplayerTestSupport
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
 				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
-				MapRepository, UserRepository);
+				MapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();

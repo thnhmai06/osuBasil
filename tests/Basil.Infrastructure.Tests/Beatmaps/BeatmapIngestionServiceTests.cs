@@ -23,8 +23,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
 	public BeatmapIngestionServiceTests(SqliteFixture fixture)
 	{
-		_maps = new SqliteMapRepository(fixture.ConnectionString);
-		_mapsets = new SqliteMapsetRepository(fixture.ConnectionString);
+		_maps = new SqliteMapRepository(fixture.ConnectionString, NullLogger<SqliteMapRepository>.Instance);
+		_mapsets = new SqliteMapsetRepository(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
 		_service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), Options.Create(
