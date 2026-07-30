@@ -38,9 +38,11 @@ internal static class SchemaTypeTransformers
 		{
 			if (context.JsonTypeInfo.Type == typeof(Country))
 			{
+				var acronyms = Enum.GetValues<Country>().Select(c => c.ToAcronym()).Order().ToList();
 				schema.Type = JsonSchemaType.String;
-				schema.Description = "2-letter lowercase country/region acronym (e.g. \"vn\", \"xx\" for unknown).";
-				schema.Pattern = "^[a-z]{2}$";
+				schema.Description = "2-letter lowercase ISO 3166-1 country/region acronym, or \"xx\" if unknown. " +
+				                     $"Accepted values: {string.Join(", ", acronyms.Select(a => $"\"{a}\""))}.";
+				schema.Enum = [.. acronyms.Select(JsonNode (a) => JsonValue.Create(a))];
 			}
 			else if (context.JsonTypeInfo.Type == typeof(TimeSpan))
 			{

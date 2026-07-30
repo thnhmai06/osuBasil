@@ -23,8 +23,8 @@ internal static class MenuIconRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
-	private const string LoginEffectNote = " Takes effect for players who log in after this change — " +
-	                                       "already-connected sessions keep whatever menu icon they were sent at login.";
+	private const string LoginEffectNote = " Takes effect for players who log in after this change. " +
+	                                       "Already-connected sessions keep whatever menu icon they were sent at login.";
 
 	public static void MapMenuIconRoutes(this RouteGroupBuilder group)
 	{
@@ -47,7 +47,7 @@ internal static class MenuIconRoutes
 			.WithSummary("Get Menu Icon")
 			.WithDescription("Serves the in-game main menu icon image. 404 if none is set. Content-Type is " +
 			                 "inferred from the file extension. Public.")
-			.WithTags("Menu Icon")
+			.WithTags("Menu Icon Image")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapPut("/menuicon/icon", HandleReplaceIcon)
@@ -55,10 +55,10 @@ internal static class MenuIconRoutes
 			.WithGroupName("basilapi")
 			.WithName("setMenuIcon")
 			.WithSummary("Set Menu Icon")
-			.WithDescription("Multipart upload, field name `file`. Upsert — replaces whatever icon (of any " +
+			.WithDescription("Multipart upload, field name `file`. Upsert: replaces whatever icon (of any " +
 			                 "extension) is currently set, or creates one if none was." + LoginEffectNote +
 			                 AdminKeyNote)
-			.WithTags("Menu Icon")
+			.WithTags("Menu Icon Image")
 			.WithMultipartFileUpload()
 			.Produces<MenuIconChangedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
@@ -76,9 +76,9 @@ internal static class MenuIconRoutes
 			.WithGroupName("basilapi")
 			.WithName("deleteMenuIcon")
 			.WithSummary("Delete Menu Icon")
-			.WithDescription("Turns the menu icon off entirely (idempotent — 200 whether or not one was set)." +
+			.WithDescription("Turns the menu icon off entirely (idempotent: returns 200 whether or not one was set)." +
 			                 LoginEffectNote + AdminKeyNote)
-			.WithTags("Menu Icon")
+			.WithTags("Menu Icon Image")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,
 				new MenuIconChangedView(true, $"Menu icon removed.{LoginEffectNote}"));
@@ -95,7 +95,7 @@ internal static class MenuIconRoutes
 			.WithDescription("The menu icon's click-through URL. `null` if no menu icon is set. If one is set " +
 			                 "but no URL was explicitly configured, this is a hardcoded default " +
 			                 "(`https://github.com/thnhmai06/osuBasil`). Public.")
-			.WithTags("Menu Icon")
+			.WithTags("Menu Icon URL")
 			.Produces<MenuIconUrlView>()
 			.WithExample(StatusCodes.Status200OK, new MenuIconUrlView("https://github.com/thnhmai06/osuBasil"));
 
@@ -110,10 +110,10 @@ internal static class MenuIconRoutes
 			.WithGroupName("basilapi")
 			.WithName("setMenuIconUrl")
 			.WithSummary("Set Menu Icon URL")
-			.WithDescription("Body: `{ url }`. Upsert — replaces whatever URL is currently set, or creates one " +
+			.WithDescription("Body: `{ url }`. Upsert: replaces whatever URL is currently set, or creates one " +
 			                 "if none was. No `DELETE`: to fall back to the hardcoded default, set the URL to it " +
 			                 "explicitly." + LoginEffectNote + AdminKeyNote)
-			.WithTags("Menu Icon")
+			.WithTags("Menu Icon URL")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,
 				new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));

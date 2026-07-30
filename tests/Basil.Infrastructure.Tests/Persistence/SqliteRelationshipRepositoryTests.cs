@@ -19,7 +19,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 	{
 		var friend = await _users.CreateAsync("rel friend", "hash", Country.Xx);
 
-		await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
+		await _repository.CreateAsync(1, friend!.Id, RelationshipType.Friend);
 
 		var relationship = await _repository.FetchOneAsync(1, friend.Id);
 		Assert.NotNull(relationship);
@@ -31,8 +31,8 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 	{
 		var friend = await _users.CreateAsync("rel friend 2", "hash", Country.Xx);
 		var blocked = await _users.CreateAsync("rel blocked", "hash", Country.Xx);
-		await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
-		await _repository.CreateAsync(1, blocked.Id, RelationshipType.Block);
+		await _repository.CreateAsync(1, friend!.Id, RelationshipType.Friend);
+		await _repository.CreateAsync(1, blocked!.Id, RelationshipType.Block);
 
 		var friends = await _repository.FetchAllAsync(1, RelationshipType.Friend);
 
@@ -44,7 +44,7 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 	public async Task Delete_RemovesRelationship()
 	{
 		var friend = await _users.CreateAsync("rel friend 3", "hash", Country.Xx);
-		await _repository.CreateAsync(1, friend.Id, RelationshipType.Friend);
+		await _repository.CreateAsync(1, friend!.Id, RelationshipType.Friend);
 
 		await _repository.DeleteAsync(1, friend.Id);
 
@@ -56,6 +56,6 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 	{
 		var stranger = await _users.CreateAsync("rel stranger", "hash", Country.Xx);
 
-		Assert.Null(await _repository.FetchOneAsync(1, stranger.Id));
+		Assert.Null(await _repository.FetchOneAsync(1, stranger!.Id));
 	}
 }

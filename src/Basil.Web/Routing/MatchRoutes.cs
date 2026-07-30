@@ -64,9 +64,9 @@ internal static class MatchRoutes
 			.WithName("createMatch")
 			.WithSummary("Create Match")
 			.WithDescription("Body: `{ name, password, isPrivate, mapId, mods, freemod, teamType, " +
-			                 "winCondition, size }` — every field required except `password` (nullable). `mapId: -1` " +
+			                 "winCondition, size }`. Every field is required except `password` (nullable). `mapId: -1` " +
 			                 "means no beatmap chosen yet. No chat \"sender\" exists over HTTP, so the new match starts " +
-			                 "with host id 0 and no referees — assign both via the `host`/`addref` actions afterward. " +
+			                 "with host id 0 and no referees: assign both via the `host`/`addref` actions afterward. " +
 			                 "Returns the full settings representation (not a bare id)." + AdminKeyNote)
 			.WithTags("Matches")
 			.Produces<MatchSettingsView>(StatusCodes.Status201Created)
@@ -91,7 +91,7 @@ internal static class MatchRoutes
 			.WithGroupName("basilapi")
 			.WithName("getMatchSettings")
 			.WithSummary("Get Match Settings")
-			.WithDescription("Plain JSON snapshot of the room-configuration fields — never includes the raw " +
+			.WithDescription("Plain JSON snapshot of the room-configuration fields. Never includes the raw " +
 			                 "password, only `hasPassword`. 404 if the match isn't currently live. For a live push stream " +
 			                 "of the same shape, see `GET /matches/{matchId}/settings/live`. Public, no authentication.")
 			.WithTags("Match Settings")
@@ -105,10 +105,10 @@ internal static class MatchRoutes
 			.WithName("getMatchSettingsLive")
 			.WithSummary("Get Match Settings Live Stream")
 			.WithDescription("Server-Sent Events stream (event name `settings`) scoped to just the " +
-			                 "room-configuration fields — first event is the full current settings, every event after " +
+			                 "room-configuration fields. The first event is the full current settings; every event after " +
 			                 "is an RFC 7396 JSON Merge Patch against the previous one. Never includes the raw " +
-			                 "password, only `hasPassword`. 409 (enveloped) if the match isn't currently live — never " +
-			                 "opens a stream that would never receive a frame. Public, no authentication.")
+			                 "password, only `hasPassword`. 409 (enveloped) if the match isn't currently live, since a " +
+			                 "stream that would never receive a frame is never opened. Public, no authentication.")
 			.WithTags("Match Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -120,9 +120,9 @@ internal static class MatchRoutes
 			.WithName("replaceMatchSettings")
 			.WithSummary("Replace Match Settings")
 			.WithDescription("Body: `{ name, password, isPrivate, isLocked, size, mapId, mods, freemod, " +
-			                 "teamType, winCondition }` — every field required except `password` (nullable). `mapId: -1` " +
-			                 "clears/skips the beatmap selection. `freemod: true` enables FreeMod (ignoring `mods` for " +
-			                 "that call); `mods` alone (no `freemod`) sets the room's fixed mod set. Maps to `!mp " +
+			                 "teamType, winCondition }`. Every field is required except `password` (nullable). `mapId: -1` " +
+			                 "clears or skips the beatmap selection. `freemod: true` enables FreeMod, ignoring `mods` for " +
+			                 "that call; `mods` alone (no `freemod`) sets the room's fixed mod set. Maps to `!mp " +
 			                 "name/password/private/lock+unlock/size/map/mods/set`. 404 if the match isn't currently " +
 			                 "live; 400 if `mapId` doesn't resolve to a known beatmap. Returns the updated settings " +
 			                 "representation." + AdminKeyNote)
@@ -139,7 +139,7 @@ internal static class MatchRoutes
 			.WithName("updateMatchSettings")
 			.WithSummary("Update Match Settings")
 			.WithDescription("Body: any subset of `{ name, password, isPrivate, isLocked, size, mapId, " +
-			                 "mods, freemod, teamType, winCondition }` — only present fields are touched." +
+			                 "mods, freemod, teamType, winCondition }`. Only fields that are present get touched." +
 			                 AdminKeyNote)
 			.WithTags("Match Settings")
 			.Produces<MatchSettingsView>()
@@ -153,14 +153,14 @@ internal static class MatchRoutes
 			.WithMetadata(SseEndpointMarker.Instance)
 			.WithName("getMatchLive")
 			.WithSummary("Get Match Live Stream")
-			.WithDescription("Server-Sent Events stream (event name `main`) of the full live snapshot — " +
-			                 "room config, host, referees, current beatmap, in-progress flag, and every slot. First " +
-			                 "event is the full current state, every event after is an RFC 7396 JSON Merge Patch against " +
-			                 "the previous one — no per-player score data on this channel, see " +
+			.WithDescription("Server-Sent Events stream (event name `main`) of the full live snapshot: " +
+			                 "room config, host, referees, current beatmap, in-progress flag, and every slot. The first " +
+			                 "event is the full current state; every event after is an RFC 7396 JSON Merge Patch against " +
+			                 "the previous one. This channel carries no per-player score data, see " +
 			                 "`GET /matches/{matchId}/live/{slotIndex}` for that. 409 (enveloped) if the match isn't " +
-			                 "currently live — never opens a stream that would never receive a frame. For a one-shot " +
-			                 "JSON snapshot including historical rounds/events, see `GET /matches/{matchId}`. Public, no " +
-			                 "authentication.")
+			                 "currently live, since a stream that would never receive a frame is never opened. For a " +
+			                 "one-shot JSON snapshot including historical rounds/events, see `GET /matches/{matchId}`. " +
+			                 "Public, no authentication.")
 			.WithTags("Match Live")
 			.Produces<MatchLiveSnapshot>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -172,17 +172,17 @@ internal static class MatchRoutes
 			.WithName("getMatchSlotLiveStream")
 			.WithSummary("Get Match Slot Live Stream")
 			.WithDescription("`{slotIndex}` is 1-16 (matching `!mp move`'s convention). One SSE stream " +
-			                 "tagging three feeds by event name: `slot` (that slot's membership/status/team/mods, " +
+			                 "tags three feeds by event name: `slot` (that slot's membership/status/team/mods, " +
 			                 "full-then-delta, `MatchSlotView`), `score` (the current occupant's live score frames during " +
 			                 "a round, forwarded as-is, `PlayerLiveScore`), and `input` (the current occupant's raw " +
-			                 "spectator-input frames, forwarded as-is, `SpectateFramesEvent` — same shape as " +
-			                 "`GET /users/{idOrName}/live`'s single event). Follows whoever currently occupies the slot — " +
-			                 "if the occupant changes, the next `slot` event reflects that, and `score`/`input` start " +
-			                 "matching the new occupant automatically. 404 if the match isn't currently live or " +
-			                 "`slotIndex` is out of range. The declared schema below is `oneOf` the three shapes — which " +
-			                 "one a given message is is carried by the SSE-protocol `event:` field itself (not a JSON " +
-			                 "discriminator property inside the body), so pick the shape by that field, not by inspecting " +
-			                 "the JSON's own properties. Public, no authentication.")
+			                 "spectator-input frames, forwarded as-is, `SpectateFramesEvent`, the same shape as " +
+			                 "`GET /users/{idOrName}/live`'s single event). It follows whoever currently occupies the " +
+			                 "slot: if the occupant changes, the next `slot` event reflects that, and `score`/`input` " +
+			                 "start matching the new occupant automatically. 404 if the match isn't currently live or " +
+			                 "`slotIndex` is out of range. The declared schema below is `oneOf` the three shapes. Which " +
+			                 "one a given message is gets carried by the SSE-protocol `event:` field itself, not a JSON " +
+			                 "discriminator property inside the body, so pick the shape by that field rather than by " +
+			                 "inspecting the JSON's own properties. Public, no authentication.")
 			.WithTags("Match Live")
 			.Produces<PlayerLiveScore>()
 			.WithSlotLiveExamples()
@@ -241,7 +241,7 @@ internal static class MatchRoutes
 			0, 0, false, [], 0);
 
 		var match = await matchMembership.CreateEmptyAsync(data, cancellationToken);
-		if (match is null) return Results.Problem("Couldn't create the match — server is full.", statusCode: 503);
+		if (match is null) return Results.Problem("Couldn't create the match: server is full.", statusCode: 503);
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try

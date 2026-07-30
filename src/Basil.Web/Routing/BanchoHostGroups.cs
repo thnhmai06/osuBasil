@@ -181,7 +181,7 @@ public static class BanchoHostGroups
 			.WithGroupName("basilapi")
 			.WithName("getHealth")
 			.WithSummary("Get Health")
-			.WithDescription("Trivial `{ status: \"ok\" }` — no dependency checks (the database is an " +
+			.WithDescription("Trivial `{ status: \"ok\" }`, no dependency checks (the database is an " +
 			                 "embedded SQLite file, always available once the process is up). Public, no authentication.")
 			.WithTags("Health")
 			.Produces<HealthStatus>()
@@ -225,7 +225,7 @@ public static class BanchoHostGroups
 			.WithGroupName("basilapi")
 			.WithName("getMatchReport")
 			.WithSummary("Get Match Report")
-			.WithDescription("Full JSON snapshot built at read time — events, rounds, per-round scores, and, " +
+			.WithDescription("Full JSON snapshot built at read time: events, rounds, per-round scores, and, " +
 			                 "if the match is still open, its live state (host, referees, slots, current map, win " +
 			                 "condition, team type, mods, in-progress flag). For a live push stream instead, see " +
 			                 "`GET /matches/{matchId}/live`. 404 if no match with this id has ever existed. Public, no " +
@@ -288,8 +288,8 @@ public static class BanchoHostGroups
 			group.MapGet("/", () => "cho")
 				.WithGroupName("bancho")
 				.WithSummary("Health-check stub.")
-				.WithDescription("Returns the literal string \"cho\". Not sent by the real osu! " +
-				                 "client — exists only as a trivial liveness probe for this host.")
+				.WithDescription("Returns the literal string \"cho\". The real osu! client never sends this; it " +
+				                 "only exists as a liveness probe for this host.")
 				.WithTags("Bancho Protocol");
 
 			// Ported from app/api/domains/cho.py's bancho_handler: no osu-token header means this is
@@ -362,8 +362,8 @@ public static class BanchoHostGroups
 				                 "(username/password/client info) and a successful response carries a `cho-token` response " +
 				                 "header the client must echo on every subsequent request. With a known `osu-token`, the body " +
 				                 "is one or more bancho packets to process, and the response is any packets queued for this " +
-				                 "client since its last poll (this is a long-poll style protocol — the client calls this " +
-				                 "endpoint repeatedly). An unrecognized `osu-token` (e.g. after a server restart) gets a " +
+				                 "client since its last poll (a long-poll protocol: the client calls this endpoint " +
+				                 "repeatedly). An unrecognized `osu-token` (e.g. after a server restart) gets a " +
 				                 "\"Server has restarted\" notification plus a restart-client packet instead of processing " +
 				                 "the body.\n\n" + BanchoPacketCatalog)
 				.WithTags("Bancho Protocol");
@@ -431,7 +431,7 @@ public static class BanchoHostGroups
 				.WithDescription("Called by the client on every song-select map change. Authenticates via `us`/`ha` " +
 				                 "(username/password MD5), updates and broadcasts the player's mode/mods status if `m`/`mods` " +
 				                 "changed, and replies with `{rankedStatus}|false` for the map identified by `c` (its MD5 " +
-				                 "checksum) — this server has no online leaderboard browsing, so the score-rows portion of " +
+				                 "checksum). This server has no online leaderboard browsing, so the score-rows portion of " +
 				                 "the real osu! response is always empty.")
 				.WithTags("Beatmaps");
 
@@ -460,7 +460,7 @@ public static class BanchoHostGroups
 				.WithGroupName("osuweb")
 				.WithSummary("osu!direct beatmap search (local database only).")
 				.WithDescription("Backs the in-game osu!direct search panel. Queries this server's own beatmap " +
-				                 "table — there is no external mirror, so results are limited to whatever has been ingested " +
+				                 "table: there is no external mirror, so results are limited to whatever has been ingested " +
 				                 "locally. `q` is a free-text query, `m` a game mode filter, `p` a zero-based page number. " +
 				                 "Response is osu!'s pipe/newline wire format, not JSON.")
 				.WithTags("Beatmaps");
@@ -537,8 +537,8 @@ public static class BanchoHostGroups
 				                 "was ingested locally, a fresh `.osz` (`application/x-osu-beatmap-archive`) is built on the fly " +
 				                 "from its storage folder. Otherwise, falls back to redirecting to a configured mirror " +
 				                 "(`Mirror:DownloadEndpoint`), or returns a plain-text \"not available\" message if no mirror " +
-				                 "is configured. Prefer `GET /beatmapsets/{id}/download` on the Basil API for external tooling — " +
-				                 "this route exists for the in-game client specifically.")
+				                 "is configured. Prefer `GET /beatmapsets/{id}/download` on the Basil API for external " +
+				                 "tooling; this route exists specifically for the in-game client.")
 				.WithTags("Beatmaps");
 
 			// Ported from app/api/domains/osu.py's get_updated_beatmap, replumbed to serve the locally
@@ -621,8 +621,8 @@ public static class BanchoHostGroups
 				                 "field carries both a base64-encoded, encrypted score payload and (as a file part of the same " +
 				                 "name) the replay data; `s`/`iv`/`osuver` are the decryption key material. On success, " +
 				                 "persists the score, updates the beatmap's play/pass counters, and returns the client's " +
-				                 "post-score screen data (rank, PP-less score charts, etc., in osu!'s wire format). Never " +
-				                 "returns JSON — always `text/html` in osu!'s own response grammar, even on failure.")
+				                 "post-score screen data (rank, PP-less score charts, etc., in osu!'s wire format). It never " +
+				                 "returns JSON, always `text/html` in osu!'s own response grammar, even on failure.")
 				.WithTags("Score Submission");
 
 			// Ported from app/api/domains/osu.py's getReplay. `mode` is accepted by the client but
@@ -652,7 +652,7 @@ public static class BanchoHostGroups
 				.WithDescription("Authenticates via `u`/`h` (username/password MD5), then serves the `.osr` " +
 				                 "replay for the score identified by `c`. 404 if the score has no stored replay. " +
 				                 "Content-Type `application/x-osu-replay`. Prefer `GET /score/{scoreId}/replay` on the Basil API " +
-				                 "for external tooling — this route requires client-style authentication.")
+				                 "for external tooling; this route requires client-style authentication.")
 				.WithTags("Replays");
 
 			// Ported from app/api/domains/osu.py's osuGetBeatmapInfo, reduced to a stub — per-map grade
@@ -671,10 +671,10 @@ public static class BanchoHostGroups
 					return Results.Text("", "text/html", Encoding.UTF8);
 				})
 				.WithGroupName("osuweb")
-				.WithSummary("Per-map grade lookup — stub.")
+				.WithSummary("Per-map grade lookup (stub).")
 				.WithDescription("Authenticates the caller, then always returns an empty body. Per-map grade " +
-				                 "history (used by the real client's Song Select grade icons) is out of scope — this server " +
-				                 "doesn't track a leaderboard to grade against.")
+				                 "history (used by the real client's Song Select grade icons) is out of scope, since this " +
+				                 "server doesn't track a leaderboard to grade against.")
 				.WithTags("Stubs");
 
 			// Ported from app/api/domains/osu.py's lastFM. Per explicit user decision, detected
@@ -704,7 +704,7 @@ public static class BanchoHostGroups
 				.WithSummary("Client anticheat flag receiver (log-only).")
 				.WithDescription("The osu! client's cheat-tool detection reports land here, keyed by `b` (a " +
 				                 "beatmap id, or a flag string when the client itself is flagging something rather than a " +
-				                 "beatmap). Flags are logged for manual review only — this server has no automatic " +
+				                 "beatmap). Flags are logged for manual review only: this server has no automatic " +
 				                 "restrict/kick pipeline for them. Returns `-3` to tell the client to stop sending further " +
 				                 "flags for this session, or an empty body otherwise.")
 				.WithTags("Anticheat");
@@ -725,7 +725,7 @@ public static class BanchoHostGroups
 					return Results.Text("", "text/html", Encoding.UTF8);
 				})
 				.WithGroupName("osuweb")
-				.WithSummary("Mark offline mail as read — no-op.")
+				.WithSummary("Mark offline mail as read (no-op).")
 				.WithDescription("Authenticates the caller, then always returns an empty body. This server has " +
 				                 "no offline-mail persistence (chat is online-only), so there is nothing to mark as read; " +
 				                 "this route exists only so the client doesn't treat a missing endpoint as a connectivity " +
@@ -785,7 +785,7 @@ public static class BanchoHostGroups
 			// Python source too (can be called before a session exists).
 			group.MapGet("/web/bancho_connect.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("Client connectivity check — stub.")
+				.WithSummary("Client connectivity check (stub).")
 				.WithDescription("Always returns an empty body. Called by the client before a bancho session " +
 				                 "exists, so it is deliberately unauthenticated.")
 				.WithTags("Stubs");
@@ -793,8 +793,8 @@ public static class BanchoHostGroups
 			// Ported from app/api/domains/osu.py's checkUpdates (always an empty stub response there too).
 			group.MapGet("/web/check-updates.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("Client update check — stub.")
-				.WithDescription("Always returns an empty body — this server does not manage or distribute " +
+				.WithSummary("Client update check (stub).")
+				.WithDescription("Always returns an empty body. This server does not manage or distribute " +
 				                 "client updates.")
 				.WithTags("Stubs");
 
@@ -806,27 +806,27 @@ public static class BanchoHostGroups
 					Results.Text("Screenshots are not available on this server.", "text/html", Encoding.UTF8,
 						StatusCodes.Status400BadRequest))
 				.WithGroupName("osuweb")
-				.WithSummary("Screenshot upload — not supported.")
+				.WithSummary("Screenshot upload (not supported).")
 				.WithDescription("Always returns 400 with an explanatory message. Screenshot hosting is out of " +
 				                 "scope for this server.")
 				.WithTags("Stubs");
 
 			group.MapGet("/web/osu-getfavourites.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("List favourited beatmaps — stub.")
+				.WithSummary("List favourited beatmaps (stub).")
 				.WithDescription("Always returns an empty body. Favourites are out of scope for this server.")
 				.WithTags("Stubs");
 
 			group.MapGet("/web/osu-addfavourite.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("Add a favourited beatmap — stub.")
+				.WithSummary("Add a favourited beatmap (stub).")
 				.WithDescription("Always returns an empty body. Favourites are out of scope for this server.")
 				.WithTags("Stubs");
 
 			// "not ranked" is a real response code the Python source itself sends (BeatmapRatingResultCode.NOT_RANKED) — reused here instead of an ad-hoc string.
 			group.MapGet("/web/osu-rate.php", () => Results.Text("not ranked", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("Rate a beatmap — always reports \"not ranked\".")
+				.WithSummary("Rate a beatmap (always reports \"not ranked\").")
 				.WithDescription("Always returns the literal `not ranked` response osu! itself uses for maps " +
 				                 "that can't be rated. Beatmap rating is out of scope for this server (every map here is " +
 				                 "always treated as Loved, never Ranked).")
@@ -834,7 +834,7 @@ public static class BanchoHostGroups
 
 			group.MapPost("/web/osu-comment.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
-				.WithSummary("Post a replay comment — stub.")
+				.WithSummary("Post a replay comment (stub).")
 				.WithDescription("Always returns an empty body. In-replay comments are out of scope for this " +
 				                 "server.")
 				.WithTags("Stubs");
@@ -934,7 +934,7 @@ public static class BanchoHostGroups
 				                 "`check` (`\"0\"` for the real submit; any other value is a live per-field validation POST " +
 				                 "the client fires while the registration form is still being filled in, which runs every " +
 				                 "validation below but stops short of creating the account). The `user_email` field must " +
-				                 "exactly match the server's configured `Server:AdminKey` — this repurposes the real " +
+				                 "exactly match the server's configured `Server:AdminKey`. This repurposes the real " +
 				                 "client's email field as a simple gate, since this server has no email infrastructure. " +
 				                 "Registration is disabled entirely if `Server:AdminKey` is unset. New accounts get default " +
 				                 "privileges (Unrestricted | Verified | Supporter).")
@@ -986,7 +986,7 @@ public static class BanchoHostGroups
 				.WithSummary("Compute (and cache) a beatmap's star rating for a given mod combination.")
 				.WithDescription("The real osu! client normally opens a difficulty-rating webpage on osu.ppy.sh " +
 				                 "in the system browser for this action; this server has no such page, so it computes the " +
-				                 "star rating locally instead via ppy's own osu!lazer ruleset libraries (display only — see " +
+				                 "star rating locally instead via ppy's own osu!lazer ruleset libraries (display only, see " +
 				                 "the project's no-pp-dependency policy). `b` (required) is the beatmap id, `mods` (default " +
 				                 "0, i.e. no mods) a mod bitmask. The unmodified (NoMod) result is cached onto the beatmap's " +
 				                 "`Sr` column; other mod combinations are computed fresh each call. Response is the one JSON " +
@@ -1006,17 +1006,17 @@ public static class BanchoHostGroups
 			// has no per-size thumbnail variants).
 			group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnail)
 				.WithGroupName("beatmapassets")
-				.WithSummary("Beatmapset list-icon thumbnail — redirects to the locally-hosted preview.")
+				.WithSummary("Beatmapset list-icon thumbnail (redirects to the locally-hosted preview).")
 				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
 				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private.")
 				.WithTags("Beatmap Assets");
 
 			group.MapGet("/thumb/{setId:int}.jpg", HandleThumbnail)
 				.WithGroupName("beatmapassets")
-				.WithSummary("Beatmapset cover thumbnail — redirects to the locally-hosted preview.")
+				.WithSummary("Beatmapset cover thumbnail (redirects to the locally-hosted preview).")
 				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
 				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private. " +
-				                 "Same target as the list-icon (`l`) variant — this server keeps a single preview image per " +
+				                 "Same target as the list-icon (`l`) variant: this server keeps a single preview image per " +
 				                 "set, not separate small/large renders.")
 				.WithTags("Beatmap Assets");
 		}
@@ -1064,10 +1064,10 @@ public static class BanchoHostGroups
 				.WithSummary("Serve one player's avatar image, by user id.")
 				.WithDescription("`{userId}` is the numeric `Users.Id`. Serves a locally-uploaded avatar file if " +
 				                 "one exists (`{userId}.{ext}` under the avatars storage folder); otherwise falls back to a " +
-				                 "built-in image — BasilBot's own icon for user id 0, or a generic default avatar for every " +
-				                 "other id — materializing that fallback to disk on first request. Content-Type is inferred " +
+				                 "built-in image: BasilBot's own icon for user id 0, or a generic default avatar for every " +
+				                 "other id, materializing that fallback to disk on first request. Content-Type is inferred " +
 				                 "from the file extension. This server stores avatars locally rather than proxying " +
-				                 "osu.ppy.sh's CDN (unlike bancho.py).")
+				                 "osu.ppy.sh's CDN.")
 				.WithTags("Avatars");
 		}
 	}

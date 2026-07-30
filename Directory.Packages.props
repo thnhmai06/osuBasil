@@ -10,10 +10,10 @@
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.702.1" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.702.1" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.702.1" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.702.1" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.730.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.730.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.730.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.730.0" />
     <!-- Basil.Application -->
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />

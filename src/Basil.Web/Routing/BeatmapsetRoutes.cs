@@ -49,7 +49,7 @@ internal static class BeatmapsetRoutes
 			.WithGroupName("basilapi")
 			.WithName("createBeatmapset")
 			.WithSummary("Create Beatmapset")
-			.WithDescription("Multipart upload, field name `file`, must be a `.osz` archive — a lone `.osu` " +
+			.WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. A lone `.osu` " +
 			                 "file has no set context under this server's folder-per-mapset storage model. Runs a full " +
 			                 "ingestion reconciliation pass synchronously and returns `{ ingested }` (the number of " +
 			                 "beatmaps added/updated)." + AdminKeyNote)
@@ -59,14 +59,14 @@ internal static class BeatmapsetRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status201Created, new IngestResult(5))
 			.WithExample(StatusCodes.Status400BadRequest,
-				new ErrorResponse("Only .osz uploads are accepted — a single .osu file has no set context."));
+				new ErrorResponse("Only .osz uploads are accepted (a single .osu file has no set context)."));
 
 		group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapset")
-			.WithSummary("Get Beatmapset")
+			.WithSummary("Get Beatmapset Details")
 			.WithDescription("Returns `{ id, artist, title, creator, lastUpdate, createdAt, isFrozen, " +
-			                 "isPrivate, status, beatmaps }` — `beatmaps` is the full list of difficulties under this " +
+			                 "isPrivate, status, beatmaps }`. `beatmaps` is the full list of difficulties under this " +
 			                 "set, each a `BeatmapInSet` (no parent beatmapset embed, unlike `GET " +
 			                 "/beatmapsets/{mapsetId}/{beatmapId}`'s `BeatmapDetail`, to avoid the cycle). 404 if the " +
 			                 "mapset doesn't exist, or (for a non-admin caller) it's private. Public, with a soft admin " +
@@ -84,7 +84,7 @@ internal static class BeatmapsetRoutes
 			.WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. Filesystem-only " +
 			                 "and asynchronous: extracts the new archive's contents directly into the mapset's existing " +
 			                 "storage folder (overwriting files), then returns `202 Accepted` with a small body describing " +
-			                 "what was accepted immediately — the database catches up shortly after via the same live " +
+			                 "what was accepted immediately. The database catches up shortly after via the same live " +
 			                 "reconciliation the filesystem watcher already runs, not synchronously in this request. 404 " +
 			                 "if the mapset doesn't exist; 409 if it's frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
 			                 AdminKeyNote)
@@ -107,7 +107,7 @@ internal static class BeatmapsetRoutes
 			.WithDescription("Filesystem-only and asynchronous: atomically renames the mapset's storage " +
 			                 "folder in place (a TOCTOU-safe marker the live reconciliation and a background garbage " +
 			                 "collector both recognize as \"gone\"), then returns `202 Accepted` with a small body " +
-			                 "describing what was accepted — the database row and the physical folder are both cleaned " +
+			                 "describing what was accepted. The database row and the physical folder are both cleaned " +
 			                 "up shortly after, not synchronously in this request. 404 if the mapset doesn't exist; 409 " +
 			                 "(folder left untouched) if the rename itself fails (e.g. a locked file) or if the mapset is " +
 			                 "frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
@@ -125,7 +125,7 @@ internal static class BeatmapsetRoutes
 			.WithGroupName("basilapi")
 			.WithName("updateBeatmapset")
 			.WithSummary("Update Beatmapset")
-			.WithDescription("Body: `{ frozen?, private? }` — each field is applied only if present. " +
+			.WithDescription("Body: `{ frozen?, private? }`. Each field is applied only if present. " +
 			                 "`frozen` is a write-lock: while set, `PUT`/`DELETE /beatmapsets/{mapsetId}` are " +
 			                 "rejected with 409 regardless of admin role (this route itself is exempt, so unfreezing is " +
 			                 "always possible). `private` hides the mapset (and every beatmap under it) from non-admin " +
@@ -139,9 +139,9 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}", HandleBeatmapInfo)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmap")
-			.WithSummary("Get Beatmap")
+			.WithSummary("Get Beatmap Details")
 			.WithDescription("Returns a `BeatmapDetail` (difficulty/object-count metadata plus the parent " +
-			                 "`beatmapset` embed) — unlike each entry of `GET /beatmapsets/{mapsetId}`'s `beatmaps` list " +
+			                 "`beatmapset` embed), unlike each entry of `GET /beatmapsets/{mapsetId}`'s `beatmaps` list " +
 			                 "(a `BeatmapInSet`, no parent embed, to avoid the beatmap-in-set-in-beatmap cycle). Never " +
 			                 "includes the internal filename/background-image filename (see `GET .../background` " +
 			                 "instead). 404 if the beatmap doesn't exist, doesn't belong to this mapset, or the parent " +
@@ -177,8 +177,8 @@ internal static class BeatmapsetRoutes
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetBackground")
 			.WithSummary("Download Beatmapset Background")
-			.WithDescription("Serves the preview background image for this set — the lowest-id " +
-			                 "beatmap's background, kept in sync by ingestion. 404 if the mapset doesn't exist, has no " +
+			.WithDescription("Serves the preview background image for this set (the lowest-id " +
+			                 "beatmap's background), kept in sync by ingestion. 404 if the mapset doesn't exist, has no " +
 			                 "recorded preview background, its file is missing on disk, or the mapset is private and the " +
 			                 "caller isn't admin. Content-Type inferred from the file extension. Public, with a soft " +
 			                 "admin elevation.")
@@ -201,7 +201,7 @@ internal static class BeatmapsetRoutes
 			.WithName("downloadBeatmapset")
 			.WithSummary("Download Beatmapset")
 			.WithDescription("Builds a fresh `.osz` on the fly from the mapset's local storage folder (every " +
-			                 "file in the folder — audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
+			                 "file in the folder: audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
 			                 "mapset has no local folder, or the folder is empty. Content-Type " +
 			                 "`application/x-osu-beatmap-archive`. Public, no admin key.")
 			.WithTags("Beatmapsets")
@@ -263,7 +263,7 @@ internal static class BeatmapsetRoutes
 		var extension = Path.GetExtension(file.FileName);
 		if (!string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
 			return Results.BadRequest(
-				new ErrorResponse("Only .osz uploads are accepted — a single .osu file has no set context."));
+				new ErrorResponse("Only .osz uploads are accepted (a single .osu file has no set context)."));
 
 		Directory.CreateDirectory(storage.Value.MapsetsPath);
 		var destinationName = $"{Guid.NewGuid():N}{extension}";

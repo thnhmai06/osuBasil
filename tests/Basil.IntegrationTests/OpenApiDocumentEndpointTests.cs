@@ -45,11 +45,11 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	}
 
 	[Theory]
-	[InlineData("bancho", "osu! Client API — Bancho Protocol", new[] { "/" })]
-	[InlineData("osuweb", "osu! Client API — osu! Web", new[] { "/web/osu-search.php", "/difficulty-rating" })]
-	[InlineData("beatmapassets", "osu! Client API — Beatmap Assets",
+	[InlineData("bancho", "osu! Client API: Bancho Protocol", new[] { "/" })]
+	[InlineData("osuweb", "osu! Client API: osu! Web", new[] { "/web/osu-search.php", "/difficulty-rating" })]
+	[InlineData("beatmapassets", "osu! Client API: Beatmap Assets",
 		new[] { "/thumb/{setId}l.jpg", "/thumb/{setId}.jpg" })]
-	[InlineData("avatar", "osu! Client API — Avatar Files", new[] { "/{userId}" })]
+	[InlineData("avatar", "osu! Client API: Avatar Files", new[] { "/{userId}" })]
 	[InlineData("basilapi", "Basil API", new[]
 	{
 		"/matches/{matchId}", "/matches", "/beatmapsets/{mapsetId}", "/users", "/scores/{scoreId}",

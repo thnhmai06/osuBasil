@@ -92,7 +92,7 @@ internal static class UserRoutes
 			.WithGroupName("basilapi")
 			.WithName("createUser")
 			.WithSummary("Create User")
-			.WithDescription("Body: `{ name, password, country, privilege }` — every field required. The " +
+			.WithDescription("Body: `{ name, password, country, privilege }`. Every field is required. The " +
 			                 "plaintext `password` is MD5'd then bcrypt-hashed server-side, matching the real client's " +
 			                 "own hashing convention. 400 on an invalid username, 409 if the name is already taken." +
 			                 AdminKeyNote)
@@ -139,7 +139,7 @@ internal static class UserRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceUser")
 			.WithSummary("Replace User")
-			.WithDescription("Body: `{ name, country, privilege }` — every field required, all three are " +
+			.WithDescription("Body: `{ name, country, privilege }`. Every field is required, and all three are " +
 			                 "always applied (full replace). Deliberately limited to these three fields (no full " +
 			                 "field-by-field editor exists). Returns the updated user row. 404 if no user with this id " +
 			                 "exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." +
@@ -182,8 +182,8 @@ internal static class UserRoutes
 			.WithGroupName("basilapi")
 			.WithName("updateUser")
 			.WithSummary("Update User")
-			.WithDescription("Body: `{ name?, country?, privilege? }` — each field is updated only if " +
-			                 "present; omitted fields are left unchanged. Deliberately limited to these three fields (no " +
+			.WithDescription("Body: `{ name?, country?, privilege? }`. Each field is updated only if " +
+			                 "present, and omitted fields are left unchanged. Deliberately limited to these three fields (no " +
 			                 "full field-by-field editor exists). Returns the updated user row. 404 if no user with this " +
 			                 "id exists; 400 on an invalid new username or if targeting user id 0 (BasilBot)." +
 			                 AdminKeyNote)
@@ -258,7 +258,7 @@ internal static class UserRoutes
 			.WithName("getUserAvatar")
 			.WithSummary("Get User Avatar")
 			.WithDescription("Serves the raw avatar file uploaded via `POST /users/{id}/avatar`, if any. Unlike " +
-			                 "the `a.<domain>` host's client-facing avatar route, this never falls back to a default image — " +
+			                 "the `a.<domain>` host's client-facing avatar route, this never falls back to a default image: " +
 			                 "404 if no avatar was ever uploaded for this id. Content-Type is inferred from the file " +
 			                 "extension. A non-numeric `{idOrName}` is resolved via username lookup and 302-redirected to " +
 			                 "the canonical form. Public.")
@@ -285,8 +285,8 @@ internal static class UserRoutes
 			.WithName("deleteUser")
 			.WithSummary("Delete User")
 			.WithDescription("Zeroes the user's privilege bits rather than removing the row, so score/social/" +
-			                 "anticheat history referencing this user id stays intact — the same convention this server " +
-			                 "already uses for restriction/ban. Returns the soft-deleted user row (privilege now zero). " +
+			                 "anticheat history referencing this user id stays intact (the same convention this server " +
+			                 "already uses for restriction/ban). Returns the soft-deleted user row (privilege now zero). " +
 			                 "404 if no user with this id exists, 400 if targeting user id 0 (BasilBot)." +
 			                 AdminKeyNote)
 			.WithTags("Users")
@@ -306,7 +306,7 @@ internal static class UserRoutes
 			.WithSummary("Spectate User")
 			.WithDescription("Server-Sent Events stream (event name `frames`) of one player's decoded " +
 			                 "replay-frame bundles (button state, cursor position, and the trailing scoreframe per " +
-			                 "bundle), keyed by their numeric `Users.Id` — not scoped to any particular match. " +
+			                 "bundle), keyed by their numeric `Users.Id`, not scoped to any particular match. " +
 			                 "BasilBot automatically spectates every player from the moment they log in, so this stream is " +
 			                 "live whenever that player is online and playing, tournament match or not. 400 for user id 0 " +
 			                 "(BasilBot itself has no gameplay stream to expose). A nonexistent or offline player id simply " +

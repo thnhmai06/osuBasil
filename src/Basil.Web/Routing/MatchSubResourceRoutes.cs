@@ -254,7 +254,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchReferees")
 			.WithSummary("Replace Match Referees")
-			.WithDescription("Body: `{ userIds: int[] }` — full replace, every id must be online. 409 if the " +
+			.WithDescription("Body: `{ userIds: int[] }`. Full replace, every id must be online. 409 if the " +
 			                 "result would leave the match with zero referees. 404 if the match isn't currently live; 400 " +
 			                 "if any `userId` isn't online." + AdminKeyNote)
 			.WithTags("Match Referees")
@@ -295,7 +295,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("addMatchReferees")
 			.WithSummary("Add Match Referees")
-			.WithDescription("Body: `{ userIds: int[] }` — adds to the existing referee list, every id must " +
+			.WithDescription("Body: `{ userIds: int[] }`. Adds to the existing referee list, every id must " +
 			                 "be online. Never rejected for leaving the list empty (it only ever adds). 404 if the match " +
 			                 "isn't currently live; 400 if any `userId` isn't online." + AdminKeyNote)
 			.WithTags("Match Referees")
@@ -431,7 +431,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchBans")
 			.WithSummary("Replace Match Bans")
-			.WithDescription("Body: `{ userIds: int[] }` — full replace, ids need not be online. No empty " +
+			.WithDescription("Body: `{ userIds: int[] }`. Full replace, ids need not be online. No empty " +
 			                 "guard (banning down to zero is fine). Any newly-banned id currently seated is also kicked. " +
 			                 "404 if the match isn't currently live." + AdminKeyNote)
 			.WithTags("Match Bans")
@@ -462,7 +462,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("addMatchBans")
 			.WithSummary("Add Match Bans")
-			.WithDescription("Body: `{ userIds: int[] }` — adds to the existing ban list, ids need not be " +
+			.WithDescription("Body: `{ userIds: int[] }`. Adds to the existing ban list, ids need not be " +
 			                 "online. Any newly-banned id currently seated is also kicked. 404 if the match isn't " +
 			                 "currently live." + AdminKeyNote)
 			.WithTags("Match Bans")
@@ -525,7 +525,7 @@ internal static class MatchSubResourceRoutes
 			.WithName("getMatchSlots")
 			.WithSummary("Get Match Slots")
 			.WithDescription("Plain JSON `{ slots: [{ index, user, status, team, mods, ready, loaded }, " +
-			                 "...] }` — always 16 entries (index 0-15), `user` a `{ id, name, country }` embed or null " +
+			                 "...] }`. Always 16 entries (index 0-15), `user` a `{ id, name, country }` embed or null " +
 			                 "when empty. 404 if the match isn't currently live. For a live push stream of the same " +
 			                 "shape, see `GET /matches/{matchId}/slots/live`. Public, no authentication.")
 			.WithTags("Match Slots")
@@ -568,7 +568,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchSlots")
 			.WithSummary("Replace Match Slots")
-			.WithDescription("Body: `{ slots: [{ index, userId?, team?, locked? }, ...] }` — every " +
+			.WithDescription("Body: `{ slots: [{ index, userId?, team?, locked? }, ...] }`. Every " +
 			                 "currently-seated player's id must appear exactly once across the payload (reassignment/" +
 			                 "team/lock only, nobody may be silently added or dropped). Omitted `team` leaves that " +
 			                 "slot's existing team unchanged. 409 (`PlayerCountMismatch`) if the payload's player set " +
@@ -597,7 +597,7 @@ internal static class MatchSubResourceRoutes
 			.WithGroupName("basilapi")
 			.WithName("updateMatchSlots")
 			.WithSummary("Update Match Slots")
-			.WithDescription("Same body/rules as `PUT`, but only validates/touches the slots actually given — " +
+			.WithDescription("Same body/rules as `PUT`, but only validates/touches the slots actually given, and " +
 			                 "does not require every current occupant to be listed." + AdminKeyNote)
 			.WithTags("Match Slots")
 			.Produces<MatchSlotsView>()
@@ -676,9 +676,9 @@ internal static class MatchSubResourceRoutes
 			.WithName("inviteMatchPlayers")
 			.WithSummary("Invite Match Players")
 			.WithDescription("Body: `{ userIds: int[], force }`. Without `force`, sends a standing invite " +
-			                 "(same as `!mp invite`) — the target still needs to join themselves, subject to the room's " +
+			                 "(same as `!mp invite`): the target still needs to join themselves, subject to the room's " +
 			                 "password/private/lock gating. With `force: true`, bypasses password/private/lock and seats " +
-			                 "the target directly — a banned target is still rejected regardless of `force`. Partial-" +
+			                 "the target directly. A banned target is still rejected regardless of `force`. Partial-" +
 			                 "failure-safe: returns one `{ userId, ok, error }` result per target, 200 even if some " +
 			                 "targets failed. 404 if the match isn't currently live; 400 if `userIds` is empty." +
 			                 AdminKeyNote)
@@ -822,7 +822,7 @@ internal static class MatchSubResourceRoutes
 			.WithName("getMatchTimerLive")
 			.WithSummary("Get Match Timer Live Stream")
 			.WithDescription("Full-then-delta SSE stream (event name `timer`) of the same shape as " +
-			                 "`GET /matches/{matchId}/timer` — a delta fires at each of the same announcement " +
+			                 "`GET /matches/{matchId}/timer`. A delta fires at each of the same announcement " +
 			                 "checkpoints `!mp timer`/`!mp start` chat announcements use, plus once more when the " +
 			                 "countdown finishes or is aborted. 409 (enveloped) if the match isn't currently live. " +
 			                 "Public, no authentication.")
@@ -867,9 +867,9 @@ internal static class MatchSubResourceRoutes
 			.WithName("startMatchTimer")
 			.WithSummary("Start Match Timer")
 			.WithDescription("Body: `{ seconds, autoStart }`. `autoStart: true` forwards to the same logic " +
-			                 "as `!mp start [seconds]` — non-positive `seconds` starts immediately, a positive value " +
+			                 "as `!mp start [seconds]`. Non-positive `seconds` starts immediately, a positive value " +
 			                 "queues a countdown that starts the match when it finishes. `autoStart: false` forwards to " +
-			                 "`!mp timer` — a countdown that never auto-starts (non-positive `seconds` defaults to 30). " +
+			                 "`!mp timer`, a countdown that never auto-starts (non-positive `seconds` defaults to 30). " +
 			                 "409 if the match is already in progress or has no beatmap set. 404 if the match isn't " +
 			                 "currently live." + AdminKeyNote)
 			.WithTags("Match Timer")

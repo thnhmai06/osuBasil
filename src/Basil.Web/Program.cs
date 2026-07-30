@@ -41,7 +41,7 @@ public sealed class Program
 		("Matches",
 		[
 			("Matches", "List and create matches."),
-			("Match Report", "The tournament match report (TRT) — one-shot JSON snapshot (the live SSE " +
+			("Match Report", "The tournament match report (TRT): a one-shot JSON snapshot (the live SSE " +
 			                 "equivalent is under Match Live)."),
 			("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
 			("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
@@ -77,7 +77,8 @@ public sealed class Program
 		]),
 		("Menu Icon",
 		[
-			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
+			("Menu Icon Image", "The in-game main menu icon image file."),
+			("Menu Icon URL", "The click-through URL opened when a player clicks the main menu icon.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -255,16 +256,16 @@ public sealed class Program
 	// .WithGroupName(...), matching AddOpenApi's default ShouldInclude filter.
 	private static void ConfigureOpenApi(WebApplicationBuilder builder)
 	{
-		AddOpenApiDocument(builder, "bancho", "osu! Client API — Bancho Protocol",
-			"The osu! stable client's binary bancho protocol — login and the packet-multiplexed " +
+		AddOpenApiDocument(builder, "bancho", "osu! Client API: Bancho Protocol",
+			"The osu! stable client's binary bancho protocol: login and the packet-multiplexed " +
 			"connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
-		AddOpenApiDocument(builder, "osuweb", "osu! Client API — osu! Web",
+		AddOpenApiDocument(builder, "osuweb", "osu! Client API: osu! Web",
 			"The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
 			"downloads and in-game registration. Served from the osu. subdomain.");
-		AddOpenApiDocument(builder, "beatmapassets", "osu! Client API — Beatmap Assets",
+		AddOpenApiDocument(builder, "beatmapassets", "osu! Client API: Beatmap Assets",
 			"Beatmapset thumbnail/preview asset requests, redirected to the api. host's own locally-" +
 			"stored background image (self-hosted, no osu.ppy.sh dependency). Served from the b. subdomain.");
-		AddOpenApiDocument(builder, "avatar", "osu! Client API — Avatar Files",
+		AddOpenApiDocument(builder, "avatar", "osu! Client API: Avatar Files",
 			"Locally-stored player avatar images. Served from the a. subdomain.");
 		AddOpenApiDocument(builder, "basilapi", "Basil API",
 			"Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +

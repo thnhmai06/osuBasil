@@ -60,9 +60,9 @@ internal static class ScoreRoutes
 			.WithGroupName("basilapi")
 			.WithName("getScore")
 			.WithSummary("Get Score")
-			.WithDescription("Returns the score's full row — mode-specific hit counts, combo, total score, " +
+			.WithDescription("Returns the score's full row: mode-specific hit counts, combo, total score, " +
 			                 "mods, the submitting `user` embed, and the played `beatmap` (null once its stored `mapMd5` " +
-			                 "no longer resolves — content changed or the beatmap was removed since). 404 if no score with " +
+			                 "no longer resolves, because the content changed or the beatmap was removed since). 404 if no score with " +
 			                 "this id exists. Public, no authentication.")
 			.WithTags("Scores")
 			.Produces<ScoreDetailView>()
@@ -81,7 +81,7 @@ internal static class ScoreRoutes
 			.WithName("downloadScoreReplay")
 			.WithSummary("Download Score Replay")
 			.WithDescription("Serves the `.osr` replay for the given score id. 404 if the score doesn't exist " +
-			                 "or has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication — " +
+			                 "or has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication, " +
 			                 "unlike the osu! client's own `GET /web/osu-getreplay.php`, which requires client-style login " +
 			                 "credentials.")
 			.WithTags("Scores")

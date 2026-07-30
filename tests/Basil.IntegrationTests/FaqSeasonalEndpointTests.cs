@@ -37,7 +37,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(Options.Create(new StorageOptions
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -87,7 +87,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
-		Assert.Equal(["faq", "rules"], body!.Data);
+		Assert.Equal(["faq", "rules"], body!.Data!);
 	}
 
 	[Fact]
@@ -212,7 +212,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/"));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
-		Assert.Equal(["winter.png"], body!.Data);
+		Assert.Equal(["winter.png"], body!.Data!);
 	}
 
 	[Fact]
