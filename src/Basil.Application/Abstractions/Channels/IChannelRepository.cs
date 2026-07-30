@@ -11,13 +11,15 @@ public sealed record Channel(
 	UserPrivileges WritePrivilege,
 	bool AutoJoin);
 
-/// <summary>
-///     Ported from app/repositories/channels.py's ChannelsRepository, scoped to what login needs:
-///     the auto-join channel list sent at login.
-/// </summary>
+/// <summary>Ported from app/repositories/channels.py's ChannelsRepository.</summary>
 public interface IChannelRepository
 {
-	Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default);
+	/// <summary>
+	///     Every channel row, regardless of <see cref="Channel.AutoJoin" /> — used to seed the runtime
+	///     registry at startup (ported from Channels.prepare(), which loads every DB channel
+	///     unconditionally; <c>AutoJoin</c> only gates what's sent at login, not registry membership).
+	/// </summary>
+	Task<IReadOnlyList<Channel>> FetchAllAsync(CancellationToken cancellationToken = default);
 
 	Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default);
 }

@@ -3,6 +3,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
@@ -28,6 +29,7 @@ public sealed class ChatDispatchService(
 	IUserRepository users,
 	IRelationshipRepository relationships,
 	ICommandDispatcher commandDispatcher,
+	IMatchRegistry matchRegistry,
 	ILogger<ChatDispatchService> logger)
 {
 	private const int MaxMessageLength = 2000;
@@ -57,10 +59,31 @@ public sealed class ChatDispatchService(
 		await DeliverPrivateMessageAsync(sender, channelOrNick, target, text, cancellationToken);
 	}
 
+	/// <summary>
+	///     A bancho client only ever knows a match/spectator channel by its fixed alias
+	///     (<c>#multiplayer</c>/<c>#spectator</c>) — never the internal registry name
+	///     (<see cref="MatchSession.ChatChannelName" />, e.g. <c>#multi_5</c>) that
+	///     <see cref="IChannelRegistry.GetByName" /> actually indexes on. Mirrors the inverse
+	///     translation in <c>BanchoIrcBridgeConnection.TranslateRecipient</c> (outbound direction).
+	/// </summary>
+	private static string ResolveClientChannelName(PlayerSession sender, string channelName)
+	{
+		if (channelName == "#multiplayer" && sender.Match is { } match) return match.ChatChannelName;
+
+		if (channelName == "#spectator")
+		{
+			var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : (int?)null);
+			if (hostId is { } id) return $"#spec_{id}";
+		}
+
+		return channelName;
+	}
+
 	private async Task SendChannelMessageAsync(PlayerSession sender, string channelName, string text,
 		CancellationToken cancellationToken)
 	{
-		var channel = channelRegistry.GetByName(channelName);
+		var resolvedName = ResolveClientChannelName(sender, channelName);
+		var channel = channelRegistry.GetByName(resolvedName);
 		if (channel is null || !channel.Contains(sender.Id) || !channel.CanWrite(sender.Privilege))
 		{
 			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=ChannelWriteDenied", sender.Id);
@@ -73,34 +96,22 @@ public sealed class ChatDispatchService(
 			channel, IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
 			sender.Id);
 
-		var matchScope = sender.Match is not null && sender.Match.ChatChannelName == channel.Name
-			? sender.Match
-			: null;
-		var reply = await commandDispatcher.DispatchAsync(sender, truncated, matchScope,
-			cancellationToken: cancellationToken);
-		if (reply is null) return;
-
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is null) return;
 
-		// A reply may embed `\n` (e.g. !faq's file contents) — each line becomes its own chat message,
-		// matching how a real client displays multiple consecutive lines rather than one with a
-		// visible newline. Every other command's reply has no `\n`, so this is a no-op for those.
-		foreach (var line in reply.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-			channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+		var matchScope = sender.Match is not null && sender.Match.ChatChannelName == channel.Name
+			? sender.Match
+			: null;
+		var sink = new ChannelReplySink(channelMembership, channel, bot, sender);
+		await commandDispatcher.DispatchAsync(sender, truncated, matchScope, channel.Name, sink,
+			cancellationToken: cancellationToken);
 	}
 
 	private async Task SendBotCommandAsync(PlayerSession sender, PlayerSession bot, string text,
 		CancellationToken cancellationToken)
 	{
-		var reply = await commandDispatcher.DispatchAsync(sender, text, null, true,
-			cancellationToken);
-		if (reply is null) return;
-
-		// See SendChannelMessageAsync's matching split — a `\n`-embedded reply (e.g. !faq) becomes one
-		// chat message per line instead of one message with a visible newline.
-		foreach (var line in reply.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-			sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+		var sink = new DmReplySink(sender, bot, channelMembership, channelRegistry, matchRegistry);
+		await commandDispatcher.DispatchAsync(sender, text, null, null, sink, true, cancellationToken);
 	}
 
 	private async Task DeliverPrivateMessageAsync(PlayerSession sender, string recipientName, PlayerSession? target,
@@ -147,6 +158,83 @@ public sealed class ChatDispatchService(
 
 			if (target.Status.UserActivity == UserActivity.Afk && target.AwayMessage is { } awayMessage)
 				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(target.Name, target.Id, sender.Name, awayMessage));
+		}
+	}
+
+	/// <summary>
+	///     Reply sink for a command run from inside a channel (<c>#lobby</c>, a match's own chat, ...):
+	///     <see cref="Reply" /> broadcasts back into that same channel; <see cref="ReplyDm" /> (used only
+	///     by `!help`/`!mp help`) always goes to the sender's DM instead.
+	/// </summary>
+	private sealed class ChannelReplySink(
+		ChannelMembershipService membership,
+		ChannelSession channel,
+		PlayerSession bot,
+		PlayerSession sender) : ICommandReplySink
+	{
+		public void Reply(string text)
+		{
+			// A reply may embed `\n` (e.g. !faq's file contents, !mp settings) — each line becomes its
+			// own chat message, matching how a real client displays multiple consecutive lines rather
+			// than one with a visible newline.
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+				membership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+		}
+
+		public void ReplyDm(string text)
+		{
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+		}
+	}
+
+	/// <summary>
+	///     Reply sink for a command run via DM to the bot: <see cref="Reply" /> always DMs the sender,
+	///     prefixed with <c>[#id]</c> once the sender is resolvably scoped to a match (mirroring
+	///     <see cref="Bot.CommandDispatcher.ResolveScope" />'s own MpScopeMatchId-then-physical-match
+	///     precedence, re-checked per call since `!mp make`/`!mp in` only establish that scope as part of
+	///     the very reply being sent) — and additionally broadcasts an unprefixed copy into that match's
+	///     own channel, so referees running the room remotely stay visible to it. <see cref="ReplyDm" />
+	///     (help) never prefixes or broadcasts.
+	/// </summary>
+	private sealed class DmReplySink(
+		PlayerSession sender,
+		PlayerSession bot,
+		ChannelMembershipService membership,
+		IChannelRegistry channelRegistry,
+		IMatchRegistry matchRegistry) : ICommandReplySink
+	{
+		public void Reply(string text)
+		{
+			var scope = ResolveScope();
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+			{
+				var prefixed = scope is not null ? $"[#{scope.DbId}] {line}" : line;
+				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, prefixed));
+
+				if (scope is null) continue;
+
+				var channel = channelRegistry.GetByName(scope.ChatChannelName);
+				if (channel is not null)
+					membership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+			}
+		}
+
+		public void ReplyDm(string text)
+		{
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+		}
+
+		private MatchSession? ResolveScope()
+		{
+			if (sender.MpScopeMatchId is { } dbId)
+			{
+				var scoped = matchRegistry.GetByDbId(dbId);
+				if (scoped is not null) return scoped;
+			}
+
+			return sender.Match;
 		}
 	}
 }

@@ -51,7 +51,7 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), new InMemoryMatchRegistry(),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
@@ -119,7 +119,7 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), new InMemoryMatchRegistry(),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
@@ -300,10 +300,11 @@ public class TcpIrcConnectionTests
 	/// <summary>Never recognises a command — this test's "hello bob" text has no `!` prefix anyway.</summary>
 	private sealed class NullCommandDispatcher : ICommandDispatcher
 	{
-		public Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
-			bool prefixOptional = false, CancellationToken cancellationToken = default)
+		public Task<bool> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
+			string? channelName, ICommandReplySink sink, bool prefixOptional = false,
+			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<string?>(null);
+			return Task.FromResult(false);
 		}
 	}
 }

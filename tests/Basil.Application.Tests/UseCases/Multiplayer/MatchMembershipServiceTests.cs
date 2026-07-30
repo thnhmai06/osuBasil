@@ -367,7 +367,7 @@ public class MatchMembershipServiceTests
 		service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
 
 		Assert.Equal(
-			ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", match.ChatChannelName,
+			ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", "#multiplayer",
 				BotBootstrapService.BotId),
 			host.Dequeue());
 	}
@@ -392,7 +392,7 @@ public class MatchMembershipServiceTests
 		Assert.True(cts.IsCancellationRequested);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
-				match.ChatChannelName, bot.Id),
+				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
 
@@ -461,7 +461,7 @@ public class MatchMembershipServiceTests
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name,
 				"Match cannot start because the beatmap does not exist on the server.",
-				match.ChatChannelName, bot.Id),
+				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
 

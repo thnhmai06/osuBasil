@@ -3,21 +3,20 @@ using Basil.Infrastructure.Persistence.Repositories;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/channels.py, scoped to what login needs: the auto-join channel
-///     list. migrations/base.sql seeds 2 channels (#osu, #lobby), only #osu has auto_join=true.
+///     Ported from app/repositories/channels.py. migrations/base.sql seeds 2 channels (#osu, #lobby),
+///     only #osu has auto_join=true.
 /// </summary>
 public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteChannelRepository _repository = new(fixture.ConnectionString);
 
 	[Fact]
-	public async Task FetchAllAutoJoin_ReturnsOnlyAutoJoinChannels()
+	public async Task FetchAll_ReturnsEveryChannelRegardlessOfAutoJoin()
 	{
-		var channels = await _repository.FetchAllAutoJoinAsync();
+		var channels = await _repository.FetchAllAsync();
 
-		Assert.Contains(channels, c => c.Name == "#osu");
-		Assert.DoesNotContain(channels, c => c.Name == "#lobby");
-		Assert.All(channels, c => Assert.True(c.AutoJoin));
+		Assert.Contains(channels, c => c.Name == "#osu" && c.AutoJoin);
+		Assert.Contains(channels, c => c.Name == "#lobby" && !c.AutoJoin);
 	}
 
 	[Fact]

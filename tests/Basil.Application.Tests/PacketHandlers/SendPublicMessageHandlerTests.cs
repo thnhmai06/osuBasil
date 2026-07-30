@@ -5,6 +5,7 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,7 +32,7 @@ public class SendPublicMessageHandlerTests
 		var channelMembership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
 		var chatDispatch = new ChatDispatchService(_channelRegistry, _sessionRegistry, channelMembership,
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
-			NullLogger<ChatDispatchService>.Instance);
+			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
 		return new SendPublicMessageHandler(chatDispatch);
 	}
 
@@ -174,8 +175,13 @@ public class SendPublicMessageHandlerTests
 		_sessionRegistry.All.Returns([sender]);
 		_sessionRegistry.GetById(sender.Id).Returns(sender);
 		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
-		_commandDispatcher.DispatchAsync(sender, "!roll", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<string?>("cmyui rolls 42 point(s)"));
+		_commandDispatcher.DispatchAsync(sender, "!roll", null, "#osu", Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
+				Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				call.Arg<ICommandReplySink>().Reply("cmyui rolls 42 point(s)");
+				return Task.FromResult(true);
+			});
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!roll", "#osu", 1));
 
@@ -199,8 +205,13 @@ public class SendPublicMessageHandlerTests
 		_sessionRegistry.All.Returns([sender]);
 		_sessionRegistry.GetById(sender.Id).Returns(sender);
 		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
-		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<string?>("Line one\nLine two"));
+		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, "#osu", Arg.Any<ICommandReplySink>(),
+				Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				call.Arg<ICommandReplySink>().Reply("Line one\nLine two");
+				return Task.FromResult(true);
+			});
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!faq rules", "#osu", 1));
 

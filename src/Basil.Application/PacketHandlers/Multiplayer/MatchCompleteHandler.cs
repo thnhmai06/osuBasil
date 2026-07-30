@@ -27,13 +27,22 @@ public sealed class MatchCompleteHandler(
 		CancellationToken cancellationToken = default)
 	{
 		var match = player.Match;
-		if (match is null) return;
+		if (match is null)
+		{
+			logger.LogWarning("MatchComplete received but player has no active match: UserId={UserId}", player.Id);
+			return;
+		}
 
 		await match.Lock.WaitAsync();
 		try
 		{
 			var slot = match.GetSlot(player.Id);
-			if (slot is null) return;
+			if (slot is null)
+			{
+				logger.LogWarning("MatchComplete received but player has no slot in the match: UserId={UserId} MatchId={MatchId}",
+					player.Id, match.DbId);
+				return;
+			}
 
 			slot.Status = SlotStatus.Complete;
 

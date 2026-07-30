@@ -8,11 +8,10 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IChannelRepository" />
 public sealed class SqliteChannelRepository(string connectionString) : IChannelRepository
 {
-	public async Task<IReadOnlyList<Channel>> FetchAllAutoJoinAsync(CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<Channel>> FetchAllAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		var rows = await connection.QueryAsync<ChannelRow>(
-			"SELECT * FROM Channels WHERE AutoJoin = @AutoJoin", new { AutoJoin = true });
+		var rows = await connection.QueryAsync<ChannelRow>("SELECT * FROM Channels");
 		return [.. rows.Select(r => r.ToChannel())];
 	}
 

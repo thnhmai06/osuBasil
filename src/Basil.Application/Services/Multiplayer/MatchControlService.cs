@@ -120,7 +120,11 @@ public sealed class MatchControlService(
 	private const int PeriodicReminderIntervalSeconds = 60;
 	private const int NearTotalIgnoreWindowSeconds = 5;
 
-	private static readonly int[] TimerCheckpoints = [60, 30, 10, 5, 4, 3, 2, 1];
+	/// <summary>`!mp start`'s countdown ticks down to 3, then goes silent until "Good luck, have fun!".</summary>
+	private static readonly int[] StartCheckpoints = [60, 30, 10, 5, 4, 3];
+
+	/// <summary>`!mp timer` skips the fast final tick entirely — no 5/4/3/2/1, just the higher marks.</summary>
+	private static readonly int[] TimerOnlyCheckpoints = [60, 30, 10];
 
 	/// <summary>
 	///     Ported from `!mp lock`/`!mp unlock` verbatim — note no <c>EnqueueState</c> broadcast happens
@@ -454,15 +458,16 @@ public sealed class MatchControlService(
 	///     which is redundant. The sub-60 marks (30/10/5/4/3/2/1) are exempt from that check — they're
 	///     meant to fire close together as the final countdown ticks down.
 	/// </summary>
-	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds)
+	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds, bool autoStart = true)
 	{
 		var periodic = Enumerable.Range(1, int.MaxValue)
 			.Select(k => k * PeriodicReminderIntervalSeconds)
 			.TakeWhile(c => c < totalSeconds);
+		var baseCheckpoints = autoStart ? StartCheckpoints : TimerOnlyCheckpoints;
 
 		return
 		[
-			.. TimerCheckpoints
+			.. baseCheckpoints
 				.Concat(periodic)
 				.Where(c => c < totalSeconds)
 				.Distinct()
@@ -507,11 +512,13 @@ public sealed class MatchControlService(
 		Announce(match, $"Queued the match to start in {totalSeconds} seconds");
 
 		var remaining = totalSeconds;
-		foreach (var checkpoint in ComputeAnnounceCheckpoints(totalSeconds))
+		foreach (var checkpoint in ComputeAnnounceCheckpoints(totalSeconds, autoStart))
 		{
 			if (!await DelayAsync(remaining - checkpoint, token)) return;
 
-			Announce(match, $"Match starts in {checkpoint} seconds");
+			Announce(match, autoStart
+				? $"Match starts in {checkpoint} seconds"
+				: $"{checkpoint} seconds remaining");
 			matchMembership.PublishTimer(match);
 			remaining = checkpoint;
 		}

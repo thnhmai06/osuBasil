@@ -3,6 +3,8 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
@@ -16,6 +18,52 @@ public class CommandDispatcherTests
 {
 	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+
+	/// <summary>Captures what a command sent through <see cref="ICommandReplySink" /> instead of returning it.</summary>
+	private sealed class RecordingReplySink : ICommandReplySink
+	{
+		public List<string> Replies { get; } = [];
+		public List<string> DmReplies { get; } = [];
+
+		public void Reply(string text)
+		{
+			Replies.Add(text);
+		}
+
+		public void ReplyDm(string text)
+		{
+			DmReplies.Add(text);
+		}
+
+		public string? Last => Replies.Count > 0 ? Replies[^1] : DmReplies.Count > 0 ? DmReplies[^1] : null;
+	}
+
+	/// <summary>
+	///     Mirrors the old `dispatcher.DispatchAsync(sender, message, matchScope, prefixOptional)` shape
+	///     so call sites don't need per-test channel plumbing — a non-null <paramref name="matchScope" />
+	///     is inferred to mean "sent in that match's own chat channel", matching every existing test's
+	///     actual intent (see <see cref="ICommandDispatcher.DispatchAsync" />'s doc comment on matchScope).
+	/// </summary>
+	private static async Task<string?> Run(CommandDispatcher dispatcher, PlayerSession sender, string message,
+		MatchSession? matchScope, bool prefixOptional = false)
+	{
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(sender, message, matchScope, matchScope?.ChatChannelName, sink, prefixOptional);
+		return sink.Last;
+	}
+
+	/// <summary>
+	///     Like <see cref="Run" />, but returns every reply sent (in order) instead of just the last —
+	///     needed for a `;`-chained line, where each segment now sends its own reply immediately instead
+	///     of the dispatcher joining them into one string.
+	/// </summary>
+	private static async Task<IReadOnlyList<string>> RunAll(CommandDispatcher dispatcher, PlayerSession sender,
+		string message, MatchSession? matchScope)
+	{
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(sender, message, matchScope, matchScope?.ChatChannelName, sink);
+		return sink.Replies;
+	}
 
 	private static StorageOptions MakeStorageOptions(string faqsPath = "")
 	{
@@ -43,7 +91,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "hello there", null);
+		var reply = await Run(dispatcher,sender, "hello there", null);
 
 		Assert.Null(reply);
 	}
@@ -54,7 +102,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "roll", null, true);
+		var reply = await Run(dispatcher,sender, "roll", null, true);
 
 		Assert.NotNull(reply);
 		Assert.StartsWith("cmyui rolls ", reply);
@@ -66,7 +114,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!bogus", null);
+		var reply = await Run(dispatcher,sender, "!bogus", null);
 
 		Assert.Null(reply);
 	}
@@ -77,7 +125,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!help", null);
+		var reply = await Run(dispatcher,sender, "!help", null);
 
 		Assert.NotNull(reply);
 	}
@@ -88,7 +136,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!roll", null);
+		var reply = await Run(dispatcher,sender, "!roll", null);
 
 		Assert.NotNull(reply);
 		Assert.StartsWith("cmyui rolls ", reply);
@@ -103,7 +151,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!roll 999999", null);
+		var reply = await Run(dispatcher,sender, "!roll 999999", null);
 
 		var points = int.Parse(reply!.Split(' ')[2]);
 		Assert.InRange(points, 0, 999999);
@@ -115,7 +163,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!roll 2147483647", null);
+		var reply = await Run(dispatcher,sender, "!roll 2147483647", null);
 
 		Assert.NotNull(reply);
 		var points = int.Parse(reply.Split(' ')[2]);
@@ -123,14 +171,14 @@ public class CommandDispatcherTests
 	}
 
 	[Fact]
-	public async Task DispatchAsync_MpWithoutMatchScope_ReturnsNull()
+	public async Task DispatchAsync_MpWithoutMatchScope_RepliesNotScoped()
 	{
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!mp settings", null);
+		var reply = await Run(dispatcher, sender, "!mp settings", null);
 
-		Assert.Null(reply);
+		Assert.Contains("not scoped to a match", reply);
 	}
 
 	[Fact]
@@ -142,7 +190,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp help", match);
+		var reply = await Run(dispatcher,host, "!mp help", match);
 
 		Assert.NotNull(reply);
 		Assert.Contains("settings", reply);
@@ -156,7 +204,7 @@ public class CommandDispatcherTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		fixture.RegisterAll(sender);
 
-		var reply = await dispatcher.DispatchAsync(sender, "!mp make Room", null);
+		var reply = await Run(dispatcher,sender, "!mp make Room", null);
 
 		Assert.NotNull(reply);
 		Assert.Contains("Created the match", reply);
@@ -164,16 +212,16 @@ public class CommandDispatcherTests
 	}
 
 	[Fact]
-	public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_ReturnsNull()
+	public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_RepliesNotScoped()
 	{
 		var fixture = new MultiplayerTestSupport.Fixture();
 		var dispatcher = MakeDispatcher(fixture: fixture);
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		fixture.RegisterAll(sender);
 
-		var reply = await dispatcher.DispatchAsync(sender, "!mp makeprivate Room", null);
+		var reply = await Run(dispatcher, sender, "!mp makeprivate Room", null);
 
-		Assert.Null(reply);
+		Assert.Contains("not scoped to a match", reply);
 	}
 
 	[Fact]
@@ -185,7 +233,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp makeprivate", match);
+		var reply = await Run(dispatcher,host, "!mp makeprivate", match);
 
 		Assert.True(match.IsPrivate);
 		Assert.Contains("now private", reply);
@@ -197,7 +245,7 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher();
 		var sender = MultiplayerTestSupport.MakePlayer(1, "player");
 
-		var reply = await dispatcher.DispatchAsync(sender, "!mp join 999", null);
+		var reply = await Run(dispatcher,sender, "!mp join 999", null);
 
 		Assert.Contains("No active match", reply);
 	}
@@ -213,7 +261,7 @@ public class CommandDispatcherTests
 		var match = fixture.CreateMatch(host);
 		match.IsPrivate = true;
 
-		var reply = await dispatcher.DispatchAsync(player, "!mp join 0", null);
+		var reply = await Run(dispatcher, player, $"!mp join {match.DbId}", null);
 
 		Assert.Contains("private", reply);
 	}
@@ -228,7 +276,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host, player);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(player, "!mp join 0", null);
+		var reply = await Run(dispatcher, player, $"!mp join {match.DbId}", null);
 
 		Assert.NotNull(reply);
 		Assert.Contains("Joined match", reply);
@@ -243,7 +291,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp private", match);
+		var reply = await Run(dispatcher,host, "!mp private", match);
 
 		Assert.Contains("not private", reply);
 	}
@@ -254,8 +302,8 @@ public class CommandDispatcherTests
 		var dispatcher = MakeDispatcher(".");
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-		Assert.Null(await dispatcher.DispatchAsync(sender, "!roll", null));
-		Assert.NotNull(await dispatcher.DispatchAsync(sender, ".roll", null));
+		Assert.Null(await Run(dispatcher,sender, "!roll", null));
+		Assert.NotNull(await Run(dispatcher,sender, ".roll", null));
 	}
 
 	[Fact]
@@ -265,7 +313,7 @@ public class CommandDispatcherTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 		_users.FetchByNameAsync("peppy", Arg.Any<CancellationToken>()).Returns(MakeUser("peppy", "us"));
 
-		var reply = await dispatcher.DispatchAsync(sender, "!where peppy", null);
+		var reply = await Run(dispatcher,sender, "!where peppy", null);
 
 		Assert.Equal("peppy is in United States", reply);
 	}
@@ -277,7 +325,7 @@ public class CommandDispatcherTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 		_users.FetchByNameAsync("ghost", Arg.Any<CancellationToken>()).Returns((User?)null);
 
-		var reply = await dispatcher.DispatchAsync(sender, "!where ghost", null);
+		var reply = await Run(dispatcher,sender, "!where ghost", null);
 
 		Assert.Equal("ghost is not registered.", reply);
 	}
@@ -289,7 +337,7 @@ public class CommandDispatcherTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 		_users.FetchByNameAsync("nobody", Arg.Any<CancellationToken>()).Returns(MakeUser("nobody", "xx"));
 
-		var reply = await dispatcher.DispatchAsync(sender, "!where nobody", null);
+		var reply = await Run(dispatcher,sender, "!where nobody", null);
 
 		Assert.Equal("nobody is in XX", reply);
 	}
@@ -304,7 +352,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq rules", null);
+			var reply = await Run(dispatcher,sender, "!faq rules", null);
 
 			Assert.Equal("Line one\nLine two", reply);
 		}
@@ -323,7 +371,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq nonexistent", null);
+			var reply = await Run(dispatcher,sender, "!faq nonexistent", null);
 
 			Assert.Equal("No FAQ entry found for 'nonexistent'.", reply);
 		}
@@ -345,7 +393,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq list", null);
+			var reply = await Run(dispatcher,sender, "!faq list", null);
 
 			Assert.Equal("Available FAQ entries: peppy, rules", reply);
 		}
@@ -364,7 +412,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq list", null);
+			var reply = await Run(dispatcher,sender, "!faq list", null);
 
 			Assert.Equal("No FAQ entries available.", reply);
 		}
@@ -387,7 +435,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq ../secret", null);
+			var reply = await Run(dispatcher,sender, "!faq ../secret", null);
 
 			Assert.DoesNotContain("TOP SECRET", reply);
 			Assert.Equal("No FAQ entry found for 'secret'.", reply);
@@ -408,7 +456,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq mod requests", null);
+			var reply = await Run(dispatcher,sender, "!faq mod requests", null);
 
 			Assert.Equal("no mod requests here", reply);
 		}
@@ -430,7 +478,7 @@ public class CommandDispatcherTests
 			var dispatcher = MakeDispatcher(storageOptions: MakeStorageOptions(faqsPath));
 			var sender = MultiplayerTestSupport.MakePlayer(1, "cmyui");
 
-			var reply = await dispatcher.DispatchAsync(sender, "!faq ..\\secret", null);
+			var reply = await Run(dispatcher,sender, "!faq ..\\secret", null);
 
 			Assert.DoesNotContain("TOP SECRET", reply);
 		}
@@ -451,10 +499,10 @@ public class CommandDispatcherTests
 		var match = fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
 
-		var inReply = await dispatcher.DispatchAsync(referee, $"!mp in {match.DbId}", null);
+		var inReply = await Run(dispatcher,referee, $"!mp in {match.DbId}", null);
 		Assert.Contains($"#{match.DbId}", inReply);
 
-		var settingsReply = await dispatcher.DispatchAsync(referee, "!mp settings", null);
+		var settingsReply = await Run(dispatcher,referee, "!mp settings", null);
 		Assert.Contains($"#{match.DbId}", settingsReply);
 	}
 
@@ -468,7 +516,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host, other);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(other, $"!mp in {match.DbId}", null);
+		var reply = await Run(dispatcher,other, $"!mp in {match.DbId}", null);
 
 		Assert.Contains("not a referee", reply);
 		Assert.Null(other.MpScopeMatchId);
@@ -488,7 +536,7 @@ public class CommandDispatcherTests
 		hostB.MpScopeMatchId = matchA.DbId;
 
 		// hostB is physically sitting in matchB's own channel, but stays scoped to matchA.
-		var reply = await dispatcher.DispatchAsync(hostB, "!mp settings", matchB);
+		var reply = await Run(dispatcher,hostB, "!mp settings", matchB);
 
 		Assert.Contains($"#{matchA.DbId}", reply);
 	}
@@ -502,10 +550,10 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp host; !mp name Renamed", match);
+		var replies = await RunAll(dispatcher, host, "!mp host; !mp name Renamed", match);
 
-		Assert.Contains("Usage: !mp host", reply);
-		Assert.Contains("renamed", reply, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains(replies, r => r.Contains("Usage: !mp host"));
+		Assert.Contains(replies, r => r.Contains("renamed", StringComparison.OrdinalIgnoreCase));
 		Assert.Equal("Renamed", match.Name);
 	}
 
@@ -518,7 +566,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp host && !mp name Renamed", match);
+		var reply = await Run(dispatcher,host, "!mp host && !mp name Renamed", match);
 
 		Assert.Contains("Usage: !mp host", reply);
 		Assert.DoesNotContain("renamed", reply, StringComparison.OrdinalIgnoreCase);
@@ -534,7 +582,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		await dispatcher.DispatchAsync(host, "!mp name First && !mp name Second", match);
+		await Run(dispatcher,host, "!mp name First && !mp name Second", match);
 
 		Assert.Equal("Second", match.Name);
 	}
@@ -548,7 +596,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		await dispatcher.DispatchAsync(host, "!mp name \"a;b\"", match);
+		await Run(dispatcher,host, "!mp name \"a;b\"", match);
 
 		Assert.Equal("a;b", match.Name);
 	}
@@ -562,7 +610,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		await dispatcher.DispatchAsync(host, "!mp name \"a \\\" b \\\\ c\"", match);
+		await Run(dispatcher,host, "!mp name \"a \\\" b \\\\ c\"", match);
 
 		Assert.Equal("a \" b \\ c", match.Name);
 	}
@@ -576,7 +624,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 
-		var reply = await dispatcher.DispatchAsync(host, "!mp name Foo; !roll 100", match);
+		var reply = await Run(dispatcher,host, "!mp name Foo; !roll 100", match);
 
 		Assert.Contains("rejected at", reply);
 		Assert.NotEqual("Foo", match.Name);

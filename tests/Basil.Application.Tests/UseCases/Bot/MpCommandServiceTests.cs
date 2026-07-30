@@ -3,6 +3,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.PacketHandlers;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
@@ -34,6 +35,54 @@ public class MpCommandServiceTests
 			NullLogger<MatchControlService>.Instance);
 	}
 
+	/// <summary>Captures what a command sent through <see cref="ICommandReplySink" /> instead of returning it.</summary>
+	private sealed class RecordingReplySink : ICommandReplySink
+	{
+		public List<string> Replies { get; } = [];
+		public List<string> DmReplies { get; } = [];
+
+		public void Reply(string text)
+		{
+			Replies.Add(text);
+		}
+
+		public void ReplyDm(string text)
+		{
+			DmReplies.Add(text);
+		}
+
+		public string? Last => Replies.Count > 0 ? Replies[^1] : DmReplies.Count > 0 ? DmReplies[^1] : null;
+	}
+
+	private static async Task<string?> Run(MpCommandService svc, PlayerSession sender, MatchSession match,
+		string subcommand, IReadOnlyList<string> args)
+	{
+		var sink = new RecordingReplySink();
+		await svc.TryHandleAsync(sender, match, subcommand, args, sink);
+		return sink.Last;
+	}
+
+	private static async Task<string?> RunMake(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	{
+		var sink = new RecordingReplySink();
+		await svc.MakeAsync(sender, args, sink);
+		return sink.Last;
+	}
+
+	private static async Task<string?> RunJoin(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	{
+		var sink = new RecordingReplySink();
+		await svc.JoinAsync(sender, args, sink);
+		return sink.Last;
+	}
+
+	private static string? RunSetScope(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	{
+		var sink = new RecordingReplySink();
+		svc.SetScopeAsync(sender, args, sink);
+		return sink.Last;
+	}
+
 	[Fact]
 	public async Task HandleAsync_NonReferee_SilentlyIgnored()
 	{
@@ -42,7 +91,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(other, match, "lock", ["1"]);
+		var reply = await Run(MakeService(),other, match, "lock", ["1"]);
 
 		Assert.Null(reply);
 	}
@@ -55,7 +104,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(other, match, "help", []);
+		var reply = await Run(MakeService(),other, match, "help", []);
 
 		Assert.NotNull(reply);
 		Assert.Contains("settings", reply);
@@ -69,7 +118,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "lock", []);
+		var reply = await Run(MakeService(),host, match, "lock", []);
 
 		Assert.True(match.IsLocked);
 		Assert.Equal("Locked the match", reply);
@@ -86,7 +135,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.IsLocked = true;
 
-		var reply = await MakeService().HandleAsync(host, match, "unlock", []);
+		var reply = await Run(MakeService(),host, match, "unlock", []);
 
 		Assert.False(match.IsLocked);
 		Assert.Equal("Unlocked the match", reply);
@@ -100,7 +149,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "size", ["4"]);
+		await Run(MakeService(),host, match, "size", ["4"]);
 
 		Assert.Equal(SlotStatus.Open, match.Slots[3].Status);
 		Assert.Equal(SlotStatus.Locked, match.Slots[4].Status);
@@ -117,7 +166,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "size", [arg]);
+		var reply = await Run(MakeService(),host, match, "size", [arg]);
 
 		Assert.Equal($"Changed match to size {expectedSize}", reply);
 	}
@@ -131,7 +180,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "move", ["other", "5"]);
+		var reply = await Run(MakeService(),host, match, "move", ["other", "5"]);
 
 		Assert.Equal(2, match.Slots[4].PlayerId);
 		Assert.True(match.Slots[1].Empty);
@@ -147,7 +196,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "move", ["other", "99"]);
+		var reply = await Run(MakeService(),host, match, "move", ["other", "99"]);
 
 		Assert.Equal(2, match.Slots[15].PlayerId);
 		Assert.Equal("Moved other into slot 16", reply);
@@ -162,7 +211,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "host", ["other"]);
+		var reply = await Run(MakeService(),host, match, "host", ["other"]);
 
 		Assert.Equal(2, match.HostId);
 		Assert.Equal("Changed match host to other", reply);
@@ -175,7 +224,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "clearhost", []);
+		await Run(MakeService(),host, match, "clearhost", []);
 
 		Assert.Equal(0, match.HostId);
 	}
@@ -187,7 +236,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "name", ["New", "Name"]);
+		await Run(MakeService(),host, match, "name", ["New", "Name"]);
 
 		Assert.Equal("New Name", match.Name);
 	}
@@ -200,7 +249,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.Password = "secret";
 
-		await MakeService().HandleAsync(host, match, "password", []);
+		await Run(MakeService(),host, match, "password", []);
 
 		Assert.Equal("", match.Password);
 	}
@@ -213,7 +262,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "password", ["off"]);
+		await Run(MakeService(),host, match, "password", ["off"]);
 
 		Assert.Equal("off", match.Password);
 	}
@@ -229,7 +278,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 		match.AddReferee(referee.Id);
 
-		var reply = await MakeService().HandleAsync(referee, match, "addref", ["other"]);
+		var reply = await Run(MakeService(),referee, match, "addref", ["other"]);
 
 		Assert.Contains(other.Id, match.Referees);
 		Assert.Equal("Added other to the match referees", reply);
@@ -242,7 +291,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 
-		var reply = await MakeService().HandleAsync(host, match, "settings", []);
+		var reply = await Run(MakeService(),host, match, "settings", []);
 
 		Assert.Null(reply);
 		Assert.DoesNotContain(host.Id, match.Referees);
@@ -257,7 +306,7 @@ public class MpCommandServiceTests
 		var bmap = MultiplayerTestSupport.MakeBeatmap(match.MapId);
 		_maps.FetchOneAsync(match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
-		var reply = await MakeService().HandleAsync(host, match, "settings", []);
+		var reply = await Run(MakeService(),host, match, "settings", []);
 
 		Assert.Contains($"Beatmap: {bmap.Id} {bmap.FullName}", reply);
 	}
@@ -270,7 +319,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		_maps.FetchOneAsync(match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns((Beatmap?)null);
 
-		var reply = await MakeService().HandleAsync(host, match, "settings", []);
+		var reply = await Run(MakeService(),host, match, "settings", []);
 
 		Assert.Contains("Beatmap: Not found", reply);
 	}
@@ -284,8 +333,8 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		var service = MakeService();
 
-		await service.HandleAsync(host, match, "addref", ["other"]);
-		var listing = await service.HandleAsync(host, match, "listrefs", []);
+		await Run(service,host, match, "addref", ["other"]);
+		var listing = await Run(service,host, match, "listrefs", []);
 
 		Assert.Contains(other.Id, match.Referees);
 		Assert.Contains("other", listing);
@@ -300,7 +349,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(other.Id);
 
-		await MakeService().HandleAsync(host, match, "removeref", ["other"]);
+		await Run(MakeService(),host, match, "removeref", ["other"]);
 
 		Assert.DoesNotContain(other.Id, match.Referees);
 	}
@@ -314,7 +363,7 @@ public class MpCommandServiceTests
 		match.AddBan(2);
 		_users.FetchByIdAsync(2, Arg.Any<CancellationToken>()).Returns(MakeUser(2, "banned_guy"));
 
-		var reply = await MakeService().HandleAsync(host, match, "banlist", []);
+		var reply = await Run(MakeService(),host, match, "banlist", []);
 
 		Assert.Contains("banned_guy", reply);
 	}
@@ -326,7 +375,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "banlist", []);
+		var reply = await Run(MakeService(),host, match, "banlist", []);
 
 		Assert.Equal("No banned players", reply);
 	}
@@ -338,7 +387,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "team", ["host", "blue"]);
+		await Run(MakeService(),host, match, "team", ["host", "blue"]);
 
 		Assert.Equal(MatchTeam.Blue, match.Slots[0].Team);
 	}
@@ -354,7 +403,7 @@ public class MpCommandServiceTests
 			500, new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
 		_maps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
-		var reply = await MakeService().HandleAsync(host, match, "map", ["500"]);
+		var reply = await Run(MakeService(),host, match, "map", ["500"]);
 
 		Assert.Equal(500, match.MapId);
 		Assert.Contains("Title", reply);
@@ -368,7 +417,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		_maps.FetchOneAsync(999, cancellationToken: Arg.Any<CancellationToken>()).Returns((Beatmap?)null);
 
-		var reply = await MakeService().HandleAsync(host, match, "map", ["999"]);
+		var reply = await Run(MakeService(),host, match, "map", ["999"]);
 
 		Assert.Equal("No beatmap with id 999 found locally.", reply);
 	}
@@ -380,7 +429,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		await MakeService().HandleAsync(host, match, "mods", ["HDHR"]);
+		await Run(MakeService(),host, match, "mods", ["HDHR"]);
 
 		Assert.Equal(Mods.Hidden | Mods.HardRock, match.Mods);
 	}
@@ -393,7 +442,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "mods", ["HD"]);
+		var reply = await Run(MakeService(),host, match, "mods", ["HD"]);
 
 		Assert.Equal("Enabled Hidden", reply);
 	}
@@ -408,7 +457,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.Freemods = true;
 
-		var reply = await MakeService().HandleAsync(host, match, "mods", ["HD"]);
+		var reply = await Run(MakeService(),host, match, "mods", ["HD"]);
 
 		Assert.False(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Mods);
@@ -423,7 +472,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.Mods = Mods.Hidden;
 
-		var reply = await MakeService().HandleAsync(host, match, "mods", ["Freemod"]);
+		var reply = await Run(MakeService(),host, match, "mods", ["Freemod"]);
 
 		Assert.True(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Slots[0].Mods);
@@ -438,7 +487,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.Mods = Mods.Hidden | Mods.HardRock;
 
-		await MakeService().HandleAsync(host, match, "mods", ["None"]);
+		await Run(MakeService(),host, match, "mods", ["None"]);
 
 		Assert.Equal(Mods.NoMod, match.Mods);
 	}
@@ -451,7 +500,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.InProgress = true;
 
-		var reply = await MakeService().HandleAsync(host, match, "start", []);
+		var reply = await Run(MakeService(),host, match, "start", []);
 
 		Assert.Equal("Match is already in progress.", reply);
 	}
@@ -463,7 +512,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "start", []);
+		var reply = await Run(MakeService(),host, match, "start", []);
 
 		Assert.True(match.InProgress);
 		Assert.Equal("Match started", reply);
@@ -476,7 +525,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "abort", []);
+		var reply = await Run(MakeService(),host, match, "abort", []);
 
 		Assert.Equal("Match is not in progress.", reply);
 	}
@@ -489,7 +538,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.StartAsync(match);
 
-		var reply = await MakeService().HandleAsync(host, match, "abort", []);
+		var reply = await Run(MakeService(),host, match, "abort", []);
 
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
@@ -503,7 +552,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "start", ["30"]);
+		var reply = await Run(MakeService(),host, match, "start", ["30"]);
 
 		Assert.False(match.InProgress);
 		var timer = match.PendingTimer;
@@ -521,7 +570,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "timer", ["10"]);
+		var reply = await Run(MakeService(),host, match, "timer", ["10"]);
 
 		var timer = match.PendingTimer;
 		Assert.NotNull(timer);
@@ -539,7 +588,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "timer", []);
+		var reply = await Run(MakeService(),host, match, "timer", []);
 
 		Assert.Equal("Countdown started: 30 seconds", reply);
 
@@ -555,7 +604,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "aborttimer", []);
+		var reply = await Run(MakeService(),host, match, "aborttimer", []);
 
 		Assert.Equal("No countdown is running.", reply);
 	}
@@ -567,10 +616,10 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 		var service = MakeService();
-		await service.HandleAsync(host, match, "start", ["30"]);
+		await Run(service,host, match, "start", ["30"]);
 		var cts = match.PendingTimer;
 
-		var reply = await service.HandleAsync(host, match, "aborttimer", []);
+		var reply = await Run(service,host, match, "aborttimer", []);
 
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
@@ -593,18 +642,18 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(guest, match, "");
 		var service = MakeService();
-		await service.HandleAsync(host, match, "start", ["30"]);
+		await Run(service,host, match, "start", ["30"]);
 		var cts = match.PendingTimer;
 		host.Dequeue();
 
-		await service.HandleAsync(host, match, subcommand, args);
+		await Run(service,host, match, subcommand, args);
 
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.True(cts!.IsCancellationRequested);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
-				match.ChatChannelName, bot.Id),
+				"#multiplayer", bot.Id),
 			MultiplayerTestSupport.Chunk(host.Dequeue()));
 	}
 
@@ -620,9 +669,9 @@ public class MpCommandServiceTests
 		var bmap = MultiplayerTestSupport.MakeBeatmap(200);
 		_maps.FetchOneAsync(200, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 		var service = MakeService();
-		await service.HandleAsync(host, match, "start", ["30"]);
+		await Run(service,host, match, "start", ["30"]);
 
-		await service.HandleAsync(host, match, "map", ["200"]);
+		await Run(service,host, match, "map", ["200"]);
 
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
@@ -638,10 +687,10 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 		var service = MakeService();
-		await service.HandleAsync(host, match, "start", ["30"]);
+		await Run(service,host, match, "start", ["30"]);
 		var cts = match.PendingTimer;
 
-		await service.HandleAsync(host, match, subcommand, args);
+		await Run(service,host, match, subcommand, args);
 
 		Assert.Same(cts, match.PendingTimer);
 		Assert.True(match.PendingTimerIsAutoStart);
@@ -667,32 +716,43 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		host.Dequeue();
 
-		await MakeService().HandleAsync(host, match, "timer", ["2"]);
+		await Run(MakeService(),host, match, "timer", ["2"]);
 
 		var queuedPacket = ServerPacketWriter.SendMessage("BasilBot", "Queued the match to start in 2 seconds",
-			match.ChatChannelName, BotBootstrapService.BotId);
+			"#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(queuedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
 
 		await Task.Delay(TimeSpan.FromSeconds(2.5));
 
 		var finishedPacket = ServerPacketWriter.SendMessage("BasilBot", "Countdown finished",
-			match.ChatChannelName, BotBootstrapService.BotId);
+			"#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(finishedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
 	}
 
 	[Theory]
-	[InlineData(5, new[] { 4, 3, 2, 1 })]
-	[InlineData(3, new[] { 2, 1 })]
-	[InlineData(45, new[] { 30, 10, 5, 4, 3, 2, 1 })]
+	[InlineData(5, new[] { 4, 3 })]
+	[InlineData(3, new int[0])]
+	[InlineData(45, new[] { 30, 10, 5, 4, 3 })]
 	// 60 is within the 5s near-total ignore window (61-60=1) — announcing it right after
 	// "Queued...61 seconds" would be redundant, so it's dropped.
-	[InlineData(61, new[] { 30, 10, 5, 4, 3, 2, 1 })]
-	[InlineData(65, new[] { 30, 10, 5, 4, 3, 2, 1 })]
+	[InlineData(61, new[] { 30, 10, 5, 4, 3 })]
+	[InlineData(65, new[] { 30, 10, 5, 4, 3 })]
 	// Long countdowns get an extra reminder every 60s on top of the fixed marks.
-	[InlineData(300, new[] { 240, 180, 120, 60, 30, 10, 5, 4, 3, 2, 1 })]
-	public void ComputeAnnounceCheckpoints_ReturnsExpectedMarks(int total, int[] expected)
+	[InlineData(300, new[] { 240, 180, 120, 60, 30, 10, 5, 4, 3 })]
+	public void ComputeAnnounceCheckpoints_AutoStart_StopsAt3(int total, int[] expected)
 	{
 		var result = MpCommandService.ComputeAnnounceCheckpoints(total);
+
+		Assert.Equal(expected, result);
+	}
+
+	[Theory]
+	[InlineData(15, new[] { 10 })]
+	[InlineData(45, new[] { 30, 10 })]
+	[InlineData(300, new[] { 240, 180, 120, 60, 30, 10 })]
+	public void ComputeAnnounceCheckpoints_Timer_SkipsFastFinalTick(int total, int[] expected)
+	{
+		var result = MpCommandService.ComputeAnnounceCheckpoints(total, false);
 
 		Assert.Equal(expected, result);
 	}
@@ -706,7 +766,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 		match.AddReferee(referee.Id);
 
-		var reply = await MakeService().HandleAsync(referee, match, "kick", ["host"]);
+		var reply = await Run(MakeService(),referee, match, "kick", ["host"]);
 
 		Assert.Null(host.Match);
 		Assert.Equal("Kicked host from the match", reply);
@@ -722,7 +782,7 @@ public class MpCommandServiceTests
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
 		match.AddReferee(referee.Id);
 
-		var reply = await MakeService().HandleAsync(host, match, "kick", ["referee"]);
+		var reply = await Run(MakeService(),host, match, "kick", ["referee"]);
 
 		Assert.Null(referee.Match);
 		Assert.Contains(referee.Id, match.Referees);
@@ -738,7 +798,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "kick", ["other"]);
+		var reply = await Run(MakeService(),host, match, "kick", ["other"]);
 
 		Assert.Null(other.Match);
 		Assert.Equal("Kicked other from the match", reply);
@@ -753,7 +813,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "ban", ["other"]);
+		var reply = await Run(MakeService(),host, match, "ban", ["other"]);
 
 		Assert.Null(other.Match);
 		Assert.Contains(other.Id, match.BannedIds);
@@ -772,7 +832,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "ban", ["other"]);
+		var reply = await Run(MakeService(),host, match, "ban", ["other"]);
 
 		Assert.DoesNotContain(other.Id, match.BannedIds);
 		Assert.Equal("other is not in this match.", reply);
@@ -788,7 +848,7 @@ public class MpCommandServiceTests
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
 		match.AddReferee(referee.Id);
 
-		var reply = await MakeService().HandleAsync(host, match, "ban", ["referee"]);
+		var reply = await Run(MakeService(),host, match, "ban", ["referee"]);
 
 		Assert.Contains(referee.Id, match.BannedIds);
 		Assert.Contains(referee.Id, match.Referees);
@@ -805,7 +865,7 @@ public class MpCommandServiceTests
 		match.AddBan(99);
 		_users.FetchByNameAsync("offline_guy", Arg.Any<CancellationToken>()).Returns(MakeUser(99, "offline_guy"));
 
-		var reply = await MakeService().HandleAsync(host, match, "unban", ["offline_guy"]);
+		var reply = await Run(MakeService(),host, match, "unban", ["offline_guy"]);
 
 		Assert.DoesNotContain(99, match.BannedIds);
 		Assert.Equal("Unbanned offline_guy from the match", reply);
@@ -821,7 +881,7 @@ public class MpCommandServiceTests
 		match.AddBan(other.Id);
 		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
-		await MakeService().HandleAsync(host, match, "unban", ["other"]);
+		await Run(MakeService(),host, match, "unban", ["other"]);
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
 
 		Assert.True(rejoined);
@@ -835,7 +895,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(2, "other"));
 
-		var reply = await MakeService().HandleAsync(host, match, "unban", ["other"]);
+		var reply = await Run(MakeService(),host, match, "unban", ["other"]);
 
 		Assert.Equal("other is not banned from this match.", reply);
 	}
@@ -849,7 +909,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		var reply = await MakeService().HandleAsync(host, match, "close", []);
+		var reply = await Run(MakeService(),host, match, "close", []);
 
 		Assert.Null(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.Null(host.Match);
@@ -864,7 +924,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "set", ["2", "1", "8"]);
+		var reply = await Run(MakeService(),host, match, "set", ["2", "1", "8"]);
 
 		Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
 		Assert.Equal(MatchWinCondition.Accuracy, match.WinCondition);
@@ -880,7 +940,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.WinCondition = MatchWinCondition.Combo;
 
-		var reply = await MakeService().HandleAsync(host, match, "set", ["2"]);
+		var reply = await Run(MakeService(),host, match, "set", ["2"]);
 
 		Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
 		Assert.Equal(MatchWinCondition.Combo, match.WinCondition);
@@ -894,7 +954,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "set", ["4", "0", "8"]);
+		var reply = await Run(MakeService(),host, match, "set", ["4", "0", "8"]);
 
 		Assert.Equal("Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]", reply);
 	}
@@ -906,7 +966,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "set", ["0", "0", "99"]);
+		var reply = await Run(MakeService(),host, match, "set", ["0", "0", "99"]);
 
 		Assert.Equal(SlotStatus.Open, match.Slots[15].Status);
 		Assert.Equal("Changed match settings to HeadToHead, Score, 16 slots.", reply);
@@ -918,7 +978,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 
-		var reply = await MakeService().MakeAsync(sender, ["My", "Tournament"]);
+		var reply = await RunMake(MakeService(),sender, ["My", "Tournament"]);
 
 		Assert.Same(sender.Match, _fixture.MatchRegistry.All.Single());
 		Assert.Equal(sender.Id, sender.Match!.HostId);
@@ -938,8 +998,8 @@ public class MpCommandServiceTests
 		// `make` and `makeprivate` both route to MakeAsync with the exact same arguments — the
 		// dispatcher-level alias is what's under test elsewhere; this asserts MakeAsync itself has no
 		// hidden branch that would make the two behave differently.
-		await MakeService().MakeAsync(makeSender, ["Room"]);
-		await MakeService().MakeAsync(makePrivateSender, ["Room"]);
+		await RunMake(MakeService(),makeSender, ["Room"]);
+		await RunMake(MakeService(),makePrivateSender, ["Room"]);
 
 		var first = makeSender.Match!;
 		var second = makePrivateSender.Match!;
@@ -954,7 +1014,7 @@ public class MpCommandServiceTests
 		// until `!mp close` or its referee list empties, regardless of player occupancy.
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
-		await MakeService().MakeAsync(sender, ["Room"]);
+		await RunMake(MakeService(),sender, ["Room"]);
 		var match = sender.Match!;
 
 		await _fixture.MatchMembership.LeaveAsync(sender, match);
@@ -969,10 +1029,10 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 		var service = MakeService();
-		await service.MakeAsync(sender, ["Room"]);
+		await RunMake(service,sender, ["Room"]);
 		var match = sender.Match!;
 
-		var reply = await service.HandleAsync(sender, match, "removeref", ["creator"]);
+		var reply = await Run(service,sender, match, "removeref", ["creator"]);
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.Contains(sender.Id, match.Referees);
@@ -990,7 +1050,7 @@ public class MpCommandServiceTests
 		match.AddReferee(referee.Id);
 		var service = MakeService();
 
-		await service.HandleAsync(host, match, "removeref", ["referee"]);
+		await Run(service,host, match, "removeref", ["referee"]);
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.DoesNotContain(referee.Id, match.Referees);
@@ -1002,7 +1062,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 
-		var reply = await MakeService().MakeAsync(sender, ["Room"]);
+		var reply = await RunMake(MakeService(),sender, ["Room"]);
 
 		Assert.Equal(sender.Match!.DbId, sender.MpScopeMatchId);
 		Assert.Contains("scoped to this match", reply);
@@ -1014,7 +1074,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(sender);
 
-		var reply = MakeService().SetScopeAsync(sender, []);
+		var reply = RunSetScope(MakeService(),sender, []);
 
 		Assert.Equal("You're not scoped to any match.", reply);
 	}
@@ -1027,7 +1087,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(sender);
 		sender.MpScopeMatchId = match.DbId;
 
-		var reply = MakeService().SetScopeAsync(sender, []);
+		var reply = RunSetScope(MakeService(),sender, []);
 
 		Assert.Contains($"#{match.DbId}", reply);
 	}
@@ -1041,7 +1101,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
 
-		var reply = MakeService().SetScopeAsync(referee, [match.DbId.ToString()]);
+		var reply = RunSetScope(MakeService(),referee, [match.DbId.ToString()]);
 
 		Assert.Equal(match.DbId, referee.MpScopeMatchId);
 		Assert.Contains($"#{match.DbId}", reply);
@@ -1055,7 +1115,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = MakeService().SetScopeAsync(other, [match.DbId.ToString()]);
+		var reply = RunSetScope(MakeService(),other, [match.DbId.ToString()]);
 
 		Assert.Null(other.MpScopeMatchId);
 		Assert.Contains("not a referee", reply);
@@ -1067,7 +1127,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(sender);
 
-		var reply = MakeService().SetScopeAsync(sender, ["999"]);
+		var reply = RunSetScope(MakeService(),sender, ["999"]);
 
 		Assert.Contains("No active match", reply);
 	}
@@ -1080,7 +1140,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(other, match, "private", []);
+		var reply = await Run(MakeService(),other, match, "private", []);
 
 		Assert.Null(reply);
 	}
@@ -1092,7 +1152,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "private", []);
+		var reply = await Run(MakeService(),host, match, "private", []);
 
 		Assert.Contains("not private", reply);
 	}
@@ -1104,7 +1164,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "private", ["1"]);
+		var reply = await Run(MakeService(),host, match, "private", ["1"]);
 
 		Assert.True(match.IsPrivate);
 		Assert.Contains("now private", reply);
@@ -1118,7 +1178,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.IsPrivate = true;
 
-		var reply = await MakeService().HandleAsync(host, match, "private", ["0"]);
+		var reply = await Run(MakeService(),host, match, "private", ["0"]);
 
 		Assert.False(match.IsPrivate);
 		Assert.Contains("now public", reply);
@@ -1131,7 +1191,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().HandleAsync(host, match, "makeprivate", []);
+		var reply = await Run(MakeService(),host, match, "makeprivate", []);
 
 		Assert.True(match.IsPrivate);
 		Assert.Contains("now private", reply);
@@ -1143,7 +1203,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "player");
 		_fixture.RegisterAll(sender);
 
-		var reply = await MakeService().JoinAsync(sender, ["999"]);
+		var reply = await RunJoin(MakeService(),sender, ["999"]);
 
 		Assert.Contains("No active match", reply);
 	}
@@ -1157,7 +1217,7 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.IsPrivate = true;
 
-		var reply = await MakeService().JoinAsync(player, ["0"]);
+		var reply = await RunJoin(MakeService(), player, [match.DbId.ToString()]);
 
 		Assert.Contains("private", reply);
 	}
@@ -1170,7 +1230,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, player);
 		var match = _fixture.CreateMatch(host);
 
-		var reply = await MakeService().JoinAsync(player, ["0"]);
+		var reply = await RunJoin(MakeService(), player, [match.DbId.ToString()]);
 
 		Assert.NotNull(reply);
 		Assert.Contains("Joined match", reply);

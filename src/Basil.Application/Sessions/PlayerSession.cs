@@ -50,6 +50,13 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
 	/// </summary>
 	public int? MpScopeMatchId { get; set; }
 
+	/// <summary>
+	///     Ported from Player.in_lobby — set while the client is viewing the multiplayer lobby screen
+	///     (between <see cref="Basil.Protocol.Packets.ClientPackets.JoinLobby" /> and
+	///     <see cref="Basil.Protocol.Packets.ClientPackets.PartLobby" />).
+	/// </summary>
+	public bool InLobby { get; set; }
+
 	/// <summary>Ported from Player.geoloc — defaults to "xx"/0/0 when unavailable, matching Player.__init__.</summary>
 	public Geolocation Geoloc { get; set; } = new(0.0, 0.0, Country.Xx);
 

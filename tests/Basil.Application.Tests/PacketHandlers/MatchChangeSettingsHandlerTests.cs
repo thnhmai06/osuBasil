@@ -111,7 +111,7 @@ public class MatchChangeSettingsHandlerTests
 		Assert.Equal(previousName, match.MapName);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
-				match.ChatChannelName, bot.Id),
+				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
 
@@ -134,7 +134,7 @@ public class MatchChangeSettingsHandlerTests
 		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
-				match.ChatChannelName, bot.Id),
+				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
 

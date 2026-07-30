@@ -35,27 +35,38 @@ public sealed class CommandDispatcher(
 		new("!faq <entry>|list", "print a FAQ entry, or list every entry"),
 		new("!mp make <name>", "create a tournament room from anywhere, scoping you to it"),
 		new("!mp join <id> [password]", "join a match by id (private rooms need an invite from the host/a referee)"),
-		new("!mp in [match_id]", "target/show a match you're not physically in (needs referee permission there)"),
+		new("!mp in [match_id]", "target/show a match you're not physically in (DM only — needs referee permission there)"),
 		new("!mp help", "list multiplayer subcommands (usable while scoped to a match)")
 	];
 
 	private static readonly string HelpText = BuildHelpText(ChatCommands);
 
 	private static readonly HashSet<string> NonChainableMpSubcommands =
-		new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "in", "join" };
+		new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "makeprivate", "in", "join" };
+
+	/// <summary>
+	///     `!mp` subcommands reachable from `#lobby` — everything else is a silent no-op there (see the
+	///     class-level 1.4 channel-eligibility rule). Deliberately excludes `in`: combined with the
+	///     separate "not from your own match's `#multiplayer` channel" rule, `!mp in` ends up reachable
+	///     only via DM to the bot.
+	/// </summary>
+	private static readonly HashSet<string> LobbyAllowedMpSubcommands =
+		new(StringComparer.OrdinalIgnoreCase) { "make", "makeprivate" };
 
 	private readonly FaqService _faq = new(storageOptions);
 
-	public async Task<string?> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
-		bool prefixOptional = false, CancellationToken cancellationToken = default)
+	/// <inheritdoc />
+	public async Task<bool> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
+		string? channelName, ICommandReplySink sink, bool prefixOptional = false,
+		CancellationToken cancellationToken = default)
 	{
 		var prefix = botOptions.Value.CommandPrefix;
-		if (string.IsNullOrEmpty(prefix)) return null;
+		if (string.IsNullOrEmpty(prefix)) return false;
 
 		string message;
 		if (rawMessage.StartsWith(prefix, StringComparison.Ordinal)) message = rawMessage;
 		else if (prefixOptional) message = prefix + rawMessage;
-		else return null;
+		else return false;
 
 		// Always run the message through the quote/escape-aware splitter, even when it's a single
 		// command with no `;`/`&&` at all — that's what lets `!mp name "a; b"` keep its literal
@@ -64,8 +75,9 @@ public sealed class CommandDispatcher(
 		// and gets the stricter local-!mp-subcommand-only validation in DispatchChainAsync.
 		var segments = ChatCommandChain.Split(message);
 		return segments.Count == 1
-			? await DispatchSingleAsync(sender, segments[0].Text, prefix, matchScope, cancellationToken)
-			: await DispatchChainAsync(sender, segments, matchScope, prefix, cancellationToken);
+			? await DispatchSingleAsync(sender, segments[0].Text, prefix, matchScope, channelName, sink,
+				cancellationToken)
+			: await DispatchChainAsync(sender, segments, matchScope, channelName, prefix, sink, cancellationToken);
 	}
 
 	private static string BuildHelpText(IReadOnlyList<CommandInfo> commands)
@@ -73,11 +85,11 @@ public sealed class CommandDispatcher(
 		return string.Join('\n', commands.Select(c => $"{c.Usage} - {c.Description}"));
 	}
 
-	private async Task<string?> DispatchSingleAsync(PlayerSession sender, string rawMessage, string prefix,
-		MatchSession? matchScope, CancellationToken cancellationToken)
+	private async Task<bool> DispatchSingleAsync(PlayerSession sender, string rawMessage, string prefix,
+		MatchSession? matchScope, string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
 		var parts = rawMessage[prefix.Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-		if (parts.Length == 0) return null;
+		if (parts.Length == 0) return false;
 
 		var trigger = parts[0].ToLowerInvariant();
 		var args = parts[1..];
@@ -85,47 +97,85 @@ public sealed class CommandDispatcher(
 		switch (trigger)
 		{
 			case "mp":
-			{
-				var subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "";
-
-				switch (subcommand)
-				{
-					// `make` creates a match, `join` targets any match by wire id, and `in` targets one
-					// the sender may not be in at all — all three run with no channel-derived match scope
-					// (reachable via PM to the bot), unlike every other !mp subcommand — see
-					// MpCommandService.MakeAsync/JoinAsync/SetScopeAsync.
-					case "make":
-						return await mpCommands.MakeAsync(sender, args[1..], cancellationToken);
-					case "join":
-						return await mpCommands.JoinAsync(sender, args[1..], cancellationToken);
-					case "in":
-						return mpCommands.SetScopeAsync(sender, args[1..]);
-				}
-
-				var scope = ResolveScope(sender, matchScope);
-				if (scope is null) return null;
-				return await mpCommands.HandleAsync(sender, scope, subcommand, args[1..], cancellationToken);
-			}
+				return await DispatchMpAsync(sender, args, matchScope, channelName, sink, cancellationToken);
 			case "where":
-				return await Where(args, cancellationToken);
+				return await Where(args, sink, cancellationToken);
 			case "faq":
-				return await Faq(args, cancellationToken);
+				return await Faq(args, sink, cancellationToken);
 			case "help":
-				return HelpText;
+				sink.ReplyDm(HelpText);
+				return true;
 			case "roll":
-				return Roll(sender, args);
+				sink.Reply(Roll(sender, args));
+				return true;
 			default:
 				logger.LogDebug("Command not recognized: UserId={UserId} RawMessage={RawMessage}",
 					sender.Id, Truncate(rawMessage));
-				return null;
+				return false;
 		}
+	}
+
+	private async Task<bool> DispatchMpAsync(PlayerSession sender, string[] args, MatchSession? matchScope,
+		string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
+	{
+		var subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+		var subArgs = args[1..];
+
+		// `!mp help` never needs a resolved scope — bypass ResolveScope entirely so it always answers,
+		// even for a sender with no MpScopeMatchId and no physical match (see the 1.7a doc comment on
+		// ResolveScope for why that fallback exists at all).
+		if (subcommand is "" or "help")
+		{
+			sink.ReplyDm(MpCommandService.HelpText);
+			return true;
+		}
+
+		// `#lobby` only ever reaches `make`/`makeprivate` — every other subcommand (including `in`) is a
+		// silent no-op there.
+		if (channelName == "#lobby" && !LobbyAllowedMpSubcommands.Contains(subcommand)) return false;
+
+		switch (subcommand)
+		{
+			// `make` creates a match, `join` targets any match by persistent room id, and `in` targets
+			// one the sender may not be in at all — all three run with no channel-derived match scope
+			// (reachable via PM to the bot), unlike every other !mp subcommand — see
+			// MpCommandService.MakeAsync/JoinAsync/SetScopeAsync. `makeprivate` is NOT an alias of
+			// `make` (see MpCommandService's own doc comment) — it sets privacy on an EXISTING match,
+			// so it falls through to the normal ResolveScope path below like any other subcommand; its
+			// presence in the #lobby allow-list above is harmless since #lobby never carries a resolvable
+			// scope for it to act on.
+			case "make":
+				return await mpCommands.MakeAsync(sender, subArgs, sink, cancellationToken);
+			case "join":
+				return await mpCommands.JoinAsync(sender, subArgs, sink, cancellationToken);
+			case "in":
+				// Never from inside the very room's own #multiplayer channel — combined with the #lobby
+				// block above, this leaves DM-to-bot as the only place `!mp in` actually runs.
+				if (matchScope is not null && channelName == matchScope.ChatChannelName) return false;
+				return mpCommands.SetScopeAsync(sender, subArgs, sink);
+		}
+
+		var scope = ResolveScope(sender, matchScope);
+		if (scope is null)
+		{
+			// Distinct from the referee-gate's silent no-op (see MpCommandService.TryHandleAsync's doc
+			// comment) — not being scoped to ANY match at all is a different, more basic failure than
+			// being scoped but lacking permission, so it gets an explicit reply instead of dead silence.
+			sink.Reply("You're not scoped to a match — use !mp make, !mp join <id>, or !mp in <id> first.");
+			return false;
+		}
+
+		return await mpCommands.TryHandleAsync(sender, scope, subcommand, subArgs, sink, cancellationToken);
 	}
 
 	/// <summary>
 	///     Prefers the out-of-room scope set by `!mp in` over the sender's literal chat channel — a
 	///     referee juggling several matches from one place should keep targeting the match they picked,
 	///     even if they happen to be sitting in a different match's own channel. Falls back to the
-	///     channel-derived scope (or null) once the scoped match no longer exists.
+	///     channel-derived scope, and finally to the match the sender is physically sitting in (matching
+	///     bancho.py's `ensure_match`/`ctx.player.match` baseline — see `app/commands.py`'s
+	///     `ensure_match`), so a DM `!mp abort`/subcommand still resolves even when the sender never ran
+	///     `!mp make`/`!mp in` to set an explicit scope.
 	/// </summary>
 	private MatchSession? ResolveScope(PlayerSession sender, MatchSession? channelScope)
 	{
@@ -137,23 +187,26 @@ public sealed class CommandDispatcher(
 			sender.MpScopeMatchId = null;
 		}
 
-		return channelScope;
+		return channelScope ?? sender.Match;
 	}
 
 	/// <summary>
 	///     Runs a `;`/`&amp;&amp;`-chained line of `!mp` subcommands sequentially against the resolved
 	///     scope. Only chainable when the sender is currently a referee of that scope, and only for
-	///     `!mp` subcommands that operate on it — `make`/`join`/`in`/`help` don't (they either
-	///     create/match/change scope elsewhere), and a bare `!roll`/`!where`/`!faq` segment isn't a
-	///     `!mp` command at all, so any of those inside a chain reject the whole line rather than run
-	///     part of it silently.
+	///     `!mp` subcommands that operate on it — `make`/`makeprivate`/`join`/`in`/`help` don't (they
+	///     either create a match or change scope elsewhere), and a bare `!roll`/`!where`/`!faq` segment
+	///     isn't a `!mp` command at all, so any of those inside a chain reject the whole line rather than
+	///     run part of it silently. `#lobby` never reaches here with anything runnable, since every
+	///     chainable subcommand is already outside its allow-list.
 	/// </summary>
-	private async Task<string?> DispatchChainAsync(PlayerSession sender,
-		IReadOnlyList<ChatCommandChain.Segment> segments,
-		MatchSession? matchScope, string prefix, CancellationToken cancellationToken)
+	private async Task<bool> DispatchChainAsync(PlayerSession sender,
+		IReadOnlyList<ChatCommandChain.Segment> segments, MatchSession? matchScope, string? channelName,
+		string prefix, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
+		if (channelName == "#lobby") return false;
+
 		var scope = ResolveScope(sender, matchScope);
-		if (scope is null || !scope.IsReferee(sender.Id)) return null;
+		if (scope is null || !scope.IsReferee(sender.Id)) return false;
 
 		var parsed = new List<(string Subcommand, string[] Args, ChatCommandChain.ChainOperator Operator)>();
 		foreach (var segment in segments)
@@ -162,7 +215,8 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				return $"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.";
+				sink.Reply($"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.");
+				return false;
 			}
 
 			var segParts = segment.Text[prefix.Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -170,7 +224,8 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				return $"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.";
+				sink.Reply($"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.");
+				return false;
 			}
 
 			var subcommand = segParts.Length > 1 ? segParts[1].ToLowerInvariant() : "";
@@ -178,14 +233,15 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				return $"`{prefix}mp {subcommand}` can't be chained — rejected at: '{segment.Text}'.";
+				sink.Reply($"`{prefix}mp {subcommand}` can't be chained — rejected at: '{segment.Text}'.");
+				return false;
 			}
 
 			parsed.Add((subcommand, segParts[2..], segment.Operator));
 		}
 
-		var replies = new List<string>();
 		var previousSucceeded = true;
+		var anySucceeded = false;
 		foreach (var (subcommand, args, op) in parsed)
 		{
 			if (op == ChatCommandChain.ChainOperator.And && !previousSucceeded)
@@ -194,12 +250,12 @@ public sealed class CommandDispatcher(
 				continue;
 			}
 
-			var (success, reply) = await mpCommands.TryHandleAsync(sender, scope, subcommand, args, cancellationToken);
+			var success = await mpCommands.TryHandleAsync(sender, scope, subcommand, args, sink, cancellationToken);
 			previousSucceeded = success;
-			if (reply is not null) replies.Add(reply);
+			anySucceeded |= success;
 		}
 
-		return replies.Count == 0 ? null : string.Join('\n', replies);
+		return anySucceeded;
 	}
 
 	private static string Roll(PlayerSession sender, IReadOnlyList<string> args)
@@ -211,15 +267,25 @@ public sealed class CommandDispatcher(
 		return $"{sender.Name} rolls {roll} point(s)";
 	}
 
-	private async Task<string?> Where(IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> Where(IReadOnlyList<string> args, ICommandReplySink sink,
+		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return "Usage: !where <username>";
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !where <username>");
+			return false;
+		}
 
 		var name = string.Join(' ', args);
 		var user = await userRepository.FetchByNameAsync(name, cancellationToken);
-		return user is null
-			? $"{name} is not registered."
-			: $"{user.Name} is in {DescribeCountry(user.Country.ToAcronym())}";
+		if (user is null)
+		{
+			sink.Reply($"{name} is not registered.");
+			return false;
+		}
+
+		sink.Reply($"{user.Name} is in {DescribeCountry(user.Country.ToAcronym())}");
+		return true;
 	}
 
 	private static string DescribeCountry(string code)
@@ -236,20 +302,30 @@ public sealed class CommandDispatcher(
 		}
 	}
 
-	private async Task<string?> Faq(IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> Faq(IReadOnlyList<string> args, ICommandReplySink sink,
+		CancellationToken cancellationToken)
 	{
 		switch (args.Count)
 		{
 			case < 1:
-				return "Usage: !faq <entry>|list";
+				sink.Reply("Usage: !faq <entry>|list");
+				return false;
 			case 1 when args[0].Equals("list", StringComparison.OrdinalIgnoreCase):
-				return ListFaqEntries();
+				sink.Reply(ListFaqEntries());
+				return true;
 		}
 
 		var requested = string.Join(' ', args);
 		var entry = Path.GetFileName(requested);
 		var content = await _faq.ReadEntryAsync(entry, cancellationToken);
-		return content ?? $"No FAQ entry found for '{entry}'.";
+		if (content is null)
+		{
+			sink.Reply($"No FAQ entry found for '{entry}'.");
+			return false;
+		}
+
+		sink.Reply(content);
+		return true;
 	}
 
 	private string ListFaqEntries()

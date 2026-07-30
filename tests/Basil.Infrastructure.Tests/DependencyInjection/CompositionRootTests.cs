@@ -51,7 +51,7 @@ public class CompositionRootTests
 	public void ResolvesBanchoPacketDispatcherWithAllHandlers()
 	{
 		Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-		Assert.Equal(44, _provider.GetServices<IBanchoPacketHandler>().Count());
+		Assert.Equal(46, _provider.GetServices<IBanchoPacketHandler>().Count());
 	}
 
 	[Fact]

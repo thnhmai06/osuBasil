@@ -63,6 +63,8 @@ public static class DependencyInjection
 		services.AddSingleton<IBanchoPacketHandler, FriendRemoveHandler>();
 		services.AddSingleton<IBanchoPacketHandler, ChannelJoinHandler>();
 		services.AddSingleton<IBanchoPacketHandler, ChannelPartHandler>();
+		services.AddSingleton<IBanchoPacketHandler, LobbyJoinHandler>();
+		services.AddSingleton<IBanchoPacketHandler, LobbyPartHandler>();
 		services.AddSingleton<IBanchoPacketHandler, SendPublicMessageHandler>();
 		services.AddSingleton<IBanchoPacketHandler, SendPrivateMessageHandler>();
 		services.AddSingleton<IBanchoPacketHandler, ToggleBlockNonFriendDmsHandler>();

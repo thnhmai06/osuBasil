@@ -20,7 +20,7 @@ internal static class TestDoubles
 	public static IChannelRepository NullChannelRepository()
 	{
 		var repo = Substitute.For<IChannelRepository>();
-		repo.FetchAllAutoJoinAsync(Arg.Any<CancellationToken>())
+		repo.FetchAllAsync(Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<Channel>>([]));
 		repo.FetchOneByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<Channel?>(null));

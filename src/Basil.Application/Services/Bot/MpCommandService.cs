@@ -25,11 +25,14 @@ namespace Basil.Application.Services.Bot;
 ///     a pure permission flag (doesn't require physical presence in the room); the host is NOT
 ///     automatically a referee — hosting only grants direct in-client settings control, which ranks
 ///     below referee authority for `!mp` purposes.
+///     Every method below sends its own reply through the <see cref="ICommandReplySink" /> passed in
+///     (see that type's doc comment) and returns only success/failure — nothing here returns reply
+///     text for a caller to route.
 ///     The actual room-mutation logic lives in <see cref="MatchControlService" /> — shared with the
 ///     `api.` host's HTTP write routes so both surfaces call the identical state-mutation/broadcast
 ///     code. This class owns everything chat-specific: parsing raw argument tokens, resolving a
 ///     target player by name (<see cref="IPlayerSessionRegistry.GetByName" />), the referee gate, and
-///     formatting a reply string from the result.
+///     sending a reply for the result.
 /// </summary>
 public sealed class MpCommandService(
 	MatchMembershipService matchMembership,
@@ -84,28 +87,24 @@ public sealed class MpCommandService(
 		new("!mp close", "close the match immediately")
 	];
 
-	private static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
+	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
 		new(matchMembership, matchPersistence, mapRepository, sessionRegistry, matchControlLogger);
 
-	public async Task<string?> HandleAsync(PlayerSession sender, MatchSession match, string subcommand,
-		IReadOnlyList<string> args, CancellationToken cancellationToken = default)
-	{
-		var (_, reply) = await TryHandleAsync(sender, match, subcommand, args, cancellationToken);
-		return reply;
-	}
-
 	/// <summary>
-	///     Same dispatch as <see cref="HandleAsync" />, but also reports whether the subcommand actually
-	///     succeeded — used by <see cref="CommandDispatcher" /> to gate `&amp;&amp;`-chained `!mp` commands.
-	///     A usage error, a permission rejection (silent `null` reply), or any other rejected precondition
-	///     counts as a failure; every state-changing/informational reply counts as success.
+	///     Main `!mp` subcommand switch — help bypasses the referee gate (always DM'd, see
+	///     <see cref="ICommandReplySink.ReplyDm" />) and every other subcommand requires
+	///     <see cref="MatchSession.IsReferee" />, rejecting silently (no reply) otherwise.
 	/// </summary>
-	public async Task<(bool Success, string? Reply)> TryHandleAsync(PlayerSession sender, MatchSession match,
-		string subcommand, IReadOnlyList<string> args, CancellationToken cancellationToken = default)
+	public async Task<bool> TryHandleAsync(PlayerSession sender, MatchSession match, string subcommand,
+		IReadOnlyList<string> args, ICommandReplySink sink, CancellationToken cancellationToken = default)
 	{
-		if (subcommand is "" or "help") return (true, HelpText);
+		if (subcommand is "" or "help")
+		{
+			sink.ReplyDm(HelpText);
+			return true;
+		}
 
 		using var _ = logger.BeginScope(new Dictionary<string, object>
 		{
@@ -117,41 +116,41 @@ public sealed class MpCommandService(
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
 				match.DbId);
-			return (false, null);
+			return false;
 		}
 
 		return subcommand switch
 		{
-			"settings" => (true, await SettingsAsync(match, cancellationToken)),
-			"lock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, true)))),
-			"unlock" => await RunLockedAsync(match, () => Task.FromResult((true, SetRoomLocked(match, false)))),
-			"private" => (true, await SetPrivate(match, args)),
-			"makeprivate" => (true, await SetPrivate(match, ["1"])),
-			"size" => await RunLockedAsync(match, () => SetSize(match, args)),
-			"move" => await RunLockedAsync(match, () => MoveSlot(match, args)),
-			"host" => await RunLockedAsync(match, () => SetHost(match, args)),
-			"clearhost" => await RunLockedAsync(match, () => AlwaysSucceeds(ClearHost(match))),
-			"name" => await RunLockedAsync(match, () => SetName(match, args)),
-			"password" => await RunLockedAsync(match, () => AlwaysSucceeds(SetPassword(match, args))),
-			"invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args))),
-			"addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, cancellationToken)),
+			"settings" => await SettingsAsync(match, sink, cancellationToken),
+			"lock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, true, sink))),
+			"unlock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, false, sink))),
+			"private" => await SetPrivate(match, args, sink),
+			"makeprivate" => await SetPrivate(match, ["1"], sink),
+			"size" => await RunLockedAsync(match, () => SetSize(match, args, sink)),
+			"move" => await RunLockedAsync(match, () => MoveSlot(match, args, sink)),
+			"host" => await RunLockedAsync(match, () => SetHost(match, args, sink)),
+			"clearhost" => await RunLockedAsync(match, () => ClearHost(match, sink)),
+			"name" => await RunLockedAsync(match, () => SetName(match, args, sink)),
+			"password" => await RunLockedAsync(match, () => SetPassword(match, args, sink)),
+			"invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args, sink))),
+			"addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
 			"removeref" => await RunLockedAsync(match,
-				() => RemoveRefereeAsync(sender, match, args, cancellationToken)),
-			"listrefs" => (true, ListReferees(match)),
-			"banlist" => (true, await BanListAsync(match, cancellationToken)),
-			"team" => await RunLockedAsync(match, () => SetTeam(match, args)),
-			"set" => await RunLockedAsync(match, () => Set(match, args)),
-			"map" => await RunLockedAsync(match, () => SetMapAsync(match, args, cancellationToken)),
-			"mods" => await RunLockedAsync(match, () => SetMods(match, args)),
-			"start" => await RunLockedAsync(match, () => StartAsync(match, args, cancellationToken)),
-			"timer" => await RunLockedAsync(match, () => Task.FromResult(Timer(match, args))),
-			"aborttimer" => await RunLockedAsync(match, () => Task.FromResult(AbortTimer(match))),
-			"abort" => await RunLockedAsync(match, () => AbortAsync(match, cancellationToken)),
-			"kick" => await RunLockedAsync(match, () => KickAsync(sender, match, args, cancellationToken)),
-			"ban" => await RunLockedAsync(match, () => BanAsync(sender, match, args, cancellationToken)),
-			"unban" => await RunLockedAsync(match, () => UnbanAsync(match, args, cancellationToken)),
-			"close" => await RunLockedAsync(match, () => AlwaysSucceeds(CloseAsync(sender, match, cancellationToken))),
-			_ => (false, null)
+				() => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
+			"listrefs" => ListReferees(match, sink),
+			"banlist" => await BanListAsync(match, sink, cancellationToken),
+			"team" => await RunLockedAsync(match, () => SetTeam(match, args, sink)),
+			"set" => await RunLockedAsync(match, () => Set(match, args, sink)),
+			"map" => await RunLockedAsync(match, () => SetMapAsync(match, args, sink, cancellationToken)),
+			"mods" => await RunLockedAsync(match, () => SetMods(match, args, sink)),
+			"start" => await RunLockedAsync(match, () => StartAsync(match, args, sink, cancellationToken)),
+			"timer" => await RunLockedAsync(match, () => Task.FromResult(Timer(match, args, sink))),
+			"aborttimer" => await RunLockedAsync(match, () => Task.FromResult(AbortTimer(match, sink))),
+			"abort" => await RunLockedAsync(match, () => AbortAsync(match, sink, cancellationToken)),
+			"kick" => await RunLockedAsync(match, () => KickAsync(sender, match, args, sink, cancellationToken)),
+			"ban" => await RunLockedAsync(match, () => BanAsync(sender, match, args, sink, cancellationToken)),
+			"unban" => await RunLockedAsync(match, () => UnbanAsync(match, args, sink, cancellationToken)),
+			"close" => await RunLockedAsync(match, () => CloseAsync(sender, match, sink, cancellationToken)),
+			_ => false
 		};
 	}
 
@@ -159,7 +158,7 @@ public sealed class MpCommandService(
 	///     Backs `!mp make`/`!mp makeprivate` — one shared implementation, no `isPrivate` flag or any
 	///     other parameter distinguishes the two trigger words (see <see cref="CommandDispatcher" />).
 	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet (there's
-	///     nothing to be a referee of), so it bypasses <see cref="HandleAsync" /> entirely — reusing
+	///     nothing to be a referee of), so it bypasses <see cref="TryHandleAsync" /> entirely — reusing
 	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a real
 	///     `MATCH_CREATE` packet, except the creator is also auto-added as a referee (required to
 	///     bootstrap — nobody could otherwise ever pass the outer <see cref="MatchSession.IsReferee" />
@@ -167,7 +166,7 @@ public sealed class MpCommandService(
 	///     so it persists until `!mp close` or the referee list empties, instead of auto-tearing down
 	///     once every slot empties like a normal client-created room.
 	/// </summary>
-	public async Task<string?> MakeAsync(PlayerSession sender, IReadOnlyList<string> args,
+	public async Task<bool> MakeAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
 		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.Name}'s match";
@@ -180,41 +179,72 @@ public sealed class MpCommandService(
 			0, 0, false, [], 0);
 
 		var match = await matchMembership.CreateAsync(sender, data, cancellationToken, true);
-		if (match is null) return "Couldn't create the match — server is full.";
+		if (match is null)
+		{
+			sink.Reply("Couldn't create the match — server is full.");
+			return false;
+		}
 
 		match.AddReferee(sender.Id);
 		sender.MpScopeMatchId = match.DbId;
-		return
-			$"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.";
+		sink.Reply($"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.");
+		return true;
 	}
 
 	/// <summary>
-	///     Backs `!mp join &lt;id&gt; [password]` — lets any player join a match by its wire-format id
-	///     (0-63). A private match rejects everyone but staff and invitees, host included (see
+	///     Backs `!mp join &lt;id&gt; [password]` — lets any player join a match by its persistent room
+	///     id (<see cref="MatchSession.DbId" />, unbounded — not the 0-63 wire-format slot id). A private
+	///     match rejects everyone but staff and invitees, host included (see
 	///     <see cref="MatchSession.IsPrivate" />); locked rooms and banned players are rejected too,
 	///     with a descriptive message. Runs with no <see cref="MatchSession" /> scope (routed directly
 	///     from <see cref="CommandDispatcher" />, bypassing scope resolution).
 	/// </summary>
-	public async Task<string?> JoinAsync(PlayerSession sender, IReadOnlyList<string> args,
+	public async Task<bool> JoinAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var matchId))
-			return "Usage: !mp join <id> [password]";
+		{
+			sink.Reply("Usage: !mp join <id> [password]");
+			return false;
+		}
 
-		var match = matchRegistry.GetById(matchId);
-		if (match is null) return $"No active match with id {matchId}.";
+		var match = matchRegistry.GetByDbId(matchId);
+		if (match is null)
+		{
+			sink.Reply($"No active match with id {matchId}.");
+			return false;
+		}
+
 		if (match.IsPrivate && (sender.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(sender.Id))
-			return $"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.";
-		if (sender.Match is not null) return "You're already in a match.";
-		if (match.BannedIds.Contains(sender.Id)) return "You're banned from this match.";
+		{
+			sink.Reply($"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.");
+			return false;
+		}
+
+		if (sender.Match is not null)
+		{
+			sink.Reply("You're already in a match.");
+			return false;
+		}
+
+		if (match.BannedIds.Contains(sender.Id))
+		{
+			sink.Reply("You're banned from this match.");
+			return false;
+		}
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-			return await matchMembership.JoinAsync(sender, match, password)
-				? $"Joined match #{matchId} {match.Name}"
-				: "Failed to join the match.";
+			if (await matchMembership.JoinAsync(sender, match, password))
+			{
+				sink.Reply($"Joined match #{matchId} {match.Name}");
+				return true;
+			}
+
+			sink.Reply("Failed to join the match.");
+			return false;
 		}
 		finally
 		{
@@ -229,35 +259,59 @@ public sealed class MpCommandService(
 	///     setting one. Runs with no <see cref="MatchSession" /> yet, like `make`/`makeprivate`, since the
 	///     whole point is reaching a match the sender isn't in.
 	/// </summary>
-	public string SetScopeAsync(PlayerSession sender, IReadOnlyList<string> args)
+	public bool SetScopeAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count == 0)
 		{
-			if (sender.MpScopeMatchId is not { } currentId) return "You're not scoped to any match.";
+			string scopeLine;
+			bool scopeValid;
+			if (sender.MpScopeMatchId is not { } currentId)
+			{
+				scopeLine = "You're not scoped to any match.";
+				scopeValid = false;
+			}
+			else
+			{
+				var current = matchRegistry.GetByDbId(currentId);
+				scopeLine = current is null
+					? $"You were scoped to match #{currentId}, but it no longer exists."
+					: $"Currently scoped to match #{current.DbId} {current.Name}.";
+				scopeValid = current is not null;
+			}
 
-			var current = matchRegistry.GetByDbId(currentId);
-			return current is null
-				? $"You were scoped to match #{currentId}, but it no longer exists."
-				: $"Currently scoped to match #{current.DbId} {current.Name}.";
+			var refereeMatches = matchRegistry.All.Where(m => m.IsReferee(sender.Id)).ToList();
+			sink.Reply(refereeMatches.Count == 0
+				? scopeLine
+				: scopeLine + "\nYou're a referee of:\n" +
+				  string.Join('\n', refereeMatches.Select(m => $"#{m.DbId} {m.Name}")));
+			return scopeValid;
 		}
 
-		if (!int.TryParse(args[0], out var dbId)) return "Usage: !mp in [match_id]";
+		if (!int.TryParse(args[0], out var dbId))
+		{
+			sink.Reply("Usage: !mp in [match_id]");
+			return false;
+		}
 
 		var match = matchRegistry.GetByDbId(dbId);
-		if (match is null) return $"No active match with id #{dbId}.";
-		if (!match.IsReferee(sender.Id)) return $"You're not a referee of match #{dbId}.";
+		if (match is null)
+		{
+			sink.Reply($"No active match with id #{dbId}.");
+			return false;
+		}
+
+		if (!match.IsReferee(sender.Id))
+		{
+			sink.Reply($"You're not a referee of match #{dbId}.");
+			return false;
+		}
 
 		sender.MpScopeMatchId = dbId;
-		return $"Now targeting match #{dbId} {match.Name}.";
+		sink.Reply($"Now targeting match #{dbId} {match.Name}.");
+		return true;
 	}
 
-	private static async Task<(bool Success, string? Reply)> AlwaysSucceeds(Task<string?> reply)
-	{
-		return (true, await reply);
-	}
-
-	private static async Task<(bool Success, string? Reply)> RunLockedAsync(MatchSession match,
-		Func<Task<(bool Success, string? Reply)>> action)
+	private static async Task<bool> RunLockedAsync(MatchSession match, Func<Task<bool>> action)
 	{
 		await match.Lock.WaitAsync();
 		try
@@ -277,7 +331,8 @@ public sealed class MpCommandService(
 	///     Basil has neither (no public match-history page, no profile pages), so those are plain
 	///     text/IDs here instead of links.
 	/// </summary>
-	private async Task<string> SettingsAsync(MatchSession match, CancellationToken cancellationToken)
+	private async Task<bool> SettingsAsync(MatchSession match, ICommandReplySink sink,
+		CancellationToken cancellationToken)
 	{
 		var beatmapLine = match.MapId > 0
 			? await mapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
@@ -315,7 +370,8 @@ public sealed class MpCommandService(
 			lines.Add($"Slot {i + 1}  {SlotStatusText(slot.Status)} {slot.PlayerId} {name,-16}{tagText}");
 		}
 
-		return string.Join('\n', lines);
+		sink.Reply(string.Join('\n', lines));
+		return true;
 	}
 
 	private static string SlotStatusText(SlotStatus status)
@@ -328,156 +384,239 @@ public sealed class MpCommandService(
 		};
 	}
 
-	private string? SetRoomLocked(MatchSession match, bool locked)
+	private bool SetRoomLocked(MatchSession match, bool locked, ICommandReplySink sink)
 	{
 		_matchControl.SetLocked(match, locked);
-		return locked ? "Locked the match" : "Unlocked the match";
+		sink.Reply(locked ? "Locked the match" : "Unlocked the match");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> SetSize(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetSize(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size))
-			return (false, "Usage: !mp size <1-16>");
+		{
+			sink.Reply("Usage: !mp size <1-16>");
+			return false;
+		}
 
 		size = Math.Clamp(size, 1, 16);
 		await _matchControl.SetSizeAsync(match, size);
-		return (true, $"Changed match to size {size}");
+		sink.Reply($"Changed match to size {size}");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> MoveSlot(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> MoveSlot(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 2 || !int.TryParse(args[^1], out var destSlotId))
-			return (false, "Usage: !mp move <name> <slot 1-16>");
+		{
+			sink.Reply("Usage: !mp move <name> <slot 1-16>");
+			return false;
+		}
 
 		destSlotId = Math.Clamp(destSlotId, 1, 16);
 
 		var targetName = string.Join(' ', args.Take(args.Count - 1));
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
+		if (target is null || target.Match != match)
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		var result = await _matchControl.MoveSlotAsync(match, target, destSlotId - 1);
-		return result switch
+		switch (result)
 		{
-			MatchControlService.MoveResult.DestinationNotOpen => (false, "Destination slot is not open."),
-			MatchControlService.MoveResult.TargetNotInMatch => (false, $"{targetName} is not in this match."),
-			_ => (true, $"Moved {target.Name} into slot {destSlotId}")
-		};
+			case MatchControlService.MoveResult.DestinationNotOpen:
+				sink.Reply("Destination slot is not open.");
+				return false;
+			case MatchControlService.MoveResult.TargetNotInMatch:
+				sink.Reply($"{targetName} is not in this match.");
+				return false;
+			default:
+				sink.Reply($"Moved {target.Name} into slot {destSlotId}");
+				return true;
+		}
 	}
 
-	private async Task<(bool Success, string? Reply)> SetHost(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetHost(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp host <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp host <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
+		if (target is null || target.Match != match)
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		await _matchControl.SetHostAsync(match, target);
-		return (true, $"Changed match host to {target.Name}");
+		sink.Reply($"Changed match host to {target.Name}");
+		return true;
 	}
 
-	private async Task<string?> ClearHost(MatchSession match)
+	private async Task<bool> ClearHost(MatchSession match, ICommandReplySink sink)
 	{
 		await _matchControl.ClearHostAsync(match);
-		return "Cleared match host";
+		sink.Reply("Cleared match host");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> SetName(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetName(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp name <text>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp name <text>");
+			return false;
+		}
 
 		await _matchControl.SetNameAsync(match, string.Join(' ', args));
-		return (true, $"Room name updated to \"{match.Name}\"");
+		sink.Reply($"Room name updated to \"{match.Name}\"");
+		return true;
 	}
 
-	private async Task<string?> SetPassword(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetPassword(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		var password = args.Count == 0 ? "" : string.Join(' ', args);
 		await _matchControl.SetPasswordAsync(match, password);
-		return args.Count == 0 ? "Removed the match password" : "Changed the match password";
+		sink.Reply(args.Count == 0 ? "Removed the match password" : "Changed the match password");
+		return true;
 	}
 
-	private async Task<string?> SetPrivate(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetPrivate(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count == 0)
-			return $"This match is {(match.IsPrivate ? "private" : "not private")}.";
+		{
+			sink.Reply($"This match is {(match.IsPrivate ? "private" : "not private")}.");
+			return true;
+		}
 
 		if (args[0] is "0" or "1")
 		{
 			await _matchControl.SetPrivateAsync(match, args[0] == "1");
-			return match.IsPrivate
+			sink.Reply(match.IsPrivate
 				? "The match is now private. It will be hidden from the lobby."
-				: "The match is now public.";
+				: "The match is now public.");
+			return true;
 		}
 
-		return "Usage: !mp private [0|1]";
+		sink.Reply("Usage: !mp private [0|1]");
+		return false;
 	}
 
-	private (bool Success, string? Reply) Invite(PlayerSession sender, MatchSession match, IReadOnlyList<string> args)
+	private bool Invite(PlayerSession sender, MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp invite <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp invite <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null) return (false, $"User not found: {targetName}");
+		if (target is null)
+		{
+			sink.Reply($"User not found: {targetName}");
+			return false;
+		}
 
 		var result = _matchControl.Invite(sender, match, target);
-		return result == MatchControlService.InviteResult.TargetAlreadyInRoom
-			? (false, "User is already in the room")
-			: (true, $"Invited {target.Name} to the room");
+		if (result == MatchControlService.InviteResult.TargetAlreadyInRoom)
+		{
+			sink.Reply("User is already in the room");
+			return false;
+		}
+
+		sink.Reply($"Invited {target.Name} to the room");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> AddRefereeAsync(PlayerSession sender, MatchSession match,
-		IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> AddRefereeAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
+		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp addref <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp addref <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null) return (false, $"User not found: {targetName}");
+		if (target is null)
+		{
+			sink.Reply($"User not found: {targetName}");
+			return false;
+		}
 
 		await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		return (true, $"Added {target.Name} to the match referees");
+		sink.Reply($"Added {target.Name} to the match referees");
+		return true;
 	}
 
 	/// <summary>
 	///     At least one referee must always remain — removing the last one is rejected instead of
 	///     disbanding the room (see <see cref="MatchControlService.RemoveOneRefereeAsync" />).
 	/// </summary>
-	private async Task<(bool Success, string? Reply)> RemoveRefereeAsync(PlayerSession sender, MatchSession match,
-		IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> RemoveRefereeAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
+		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp removeref <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp removeref <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null) return (false, $"User not found: {targetName}");
+		if (target is null)
+		{
+			sink.Reply($"User not found: {targetName}");
+			return false;
+		}
 
 		var result =
 			await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		return result switch
+		switch (result)
 		{
-			MatchControlService.RemoveRefereeResult.WouldLeaveEmpty =>
-				(false, $"Cannot remove {target.Name} — at least one referee must remain."),
-			MatchControlService.RemoveRefereeResult.NotAReferee =>
-				(false, $"{target.Name} is not a referee of this match."),
-			_ => (true, $"Removed {target.Name} from the match referees")
-		};
+			case MatchControlService.RemoveRefereeResult.WouldLeaveEmpty:
+				sink.Reply($"Cannot remove {target.Name} — at least one referee must remain.");
+				return false;
+			case MatchControlService.RemoveRefereeResult.NotAReferee:
+				sink.Reply($"{target.Name} is not a referee of this match.");
+				return false;
+			default:
+				sink.Reply($"Removed {target.Name} from the match referees");
+				return true;
+		}
 	}
 
-	private string ListReferees(MatchSession match)
+	private bool ListReferees(MatchSession match, ICommandReplySink sink)
 	{
-		if (match.Referees.Count == 0) return "No referees";
+		if (match.Referees.Count == 0)
+		{
+			sink.Reply("No referees");
+			return true;
+		}
 
 		var names = match.Referees
 			.Select(id => sessionRegistry.GetById(id)?.Name ?? $"#{id}")
 			.ToList();
-		return "Match referees:\n" + string.Join('\n', names);
+		sink.Reply("Match referees:\n" + string.Join('\n', names));
+		return true;
 	}
 
-	private async Task<string?> BanListAsync(MatchSession match, CancellationToken cancellationToken)
+	private async Task<bool> BanListAsync(MatchSession match, ICommandReplySink sink,
+		CancellationToken cancellationToken)
 	{
-		if (match.BannedIds.Count == 0) return "No banned players";
+		if (match.BannedIds.Count == 0)
+		{
+			sink.Reply("No banned players");
+			return true;
+		}
 
 		var names = new List<string>();
 		foreach (var id in match.BannedIds)
@@ -486,52 +625,84 @@ public sealed class MpCommandService(
 			names.Add(user?.Name ?? $"#{id}");
 		}
 
-		return "Match bans:\n" + string.Join('\n', names);
+		sink.Reply("Match bans:\n" + string.Join('\n', names));
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> SetTeam(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetTeam(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		if (args.Count < 2) return (false, "Usage: !mp team <name> <red|blue>");
+		if (args.Count < 2)
+		{
+			sink.Reply("Usage: !mp team <name> <red|blue>");
+			return false;
+		}
 
 		var teamArg = args[^1].ToLowerInvariant();
-		if (teamArg is not ("red" or "blue")) return (false, "Usage: !mp team <name> <red|blue>");
+		if (teamArg is not ("red" or "blue"))
+		{
+			sink.Reply("Usage: !mp team <name> <red|blue>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args.Take(args.Count - 1));
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null) return (false, $"{targetName} is not in this match.");
+		if (target is null)
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		var team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
 		var result = await _matchControl.SetTeamAsync(match, target, team);
 		if (result == MatchControlService.TeamResult.TargetNotInMatch)
-			return (false, $"{targetName} is not in this match.");
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-		return (true, $"Moved {target.Name} to team {teamDisplay}");
+		sink.Reply($"Moved {target.Name} to team {teamDisplay}");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> Set(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		const string usage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
 
-		if (args.Count < 1 || !TryParseTeamType(args[0], out var teamType)) return (false, usage);
+		if (args.Count < 1 || !TryParseTeamType(args[0], out var teamType))
+		{
+			sink.Reply(usage);
+			return false;
+		}
 
 		MatchWinCondition? winCondition = null;
 		if (args.Count >= 2)
 		{
-			if (!TryParseWinCondition(args[1], out var parsed)) return (false, usage);
+			if (!TryParseWinCondition(args[1], out var parsed))
+			{
+				sink.Reply(usage);
+				return false;
+			}
+
 			winCondition = parsed;
 		}
 
 		int? size = null;
 		if (args.Count >= 3)
 		{
-			if (!int.TryParse(args[2], out var parsedSize)) return (false, usage);
+			if (!int.TryParse(args[2], out var parsedSize))
+			{
+				sink.Reply(usage);
+				return false;
+			}
+
 			size = Math.Clamp(parsedSize, 1, 16);
 		}
 
 		await _matchControl.SetTeamTypeWinConditionAndSizeAsync(match, teamType, winCondition, size);
-		return (true, $"Changed match settings to {match.TeamType}, {match.WinCondition}" +
-		              (size is { } sz ? $", {sz} slots." : "."));
+		sink.Reply($"Changed match settings to {match.TeamType}, {match.WinCondition}" +
+		           (size is { } sz ? $", {sz} slots." : "."));
+		return true;
 	}
 
 	private static bool TryParseTeamType(string arg, out MatchTeamType teamType)
@@ -552,15 +723,24 @@ public sealed class MpCommandService(
 		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> SetMapAsync(MatchSession match, IReadOnlyList<string> args,
+	private async Task<bool> SetMapAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId)) return (false, "Usage: !mp map <beatmap id>");
+		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId))
+		{
+			sink.Reply("Usage: !mp map <beatmap id>");
+			return false;
+		}
 
 		var (result, bmap) = await _matchControl.SetMapAsync(match, beatmapId, cancellationToken);
-		return result == MatchControlService.SetMapResult.BeatmapNotFound
-			? (false, $"No beatmap with id {beatmapId} found locally.")
-			: (true, $"Changed beatmap to {bmap!.Mapset.Artist} - {bmap.Mapset.Title}");
+		if (result == MatchControlService.SetMapResult.BeatmapNotFound)
+		{
+			sink.Reply($"No beatmap with id {beatmapId} found locally.");
+			return false;
+		}
+
+		sink.Reply($"Changed beatmap to {bmap!.Mapset.Artist} - {bmap.Mapset.Title}");
+		return true;
 	}
 
 	/// <summary>
@@ -568,14 +748,19 @@ public sealed class MpCommandService(
 	///     just one of the values it accepts (`!mp mods Freemod`), not a separate `!mp freemods` toggle.
 	///     `None` clears the mods (and freemod, if on).
 	/// </summary>
-	private async Task<(bool Success, string? Reply)> SetMods(MatchSession match, IReadOnlyList<string> args)
+	private async Task<bool> SetMods(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp mods <mods>|Freemod|None");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp mods <mods>|Freemod|None");
+			return false;
+		}
 
 		if (args.Any(a => a.Equals("Freemod", StringComparison.OrdinalIgnoreCase)))
 		{
 			await _matchControl.SetModsAsync(match, Mods.NoMod, true);
-			return (true, "Enabled FreeMod");
+			sink.Reply("Enabled FreeMod");
+			return true;
 		}
 
 		var before = match.Mods;
@@ -589,7 +774,8 @@ public sealed class MpCommandService(
 		}
 
 		await _matchControl.SetModsAsync(match, mods, false);
-		return (true, DescribeModChange(before, mods, wasFreemod));
+		sink.Reply(DescribeModChange(before, mods, wasFreemod));
+		return true;
 	}
 
 	/// <summary>
@@ -612,7 +798,7 @@ public sealed class MpCommandService(
 		return parts.Count > 0 ? string.Join(", ", parts) : "No mod changes";
 	}
 
-	private async Task<(bool Success, string? Reply)> StartAsync(MatchSession match, IReadOnlyList<string> args,
+	private async Task<bool> StartAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
 		int? countdownSeconds = args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0
@@ -620,97 +806,151 @@ public sealed class MpCommandService(
 			: null;
 
 		var result = await _matchControl.StartAsync(match, countdownSeconds, cancellationToken);
-		return result switch
+		switch (result)
 		{
-			MatchControlService.StartResult.AlreadyInProgress => (false, "Match is already in progress."),
-			MatchControlService.StartResult.CountdownQueued => (true, $"Match starts in {countdownSeconds} seconds"),
-			MatchControlService.StartResult.Started => (true, "Match started"),
-			_ => (false, "Match cannot start because the beatmap does not exist on the server.")
-		};
+			case MatchControlService.StartResult.AlreadyInProgress:
+				sink.Reply("Match is already in progress.");
+				return false;
+			case MatchControlService.StartResult.CountdownQueued:
+				sink.Reply($"Match starts in {countdownSeconds} seconds");
+				return true;
+			case MatchControlService.StartResult.Started:
+				sink.Reply("Match started");
+				return true;
+			default:
+				sink.Reply("Match cannot start because the beatmap does not exist on the server.");
+				return false;
+		}
 	}
 
-	private (bool Success, string? Reply) Timer(MatchSession match, IReadOnlyList<string> args)
+	private bool Timer(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		var seconds = 30;
 		if (args.Count > 0 && (!int.TryParse(args[0], out seconds) || seconds <= 0))
-			return (false, "Usage: !mp timer [seconds]");
+		{
+			sink.Reply("Usage: !mp timer [seconds]");
+			return false;
+		}
 
 		_matchControl.Timer(match, seconds);
-		return (true, $"Countdown started: {seconds} seconds");
+		sink.Reply($"Countdown started: {seconds} seconds");
+		return true;
 	}
 
-	private (bool Success, string? Reply) AbortTimer(MatchSession match)
+	private bool AbortTimer(MatchSession match, ICommandReplySink sink)
 	{
 		var result = _matchControl.AbortTimer(match);
-		return result == MatchControlService.AbortTimerResult.NoTimerRunning
-			? (false, "No countdown is running.")
-			: (true, "Countdown aborted");
+		if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
+		{
+			sink.Reply("No countdown is running.");
+			return false;
+		}
+
+		sink.Reply("Countdown aborted");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> AbortAsync(MatchSession match,
+	private async Task<bool> AbortAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
 		var result = await _matchControl.AbortAsync(match, cancellationToken);
-		return result == MatchControlService.AbortResult.NotInProgress
-			? (false, "Match is not in progress.")
-			: (true, "Aborted the match");
+		if (result == MatchControlService.AbortResult.NotInProgress)
+		{
+			sink.Reply("Match is not in progress.");
+			return false;
+		}
+
+		sink.Reply("Aborted the match");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> KickAsync(PlayerSession sender, MatchSession match,
-		IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> KickAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
+		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp kick <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp kick <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
+		if (target is null || target.Match != match)
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		await _matchControl.KickAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		return (true, $"Kicked {target.Name} from the match");
+		sink.Reply($"Kicked {target.Name} from the match");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> BanAsync(PlayerSession sender, MatchSession match,
-		IReadOnlyList<string> args, CancellationToken cancellationToken)
+	private async Task<bool> BanAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
+		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp ban <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp ban <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var target = sessionRegistry.GetByName(targetName);
-		if (target is null || target.Match != match) return (false, $"{targetName} is not in this match.");
+		if (target is null || target.Match != match)
+		{
+			sink.Reply($"{targetName} is not in this match.");
+			return false;
+		}
 
 		await _matchControl.BanAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		return (true, $"Banned {target.Name} from the match");
+		sink.Reply($"Banned {target.Name} from the match");
+		return true;
 	}
 
-	private async Task<(bool Success, string? Reply)> UnbanAsync(MatchSession match, IReadOnlyList<string> args,
+	private async Task<bool> UnbanAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1) return (false, "Usage: !mp unban <name>");
+		if (args.Count < 1)
+		{
+			sink.Reply("Usage: !mp unban <name>");
+			return false;
+		}
 
 		var targetName = string.Join(' ', args);
 		var targetUser = await userRepository.FetchByNameAsync(targetName, cancellationToken);
-		if (targetUser is null) return (false, $"{targetName} is not registered.");
+		if (targetUser is null)
+		{
+			sink.Reply($"{targetName} is not registered.");
+			return false;
+		}
 
 		var result = await _matchControl.UnbanAsync(match, targetUser.Id);
-		return result == MatchControlService.UnbanResult.NotBanned
-			? (false, $"{targetUser.Name} is not banned from this match.")
-			: (true, $"Unbanned {targetUser.Name} from the match");
+		if (result == MatchControlService.UnbanResult.NotBanned)
+		{
+			sink.Reply($"{targetUser.Name} is not banned from this match.");
+			return false;
+		}
+
+		sink.Reply($"Unbanned {targetUser.Name} from the match");
+		return true;
 	}
 
-	private async Task<string?> CloseAsync(PlayerSession sender, MatchSession match,
+	private async Task<bool> CloseAsync(PlayerSession sender, MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
 		await _matchControl.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
-		return "Closed the match";
+		sink.Reply("Closed the match");
+		return true;
 	}
 
 	/// <summary>
 	///     Forwards to <see cref="MatchControlService.ComputeAnnounceCheckpoints" /> — kept here too since
 	///     existing tests reference it as <c>MpCommandService.ComputeAnnounceCheckpoints</c>.
 	/// </summary>
-	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds)
+	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds, bool autoStart = true)
 	{
-		return MatchControlService.ComputeAnnounceCheckpoints(totalSeconds);
+		return MatchControlService.ComputeAnnounceCheckpoints(totalSeconds, autoStart);
 	}
 
 	/// <summary>One entry in the auto-generated `!mp help` listing — usage plus a one-line description.</summary>

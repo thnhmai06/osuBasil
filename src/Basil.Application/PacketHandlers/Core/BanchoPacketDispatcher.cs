@@ -42,10 +42,23 @@ public sealed class BanchoPacketDispatcher
 				if (player.Match is { } match) scopeProperties["MatchId"] = match.DbId;
 
 				using var _ = _logger.BeginScope(scopeProperties);
-				await handler.HandleAsync(player, reader, cancellationToken);
+				try
+				{
+					await handler.HandleAsync(player, reader, cancellationToken);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					// A single bad packet must not take down the rest of the batch (or the connection) —
+					// previously any exception here escaped with no log at all, leaving handler bugs with
+					// no trace to diagnose from.
+					_logger.LogError(ex, "Unhandled exception in packet handler: UserId={UserId} PacketType={PacketType}",
+						player.Id, type);
+				}
 			}
 			else
 			{
+				_logger.LogDebug("Unhandled packet type: UserId={UserId} PacketType={PacketType} Length={Length}",
+					player.Id, type, length);
 				reader.SkipRaw(length);
 			}
 		}

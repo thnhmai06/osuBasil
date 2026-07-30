@@ -5,6 +5,7 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -29,8 +30,9 @@ public class SendPrivateMessageHandlerTests
 	{
 		var channelRegistry = Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(_sessionRegistry, channelRegistry);
+		var matchRegistry = Substitute.For<IMatchRegistry>();
 		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership, _users,
-			_relationships, _commandDispatcher, NullLogger<ChatDispatchService>.Instance);
+			_relationships, _commandDispatcher, matchRegistry, NullLogger<ChatDispatchService>.Instance);
 		return new SendPrivateMessageHandler(chatDispatch);
 	}
 
@@ -145,8 +147,13 @@ public class SendPrivateMessageHandlerTests
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_sessionRegistry.GetByName("BanchoBot").Returns(bot);
-		_commandDispatcher.DispatchAsync(sender, "!roll", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<string?>("cmyui rolls 7 point(s)"));
+		_commandDispatcher.DispatchAsync(sender, "!roll", null, null, Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
+				Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				call.Arg<ICommandReplySink>().Reply("cmyui rolls 7 point(s)");
+				return Task.FromResult(true);
+			});
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!roll", "BanchoBot", 1));
 
@@ -164,8 +171,9 @@ public class SendPrivateMessageHandlerTests
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_sessionRegistry.GetByName("BanchoBot").Returns(bot);
-		_commandDispatcher.DispatchAsync(sender, "hi", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<string?>(null));
+		_commandDispatcher.DispatchAsync(sender, "hi", null, null, Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
+				Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult(false));
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "BanchoBot", 1));
 
@@ -180,8 +188,13 @@ public class SendPrivateMessageHandlerTests
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_sessionRegistry.GetByName("BasilBot").Returns(bot);
-		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<string?>("Line one\nLine two"));
+		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, null, Arg.Any<ICommandReplySink>(),
+				Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				call.Arg<ICommandReplySink>().Reply("Line one\nLine two");
+				return Task.FromResult(true);
+			});
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!faq rules", "BasilBot", 1));
 

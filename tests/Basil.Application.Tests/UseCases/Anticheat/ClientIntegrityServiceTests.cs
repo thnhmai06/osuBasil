@@ -99,7 +99,7 @@ public class ClientIntegrityServiceTests
 		Assert.Equal(ClientIntegrityResult.StopSending, result);
 
 		var expectedWarning = ServerPacketWriter.SendMessage("BasilBot",
-			"Anti-cheat flag for host: hq!osu running (HqAssembly)", match.ChatChannelName, BotBootstrapService.BotId);
+			"Anti-cheat flag for host: hq!osu running (HqAssembly)", "#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(expectedWarning, MultiplayerTestSupport.Chunk(host.Dequeue()));
 
 		var expectedDm = ServerPacketWriter.SendMessage("BasilBot",
@@ -126,7 +126,7 @@ public class ClientIntegrityServiceTests
 
 		var expectedWarning = ServerPacketWriter.SendMessage("BasilBot",
 			"Anti-cheat flag for host: hq!osu tool registry edits detected",
-			match.ChatChannelName, BotBootstrapService.BotId);
+			"#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(expectedWarning, MultiplayerTestSupport.Chunk(host.Dequeue()));
 	}
 }

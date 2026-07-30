@@ -357,7 +357,7 @@ public sealed class Program
 
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
 		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
-		IReadOnlyList<Channel> autoJoinChannels = [];
+		IReadOnlyList<Channel> allChannels = [];
 
 		if (hasDatabase)
 		{
@@ -367,10 +367,10 @@ public sealed class Program
 			SqlMigrationRunner.RunMigrations(connectionString);
 			logger.LogInformation("Database migrations complete");
 
-			autoJoinChannels = await channelRepository.FetchAllAutoJoinAsync();
+			allChannels = await channelRepository.FetchAllAsync();
 		}
 
-		channelRegistry.Seed(autoJoinChannels);
+		channelRegistry.Seed(allChannels);
 
 		if (hasDatabase)
 		{
