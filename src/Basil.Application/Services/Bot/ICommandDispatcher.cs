@@ -6,7 +6,7 @@ namespace Basil.Application.Services.Bot;
 /// <summary>
 ///     Fresh command-dispatch layer for BanchoBot — deliberately not a resurrection of the deleted
 ///     ICommand/MpCommandDispatcher architecture (see docs/working-scopes.md). Sends its own reply
-///     through <paramref name="sink" /> as it runs — see <see cref="ICommandReplySink" /> — and
+///     through <c>sink</c> as it runs — see <see cref="ICommandReplySink" /> — and
 ///     returns only whether the message was a recognized, successfully-run command (matching
 ///     bancho.py's silent-ignore behavior for unrecognized text or an unauthorized `!mp` subcommand).
 /// </summary>
