@@ -51,7 +51,20 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				if (int.TryParse(statistic.Content, out var count))
 					objectCounts[statistic.Name.ToString()] = count;
 
-			return new BeatmapAnalysis(attributes.StarRating, objectCounts);
+			// The raw decoder (Decoder.GetDecoder<Beatmap>().Decode(...), used above) never populates
+			// BeatmapInfo.Length/MaxCombo/BPM — those fields only exist once the beatmap has been
+			// converted for a specific ruleset and its hit objects' timing resolved via ApplyDefaults
+			// (which GetPlayableBeatmap does), and even then they live on BeatmapExtensions'
+			// computed-on-demand helpers, not back on BeatmapInfo itself. Confirmed by direct
+			// inspection: BeatmapInfo.Length/MaxCombo/BPM are 0/null/0 both before AND after
+			// GetPlayableBeatmap; CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength are the
+			// only source of real values.
+			var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength());
+			var maxCombo = playable.GetMaxCombo();
+			var mostCommonBeatLength = playable.GetMostCommonBeatLength();
+			var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength : 0;
+
+			return new BeatmapAnalysis(attributes.StarRating, objectCounts, totalLength, maxCombo, bpm);
 		}
 		catch (Exception e)
 		{

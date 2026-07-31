@@ -2,7 +2,7 @@
 -- Scope: multiplayer/tournament only. Cut vs. upstream bancho.py: Clans, Achievements,
 -- UserAchievements, Comments, Favourites, MapRequests, PerformanceReports, Startups, Ratings
 -- (no consumer anywhere in the codebase — rating submission was never built, so the table could
--- never hold real data). Kept: Relationships (social), ClientHashes/IngameLogins/Logs
+-- never hold real data). Kept: Relationships (social), ClientHashes/IngameLogins/UserLogs
 -- (anticheat log-only). New: Matches/Rounds (1 multiplayer room = 1 Match, 1 beatmap played
 -- within it = 1 Round), Scores repurposed to link to a Round instead of standing alone.
 
@@ -45,9 +45,10 @@ create table UserStats
 -- exempt from its own lock. IsPrivate: hides every beatmap under this set from non-admin listings —
 -- a set-level flag (not per-difficulty) since a single beatmapset is always released/curated as a
 -- whole for this server's purposes.
--- BackgroundFile: the lowest-id beatmap's background image filename in this set (see
--- Beatmaps.BackgroundFile below), resolved against the mapset's own storage folder — kept in sync
--- by ingestion, backs b.<domain>'s per-set thumbnail and the api. host's set-level background route.
+-- BackgroundFile/AudioFile: the lowest-id beatmap's background image/audio filename in this set
+-- (see Beatmaps.BackgroundFile/AudioFile below), resolved against the mapset's own storage folder
+-- — kept in sync by ingestion, backs b.<domain>'s per-set thumbnail/audio preview and the api.
+-- host's set-level background/audio routes.
 create table Mapsets
 (
 	Id             int                   not null primary key,
@@ -58,12 +59,15 @@ create table Mapsets
 	CreatedAt      datetime              not null,
 	IsFrozen       boolean default false not null,
 	IsPrivate      boolean default false not null,
-	BackgroundFile text null
+	BackgroundFile text null,
+	AudioFile      text null
 );
 
--- BackgroundFile: the beatmap's background image filename (from its .osu metadata), resolved
--- against the mapset's storage folder at request time — never serialized in any api. host response,
--- only used to resolve GET /beatmapsets/{mapsetId}/{beatmapId}/background's file path.
+-- BackgroundFile/AudioFile: the beatmap's background image/audio filename (from its .osu
+-- metadata), resolved against the mapset's storage folder at request time — never serialized in
+-- any api. host response, only used to resolve GET /beatmapsets/{mapsetId}/{beatmapId}/background
+-- and .../audio's file paths. PreviewTime: the .osu metadata's preview start offset (ms), used by
+-- the b.ppy.sh audio-preview route to pick where the 10s clip starts.
 -- ObjectCounts: a JSON object of per-mode hit-object name -> count (e.g. {"circle":120,"slider":45,
 -- "spinner":2} for osu!std; Taiko/Catch/Mania have different named objects), from
 -- IBeatmap.GetStatistics() — mode-agnostic on purpose, not a fixed set of columns.
@@ -85,6 +89,8 @@ create table Beatmaps
     Hp             float(4, 2)  default 0.00  not null,
     Sr             float(6, 3)  default 0.000 not null,
     BackgroundFile text                       null,
+    AudioFile      text                       null,
+    PreviewTime    int                        null,
     ObjectCounts   text         default '{}'  not null,
     constraint Beatmaps_Md5_uindex unique (Md5),
     constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
@@ -137,8 +143,8 @@ create table IngameLogins
 
 -- CreatedAt is always supplied by the app on insert (see SqliteLogRepository) — never UPDATEd
 -- afterwards, so no ON UPDATE trigger is needed (MySQL's `on update CURRENT_TIMESTAMP` here was
--- dead weight; nothing ever updates a Logs row).
-create table Logs
+-- dead weight; nothing ever updates a UserLogs row).
+create table UserLogs
 (
 	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
 	FromId    int         not null,

@@ -18,7 +18,7 @@ public class SqliteLogRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 
 		await using var connection = new SqliteConnection(fixture.ConnectionString);
 		var row = await connection.QuerySingleAsync<(int FromId, int ToId, string Action, string Msg)>(
-			"SELECT FromId, ToId, Action, Msg FROM Logs WHERE ToId = 42 AND Action = 'lastfm_flag'");
+			"SELECT FromId, ToId, Action, Msg FROM UserLogs WHERE ToId = 42 AND Action = 'lastfm_flag'");
 
 		Assert.Equal(0, row.FromId);
 		Assert.Equal(42, row.ToId);

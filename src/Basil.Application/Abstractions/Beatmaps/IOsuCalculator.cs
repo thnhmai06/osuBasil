@@ -13,9 +13,9 @@ namespace Basil.Application.Abstractions.Beatmaps;
 public interface IOsuCalculator
 {
 	/// <summary>
-	///     Star rating and per-mode hit-object counts for the beatmap at
-	///     <paramref name="beatmapFilePath" /> under the given ruleset (<paramref name="mode" />) and
-	///     mods.
+	///     Star rating, per-mode hit-object counts, and the processed-beatmap fields (total length,
+	///     max combo, BPM) for the beatmap at <paramref name="beatmapFilePath" /> under the given
+	///     ruleset (<paramref name="mode" />) and mods.
 	/// </summary>
 	BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods);
 
@@ -27,5 +27,17 @@ public interface IOsuCalculator
 	string ComputeBeatmapMd5(byte[] beatmapBytes);
 }
 
-/// <summary>Star rating plus per-mode hit-object counts (e.g. <c>{"circle":120,"slider":45,"spinner":2}</c> for osu!std).</summary>
-public sealed record BeatmapAnalysis(double StarRating, IReadOnlyDictionary<string, int> ObjectCounts);
+/// <summary>
+///     Star rating, per-mode hit-object counts (e.g. <c>{"circle":120,"slider":45,"spinner":2}</c> for
+///     osu!std), and the processed-beatmap fields a raw <c>.osu</c> decode never populates —
+///     <see cref="TotalLength" />/<see cref="MaxCombo" />/<see cref="Bpm" /> only exist after the
+///     ruleset has walked the converted, timing-point-resolved hit objects (see
+///     <c>PpyOsuCalculator.Analyze</c>'s doc comment for why the raw decoder's own
+///     <c>BeatmapInfo.Length</c>/<c>MaxCombo</c>/<c>BPM</c> stay at their unset defaults).
+/// </summary>
+public sealed record BeatmapAnalysis(
+	double StarRating,
+	IReadOnlyDictionary<string, int> ObjectCounts,
+	TimeSpan TotalLength,
+	int MaxCombo,
+	double Bpm);

@@ -35,7 +35,14 @@ public sealed record Beatmap(
 
 	#region Background
 
-	[property: JsonIgnore] string? BackgroundFile = null
+	[property: JsonIgnore] string? BackgroundFile = null,
+
+	#endregion
+
+	#region Audio
+
+	[property: JsonIgnore] string? AudioFile = null,
+	[property: JsonIgnore] int? PreviewTime = null
 
 	#endregion
 
@@ -69,6 +76,7 @@ public sealed record Beatmap(
 		       TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
 		       Difficulty == other.Difficulty &&
 		       BackgroundFile == other.BackgroundFile &&
+		       AudioFile == other.AudioFile && PreviewTime == other.PreviewTime &&
 		       ObjectCounts.Count == other.ObjectCounts.Count &&
 		       ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
 	}
@@ -85,6 +93,8 @@ public sealed record Beatmap(
 		hash.Add(MaxCombo);
 		hash.Add(Difficulty);
 		hash.Add(BackgroundFile);
+		hash.Add(AudioFile);
+		hash.Add(PreviewTime);
 		foreach (var kv in ObjectCounts.OrderBy(kv => kv.Key))
 		{
 			hash.Add(kv.Key);

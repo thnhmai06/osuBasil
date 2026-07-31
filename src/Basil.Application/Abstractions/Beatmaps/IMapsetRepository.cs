@@ -55,6 +55,12 @@ public interface IMapsetRepository
 	Task SetBackgroundFileAsync(int id, string? backgroundFile, CancellationToken cancellationToken = default);
 
 	/// <summary>
+	///     Sets <see cref="Mapset.AudioFile" /> — mirrors <see cref="SetBackgroundFileAsync" />, called
+	///     by <c>BeatmapIngestionService.ReconcileFolderAsync</c> the same way.
+	/// </summary>
+	Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	///     Total mapset count for the `api.` host's `GET /beatmapsets` list's `meta.totalRecords` —
 	///     reads a cached counter row (kept in sync by DB triggers) instead of a live `COUNT(*)`.
 	///     <paramref name="includePrivate" /> mirrors <see cref="FetchPageAsync" />'s

@@ -85,6 +85,12 @@ public sealed class CachingMapsetRepository(
 		cache.Remove(IdKey(id));
 	}
 
+	public async Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default)
+	{
+		await inner.SetAudioFileAsync(id, audioFile, cancellationToken);
+		cache.Remove(IdKey(id));
+	}
+
 	/// <summary>Uncached — a live counter read, not a single-row lookup.</summary>
 	public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
 	{

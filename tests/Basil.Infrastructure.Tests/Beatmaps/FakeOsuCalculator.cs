@@ -10,7 +10,8 @@ internal sealed class FakeOsuCalculator : IOsuCalculator
 {
 	public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
 	{
-		return new BeatmapAnalysis(1.23, new Dictionary<string, int> { ["circle"] = 1 });
+		return new BeatmapAnalysis(1.23, new Dictionary<string, int> { ["circle"] = 1 },
+			TimeSpan.FromSeconds(90), 150, 180);
 	}
 
 	public string ComputeBeatmapMd5(byte[] beatmapBytes)

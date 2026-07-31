@@ -13,7 +13,8 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 {
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
-	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.ObjectCounts,
+	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
+	                                     b.PreviewTime, b.ObjectCounts,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
 
@@ -83,10 +84,10 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 			"""
 			REPLACE INTO Beatmaps (
 			    Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo,
-			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, ObjectCounts
+			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
 			) VALUES (
 			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo,
-			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @ObjectCounts
+			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
 			)
 			""",
 			new
@@ -106,6 +107,8 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 				resolved.Difficulty.Hp,
 				resolved.Difficulty.Sr,
 				resolved.BackgroundFile,
+				resolved.AudioFile,
+				resolved.PreviewTime,
 				ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
 			});
 		logger.LogDebug("Beatmap upserted: Id={Id} Md5={Md5}", resolved.Id, resolved.Md5);
@@ -224,6 +227,8 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		public double Hp { get; set; }
 		public double Sr { get; set; }
 		public string? BackgroundFile { get; set; }
+		public string? AudioFile { get; set; }
+		public int? PreviewTime { get; set; }
 		public string ObjectCounts { get; set; } = "{}";
 
 		public Beatmap ToBeatmap(Mapset mapset)
@@ -234,7 +239,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 				Md5, Id, mapset, Version, Filename,
 				TimeSpan.FromSeconds(TotalLength), MaxCombo,
 				new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr),
-				objectCounts, BackgroundFile);
+				objectCounts, BackgroundFile, AudioFile, PreviewTime);
 		}
 	}
 

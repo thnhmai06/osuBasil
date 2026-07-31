@@ -185,6 +185,28 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
+		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/audio", HandleDownloadAudio)
+			.WithGroupName("basilapi")
+			.WithName("downloadBeatmapAudio")
+			.WithSummary("Download Beatmap Audio")
+			.WithDescription("Serves the beatmap's audio file. 404 if the beatmap doesn't exist, doesn't " +
+			                 "belong to this mapset, has no recorded audio file, its file is missing on disk, or the " +
+			                 "parent mapset is private and the caller isn't admin. Content-Type inferred from the file " +
+			                 "extension. Public, with a soft admin elevation.")
+			.WithTags("Beatmaps")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
+		group.MapGet("/beatmapsets/{mapsetId:int}/audio", HandleDownloadMapsetAudio)
+			.WithGroupName("basilapi")
+			.WithName("downloadBeatmapsetAudio")
+			.WithSummary("Download Beatmapset Audio")
+			.WithDescription("Serves the preview audio file for this set (the lowest-id beatmap's audio " +
+			                 "file), kept in sync by ingestion. 404 if the mapset doesn't exist, has no recorded audio " +
+			                 "file, its file is missing on disk, or the mapset is private and the caller isn't admin. " +
+			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
+			.WithTags("Beatmapsets")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
 		group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetStoryboard")
@@ -434,6 +456,43 @@ internal static class BeatmapsetRoutes
 		if (backgroundPath is null || !File.Exists(backgroundPath)) return Results.NotFound();
 
 		return Results.File(backgroundPath, BackgroundContentType(backgroundPath));
+	}
+
+	private static async Task<IResult> HandleDownloadAudio(int mapsetId, int beatmapId, HttpContext context,
+		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+	{
+		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+			cancellationToken: cancellationToken);
+		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
+
+		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, bmap);
+		if (audioPath is null || !File.Exists(audioPath)) return Results.NotFound();
+
+		return Results.File(audioPath, AudioContentType(audioPath));
+	}
+
+	private static string AudioContentType(string path)
+	{
+		return Path.GetExtension(path).ToLowerInvariant() switch
+		{
+			".ogg" => "audio/ogg",
+			".wav" => "audio/wav",
+			_ => "audio/mpeg"
+		};
+	}
+
+	private static async Task<IResult> HandleDownloadMapsetAudio(int mapsetId, HttpContext context,
+		IMapsetRepository mapsets, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+	{
+		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+		var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
+		if (mapset is null || (mapset.IsPrivate && !isAdmin)) return Results.NotFound();
+
+		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, mapset);
+		if (audioPath is null || !File.Exists(audioPath)) return Results.NotFound();
+
+		return Results.File(audioPath, AudioContentType(audioPath));
 	}
 
 	private static IResult HandleDownloadStoryboard(int mapsetId, IOptions<StorageOptions> storage)

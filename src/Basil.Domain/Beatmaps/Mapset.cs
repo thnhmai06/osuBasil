@@ -20,7 +20,8 @@ public sealed record Mapset(
 	DateTime CreatedAt,
 	bool IsFrozen = false,
 	bool IsPrivate = false,
-	string? BackgroundFile = null)
+	string? BackgroundFile = null,
+	string? AudioFile = null)
 {
 	/// <summary>
 	///     Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status

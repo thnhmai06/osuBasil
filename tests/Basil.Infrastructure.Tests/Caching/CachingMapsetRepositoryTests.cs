@@ -145,6 +145,11 @@ public class CachingMapsetRepositoryTests
 			return Task.CompletedTask;
 		}
 
+		public Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
 		public Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult(0);

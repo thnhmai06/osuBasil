@@ -92,6 +92,22 @@ public sealed partial class BeatmapIngestionService(
 		return folder is null ? null : Path.Combine(folder, mapset.BackgroundFile);
 	}
 
+	/// <summary>Null if the beatmap has no recorded audio filename or its mapset folder can't be found.</summary>
+	public static string? AudioFilePath(StorageOptions storage, Beatmap beatmap)
+	{
+		if (beatmap.AudioFile is null) return null;
+		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		return folder is null ? null : Path.Combine(folder, beatmap.AudioFile);
+	}
+
+	/// <summary>Null if the mapset has no recorded preview audio or its folder can't be found.</summary>
+	public static string? AudioFilePath(StorageOptions storage, Mapset mapset)
+	{
+		if (mapset.AudioFile is null) return null;
+		var folder = FindMapsetFolder(storage, mapset.Id);
+		return folder is null ? null : Path.Combine(folder, mapset.AudioFile);
+	}
+
 	/// <summary>
 	///     Full pass: extracts every loose ".osz" at the storage root, reconciles every subfolder
 	///     that looks like a mapset (".osu" files at depth 1), then deletes any Mapset row whose
@@ -245,9 +261,12 @@ public sealed partial class BeatmapIngestionService(
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
 			var analysis = cacheHit
-				? new BeatmapAnalysis(existingByPath!.Difficulty.Sr, existingByPath.ObjectCounts)
+				? new BeatmapAnalysis(existingByPath!.Difficulty.Sr, existingByPath.ObjectCounts,
+					existingByPath.TotalLength, existingByPath.MaxCombo, existingByPath.Difficulty.Bpm)
 				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
 			var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
+			var audioFile = cacheHit ? existingByPath!.AudioFile : info.Metadata.AudioFile;
+			var previewTime = cacheHit ? existingByPath!.PreviewTime : info.Metadata.PreviewTime;
 
 			var beatmap = new Beatmap(
 				file.Md5,
@@ -255,16 +274,16 @@ public sealed partial class BeatmapIngestionService(
 				mapset,
 				info.DifficultyName,
 				file.OriginalFilename,
-				TimeSpan.FromMilliseconds(info.Length),
-#pragma warning disable CS0618 // display-only metadata; async ScoreManager replacement isn't available in this ingestion path
-				info.MaxCombo ?? 0,
-#pragma warning restore CS0618
+				analysis.TotalLength,
+				analysis.MaxCombo,
 				new Difficulty(
-					mode, info.BPM, info.Difficulty.CircleSize,
+					mode, analysis.Bpm, info.Difficulty.CircleSize,
 					info.Difficulty.ApproachRate, info.Difficulty.OverallDifficulty, info.Difficulty.DrainRate,
 					analysis.StarRating),
 				analysis.ObjectCounts,
-				backgroundFile);
+				backgroundFile,
+				audioFile,
+				previewTime);
 
 			await maps.UpsertAsync(beatmap, cancellationToken);
 			ingested++;
@@ -290,6 +309,7 @@ public sealed partial class BeatmapIngestionService(
 		var remaining = known.Where(k => onDisk.Contains(k.Filename)).ToList();
 		var preview = remaining.MinBy(b => b.Id);
 		await mapsets.SetBackgroundFileAsync(mapset.Id, preview?.BackgroundFile, cancellationToken);
+		await mapsets.SetAudioFileAsync(mapset.Id, preview?.AudioFile, cancellationToken);
 
 		return (ingested, mapset.Id);
 	}
@@ -378,7 +398,7 @@ public sealed partial class BeatmapIngestionService(
 			// hitobjects) still gets ingested — it just keeps Sr at 0/no object counts instead of
 			// aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
-			return new BeatmapAnalysis(0, new Dictionary<string, int>());
+			return new BeatmapAnalysis(0, new Dictionary<string, int>(), TimeSpan.Zero, 0, 0);
 		}
 	}
 

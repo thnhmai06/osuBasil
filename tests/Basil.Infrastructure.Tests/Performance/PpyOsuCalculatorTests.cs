@@ -53,6 +53,25 @@ public class PpyOsuCalculatorTests
 		Assert.True(analysis.ObjectCounts.Values.Sum() > 0);
 	}
 
+	/// <summary>
+	///     Regression lock for the 3.1 fix: the raw `.osu` decoder never populates
+	///     BeatmapInfo.Length/MaxCombo/BPM (confirmed zero/null both before AND after
+	///     GetPlayableBeatmap by direct inspection) — these values only come from
+	///     BeatmapExtensions.CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength on the
+	///     processed beatmap, which is what Analyze now returns instead of the always-zero raw fields.
+	/// </summary>
+	[Fact]
+	public void Analyze_StandardFixture_ReturnsNonZeroLengthComboAndBpm()
+	{
+		var calculator = new PpyOsuCalculator();
+
+		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
+
+		Assert.Equal(TimeSpan.FromMilliseconds(13742), analysis.TotalLength);
+		Assert.Equal(114, analysis.MaxCombo);
+		Assert.Equal(168.0, analysis.Bpm, 5);
+	}
+
 	[Fact]
 	public void ComputeBeatmapMd5_MatchesRawFileHash()
 	{

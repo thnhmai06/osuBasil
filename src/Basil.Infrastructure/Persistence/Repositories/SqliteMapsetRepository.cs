@@ -31,8 +31,8 @@ public sealed class SqliteMapsetRepository(string connectionString, ILogger<Sqli
 		// here yet; SetBackgroundFileAsync sets the real value once that's known.
 		await connection.ExecuteAsync(
 			"""
-			INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile)
-			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile)
+			INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
+			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile, @AudioFile)
 			ON CONFLICT(Id) DO UPDATE SET
 			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
 			    LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
@@ -47,7 +47,8 @@ public sealed class SqliteMapsetRepository(string connectionString, ILogger<Sqli
 				mapset.CreatedAt,
 				mapset.IsFrozen,
 				mapset.IsPrivate,
-				mapset.BackgroundFile
+				mapset.BackgroundFile,
+				mapset.AudioFile
 			});
 		logger.LogDebug("Mapset upserted: Id={Id}", mapset.Id);
 
@@ -77,6 +78,14 @@ public sealed class SqliteMapsetRepository(string connectionString, ILogger<Sqli
 		await connection.ExecuteAsync("UPDATE Mapsets SET BackgroundFile = @BackgroundFile WHERE Id = @Id",
 			new { Id = id, BackgroundFile = backgroundFile });
 		logger.LogDebug("Mapset background file set: Id={Id}", id);
+	}
+
+	public async Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		await connection.ExecuteAsync("UPDATE Mapsets SET AudioFile = @AudioFile WHERE Id = @Id",
+			new { Id = id, AudioFile = audioFile });
+		logger.LogDebug("Mapset audio file set: Id={Id}", id);
 	}
 
 	public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
@@ -140,11 +149,12 @@ public sealed class SqliteMapsetRepository(string connectionString, ILogger<Sqli
 		public bool IsFrozen { get; set; }
 		public bool IsPrivate { get; set; }
 		public string? BackgroundFile { get; set; }
+		public string? AudioFile { get; set; }
 
 		public Mapset ToMapset()
 		{
 			return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate,
-				BackgroundFile);
+				BackgroundFile, AudioFile);
 		}
 	}
 }
