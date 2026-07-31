@@ -217,6 +217,67 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
 	}
 
+	// ---- GET /beatmapsets/{mapsetId}/{beatmapId}/video ----
+
+	private const string OsuFileWithVideo = """
+	                                         osu file format v14
+	                                         [Events]
+	                                         Video,0,"video.mp4"
+	                                         """;
+
+	[Fact]
+	public async Task DownloadVideo_UnknownBeatmap_ReturnsNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/video"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task DownloadVideo_NoVideoDeclared_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(400);
+		_oneBeatmap = MakeBeatmap(1, mapset);
+		var folder = MapsetFolder(400);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14\n[Events]\n");
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/1/video"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task DownloadVideo_VideoFileMissingOnDisk_ReturnsNotFound()
+	{
+		var mapset = MakeMapset(401);
+		_oneBeatmap = MakeBeatmap(1, mapset);
+		var folder = MapsetFolder(401);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/401/1/video"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task DownloadVideo_FileExists_ReturnsCorrectMimeType()
+	{
+		var mapset = MakeMapset(402);
+		_oneBeatmap = MakeBeatmap(1, mapset);
+		var folder = MapsetFolder(402);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "video.mp4"), [1]);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/402/1/video"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("video/mp4", response.Content.Headers.ContentType?.MediaType);
+	}
+
 	// ---- GET /beatmapsets/{mapsetId}/download ----
 
 	[Fact]

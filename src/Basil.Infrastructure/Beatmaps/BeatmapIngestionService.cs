@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
+using osu.Game.Storyboards;
 using Beatmap = Basil.Domain.Beatmaps.Beatmap;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
@@ -106,6 +107,32 @@ public sealed partial class BeatmapIngestionService(
 		if (mapset.AudioFile is null) return null;
 		var folder = FindMapsetFolder(storage, mapset.Id);
 		return folder is null ? null : Path.Combine(folder, mapset.AudioFile);
+	}
+
+	/// <summary>
+	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing on disk, or
+	///     its mapset folder can't be found. Unlike <see cref="BackgroundFilePath(StorageOptions,Beatmap)" />/
+	///     <see cref="AudioFilePath(StorageOptions,Beatmap)" />, video has no ingestion-time DB column —
+	///     found by decoding the `.osu`'s own <see cref="Storyboard" /> (osu.Game's own module, same one
+	///     background-finding effectively relies on) fresh on every call via
+	///     <see cref="Storyboard.PrimaryVideo" />, since a request for it is rare enough that a stored
+	///     column isn't worth the schema churn.
+	///     ponytail: re-decodes the `.osu` file on every `/video` request; add a `VideoFile` column
+	///     mirroring `BackgroundFile`/`AudioFile` if this ever gets hot.
+	/// </summary>
+	public static string? VideoFilePath(StorageOptions storage, Beatmap beatmap)
+	{
+		var osuPath = OsuFilePath(storage, beatmap);
+		if (osuPath is null || !File.Exists(osuPath)) return null;
+
+		using var stream = File.OpenRead(osuPath);
+		using var reader = new LineBufferedReader(stream);
+		var storyboard = Decoder.GetDecoder<Storyboard>(reader).Decode(reader);
+		var videoFilename = storyboard.PrimaryVideo?.Path;
+		if (videoFilename is null) return null;
+
+		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		return folder is null ? null : Path.Combine(folder, videoFilename);
 	}
 
 	/// <summary>

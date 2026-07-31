@@ -233,6 +233,19 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
+		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/video", HandleDownloadVideo)
+			.WithGroupName("basilapi")
+			.WithName("downloadBeatmapVideo")
+			.WithSummary("Download Beatmap Video")
+			.WithDescription("Serves the video file declared in the beatmap's `.osu` `[Events]` section " +
+			                 "(found via osu!'s own storyboard decoder, the same module background-finding relies " +
+			                 "on — not a stored column, decoded fresh on every request). 404 if the beatmap doesn't " +
+			                 "exist, doesn't belong to this mapset, its `.osu` declares no video, the video file is " +
+			                 "missing on disk, or the parent mapset is private and the caller isn't admin. " +
+			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
+			.WithTags("Beatmaps")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
 		group.MapGet("/beatmapsets/{mapsetId:int}/audiopreview", HandleAudioPreview)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapsetAudioPreview")
@@ -568,6 +581,32 @@ internal static class BeatmapsetRoutes
 		if (audioPath is null || !File.Exists(audioPath)) return Results.NotFound();
 
 		return Results.File(audioPath, AudioContentType(audioPath));
+	}
+
+	private static async Task<IResult> HandleDownloadVideo(int mapsetId, int beatmapId, HttpContext context,
+		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+	{
+		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+			cancellationToken: cancellationToken);
+		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
+
+		var videoPath = BeatmapIngestionService.VideoFilePath(storage.Value, bmap);
+		if (videoPath is null || !File.Exists(videoPath)) return Results.NotFound();
+
+		return Results.File(videoPath, VideoContentType(videoPath));
+	}
+
+	private static string VideoContentType(string path)
+	{
+		return Path.GetExtension(path).ToLowerInvariant() switch
+		{
+			".avi" => "video/x-msvideo",
+			".flv" => "video/x-flv",
+			".webm" => "video/webm",
+			".mp4" => "video/mp4",
+			_ => "application/octet-stream"
+		};
 	}
 
 	private static async Task<IResult> HandleAudioPreview(int mapsetId, IMapRepository maps,
