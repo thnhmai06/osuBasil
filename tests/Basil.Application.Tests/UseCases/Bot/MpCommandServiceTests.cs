@@ -520,6 +520,30 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
+	public async Task HandleAsync_Start_BeatmapMissing_NoOwnReply_MatchMembershipAnnouncesOnce()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		_fixture.RegisterAll(host, bot);
+		var match = _fixture.CreateMatch(host);
+		_fixture.MapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
+			.Returns((Beatmap?)null);
+		host.Dequeue();
+
+		var sink = new RecordingReplySink();
+		var started = await MakeService().TryHandleAsync(host, match, "start", [], sink);
+
+		Assert.False(started);
+		Assert.Empty(sink.Replies);
+		Assert.Empty(sink.DmReplies);
+		Assert.Equal(
+			ServerPacketWriter.SendMessage(bot.Name,
+				"Match cannot start because the beatmap does not exist on the server.",
+				"#multiplayer", bot.Id),
+			host.Dequeue());
+	}
+
+	[Fact]
 	public async Task HandleAsync_Abort_NotInProgress_Rejected()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");

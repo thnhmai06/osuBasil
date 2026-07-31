@@ -67,26 +67,35 @@ public sealed class MatchChangeSettingsHandler(
 				match.MapId = -1;
 				match.MapMd5 = "";
 				match.MapName = "";
+				match.UnresolvedMapMd5 = null;
 				matchMembership.CancelQueuedAutoStart(match);
 			}
 			else if (match.MapId == -1)
 			{
+				// Always re-attempt the lookup (not gated on UnresolvedMapMd5) so a beatmap ingested
+				// later while the room sits idle resolves silently on the next settings packet — only
+				// the warning below is deduped, not the lookup itself.
 				var bmap = await mapRepository.FetchOneAsync(md5: matchData.MapMd5);
 				if (bmap is not null)
 				{
 					match.MapId = bmap.Id;
 					match.MapMd5 = bmap.Md5;
 					match.MapName = bmap.FullName;
+					match.UnresolvedMapMd5 = null;
 
 					var host = sessionRegistry.GetById(match.HostId);
 					if (host is not null) match.Mode = host.Status.Mode;
 					matchMembership.CancelQueuedAutoStart(match);
 				}
-				else
+				else if (matchData.MapMd5 != match.UnresolvedMapMd5)
 				{
 					// Diverges from bancho.py's cho.py, which blindly accepts the client-supplied
 					// id/md5/name here — that let a beatmap absent from this server's local DB get
 					// written into authoritative match state, corrupting round/match-report data.
+					// Osu! clients resend their full settings snapshot on ANY room-setting change
+					// (freemod, team type, ...), not just a new map pick, so without UnresolvedMapMd5
+					// this warning would re-fire on every one of those instead of just the first.
+					match.UnresolvedMapMd5 = matchData.MapMd5;
 					var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 					if (bot is not null)
 						matchMembership.EnqueueChat(match, bot.Name, bot.Id,

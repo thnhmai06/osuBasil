@@ -116,6 +116,96 @@ public class MatchChangeSettingsHandlerTests
 			Chunk(host.Dequeue()));
 	}
 
+	[Fact]
+	public async Task Handle_SameUnresolvedMap_SecondSettingsPacket_DoesNotRepeatWarning()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.RegisterAll(host, bot);
+		var match = fixture.CreateMatch(host);
+		match.MapId = -1;
+		var newMd5 = new string('c', 32);
+		_mapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
+		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		host.Dequeue();
+
+		// First packet: map selection fails, warning fires once.
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
+		Assert.Contains(
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+				"#multiplayer", bot.Id),
+			Chunk(host.Dequeue()));
+
+		// Second packet: same still-unresolved md5, resent because an unrelated setting (freemod)
+		// changed — osu! clients always resend the full settings snapshot. Must not warn again.
+		await handler.HandleAsync(host,
+			MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id, freeMods: true));
+
+		Assert.DoesNotContain(
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+				"#multiplayer", bot.Id),
+			Chunk(host.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Handle_SameUnresolvedMap_SelfHeals_LookupStillRunsOnSecondPacket()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.RegisterAll(host, bot);
+		var match = fixture.CreateMatch(host);
+		match.MapId = -1;
+		var md5 = new string('d', 32);
+		_mapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
+		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
+		Assert.Equal(-1, match.MapId);
+
+		// Beatmap gets ingested while the room sits idle — the next settings packet (any resend)
+		// must still attempt the lookup despite UnresolvedMapMd5 being set, not skip it.
+		var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var bmap = new Beatmap(md5, 777, mapset, "V", "map.osu",
+			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
+			new OsuObjectCounts { MaxCombo = 100 });
+		_mapRepository.FetchOneAsync(md5: md5).Returns(bmap);
+
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
+
+		Assert.Equal(777, match.MapId);
+		Assert.Equal(md5, match.MapMd5);
+	}
+
+	[Fact]
+	public async Task Handle_DeselectThenReselectSameFailingMap_WarnsAgain()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.RegisterAll(host, bot);
+		var match = fixture.CreateMatch(host);
+		match.MapId = -1;
+		var md5 = new string('e', 32);
+		_mapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
+		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		host.Dequeue();
+
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
+		host.Dequeue();
+
+		// Deselect (client picks "no map"), then pick the exact same still-missing map again.
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
+		host.Dequeue();
+		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
+
+		Assert.Contains(
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+				"#multiplayer", bot.Id),
+			Chunk(host.Dequeue()));
+	}
+
 	private static (Fixture Fixture, PlayerSession Host, PlayerSession Bot, MatchSession Match)
 		SetUpMatchWithPendingAutoStart()
 	{

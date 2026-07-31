@@ -86,6 +86,16 @@ public sealed class MatchSession(
 	public string MapMd5 { get; set; } = mapMd5;
 	public string MapName { get; set; } = mapName;
 
+	/// <summary>
+	///     The MapMd5 of the last client-supplied map selection that failed to resolve locally, or null
+	///     if none is currently pending — set when the "Beatmap not found locally" warning fires,
+	///     cleared on a successful resolve or an explicit deselect. Exists solely to dedupe that
+	///     warning: osu! clients resend their full settings snapshot on any unrelated room-setting
+	///     change, and without this the warning would re-fire on every one of those instead of just the
+	///     first failed lookup — see MatchChangeSettingsHandler.
+	/// </summary>
+	public string? UnresolvedMapMd5 { get; set; }
+
 	public Mods Mods { get; set; } = mods;
 	public GameMode Mode { get; set; } = mode;
 	public bool Freemods { get; set; } = freemods;

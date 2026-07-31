@@ -818,7 +818,9 @@ public sealed class MpCommandService(
 				sink.Reply("Match started");
 				return true;
 			default:
-				sink.Reply("Match cannot start because the beatmap does not exist on the server.");
+				// StartResult.BeatmapMissing — MatchMembershipService.StartAsync already announced this
+				// into the match channel itself (the single choke point all 3 start paths share); no
+				// second reply here, or the room sees the same message twice.
 				return false;
 		}
 	}
