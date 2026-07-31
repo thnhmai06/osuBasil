@@ -24,14 +24,14 @@
 - Provides a [**multiplayer environment**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) matching [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), with singleplayer processing and unrelated features **removed**.
 - Supports [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat), and **basic social features**.
 - Manages **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** directly via database/filesystem.
-- **No dependency on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or a mirror for gameplay.** Parameters (such as Star Rating) are computed locally and stored in the database, beatmap search/downloads are served from the local `Mapsets` folder, and beatmap thumbnail/preview images (`b.<domain>`) are served from that same local storage instead of osu.ppy.sh's CDN — no calls out to osu.ppy.sh for any of that. An operator can optionally point `Basil:Mirror:DownloadEndpoint` at their own mirror for `.osz` downloads, otherwise that endpoint just reports unavailable.
+- **No dependency on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or a mirror for gameplay.** Parameters (such as Star Rating, length, BPM, max combo) are computed locally and stored in the database, beatmap search/downloads are served from the local `Mapsets` folder, and beatmap thumbnails/audio previews (`b.<domain>`) are resized/trimmed on demand from that same local storage and cached — instead of hitting osu.ppy.sh's CDN. An operator can optionally point `Basil:Mirror:DownloadEndpoint` at their own mirror for `.osz` downloads, otherwise that endpoint just reports unavailable.
 - **A full tournament-management HTTP API** (`api.<domain>`) alongside the osu! client protocol: CRUD for matches/beatmapsets/users, admin-key-gated management routes, live match/spectator/player-input state pushed over Server-Sent Events, and a runtime-generated tournament match report — all documented as OpenAPI, rendered with [Scalar](https://scalar.com/) at `api.<domain>/docs/`.
 
 ## Tech stack
 
 | Layer | Choice |
 | --- | --- |
-| Runtime | [.NET](https://dot.net/) 10 with [ASP.NET](https://asp.net/), runs as a standalone executable — no Docker required |
+| Runtime | [.NET](https://dot.net/) 10 with [ASP.NET](https://asp.net/), runs as a standalone executable — Docker optional (a `Dockerfile`/`docker-compose.yml` are provided, bundling `ffmpeg`) |
 | Database | [SQLite](https://www.sqlite.org/) (1 file next to the executable), accessed via [Dapper](https://github.com/DapperLib/Dapper), schema managed by [DbUp](https://dbup.readthedocs.io/) |
 | Star rating | References [osu!lazer](https://github.com/ppy/osu)'s own calculation algorithms directly |
 | Logging | [Serilog](https://serilog.net/) — console + rolling file sinks (`Logs/full`, `Logs/errors`, each with a `latest.log`/`errors_latest.log` hardlink to the current file), structured scopes (`RequestId`, `MatchId`, `UserId`, `ScoreId`, IRC `ConnectionId`, ...) |

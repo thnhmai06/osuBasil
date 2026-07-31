@@ -1,10 +1,12 @@
 # Run & Deployment
 
-Basil is one ASP.NET Core process. No Docker, no separate DB/cache service — SQLite is a single
-file, and everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text, logs) is a plain
-folder next to the executable, auto-created on first startup. This doc has three parts: **Deployment**
-(a real LAN tournament server other machines connect to), **Development** (working on Basil itself),
-and **Client** (pointing an actual osu! stable install at either of the above).
+Basil is one ASP.NET Core process, no separate DB/cache service — SQLite is a single file, and
+everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text, logs) is a plain folder
+next to the executable, auto-created on first startup. Docker is optional, not required — see the
+[Docker section](#docker-alternative-to-the-manual-publish-below) below for the containerized path, or
+skip straight to the manual publish steps if you'd rather not use it. This doc has three parts:
+**Deployment** (a real LAN tournament server other machines connect to), **Development** (working on
+Basil itself), and **Client** (pointing an actual osu! stable install at either of the above).
 
 ## Configuration surface
 

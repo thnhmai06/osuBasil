@@ -166,9 +166,13 @@ Every `PlayerSession` has an `IIrcConnection` (`Sessions/Irc/`):
 
 `BanchoBot` (`UseCases/Bot/BotBootstrapService`) is bootstrapped as a real `PlayerSession` at startup — it has no client connection behind it, so it is exempted from `GhostDisconnectService`'s reap sweep via `PlayerSession.IsBot` (it never sends real ping packets, so `LastRecvTime` would never advance without this exemption).
 
-`SendPublicMessageHandler`/`SendPrivateMessageHandler` forward every message to `ChatDispatchService.SendPrivmsgAsync`, which routes messages starting with `!` to `ICommandDispatcher` — the dispatcher routes to either the general command table (`!help`, `!roll`) or `MpCommandService` for `!mp <subcommand>` — the latter only when the message is sent in the match's own chat channel and the sender passes `MatchSession.IsReferee`.
+`SendPublicMessageHandler`/`SendPrivateMessageHandler` forward every message to `ChatDispatchService.SendPrivmsgAsync`, which routes messages starting with `!` to `ICommandDispatcher` — the dispatcher routes to either the general command table (`!help`, `!roll`, `!where`, `!faq`) or `MpCommandService` for `!mp <subcommand>`, and the referee gate (`MatchSession.IsReferee`) is checked per-subcommand inside `MpCommandService.TryHandleAsync`, not by the dispatcher.
 
-Bot replies are broadcast via `ChannelMembershipService.BroadcastPrivmsg` (IRC-shaped) rather than building packets directly — so real IRC clients in the channel also see BasilBot's responses.
+**Replies go through `ICommandReplySink` (`Reply`/`ReplyDm`), not a return value** — every command method sends its own reply as it runs and returns only `bool` success/failure; the reply's routing (broadcast back to the calling channel, or always-DM) is decided once, by whoever constructs the sink in `ChatDispatchService`, not scattered across each command. `!help`/`!mp help` always call `sink.ReplyDm(...)`, so they land in DM regardless of where they were invoked from.
+
+**`!mp` channel eligibility** (`CommandDispatcher.DispatchMpAsync`): in `#lobby`, only `make`/`makeprivate` (plus the scope-free `help`) run — every other subcommand is a silent no-op there. `!mp in` is additionally blocked from inside the caller's own match `#multiplayer` channel — combined with the `#lobby` block, DM to the bot is the only place it actually runs. Every other subcommand resolves its target match via `ResolveScope`: `sender.MpScopeMatchId` (set by `!mp in`/`!mp make`) first, then the channel the message was sent in, then finally the match the sender is physically sitting in (mirroring bancho.py's `ctx.player.match` baseline) — so `!mp abort`/`!mp help` sent as a DM still resolves even when the sender never ran `!mp make`/`!mp in`.
+
+Bot replies are broadcast via `ChannelMembershipService.BroadcastPrivmsg` (IRC-shaped) rather than building packets directly — so real IRC clients in the channel also see BasilBot's responses. `BanchoIrcBridgeConnection.Send` rewrites the internal channel name (`#multi_{id}`) to the client-facing alias (`#multiplayer`/`#spectator`) at the one outbound translation point, so a bancho client's already-open match/spectator chat window receives it; `ChatDispatchService.SendChannelMessageAsync` does the same translation on the inbound side for literal `"#multiplayer"`/`"#spectator"` sent by the client.
 
 ## Logging
 
@@ -192,14 +196,21 @@ Each sink also maintains a fixed pointer file — `Logs/latest.log` / `Logs/erro
 | `ScoreId` | `ScoreSubmissionService.SubmitAsync`, right after the DB insert | Every earlier failure branch returns before an id exists, so it logs plain properties instead |
 | `ConnectionId` | `TcpIrcConnection.RunAsync` | IRC only — the bancho binary protocol is HTTP long-poll (a fresh request per poll, no held socket), so it has no connection-lifetime concept of its own; `RequestId`+`UserId` cover that case instead |
 
-**Fixed categories** — a `Category` property added by `Basil.Web/Logging/CategoryEnricher` based on `SourceContext` (the class name `ILogger<T>` already carries), not a per-call push:
+**Fixed categories** — a `Category` property added by `Basil.Web/Logging/CategoryEnricher` based on `SourceContext` (the class name `ILogger<T>` already carries), not a per-call push. Exact matches are checked before prefix matches, so a specific class never falls through to a broader namespace rule:
 
 | Category | Matches |
 | --- | --- |
+| `Mapsets` | Any `Basil.Infrastructure.Beatmaps.*` class (ingestion, the folder watcher, the garbage collector) |
+| `Matches` | Any `Basil.Application.Services.Multiplayer.*` or `Basil.Application.PacketHandlers.Multiplayer.*` class |
+| `Scores` | Any `Basil.Application.Services.Scores.*` class |
+| `Online` | Exactly `LoginService`/`PlayerLogoutService` (account connect/disconnect, not general account CRUD) |
+| `IRC` | Any `Basil.Application.Services.Irc.*`, `Basil.Application.Sessions.Irc.*`, or `Basil.Infrastructure.Irc.*` class |
 | `Database` | Any `Basil.Infrastructure.Persistence.Repositories.*` class |
 | `Cache` | Any `Basil.Infrastructure.Caching.*` class |
-| `Background` | Exactly `BeatmapWatcherService`/`MapsetGarbageCollectorService` (not the whole `Beatmaps` namespace) |
 | `Host` | `Basil.Web.Program` and the framework's own `Microsoft.Hosting.Lifetime` — server startup/shutdown |
+| `App` (fallback) | Anything matching none of the above — unclassified framework/library chatter; `ConfigureSerilog` demotes it to Warning+ only so it doesn't add Information-level noise |
+
+Domain-event lines that track a resource's lifecycle (map ingested/removed/updated, match joined/left, user logged in/out, round completed, ...) are prefixed `+`/`-`/`~` (created/removed/modified) by convention — grep the message text for these markers rather than relying on level alone to spot state changes.
 
 Business-event logging follows one rule to avoid triple-logging: for multiplayer, log inside the shared `MatchMembershipService`/`MatchControlService` methods, not in the bancho packet handler / `!mp` subcommand / HTTP route that calls into them — all three surfaces converge on the same service call.
 
