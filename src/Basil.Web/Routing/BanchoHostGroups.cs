@@ -1053,7 +1053,8 @@ public static class BanchoHostGroups
 					else
 					{
 						var calculator = context.RequestServices.GetRequiredService<IOsuCalculator>();
-						stars = calculator.Analyze(osuPath, bmap.Difficulty.Mode, requestedMods).StarRating;
+						stars = Math.Round(calculator.Analyze(osuPath, bmap.Difficulty.Mode, requestedMods).StarRating,
+							2, MidpointRounding.AwayFromZero);
 						if (requestedMods == Mods.NoMod)
 							await maps.UpdateDiffAsync(bmap.Id, stars, cancellationToken);
 					}

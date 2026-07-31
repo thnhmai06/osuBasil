@@ -277,9 +277,9 @@ public sealed partial class BeatmapIngestionService(
 				analysis.TotalLength,
 				analysis.MaxCombo,
 				new Difficulty(
-					mode, analysis.Bpm, info.Difficulty.CircleSize,
-					info.Difficulty.ApproachRate, info.Difficulty.OverallDifficulty, info.Difficulty.DrainRate,
-					analysis.StarRating),
+					mode, Round1(analysis.Bpm), Round1(info.Difficulty.CircleSize),
+					Round1(info.Difficulty.ApproachRate), Round1(info.Difficulty.OverallDifficulty),
+					Round1(info.Difficulty.DrainRate), Round2(analysis.StarRating)),
 				analysis.ObjectCounts,
 				backgroundFile,
 				audioFile,
@@ -400,6 +400,20 @@ public sealed partial class BeatmapIngestionService(
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
 			return new BeatmapAnalysis(0, new Dictionary<string, int>(), TimeSpan.Zero, 0, 0);
 		}
+	}
+
+	// Raw decoded/computed values (Bpm, Cs, Ar, Od, Hp, Sr) can carry long floating-point tails
+	// (e.g. 5.00000001) — round once here, at the single place every Difficulty gets built, rather
+	// than at every display/API call site. Sr gets an extra decimal of precision (2 vs 1) since star
+	// rating differences below 0.1 are still meaningful for map selection.
+	private static double Round1(double value)
+	{
+		return Math.Round(value, 1, MidpointRounding.AwayFromZero);
+	}
+
+	private static double Round2(double value)
+	{
+		return Math.Round(value, 2, MidpointRounding.AwayFromZero);
 	}
 
 	private static LazerBeatmap? TryDecode(byte[] osuBytes)
