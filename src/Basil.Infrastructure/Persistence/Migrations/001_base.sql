@@ -293,8 +293,10 @@ begin
 	update Counters set Value = Value + 1 where Name = 'Scores:Total';
 end;
 
+-- Privilege 8211 = Unrestricted (1) | Verified (2) | Supporter (16) | Administrator (8192) —
+-- see Basil.Domain.Users.UserPrivileges.
 insert into Users (Id, Name, SafeName, Privilege, Country, PwBcrypt)
-values (0, 'BasilBot', 'basilbot', 1, 'vn',
+values (0, 'BasilBot', 'basilbot', 8211, 'vn',
         '_______________________my_cool_bcrypt_______________________');
 
 insert into UserStats (Id, Mode)

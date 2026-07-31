@@ -24,7 +24,10 @@ public sealed class DirectSearchService(IMapRepository maps, ILogger<DirectSearc
 	/// <summary>Client sentinel for "any mode" in <see cref="DirectSearchRequest.Mode" />.</summary>
 	private const int AnyMode = -1;
 
-	private static readonly string[] NonTextQueries = ["Newest", "Top+Rated", "Most+Played"];
+	// ASP.NET Core model binding decodes a query string's literal "+" as a space (matching
+	// x-www-form-urlencoded rules) before this ever sees it, so the sentinel here must be the
+	// decoded form ("Top Rated") — a literal "+" would never match what the client actually sent.
+	private static readonly string[] NonTextQueries = ["Newest", "Top Rated", "Most Played"];
 
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
 		DirectSearchRequest request, CancellationToken cancellationToken = default)

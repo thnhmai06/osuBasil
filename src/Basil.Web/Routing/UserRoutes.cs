@@ -315,7 +315,7 @@ internal static class UserRoutes
 			.WithTags("Users")
 			.Produces<SpectateFramesEvent>()
 			.WithExample(StatusCodes.Status200OK, new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us),
-				ReplayAction.Standard, 0, [new ReplayFrameData(Keys.Left1, 0, 100.5f, 200.25f, 1000)],
+				ReplayAction.Standard, 0, [new ReplayFrameData(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
 				new ScoreFrameData(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)))
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status400BadRequest,

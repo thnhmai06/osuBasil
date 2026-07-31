@@ -197,7 +197,7 @@ public static class BanchoHostGroups
 				() => Results.File(Path.Combine(docsSiteRoot, "basilbot", "index.html"), "text/html"))
 			.ExcludeFromDescription();
 
-		docs.MapScalarApiReference("/osu-client", options =>
+		docs.MapScalarApiReference("/osu-client/", options =>
 		{
 			options.Title = "osu! Client API";
 			options.AddDocument("bancho", "Bancho Protocol");
@@ -206,7 +206,7 @@ public static class BanchoHostGroups
 			options.AddDocument("avatar", "Avatar Files");
 		}).ExcludeFromDescription();
 
-		docs.MapScalarApiReference("/basil-api", options =>
+		docs.MapScalarApiReference("/basil-api/", options =>
 		{
 			options.Title = "Basil API";
 			options.AddDocument("basilapi", "Basil API");

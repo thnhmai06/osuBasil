@@ -16,5 +16,21 @@ public enum Keys
 	Smoke = 16
 }
 
+/// <summary>
+///     osu!taiko's replay-frame bitfield — which drum zone(s) were hit this frame, plus whether the
+///     hit was a "big" (kat/don) or large-double-note press. Values match
+///     osu.Game.Rulesets.Taiko.Replays.Legacy's own frame bit layout.
+/// </summary>
+[Flags]
+public enum TaikoByte : byte
+{
+	None = 0,
+	Don = 1 << 0,
+	Kat = 1 << 1,
+	Right = 1 << 2,
+	Big = 1 << 3,
+	LargeDouble = 1 << 4
+}
+
 /// <summary>Ported from ReplayFrame (NamedTuple) in app/packets.py.</summary>
-public sealed record ReplayFrameData(Keys ButtonState, int TaikoByte, float X, float Y, int Time);
+public sealed record ReplayFrameData(Keys ButtonState, TaikoByte TaikoByte, float X, float Y, int Time);

@@ -11,13 +11,19 @@ public class DirectSearchServiceTests
 {
 	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
 
-	[Fact]
-	public async Task NonTextQuery_PassesNullQueryThrough()
+	[Theory]
+	[InlineData("Newest")]
+	// ASP.NET Core query-string binding decodes a literal "+" as a space before this service ever
+	// sees it — these must match that decoded form, not the raw "Top+Rated"/"Most+Played" a client
+	// puts on the wire, or the sentinel never matches and the filter/tab silently returns nothing.
+	[InlineData("Top Rated")]
+	[InlineData("Most Played")]
+	public async Task NonTextQuery_PassesNullQueryThrough(string query)
 	{
 		_maps.SearchAsync(null, null, 0, 100).Returns([]);
 
 		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
-			new DirectSearchRequest("Newest", -1, 0));
+			new DirectSearchRequest(query, -1, 0));
 
 		await _maps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
 	}

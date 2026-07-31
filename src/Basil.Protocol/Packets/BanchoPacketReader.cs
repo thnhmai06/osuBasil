@@ -254,7 +254,7 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 	{
 		return new ReplayFrameData(
 			(Keys)ReadU8(),
-			ReadU8(),
+			(TaikoByte)ReadU8(),
 			ReadF32(),
 			ReadF32(),
 			ReadI32());
