@@ -1,8 +1,10 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Social;
+using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.Sessions;
@@ -12,6 +14,7 @@ using Basil.Application.Sessions.Spectating;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Caching;
 using Basil.Infrastructure.Irc;
+using Basil.Infrastructure.Media;
 using Basil.Infrastructure.Performance;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
@@ -49,7 +52,8 @@ public static class InfrastructureServiceCollectionExtensions
 			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
 			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
 			SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
-			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs")
+			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
+			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));
 
 		static string BuildConnectionString(IServiceProvider sp)
@@ -98,6 +102,9 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
+		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
+		services.AddSingleton<IImageResizer, ImageSharpResizer>();
+		services.AddSingleton<IAudioPreviewExtractor, FFMpegAudioPreviewExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();

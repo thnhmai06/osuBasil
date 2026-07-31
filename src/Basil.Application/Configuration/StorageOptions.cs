@@ -16,4 +16,11 @@ public sealed class StorageOptions
 	public required string MapsetsPath { get; init; }
 	public required string SeasonalsPath { get; init; }
 	public required string FaqsPath { get; init; }
+
+	/// <summary>
+	///     Root for derived-response caching (resized thumbnails, transcoded audio previews) —
+	///     <c>{CachePath}/{endpoint}/{relativePath}</c>, see <see cref="Abstractions.Storage.IResponseCache" />.
+	///     Populated lazily on cache miss; safe to delete entirely at any time, it's regenerated on demand.
+	/// </summary>
+	public required string CachePath { get; init; }
 }

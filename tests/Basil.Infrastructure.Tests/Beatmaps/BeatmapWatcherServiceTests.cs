@@ -47,7 +47,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 			AvatarsPath = "",
 			MapsetsPath = _mapsetsPath,
 			SeasonalsPath = "",
-			FaqsPath = ""
+			FaqsPath = "", CachePath = ""
 		});
 		var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
 		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
@@ -129,7 +129,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 					AvatarsPath = "",
 					MapsetsPath = _mapsetsPath,
 					SeasonalsPath = "",
-					FaqsPath = ""
+					FaqsPath = "", CachePath = ""
 				},
 				beatmap.Mapset);
 			Directory.Move(folder, resolvedFolder);

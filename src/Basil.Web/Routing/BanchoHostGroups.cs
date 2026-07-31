@@ -3,8 +3,10 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
 using Basil.Application.PacketHandlers.Core;
@@ -157,13 +159,89 @@ public static class BanchoHostGroups
 		File.Move(tempPath, destinationPath, true);
 	}
 
-	private static async Task<IResult> HandleThumbnail(int setId, IMapsetRepository mapsets,
-		IOptions<ServerOptions> serverOptions, CancellationToken cancellationToken)
+	private static Task<IResult> HandleThumbnailSmall(int setId, IMapsetRepository mapsets,
+		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
+		CancellationToken cancellationToken)
+	{
+		return HandleThumbnailAsync(setId, false, 80, 60, mapsets, storage, cache, resizer, cancellationToken);
+	}
+
+	private static Task<IResult> HandleThumbnailLarge(int setId, IMapsetRepository mapsets,
+		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
+		CancellationToken cancellationToken)
+	{
+		return HandleThumbnailAsync(setId, true, 160, 120, mapsets, storage, cache, resizer, cancellationToken);
+	}
+
+	/// <summary>
+	///     Resizes the mapset's background image to a fixed size and serves it directly — no longer a
+	///     redirect to the `api.` host's own (unresized) background route, since a real osu! client
+	///     expects a thumb-sized image at this exact URL, not an arbitrary-resolution one. Cached under
+	///     `Data/Cache/thumb/` (see <see cref="IResponseCache" />) so the resize only ever runs once
+	///     per mapset per size.
+	/// </summary>
+	private static async Task<IResult> HandleThumbnailAsync(int setId, bool large, int width, int height,
+		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
+		CancellationToken cancellationToken)
 	{
 		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
 
-		return Results.Redirect($"https://api.{serverOptions.Value.Domain}/beatmapsets/{setId}/background", true);
+		var cacheKey = large ? $"{setId}l.jpg" : $"{setId}.jpg";
+		var cached = await cache.GetAsync("thumb", cacheKey, cancellationToken);
+		if (cached is not null) return Results.File(cached, "image/jpeg");
+
+		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, mapset);
+		if (backgroundPath is null || !File.Exists(backgroundPath)) return Results.NotFound();
+
+		var sourceBytes = await File.ReadAllBytesAsync(backgroundPath, cancellationToken);
+		var resized = await resizer.ResizeAsync(sourceBytes, width, height, cancellationToken);
+		await cache.PutAsync("thumb", cacheKey, resized, cancellationToken);
+
+		return Results.File(resized, "image/jpeg");
+	}
+
+	private static async Task<IResult> HandleAudioPreview(int setId, IMapRepository maps, IMapsetRepository mapsets,
+		IOptions<StorageOptions> storage, IResponseCache cache, IAudioPreviewExtractor extractor,
+		CancellationToken cancellationToken)
+	{
+		var clip = await GetOrGeneratePreviewClipAsync(setId, maps, mapsets, storage, cache, extractor,
+			cancellationToken);
+		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
+	}
+
+	/// <summary>
+	///     Shared by both the `b.` host's `/preview/{setId}.mp3` and the `api.` host's
+	///     `/beatmapsets/{setId}/audiopreview` — same 10s-mp3-from-PreviewTime clip, same
+	///     <see cref="IResponseCache" /> key (`preview/{setId}.mp3`), so a request through either host
+	///     benefits from a request already made through the other. Null on any 404 condition (missing/
+	///     private mapset, no audio file on disk) — the caller decides the actual response shape.
+	/// </summary>
+	internal static async Task<byte[]?> GetOrGeneratePreviewClipAsync(int setId, IMapRepository maps,
+		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache,
+		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
+	{
+		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
+		if (mapset is null || mapset.IsPrivate) return null;
+
+		var cacheKey = $"{setId}.mp3";
+		var cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
+		if (cached is not null) return cached;
+
+		var beatmaps = await maps.FetchAllBySetIdAsync(setId, false, cancellationToken);
+		var preview = beatmaps.MinBy(b => b.Id);
+		if (preview?.AudioFile is null) return null;
+
+		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, preview);
+		if (audioPath is null || !File.Exists(audioPath)) return null;
+
+		// -1/null PreviewTime means "no custom preview point set" — real osu! defaults that to 40%
+		// into the track; simplified here to just the start of the file, since this is a private
+		// offline server rather than osu!'s own preview-point curation flow.
+		var startMs = preview.PreviewTime is > 0 ? preview.PreviewTime.Value : 0;
+		var clip = await extractor.ExtractAsync(audioPath, startMs, TimeSpan.FromSeconds(10), cancellationToken);
+		await cache.PutAsync("preview", cacheKey, clip, cancellationToken);
+		return clip;
 	}
 
 	// api. host: TRT snapshot (GET+SSE), file downloads, SSE live channels, admin-key-gated management
@@ -1000,24 +1078,33 @@ public static class BanchoHostGroups
 	{
 		private void MapBeatmapAssetGroup()
 		{
-			// No longer proxies osu.ppy.sh (this server is meant to run fully offline) — both the
-			// list-icon ("l") and cover thumbnail requests resolve to the same locally-stored preview,
-			// redirected to the api. host's set-level background route (self-hosted, tournament server
-			// has no per-size thumbnail variants).
-			group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnail)
+			// No longer proxies osu.ppy.sh (this server is meant to run fully offline) — the cover
+			// (80x60) and list-icon ("l", 160x120) thumbnails are resized directly from the mapset's
+			// locally-stored background on first request and cached under Data/Cache/thumb/ (see
+			// IResponseCache), instead of redirecting to the api. host's unresized background route.
+			group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnailLarge)
 				.WithGroupName("beatmapassets")
-				.WithSummary("Beatmapset list-icon thumbnail (redirects to the locally-hosted preview).")
-				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
-				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private.")
+				.WithSummary("Beatmapset list-icon thumbnail (160x160, resized and cached).")
+				.WithDescription("Resizes the mapset's locally-stored background to 160x120 (cropped to fill) " +
+				                 "and serves it directly, cached on disk after the first request. 404 if the mapset " +
+				                 "doesn't exist, is private, or has no background image on disk.")
 				.WithTags("Beatmap Assets");
 
-			group.MapGet("/thumb/{setId:int}.jpg", HandleThumbnail)
+			group.MapGet("/thumb/{setId:int}.jpg", HandleThumbnailSmall)
 				.WithGroupName("beatmapassets")
-				.WithSummary("Beatmapset cover thumbnail (redirects to the locally-hosted preview).")
-				.WithDescription("Redirects to `https://api.{domain}/beatmapsets/{setId}/background`, the set's " +
-				                 "locally-stored preview background image. 404 if the mapset doesn't exist or is private. " +
-				                 "Same target as the list-icon (`l`) variant: this server keeps a single preview image per " +
-				                 "set, not separate small/large renders.")
+				.WithSummary("Beatmapset cover thumbnail (80x60, resized and cached).")
+				.WithDescription("Resizes the mapset's locally-stored background to 80x60 (cropped to fill) and " +
+				                 "serves it directly, cached on disk after the first request. 404 if the mapset " +
+				                 "doesn't exist, is private, or has no background image on disk.")
+				.WithTags("Beatmap Assets");
+
+			group.MapGet("/preview/{setId:int}.mp3", HandleAudioPreview)
+				.WithGroupName("beatmapassets")
+				.WithSummary("Beatmapset audio preview (10s mp3 clip, resized and cached).")
+				.WithDescription("Cuts a 10-second mp3 clip (128kbps) from the mapset's preview beatmap's audio " +
+				                 "file, starting at its recorded PreviewTime, and serves it directly — cached on disk " +
+				                 "after the first request. 404 if the mapset doesn't exist, is private, or has no " +
+				                 "audio file on disk.")
 				.WithTags("Beatmap Assets");
 		}
 

@@ -1,4 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Media;
+using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -204,6 +206,17 @@ internal static class BeatmapsetRoutes
 			                 "file), kept in sync by ingestion. 404 if the mapset doesn't exist, has no recorded audio " +
 			                 "file, its file is missing on disk, or the mapset is private and the caller isn't admin. " +
 			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
+			.WithTags("Beatmapsets")
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
+		group.MapGet("/beatmapsets/{mapsetId:int}/audiopreview", HandleAudioPreview)
+			.WithGroupName("basilapi")
+			.WithName("getBeatmapsetAudioPreview")
+			.WithSummary("Get Beatmapset Audio Preview")
+			.WithDescription("Serves a 10-second mp3 clip (128kbps) cut from the mapset's preview beatmap's " +
+			                 "audio file, starting at its recorded PreviewTime — the same clip and cache entry as " +
+			                 "the `b.` host's `/preview/{mapsetId}.mp3`. 404 if the mapset doesn't exist, is private, " +
+			                 "or has no audio file on disk.")
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -493,6 +506,15 @@ internal static class BeatmapsetRoutes
 		if (audioPath is null || !File.Exists(audioPath)) return Results.NotFound();
 
 		return Results.File(audioPath, AudioContentType(audioPath));
+	}
+
+	private static async Task<IResult> HandleAudioPreview(int mapsetId, IMapRepository maps,
+		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache,
+		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
+	{
+		var clip = await BanchoHostGroups.GetOrGeneratePreviewClipAsync(mapsetId, maps, mapsets, storage, cache,
+			extractor, cancellationToken);
+		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
 	}
 
 	private static IResult HandleDownloadStoryboard(int mapsetId, IOptions<StorageOptions> storage)

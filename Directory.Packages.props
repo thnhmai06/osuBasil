@@ -7,6 +7,7 @@
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageVersion Include="Dapper" Version="2.1.79" />
     <PackageVersion Include="dbup-sqlite" Version="6.0.4" />
+    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
@@ -14,6 +15,9 @@
     <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.730.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.730.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.730.0" />
+    <!-- Already a transitive dependency of ppy.osu.Framework at this exact version — pinning it here
+         to reference directly for thumbnail resizing doesn't add a new package to the graph. -->
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.11" />
     <!-- Basil.Application -->
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />

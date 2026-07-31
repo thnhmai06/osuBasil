@@ -91,8 +91,11 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	[Theory]
 	[InlineData("b.test.local")]
 	[InlineData("b.ppy.sh")]
-	public async Task BeatmapAssetSubdomain_KnownMapset_RedirectsToApiBackground(string host)
+	public async Task BeatmapAssetSubdomain_KnownMapsetNoBackgroundFile_ReturnsNotFound(string host)
 	{
+		// /thumb no longer redirects to the api. host's background route — it resizes and serves the
+		// mapset's background directly (see HandleThumbnailAsync). A mapset with no BackgroundFile on
+		// record has nothing to resize, so this is a 404 rather than a redirect now.
 		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var mapsets = Substitute.For<IMapsetRepository>();
 		mapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Mapset?>(mapset));
@@ -104,8 +107,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 		request.Headers.Host = host;
 		var response = await client.SendAsync(request);
 
-		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
-		Assert.Equal("https://api.test.local/beatmapsets/1/background", response.Headers.Location!.ToString());
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
 	[Theory]

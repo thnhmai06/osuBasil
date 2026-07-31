@@ -73,7 +73,8 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
 					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
 					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
-					FaqsPath = Path.Combine(_dataDir, "Faqs")
+					FaqsPath = Path.Combine(_dataDir, "Faqs"),
+					CachePath = Path.Combine(_dataDir, "Cache")
 				}));
 			});
 		});

@@ -68,7 +68,10 @@ public class CommandDispatcherTests
 	private static StorageOptions MakeStorageOptions(string faqsPath = "")
 	{
 		return new StorageOptions
-			{ ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", SeasonalsPath = "", FaqsPath = faqsPath };
+		{
+			ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", SeasonalsPath = "", FaqsPath = faqsPath,
+			CachePath = ""
+		};
 	}
 
 	private CommandDispatcher MakeDispatcher(string prefix = "!", MultiplayerTestSupport.Fixture? fixture = null,

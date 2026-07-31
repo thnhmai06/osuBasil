@@ -25,7 +25,7 @@ public class MapsetGarbageCollectorServiceTests : IDisposable
 			AvatarsPath = "",
 			MapsetsPath = _mapsetsPath,
 			SeasonalsPath = "",
-			FaqsPath = ""
+			FaqsPath = "", CachePath = ""
 		});
 		_service = new MapsetGarbageCollectorService(options, NullLogger<MapsetGarbageCollectorService>.Instance);
 	}
