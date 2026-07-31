@@ -22,6 +22,13 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 		await File.WriteAllBytesAsync(path, content, cancellationToken);
 	}
 
+	public Task DeleteAsync(string endpoint, string relativePath, CancellationToken cancellationToken = default)
+	{
+		var path = PathFor(endpoint, relativePath);
+		if (File.Exists(path)) File.Delete(path);
+		return Task.CompletedTask;
+	}
+
 	private string PathFor(string endpoint, string relativePath)
 	{
 		return Path.Combine(options.Value.CachePath, endpoint, relativePath);

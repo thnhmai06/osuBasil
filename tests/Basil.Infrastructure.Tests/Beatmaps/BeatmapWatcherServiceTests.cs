@@ -3,6 +3,7 @@ using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
+using Basil.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -47,9 +48,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 			AvatarsPath = "",
 			MapsetsPath = _mapsetsPath,
 			SeasonalsPath = "",
-			FaqsPath = "", CachePath = ""
+			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
 		});
-		var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options, _ingestionLog);
+		var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options,
+			new FileSystemResponseCache(options), _ingestionLog);
 		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
 	}
 

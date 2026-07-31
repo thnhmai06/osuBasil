@@ -187,7 +187,7 @@ public static class BanchoHostGroups
 		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
 
-		var cacheKey = large ? $"{setId}l.jpg" : $"{setId}.jpg";
+		var cacheKey = ResponseCacheKeys.Thumb(setId, large);
 		var cached = await cache.GetAsync("thumb", cacheKey, cancellationToken);
 		if (cached is not null) return Results.File(cached, "image/jpeg");
 
@@ -224,7 +224,7 @@ public static class BanchoHostGroups
 		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return null;
 
-		var cacheKey = $"{setId}.mp3";
+		var cacheKey = ResponseCacheKeys.Preview(setId);
 		var cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
 		if (cached is not null) return cached;
 

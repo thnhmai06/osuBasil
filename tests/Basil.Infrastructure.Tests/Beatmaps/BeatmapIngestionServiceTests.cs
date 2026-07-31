@@ -1,7 +1,9 @@
 using System.IO.Compression;
+using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
+using Basil.Infrastructure.Storage;
 using Basil.Infrastructure.Tests.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -16,6 +18,7 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 [Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
+	private readonly IResponseCache _cache;
 	private readonly SqliteMapRepository _maps;
 	private readonly SqliteMapsetRepository _mapsets;
 	private readonly string _mapsetsPath;
@@ -27,15 +30,17 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		_mapsets = new SqliteMapsetRepository(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
-		_service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), Options.Create(
-			new StorageOptions
-			{
-				ReplaysPath = "",
-				AvatarsPath = "",
-				MapsetsPath = _mapsetsPath,
-				SeasonalsPath = "",
-				FaqsPath = "", CachePath = ""
-			}), NullLogger<BeatmapIngestionService>.Instance);
+		var options = Options.Create(new StorageOptions
+		{
+			ReplaysPath = "",
+			AvatarsPath = "",
+			MapsetsPath = _mapsetsPath,
+			SeasonalsPath = "",
+			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
+		});
+		_cache = new FileSystemResponseCache(options);
+		_service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), options, _cache,
+			NullLogger<BeatmapIngestionService>.Instance);
 	}
 
 	private static string FixtureSourcePath =>
@@ -144,6 +149,34 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
 		Assert.Null(await _mapsets.FetchByIdAsync(setId.Value));
 		Assert.Null(await _maps.FetchOneAsync(setId: setId.Value, includePrivate: true));
+	}
+
+	[Fact]
+	public async Task ReconcileDeletedFolderAsync_InvalidatesThumbAndPreviewCache()
+	{
+		var tempFolder = Path.Combine(_mapsetsPath, "unresolved2 FAIRY FORE - Vivid");
+		Directory.CreateDirectory(tempFolder);
+		File.Copy(FixtureSourcePath, Path.Combine(tempFolder, "vivid_osu_file.osu"));
+		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
+		Assert.NotNull(setId);
+
+		await _cache.PutAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, false), [1]);
+		await _cache.PutAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, true), [1]);
+		await _cache.PutAsync("preview", ResponseCacheKeys.Preview(setId.Value), [1]);
+
+		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
+			new StorageOptions
+				{ ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "", CachePath = "" },
+			mapset!);
+		Directory.Move(tempFolder, resolvedFolder);
+		Directory.Delete(resolvedFolder, true);
+
+		await _service.ReconcileDeletedFolderAsync(resolvedFolder);
+
+		Assert.Null(await _cache.GetAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, false)));
+		Assert.Null(await _cache.GetAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, true)));
+		Assert.Null(await _cache.GetAsync("preview", ResponseCacheKeys.Preview(setId.Value)));
 	}
 
 	[Fact]

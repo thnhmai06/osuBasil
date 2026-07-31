@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
@@ -32,6 +33,7 @@ public sealed partial class BeatmapIngestionService(
 	IMapsetRepository mapsets,
 	IOsuCalculator osuCalculator,
 	IOptions<StorageOptions> options,
+	IResponseCache cache,
 	ILogger<BeatmapIngestionService> logger)
 {
 	/// <summary>
@@ -178,7 +180,7 @@ public sealed partial class BeatmapIngestionService(
 
 		var known = await mapsets.FetchAllIdsAsync(cancellationToken);
 		foreach (var orphanId in known.Where(id => !seenSetIds.Contains(id)))
-			await mapsets.DeleteAsync(orphanId, cancellationToken);
+			await DeleteMapsetAsync(orphanId, cancellationToken);
 
 		return ingested;
 	}
@@ -346,12 +348,26 @@ public sealed partial class BeatmapIngestionService(
 		if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
 
 		if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
-		{
-			await mapsets.DeleteAsync(id, cancellationToken);
-			logger.LogInformation("- Mapset removed: {MapsetId}", id);
-		}
+			await DeleteMapsetAsync(id, cancellationToken);
 		// A manually-renamed-away-from-convention folder that's then deleted leaves an orphan row
 		// until the next ReconcileAllAsync pass reclaims it — acceptable for a human-admin server.
+	}
+
+	/// <summary>
+	///     Drops the mapset's DB row (Beatmaps cascade via FK) and its `b.` host resize/transcode cache
+	///     entries (thumb small/large, audio preview — see <see cref="ResponseCacheKeys" />), which
+	///     otherwise keep serving stale bytes for a mapset id that's since been reused or is simply
+	///     gone. The single call site both <see cref="ReconcileAllAsync" />'s orphan sweep and
+	///     <see cref="ReconcileDeletedFolderAsync" />'s watcher path go through, so cache invalidation
+	///     can't be forgotten at one but not the other.
+	/// </summary>
+	private async Task DeleteMapsetAsync(int id, CancellationToken cancellationToken)
+	{
+		await mapsets.DeleteAsync(id, cancellationToken);
+		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, false), cancellationToken);
+		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, true), cancellationToken);
+		await cache.DeleteAsync("preview", ResponseCacheKeys.Preview(id), cancellationToken);
+		logger.LogInformation("- Mapset removed: {MapsetId}", id);
 	}
 
 	/// <summary>
