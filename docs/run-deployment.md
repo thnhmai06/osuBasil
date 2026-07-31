@@ -81,6 +81,29 @@ operational history, not state) to the target, start it there.
 
 ---
 
+## Docker (alternative to the manual publish below)
+
+A `Dockerfile` + `docker-compose.yml` at the repo root build a self-contained `linux-x64` image with
+`ffmpeg` preinstalled (needed for `/preview/{id}.mp3` audio previews — see the beatmap-assets docs) —
+no .NET runtime or ffmpeg install needed on the host machine at all, only Docker itself.
+
+1. Edit `src/Basil.Web/appsettings.json` (`Domain`, `AdminKey`, `CertPath`, `CertPassword` under
+   `Basil:Server` — see Configuration surface above) — or override any of those via
+   `Basil__Server__...` environment variables in `docker-compose.yml` instead, without touching the
+   file. Everything else in this doc (TLS cert requirements, DNS/hosts entries, firewall, account
+   creation) is identical to the manual deployment path below — Docker only changes how the process
+   itself gets built and run.
+2. Place the TLS cert file wherever `docker-compose.yml`'s volume mount expects it (`./basil-cert.pfx`
+   by default, mounted read-only into the container).
+3. `docker compose up --build -d`. `basil.db`, `Logs/`, and the storage folders persist under
+   `./docker-data/` on the host (bind-mounted, not a named volume, so they're easy to find/back up).
+4. `docker compose logs -f` to follow output; `docker compose down` to stop.
+
+The manual publish path below (no Docker) still works exactly as documented — pick whichever fits;
+Docker just bundles the ffmpeg dependency so there's nothing extra to install by hand.
+
+---
+
 ## 1. Deployment — running a real server for others to connect to
 
 ### Steps

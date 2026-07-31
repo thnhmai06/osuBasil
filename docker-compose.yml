@@ -1,0 +1,25 @@
+services:
+  basil:
+    build: .
+    ports:
+      - "443:443"
+    volumes:
+      # basil.db, Replays/, Avatars/, Mapsets/, Seasonals/, Faqs/, Cache/ all live under Data/ next
+      # to the executable (see docs/run-deployment.md) — mounted so they survive a container recreate.
+      - ./docker-data/Data:/app/Data
+      - ./docker-data/Logs:/app/Logs
+      # Edit src/Basil.Web/appsettings.json (or override via Basil__Server__... env vars below)
+      # before first run — Domain/AdminKey/CertPath/CertPassword all need real values.
+      - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
+      # A TLS cert covering the domain + 9 subdomains is required — see run-deployment.md's
+      # "Get a TLS certificate" step. Point CertPath below at wherever this is mounted.
+      - ./basil-cert.pfx:/app/basil-cert.pfx:ro
+    environment:
+      # Uncomment and set instead of (or in addition to) editing appsettings.json — nested config
+      # keys use a double underscore (Basil:Server:CertPath -> Basil__Server__CertPath).
+      # - Basil__Server__Domain=basil.local
+      # - Basil__Server__CertPath=/app/basil-cert.pfx
+      # - Basil__Server__CertPassword=changeme
+      # - Basil__Server__AdminKey=changeme
+      ASPNETCORE_ENVIRONMENT: Production
+    restart: unless-stopped
