@@ -14,13 +14,13 @@ public class RequestStatusUpdateHandlerTests
 	public async Task Handle_EnqueuesOwnUserStatsPacket()
 	{
 		var session = new PlayerSession(42, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(1000, 900, 95.0, 10, 3);
+		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(1000, 900, 10, 3);
 		var reader = new BanchoPacketReader(Array.Empty<byte>());
 
 		await new RequestStatusUpdateHandler().HandleAsync(session, reader);
 
 		var expected = ServerPacketWriter.UserStats(
-			42, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 95.0, 10, 1000, 3, 0);
+			42, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 100.0, 10, 1000, 3, 0);
 		Assert.Equal(expected, session.Dequeue());
 	}
 }

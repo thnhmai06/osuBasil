@@ -198,4 +198,4 @@ public sealed class PlayerStatus
 }
 
 /// <summary>Ported from app/objects/player.py's ModeData — a player's cached stats in a single gamemode.</summary>
-public sealed record CachedPlayerStats(long Tscore, long Rscore, double Acc, int Plays, int Rank);
+public sealed record CachedPlayerStats(long TotalScore, long RankedScore, int Plays, int Rank);

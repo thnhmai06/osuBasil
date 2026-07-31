@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Authentication;
+using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -53,21 +55,25 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 /// <summary>
 ///     Ported from app/services/score_submission.py's ScoreSubmissionService.submit_score, collapsed
 ///     to Basil's no-pp scope (every `pp`-vs-`score` branch in the Python source always takes the
-///     score branch here), its 100%-offline scope (no `.osu` file fetch), and its fixed-stats scope
-///     (no per-user stats/rank update on submission — see docs/working-scopes.md). Every valid
-///     submission is persisted unconditionally, solo or in a room, matching bancho.py's own
-///     unconditional persistence — the only server-side rejections are an unknown beatmap and a
-///     duplicate checksum. If the submitting player is currently in a multiplayer match with an
-///     active round, the score is opportunistically linked to that round
+///     score branch here) and its 100%-offline scope (no `.osu` file fetch). Every valid submission
+///     is persisted unconditionally, solo or in a room, matching bancho.py's own unconditional
+///     persistence — the only server-side rejections are an unknown beatmap and a duplicate
+///     checksum. If the submitting player is currently in a multiplayer match with an active round,
+///     the score is opportunistically linked to that round
 ///     (<see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" />) with the
 ///     player's slot team, which is what lets the TRT and Scores read paths reconstruct a match's
 ///     results; a solo score (or one that arrives after its round already ended — see
 ///     <c>MatchCompleteHandler</c>'s doc comment) is simply persisted with a null RoundId/Team instead,
-///     exactly like the schema's own `Scores` table comment describes.
+///     exactly like the schema's own `Scores` table comment describes. Every persisted submission
+///     (pass or fail) also bumps <see cref="IStatsRepository.IncrementAsync" /> — TotalScore always,
+///     RankedScore only when linked to a round — and the submitting player's own in-memory
+///     <see cref="PlayerSession.ModeStats" /> cache, so their next `ChangeAction`-triggered UserStats
+///     packet reflects it without needing to re-login.
 /// </summary>
 public sealed class ScoreSubmissionService(
 	IMapRepository maps,
 	IScoreRepository scores,
+	IStatsRepository stats,
 	AuthenticationService authentication,
 	IReplayStorage replayStorage,
 	ILogger<ScoreSubmissionService> logger)
@@ -158,6 +164,16 @@ public sealed class ScoreSubmissionService(
 			}
 
 			var scoreId = await scores.CreateAsync(BuildInsertRow(score, roundId, team), cancellationToken);
+
+			var rankedScoreDelta = roundId is not null ? score.Score : 0L;
+			await stats.IncrementAsync(player.Id, score.Mode, score.Score, rankedScoreDelta, cancellationToken);
+
+			var prevStats = player.ModeStats.GetValueOrDefault(score.Mode);
+			player.ModeStats[score.Mode] = new CachedPlayerStats(
+				(prevStats?.TotalScore ?? 0) + score.Score,
+				(prevStats?.RankedScore ?? 0) + rankedScoreDelta,
+				(prevStats?.Plays ?? 0) + 1,
+				prevStats?.Rank ?? player.Id);
 
 			using (logger.BeginScope(new Dictionary<string, object> { ["ScoreId"] = scoreId }))
 			{

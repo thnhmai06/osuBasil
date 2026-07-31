@@ -20,19 +20,22 @@ create table Users
 );
 create index Users_Privilege_index on Users (Privilege);
 
--- Fixed gameplay stats: seeded once with default values, never UPDATEd on score submission
--- (server does not track singleplayer ranking/progression).
+-- Per-mode overall stats, bumped on every score submission (solo or multiplayer).
+-- TotalScore: every submitted score's raw score value, summed (pass or fail).
+-- RankedScore: same, but only scores linked to an active multiplayer round (Scores.RoundId not
+-- null) — see ScoreSubmissionService.IncrementAsync call site.
+-- Plays: submission count, solo or multiplayer, pass or fail.
+-- No Accuracy column: this server reports a fixed 100% (see PacketBuilders.BuildUserStats) rather
+-- than computing/storing a real weighted accuracy.
 create table UserStats
 (
-	Id     int              not null,
-	Mode   int              not null,
-	Tscore bigint default 0 not null,
-	Rscore bigint default 0 not null,
-	Plays  int    default 0 not null,
-	Acc    float(6, 3
-) default 0.000 not null,
-    primary key (Id, Mode),
-    constraint UserStats_Users_Id_fk foreign key (Id) references Users (Id)
+	Id          int              not null,
+	Mode        int              not null,
+	TotalScore  bigint default 0 not null,
+	RankedScore bigint default 0 not null,
+	Plays       int    default 0 not null,
+	primary key (Id, Mode),
+	constraint UserStats_Users_Id_fk foreign key (Id) references Users (Id)
 );
 
 -- One row per beatmap set. No osu!api staleness tracking (server runs fully offline; sets are

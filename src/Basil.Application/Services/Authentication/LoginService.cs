@@ -179,14 +179,14 @@ public sealed class LoginService(
 
 		// cache stats+rank for all 8 modes in memory (Player.stats_from_sql_full) — later packet
 		// handlers (REQUEST_STATUS_UPDATE, USER_STATS_REQUEST, CHANGE_ACTION broadcast) read this
-		// cache instead of re-querying the DB/Redis per packet. Rank is the player's own user id
-		// rather than a real leaderboard position (UserStats is static, never updated by score
-		// submission — no singleplayer ranking exists) — just a stable, distinguishable per-player
-		// number for the client's player-list/profile display.
-		foreach (var (_, mode, tscore, rscore, plays, acc) in
+		// cache instead of re-querying the DB per packet; ScoreSubmissionService updates it directly
+		// on submission so a fresh login isn't needed to see a just-bumped total. Rank is the
+		// player's own user id rather than a real leaderboard position — just a stable,
+		// distinguishable per-player number for the client's player-list/profile display.
+		foreach (var (_, mode, totalScore, rankedScore, plays) in
 		         await stats.FetchAllForUserAsync(user.Id, cancellationToken))
 		{
-			session.ModeStats[mode] = new CachedPlayerStats(tscore, rscore, acc, plays, user.Id);
+			session.ModeStats[mode] = new CachedPlayerStats(totalScore, rankedScore, plays, user.Id);
 		}
 
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);

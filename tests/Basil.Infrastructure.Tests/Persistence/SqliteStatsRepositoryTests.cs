@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
 
 namespace Basil.Infrastructure.Tests.Persistence;
@@ -28,5 +29,23 @@ public class SqliteStatsRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		var stats = await _repository.FetchAllForUserAsync(999_999);
 
 		Assert.Empty(stats);
+	}
+
+	/// <summary>
+	///     Uses BasilBot's own seeded Taiko row (untouched by the other tests in this class, which
+	///     share the same SqliteFixture database) so this doesn't perturb
+	///     FetchAllForUser_SeededBasilBot_ReturnsEightModes's row-count assertion.
+	/// </summary>
+	[Fact]
+	public async Task IncrementAsync_CalledTwice_AccumulatesDeltasAndPlays()
+	{
+		await _repository.IncrementAsync(0, GameMode.Taiko, 1000, 500);
+		await _repository.IncrementAsync(0, GameMode.Taiko, 2000, 0);
+
+		var stats = await _repository.FetchAllForUserAsync(0);
+		var row = stats.Single(s => s.Mode == GameMode.Taiko);
+		Assert.Equal(3000, row.TotalScore);
+		Assert.Equal(500, row.RankedScore);
+		Assert.Equal(2, row.Plays);
 	}
 }

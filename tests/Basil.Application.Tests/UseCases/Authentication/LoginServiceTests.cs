@@ -377,8 +377,8 @@ public class LoginServiceTests
 		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 		_stats.FetchAllForUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
 		[
-			new Stats(user.Id, GameMode.Standard, 100_000, 90_000, 50, 95.5),
-			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80, 90.0)
+			new Stats(user.Id, GameMode.Standard, 100_000, 90_000, 50),
+			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80)
 		]);
 
 		PlayerSession? captured = null;
@@ -392,7 +392,7 @@ public class LoginServiceTests
 		Assert.Equal("us", captured!.Geoloc.Country.ToAcronym());
 		Assert.Equal(2, captured.ModeStats.Count);
 		Assert.Equal(user.Id, captured.ModeStats[GameMode.Standard].Rank);
-		Assert.Equal(90_000, captured.ModeStats[GameMode.Standard].Rscore);
+		Assert.Equal(90_000, captured.ModeStats[GameMode.Standard].RankedScore);
 	}
 
 	[Fact]

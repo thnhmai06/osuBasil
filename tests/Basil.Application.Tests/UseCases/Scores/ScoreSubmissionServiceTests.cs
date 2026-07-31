@@ -21,12 +21,13 @@ public class ScoreSubmissionServiceTests
 	private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
 	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	private ScoreSubmissionService MakeUseCase()
 	{
 		return new ScoreSubmissionService(
-			_maps, _scores,
+			_maps, _scores, _stats,
 			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
 				NullLogger<AuthenticationService>.Instance),
 			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
@@ -154,6 +155,43 @@ public class ScoreSubmissionServiceTests
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		await _scores.Received(1)
 			.CreateAsync(Arg.Is<ScoreInsertRow>(row => row.RoundId == null), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task SubmitAsync_SoloSubmission_BumpsTotalScoreAndPlaysOnly()
+	{
+		var bmap = MakeBeatmap();
+		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		var player = MakePlayer(); // player.Match stays null — not in any room
+		StubPersistence();
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
+
+		await _stats.Received(1)
+			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 0, Arg.Any<CancellationToken>());
+		var updated = player.ModeStats[GameMode.Standard];
+		Assert.Equal(500_000, updated.TotalScore);
+		Assert.Equal(0, updated.RankedScore);
+		Assert.Equal(1, updated.Plays);
+	}
+
+	[Fact]
+	public async Task SubmitAsync_InRoundMultiplayerSubmission_BumpsBothTotalAndRankedScore()
+	{
+		var bmap = MakeBeatmap();
+		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		StubPersistence();
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
+
+		await _stats.Received(1)
+			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 500_000, Arg.Any<CancellationToken>());
+		var updated = player.ModeStats[GameMode.Standard];
+		Assert.Equal(500_000, updated.TotalScore);
+		Assert.Equal(500_000, updated.RankedScore);
+		Assert.Equal(1, updated.Plays);
 	}
 
 	[Fact]

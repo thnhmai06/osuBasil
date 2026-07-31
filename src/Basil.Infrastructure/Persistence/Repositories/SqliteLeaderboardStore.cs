@@ -13,12 +13,12 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 	{
 		await using var connection = Connect();
 		var ownScore = await connection.QuerySingleOrDefaultAsync<long?>(
-			"SELECT Rscore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
+			"SELECT RankedScore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
 			new { PlayerId = playerId, Mode = (int)mode });
 		if (ownScore is null) return null;
 
 		var higherCount = await connection.QuerySingleAsync<int>(
-			"SELECT COUNT(*) FROM UserStats WHERE Mode = @Mode AND Rscore > @OwnScore",
+			"SELECT COUNT(*) FROM UserStats WHERE Mode = @Mode AND RankedScore > @OwnScore",
 			new { Mode = (int)mode, OwnScore = ownScore });
 		return higherCount + 1;
 	}
@@ -28,7 +28,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 	{
 		await using var connection = Connect();
 		var ownScore = await connection.QuerySingleOrDefaultAsync<long?>(
-			"SELECT Rscore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
+			"SELECT RankedScore FROM UserStats WHERE Id = @UserId AND Mode = @Mode",
 			new { PlayerId = playerId, Mode = (int)mode });
 		if (ownScore is null) return null;
 
@@ -37,7 +37,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 			SELECT COUNT(*)
 			FROM UserStats us
 			JOIN Users u ON u.Id = us.Id
-			WHERE us.Mode = @Mode AND u.Country = @Country AND us.Rscore > @OwnScore
+			WHERE us.Mode = @Mode AND u.Country = @Country AND us.RankedScore > @OwnScore
 			""",
 			new { Mode = (int)mode, Country = country, OwnScore = ownScore });
 		return higherCount + 1;

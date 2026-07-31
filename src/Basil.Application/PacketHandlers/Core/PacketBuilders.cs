@@ -23,7 +23,7 @@ public static class PacketBuilders
 		return ServerPacketWriter.UserStats(
 			session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
 			(int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
-			session.CurrentStats?.Rscore ?? 0, session.CurrentStats?.Acc ?? 0.0, session.CurrentStats?.Plays ?? 0,
-			session.CurrentStats?.Tscore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
+			session.CurrentStats?.RankedScore ?? 0, 100.0, session.CurrentStats?.Plays ?? 0,
+			session.CurrentStats?.TotalScore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
 	}
 }

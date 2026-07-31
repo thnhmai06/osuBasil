@@ -15,8 +15,8 @@ public class PlayerSessionStatsTests
 	public void CurrentStats_IndexesByCurrentStatusMode()
 	{
 		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(100, 90, 95.5, 10, 5);
-		session.ModeStats[GameMode.Taiko] = new CachedPlayerStats(200, 180, 90.0, 20, 12);
+		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(100, 90, 10, 5);
+		session.ModeStats[GameMode.Taiko] = new CachedPlayerStats(200, 180, 20, 12);
 
 		Assert.Equal(5, session.CurrentStats!.Rank);
 
