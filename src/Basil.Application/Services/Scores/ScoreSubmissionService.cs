@@ -172,7 +172,7 @@ public sealed class ScoreSubmissionService(
 			{
 				if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
 				logger.LogInformation(
-					"Score submitted: UserId={UserId} BeatmapMd5={BeatmapMd5} MatchId={MatchId} Score={Score}",
+					"+ Score submitted: UserId={UserId} BeatmapMd5={BeatmapMd5} MatchId={MatchId} Score={Score}",
 					player.Id, beatmap.Md5, match?.DbId, score.Score);
 			}
 

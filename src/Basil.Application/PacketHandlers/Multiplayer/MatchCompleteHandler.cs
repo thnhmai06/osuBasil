@@ -64,7 +64,7 @@ public sealed class MatchCompleteHandler(
 				match.CurrentRoundId = null;
 			}
 
-			logger.LogInformation("Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
+			logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
 			await matchMembership.EnqueueStateAsync(match);
 		}

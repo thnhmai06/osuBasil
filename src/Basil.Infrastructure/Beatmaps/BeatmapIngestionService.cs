@@ -268,12 +268,22 @@ public sealed partial class BeatmapIngestionService(
 
 			await maps.UpsertAsync(beatmap, cancellationToken);
 			ingested++;
+
+			if (existingByPath is null)
+				logger.LogInformation("+ Beatmap ingested: {Filename} (Mapset {MapsetId})", file.OriginalFilename,
+					mapset.Id);
+			else if (!cacheHit)
+				logger.LogInformation("~ Beatmap updated: {Filename} (Mapset {MapsetId})", file.OriginalFilename,
+					mapset.Id);
 		}
 
 		var onDisk = decoded.Select(f => f.OriginalFilename).ToHashSet(StringComparer.OrdinalIgnoreCase);
 		var known = await maps.FetchAllBySetIdAsync(mapset.Id, true, cancellationToken);
 		foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
+		{
 			await maps.DeleteByMd5Async(gone.Md5, cancellationToken);
+			logger.LogInformation("- Beatmap removed: {Filename} (Mapset {MapsetId})", gone.Filename, mapset.Id);
+		}
 
 		// decoded.Count > 0 (checked above) guarantees at least one beatmap survives this pass, so
 		// there's always a lowest-id one to derive the set's preview from.
@@ -295,7 +305,10 @@ public sealed partial class BeatmapIngestionService(
 		if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
 
 		if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
+		{
 			await mapsets.DeleteAsync(id, cancellationToken);
+			logger.LogInformation("- Mapset removed: {MapsetId}", id);
+		}
 		// A manually-renamed-away-from-convention folder that's then deleted leaves an orphan row
 		// until the next ReconcileAllAsync pass reclaims it — acceptable for a human-admin server.
 	}
@@ -345,6 +358,10 @@ public sealed partial class BeatmapIngestionService(
 			info.Metadata.Author.Username,
 			now,
 			existing?.CreatedAt ?? now);
+
+		if (existing is null)
+			logger.LogInformation("+ Mapset created: {MapsetId} {Artist} - {Title}", mapset.Id, mapset.Artist,
+				mapset.Title);
 
 		return await mapsets.UpsertAsync(mapset, cancellationToken);
 	}

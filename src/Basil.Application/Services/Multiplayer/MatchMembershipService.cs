@@ -86,7 +86,7 @@ public sealed class MatchMembershipService(
 
 		match.DbId = await matchPersistence.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
-		logger.LogInformation("Match created: MatchId={MatchId} HostId={HostId} Name={Name}",
+		logger.LogInformation("+ Match created: MatchId={MatchId} HostId={HostId} Name={Name}",
 			match.DbId, host.Id, match.Name);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -129,7 +129,7 @@ public sealed class MatchMembershipService(
 
 		match.DbId = await matchPersistence.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
-		logger.LogInformation("Match created: MatchId={MatchId} HostId=0 Name={Name} (via HTTP)",
+		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=0 Name={Name} (via HTTP)",
 			match.DbId, match.Name);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -230,7 +230,7 @@ public sealed class MatchMembershipService(
 		player.Enqueue(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)));
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
-		logger.LogInformation("Player joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
+		logger.LogInformation("+ Player joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
 			match.DbId, player.Id, slotId);
 
 		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
@@ -261,7 +261,7 @@ public sealed class MatchMembershipService(
 
 		if (match.Slots.All(s => s.Empty) && !match.CreatedViaMakeCommand)
 		{
-			logger.LogInformation("Match auto-torn-down (empty): MatchId={MatchId}", match.DbId);
+			logger.LogInformation("- Match auto-torn-down (empty): MatchId={MatchId}", match.DbId);
 			TeardownMatch(match, channel);
 		}
 		else
@@ -284,7 +284,7 @@ public sealed class MatchMembershipService(
 
 		player.Match = null;
 
-		logger.LogInformation("Player left match: MatchId={MatchId} UserId={UserId}", match.DbId, player.Id);
+		logger.LogInformation("- Player left match: MatchId={MatchId} UserId={UserId}", match.DbId, player.Id);
 
 		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.PlayerLeft,
@@ -326,7 +326,7 @@ public sealed class MatchMembershipService(
 		}
 
 		TeardownMatch(match, channel);
-		logger.LogInformation("Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
+		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchPersistence.CreateEventAsync(new MatchEventRow(
 			match.DbId, (int)MatchEventType.Closed,
@@ -403,7 +403,7 @@ public sealed class MatchMembershipService(
 
 		Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
-		logger.LogInformation("Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
+		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
 	}
 

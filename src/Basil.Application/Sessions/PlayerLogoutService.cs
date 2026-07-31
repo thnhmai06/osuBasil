@@ -21,7 +21,7 @@ public sealed class PlayerLogoutService(
 {
 	public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
 	{
-		logger.LogInformation("User logged out: UserId={UserId} Username={Username}", player.Id, player.Name);
+		logger.LogInformation("- User logged out: UserId={UserId} Username={Username}", player.Id, player.Name);
 
 		if (player.Match is { } match)
 		{

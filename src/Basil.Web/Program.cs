@@ -16,6 +16,8 @@ using Basil.Web.OpenApi;
 using Basil.Web.Routing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Serilog;
@@ -139,7 +141,7 @@ public sealed class Program
 	{
 		var logsPath = Path.Combine(AppContext.BaseDirectory, "Logs");
 		const string template =
-			"[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{RequestId}] {SourceContext}: {Message:lj} {Properties}{NewLine}{Exception}";
+			"[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{Category}] {RequestId} {SourceContext}: {Message:lj} {Properties}{NewLine}{Exception}";
 
 		var minimumLevel = Enum.TryParse<LogEventLevel>(
 			builder.Configuration["Basil:Logging:MinimumLevel"], true, out var configuredLevel)
@@ -151,6 +153,15 @@ public sealed class Program
 			.Enrich.With<CategoryEnricher>()
 			.MinimumLevel.Is(minimumLevel)
 			.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+			// Anything the CategoryEnricher couldn't place in a curated scope (Mapsets/Matches/Scores/
+			// Online/IRC/Host/Database/Cache) is generic framework/library chatter, not a domain event
+			// worth Information-level noise — only Warning+ from it shows by default. Curated
+			// categories, and anything at Warning+ regardless of category, are never touched here.
+			.Filter.ByExcluding(e =>
+				e.Level < LogEventLevel.Warning &&
+				e.Properties.TryGetValue("Category", out var category) &&
+				category is ScalarValue { Value: string categoryName } &&
+				categoryName == CategoryEnricher.FallbackCategory)
 			.WriteTo.Console(outputTemplate: template)
 			.WriteTo.File(
 				Path.Combine(logsPath, "full", "basil-.log"),
@@ -196,13 +207,27 @@ public sealed class Program
 			options.ConfigureEndpointDefaults(listenOptions =>
 				listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
 
-			options.ListenAnyIP(port, listenOptions =>
+			try
 			{
-				if (!string.IsNullOrEmpty(certPath))
-					listenOptions.UseHttps(certPath, certPassword);
-				else
-					listenOptions.UseHttps();
-			});
+				options.ListenAnyIP(port, listenOptions =>
+				{
+					if (!string.IsNullOrEmpty(certPath))
+						listenOptions.UseHttps(certPath, certPassword);
+					else
+						listenOptions.UseHttps();
+				});
+			}
+			catch (Exception ex)
+			{
+				// UseHttps(path, password) loads the certificate synchronously — a bad path/password
+				// throws right here, previously with no clear log line before the generic host's own
+				// crash handling took over. Fatal + explicit exit instead of letting that propagate
+				// unclearly (never logs the password).
+				options.ApplicationServices.GetService<ILoggerFactory>()
+					?.CreateLogger("Basil.Web.Program")
+					.LogCritical(ex, "Failed to load TLS certificate from {CertPath} — server cannot start.", certPath);
+				Environment.Exit(1);
+			}
 		});
 	}
 

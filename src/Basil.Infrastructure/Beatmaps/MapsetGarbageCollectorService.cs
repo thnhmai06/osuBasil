@@ -51,6 +51,7 @@ public sealed class MapsetGarbageCollectorService(
 			try
 			{
 				Directory.Delete(folder, true);
+				logger.LogInformation("- Mapset folder physically removed: {Path}", folder);
 			}
 			catch (Exception e)
 			{

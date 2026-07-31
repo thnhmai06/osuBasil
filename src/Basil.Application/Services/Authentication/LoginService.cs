@@ -248,7 +248,7 @@ public sealed class LoginService(
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
 
-		logger.LogInformation("User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
+		logger.LogInformation("+ User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
 			session.Id, session.Name, request.Ip, geolocation.Country);
 		return new LoginResult(session.Token, Concat([.. data]));
 	}
