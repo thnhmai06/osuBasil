@@ -186,11 +186,11 @@ public class ScoreSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task PassedRankedScore_AlwaysBestWithRankEqualToPlayerId_Persists()
+	public async Task PassedRankedScore_AlwaysBestWithTopRank_Persists()
 	{
 		var bmap = MakeBeatmap();
 		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
-		var player = MakePlayer(id: 7);
+		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence(999L);
@@ -200,7 +200,7 @@ public class ScoreSubmissionServiceTests
 
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		Assert.Equal(999L, result.Result!.ScoreId);
-		Assert.Equal(7, result.Result.Rank);
+		Assert.Equal(1, result.Result.Rank);
 
 		await _scores.Received(1).CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
 	}

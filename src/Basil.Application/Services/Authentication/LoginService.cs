@@ -34,7 +34,6 @@ public sealed class LoginService(
 	IPlayerSessionRegistry sessionRegistry,
 	IRelationshipRepository relationships,
 	IPasswordHasher passwordHasher,
-	ILeaderboardStore leaderboardStore,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
 	MenuIconService menuIconService,
@@ -180,13 +179,14 @@ public sealed class LoginService(
 
 		// cache stats+rank for all 8 modes in memory (Player.stats_from_sql_full) — later packet
 		// handlers (REQUEST_STATUS_UPDATE, USER_STATS_REQUEST, CHANGE_ACTION broadcast) read this
-		// cache instead of re-querying the DB/Redis per packet.
+		// cache instead of re-querying the DB/Redis per packet. Rank is the player's own user id
+		// rather than a real leaderboard position (UserStats is static, never updated by score
+		// submission — no singleplayer ranking exists) — just a stable, distinguishable per-player
+		// number for the client's player-list/profile display.
 		foreach (var (_, mode, tscore, rscore, plays, acc) in
 		         await stats.FetchAllForUserAsync(user.Id, cancellationToken))
 		{
-			var modeRank = await leaderboardStore.FetchGlobalRankAsync(user.Id, mode, cancellationToken) ?? 0;
-			session.ModeStats[mode] = new CachedPlayerStats(
-				tscore, rscore, acc, plays, modeRank);
+			session.ModeStats[mode] = new CachedPlayerStats(tscore, rscore, acc, plays, user.Id);
 		}
 
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);

@@ -146,7 +146,7 @@ public sealed class ScoreSubmissionService(
 				return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.DuplicateSubmission);
 			}
 
-			var (updatedScore, rank) = CalculateSubmissionStatus(score, player.Id, request.ScoreTime, request.FailTime);
+			var (updatedScore, rank) = CalculateSubmissionStatus(score, request.ScoreTime, request.FailTime);
 			score = updatedScore;
 
 			var replayData = score.IsPassed ? request.ReplayData : null;
@@ -179,16 +179,16 @@ public sealed class ScoreSubmissionService(
 
 	/// <summary>
 	///     Every passed score is unconditionally the player's best (no comparison against prior
-	///     scores) — a deliberate product decision so the osu! client always believes it achieved a
-	///     top score and uploads its replay. The reported rank is the player's own user id rather than
-	///     a literal "1" so different players' result screens show distinguishable numbers (BasilBot,
-	///     id 0, would render an empty rank via <c>ScoreSubmissionChartsFormatter</c>'s falsy-zero
-	///     formatting, but it never submits scores itself).
+	///     scores) and always reported at rank 1 — a deliberate product decision so the osu! client
+	///     always believes it achieved a top score and uploads its replay. This is the per-beatmap
+	///     chart rank shown on the results screen — unrelated to the player's overall/global rank
+	///     (<see cref="Basil.Application.Sessions.CachedPlayerStats.Rank" />), which is the player's own
+	///     user id instead (see <c>LoginService</c>).
 	/// </summary>
 	private static (ScoreSubmission Score, int? Rank) CalculateSubmissionStatus(
-		ScoreSubmission score, int playerId, int scoreTime, int failTime)
+		ScoreSubmission score, int scoreTime, int failTime)
 	{
-		var rank = score.IsPassed ? playerId : (int?)null;
+		var rank = score.IsPassed ? 1 : (int?)null;
 
 		return (score with { TimeElapsed = TimeSpan.FromMilliseconds(score.IsPassed ? scoreTime : failTime) }, rank);
 	}

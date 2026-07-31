@@ -31,7 +31,6 @@ public class LoginServiceTests
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
 	private readonly IIngameLoginRepository _ingameLogins = Substitute.For<IIngameLoginRepository>();
-	private readonly ILeaderboardStore _leaderboardStore = Substitute.For<ILeaderboardStore>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
@@ -51,7 +50,7 @@ public class LoginServiceTests
 	{
 		return new LoginService(
 			_users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _leaderboardStore,
+			_relationships, _passwordHasher,
 			_tokenGenerator, _spectatorService, new MenuIconService(),
 			Options.Create(new ServerOptions
 			{
@@ -381,7 +380,6 @@ public class LoginServiceTests
 			new Stats(user.Id, GameMode.Standard, 100_000, 90_000, 50, 95.5),
 			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80, 90.0)
 		]);
-		_leaderboardStore.FetchGlobalRankAsync(user.Id, GameMode.Standard, Arg.Any<CancellationToken>()).Returns(7);
 
 		PlayerSession? captured = null;
 		_sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
@@ -393,7 +391,7 @@ public class LoginServiceTests
 		Assert.NotNull(captured);
 		Assert.Equal("us", captured!.Geoloc.Country.ToAcronym());
 		Assert.Equal(2, captured.ModeStats.Count);
-		Assert.Equal(7, captured.ModeStats[GameMode.Standard].Rank);
+		Assert.Equal(user.Id, captured.ModeStats[GameMode.Standard].Rank);
 		Assert.Equal(90_000, captured.ModeStats[GameMode.Standard].Rscore);
 	}
 
@@ -518,8 +516,6 @@ public class LoginServiceTests
 		_sessionRegistry.All.Returns([]);
 		_stats.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
 		_relationships.FetchAllAsync(userId, null, Arg.Any<CancellationToken>()).Returns([]);
-		_leaderboardStore.FetchGlobalRankAsync(userId, Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
-			.Returns((int?)null);
 		_tokenGenerator.GenerateToken().Returns("generated-token");
 	}
 
