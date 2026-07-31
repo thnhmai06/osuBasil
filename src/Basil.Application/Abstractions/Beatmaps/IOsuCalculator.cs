@@ -13,9 +13,9 @@ namespace Basil.Application.Abstractions.Beatmaps;
 public interface IOsuCalculator
 {
 	/// <summary>
-	///     Star rating, per-mode hit-object counts, and the processed-beatmap fields (total length,
-	///     max combo, BPM) for the beatmap at <paramref name="beatmapFilePath" /> under the given
-	///     ruleset (<paramref name="mode" />) and mods.
+	///     Every mod-affected difficulty stat (star rating, BPM, length, CS/AR/OD/HP), plus per-mode
+	///     hit-object counts and max combo, for the beatmap at <paramref name="beatmapFilePath" /> under
+	///     the given ruleset (<paramref name="mode" />) and mods.
 	/// </summary>
 	BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods);
 
@@ -28,16 +28,15 @@ public interface IOsuCalculator
 }
 
 /// <summary>
-///     Star rating, per-mode hit-object counts (e.g. <c>{"circle":120,"slider":45,"spinner":2}</c> for
-///     osu!std), and the processed-beatmap fields a raw <c>.osu</c> decode never populates —
-///     <see cref="TotalLength" />/<see cref="MaxCombo" />/<see cref="Bpm" /> only exist after the
-///     ruleset has walked the converted, timing-point-resolved hit objects (see
-///     <c>PpyOsuCalculator.Analyze</c>'s doc comment for why the raw decoder's own
-///     <c>BeatmapInfo.Length</c>/<c>MaxCombo</c>/<c>BPM</c> stay at their unset defaults).
+///     <see cref="Difficulty" /> already carries every mod/mode-affected stat (star rating, BPM,
+///     length, CS/AR/OD/HP) computed for the exact mode/mods passed to <see cref="IOsuCalculator.Analyze" />
+///     — see <c>PpyOsuCalculator.Analyze</c>'s doc comment for how each field is derived (and why the
+///     raw decoder's own <c>BeatmapInfo.Length</c>/<c>MaxCombo</c>/<c>BPM</c>/difficulty settings are
+///     never read directly). <see cref="ObjectCounts" /> (e.g.
+///     <c>{"circle":120,"slider":45,"spinner":2}</c> for osu!std) and <see cref="MaxCombo" /> aren't
+///     part of <see cref="Difficulty" /> so stay as their own fields here.
 /// </summary>
 public sealed record BeatmapAnalysis(
-	double StarRating,
+	Difficulty Difficulty,
 	IReadOnlyDictionary<string, int> ObjectCounts,
-	TimeSpan TotalLength,
-	int MaxCombo,
-	double Bpm);
+	int MaxCombo);

@@ -110,8 +110,8 @@ internal static class ScoreRoutes
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
 			DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
 			RankedStatus.Loved, 1);
-		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme", TimeSpan.FromSeconds(225), 1234,
-			new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42),
+		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme", 1234,
+			new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42),
 			new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false, beatmapset);
 
 		return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,

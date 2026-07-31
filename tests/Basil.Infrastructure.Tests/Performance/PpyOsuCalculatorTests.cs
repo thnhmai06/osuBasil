@@ -16,18 +16,24 @@ public class PpyOsuCalculatorTests
 	private static string FixturePath =>
 		Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu");
 
+	/// <summary>
+	///     Expected values are the engine's raw (unrounded) output — <see cref="PpyOsuCalculator.Analyze" />
+	///     rounds <c>Sr</c> to 2 decimals before returning it, so the assertion rounds the recorded
+	///     reference the same way rather than hardcoding a second, hand-rounded literal.
+	/// </summary>
 	[Theory]
 	[InlineData(Mods.NoMod, 4.8750450142072701)]
 	[InlineData(Mods.HardRock, 5.9296060838721534)]
 	[InlineData(Mods.DoubleTime, 7.0477415498633968)]
 	[InlineData(Mods.Hidden | Mods.DoubleTime, 7.2215498802893343)]
-	public void Analyze_StarRating_MatchesRecordedReference(Mods mods, double expectedStars)
+	public void Analyze_StarRating_MatchesRecordedReference(Mods mods, double expectedRawStars)
 	{
 		var calculator = new PpyOsuCalculator();
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, mods);
 
-		Assert.Equal(expectedStars, analysis.StarRating, 10);
+		var expectedRounded = Math.Round(expectedRawStars, 2, MidpointRounding.AwayFromZero);
+		Assert.Equal(expectedRounded, analysis.Difficulty.Sr, 10);
 	}
 
 	[Fact]
@@ -67,9 +73,9 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
-		Assert.Equal(TimeSpan.FromMilliseconds(13742), analysis.TotalLength);
+		Assert.Equal(TimeSpan.FromMilliseconds(13742), analysis.Difficulty.TotalLength);
 		Assert.Equal(114, analysis.MaxCombo);
-		Assert.Equal(168.0, analysis.Bpm, 5);
+		Assert.Equal(168.0, analysis.Difficulty.Bpm, 5);
 	}
 
 	[Fact]

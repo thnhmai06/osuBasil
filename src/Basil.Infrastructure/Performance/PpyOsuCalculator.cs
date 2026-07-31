@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Scores;
+using DomainBeatmaps = Basil.Domain.Beatmaps;
 using osu.Framework.Audio.Track;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
@@ -45,6 +46,10 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 
 			var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
 
+			// GetPlayableBeatmap(ruleset, legacyMods) already applies HR/EZ's CS/AR/OD/HP multiplier
+			// itself — confirmed by direct inspection: playable.Difficulty reflects HR's 1.3x/1.4x and
+			// EZ's 0.5x, matching the documented osu! formulas exactly. Read CS/AR/OD/HP straight off
+			// it instead of the raw decode's unmodified BeatmapInfo.Difficulty.
 			var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
 			var objectCounts = new Dictionary<string, int>();
 			foreach (var statistic in playable.GetStatistics())
@@ -58,13 +63,30 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			// computed-on-demand helpers, not back on BeatmapInfo itself. Confirmed by direct
 			// inspection: BeatmapInfo.Length/MaxCombo/BPM are 0/null/0 both before AND after
 			// GetPlayableBeatmap; CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength are the
-			// only source of real values.
-			var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength());
+			// only source of real values — and, separately confirmed, neither of those two nor
+			// playable.Difficulty.ApproachRate/OverallDifficulty reflect DT/HT/NC's rate change at all
+			// (identical to NoMod both with and without GetPlayableBeatmap involved), so rate scaling
+			// for Bpm/TotalLength/AR/OD is applied by hand below via DifficultyModCalculator.
 			var maxCombo = playable.GetMaxCombo();
 			var mostCommonBeatLength = playable.GetMostCommonBeatLength();
-			var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength : 0;
+			var rate = DomainBeatmaps.DifficultyModCalculator.RateMultiplier(strippedMods);
+			var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength * rate : 0;
+			var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength() / rate);
 
-			return new BeatmapAnalysis(attributes.StarRating, objectCounts, totalLength, maxCombo, bpm);
+			var ar = playable.Difficulty.ApproachRate;
+			var od = playable.Difficulty.OverallDifficulty;
+			if (mode == GameMode.Standard)
+			{
+				ar = (float)DomainBeatmaps.DifficultyModCalculator.AdjustApproachRateForRate(ar, rate);
+				od = (float)DomainBeatmaps.DifficultyModCalculator.AdjustOverallDifficultyForRate(od, rate);
+			}
+
+			var difficulty = new DomainBeatmaps.Difficulty(
+				mode, Round(bpm, 1), totalLength,
+				Round(playable.Difficulty.CircleSize, 1), Round(ar, 1), Round(od, 1),
+				Round(playable.Difficulty.DrainRate, 1), Round(attributes.StarRating, 2));
+
+			return new BeatmapAnalysis(difficulty, objectCounts, maxCombo);
 		}
 		catch (Exception e)
 		{
@@ -77,6 +99,15 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	{
 		using var stream = new MemoryStream(beatmapBytes);
 		return stream.ComputeMD5Hash();
+	}
+
+	// Raw computed values can carry long floating-point tails (e.g. 5.00000001, or 7.7999997 from
+	// HR's 6 * 1.3) — round once here, at the single place every Difficulty gets built. Sr gets an
+	// extra decimal of precision (2 vs 1) since star rating differences below 0.1 are still
+	// meaningful for map selection.
+	private static double Round(double value, int digits)
+	{
+		return Math.Round(value, digits, MidpointRounding.AwayFromZero);
 	}
 
 	private static Ruleset CreateRuleset(GameMode mode)

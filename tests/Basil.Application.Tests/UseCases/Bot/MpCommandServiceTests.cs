@@ -399,8 +399,8 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 		var mapset = new Mapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
-		var bmap = new Beatmap(new string('a', 32), 500, mapset, "Version", "file.osu", TimeSpan.FromSeconds(120),
-			500, new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
+		var bmap = new Beatmap(new string('a', 32), 500, mapset, "Version", "file.osu",
+			500, new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
 		_maps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
 		var reply = await Run(MakeService(),host, match, "map", ["500"]);

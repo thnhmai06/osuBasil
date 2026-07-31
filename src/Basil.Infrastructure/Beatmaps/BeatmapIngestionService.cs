@@ -261,8 +261,7 @@ public sealed partial class BeatmapIngestionService(
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
 			var analysis = cacheHit
-				? new BeatmapAnalysis(existingByPath!.Difficulty.Sr, existingByPath.ObjectCounts,
-					existingByPath.TotalLength, existingByPath.MaxCombo, existingByPath.Difficulty.Bpm)
+				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts, existingByPath.MaxCombo)
 				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
 			var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
 			var audioFile = cacheHit ? existingByPath!.AudioFile : info.Metadata.AudioFile;
@@ -274,12 +273,8 @@ public sealed partial class BeatmapIngestionService(
 				mapset,
 				info.DifficultyName,
 				file.OriginalFilename,
-				analysis.TotalLength,
 				analysis.MaxCombo,
-				new Difficulty(
-					mode, Round1(analysis.Bpm), Round1(info.Difficulty.CircleSize),
-					Round1(info.Difficulty.ApproachRate), Round1(info.Difficulty.OverallDifficulty),
-					Round1(info.Difficulty.DrainRate), Round2(analysis.StarRating)),
+				analysis.Difficulty,
 				analysis.ObjectCounts,
 				backgroundFile,
 				audioFile,
@@ -398,22 +393,9 @@ public sealed partial class BeatmapIngestionService(
 			// hitobjects) still gets ingested — it just keeps Sr at 0/no object counts instead of
 			// aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
-			return new BeatmapAnalysis(0, new Dictionary<string, int>(), TimeSpan.Zero, 0, 0);
+			var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
+			return new BeatmapAnalysis(emptyDifficulty, new Dictionary<string, int>(), 0);
 		}
-	}
-
-	// Raw decoded/computed values (Bpm, Cs, Ar, Od, Hp, Sr) can carry long floating-point tails
-	// (e.g. 5.00000001) — round once here, at the single place every Difficulty gets built, rather
-	// than at every display/API call site. Sr gets an extra decimal of precision (2 vs 1) since star
-	// rating differences below 0.1 are still meaningful for map selection.
-	private static double Round1(double value)
-	{
-		return Math.Round(value, 1, MidpointRounding.AwayFromZero);
-	}
-
-	private static double Round2(double value)
-	{
-		return Math.Round(value, 2, MidpointRounding.AwayFromZero);
 	}
 
 	private static LazerBeatmap? TryDecode(byte[] osuBytes)

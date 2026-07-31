@@ -105,8 +105,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
 	{
 		return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
-			TimeSpan.FromSeconds(100), 500,
-			new Difficulty(GameMode.Standard, 180, 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
+			500,
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
 	}
 
 	private string MapsetFolder(int setId)

@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configuration;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
@@ -153,6 +154,29 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
+		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/difficulty", HandleBeatmapDifficulty)
+			.WithGroupName("basilapi")
+			.WithName("getBeatmapDifficulty")
+			.WithSummary("Get Beatmap Difficulty (with mods)")
+			.WithDescription("Recomputes star rating, BPM, length, and CS/AR/OD/HP for the given `mods` " +
+			                 "bitflag query param (default `0`, no mods) and `mode` query param (default: the " +
+			                 "beatmap's own mode; `0`=osu!, `1`=taiko, `2`=catch, `3`=mania). HR/EZ's CS/AR/OD/HP " +
+			                 "multiplier and DT/HT/NC's BPM/length rate scaling apply in every mode; DT/HT/NC's " +
+			                 "AR/OD time-window shift is osu!std-only (AR/OD pass through unadjusted in " +
+			                 "taiko/catch/mania, since each ruleset defines its own hit-window formula, not " +
+			                 "implemented here). Invalid mod combinations (e.g. `EZ+HR`) are silently resolved the " +
+			                 "same way multiplayer room mods are — the response's `mods` field echoes what was " +
+			                 "actually applied. 400 if `mode` is out of range or the beatmap can't be analyzed " +
+			                 "under the requested ruleset. 404 if the beatmap doesn't exist, doesn't belong to " +
+			                 "this mapset, its file is missing on disk, or the parent mapset is private and the " +
+			                 "caller isn't admin. Public, with a soft admin elevation.")
+			.WithTags("Beatmaps")
+			.Produces<BeatmapDifficultyResult>()
+			.WithExample(StatusCodes.Status200OK,
+				new BeatmapDifficultyResult(Mods.NoMod, SampleBeatmap().ToDetail(SampleSummary())))
+			.ProducesProblem(StatusCodes.Status400BadRequest)
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmap")
@@ -261,9 +285,9 @@ internal static class BeatmapsetRoutes
 	{
 		var created = DateTime.Parse("2026-06-01T10:00:00Z");
 		var mapset = new Mapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
-		var difficulty = new Difficulty(GameMode.Standard, 174, 4, 9, 8, 6, 6.42);
+		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
 		return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
-			"camellia - exit this earth's atmosphere (rlc) [extreme].osu", TimeSpan.FromSeconds(225), 1234,
+			"camellia - exit this earth's atmosphere (rlc) [extreme].osu", 1234,
 			difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 });
 	}
 
@@ -421,6 +445,43 @@ internal static class BeatmapsetRoutes
 		return Results.Json(bmap.ToDetail(beatmapset));
 	}
 
+	private static async Task<IResult> HandleBeatmapDifficulty(int mapsetId, int beatmapId,
+		[FromQuery] int? mode, [FromQuery] uint? mods, HttpContext context, IMapRepository maps,
+		IOsuCalculator calculator, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+	{
+		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
+		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+			cancellationToken: cancellationToken);
+		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
+
+		if (mode is < 0 or > 3)
+			return Results.BadRequest(new ErrorResponse(
+				$"Unknown mode '{mode}'. Valid values: 0 (osu!), 1 (taiko), 2 (catch), 3 (mania)."));
+		var resolvedMode = mode is { } m ? (GameMode)m : bmap.Difficulty.Mode;
+		var resolvedMods = ((Mods)(mods ?? 0)).FilterInvalidCombos((int)resolvedMode);
+
+		var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
+		if (!File.Exists(osuPath)) return Results.NotFound();
+
+		BeatmapAnalysis analysis;
+		try
+		{
+			analysis = calculator.Analyze(osuPath, resolvedMode, resolvedMods);
+		}
+		catch (InvalidOperationException)
+		{
+			return Results.BadRequest(new ErrorResponse(
+				$"Beatmap can't be analyzed as mode {resolvedMode} — likely an unsupported ruleset conversion."));
+		}
+
+		var siblings = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var beatmapset = bmap.Mapset.ToSummary(siblings.Count);
+		var detail = new BeatmapDetail(bmap.Md5, bmap.Id, bmap.Version, analysis.MaxCombo, analysis.Difficulty,
+			analysis.ObjectCounts, bmap.IsLocallyIngested, beatmapset);
+
+		return Results.Json(new BeatmapDifficultyResult(resolvedMods, detail));
+	}
+
 	private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,
 		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
@@ -541,4 +602,11 @@ internal static class BeatmapsetRoutes
 
 	/// <summary>Body for the async, filesystem-first `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
 	public sealed record MapsetOperationAccepted(int MapsetId, string Operation);
+
+	/// <summary>
+	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty` — <see cref="Mods" /> echoes the
+	///     actually-applied mod combination (after <see cref="ModsExtensions.FilterInvalidCombos" /> resolves any
+	///     conflicting pair like `EZ+HR`), since it can differ from the raw `mods` query param the caller sent.
+	/// </summary>
+	public sealed record BeatmapDifficultyResult(Mods Mods, BeatmapDetail Beatmap);
 }

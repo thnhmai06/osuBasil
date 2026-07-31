@@ -26,7 +26,6 @@ public sealed record Beatmap(
 
 	#region Stats
 
-	TimeSpan TotalLength,
 	int MaxCombo,
 	Difficulty Difficulty,
 	IReadOnlyDictionary<string, int> ObjectCounts,
@@ -73,7 +72,7 @@ public sealed record Beatmap(
 
 		return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
 		       Version == other.Version && Filename == other.Filename &&
-		       TotalLength == other.TotalLength && MaxCombo == other.MaxCombo &&
+		       MaxCombo == other.MaxCombo &&
 		       Difficulty == other.Difficulty &&
 		       BackgroundFile == other.BackgroundFile &&
 		       AudioFile == other.AudioFile && PreviewTime == other.PreviewTime &&
@@ -89,7 +88,6 @@ public sealed record Beatmap(
 		hash.Add(Mapset);
 		hash.Add(Version);
 		hash.Add(Filename);
-		hash.Add(TotalLength);
 		hash.Add(MaxCombo);
 		hash.Add(Difficulty);
 		hash.Add(BackgroundFile);

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Basil.Domain.Json;
 using Basil.Domain.Login;
 
 namespace Basil.Application.Json;

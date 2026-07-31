@@ -56,8 +56,8 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 		await _mapsetRepository.UpsertAsync(mapset);
 
 		var beatmap = new Beatmap(new string('z', 32), 9003001, mapset, "Hyper", "z.osu",
-			TimeSpan.FromSeconds(120), 500,
-			new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
+			500,
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
 		await _mapRepository.UpsertAsync(beatmap);
 
 		await _mapsetRepository.DeleteAsync(mapset.Id);
@@ -110,11 +110,11 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 		await _mapsetRepository.UpsertAsync(visible);
 		await _mapsetRepository.UpsertAsync(privateOnly);
 		await _mapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
-			TimeSpan.FromSeconds(120), 500,
-			new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>()));
+			500,
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>()));
 		await _mapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
-			TimeSpan.FromSeconds(120), 500,
-			new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>()));
+			500,
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>()));
 
 		var visibleOnly = await _mapsetRepository.FetchPageAsync(0, 100, true);
 		var everything = await _mapsetRepository.FetchPageAsync(0, 100, false);

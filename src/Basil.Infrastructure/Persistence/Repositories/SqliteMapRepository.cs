@@ -97,7 +97,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 				MapsetId = resolved.Mapset.Id,
 				resolved.Version,
 				resolved.Filename,
-				TotalLength = (int)resolved.TotalLength.TotalSeconds,
+				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
 				resolved.MaxCombo,
 				Mode = (int)resolved.Difficulty.Mode,
 				resolved.Difficulty.Bpm,
@@ -237,8 +237,8 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 			                   ?? new Dictionary<string, int>();
 			return new Beatmap(
 				Md5, Id, mapset, Version, Filename,
-				TimeSpan.FromSeconds(TotalLength), MaxCombo,
-				new Difficulty((GameMode)Mode, Bpm, Cs, Ar, Od, Hp, Sr),
+				MaxCombo,
+				new Difficulty((GameMode)Mode, Bpm, TimeSpan.FromSeconds(TotalLength), Cs, Ar, Od, Hp, Sr),
 				objectCounts, BackgroundFile, AudioFile, PreviewTime);
 		}
 	}

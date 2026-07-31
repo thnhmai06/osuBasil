@@ -27,8 +27,8 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 	private static Beatmap MakeBeatmap(int id, string md5, bool isPrivate = false)
 	{
 		return new Beatmap(md5, id, MakeMapset(1000 + id, isPrivate: isPrivate), "Hyper",
-			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu", TimeSpan.FromSeconds(120), 500,
-			new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
+			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu", 500,
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
 	}
 
 	private async Task<Beatmap> UpsertBeatmapAsync(Beatmap beatmap)
@@ -182,10 +182,10 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var setId = 5050;
 		var mapset = MakeMapset(setId, isPrivate: true);
 		var first = new Beatmap(new string('n', 32), 250, mapset, "Normal", "n.osu",
-			TimeSpan.FromSeconds(60), 500, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 3.0),
+			500, new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
 			new Dictionary<string, int>());
 		var second = new Beatmap(new string('o', 32), 251, mapset, "Hidden", "o.osu",
-			TimeSpan.FromSeconds(60), 500, new Difficulty(GameMode.Standard, 180.0, 4.0, 9.0, 8.0, 5.0, 3.0),
+			500, new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
 			new Dictionary<string, int>());
 		await UpsertBeatmapAsync(first);
 		await UpsertBeatmapAsync(second);
@@ -201,8 +201,8 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		GameMode mode = GameMode.Standard, bool isPrivate = false)
 	{
 		return new Beatmap(md5, id, MakeMapset(setId, artist, "Title", isPrivate: isPrivate),
-			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu", TimeSpan.FromSeconds(120), 500,
-			new Difficulty(mode, 180.0, 4.0, 9.0, 8.0, 5.0, diff), new Dictionary<string, int>());
+			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu", 500,
+			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff), new Dictionary<string, int>());
 	}
 
 	[Fact]

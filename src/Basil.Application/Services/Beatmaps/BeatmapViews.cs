@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-using Basil.Application.Json;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Beatmaps;
@@ -8,16 +6,13 @@ namespace Basil.Application.Services.Beatmaps;
 ///     Shared shape for every beatmap embed/response — never carries <see cref="Beatmap.Filename" />
 ///     (internal, `[JsonIgnore]`d on the domain record) or a parent beatmapset reference (that's
 ///     <see cref="BeatmapInSet" /> vs. <see cref="BeatmapDetail" />'s split, to avoid the
-///     beatmap-in-set-in-beatmap cycle). <see cref="TotalLength" /> stays <see cref="TimeSpan" /> on
-///     the C# type (matching the domain record) but wires out as whole seconds via
-///     <see cref="TimeSpanSecondsJsonConverter" />.
+///     beatmap-in-set-in-beatmap cycle). <see cref="Difficulty.TotalLength" /> carries its own
+///     whole-seconds wire converter directly on the domain record — see its own doc comment.
 /// </summary>
 public abstract record BeatmapView(
 	string Md5,
 	int Id,
 	string Version,
-	[property: JsonConverter(typeof(TimeSpanSecondsJsonConverter))]
-	TimeSpan TotalLength,
 	int MaxCombo,
 	Difficulty Difficulty,
 	IReadOnlyDictionary<string, int> ObjectCounts,
@@ -31,12 +26,11 @@ public sealed record BeatmapInSet(
 	string Md5,
 	int Id,
 	string Version,
-	TimeSpan TotalLength,
 	int MaxCombo,
 	Difficulty Difficulty,
 	IReadOnlyDictionary<string, int> ObjectCounts,
 	bool IsLocallyIngested)
-	: BeatmapView(Md5, Id, Version, TotalLength, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     Used everywhere else a beatmap is embedded (score, match round, live snapshot, GET
@@ -46,13 +40,12 @@ public sealed record BeatmapDetail(
 	string Md5,
 	int Id,
 	string Version,
-	TimeSpan TotalLength,
 	int MaxCombo,
 	Difficulty Difficulty,
 	IReadOnlyDictionary<string, int> ObjectCounts,
 	bool IsLocallyIngested,
 	BeatmapsetSummary Beatmapset)
-	: BeatmapView(Md5, Id, Version, TotalLength, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     API-facing name for a beatmapset (the domain/internal type stays <see cref="Mapset" /> — not
@@ -108,13 +101,13 @@ public static class BeatmapViewMapper
 
 	public static BeatmapInSet ToInSet(this Beatmap beatmap)
 	{
-		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.TotalLength, beatmap.MaxCombo,
+		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.MaxCombo,
 			beatmap.Difficulty, beatmap.ObjectCounts, beatmap.IsLocallyIngested);
 	}
 
 	public static BeatmapDetail ToDetail(this Beatmap beatmap, BeatmapsetSummary beatmapset)
 	{
-		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.TotalLength, beatmap.MaxCombo,
+		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.MaxCombo,
 			beatmap.Difficulty, beatmap.ObjectCounts, beatmap.IsLocallyIngested, beatmapset);
 	}
 }
