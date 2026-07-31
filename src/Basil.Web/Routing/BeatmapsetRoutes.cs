@@ -286,9 +286,10 @@ internal static class BeatmapsetRoutes
 		var created = DateTime.Parse("2026-06-01T10:00:00Z");
 		var mapset = new Mapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
+		var objectCounts = new OsuObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
 		return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
-			"camellia - exit this earth's atmosphere (rlc) [extreme].osu", 1234,
-			difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 });
+			"camellia - exit this earth's atmosphere (rlc) [extreme].osu",
+			difficulty, objectCounts);
 	}
 
 	private static async Task<IResult> HandleList([FromQuery] int? page, [FromQuery] int? pageSize,
@@ -476,7 +477,7 @@ internal static class BeatmapsetRoutes
 
 		var siblings = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Mapset.ToSummary(siblings.Count);
-		var detail = new BeatmapDetail(bmap.Md5, bmap.Id, bmap.Version, analysis.MaxCombo, analysis.Difficulty,
+		var detail = new BeatmapDetail(bmap.Md5, bmap.Id, bmap.Version, analysis.Difficulty,
 			analysis.ObjectCounts, bmap.IsLocallyIngested, beatmapset);
 
 		return Results.Json(new BeatmapDifficultyResult(resolvedMods, detail));

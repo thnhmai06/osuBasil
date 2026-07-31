@@ -169,4 +169,30 @@ internal static class SchemaTypeTransformers
 			$"Multiple {noun} are combined using bitwise OR.\n\n" +
 			$"Example:\n{a.Name} (1 << {a.Shift}) + {b.Name} (1 << {b.Shift}) = {a.Value + b.Value}.";
 	}
+
+	/// <summary>
+	///     The generator represents a `[JsonPolymorphic]`/`[JsonDerivedType]` base type (e.g.
+	///     <see cref="Basil.Domain.Beatmaps.ObjectCounts" />) as `anyOf` + `discriminator` — technically
+	///     not wrong (every listed branch is still a valid match), but a discriminated value is always
+	///     exactly one branch, never several at once, so `oneOf` is the semantically correct keyword and
+	///     the one Scalar renders as a clean type-switcher. Runs as a *document* transformer for the same
+	///     ordering reason <see cref="AddEnumValuesSchemaTransformer" /> does — matched generically by
+	///     "has a discriminator" rather than by type, so any future polymorphic base gets this for free.
+	/// </summary>
+	public static void AddPolymorphicOneOfSchemaTransformer(this OpenApiOptions options)
+	{
+		options.AddDocumentTransformer((document, _, _) =>
+		{
+			if (document.Components?.Schemas is not { } schemas) return Task.CompletedTask;
+
+			foreach (var schema in schemas.Values)
+				if (schema is OpenApiSchema { Discriminator: not null, AnyOf.Count: > 0 } s)
+				{
+					s.OneOf = s.AnyOf;
+					s.AnyOf = null;
+				}
+
+			return Task.CompletedTask;
+		});
+	}
 }

@@ -475,9 +475,9 @@ internal static class MatchRoutes
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
 			created, false, false, RankedStatus.Loved, 1);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
-		return new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme", 1234,
-			difficulty, new Dictionary<string, int> { ["circle"] = 620, ["slider"] = 210, ["spinner"] = 2 }, false,
-			beatmapset);
+		var objectCounts = new OsuObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
+		return new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
+			difficulty, objectCounts, false, beatmapset);
 	}
 }
 

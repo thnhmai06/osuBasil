@@ -12,7 +12,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 	: IMapRepository
 {
 	private const string SharedColumns = """
-	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength, b.MaxCombo,
+	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
 	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
 	                                     b.PreviewTime, b.ObjectCounts,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
@@ -83,10 +83,10 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		await connection.ExecuteAsync(
 			"""
 			REPLACE INTO Beatmaps (
-			    Md5, Id, MapsetId, Version, Filename, TotalLength, MaxCombo,
+			    Md5, Id, MapsetId, Version, Filename, TotalLength,
 			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
 			) VALUES (
-			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength, @MaxCombo,
+			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength,
 			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
 			)
 			""",
@@ -98,7 +98,6 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 				resolved.Version,
 				resolved.Filename,
 				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
-				resolved.MaxCombo,
 				Mode = (int)resolved.Difficulty.Mode,
 				resolved.Difficulty.Bpm,
 				resolved.Difficulty.Cs,
@@ -218,7 +217,6 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		public string Version { get; set; } = "";
 		public string Filename { get; set; } = "";
 		public int TotalLength { get; set; }
-		public int MaxCombo { get; set; }
 		public int Mode { get; set; }
 		public double Bpm { get; set; }
 		public double Cs { get; set; }
@@ -233,11 +231,11 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 
 		public Beatmap ToBeatmap(Mapset mapset)
 		{
-			var objectCounts = JsonSerializer.Deserialize<Dictionary<string, int>>(ObjectCounts)
-			                   ?? new Dictionary<string, int>();
+			var objectCounts = JsonSerializer.Deserialize<ObjectCounts>(ObjectCounts)
+			                   ?? throw new InvalidOperationException(
+				                   $"Beatmap {Id}'s ObjectCounts column is not a valid ObjectCounts payload.");
 			return new Beatmap(
 				Md5, Id, mapset, Version, Filename,
-				MaxCombo,
 				new Difficulty((GameMode)Mode, Bpm, TimeSpan.FromSeconds(TotalLength), Cs, Ar, Od, Hp, Sr),
 				objectCounts, BackgroundFile, AudioFile, PreviewTime);
 		}

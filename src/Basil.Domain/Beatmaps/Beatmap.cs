@@ -26,9 +26,8 @@ public sealed record Beatmap(
 
 	#region Stats
 
-	int MaxCombo,
 	Difficulty Difficulty,
-	IReadOnlyDictionary<string, int> ObjectCounts,
+	ObjectCounts ObjectCounts,
 
 	#endregion
 
@@ -57,48 +56,4 @@ public sealed record Beatmap(
 
 	/// <summary>Ported from Beatmap.full_name.</summary>
 	public string FullName => $"{Mapset.Artist} - {Mapset.Title} [{Version}]";
-
-	/// <summary>
-	///     Hand-written to replace the compiler-generated record equality: <see cref="ObjectCounts" />
-	///     is a plain <see cref="IReadOnlyDictionary{TKey,TValue}" />, which has no structural
-	///     <c>Equals</c>/<c>GetHashCode</c> of its own (two dictionaries with identical entries but
-	///     different instances would otherwise compare unequal, exactly the case after a DB
-	///     round-trip deserializes a fresh dictionary).
-	/// </summary>
-	public bool Equals(Beatmap? other)
-	{
-		if (other is null) return false;
-		if (ReferenceEquals(this, other)) return true;
-
-		return Md5 == other.Md5 && Id == other.Id && Mapset == other.Mapset &&
-		       Version == other.Version && Filename == other.Filename &&
-		       MaxCombo == other.MaxCombo &&
-		       Difficulty == other.Difficulty &&
-		       BackgroundFile == other.BackgroundFile &&
-		       AudioFile == other.AudioFile && PreviewTime == other.PreviewTime &&
-		       ObjectCounts.Count == other.ObjectCounts.Count &&
-		       ObjectCounts.OrderBy(kv => kv.Key).SequenceEqual(other.ObjectCounts.OrderBy(kv => kv.Key));
-	}
-
-	public override int GetHashCode()
-	{
-		var hash = new HashCode();
-		hash.Add(Md5);
-		hash.Add(Id);
-		hash.Add(Mapset);
-		hash.Add(Version);
-		hash.Add(Filename);
-		hash.Add(MaxCombo);
-		hash.Add(Difficulty);
-		hash.Add(BackgroundFile);
-		hash.Add(AudioFile);
-		hash.Add(PreviewTime);
-		foreach (var kv in ObjectCounts.OrderBy(kv => kv.Key))
-		{
-			hash.Add(kv.Key);
-			hash.Add(kv.Value);
-		}
-
-		return hash.ToHashCode();
-	}
 }

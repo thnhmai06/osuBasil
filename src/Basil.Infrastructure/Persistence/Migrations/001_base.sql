@@ -68,9 +68,9 @@ create table Mapsets
 -- any api. host response, only used to resolve GET /beatmapsets/{mapsetId}/{beatmapId}/background
 -- and .../audio's file paths. PreviewTime: the .osu metadata's preview start offset (ms), used by
 -- the b.ppy.sh audio-preview route to pick where the 10s clip starts.
--- ObjectCounts: a JSON object of per-mode hit-object name -> count (e.g. {"circle":120,"slider":45,
--- "spinner":2} for osu!std; Taiko/Catch/Mania have different named objects), from
--- IBeatmap.GetStatistics() — mode-agnostic on purpose, not a fixed set of columns.
+-- ObjectCounts: a JSON object of the polymorphic Basil.Domain.Beatmaps.ObjectCounts hierarchy — one
+-- concrete subtype per mode (OsuObjectCounts/TaikoObjectCounts/CatchObjectCounts/ManiaObjectCounts),
+-- carrying MaxCombo too (no standalone MaxCombo column — single source of truth).
 create table Beatmaps
 (
 	Id          int          not null primary key,
@@ -79,7 +79,6 @@ create table Beatmaps
 	Version     varchar(128) not null,
 	Filename    varchar(256) not null,
 	TotalLength int          not null,
-	MaxCombo    int          not null,
 	Mode        int          not null,
 	Bpm         float(12, 2
 ) default 0.00  not null,
@@ -91,7 +90,7 @@ create table Beatmaps
     BackgroundFile text                       null,
     AudioFile      text                       null,
     PreviewTime    int                        null,
-    ObjectCounts   text         default '{}'  not null,
+    ObjectCounts   text         default '{"mode":0,"Total":0,"MaxCombo":0,"Circles":0,"Sliders":0,"Spinners":0}' not null,
     constraint Beatmaps_Md5_uindex unique (Md5),
     constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
 );

@@ -353,6 +353,7 @@ public sealed class Program
 				options.AddAdminKeyDocumentTransformer();
 				options.AddCustomConverterSchemaTransformer();
 				options.AddEnumValuesSchemaTransformer();
+				options.AddPolymorphicOneOfSchemaTransformer();
 				options.AddEnvelopeSchemaTransformer();
 			}
 		});

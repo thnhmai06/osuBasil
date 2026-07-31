@@ -11,7 +11,8 @@ internal sealed class FakeOsuCalculator : IOsuCalculator
 	public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
 	{
 		var difficulty = new Difficulty(mode, 180, TimeSpan.FromSeconds(90), 4, 9, 8, 5, 1.23);
-		return new BeatmapAnalysis(difficulty, new Dictionary<string, int> { ["circle"] = 1 }, 150);
+		var objectCounts = new OsuObjectCounts { Total = 1, MaxCombo = 150, Circles = 1 };
+		return new BeatmapAnalysis(difficulty, objectCounts);
 	}
 
 	public string ComputeBeatmapMd5(byte[] beatmapBytes)

@@ -11,6 +11,7 @@ using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Mania;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Skinning;
@@ -51,10 +52,6 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			// EZ's 0.5x, matching the documented osu! formulas exactly. Read CS/AR/OD/HP straight off
 			// it instead of the raw decode's unmodified BeatmapInfo.Difficulty.
 			var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
-			var objectCounts = new Dictionary<string, int>();
-			foreach (var statistic in playable.GetStatistics())
-				if (int.TryParse(statistic.Content, out var count))
-					objectCounts[statistic.Name.ToString()] = count;
 
 			// The raw decoder (Decoder.GetDecoder<Beatmap>().Decode(...), used above) never populates
 			// BeatmapInfo.Length/MaxCombo/BPM — those fields only exist once the beatmap has been
@@ -86,7 +83,9 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				Round(playable.Difficulty.CircleSize, 1), Round(ar, 1), Round(od, 1),
 				Round(playable.Difficulty.DrainRate, 1), Round(attributes.StarRating, 2));
 
-			return new BeatmapAnalysis(difficulty, objectCounts, maxCombo);
+			var objectCounts = BuildObjectCounts(mode, playable.HitObjects, maxCombo);
+
+			return new BeatmapAnalysis(difficulty, objectCounts);
 		}
 		catch (Exception e)
 		{
@@ -108,6 +107,104 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	private static double Round(double value, int digits)
 	{
 		return Math.Round(value, digits, MidpointRounding.AwayFromZero);
+	}
+
+	/// <summary>
+	///     Counts hit objects by concrete type into the per-mode <see cref="DomainBeatmaps.ObjectCounts" />
+	///     subtype. Standard/Taiko/Mania count <paramref name="hitObjects" /> at the top level only —
+	///     confirmed by direct inspection that <c>playable.HitObjects</c> already excludes nested slider
+	///     parts for osu!std, and Taiko/Mania have no equivalent container objects. Catch is the
+	///     exception: <c>JuiceStream</c>/<c>BananaShower</c> are containers whose Droplet/TinyDroplet/
+	///     Banana children only exist in <see cref="HitObject.NestedHitObjects" />, so counting must
+	///     recurse (confirmed empirically — top-level counting only yields Fruit/JuiceStream/
+	///     BananaShower, never the droplet/banana breakdown the API needs). <see cref="Basil.Domain.Beatmaps.CatchObjectCounts.TinyDroplets" />
+	///     is checked before <see cref="Basil.Domain.Beatmaps.CatchObjectCounts.Droplets" /> since
+	///     <c>TinyDroplet</c> derives from <c>Droplet</c>.
+	/// </summary>
+	private static DomainBeatmaps.ObjectCounts BuildObjectCounts(GameMode mode, IReadOnlyList<HitObject> hitObjects,
+		int maxCombo)
+	{
+		switch (mode)
+		{
+			case GameMode.Standard:
+			{
+				int circles = 0, sliders = 0, spinners = 0;
+				foreach (var h in hitObjects)
+					switch (h)
+					{
+						case osu.Game.Rulesets.Osu.Objects.HitCircle: circles++; break;
+						case osu.Game.Rulesets.Osu.Objects.Slider: sliders++; break;
+						case osu.Game.Rulesets.Osu.Objects.Spinner: spinners++; break;
+					}
+
+				return new DomainBeatmaps.OsuObjectCounts
+				{
+					Total = circles + sliders + spinners, MaxCombo = maxCombo,
+					Circles = circles, Sliders = sliders, Spinners = spinners
+				};
+			}
+			case GameMode.Taiko:
+			{
+				int hits = 0, drumRolls = 0, dendens = 0;
+				foreach (var h in hitObjects)
+					switch (h)
+					{
+						case osu.Game.Rulesets.Taiko.Objects.DrumRoll: drumRolls++; break;
+						case osu.Game.Rulesets.Taiko.Objects.Swell: dendens++; break;
+						case osu.Game.Rulesets.Taiko.Objects.Hit: hits++; break;
+					}
+
+				return new DomainBeatmaps.TaikoObjectCounts
+				{
+					Total = hits + drumRolls + dendens, MaxCombo = maxCombo,
+					Hits = hits, DrumRolls = drumRolls, Dendens = dendens
+				};
+			}
+			case GameMode.Catch:
+			{
+				int fruits = 0, droplets = 0, tinyDroplets = 0, bananas = 0;
+				foreach (var h in hitObjects)
+					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
+
+				return new DomainBeatmaps.CatchObjectCounts
+				{
+					Total = fruits + droplets + tinyDroplets + bananas, MaxCombo = maxCombo,
+					Fruits = fruits, Droplets = droplets, TinyDroplets = tinyDroplets, Bananas = bananas
+				};
+			}
+			case GameMode.Mania:
+			{
+				int notes = 0, holdNotes = 0;
+				foreach (var h in hitObjects)
+					switch (h)
+					{
+						case osu.Game.Rulesets.Mania.Objects.HoldNote: holdNotes++; break;
+						case osu.Game.Rulesets.Mania.Objects.Note: notes++; break;
+					}
+
+				return new DomainBeatmaps.ManiaObjectCounts
+				{
+					Total = notes + holdNotes, MaxCombo = maxCombo, Notes = notes, HoldNotes = holdNotes
+				};
+			}
+			default:
+				throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.");
+		}
+	}
+
+	private static void CountCatchRecursive(HitObject h, ref int fruits, ref int droplets, ref int tinyDroplets,
+		ref int bananas)
+	{
+		switch (h)
+		{
+			case osu.Game.Rulesets.Catch.Objects.TinyDroplet: tinyDroplets++; break;
+			case osu.Game.Rulesets.Catch.Objects.Droplet: droplets++; break;
+			case osu.Game.Rulesets.Catch.Objects.Banana: bananas++; break;
+			case osu.Game.Rulesets.Catch.Objects.Fruit: fruits++; break;
+		}
+
+		foreach (var nested in h.NestedHitObjects)
+			CountCatchRecursive(nested, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 	}
 
 	private static Ruleset CreateRuleset(GameMode mode)

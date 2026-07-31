@@ -37,8 +37,8 @@ public class ScoreSubmissionServiceTests
 		var mapset = new Mapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
 			new string('a', 32), 42, mapset, "c",
-			"f.osu", 500, new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
-			new Dictionary<string, int>());
+			"f.osu", new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
+			new OsuObjectCounts { MaxCombo = 500 });
 	}
 
 	private PlayerSession MakePlayer(int id = 7, string name = "cookiezi")

@@ -30,8 +30,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		DateTime.UnixEpoch);
 
 	private static readonly Beatmap Beatmap = new(
-		KnownMd5, 1, Mapset, "Normal", "map.osu", 0,
-		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new Dictionary<string, int>());
+		KnownMd5, 1, Mapset, "Normal", "map.osu",
+		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjectCounts());
 
 	private readonly WebApplicationFactory<Program> _factory;
 

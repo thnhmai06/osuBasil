@@ -55,8 +55,9 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
-		Assert.NotEmpty(analysis.ObjectCounts);
-		Assert.True(analysis.ObjectCounts.Values.Sum() > 0);
+		var osuCounts = Assert.IsType<OsuObjectCounts>(analysis.ObjectCounts);
+		Assert.True(osuCounts.Total > 0);
+		Assert.Equal(osuCounts.Circles + osuCounts.Sliders + osuCounts.Spinners, osuCounts.Total);
 	}
 
 	/// <summary>
@@ -74,8 +75,64 @@ public class PpyOsuCalculatorTests
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
 		Assert.Equal(TimeSpan.FromMilliseconds(13742), analysis.Difficulty.TotalLength);
-		Assert.Equal(114, analysis.MaxCombo);
+		Assert.Equal(114, analysis.ObjectCounts.MaxCombo);
 		Assert.Equal(168.0, analysis.Difficulty.Bpm, 5);
+	}
+
+	/// <summary>
+	///     osu!std's own object-count fixture converts cleanly to the other 3 rulesets (osu!'s auto
+	///     convert), so this is the only fixture available to cover Taiko/Catch/Mania counting — unlike
+	///     Standard, these numbers aren't independently cross-checked against a second source, just
+	///     locked against what this converter's own output was at the time the test was written.
+	/// </summary>
+	[Fact]
+	public void Analyze_TaikoConvertedFixture_CountsTopLevelHitTypes()
+	{
+		var calculator = new PpyOsuCalculator();
+
+		var analysis = calculator.Analyze(FixturePath, GameMode.Taiko, Mods.NoMod);
+
+		var taikoCounts = Assert.IsType<TaikoObjectCounts>(analysis.ObjectCounts);
+		Assert.Equal(114, taikoCounts.Hits);
+		Assert.Equal(0, taikoCounts.DrumRolls);
+		Assert.Equal(0, taikoCounts.Dendens);
+		Assert.Equal(114, taikoCounts.Total);
+		Assert.Equal(114, taikoCounts.MaxCombo);
+	}
+
+	/// <summary>
+	///     Catch is the one mode where top-level hit objects alone don't give the right breakdown —
+	///     JuiceStream/BananaShower are containers whose Droplet/TinyDroplet/Banana children only exist
+	///     nested, so <c>PpyOsuCalculator</c> recurses <c>NestedHitObjects</c> for this mode specifically.
+	///     These numbers are the regression lock for that recursion actually running.
+	/// </summary>
+	[Fact]
+	public void Analyze_CatchConvertedFixture_CountsRecurseIntoNestedDroplets()
+	{
+		var calculator = new PpyOsuCalculator();
+
+		var analysis = calculator.Analyze(FixturePath, GameMode.Catch, Mods.NoMod);
+
+		var catchCounts = Assert.IsType<CatchObjectCounts>(analysis.ObjectCounts);
+		Assert.Equal(112, catchCounts.Fruits);
+		Assert.Equal(2, catchCounts.Droplets);
+		Assert.Equal(6, catchCounts.TinyDroplets);
+		Assert.Equal(0, catchCounts.Bananas);
+		Assert.Equal(120, catchCounts.Total);
+	}
+
+	[Fact]
+	public void Analyze_ManiaConvertedFixture_CountsTopLevelNoteTypes()
+	{
+		var calculator = new PpyOsuCalculator();
+
+		var analysis = calculator.Analyze(FixturePath, GameMode.Mania, Mods.NoMod);
+
+		var maniaCounts = Assert.IsType<ManiaObjectCounts>(analysis.ObjectCounts);
+		Assert.Equal(139, maniaCounts.Notes);
+		Assert.Equal(7, maniaCounts.HoldNotes);
+		Assert.Equal(146, maniaCounts.Total);
+		Assert.Equal(153, maniaCounts.MaxCombo);
 	}
 
 	[Fact]

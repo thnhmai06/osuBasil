@@ -261,7 +261,7 @@ public sealed partial class BeatmapIngestionService(
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
 			var analysis = cacheHit
-				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts, existingByPath.MaxCombo)
+				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts)
 				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
 			var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
 			var audioFile = cacheHit ? existingByPath!.AudioFile : info.Metadata.AudioFile;
@@ -273,7 +273,6 @@ public sealed partial class BeatmapIngestionService(
 				mapset,
 				info.DifficultyName,
 				file.OriginalFilename,
-				analysis.MaxCombo,
 				analysis.Difficulty,
 				analysis.ObjectCounts,
 				backgroundFile,
@@ -394,7 +393,15 @@ public sealed partial class BeatmapIngestionService(
 			// aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
 			var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
-			return new BeatmapAnalysis(emptyDifficulty, new Dictionary<string, int>(), 0);
+			ObjectCounts emptyObjectCounts = mode switch
+			{
+				GameMode.Standard => new OsuObjectCounts(),
+				GameMode.Taiko => new TaikoObjectCounts(),
+				GameMode.Catch => new CatchObjectCounts(),
+				GameMode.Mania => new ManiaObjectCounts(),
+				_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
+			};
+			return new BeatmapAnalysis(emptyDifficulty, emptyObjectCounts);
 		}
 	}
 

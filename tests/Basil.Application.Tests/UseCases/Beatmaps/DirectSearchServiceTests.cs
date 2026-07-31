@@ -68,8 +68,9 @@ public class DirectSearchServiceTests
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc),
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc));
 		return new Beatmap(
-			new string('0', 32), id, mapset, version, "file.osu", 500,
-			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff), new Dictionary<string, int>());
+			new string('0', 32), id, mapset, version, "file.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff),
+			new OsuObjectCounts { MaxCombo = 500 });
 	}
 
 	[Fact]

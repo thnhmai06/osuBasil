@@ -64,8 +64,9 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	{
 		var mapset = new Mapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
-			new string('0', 32), id, mapset, "Version", "file.osu", 500,
-			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5), new Dictionary<string, int>());
+			new string('0', 32), id, mapset, "Version", "file.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
+			new OsuObjectCounts { MaxCombo = 500 });
 	}
 
 	private static HttpRequestMessage MakeRequest(string path, string queryString)

@@ -27,8 +27,9 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 	private static Beatmap MakeBeatmap(int id, string md5, bool isPrivate = false)
 	{
 		return new Beatmap(md5, id, MakeMapset(1000 + id, isPrivate: isPrivate), "Hyper",
-			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu", 500,
-			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5), new Dictionary<string, int>());
+			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu",
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
+			new OsuObjectCounts { MaxCombo = 500 });
 	}
 
 	private async Task<Beatmap> UpsertBeatmapAsync(Beatmap beatmap)
@@ -55,7 +56,7 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var bmap = MakeBeatmap(103, "cccccccccccccccccccccccccccccccc") with
 		{
 			BackgroundFile = "bg.jpg",
-			ObjectCounts = new Dictionary<string, int> { ["circle"] = 120, ["slider"] = 45, ["spinner"] = 2 }
+			ObjectCounts = new OsuObjectCounts { Total = 167, MaxCombo = 500, Circles = 120, Sliders = 45, Spinners = 2 }
 		};
 
 		await UpsertBeatmapAsync(bmap);
@@ -102,11 +103,11 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var bmap = MakeBeatmap(104, "dddddddddddddddddddddddddddddddd");
 		await UpsertBeatmapAsync(bmap);
 
-		var updated = bmap with { MaxCombo = 42 };
+		var updated = bmap with { ObjectCounts = new OsuObjectCounts { MaxCombo = 42 } };
 		await UpsertBeatmapAsync(updated);
 
 		var fetched = await _repository.FetchOneAsync(bmap.Id);
-		Assert.Equal(42, fetched!.MaxCombo);
+		Assert.Equal(42, fetched!.ObjectCounts.MaxCombo);
 	}
 
 	[Fact]
@@ -128,11 +129,11 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var original = MakeBeatmap(107, "bb000000000000000000000000000b");
 		var firstResolved = await UpsertBeatmapAsync(original);
 
-		var reupserted = original with { Id = 999_999, MaxCombo = 7 };
+		var reupserted = original with { Id = 999_999, ObjectCounts = new OsuObjectCounts { MaxCombo = 7 } };
 		var secondResolved = await UpsertBeatmapAsync(reupserted);
 
 		Assert.Equal(firstResolved.Id, secondResolved.Id);
-		Assert.Equal(7, secondResolved.MaxCombo);
+		Assert.Equal(7, secondResolved.ObjectCounts.MaxCombo);
 	}
 
 	[Fact]
@@ -182,11 +183,11 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var setId = 5050;
 		var mapset = MakeMapset(setId, isPrivate: true);
 		var first = new Beatmap(new string('n', 32), 250, mapset, "Normal", "n.osu",
-			500, new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new Dictionary<string, int>());
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new OsuObjectCounts { MaxCombo = 500 });
 		var second = new Beatmap(new string('o', 32), 251, mapset, "Hidden", "o.osu",
-			500, new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new Dictionary<string, int>());
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new OsuObjectCounts { MaxCombo = 500 });
 		await UpsertBeatmapAsync(first);
 		await UpsertBeatmapAsync(second);
 
@@ -201,8 +202,9 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		GameMode mode = GameMode.Standard, bool isPrivate = false)
 	{
 		return new Beatmap(md5, id, MakeMapset(setId, artist, "Title", isPrivate: isPrivate),
-			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu", 500,
-			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff), new Dictionary<string, int>());
+			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu",
+			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff),
+			new OsuObjectCounts { MaxCombo = 500 });
 	}
 
 	[Fact]

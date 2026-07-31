@@ -13,9 +13,8 @@ public abstract record BeatmapView(
 	string Md5,
 	int Id,
 	string Version,
-	int MaxCombo,
 	Difficulty Difficulty,
-	IReadOnlyDictionary<string, int> ObjectCounts,
+	ObjectCounts ObjectCounts,
 	bool IsLocallyIngested);
 
 /// <summary>
@@ -26,11 +25,10 @@ public sealed record BeatmapInSet(
 	string Md5,
 	int Id,
 	string Version,
-	int MaxCombo,
 	Difficulty Difficulty,
-	IReadOnlyDictionary<string, int> ObjectCounts,
+	ObjectCounts ObjectCounts,
 	bool IsLocallyIngested)
-	: BeatmapView(Md5, Id, Version, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     Used everywhere else a beatmap is embedded (score, match round, live snapshot, GET
@@ -40,12 +38,11 @@ public sealed record BeatmapDetail(
 	string Md5,
 	int Id,
 	string Version,
-	int MaxCombo,
 	Difficulty Difficulty,
-	IReadOnlyDictionary<string, int> ObjectCounts,
+	ObjectCounts ObjectCounts,
 	bool IsLocallyIngested,
 	BeatmapsetSummary Beatmapset)
-	: BeatmapView(Md5, Id, Version, MaxCombo, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     API-facing name for a beatmapset (the domain/internal type stays <see cref="Mapset" /> — not
@@ -101,13 +98,13 @@ public static class BeatmapViewMapper
 
 	public static BeatmapInSet ToInSet(this Beatmap beatmap)
 	{
-		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.MaxCombo,
-			beatmap.Difficulty, beatmap.ObjectCounts, beatmap.IsLocallyIngested);
+		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.ObjectCounts,
+			beatmap.IsLocallyIngested);
 	}
 
 	public static BeatmapDetail ToDetail(this Beatmap beatmap, BeatmapsetSummary beatmapset)
 	{
-		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.MaxCombo,
-			beatmap.Difficulty, beatmap.ObjectCounts, beatmap.IsLocallyIngested, beatmapset);
+		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.ObjectCounts,
+			beatmap.IsLocallyIngested, beatmapset);
 	}
 }
