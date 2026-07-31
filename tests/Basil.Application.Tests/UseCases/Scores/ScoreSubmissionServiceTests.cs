@@ -123,22 +123,23 @@ public class ScoreSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task NotInMatch_ReturnsNotInMultiplayer_NoPersist()
+	public async Task NotInMatch_StillPersists_WithNullRoundIdAndTeam()
 	{
 		var bmap = MakeBeatmap();
 		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
 		MakePlayer(); // player.Match stays null — not in any room
+		StubPersistence(321L);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
-		Assert.Equal(ScoreSubmissionResultCode.NotInMultiplayer, result.Code);
-		await _scores.DidNotReceive().CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
-		await _replayStorage.DidNotReceive()
-			.WriteAsync(Arg.Any<long>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		Assert.Equal(321L, result.Result!.ScoreId);
+		await _scores.Received(1).CreateAsync(
+			Arg.Is<ScoreInsertRow>(row => row.RoundId == null && row.Team == null), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
-	public async Task InMatchButNoActiveRound_ReturnsNotInMultiplayer_NoPersist()
+	public async Task InMatchButNoActiveRound_StillPersists_WithNullRoundId()
 	{
 		var bmap = MakeBeatmap();
 		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
@@ -146,11 +147,13 @@ public class ScoreSubmissionServiceTests
 		player.Match = new MatchSession(0, "Lobby", "", "map", 1, new string('a', 32), player.Id,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0");
 		// CurrentRoundId left null — room exists but no round has started (e.g. before !mp start).
+		StubPersistence();
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
-		Assert.Equal(ScoreSubmissionResultCode.NotInMultiplayer, result.Code);
-		await _scores.DidNotReceive().CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		await _scores.Received(1)
+			.CreateAsync(Arg.Is<ScoreInsertRow>(row => row.RoundId == null), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -183,11 +186,11 @@ public class ScoreSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task PassedRankedScore_AlwaysBestWithTopRank_Persists()
+	public async Task PassedRankedScore_AlwaysBestWithRankEqualToPlayerId_Persists()
 	{
 		var bmap = MakeBeatmap();
 		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
-		var player = MakePlayer();
+		var player = MakePlayer(id: 7);
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence(999L);
@@ -197,7 +200,7 @@ public class ScoreSubmissionServiceTests
 
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		Assert.Equal(999L, result.Result!.ScoreId);
-		Assert.Equal(1, result.Result.Rank);
+		Assert.Equal(7, result.Result.Rank);
 
 		await _scores.Received(1).CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
 	}

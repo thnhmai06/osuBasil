@@ -14,8 +14,7 @@ public enum ScoreSubmissionResultCode
 	Success,
 	BeatmapNotFound,
 	PlayerNotFound,
-	DuplicateSubmission,
-	NotInMultiplayer
+	DuplicateSubmission
 }
 
 /// <summary>
@@ -55,13 +54,16 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 ///     Ported from app/services/score_submission.py's ScoreSubmissionService.submit_score, collapsed
 ///     to Basil's no-pp scope (every `pp`-vs-`score` branch in the Python source always takes the
 ///     score branch here), its 100%-offline scope (no `.osu` file fetch), and its fixed-stats scope
-///     (no per-user stats/rank update on submission — see docs/working-scopes.md). If the submitting
-///     player is currently in a multiplayer match, the score is linked to the match's current Round
+///     (no per-user stats/rank update on submission — see docs/working-scopes.md). Every valid
+///     submission is persisted unconditionally, solo or in a room, matching bancho.py's own
+///     unconditional persistence — the only server-side rejections are an unknown beatmap and a
+///     duplicate checksum. If the submitting player is currently in a multiplayer match with an
+///     active round, the score is opportunistically linked to that round
 ///     (<see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" />) with the
-///     player's slot team — this is what lets
-///     the TRT and Scores read paths reconstruct a match's results, without any gather/wait step:
-///     submission and MatchComplete arrive on separate connections with no ordering guarantee, so the
-///     link is written at submission time rather than collected later.
+///     player's slot team, which is what lets the TRT and Scores read paths reconstruct a match's
+///     results; a solo score (or one that arrives after its round already ended — see
+///     <c>MatchCompleteHandler</c>'s doc comment) is simply persisted with a null RoundId/Team instead,
+///     exactly like the schema's own `Scores` table comment describes.
 /// </summary>
 public sealed class ScoreSubmissionService(
 	IMapRepository maps,
@@ -133,17 +135,6 @@ public sealed class ScoreSubmissionService(
 			? slotTeam
 			: null;
 
-		// Multiplayer-only scope: a score played outside a room, or inside a room with no round
-		// currently in progress, is neither processed nor persisted (no lock, no dedupe check, no
-		// DB row, no replay, no play-count increment).
-		if (roundId is null)
-		{
-			logger.LogDebug(
-				"Score submission discarded: UserId={UserId} BeatmapMd5={BeatmapMd5} Reason=NotInMultiplayer",
-				player.Id, beatmapMd5);
-			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.NotInMultiplayer);
-		}
-
 		var checksumLock = ChecksumLocks.GetOrAdd(score.ClientChecksum, static _ => new SemaphoreSlim(1, 1));
 		await checksumLock.WaitAsync(cancellationToken);
 		try
@@ -155,7 +146,7 @@ public sealed class ScoreSubmissionService(
 				return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.DuplicateSubmission);
 			}
 
-			var (updatedScore, rank) = CalculateSubmissionStatus(score, request.ScoreTime, request.FailTime);
+			var (updatedScore, rank) = CalculateSubmissionStatus(score, player.Id, request.ScoreTime, request.FailTime);
 			score = updatedScore;
 
 			var replayData = score.IsPassed ? request.ReplayData : null;
@@ -188,13 +179,16 @@ public sealed class ScoreSubmissionService(
 
 	/// <summary>
 	///     Every passed score is unconditionally the player's best (no comparison against prior
-	///     scores) and always reported at rank 1 — a deliberate product decision so the osu! client
-	///     always believes it achieved a top score and uploads its replay.
+	///     scores) — a deliberate product decision so the osu! client always believes it achieved a
+	///     top score and uploads its replay. The reported rank is the player's own user id rather than
+	///     a literal "1" so different players' result screens show distinguishable numbers (BasilBot,
+	///     id 0, would render an empty rank via <c>ScoreSubmissionChartsFormatter</c>'s falsy-zero
+	///     formatting, but it never submits scores itself).
 	/// </summary>
 	private static (ScoreSubmission Score, int? Rank) CalculateSubmissionStatus(
-		ScoreSubmission score, int scoreTime, int failTime)
+		ScoreSubmission score, int playerId, int scoreTime, int failTime)
 	{
-		var rank = score.IsPassed ? 1 : (int?)null;
+		var rank = score.IsPassed ? playerId : (int?)null;
 
 		return (score with { TimeElapsed = TimeSpan.FromMilliseconds(score.IsPassed ? scoreTime : failTime) }, rank);
 	}

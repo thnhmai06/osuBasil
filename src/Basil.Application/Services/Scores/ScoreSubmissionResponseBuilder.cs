@@ -18,8 +18,6 @@ public static class ScoreSubmissionResponseBuilder
 			// Player isn't online — return nothing so the client retries submission once they log in.
 			ScoreSubmissionResultCode.PlayerNotFound => "",
 			ScoreSubmissionResultCode.DuplicateSubmission => "error: no",
-			// Not in a multiplayer round — never a transient condition, so no need to invite a retry.
-			ScoreSubmissionResultCode.NotInMultiplayer => "error: no",
 			ScoreSubmissionResultCode.Success => throw new ArgumentException("Success is not an error code.",
 				nameof(code)),
 			_ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unexpected score submission result code.")

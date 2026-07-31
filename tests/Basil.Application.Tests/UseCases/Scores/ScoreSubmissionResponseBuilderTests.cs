@@ -32,7 +32,6 @@ public class ScoreSubmissionResponseBuilderTests
 	[InlineData(ScoreSubmissionResultCode.BeatmapNotFound, "error: beatmap")]
 	[InlineData(ScoreSubmissionResultCode.PlayerNotFound, "")]
 	[InlineData(ScoreSubmissionResultCode.DuplicateSubmission, "error: no")]
-	[InlineData(ScoreSubmissionResultCode.NotInMultiplayer, "error: no")]
 	public void BuildError_MapsEachCode(ScoreSubmissionResultCode code, string expected)
 	{
 		Assert.Equal(expected, ScoreSubmissionResponseBuilder.BuildError(code));

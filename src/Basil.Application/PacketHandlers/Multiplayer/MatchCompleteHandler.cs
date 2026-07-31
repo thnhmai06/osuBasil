@@ -11,8 +11,16 @@ namespace Basil.Application.PacketHandlers.Multiplayer;
 /// <summary>
 ///     Ported from app/api/domains/cho.py's MatchComplete. The `is_scrimming` branch
 ///     (asyncio.create_task(update_matchpoints(was_playing))) is dropped along with the rest of the
-///     scrim engine — see note.md. Closes the round's EndedAt; does NOT gather/wait for score
-///     submissions (see ScoreSubmissionService's doc comment for why that isn't needed here).
+///     scrim engine — see note.md. Closes the round's EndedAt in the DB immediately, but deliberately
+///     leaves <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" /> itself
+///     set (not nulled) rather than clearing
+///     it here: this packet (small, arrives over the persistent bancho connection) routinely beats the
+///     corresponding score-submission HTTP POST (multipart, carries the replay, arrives over a
+///     separate, unordered connection — see ScoreSubmissionService's doc comment), so nulling it
+///     synchronously with MatchComplete would drop the round link for scores that are still in flight.
+///     Leaving the in-memory value alone means a submission that lands after the round ends still
+///     correctly attaches to the round that was just played; it only becomes stale once
+///     <c>MatchMembershipService</c>'s next <c>!mp start</c> overwrites it with a new round id.
 /// </summary>
 public sealed class MatchCompleteHandler(
 	MatchMembershipService matchMembership,
@@ -59,10 +67,7 @@ public sealed class MatchCompleteHandler(
 
 			var roundId = match.CurrentRoundId;
 			if (roundId is { } id)
-			{
 				await matchPersistence.SetRoundEndedAsync(id, DateTimeOffset.UtcNow.UtcDateTime, false);
-				match.CurrentRoundId = null;
-			}
 
 			logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
