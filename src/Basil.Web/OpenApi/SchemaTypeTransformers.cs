@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 using Basil.Application.Json;
-using Basil.Domain.Json;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

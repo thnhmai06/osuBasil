@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Basil.Domain.Json;
+using Basil.Application.Json;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Application.Tests.Json;
 
 public class TimeSpanSecondsJsonConverterTests
 {

@@ -8,7 +8,7 @@ namespace Basil.Application.Json;
 ///     `api.` host should use — <see cref="SnapshotChannel{T}" />/<c>JsonMergePatch</c> (full snapshots
 ///     and RFC 7396 deltas), the packet handlers that publish onto those same channels
 ///     (<c>MatchScoreUpdateHandler</c>/<c>SpectateFramesHandler</c>), and every match sub-resource
-///     route's SSE payload. Web-style camelCase naming plus <see cref="CountryJsonConverter" /> —
+///     route's SSE payload. Web-style camelCase naming plus <see cref="CountryJsonConverter" />/<see cref="TimeSpanSecondsJsonConverter" /> —
 ///     matching what <c>Program.cs</c>'s <c>ConfigureHttpJsonOptions</c> configures for regular JSON
 ///     responses, since <c>Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions</c> has
 ///     no public setter to point at this instance directly, <c>Program.cs</c> copies this instance's
@@ -22,6 +22,7 @@ public static class BasilJsonOptions
 	{
 		var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 		options.Converters.Add(new CountryJsonConverter());
+		options.Converters.Add(new TimeSpanSecondsJsonConverter());
 		return options;
 	}
 }

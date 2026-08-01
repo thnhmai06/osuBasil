@@ -15,6 +15,7 @@ using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Skinning;
+using osu.Game.Utils;
 using Beatmap = osu.Game.Beatmaps.Beatmap;
 using GameMode = Basil.Domain.Beatmaps.GameMode;
 
@@ -46,12 +47,12 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)strippedMods).ToArray();
 
 			var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
-
-			// GetPlayableBeatmap(ruleset, legacyMods) already applies HR/EZ's CS/AR/OD/HP multiplier
-			// itself — confirmed by direct inspection: playable.Difficulty reflects HR's 1.3x/1.4x and
-			// EZ's 0.5x, matching the documented osu! formulas exactly. Read CS/AR/OD/HP straight off
-			// it instead of the raw decode's unmodified BeatmapInfo.Difficulty.
 			var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
+
+			// Ruleset.GetAdjustedDisplayDifficulty applies HR/EZ's CS/AR/OD/HP multiplier AND DT/HT/NC's
+			// rate-based AR/OD hit-window scaling itself, per ruleset — the same call osu!'s own song
+			// select uses for its displayed stats. No need to hand-roll either adjustment.
+			var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(beatmap.BeatmapInfo, legacyMods);
 
 			// The raw decoder (Decoder.GetDecoder<Beatmap>().Decode(...), used above) never populates
 			// BeatmapInfo.Length/MaxCombo/BPM — those fields only exist once the beatmap has been
@@ -60,28 +61,20 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			// computed-on-demand helpers, not back on BeatmapInfo itself. Confirmed by direct
 			// inspection: BeatmapInfo.Length/MaxCombo/BPM are 0/null/0 both before AND after
 			// GetPlayableBeatmap; CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength are the
-			// only source of real values — and, separately confirmed, neither of those two nor
-			// playable.Difficulty.ApproachRate/OverallDifficulty reflect DT/HT/NC's rate change at all
-			// (identical to NoMod both with and without GetPlayableBeatmap involved), so rate scaling
-			// for Bpm/TotalLength/AR/OD is applied by hand below via DifficultyModCalculator.
+			// only source of real values, and neither reflects DT/HT/NC's rate change on its own, so
+			// Bpm/TotalLength are scaled by hand using the same rate ModUtils.CalculateRateWithMods
+			// reports.
 			var maxCombo = playable.GetMaxCombo();
 			var mostCommonBeatLength = playable.GetMostCommonBeatLength();
-			var rate = DomainBeatmaps.DifficultyModCalculator.RateMultiplier(strippedMods);
+			var rate = ModUtils.CalculateRateWithMods(legacyMods);
 			var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength * rate : 0;
 			var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength() / rate);
 
-			var ar = playable.Difficulty.ApproachRate;
-			var od = playable.Difficulty.OverallDifficulty;
-			if (mode == GameMode.Standard)
-			{
-				ar = (float)DomainBeatmaps.DifficultyModCalculator.AdjustApproachRateForRate(ar, rate);
-				od = (float)DomainBeatmaps.DifficultyModCalculator.AdjustOverallDifficultyForRate(od, rate);
-			}
-
 			var difficulty = new DomainBeatmaps.Difficulty(
 				mode, Round(bpm, 1), totalLength,
-				Round(playable.Difficulty.CircleSize, 1), Round(ar, 1), Round(od, 1),
-				Round(playable.Difficulty.DrainRate, 1), Round(attributes.StarRating, 2));
+				Round(displayDifficulty.CircleSize, 1), Round(displayDifficulty.ApproachRate, 1),
+				Round(displayDifficulty.OverallDifficulty, 1), Round(displayDifficulty.DrainRate, 1),
+				Round(attributes.StarRating, 2));
 
 			var objectCounts = BuildObjectCounts(mode, playable.HitObjects, maxCombo);
 
