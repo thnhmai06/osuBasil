@@ -3,10 +3,17 @@ using System.Collections.Immutable;
 namespace Basil.Domain.Login;
 
 /// <summary>
-///     Ported from app/objects/player.py's ClientDetails, scoped to what score submission's
-///     validate_client_details needs. Captured once at login (see PlayerSession.Client) and
-///     re-checked against every score submission from that session.
+///     Represents the client details captured from an osu! client at login.
 /// </summary>
+/// <param name="OsuPathMd5">The MD5 hash of the osu! executable path.</param>
+/// <param name="AdaptersMd5">The MD5 hash of the combined adapter names.</param>
+/// <param name="UninstallMd5">The MD5 hash of the uninstallation identifier.</param>
+/// <param name="DiskSignatureMd5">The MD5 hash of the disk signature.</param>
+/// <param name="Adapters">The list of network adapter names.</param>
+/// <remarks>
+///     Captured once at login and re-checked against every score submission from that session, as
+///     part of the submission integrity validation.
+/// </remarks>
 public sealed record ClientDetails(
 	string OsuPathMd5,
 	string AdaptersMd5,
@@ -16,9 +23,19 @@ public sealed record ClientDetails(
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
+	/// <summary>
+	///     Gets a value that indicates whether the client is running under Wine.
+	/// </summary>
+	/// <value>
+	///     <see langword="true" /> when the adapter list contains exactly the Wine sentinel adapter;
+	///     otherwise, <see langword="false" />.
+	/// </value>
 	public bool IsRunningUnderWine => Adapters.Contains(WineAdapterSentinel) && Adapters.Count == 1;
 
-	/// <summary>Ported from ClientDetails.client_hash (cached_property).</summary>
+	/// <summary>
+	///     Computes the client hash used to verify the client on later requests.
+	/// </summary>
+	/// <returns>The colon-delimited client hash string.</returns>
 	public string Hash()
 	{
 		var adaptersString = string.Join('.', Adapters);
@@ -27,6 +44,12 @@ public sealed record ClientDetails(
 		return $"{OsuPathMd5}:{adaptersString}:{AdaptersMd5}:{UninstallMd5}:{DiskSignatureMd5}:";
 	}
 
+	/// <summary>
+	///     Parses a client hash string into <see cref="ClientDetails" />.
+	/// </summary>
+	/// <param name="hash">The colon-delimited client hash string sent by the client.</param>
+	/// <returns>The parsed client details.</returns>
+	/// <exception cref="FormatException">The adapter list is missing its trailing delimiter.</exception>
 	public static ClientDetails From(string hash)
 	{
 		var hashParts = hash[..^1].Split(':', 5);

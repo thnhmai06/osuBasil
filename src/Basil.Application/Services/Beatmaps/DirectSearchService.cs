@@ -65,7 +65,7 @@ public sealed class DirectSearchService(IMapRepository maps, ILogger<DirectSearc
 
 	/// <summary>
 	///     Ported from osu.py's osuSearchSetHandler inline format string. Unlike Format above, this
-	///     does NOT escape "|" in metadata and reports RankedStatus using the server's own raw enum
+	///     does NOT escape "|" in metadata and reports BeatmapStatus using the server's own raw enum
 	///     value (not the osu!api-converted one) — both match the Python source exactly, which is
 	///     inconsistent with the search-listing endpoint's formatting but not a bug of ours to fix.
 	/// </summary>

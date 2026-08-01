@@ -32,9 +32,9 @@ public interface IOsuCalculator
 ///     length, CS/AR/OD/HP) computed for the exact mode/mods passed to <see cref="IOsuCalculator.Analyze" />
 ///     — see <c>PpyOsuCalculator.Analyze</c>'s doc comment for how each field is derived (and why the
 ///     raw decoder's own <c>BeatmapInfo.Length</c>/<c>MaxCombo</c>/<c>BPM</c>/difficulty settings are
-///     never read directly). <see cref="ObjectCounts" /> (its own concrete subtype per mode, carrying
+///     never read directly). <see cref="BeatmapObjectCounts" /> (its own concrete subtype per mode, carrying
 ///     max combo too) isn't part of <see cref="Difficulty" /> since it doesn't vary with mods.
 /// </summary>
 public sealed record BeatmapAnalysis(
 	Difficulty Difficulty,
-	ObjectCounts ObjectCounts);
+	BeatmapObjectCounts BeatmapObjectCounts);

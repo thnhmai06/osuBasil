@@ -5,11 +5,18 @@ using Basil.Domain.Login;
 namespace Basil.Domain.Users;
 
 /// <summary>
-///     Ported from app/repositories/users.py's User dataclass, scoped to fields Basil actually reads
-///     back somewhere — bancho.py's clan/preferred-mode/play-style/custom-badge/userpage columns
-///     have no reader anywhere in this server (clans, public profiles, and a general-purpose v1/v2
-///     API are out of scope — see docs/working-scopes.md) and aren't carried on this record.
+///     Represents a registered user of the server.
 /// </summary>
+/// <param name="Id">The unique identifier of the user.</param>
+/// <param name="Name">The username of the user.</param>
+/// <param name="Country">The country of the user.</param>
+/// <param name="Privilege">The server-side privileges granted to the user.</param>
+/// <param name="SilenceEnd">The time the user's silence expires, in UTC.</param>
+/// <remarks>
+///     Carries only the fields that the server reads back somewhere. Clans, public profiles,
+///     preferred mode, play style, custom badges, and userpages are out of scope (see
+///     docs/working-scopes.md) and are not part of this record.
+/// </remarks>
 public sealed partial record User(
 	int Id,
 	string Name,
@@ -20,19 +27,31 @@ public sealed partial record User(
 	private static readonly Regex AllowedUsernameCharacters = OsuUsernamePattern();
 
 	/// <summary>
-	///     Normalises a username for case/space-insensitive identity — matching real osu!'s own
-	///     dedup rule ("Peppy" == "peppy" == "pe_ppy" == "pe ppy"). A DB-lookup/uniqueness detail,
-	///     not carried as a field on <see cref="User" /> itself.
+	///     Normalizes a username for case-insensitive and space-insensitive identity comparisons.
 	/// </summary>
+	/// <param name="name">The raw username to normalize.</param>
+	/// <returns>The username converted to lowercase with spaces replaced by underscores.</returns>
+	/// <remarks>
+	///     Matches osu!'s own deduplication rule, where "Peppy", "peppy", "pe_ppy", and "pe ppy"
+	///     all resolve to the same identity. This is a database lookup and uniqueness detail, not a
+	///     field carried on <see cref="User" /> itself.
+	/// </remarks>
 	public static string MakeSafeName(string name)
 	{
 		return name.ToLowerInvariant().Replace(' ', '_');
 	}
 
 	/// <summary>
-	///     Validates a username against osu!'s real registration rules. Returns true when valid;
-	///     otherwise false with <paramref name="error" /> set to a user-facing message.
+	///     Validates a username against osu!'s registration rules.
 	/// </summary>
+	/// <param name="name">The username to validate.</param>
+	/// <param name="error">
+	///     When this method returns <see langword="false" />, contains a user-facing message
+	///     describing why the username is invalid.
+	/// </param>
+	/// <returns>
+	///     <see langword="true" /> if the username is valid; otherwise, <see langword="false" />.
+	/// </returns>
 	public static bool ValidateUsername(string name, [MaybeNullWhen(true)] out string error)
 	{
 		if (name.Length is < 3 or > 15) error = "Username must be between 3 and 15 characters.";

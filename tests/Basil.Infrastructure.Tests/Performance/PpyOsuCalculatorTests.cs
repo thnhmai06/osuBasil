@@ -100,7 +100,7 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
-		var osuCounts = Assert.IsType<OsuObjectCounts>(analysis.ObjectCounts);
+		var osuCounts = Assert.IsType<OsuBeatmapObjectCounts>(analysis.BeatmapObjectCounts);
 		Assert.True(osuCounts.Total > 0);
 		Assert.Equal(osuCounts.Circles + osuCounts.Sliders + osuCounts.Spinners, osuCounts.Total);
 	}
@@ -120,7 +120,7 @@ public class PpyOsuCalculatorTests
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, Mods.NoMod);
 
 		Assert.Equal(TimeSpan.FromMilliseconds(13742), analysis.Difficulty.TotalLength);
-		Assert.Equal(114, analysis.ObjectCounts.MaxCombo);
+		Assert.Equal(114, analysis.BeatmapObjectCounts.MaxCombo);
 		Assert.Equal(168.0, analysis.Difficulty.Bpm, 5);
 	}
 
@@ -137,7 +137,7 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Taiko, Mods.NoMod);
 
-		var taikoCounts = Assert.IsType<TaikoObjectCounts>(analysis.ObjectCounts);
+		var taikoCounts = Assert.IsType<TaikoBeatmapObjectCounts>(analysis.BeatmapObjectCounts);
 		Assert.Equal(114, taikoCounts.Hits);
 		Assert.Equal(0, taikoCounts.DrumRolls);
 		Assert.Equal(0, taikoCounts.Dendens);
@@ -158,7 +158,7 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Catch, Mods.NoMod);
 
-		var catchCounts = Assert.IsType<CatchObjectCounts>(analysis.ObjectCounts);
+		var catchCounts = Assert.IsType<CatchBeatmapObjectCounts>(analysis.BeatmapObjectCounts);
 		Assert.Equal(112, catchCounts.Fruits);
 		Assert.Equal(2, catchCounts.Droplets);
 		Assert.Equal(6, catchCounts.TinyDroplets);
@@ -173,7 +173,7 @@ public class PpyOsuCalculatorTests
 
 		var analysis = calculator.Analyze(FixturePath, GameMode.Mania, Mods.NoMod);
 
-		var maniaCounts = Assert.IsType<ManiaObjectCounts>(analysis.ObjectCounts);
+		var maniaCounts = Assert.IsType<ManiaBeatmapObjectCounts>(analysis.BeatmapObjectCounts);
 		Assert.Equal(139, maniaCounts.Notes);
 		Assert.Equal(7, maniaCounts.HoldNotes);
 		Assert.Equal(146, maniaCounts.Total);

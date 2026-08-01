@@ -85,7 +85,7 @@ internal static class MultiplayerTestSupport
 		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
 	public static List<byte[]> Chunk(byte[] data)

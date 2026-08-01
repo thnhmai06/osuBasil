@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using DomainBeatmaps = Basil.Domain.Beatmaps;
 using osu.Framework.Audio.Track;
@@ -103,18 +104,18 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	}
 
 	/// <summary>
-	///     Counts hit objects by concrete type into the per-mode <see cref="DomainBeatmaps.ObjectCounts" />
+	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjectCounts" />
 	///     subtype. Standard/Taiko/Mania count <paramref name="hitObjects" /> at the top level only —
 	///     confirmed by direct inspection that <c>playable.HitObjects</c> already excludes nested slider
 	///     parts for osu!std, and Taiko/Mania have no equivalent container objects. Catch is the
 	///     exception: <c>JuiceStream</c>/<c>BananaShower</c> are containers whose Droplet/TinyDroplet/
 	///     Banana children only exist in <see cref="HitObject.NestedHitObjects" />, so counting must
 	///     recurse (confirmed empirically — top-level counting only yields Fruit/JuiceStream/
-	///     BananaShower, never the droplet/banana breakdown the API needs). <see cref="Basil.Domain.Beatmaps.CatchObjectCounts.TinyDroplets" />
-	///     is checked before <see cref="Basil.Domain.Beatmaps.CatchObjectCounts.Droplets" /> since
+	///     BananaShower, never the droplet/banana breakdown the API needs). <see cref="CatchBeatmapObjectCounts.TinyDroplets" />
+	///     is checked before <see cref="CatchBeatmapObjectCounts.Droplets" /> since
 	///     <c>TinyDroplet</c> derives from <c>Droplet</c>.
 	/// </summary>
-	private static DomainBeatmaps.ObjectCounts BuildObjectCounts(GameMode mode, IReadOnlyList<HitObject> hitObjects,
+	private static DomainBeatmaps.BeatmapObjectCounts BuildObjectCounts(GameMode mode, IReadOnlyList<HitObject> hitObjects,
 		int maxCombo)
 	{
 		switch (mode)
@@ -130,7 +131,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case osu.Game.Rulesets.Osu.Objects.Spinner: spinners++; break;
 					}
 
-				return new DomainBeatmaps.OsuObjectCounts
+				return new DomainBeatmaps.OsuBeatmapObjectCounts
 				{
 					Total = circles + sliders + spinners, MaxCombo = maxCombo,
 					Circles = circles, Sliders = sliders, Spinners = spinners
@@ -147,7 +148,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case osu.Game.Rulesets.Taiko.Objects.Hit: hits++; break;
 					}
 
-				return new DomainBeatmaps.TaikoObjectCounts
+				return new DomainBeatmaps.TaikoBeatmapObjectCounts
 				{
 					Total = hits + drumRolls + dendens, MaxCombo = maxCombo,
 					Hits = hits, DrumRolls = drumRolls, Dendens = dendens
@@ -159,7 +160,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				return new DomainBeatmaps.CatchObjectCounts
+				return new DomainBeatmaps.CatchBeatmapObjectCounts
 				{
 					Total = fruits + droplets + tinyDroplets + bananas, MaxCombo = maxCombo,
 					Fruits = fruits, Droplets = droplets, TinyDroplets = tinyDroplets, Bananas = bananas
@@ -175,7 +176,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case osu.Game.Rulesets.Mania.Objects.Note: notes++; break;
 					}
 
-				return new DomainBeatmaps.ManiaObjectCounts
+				return new DomainBeatmaps.ManiaBeatmapObjectCounts
 				{
 					Total = notes + holdNotes, MaxCombo = maxCombo, Notes = notes, HoldNotes = holdNotes
 				};

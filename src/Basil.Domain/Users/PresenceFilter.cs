@@ -1,9 +1,14 @@
 namespace Basil.Domain.Users;
 
-/// <summary>Ported from app/objects/player.py's PresenceFilter — client-side filter for which users the player can see.</summary>
+/// <summary>
+///     Specifies which users a player can see in their presence list.
+/// </summary>
 public enum PresenceFilter : byte
 {
+	/// <summary>No presence updates are shown.</summary>
 	Nil = 0,
+	/// <summary>All online users are shown.</summary>
 	All = 1,
+	/// <summary>Only friends are shown.</summary>
 	Friends = 2
 }

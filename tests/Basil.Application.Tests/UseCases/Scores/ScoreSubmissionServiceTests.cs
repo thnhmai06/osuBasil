@@ -39,7 +39,7 @@ public class ScoreSubmissionServiceTests
 		return new Beatmap(
 			new string('a', 32), 42, mapset, "c",
 			"f.osu", new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
 	private PlayerSession MakePlayer(int id = 7, string name = "cookiezi")

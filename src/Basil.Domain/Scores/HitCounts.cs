@@ -4,8 +4,28 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Scores;
 
+/// <summary>
+///     Represents the hit-judgment counts of a score.
+/// </summary>
+/// <param name="x300">The number of 300 judgments.</param>
+/// <param name="x100">The number of 100 judgments.</param>
+/// <param name="x50">The number of 50 judgments.</param>
+/// <param name="xGeki">The number of geki judgments.</param>
+/// <param name="xKatu">The number of katu judgments.</param>
+/// <param name="xMiss">The number of miss judgments.</param>
 public record HitCounts(int x300, int x100, int x50, int xGeki, int xKatu, int xMiss)
 {
+	/// <summary>
+	///     Computes the accuracy percentage from the hit counts.
+	/// </summary>
+	/// <param name="mode">The game mode the accuracy is computed for.</param>
+	/// <param name="mods">
+	///     The mods applied to the play, used to select the mania scoring formula.
+	/// </param>
+	/// <returns>The accuracy as a percentage from 0 to 100.</returns>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     <paramref name="mode" /> is not a value of <see cref="GameMode" />.
+	/// </exception>
 	public double CalculateAccuracy(GameMode mode, Mods mods)
 	{
 		switch (mode)

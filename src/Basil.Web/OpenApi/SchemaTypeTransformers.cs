@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 using Basil.Application.Json;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -171,7 +172,7 @@ internal static class SchemaTypeTransformers
 
 	/// <summary>
 	///     The generator represents a `[JsonPolymorphic]`/`[JsonDerivedType]` base type (e.g.
-	///     <see cref="Basil.Domain.Beatmaps.ObjectCounts" />) as `anyOf` + `discriminator` — technically
+	///     <see cref="BeatmapObjectCounts" />) as `anyOf` + `discriminator` — technically
 	///     not wrong (every listed branch is still a valid match), but a discriminated value is always
 	///     exactly one branch, never several at once, so `oneOf` is the semantically correct keyword and
 	///     the one Scalar renders as a clean type-switcher. Runs as a *document* transformer for the same

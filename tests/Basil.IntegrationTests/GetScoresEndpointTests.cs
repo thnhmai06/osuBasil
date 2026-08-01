@@ -18,7 +18,7 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Ported from app/api/domains/osu.py's getScores, reduced to a status-only reply — per-beatmap
 ///     leaderboard browsing is out of scope (see BanchoHostGroups.cs's route doc comment), but the
-///     map's real RankedStatus is still reported via the stubbed <see cref="IMapRepository" />. Covers
+///     map's real BeatmapStatus is still reported via the stubbed <see cref="IMapRepository" />. Covers
 ///     the auth gate, the mode/mods status-broadcast side effect (this is the only request osu! sends
 ///     on every song-select map change), and the two status outcomes (known/unknown map).
 /// </summary>
@@ -31,7 +31,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 
 	private static readonly Beatmap Beatmap = new(
 		KnownMd5, 1, Mapset, "Normal", "map.osu",
-		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjectCounts());
+		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
 
 	private readonly WebApplicationFactory<Program> _factory;
 
@@ -135,7 +135,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		var response = await _factory.CreateClient().SendAsync(request);
 		var body = await response.Content.ReadAsStringAsync();
 
-		Assert.Equal($"{(int)RankedStatus.Loved}|false", body);
+		Assert.Equal($"{(int)BeatmapStatus.Loved}|false", body);
 	}
 
 	[Fact]

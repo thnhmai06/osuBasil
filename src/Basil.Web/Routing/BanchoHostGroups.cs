@@ -337,9 +337,9 @@ public static class BanchoHostGroups
 		var ended = DateTime.Parse("2026-07-20T12:04:30Z");
 
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
-			created, false, false, RankedStatus.Loved, 1);
+			created, false, false, BeatmapStatus.Loved, 1);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
-		var objectCounts = new OsuObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
+		var objectCounts = new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
 		var beatmap = new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
 			difficulty, objectCounts, false, beatmapset);
 
@@ -457,7 +457,7 @@ public static class BanchoHostGroups
 
 			// Ported from app/api/domains/osu.py's getScores, reduced to a status-only reply — this
 			// server doesn't support browsing a beatmap's leaderboard (out of scope), but it still
-			// reports the map's real RankedStatus (matching osu-search.php/osu-search-set.php)
+			// reports the map's real BeatmapStatus (matching osu-search.php/osu-search-set.php)
 			// instead of the "-1|false" (NotSubmitted) stub bancho.py falls back to when there's no
 			// leaderboard, so Song Select's map icon doesn't disagree with osu!Direct. Matches the
 			// old BeatmapLeaderboardResultCode.NoLeaderboard wire format (see git history) minus the
@@ -500,7 +500,7 @@ public static class BanchoHostGroups
 						bmap = await maps.FetchOneAsync(md5: checksum, cancellationToken: cancellationToken);
 					}
 
-					var status = bmap is null ? RankedStatus.NotSubmitted : bmap.Mapset.Status;
+					var status = bmap is null ? BeatmapStatus.NotSubmitted : bmap.Mapset.Status;
 
 					return Results.Text($"{(int)status}|false", "text/html", Encoding.UTF8);
 				})

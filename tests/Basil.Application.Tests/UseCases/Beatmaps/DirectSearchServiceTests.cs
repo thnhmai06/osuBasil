@@ -70,7 +70,7 @@ public class DirectSearchServiceTests
 		return new Beatmap(
 			new string('0', 32), id, mapset, version, "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
 	[Fact]

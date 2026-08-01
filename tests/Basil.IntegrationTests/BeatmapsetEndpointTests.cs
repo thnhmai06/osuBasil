@@ -106,7 +106,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	{
 		return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
 	private string MapsetFolder(int setId)

@@ -13,7 +13,7 @@ public class ScoreChecksumTests
 	public void ComputeOnlineChecksum_MatchesPythonOracle()
 	{
 		var hitCounts = new HitCounts(490, 5, 3, 100, 2, 1);
-		var score = new ScoreSubmission
+		var score = new Submission
 		{
 			HitCounts = hitCounts,
 			BeatmapMd5 = "beatmap_md5_hash_1234567890abcd",

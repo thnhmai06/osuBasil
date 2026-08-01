@@ -2,7 +2,16 @@ using System.Text;
 
 namespace Basil.Domain.Login;
 
-/// <summary>Ported from app/api/domains/cho.py's LoginData (TypedDict).</summary>
+/// <summary>
+///     Represents the data an osu! client sends when logging in.
+/// </summary>
+/// <param name="Username">The username the client sent.</param>
+/// <param name="PasswordMd5">The MD5 hash of the password the client sent.</param>
+/// <param name="OsuVersion">The version of the client.</param>
+/// <param name="UtcOffset">The client's UTC offset, in hours.</param>
+/// <param name="DisplayCity">Whether the client allows its city to be displayed.</param>
+/// <param name="PmPrivate">Whether the client accepts private messages.</param>
+/// <param name="ClientDetails">The client details captured from the login request.</param>
 public sealed record LoginData(
 	string Username,
 	string PasswordMd5,
@@ -12,6 +21,11 @@ public sealed record LoginData(
 	bool PmPrivate,
 	ClientDetails ClientDetails)
 {
+	/// <summary>
+	///     Parses the raw login request into a <see cref="LoginData" />.
+	/// </summary>
+	/// <param name="data">The UTF-8 encoded login payload from the client.</param>
+	/// <returns>The parsed login data.</returns>
 	public static LoginData From(byte[] data)
 	{
 		var decoded = Encoding.UTF8.GetString(data).TrimEnd('\n');

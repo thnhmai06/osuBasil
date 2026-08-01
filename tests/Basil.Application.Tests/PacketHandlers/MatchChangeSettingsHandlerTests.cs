@@ -78,7 +78,7 @@ public class MatchChangeSettingsHandlerTests
 		var bmap = new Beatmap(
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuObjectCounts { MaxCombo = 100 });
+			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
 		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
@@ -169,7 +169,7 @@ public class MatchChangeSettingsHandlerTests
 		var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(md5, 777, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuObjectCounts { MaxCombo = 100 });
+			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_mapRepository.FetchOneAsync(md5: md5).Returns(bmap);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
@@ -251,7 +251,7 @@ public class MatchChangeSettingsHandlerTests
 		var bmap = new Beatmap(
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuObjectCounts { MaxCombo = 100 });
+			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
 		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();

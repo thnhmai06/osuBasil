@@ -1,16 +1,38 @@
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
-///     One row per beatmapset — Artist/Title/Creator/Status/LastUpdate are shared by every
-///     difficulty in the set, so they live here instead of being duplicated onto each
-///     <see cref="Beatmap" />. CreatedAt is the first-ingestion time, distinct from LastUpdate
-///     which bumps on every re-ingestion/content change. BackgroundFile is the lowest-id
-///     beatmap's <see cref="Beatmap.BackgroundFile" /> in this set, kept in sync by ingestion and
-///     resolved relative to this mapset's own folder (same convention as
-///     <see cref="Beatmap.BackgroundFile" />) — backs b.&lt;domain&gt;'s per-set thumbnail and the
-///     `api.` host's set-level background route, so neither has to scan every beatmap in the set
-///     per request.
+///     Represents a beatmapset, the shared metadata for a group of beatmap difficulties.
 /// </summary>
+/// <param name="Id">The unique identifier of the set.</param>
+/// <param name="Artist">The artist of the set's music.</param>
+/// <param name="Title">The title of the set's music.</param>
+/// <param name="Creator">The username of the set's creator.</param>
+/// <param name="LastUpdate">The time of the latest re-ingestion or content change, in UTC.</param>
+/// <param name="CreatedAt">The time the set was first ingested, in UTC.</param>
+/// <param name="IsFrozen">
+///     Whether the set is write-locked by an admin. Frozen sets cannot be updated or deleted.
+/// </param>
+/// <param name="IsPrivate">
+///     Whether the set is hidden from non-admin listings and from the public beatmap endpoints.
+/// </param>
+/// <param name="BackgroundFile">
+///     The background image file name resolved against the set's storage folder, or
+///     <see langword="null" /> if the set has no background.
+/// </param>
+/// <param name="AudioFile">
+///     The audio file name resolved against the set's storage folder, or
+///     <see langword="null" /> if the set has no audio.
+/// </param>
+/// <remarks>
+///     Artist, Title, Creator, and LastUpdate are shared by every difficulty in the set, so they
+///     live here instead of being duplicated on each <see cref="Beatmap" />.
+///     <see cref="CreatedAt" /> records the first ingestion time, distinct from
+///     <see cref="LastUpdate" />, which changes on every re-ingestion or content change.
+///     <see cref="BackgroundFile" /> is the lowest-id beatmap's
+///     <see cref="Beatmap.BackgroundFile" /> in the set, kept in sync by ingestion. It backs the
+///     per-set thumbnail on the b.&lt;domain&gt; host and the set-level background route on the
+///     api. host, so neither has to scan every beatmap in the set per request.
+/// </remarks>
 public sealed record Mapset(
 	int Id,
 	string Artist,
@@ -24,8 +46,11 @@ public sealed record Mapset(
 	string? AudioFile = null)
 {
 	/// <summary>
-	///     Every beatmap present in this server's DB is always Loved — Basil doesn't track per-map ranked-status
-	///     curation.
+	///     Gets the ranked status of the set.
 	/// </summary>
-	public RankedStatus Status => RankedStatus.Loved;
+	/// <value>
+	///     Always <see cref="BeatmapStatus.Approved" />. Every beatmap in the server's database is
+	///     treated as loved; Basil does not track per-map ranked-status curation.
+	/// </value>
+	public BeatmapStatus Status => BeatmapStatus.Approved;
 }

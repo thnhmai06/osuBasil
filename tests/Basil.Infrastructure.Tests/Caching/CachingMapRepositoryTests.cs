@@ -13,7 +13,7 @@ public class CachingMapRepositoryTests
 		var mapset = new Mapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 		return new Beatmap(md5, id, mapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
 	[Fact]

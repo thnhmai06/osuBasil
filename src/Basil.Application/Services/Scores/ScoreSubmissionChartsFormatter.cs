@@ -16,7 +16,7 @@ namespace Basil.Application.Services.Scores;
 /// </summary>
 public static class ScoreSubmissionChartsFormatter
 {
-	public static string Format(ScoreSubmission score, Beatmap beatmap, long scoreId, int? rank, string domain)
+	public static string Format(Submission score, Beatmap beatmap, long scoreId, int? rank, string domain)
 	{
 		var beatmapEntries = new[]
 		{

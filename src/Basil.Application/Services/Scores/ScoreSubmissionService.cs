@@ -39,12 +39,12 @@ public sealed record ScoreSubmissionRequest(
 
 /// <summary>
 ///     A submitted score plus everything about it that isn't intrinsic to the score fact itself: its
-///     persisted id (DB-generated, never carried on <see cref="ScoreSubmission" />), the resolved
+///     persisted id (DB-generated, never carried on <see cref="Submission" />), the resolved
 ///     beatmap and player name (looked up once, threaded through rather than re-queried), and the
 ///     rank reported back to the client.
 /// </summary>
 public sealed record SubmittedScoreResult(
-	ScoreSubmission Score,
+	Submission Score,
 	long ScoreId,
 	Beatmap Beatmap,
 	string PlayerName,
@@ -104,7 +104,7 @@ public sealed class ScoreSubmissionService(
 			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.PlayerNotFound);
 		}
 
-		var score = ScoreSubmission.FromSubmission([.. request.ScoreDataFields.Skip(2)]) with
+		var score = Submission.FromSubmission([.. request.ScoreDataFields.Skip(2)]) with
 		{
 			BeatmapMd5 = beatmap.Md5,
 			UserId = player.Id,
@@ -201,15 +201,15 @@ public sealed class ScoreSubmissionService(
 	///     (<see cref="Basil.Application.Sessions.CachedPlayerStats.Rank" />), which is the player's own
 	///     user id instead (see <c>LoginService</c>).
 	/// </summary>
-	private static (ScoreSubmission Score, int? Rank) CalculateSubmissionStatus(
-		ScoreSubmission score, int scoreTime, int failTime)
+	private static (Submission Score, int? Rank) CalculateSubmissionStatus(
+		Submission score, int scoreTime, int failTime)
 	{
 		var rank = score.IsPassed ? 1 : (int?)null;
 
 		return (score with { TimeElapsed = TimeSpan.FromMilliseconds(score.IsPassed ? scoreTime : failTime) }, rank);
 	}
 
-	private static ScoreInsertRow BuildInsertRow(ScoreSubmission score, int? roundId, MatchTeam? team)
+	private static ScoreInsertRow BuildInsertRow(Submission score, int? roundId, MatchTeam? team)
 	{
 		return new ScoreInsertRow(
 			score.BeatmapMd5,

@@ -7,7 +7,7 @@ namespace Basil.Domain.Tests;
 ///     Fixture fields reused from the Rijndael decryptor oracle fixture (same 16-field submission
 ///     shape) — see Basil.Infrastructure.Tests' RijndaelScoreDecryptorTests.
 /// </summary>
-public class ScoreSubmissionTests
+public class SubmissionTests
 {
 	private static readonly string[] Fields =
 	[
@@ -18,7 +18,7 @@ public class ScoreSubmissionTests
 	[Fact]
 	public void FromSubmission_ParsesAllFieldsInOrder()
 	{
-		var score = ScoreSubmission.FromSubmission(Fields);
+		var score = Submission.FromSubmission(Fields);
 
 		Assert.Equal("abc123checksum", score.ClientChecksum);
 		Assert.Equal(490, score.HitCounts.x300);
@@ -47,7 +47,7 @@ public class ScoreSubmissionTests
 		fields[11] = ((int)Mods.Relax).ToString(); // mods = RX only
 		fields[13] = "0"; // osu!
 
-		var score = ScoreSubmission.FromSubmission(fields);
+		var score = Submission.FromSubmission(fields);
 
 		Assert.Equal(GameMode.Standard, score.Mode);
 		Assert.Equal(Mods.Relax, score.Mods);

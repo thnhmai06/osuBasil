@@ -2,54 +2,94 @@ using System.Collections.Immutable;
 
 namespace Basil.Domain.Scores;
 
-/// <summary>Ported from app/constants/mods.py's Mods (IntFlag).</summary>
+/// <summary>
+///     Represents the gameplay modifier flags an osu! client can apply to a play.
+/// </summary>
+/// <remarks>
+///     A bitwise combination of the individual mods. The key mods only apply to osu!mania, and
+///     several mods apply to specific game modes only.
+/// </remarks>
 [Flags]
 public enum Mods : uint
 {
+	/// <summary>No mod is applied.</summary>
 	NoMod = 0,
+	/// <summary>Prevents the play from failing on a miss.</summary>
 	NoFail = 1 << 0,
+	/// <summary>Makes the beatmap easier to play.</summary>
 	Easy = 1 << 1,
+	/// <summary>Enables touch screen input. The old name for this mod was NoVideo.</summary>
 	TouchScreen = 1 << 2, // old: 'NoVideo'
+	/// <summary>Fades the hit objects out shortly before they are hit.</summary>
 	Hidden = 1 << 3,
+	/// <summary>Makes the beatmap harder to play.</summary>
 	HardRock = 1 << 4,
+	/// <summary>Fails the play on the first miss.</summary>
 	SuddenDeath = 1 << 5,
+	/// <summary>Speeds the beatmap up.</summary>
 	DoubleTime = 1 << 6,
+	/// <summary>Allows the play to be completed without clicking the hit objects.</summary>
 	Relax = 1 << 7,
+	/// <summary>Slows the beatmap down.</summary>
 	HalfTime = 1 << 8,
+	/// <summary>Applies the DoubleTime speed change together with a pitch shift.</summary>
 	Nightcore = 1 << 9,
+	/// <summary>Limits the visible area around the cursor.</summary>
 	Flashlight = 1 << 10,
+	/// <summary>Plays the beatmap automatically.</summary>
 	Autoplay = 1 << 11,
+	/// <summary>Automatically completes spinners.</summary>
 	SpunOut = 1 << 12,
+	/// <summary>Automates the cursor, leaving only the clicks to the player.</summary>
 	Autopilot = 1 << 13,
+	/// <summary>Fails the play on the first non-300 judgment.</summary>
 	Perfect = 1 << 14,
+	/// <summary>Restricts the play to four keys.</summary>
 	Key4 = 1 << 15,
+	/// <summary>Restricts the play to five keys.</summary>
 	Key5 = 1 << 16,
+	/// <summary>Restricts the play to six keys.</summary>
 	Key6 = 1 << 17,
+	/// <summary>Restricts the play to seven keys.</summary>
 	Key7 = 1 << 18,
+	/// <summary>Restricts the play to eight keys.</summary>
 	Key8 = 1 << 19,
+	/// <summary>Fades the notes in during the play.</summary>
 	FadeIn = 1 << 20,
+	/// <summary>Randomizes the column layout of the notes.</summary>
 	Random = 1 << 21,
+	/// <summary>Plays the beatmap as a cinematic without gameplay.</summary>
 	Cinema = 1 << 22,
+	/// <summary>Shows a target score the player should aim for.</summary>
 	Target = 1 << 23,
+	/// <summary>Restricts the play to nine keys.</summary>
 	Key9 = 1 << 24,
+	/// <summary>Combines two key counts for cooperative play.</summary>
 	KeyCoop = 1 << 25,
+	/// <summary>Restricts the play to one key.</summary>
 	Key1 = 1 << 26,
+	/// <summary>Restricts the play to three keys.</summary>
 	Key3 = 1 << 27,
+	/// <summary>Restricts the play to two keys.</summary>
 	Key2 = 1 << 28,
+	/// <summary>Uses the ScoreV2 scoring rules.</summary>
 	ScoreV2 = 1 << 29,
+	/// <summary>Mirrors the column layout of the notes.</summary>
 	Mirror = 1 << 30
 }
 
 /// <summary>
-///     Ported from app/constants/mods.py's Mods methods (filter_invalid_combos, from_modstr, from_np)
-///     — real mod-combination business rules, not just constant values.
+///     Provides the business rules for combining and parsing <see cref="Mods" /> values.
 /// </summary>
 public static class ModsExtensions
 {
 	/// <summary>
-	///     Ported from app/constants/mods.py's SPEED_CHANGING_MODS — used by multiplayer's freemods split between
-	///     match-wide and per-slot mods.
+	///     The mods that change the speed of the beatmap.
 	/// </summary>
+	/// <remarks>
+	///     Used by multiplayer's freemods setting to split the applied mods into match-wide and
+	///     per-slot groups.
+	/// </remarks>
 	public const Mods SpeedChangingMods = Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime;
 
 	private const Mods KeyMods = Mods.Key1 | Mods.Key2 | Mods.Key3 | Mods.Key4 | Mods.Key5
@@ -129,12 +169,24 @@ public static class ModsExtensions
 			["|18K|"] = Mods.Key9 | Mods.KeyCoop
 		});
 
-	/// <summary>Removes invalid mod combinations, mirroring app/constants/mods.py's filter_invalid_combos.</summary>
+	/// <summary>
+	///     Removes invalid mod combinations, leaving only the legal ones.
+	/// </summary>
+	/// <param name="mods">The mod combination to filter.</param>
+	/// <param name="modeVn">
+	///     The version number of the game mode: 0 for standard, 1 for taiko, 2 for catch, and 3 for
+	///     mania.
+	/// </param>
+	/// <returns>The filtered mod combination.</returns>
+	/// <remarks>
+	///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
+	///     and keeps only the first key mod when several are set.
+	/// </remarks>
 	public static Mods FilterInvalidCombos(this Mods mods, int modeVn)
 	{
 		var result = mods;
 
-		// 1. mode-inspecific mod conflictions
+		// 1. mode-specific mod conflictions
 		var dtNc = result & (Mods.DoubleTime | Mods.Nightcore);
 		if (dtNc == (Mods.DoubleTime | Mods.Nightcore)) result &= ~Mods.DoubleTime; // DTNC
 		else if (dtNc != Mods.NoMod && (result & Mods.HalfTime) != Mods.NoMod) result &= ~Mods.HalfTime; // (DT|NC)HT
@@ -194,7 +246,13 @@ public static class ModsExtensions
 		return result;
 	}
 
-	/// <summary>Parses a mod string like "HDDTRX" into two-character chunks. Ported from Mods.from_modstr.</summary>
+	/// <summary>
+	///     Parses a mod string of two-character chunks into a <see cref="Mods" /> value.
+	/// </summary>
+	/// <param name="s">The mod string, for example "HDDTRX".</param>
+	/// <returns>
+	///     The parsed mod combination. Chunks that are not recognized mod codes are ignored.
+	/// </returns>
 	public static Mods FromModString(string s)
 	{
 		var mods = Mods.NoMod;
@@ -208,7 +266,14 @@ public static class ModsExtensions
 		return mods;
 	}
 
-	/// <summary>Parses a `/np`-style mod string (e.g. "+Hidden +DoubleTime"). Ported from Mods.from_np.</summary>
+	/// <summary>
+	///     Parses a now-playing mod string into a <see cref="Mods" /> value.
+	/// </summary>
+	/// <param name="s">The space-delimited now-playing mod string, for example "+Hidden +DoubleTime".</param>
+	/// <param name="modeVn">
+	///     The version number of the game mode, used to filter out invalid combinations.
+	/// </param>
+	/// <returns>The parsed mod combination, filtered for the given mode.</returns>
 	public static Mods FromNowPlayingString(string s, int modeVn)
 	{
 		var mods = Mods.NoMod;

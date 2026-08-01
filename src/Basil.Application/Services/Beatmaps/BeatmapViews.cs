@@ -14,7 +14,7 @@ public abstract record BeatmapView(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	ObjectCounts ObjectCounts,
+	BeatmapObjectCounts BeatmapObjectCounts,
 	bool IsLocallyIngested);
 
 /// <summary>
@@ -26,9 +26,9 @@ public sealed record BeatmapInSet(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	ObjectCounts ObjectCounts,
+	BeatmapObjectCounts BeatmapObjectCounts,
 	bool IsLocallyIngested)
-	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, BeatmapObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     Used everywhere else a beatmap is embedded (score, match round, live snapshot, GET
@@ -39,10 +39,10 @@ public sealed record BeatmapDetail(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	ObjectCounts ObjectCounts,
+	BeatmapObjectCounts BeatmapObjectCounts,
 	bool IsLocallyIngested,
 	BeatmapsetSummary Beatmapset)
-	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, BeatmapObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     API-facing name for a beatmapset (the domain/internal type stays <see cref="Mapset" /> — not
@@ -58,7 +58,7 @@ public sealed record BeatmapsetSummary(
 	DateTime CreatedAt,
 	bool IsFrozen,
 	bool IsPrivate,
-	RankedStatus Status,
+	BeatmapStatus Status,
 	int BeatmapCount);
 
 /// <summary>
@@ -74,7 +74,7 @@ public sealed record BeatmapsetDetail(
 	DateTime CreatedAt,
 	bool IsFrozen,
 	bool IsPrivate,
-	RankedStatus Status,
+	BeatmapStatus Status,
 	IReadOnlyList<BeatmapInSet> Beatmaps);
 
 /// <summary>
@@ -98,13 +98,13 @@ public static class BeatmapViewMapper
 
 	public static BeatmapInSet ToInSet(this Beatmap beatmap)
 	{
-		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.ObjectCounts,
+		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.BeatmapObjectCounts,
 			beatmap.IsLocallyIngested);
 	}
 
 	public static BeatmapDetail ToDetail(this Beatmap beatmap, BeatmapsetSummary beatmapset)
 	{
-		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.ObjectCounts,
+		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty, beatmap.BeatmapObjectCounts,
 			beatmap.IsLocallyIngested, beatmapset);
 	}
 }

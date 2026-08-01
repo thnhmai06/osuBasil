@@ -109,10 +109,10 @@ internal static class ScoreRoutes
 
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
 			DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
-			RankedStatus.Loved, 1);
+			BeatmapStatus.Loved, 1);
 		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme",
 			new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42),
-			new OsuObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 }, false,
+			new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 }, false,
 			beatmapset);
 
 		return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,

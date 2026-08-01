@@ -233,7 +233,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		_mapset = new Mapset(mapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
 			DateTime.UnixEpoch, IsPrivate: isPrivate);
 		_beatmap = new Beatmap(new string('a', 32), beatmapId, _mapset, "Insane", "vivid.osu",
-			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjectCounts());
+			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
 
 		var folder = Path.Combine(_dataDir, "Mapsets", $"{mapsetId} FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);

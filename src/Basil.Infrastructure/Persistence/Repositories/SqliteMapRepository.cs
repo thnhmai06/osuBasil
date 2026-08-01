@@ -14,7 +14,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
 	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
-	                                     b.PreviewTime, b.ObjectCounts,
+	                                     b.PreviewTime, b.BeatmapObjectCounts,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
 
@@ -84,10 +84,10 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 			"""
 			REPLACE INTO Beatmaps (
 			    Md5, Id, MapsetId, Version, Filename, TotalLength,
-			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
+			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, BeatmapObjectCounts
 			) VALUES (
 			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength,
-			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
+			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @BeatmapObjectCounts
 			)
 			""",
 			new
@@ -108,7 +108,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 				resolved.BackgroundFile,
 				resolved.AudioFile,
 				resolved.PreviewTime,
-				ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
+				ObjectCounts = JsonSerializer.Serialize(resolved.BeatmapObjectCounts)
 			});
 		logger.LogDebug("Beatmap upserted: Id={Id} Md5={Md5}", resolved.Id, resolved.Md5);
 
@@ -231,9 +231,9 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 
 		public Beatmap ToBeatmap(Mapset mapset)
 		{
-			var objectCounts = JsonSerializer.Deserialize<ObjectCounts>(ObjectCounts)
+			var objectCounts = JsonSerializer.Deserialize<BeatmapObjectCounts>(ObjectCounts)
 			                   ?? throw new InvalidOperationException(
-				                   $"Beatmap {Id}'s ObjectCounts column is not a valid ObjectCounts payload.");
+				                   $"Beatmap {Id}'s BeatmapObjectCounts column is not a valid BeatmapObjectCounts payload.");
 			return new Beatmap(
 				Md5, Id, mapset, Version, Filename,
 				new Difficulty((GameMode)Mode, Bpm, TimeSpan.FromSeconds(TotalLength), Cs, Ar, Od, Hp, Sr),

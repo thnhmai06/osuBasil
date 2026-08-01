@@ -1,4 +1,10 @@
 namespace Basil.Domain;
 
-/// <summary>Marker type used by architecture tests to locate this assembly.</summary>
+/// <summary>
+///     Identifies the Basil.Domain assembly.
+/// </summary>
+/// <remarks>
+///     Architecture tests use this type to locate and reflect over the assembly without referencing
+///     a specific domain type.
+/// </remarks>
 public sealed class AssemblyMarker;

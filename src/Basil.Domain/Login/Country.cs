@@ -1,5 +1,13 @@
 namespace Basil.Domain.Login;
 
+/// <summary>
+///     Represents a country by its two-letter ISO code.
+/// </summary>
+/// <remarks>
+///     Member names are the two-letter lowercase country codes. The numeric values follow the order
+///     the codes appear in this file and carry no meaning on their own; use
+///     <see cref="CountryExtensions.ToAcronym" /> to get the two-letter code for the wire.
+/// </remarks>
 public enum Country : byte
 {
 	Oc = 1,
@@ -256,8 +264,16 @@ public enum Country : byte
 	Mf = 252
 }
 
+/// <summary>
+///     Provides conversions for <see cref="Country" /> values.
+/// </summary>
 public static class CountryExtensions
 {
+	/// <summary>
+	///     Converts a country code to its lowercase two-letter acronym.
+	/// </summary>
+	/// <param name="code">The country code to convert.</param>
+	/// <returns>The two-letter acronym of the code, in lowercase.</returns>
 	public static string ToAcronym(this Country code)
 	{
 		return code.ToString().ToLowerInvariant();

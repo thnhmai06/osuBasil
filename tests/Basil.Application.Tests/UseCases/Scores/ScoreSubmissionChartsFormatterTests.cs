@@ -14,12 +14,12 @@ public class ScoreSubmissionChartsFormatterTests
 		return new Beatmap(
 			"md5", 100, mapset, "c", "f.osu",
 			new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
-			new OsuObjectCounts { MaxCombo = 500 });
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
-	private static ScoreSubmission MakeScore(Beatmap beatmap, long score, int maxCombo, HitCounts hitCounts)
+	private static Submission MakeScore(Beatmap beatmap, long score, int maxCombo, HitCounts hitCounts)
 	{
-		return new ScoreSubmission
+		return new Submission
 		{
 			BeatmapMd5 = beatmap.Md5,
 			UserId = 7,
