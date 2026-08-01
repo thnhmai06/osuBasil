@@ -49,7 +49,7 @@ public class GhostDisconnectServiceTests
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry, registry,
 			channelMembership, Substitute.For<IMatchPersistenceRepository>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(registry, channelRegistry, spectatorService, matchMembership,
 			NullLogger<PlayerLogoutService>.Instance);
@@ -62,7 +62,8 @@ public class GhostDisconnectServiceTests
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		registry.Add(stale);
 
-		await new GhostDisconnectService(registry, MakePlayerLogout(registry), NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
+				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
 		Assert.Null(registry.GetByToken("stale-token"));
@@ -75,7 +76,8 @@ public class GhostDisconnectServiceTests
 		var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
 		registry.Add(fresh);
 
-		await new GhostDisconnectService(registry, MakePlayerLogout(registry), NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
+				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
 		Assert.NotNull(registry.GetByToken("fresh-token"));
@@ -89,7 +91,8 @@ public class GhostDisconnectServiceTests
 			{ LastRecvTime = Now.AddSeconds(-301), IsBot = true };
 		registry.Add(bot);
 
-		await new GhostDisconnectService(registry, MakePlayerLogout(registry), NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
+				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
 		Assert.NotNull(registry.GetByToken("bot-token"));
@@ -104,7 +107,8 @@ public class GhostDisconnectServiceTests
 		registry.Add(stale);
 		registry.Add(bystander);
 
-		await new GhostDisconnectService(registry, MakePlayerLogout(registry), NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
+				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
 		Assert.Equal(ServerPacketWriter.Logout(1), bystander.Dequeue());
@@ -147,7 +151,8 @@ public class GhostDisconnectServiceTests
 		bot.Spectating = stale;
 		registry.Add(stale);
 
-		await new GhostDisconnectService(registry, MakePlayerLogout(registry), NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
+				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
 		Assert.Empty(stale.Spectators);

@@ -17,22 +17,22 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/users` — admin CRUD surface, except <c>GET /users/{id}/live</c>, which stays public — a
-///     direct rename of the old `/spec/{id}` route, blocked for user id 0 (BasilBot has no gameplay
-///     stream of its own to spectate). Every read route (`GET /users/{idOrName}`,
-///     `GET /users/{idOrName}/avatar`, `GET /users/{idOrName}/live`) also accepts a username in place
-///     of the numeric id, resolved via <see cref="UserLookup" /> and 302-redirected to the canonical
-///     `/users/{id}` form — write routes (`PUT`/`PATCH`/`DELETE`) keep a strict numeric `{userId:int}`
-///     since a redirect can't reliably carry a request body across most HTTP clients/proxies.
-///     Block/unblock (`POST`/`DELETE /users/{id}/block/{targetId}`) is dropped entirely — no
-///     replacement.
-/// </summary>
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="UserRoutes" /> is static and can't be a type
-///     argument.
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="UserRoutes" /> is static and can't be a
+///     type argument.
 /// </summary>
 internal sealed class UserRoutesLog;
 
+/// <summary>
+///     `/users`: admin CRUD surface, except <c>GET /users/{id}/live</c>, which stays public (a
+///     direct rename of the old `/spec/{id}` route, blocked for user id 0, since BasilBot has no
+///     gameplay stream of its own to spectate). Every read route (`GET /users/{idOrName}`,
+///     `GET /users/{idOrName}/avatar`, `GET /users/{idOrName}/live`) also accepts a username in place
+///     of the numeric id, resolved via <see cref="UserLookup" /> and 302-redirected to the canonical
+///     `/users/{id}` form; write routes (`PUT`/`PATCH`/`DELETE`) keep a strict numeric `{userId:int}`
+///     because a redirect can't reliably carry a request body across most HTTP clients/proxies.
+///     Block/unblock (`POST`/`DELETE /users/{id}/block/{targetId}`) is dropped entirely, with no
+///     replacement.
+/// </summary>
 internal static class UserRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -41,6 +41,10 @@ internal static class UserRoutes
 	// otherwise-unneeded using into this file for a single constant — inlined instead.
 	private const int BotBootstrapServiceBotId = 0;
 
+	/// <summary>
+	///     Registers the `/users` admin CRUD, avatar, and public spectate-stream routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapUserRoutes(this RouteGroupBuilder group)
 	{
 		var admin = group.MapGroup("/users").RequireAuthorization(AdminKeyDefaults.Policy);
@@ -362,12 +366,13 @@ internal static class UserRoutes
 	}
 }
 
+/// <summary>Body for `POST /users`: every field is required.</summary>
 public sealed record CreateUserRequest(string Name, string Password, Country Country, UserPrivileges Privilege);
 
-/// <summary>PUT — full replace, every field required.</summary>
+/// <summary>PUT: full replace, every field required.</summary>
 public sealed record ReplaceUserRequest(string Name, Country Country, UserPrivileges Privilege);
 
-/// <summary>PATCH — every field optional, only present ones are applied.</summary>
+/// <summary>PATCH: every field optional, only present ones are applied.</summary>
 public sealed record UpdateUserRequest(string? Name = null, Country? Country = null, UserPrivileges? Privilege = null);
 
 /// <summary>Response body for avatar upload/reset.</summary>

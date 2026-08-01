@@ -10,15 +10,20 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Spectating;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SpectateFrames. The bancho-protocol relay to native
-///     spectators stays a raw forward of the packet's remaining bytes (matching the Python source's
-///     own "fastpath" comment about this packet's sheer send rate) — no parsing on that path. The
-///     same raw bytes are also decoded into a structured <see cref="SpectateFramesEvent" /> (a second,
-///     independent read of the same buffer, not a change to the relayed packet — same pattern as
-///     <see cref="Multiplayer.MatchScoreUpdateHandler" />'s scoreframe decode) and published on the
-///     api. host's SSE `/users/{idOrName}/live` channel, keyed by this player's id regardless of
-///     match membership.
+///     Handles the <see cref="ClientPackets.SpectateFrames" /> packet, which streams replay frame
+///     data from a spectated player. Relays the packet's remaining bytes verbatim to every current
+///     spectator, then decodes the same bytes into a structured <see cref="SpectateFramesEvent" />.
 /// </summary>
+/// <remarks>
+///     The relay path is a raw forward of the packet's remaining bytes with no parsing, which suits
+///     this packet's high send rate. The structured decode is a second, independent read of the same
+///     buffer, not a change to the relayed packet; it follows the same pattern as
+///     <see cref="Multiplayer.MatchScoreUpdateHandler" />'s scoreframe decode. The decoded event is
+///     serialized with <see cref="BasilJsonOptions" /> and published to the player's live spectate
+///     event channel, keyed by this player's id regardless of match membership. Decoding runs only
+///     when <see cref="IPlayerInputEvents.HasSubscribers" /> is true, and a malformed bundle is
+///     swallowed so it never breaks the relay above.
+/// </remarks>
 public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.SpectateFrames;

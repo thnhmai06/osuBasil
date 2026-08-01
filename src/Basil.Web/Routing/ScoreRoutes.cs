@@ -15,16 +15,20 @@ using Microsoft.AspNetCore.Mvc;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/scores` — public read surface for individual score rows, plus a rename of the old bare
+///     `/scores`: public read surface for individual score rows, plus a rename of the old bare
 ///     `GET /replays/{scoreId}` download. No POST/PUT/DELETE: scores only ever come from the existing
 ///     in-game score-submission pipeline, never through this API.
 /// </summary>
 internal static class ScoreRoutes
 {
+	/// <summary>
+	///     Registers the `/scores` list, detail, and replay-download routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapScoreRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
-				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var (p, ps) = Pagination.Normalize(page, pageSize);
@@ -33,7 +37,7 @@ internal static class ScoreRoutes
 				var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
 				var views = new List<ScoreDetailView>(trimmed.Items.Count);
 				foreach (var row in trimmed.Items)
-					views.Add(await BuildDetailView(row, sessionRegistry, users, maps, cancellationToken));
+					views.Add(await BuildDetailView(row, sessionRegistry, users, beatmaps, cancellationToken));
 				return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
 					trimmed.TotalRecords, views));
 			})
@@ -49,13 +53,13 @@ internal static class ScoreRoutes
 			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
 		group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
-				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
 				return score is null
 					? Results.NotFound()
-					: Results.Json(await BuildDetailView(score, sessionRegistry, users, maps, cancellationToken));
+					: Results.Json(await BuildDetailView(score, sessionRegistry, users, beatmaps, cancellationToken));
 			})
 			.WithGroupName("basilapi")
 			.WithName("getScore")
@@ -88,12 +92,16 @@ internal static class ScoreRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
+	/// <summary>
+	///     Builds the public <see cref="ScoreDetailView" /> for a score row, resolving the submitting
+	///     user's embed and the played beatmap's embed (null once the stored md5 no longer resolves).
+	/// </summary>
 	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IPlayerSessionRegistry sessionRegistry,
-		IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
+		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users,
 			cancellationToken);
-		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, maps, cancellationToken);
+		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, beatmaps, cancellationToken);
 
 		return new ScoreDetailView(row.Id, user, beatmap!, row.Mode, row.Mods, row.Score, row.Accuracy,
 			row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
@@ -112,7 +120,8 @@ internal static class ScoreRoutes
 			BeatmapStatus.Loved, 1);
 		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme",
 			new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42),
-			new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 }, false,
+			new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 },
+			false,
 			beatmapset);
 
 		return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,

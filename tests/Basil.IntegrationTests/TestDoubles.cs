@@ -41,9 +41,9 @@ internal static class TestDoubles
 	}
 
 	/// <summary>Every beatmap unknown, upsert/search all no-ops — matching the old NullMapRepository.</summary>
-	public static IMapRepository NullMapRepository()
+	public static IBeatmapRepository NullMapRepository()
 	{
-		var repo = Substitute.For<IMapRepository>();
+		var repo = Substitute.For<IBeatmapRepository>();
 		repo.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmap?>(null));
 		repo.UpsertAsync(Arg.Any<Beatmap>(), Arg.Any<CancellationToken>())

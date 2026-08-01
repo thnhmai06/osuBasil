@@ -5,60 +5,153 @@ using Basil.Domain.Scores;
 namespace Basil.Application.Abstractions.Multiplayer;
 
 /// <summary>
-///     Persists the Matches/Rounds/MatchEvents tables — the durable record of a multiplayer room
-///     (1 room = 1 Match) and each beatmap played within it (1 beatmap = 1 Round). WinningTeam is
-///     intentionally not persisted here — see Rounds' schema comment in 001_base.sql for why it's
-///     computed on read instead.
+///     Persists the durable record of a multiplayer room and the beatmaps played within it.
 /// </summary>
+/// <remarks>
+///     The mapping is one multiplayer room to one match record, and one beatmap played to one round
+///     record. The winning team is intentionally not persisted here and is computed on read
+///     instead.
+/// </remarks>
 public interface IMatchPersistenceRepository
 {
-	/// <summary>Returns the newly created Matches.Id.</summary>
+	/// <summary>
+	///     Creates a new match row.
+	/// </summary>
+	/// <param name="name">The name of the multiplayer room.</param>
+	/// <param name="createdAt">The time the match was created, in UTC.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The id of the newly created match row.</returns>
 	Task<int> CreateMatchAsync(
 		string name, DateTime createdAt, CancellationToken cancellationToken = default);
 
+	/// <summary>
+	///     Marks a match as ended by setting its end time.
+	/// </summary>
+	/// <param name="matchId">The id of the match to update.</param>
+	/// <param name="endedAt">The time the match ended, in UTC.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Returns the newly created Rounds.Id. Only `mapMd5` identifies the beatmap played — every
-	///     other beatmap fact is resolved live at TRT-build time by looking that md5 up through
-	///     `IMapRepository`, never denormalized onto the round itself.
+	///     Creates a new round row for a beatmap played within a match.
 	/// </summary>
+	/// <param name="matchId">The id of the match the round belongs to.</param>
+	/// <param name="roundIndex">The round's position within the match, starting at 0.</param>
+	/// <param name="mapMd5">The content md5 of the beatmap played.</param>
+	/// <param name="mode">The game mode the round was played in.</param>
+	/// <param name="winCondition">The win condition in effect for the round.</param>
+	/// <param name="teamType">The team setup the round was played under.</param>
+	/// <param name="mods">The mods enforced for the round.</param>
+	/// <param name="startedAt">The time the round started, in UTC.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The id of the newly created round row.</returns>
+	/// <remarks>
+	///     Only <paramref name="mapMd5" /> identifies the beatmap played. Every other beatmap fact is
+	///     resolved live at report-build time by looking that md5 up through
+	///     <see cref="Beatmaps.IBeatmapRepository" />, never denormalized onto the round itself.
+	/// </remarks>
 	Task<int> CreateRoundAsync(
 		int matchId, int roundIndex, string mapMd5,
 		GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
 		Mods mods, DateTime startedAt,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>
+	///     Marks a round as ended.
+	/// </summary>
+	/// <param name="roundId">The id of the round to update.</param>
+	/// <param name="endedAt">The time the round ended, in UTC.</param>
+	/// <param name="aborted">
+	///     <see langword="true" /> to record the round as aborted; otherwise, <see langword="false" />.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>New for MatchReportService (the TRT builder) — null when no such match exists.</summary>
+	/// <summary>
+	///     Fetches a single match row by id.
+	/// </summary>
+	/// <param name="matchId">The id of the match to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The matching row, or <see langword="null" /> when no such match exists.</returns>
 	Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default);
 
-	/// <summary>New for MatchReportService. Ordered by RoundIndex ascending.</summary>
+	/// <summary>
+	///     Fetches every round row belonging to a match.
+	/// </summary>
+	/// <param name="matchId">The id of the match to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The match's rounds, ordered by <see cref="RoundRow.RoundIndex" /> ascending.</returns>
 	Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default);
 
-	/// <summary>New for the management REST API's match listing/deletion.</summary>
+	/// <summary>
+	///     Fetches every match row in the database.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Every stored match, newest id first.</returns>
+	/// <remarks>
+	///     Used by the match listing and deletion flows.
+	/// </remarks>
 	Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default);
 
-	/// <summary>New for the management REST API — cascades to the match's Rounds first (FK).</summary>
+	/// <summary>
+	///     Deletes a match and everything linked to it.
+	/// </summary>
+	/// <param name="matchId">The id of the match to delete.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>
+	///     Deletes the match's scores, events, and rounds, then the match record itself, in a single
+	///     transaction.
+	/// </remarks>
 	Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default);
 
-	/// <summary>Log a match lifecycle event.</summary>
+	/// <summary>
+	///     Records a match lifecycle event.
+	/// </summary>
+	/// <param name="row">The event to persist.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default);
 
-	/// <summary>Fetch all events for a match, ordered by Timestamp ascending.</summary>
+	/// <summary>
+	///     Fetches every event recorded for a match.
+	/// </summary>
+	/// <param name="matchId">The id of the match to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The match's events, ordered by timestamp ascending.</returns>
 	Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId, CancellationToken cancellationToken = default);
 
-	/// <summary>Find matches that weren't properly closed (server crash / shutdown).</summary>
+	/// <summary>
+	///     Finds matches that were never marked as ended.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Every match with no end time, oldest id first.</returns>
+	/// <remarks>
+	///     Such rows are left behind by an unclean shutdown, for example a server crash or forced
+	///     termination, and are the input to the startup recovery pass.
+	/// </remarks>
 	Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default);
 
-	/// <summary>Find rounds that weren't properly ended within a match.</summary>
+	/// <summary>
+	///     Finds rounds within a match that were never marked as ended.
+	/// </summary>
+	/// <param name="matchId">The id of the match to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The match's rounds with no end time, ordered by round index ascending.</returns>
+	/// <remarks>
+	///     Rounds can be left unfinished in the same unclean-shutdown scenario that produces
+	///     unrecovered matches.
+	/// </remarks>
 	Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
 		CancellationToken cancellationToken = default);
 }
 
-/// <summary>New for MatchReportService/management API reads — a raw Matches row.</summary>
+/// <summary>
+///     A match record as read back for report and management purposes.
+/// </summary>
+/// <param name="Id">The unique identifier of the match.</param>
+/// <param name="Name">The name of the multiplayer room.</param>
+/// <param name="CreatedAt">The time the match was created, in UTC.</param>
+/// <param name="EndedAt">The time the match ended, in UTC, or <see langword="null" /> while open.</param>
 public sealed record MatchRow(
 	int Id,
 	string Name,
@@ -66,10 +159,24 @@ public sealed record MatchRow(
 	DateTime? EndedAt);
 
 /// <summary>
-///     New for MatchReportService — a raw Rounds row. Only `MapMd5` identifies the beatmap; every
-///     other beatmap fact is resolved live at TRT-build time (see `MatchReportService`), not stored
-///     here.
+///     A round record as read back for report purposes.
 /// </summary>
+/// <param name="Id">The unique identifier of the round.</param>
+/// <param name="MatchId">The id of the match the round belongs to.</param>
+/// <param name="RoundIndex">The round's position within the match, starting at 0.</param>
+/// <param name="MapMd5">The content md5 of the beatmap played.</param>
+/// <param name="Mode">The game mode the round was played in.</param>
+/// <param name="WinCondition">The win condition in effect for the round.</param>
+/// <param name="TeamType">The team setup the round was played under.</param>
+/// <param name="Aborted">A value that indicates whether the round was aborted.</param>
+/// <param name="Mods">The mods enforced for the round.</param>
+/// <param name="StartedAt">The time the round started, in UTC.</param>
+/// <param name="EndedAt">The time the round ended, in UTC, or <see langword="null" /> while open.</param>
+/// <remarks>
+///     Only <see cref="MapMd5" /> identifies the beatmap; every other beatmap fact is resolved live
+///     at report-build time by looking the md5 up through <see cref="Beatmaps.IBeatmapRepository" />,
+///     not stored here.
+/// </remarks>
 public sealed record RoundRow(
 	int Id,
 	int MatchId,

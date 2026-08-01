@@ -4,7 +4,11 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Channels;
 
-/// <summary>Ported from app/api/domains/cho.py's ToggleBlockingDMs.</summary>
+/// <summary>
+///     Handles the <see cref="ClientPackets.ToggleBlockNonFriendDms" /> packet, which toggles whether
+///     the player accepts private messages from users who are not friends. Reads a 32-bit integer and
+///     sets <see cref="PlayerSession.PmPrivate" /> to match, so a value of 1 enables the block.
+/// </summary>
 public sealed class ToggleBlockNonFriendDmsHandler : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.ToggleBlockNonFriendDms;

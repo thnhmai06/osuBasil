@@ -1,26 +1,38 @@
 namespace Basil.Application.Configuration;
 
 /// <summary>
-///     Local file storage folder names. Fixed, not configurable via Settings.toml/env — Infrastructure's
-///     DI composition root resolves each of these against the executable's directory (not the
-///     process's working directory) and constructs this POCO directly, it is not bound from
-///     IConfiguration. AvatarsPath/MapsetsPath/SeasonalsPath/FaqsPath have no bancho.py equivalent
-///     (it proxies avatars/beatmaps to osu.ppy.sh, has no seasonal-background storage, and its
-///     `!faq` entries are hardcoded server-side, not read from files) — these were added for this
-///     server's fully-offline file serving.
+///     Names of the local folders that store user- and mapset-supplied files.
 /// </summary>
+/// <remarks>
+///     Replays, avatars, mapsets, seasonal backgrounds, and FAQ entries each have a dedicated
+///     folder, and each one backs a local file-serving endpoint on this fully-offline server. The
+///     paths are fixed at startup rather than configurable: Infrastructure's DI composition root
+///     resolves each one against the executable's directory (not the process's working directory)
+///     and constructs this type directly, so it is never bound from IConfiguration.
+/// </remarks>
 public sealed class StorageOptions
 {
+	/// <summary>Gets or sets the folder that stores replay files.</summary>
 	public required string ReplaysPath { get; init; }
+
+	/// <summary>Gets or sets the folder that stores user avatar files.</summary>
 	public required string AvatarsPath { get; init; }
+
+	/// <summary>Gets or sets the folder that stores uploaded beatmap set files (.osz).</summary>
 	public required string MapsetsPath { get; init; }
+
+	/// <summary>Gets or sets the folder that stores seasonal background files.</summary>
 	public required string SeasonalsPath { get; init; }
+
+	/// <summary>Gets or sets the folder that stores FAQ entry files.</summary>
 	public required string FaqsPath { get; init; }
 
-	/// <summary>
-	///     Root for derived-response caching (resized thumbnails, transcoded audio previews) —
-	///     <c>{CachePath}/{endpoint}/{relativePath}</c>, see <see cref="Abstractions.Storage.IResponseCache" />.
-	///     Populated lazily on cache miss; safe to delete entirely at any time, it's regenerated on demand.
-	/// </summary>
+	/// <summary>Gets or sets the root folder for the derived-response cache.</summary>
+	/// <remarks>
+	///     Holds resized thumbnails and transcoded audio previews, laid out as
+	///     <c>{CachePath}/{endpoint}/{relativePath}</c> and consumed by
+	///     <see cref="Abstractions.Storage.IResponseCache" />. Entries are written lazily on a cache
+	///     miss and regenerated on demand, so the folder is safe to delete at any time.
+	/// </remarks>
 	public required string CachePath { get; init; }
 }

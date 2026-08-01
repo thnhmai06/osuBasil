@@ -78,7 +78,7 @@ internal static class MultiplayerTestSupport
 		return new BanchoPacketReader(parts.ToArray());
 	}
 
-	/// <summary>Dummy valid beatmap for tests that need `mapRepository.FetchOneAsync` to resolve successfully.</summary>
+	/// <summary>Dummy valid beatmap for tests that need `beatmapRepository.FetchOneAsync` to resolve successfully.</summary>
 	public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
 	{
 		var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
@@ -352,12 +352,12 @@ internal static class MultiplayerTestSupport
 	{
 		public Fixture()
 		{
-			MapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+			BeatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
 				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
-				MapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
+				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -368,7 +368,7 @@ internal static class MultiplayerTestSupport
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
-		public IMapRepository MapRepository { get; } = Substitute.For<IMapRepository>();
+		public IBeatmapRepository BeatmapRepository { get; } = Substitute.For<IBeatmapRepository>();
 
 		public MatchMembershipService MatchMembership { get; }
 

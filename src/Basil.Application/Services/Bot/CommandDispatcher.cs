@@ -24,10 +24,12 @@ public sealed class CommandDispatcher(
 	private const int RollMaxCap = int.MaxValue; // highest value int.TryParse can produce
 
 	/// <summary>
-	///     Single source of truth for `!help`'s output — add a chat command here, and it shows up with
-	///     no separate help string to keep in sync. `!mp` subcommands live in their own list, see
-	///     <see cref="MpCommandService.HelpText" />.
+	///     The chat commands listed by <c>!help</c>, the single source of truth for that output.
 	/// </summary>
+	/// <remarks>
+	///     Add a command here and it appears in <c>!help</c> with no separate help string to keep in
+	///     sync. The <c>!mp</c> subcommands live in their own list, <see cref="MpCommandService.HelpText" />.
+	/// </remarks>
 	private static readonly CommandInfo[] ChatCommands =
 	[
 		new("!roll [max]", "roll a random number from 0 to max (default 100)"),
@@ -35,21 +37,28 @@ public sealed class CommandDispatcher(
 		new("!faq <entry>|list", "print a FAQ entry, or list every entry"),
 		new("!mp make <name>", "create a tournament room from anywhere, scoping you to it"),
 		new("!mp join <id> [password]", "join a match by id (private rooms need an invite from the host/a referee)"),
-		new("!mp in [match_id]", "target/show a match you're not physically in (DM only — needs referee permission there)"),
+		new("!mp in [match_id]",
+			"target/show a match you're not physically in (DM only — needs referee permission there)"),
 		new("!mp help", "list multiplayer subcommands (usable while scoped to a match)")
 	];
 
 	private static readonly string HelpText = BuildHelpText(ChatCommands);
 
+	/// <summary>
+	///     The <c>!mp</c> subcommands that reject being run as part of a <c>;</c>/<c>&amp;&amp;</c>
+	///     chain.
+	/// </summary>
 	private static readonly HashSet<string> NonChainableMpSubcommands =
 		new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "makeprivate", "in", "join" };
 
 	/// <summary>
-	///     `!mp` subcommands reachable from `#lobby` — everything else is a silent no-op there (see the
-	///     class-level 1.4 channel-eligibility rule). Deliberately excludes `in`: combined with the
-	///     separate "not from your own match's `#multiplayer` channel" rule, `!mp in` ends up reachable
-	///     only via DM to the bot.
+	///     The <c>!mp</c> subcommands reachable from <c>#lobby</c>.
 	/// </summary>
+	/// <remarks>
+	///     Every other subcommand is a silent no-op when issued from <c>#lobby</c>. <c>in</c> is
+	///     deliberately excluded: combined with the separate rule that rejects it from the sender's
+	///     own match channel, <c>!mp in</c> ends up reachable only via DM to the bot.
+	/// </remarks>
 	private static readonly HashSet<string> LobbyAllowedMpSubcommands =
 		new(StringComparer.OrdinalIgnoreCase) { "make", "makeprivate" };
 
@@ -80,11 +89,19 @@ public sealed class CommandDispatcher(
 			: await DispatchChainAsync(sender, segments, matchScope, channelName, prefix, sink, cancellationToken);
 	}
 
+	/// <summary>
+	///     Builds the <c>!help</c> text from a command listing.
+	/// </summary>
+	/// <param name="commands">The commands to format.</param>
+	/// <returns>The usage and description lines, one command per line.</returns>
 	private static string BuildHelpText(IReadOnlyList<CommandInfo> commands)
 	{
 		return string.Join('\n', commands.Select(c => $"{c.Usage} - {c.Description}"));
 	}
 
+	/// <summary>
+	///     Dispatches a single command segment, matching its trigger against the known chat commands.
+	/// </summary>
 	private async Task<bool> DispatchSingleAsync(PlayerSession sender, string rawMessage, string prefix,
 		MatchSession? matchScope, string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -115,6 +132,10 @@ public sealed class CommandDispatcher(
 		}
 	}
 
+	/// <summary>
+	///     Dispatches a <c>!mp</c> command, applying the channel-eligibility rules and resolving the
+	///     command's match scope.
+	/// </summary>
 	private async Task<bool> DispatchMpAsync(PlayerSession sender, string[] args, MatchSession? matchScope,
 		string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -169,14 +190,20 @@ public sealed class CommandDispatcher(
 	}
 
 	/// <summary>
-	///     Prefers the out-of-room scope set by `!mp in` over the sender's literal chat channel — a
-	///     referee juggling several matches from one place should keep targeting the match they picked,
-	///     even if they happen to be sitting in a different match's own channel. Falls back to the
-	///     channel-derived scope, and finally to the match the sender is physically sitting in (matching
-	///     bancho.py's `ensure_match`/`ctx.player.match` baseline — see `app/commands.py`'s
-	///     `ensure_match`), so a DM `!mp abort`/subcommand still resolves even when the sender never ran
-	///     `!mp make`/`!mp in` to set an explicit scope.
+	///     Resolves the match a <c>!mp</c> command should act on, preferring an explicit out-of-room
+	///     scope.
 	/// </summary>
+	/// <remarks>
+	///     The scope set by <c>!mp in</c> is preferred over the sender's literal chat channel, so a
+	///     referee juggling several matches from one place keeps targeting the match they picked even
+	///     when they are sitting in a different match's own channel. The fallbacks are the
+	///     channel-derived scope and finally the match the sender is physically sitting in, so a DM
+	///     <c>!mp abort</c> or any other subcommand still resolves for a sender who never ran
+	///     <c>!mp make</c> or <c>!mp in</c>. A stored scope whose match no longer exists is cleared.
+	/// </remarks>
+	/// <param name="sender">The player issuing the command.</param>
+	/// <param name="channelScope">The match derived from the sender's current chat channel, if any.</param>
+	/// <returns>The match the command targets, or <see langword="null" /> when none resolves.</returns>
 	private MatchSession? ResolveScope(PlayerSession sender, MatchSession? channelScope)
 	{
 		if (sender.MpScopeMatchId is { } dbId)
@@ -191,14 +218,19 @@ public sealed class CommandDispatcher(
 	}
 
 	/// <summary>
-	///     Runs a `;`/`&amp;&amp;`-chained line of `!mp` subcommands sequentially against the resolved
-	///     scope. Only chainable when the sender is currently a referee of that scope, and only for
-	///     `!mp` subcommands that operate on it — `make`/`makeprivate`/`join`/`in`/`help` don't (they
-	///     either create a match or change scope elsewhere), and a bare `!roll`/`!where`/`!faq` segment
-	///     isn't a `!mp` command at all, so any of those inside a chain reject the whole line rather than
-	///     run part of it silently. `#lobby` never reaches here with anything runnable, since every
-	///     chainable subcommand is already outside its allow-list.
+	///     Runs a <c>;</c>- or <c>&amp;&amp;</c>-chained line of <c>!mp</c> subcommands sequentially
+	///     against the resolved scope.
 	/// </summary>
+	/// <remarks>
+	///     Chaining is only allowed for a sender who is currently a referee of that scope, and only
+	///     for <c>!mp</c> subcommands that operate on the existing room. <c>make</c>, <c>makeprivate</c>,
+	///     <c>join</c>, <c>in</c>, and <c>help</c> are not chainable: they either create a match or
+	///     change the scope elsewhere. Any other segment, such as a bare <c>!roll</c>, <c>!where</c>, or
+	///     <c>!faq</c>, is not a <c>!mp</c> command at all, and its presence in a chain rejects the
+	///     whole line rather than running part of it silently. <c>#lobby</c> never reaches here with
+	///     anything runnable, since every chainable subcommand is already outside that channel's
+	///     allow-list.
+	/// </remarks>
 	private async Task<bool> DispatchChainAsync(PlayerSession sender,
 		IReadOnlyList<ChatCommandChain.Segment> segments, MatchSession? matchScope, string? channelName,
 		string prefix, ICommandReplySink sink, CancellationToken cancellationToken)
@@ -258,6 +290,10 @@ public sealed class CommandDispatcher(
 		return anySucceeded;
 	}
 
+	/// <summary>Computes the reply text for <c>!roll</c>.</summary>
+	/// <param name="sender">The player rolling.</param>
+	/// <param name="args">The command arguments, carrying the optional upper bound.</param>
+	/// <returns>The formatted roll result.</returns>
 	private static string Roll(PlayerSession sender, IReadOnlyList<string> args)
 	{
 		var max = 100;
@@ -267,6 +303,7 @@ public sealed class CommandDispatcher(
 		return $"{sender.Name} rolls {roll} point(s)";
 	}
 
+	/// <summary>Answers <c>!where</c>, reporting the registered country of the named player.</summary>
 	private async Task<bool> Where(IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -288,6 +325,11 @@ public sealed class CommandDispatcher(
 		return true;
 	}
 
+	/// <summary>Resolves an ISO country code to its English region name.</summary>
+	/// <param name="code">The two-letter country code.</param>
+	/// <returns>
+	///     The English region name, or the bare code when it is not a real ISO region.
+	/// </returns>
 	private static string DescribeCountry(string code)
 	{
 		try
@@ -302,6 +344,9 @@ public sealed class CommandDispatcher(
 		}
 	}
 
+	/// <summary>
+	///     Answers <c>!faq</c>, printing a stored entry or the list of available entries.
+	/// </summary>
 	private async Task<bool> Faq(IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -328,6 +373,8 @@ public sealed class CommandDispatcher(
 		return true;
 	}
 
+	/// <summary>Builds the <c>!faq list</c> reply text from the stored FAQ entries.</summary>
+	/// <returns>The comma-separated entry list, or a "none available" notice.</returns>
 	private string ListFaqEntries()
 	{
 		// "list" is the subcommand keyword itself — a stray list.txt in the folder isn't a real entry.
@@ -340,36 +387,55 @@ public sealed class CommandDispatcher(
 			: $"Available FAQ entries: {string.Join(", ", entries)}";
 	}
 
+	/// <summary>Shortens a string for logging, appending an ellipsis when truncated.</summary>
+	/// <param name="text">The text to shorten.</param>
+	/// <param name="maxLength">The maximum length allowed.</param>
+	/// <returns>The shortened text.</returns>
 	private static string Truncate(string text, int maxLength = 100)
 	{
 		return text.Length <= maxLength ? text : text[..maxLength] + "…";
 	}
 
-	/// <summary>One entry in the auto-generated `!help` listing — usage plus a one-line description.</summary>
+	/// <summary>
+	///     A single entry in the auto-generated <c>!help</c> listing.
+	/// </summary>
+	/// <remarks>
+	///     Combines a usage string with a one-line description.
+	/// </remarks>
 	private readonly record struct CommandInfo(string Usage, string Description);
 }
 
 /// <summary>
-///     Splits a raw chat line into `;`/`&amp;&amp;`-delimited segments for <see cref="CommandDispatcher" />'s
-///     command-chaining feature. `"..."` protects a delimiter from splitting (the quotes themselves are
-///     stripped from the segment text — they only matter here, not for the space-based arg tokenizer each
-///     segment goes through afterward). `\"` and `\\` are the only recognised escapes, resolved everywhere
-///     (not just inside quotes).
+///     Splits a raw chat line into <c>;</c>- and <c>&amp;&amp;</c>-delimited segments for
+///     <see cref="CommandDispatcher" />'s command-chaining feature.
 /// </summary>
+/// <remarks>
+///     A <c>"..."</c>-quoted section protects a delimiter from splitting. The quotes themselves are
+///     stripped from the segment text and only matter here, not for the space-based argument tokenizer
+///     each segment goes through afterward. <c>\"</c> and <c>\\</c> are the only recognized escapes,
+///     resolved everywhere rather than only inside quotes.
+/// </remarks>
 internal static class ChatCommandChain
 {
 	public enum ChainOperator
 	{
-		/// <summary>The first segment on the line — nothing precedes it.</summary>
+		/// <summary>The first segment on the line; nothing precedes it.</summary>
 		None,
 
-		/// <summary>Preceded by `;` — always runs regardless of the previous segment's outcome.</summary>
+		/// <summary>Preceded by <c>;</c>; always runs regardless of the previous segment's outcome.</summary>
 		Then,
 
-		/// <summary>Preceded by `&amp;&amp;` — only runs if the previous segment succeeded.</summary>
+		/// <summary>Preceded by <c>&amp;&amp;</c>; only runs if the previous segment succeeded.</summary>
 		And
 	}
 
+	/// <summary>
+	///     Splits a raw message into segments and records the operator that precedes each one.
+	/// </summary>
+	/// <param name="message">The raw chat line to split.</param>
+	/// <returns>
+	///     The parsed segments, each carrying the text and the operator that precedes it.
+	/// </returns>
 	public static IReadOnlyList<Segment> Split(string message)
 	{
 		var segments = new List<Segment>();
@@ -415,5 +481,8 @@ internal static class ChatCommandChain
 		return segments;
 	}
 
+	/// <summary>
+	///     A single segment of a command chain: its text and the operator that preceded it.
+	/// </summary>
 	public readonly record struct Segment(string Text, ChainOperator Operator);
 }

@@ -6,8 +6,18 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="ILeaderboardStore" />
+/// <remarks>
+///     Ranks are computed live from the UserStats table on every read: a player's rank is the
+///     count of users with a higher ranked score in the mode, plus one. There is no separately
+///     maintained leaderboard index, so the add/remove methods are no-ops.
+/// </remarks>
 public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboardStore
 {
+	/// <inheritdoc />
+	/// <remarks>
+	///     When the player has no UserStats row for the mode, the read returns
+	///     <see langword="null" /> before any count query runs.
+	/// </remarks>
 	public async Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode,
 		CancellationToken cancellationToken = default)
 	{
@@ -23,6 +33,12 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 		return higherCount + 1;
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The count query joins UserStats to Users to restrict the ranking to the given country
+	///     acronym. When the player has no UserStats row for the mode, the read returns
+	///     <see langword="null" /> before any count query runs.
+	/// </remarks>
 	public async Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,
 		CancellationToken cancellationToken = default)
 	{
@@ -43,34 +59,51 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 		return higherCount + 1;
 	}
 
-	// Rank is always computed live from UserStats (see Fetch*RankAsync) instead of a separately
-	// maintained sorted set, so there is no index to keep in sync — these are no-ops. (Also: no
-	// caller in this codebase ever invoked these on the previous Redis-backed implementation
-	// either, so this isn't a behavior change for anything live.)
+	/// <inheritdoc />
+	/// <remarks>
+	///     A no-op: rank is computed live from UserStats by <see cref="FetchGlobalRankAsync" />, so
+	///     there is no separate leaderboard index to keep in sync.
+	/// </remarks>
 	public Task AddToGlobalLeaderboardAsync(int playerId, GameMode mode, double score,
 		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     A no-op: rank is computed live from UserStats by <see cref="FetchGlobalRankAsync" />, so
+	///     there is no separate leaderboard index to keep in sync.
+	/// </remarks>
 	public Task RemoveFromGlobalLeaderboardAsync(int playerId, GameMode mode,
 		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     A no-op: rank is computed live from UserStats by <see cref="FetchCountryRankAsync" />, so
+	///     there is no separate leaderboard index to keep in sync.
+	/// </remarks>
 	public Task AddToCountryLeaderboardAsync(int playerId, GameMode mode, string country, double score,
 		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     A no-op: rank is computed live from UserStats by <see cref="FetchCountryRankAsync" />, so
+	///     there is no separate leaderboard index to keep in sync.
+	/// </remarks>
 	public Task RemoveFromCountryLeaderboardAsync(int playerId, GameMode mode, string country,
 		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
+	/// <summary>Creates a new SQLite connection using the store's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);

@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Caching;
 
 /// <summary>
-///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IUserRepository" />
-///     — eliminates the N+1 that embedding a full <c>{id, name, country}</c> user reference into every
-///     match/score response would otherwise cause. Every write invalidates the affected entry
-///     immediately; the TTL is only a safety net bounding staleness/memory if an invalidation path is
-///     ever missed, not a substitute for it.
+///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IUserRepository" />:
+///     eliminates the N+1 that embedding a full <c>{id, name, country}</c> user reference into every
+///     response that carries one would otherwise cause. Every write invalidates the affected entry
+///     immediately; the TTL is only a safety net bounding staleness or memory use if an invalidation
+///     path is ever missed, not a substitute for it.
 /// </summary>
 public sealed class CachingUserRepository(
 	IUserRepository inner,
@@ -20,8 +20,14 @@ public sealed class CachingUserRepository(
 	TimeSpan? ttl = null)
 	: IUserRepository
 {
+	/// <summary>The entry TTL: the safety net beneath explicit invalidation.</summary>
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
 
+	/// <inheritdoc cref="IUserRepository.FetchByIdAsync" />
+	/// <remarks>
+	///     Read-through: a hit returns immediately, a miss fetches from the underlying repository and
+	///     caches the non-null result.
+	/// </remarks>
 	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
 		var key = IdKey(id);
@@ -37,6 +43,11 @@ public sealed class CachingUserRepository(
 		return user;
 	}
 
+	/// <inheritdoc cref="IUserRepository.FetchByNameAsync" />
+	/// <remarks>
+	///     Read-through, keyed by the safe form of the name (see <see cref="User.MakeSafeName" />) so a
+	///     lookup matches regardless of case or spaces.
+	/// </remarks>
 	public async Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		var key = NameKey(name);
@@ -52,18 +63,22 @@ public sealed class CachingUserRepository(
 		return user;
 	}
 
-	/// <summary>Never cached — a bcrypt hash has no business sitting in a general-purpose read cache.</summary>
+	/// <summary>Never cached: a bcrypt hash has no business sitting in a general-purpose read cache.</summary>
 	public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return inner.FetchPasswordHashAsync(id, cancellationToken);
 	}
 
+	/// <inheritdoc cref="IUserRepository.UpdateCountryAsync" />
+	/// <remarks>Invalidates the id-keyed entry after updating.</remarks>
 	public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
 	{
 		await inner.UpdateCountryAsync(id, country, cancellationToken);
 		cache.Remove(IdKey(id));
 	}
 
+	/// <inheritdoc cref="IUserRepository.UpdatePrivilegesAsync" />
+	/// <remarks>Invalidates the id-keyed entry after updating.</remarks>
 	public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 		CancellationToken cancellationToken = default)
 	{
@@ -72,7 +87,7 @@ public sealed class CachingUserRepository(
 	}
 
 	/// <summary>
-	///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine — a
+	///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine, a
 	///     rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a lookup
 	///     by the old (now-freed) name could keep resolving to this user until the TTL expires.
 	/// </summary>
@@ -86,23 +101,29 @@ public sealed class CachingUserRepository(
 		cache.Remove(NameKey(name));
 	}
 
+	/// <inheritdoc cref="IUserRepository.CreateAsync" />
+	/// <remarks>Passes straight through: a brand-new user cannot already be cached.</remarks>
 	public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,
 		CancellationToken cancellationToken = default)
 	{
 		return inner.CreateAsync(name, pwBcrypt, country, privilege, cancellationToken);
 	}
 
-	/// <summary>Uncached — a list-shaped admin route, not a hot single-row lookup.</summary>
+	/// <summary>Uncached: a list-shaped call, not a single-row lookup.</summary>
 	public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
 	{
 		return inner.FetchAllAsync(cancellationToken);
 	}
 
+	/// <summary>Builds the id-qualified cache key for a user.</summary>
 	private static string IdKey(int id)
 	{
 		return $"User:Id:{id}";
 	}
 
+	/// <summary>
+	///     Builds the name-qualified cache key for a user, normalized via <see cref="User.MakeSafeName" />.
+	/// </summary>
 	private static string NameKey(string name)
 	{
 		return $"User:Name:{User.MakeSafeName(name)}";

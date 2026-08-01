@@ -14,7 +14,7 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchChangeSettings.</summary>
 public class MatchChangeSettingsHandlerTests
 {
-	private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();
 
 	[Fact]
 	public async Task Handle_NonHost_NoOp()
@@ -25,7 +25,8 @@ public class MatchChangeSettingsHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(guest,
 			MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), guest.Id, teamType: 0));
@@ -40,7 +41,8 @@ public class MatchChangeSettingsHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host,
 			MatchRequestReader(0, "renamed", "", "Some Map", 100, new string('a', 32), host.Id));
@@ -56,7 +58,8 @@ public class MatchChangeSettingsHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		match.Slots[0].Status = SlotStatus.Ready;
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
 
@@ -79,8 +82,9 @@ public class MatchChangeSettingsHandlerTests
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
-		_mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Client Map Name", 999, newMd5, host.Id));
 
@@ -101,8 +105,9 @@ public class MatchChangeSettingsHandlerTests
 		var previousMd5 = match.MapMd5;
 		var previousName = match.MapName;
 		var newMd5 = new string('c', 32);
-		_mapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
@@ -126,8 +131,9 @@ public class MatchChangeSettingsHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.MapId = -1;
 		var newMd5 = new string('c', 32);
-		_mapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		// First packet: map selection fails, warning fires once.
@@ -158,8 +164,9 @@ public class MatchChangeSettingsHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.MapId = -1;
 		var md5 = new string('d', 32);
-		_mapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
 		Assert.Equal(-1, match.MapId);
@@ -170,7 +177,7 @@ public class MatchChangeSettingsHandlerTests
 		var bmap = new Beatmap(md5, 777, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
-		_mapRepository.FetchOneAsync(md5: md5).Returns(bmap);
+		_beatmapRepository.FetchOneAsync(md5: md5).Returns(bmap);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
 
@@ -188,8 +195,9 @@ public class MatchChangeSettingsHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.MapId = -1;
 		var md5 = new string('e', 32);
-		_mapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
@@ -233,7 +241,8 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_MapCleared_CancelsPendingAutoStart()
 	{
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
@@ -252,8 +261,9 @@ public class MatchChangeSettingsHandlerTests
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
-		_mapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Client Map Name", 999, newMd5, host.Id));
@@ -265,7 +275,8 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_TeamTypeChanged_CancelsPendingAutoStart()
 	{
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host,
@@ -278,7 +289,8 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_WinConditionChanged_CancelsPendingAutoStart()
 	{
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		host.Dequeue();
 
 		await handler.HandleAsync(host,
@@ -292,7 +304,8 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_OnlyNameChanged_LeavesPendingAutoStartRunning()
 	{
 		var (fixture, host, _, match) = SetUpMatchWithPendingAutoStart();
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		var cts = match.PendingTimer;
 
 		await handler.HandleAsync(host,
@@ -306,7 +319,8 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_OnlyFreemodsChanged_LeavesPendingAutoStartRunning()
 	{
 		var (fixture, host, _, match) = SetUpMatchWithPendingAutoStart();
-		var handler = new MatchChangeSettingsHandler(_mapRepository, fixture.SessionRegistry, fixture.MatchMembership);
+		var handler =
+			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 		var cts = match.PendingTimer;
 
 		await handler.HandleAsync(host,

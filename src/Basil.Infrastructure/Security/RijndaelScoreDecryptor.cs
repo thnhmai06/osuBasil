@@ -7,16 +7,21 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace Basil.Infrastructure.Security;
 
-/// <summary>
-///     Ported from app/encryption.py's decrypt_score_aes_data. This is genuinely Rijndael, not AES:
-///     the osu! client uses a 256-bit block size (block_size=32 in the Python py3rijndael call),
-///     which .NET's built-in Aes class cannot do — it's hardcoded to 128-bit blocks. BouncyCastle's
-///     RijndaelEngine supports the configurable block size the protocol actually needs.
-/// </summary>
+/// <inheritdoc cref="IScoreDecryptor" />
+/// <remarks>
+///     Uses BouncyCastle's <see cref="RijndaelEngine" /> at a 256-bit block size in CBC mode with
+///     PKCS7 padding, which the .NET <c>Aes</c> class cannot reproduce because it is hardcoded to
+///     128-bit blocks. The key is the UTF-8 encoding of <c>osu!-scoreburgr---------</c> followed by
+///     the submitting client's osu! version string and the same key and IV decrypt both the score
+///     data and the client hash. The decrypted score data is split on <c>:</c> into its fields
+///     before being returned.
+/// </remarks>
 public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 {
+	/// <summary>The Rijndael block size in bits, fixed at 256 to match the client's cipher.</summary>
 	private const int BlockSizeBits = 256;
 
+	/// <inheritdoc />
 	public (string[] ScoreDataFields, string ClientHash) Decrypt(
 		string scoreDataBase64,
 		string clientHashBase64,
@@ -32,6 +37,14 @@ public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 		return (Encoding.UTF8.GetString(scoreData).Split(':'), Encoding.UTF8.GetString(clientHash));
 	}
 
+	/// <summary>
+	///     Decrypts a single ciphertext with the given key and IV using 256-bit Rijndael in CBC mode
+	///     with PKCS7 padding.
+	/// </summary>
+	/// <param name="ciphertext">The bytes to decrypt.</param>
+	/// <param name="key">The cipher key.</param>
+	/// <param name="iv">The initialization vector.</param>
+	/// <returns>The decrypted plaintext bytes, without padding.</returns>
 	private static byte[] Decrypt(byte[] ciphertext, byte[] key, byte[] iv)
 	{
 		var cipher = new PaddedBufferedBlockCipher(

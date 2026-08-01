@@ -20,12 +20,22 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Basil.Application;
 
 /// <summary>
-///     Composition root helper for the Application layer: registers use cases, packet handlers, and
-///     the dispatcher. Assumes the ports consumed here (repositories, registries, etc.) are already
-///     registered by Basil.Infrastructure's own extension.
+///     Composition root helper for the Application layer: registers the layer's services with the
+///     container.
 /// </summary>
+/// <remarks>
+///     The use cases registered here depend on ports (repositories, registries, and other
+///     infrastructure) that are expected to be registered already by Basil.Infrastructure's own
+///     extension before this one runs.
+/// </remarks>
 public static class DependencyInjection
 {
+	/// <summary>
+	///     Registers the Application layer's singletons, packet handlers, dispatcher, and background
+	///     services into the given service collection.
+	/// </summary>
+	/// <param name="services">The service collection to add the registrations to.</param>
+	/// <returns>The same service collection, for chaining further registrations.</returns>
 	public static IServiceCollection AddApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<LoginService>();

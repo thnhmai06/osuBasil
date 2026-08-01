@@ -22,10 +22,10 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 /// <summary>Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
 public class MatchMembershipServiceTests
 {
-	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
-
 	/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
-	private readonly IMapRepository _mapRepository = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();
+
+	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
 
 	private readonly FakeMatchPersistenceRepository _matchPersistence = new();
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
@@ -35,7 +35,7 @@ public class MatchMembershipServiceTests
 
 	public MatchMembershipServiceTests()
 	{
-		_mapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+		_beatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
 	}
 
@@ -43,7 +43,7 @@ public class MatchMembershipServiceTests
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
-			Substitute.For<IMatchLiveEvents>(), _mapRepository, _userRepository,
+			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
 	}
 
@@ -329,7 +329,7 @@ public class MatchMembershipServiceTests
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
-			_mapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
+			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
 		var payloads = new List<byte[]>();
@@ -449,7 +449,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host, bot);
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
-		_mapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
+		_beatmapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
 			.Returns((Beatmap?)null);
 		host.Dequeue();
 

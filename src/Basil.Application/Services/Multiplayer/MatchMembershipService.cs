@@ -17,11 +17,15 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>
-///     Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state. Every method here
-///     that reads-then-mutates a match's slots or settings must be called with <see cref="MatchSession.Lock" />
-///     already held by the caller (packet handlers own the lock's lifetime, since the lock also has
-///     to span the eventual `enqueue_state` broadcast — see MatchSession's doc comment).
+///     Provides the shared multiplayer membership operations: room creation, join, leave, close, and
+///     state broadcasts.
 /// </summary>
+/// <remarks>
+///     Every method here that reads-then-mutates a match's slots or settings must be called with
+///     <see cref="MatchSession.Lock" /> already held by the caller. Packet handlers own the lock's
+///     lifetime, since the lock also has to span the eventual state broadcast; see
+///     <see cref="MatchSession" />'s doc comment.
+/// </remarks>
 public sealed class MatchMembershipService(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
@@ -29,22 +33,41 @@ public sealed class MatchMembershipService(
 	ChannelMembershipService channelMembership,
 	IMatchPersistenceRepository matchPersistence,
 	IMatchLiveEvents eventBus,
-	IMapRepository mapRepo,
+	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
 	ILogger<MatchMembershipService> logger)
 {
 	private const int MaxMatchNameLength = 50;
 
+	/// <summary>Validates parsed match-create data against the expected host.</summary>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="expectedHostId">The host id the data must claim.</param>
+	/// <returns>
+	///     <see langword="true" /> when the host id matches and the name is short enough; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	public static bool ValidateMatchData(ReadMatchResult data, int expectedHostId)
 	{
 		return data.HostId == expectedHostId && data.Name.Length <= MaxMatchNameLength;
 	}
 
+	/// <summary>Builds the chat channel name for a match.</summary>
+	/// <param name="matchId">The match's in-memory registry id.</param>
+	/// <returns>The <c>#multi_{id}</c> channel name.</returns>
 	public static string ChannelNameFor(int matchId)
 	{
 		return $"#multi_{matchId}";
 	}
 
+	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
+	/// <param name="id">The in-memory registry slot id.</param>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="hostId">The id of the player who created the room.</param>
+	/// <param name="createdViaMakeCommand">
+	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
 	public static MatchSession BuildNew(int id, ReadMatchResult data, int hostId, bool createdViaMakeCommand = false)
 	{
 		return new MatchSession(
@@ -65,6 +88,8 @@ public sealed class MatchMembershipService(
 			createdViaMakeCommand);
 	}
 
+	/// <summary>Registers the match's chat channel in the channel registry.</summary>
+	/// <param name="match">The match whose channel to register.</param>
 	public void RegisterChannel(MatchSession match)
 	{
 		channelRegistry.Add(new ChannelSession(
@@ -72,6 +97,15 @@ public sealed class MatchMembershipService(
 			0, 0, false, "#multiplayer", true));
 	}
 
+	/// <summary>Creates a match, persists its row, records the creation event, and seats the host in slot 0.</summary>
+	/// <param name="host">The player creating the room.</param>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
+	/// <param name="createdViaMakeCommand">
+	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
 	public async Task<MatchSession?> CreateAsync(PlayerSession host, ReadMatchResult data,
 		CancellationToken cancellationToken = default, bool createdViaMakeCommand = false)
 	{
@@ -106,15 +140,19 @@ public sealed class MatchMembershipService(
 		return match;
 	}
 
-	/// <summary>
-	///     Backs the `api.` host's `POST /match` — creates a room with nobody in it (no chat "sender"
-	///     exists over HTTP, so there's no player to auto-join into slot 0 the way <see cref="CreateAsync" />
-	///     does for `!mp make`). <see cref="MatchSession.HostId" /> stays 0 and the referee list stays
-	///     empty until a caller assigns them via <c>PATCH /match/{id}/settings</c>/`host` and `addref`
-	///     actions. Marked <see cref="MatchSession.CreatedViaMakeCommand" /> for the same reason
-	///     `!mp make` rooms are — it should persist until explicitly closed, not auto-teardown the
-	///     moment a client briefly joins and leaves it.
-	/// </summary>
+	/// <summary>Creates a match with nobody in it, persisting its row and recording the creation event.</summary>
+	/// <remarks>
+	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
+	///     is no player to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
+	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays 0 and the referee list stays empty
+	///     until a caller assigns them via <c>PATCH /match/{id}/settings</c>, the <c>host</c> action,
+	///     or the <c>addref</c> action. It is marked <see cref="MatchSession.CreatedViaMakeCommand" />
+	///     for the same reason <c>!mp make</c> rooms are: it should persist until explicitly closed,
+	///     not auto-teardown the moment a client briefly joins and leaves.
+	/// </remarks>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
+	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
 	public async Task<MatchSession?> CreateEmptyAsync(ReadMatchResult data,
 		CancellationToken cancellationToken = default)
 	{
@@ -139,6 +177,18 @@ public sealed class MatchMembershipService(
 		return match;
 	}
 
+	/// <summary>Seats a player in a match after applying every join gate.</summary>
+	/// <remarks>
+	///     Rejects the join, sending a <c>MatchJoinFail</c> packet, when the player is already in a
+	///     match, is a tourney client, is banned, or the room is locked; when the room is private and
+	///     the player holds no staff privileges or invite; when the password is wrong; or when no free
+	///     slot exists. The host bypasses the free-slot check and always takes slot 0.
+	/// </remarks>
+	/// <param name="player">The player joining.</param>
+	/// <param name="match">The match to join.</param>
+	/// <param name="password">The password supplied by the player.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <returns><see langword="true" /> when the player was seated; otherwise, <see langword="false" />.</returns>
 	public async Task<bool> JoinAsync(PlayerSession player, MatchSession match, string password,
 		CancellationToken cancellationToken = default)
 	{
@@ -192,11 +242,16 @@ public sealed class MatchMembershipService(
 		return await OccupySlot(player, match, slotId, cancellationToken);
 	}
 
-	/// <summary>
-	///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInviteAsync" />) —
-	///     bypasses every join gate (password/private/locked/ban aren't re-checked here; the caller
-	///     already did). Fails only if the player is already in a match or the room is full.
-	/// </summary>
+	/// <summary>Seats a player directly, bypassing every join gate.</summary>
+	/// <remarks>
+	///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInviteAsync" />).
+	///     Password, private, locked, and ban gates are not re-checked here; the caller already did.
+	///     Fails only when the player is already in a match or the room is full.
+	/// </remarks>
+	/// <param name="player">The player to seat.</param>
+	/// <param name="match">The match to seat into.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <returns><see langword="true" /> when the player was seated; otherwise, <see langword="false" />.</returns>
 	public async Task<bool> ForceJoinAsync(PlayerSession player, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
@@ -206,11 +261,20 @@ public sealed class MatchMembershipService(
 		return free is not null && await OccupySlot(player, match, free.Value, cancellationToken);
 	}
 
-	/// <summary>
-	///     The slot-occupation tail shared by <see cref="JoinAsync" /> and <see cref="ForceJoinAsync" />: channel
-	///     join, team default, slot fields, the <c>MatchJoinSuccess</c> packet, state broadcast, and the
-	///     <c>PlayerJoined</c> event.
-	/// </summary>
+	/// <summary>Occupies a specific slot, runs the shared join tail, and broadcasts the new state.</summary>
+	/// <remarks>
+	///     Shared by <see cref="JoinAsync" /> and <see cref="ForceJoinAsync" />. The tail covers the
+	///     channel join, the team default, the slot fields, the <c>MatchJoinSuccess</c> packet, the
+	///     state broadcast, and the <c>PlayerJoined</c> event.
+	/// </remarks>
+	/// <param name="player">The player being seated.</param>
+	/// <param name="match">The match being joined.</param>
+	/// <param name="slotId">The 0-based slot index to occupy.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <returns>
+	///     <see langword="true" /> when the player was seated; otherwise, <see langword="false" /> when the channel is
+	///     missing or the channel join failed.
+	/// </returns>
 	private async Task<bool> OccupySlot(PlayerSession player, MatchSession match, int slotId,
 		CancellationToken cancellationToken = default)
 	{
@@ -240,6 +304,10 @@ public sealed class MatchMembershipService(
 		return true;
 	}
 
+	/// <summary>Parts a player from a match, transferring the host when needed and tearing the room down when it empties.</summary>
+	/// <param name="player">The player leaving.</param>
+	/// <param name="match">The match being left.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task LeaveAsync(PlayerSession player, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
@@ -308,6 +376,11 @@ public sealed class MatchMembershipService(
 		}
 	}
 
+	/// <summary>Closes a match: parts every seated player, tears the room down, and records a close event.</summary>
+	/// <param name="match">The match to close.</param>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="cancellationToken">A token that cancels the close event write.</param>
 	public async Task CloseAsync(MatchSession match, int? actorId = null, string? actorName = null,
 		CancellationToken cancellationToken = default)
 	{
@@ -333,12 +406,14 @@ public sealed class MatchMembershipService(
 			actorId, actorName, null, null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 	}
 
-	/// <summary>
-	///     Cancels a pending `!mp start &lt;seconds&gt;` countdown (not a plain `!mp timer`, which doesn't
-	///     start anything on its own) and announces why — called whenever a gameplay-affecting setting
-	///     (map, team type, win condition, size, a player's team) changes while a start is queued, since
+	/// <summary>Cancels a pending auto-start countdown when one is queued, announcing why.</summary>
+	/// <remarks>
+	///     Called whenever a gameplay-affecting setting (map, team type, win condition, size, or a
+	///     player's team) changes while a <c>!mp start &lt;seconds&gt;</c> countdown is queued, since
 	///     starting the match under rules different from what was queued against would be misleading.
-	/// </summary>
+	///     A plain <c>!mp timer</c>, which does not start anything on its own, is left alone.
+	/// </remarks>
+	/// <param name="match">The match whose countdown to cancel.</param>
 	public void CancelQueuedAutoStart(MatchSession match)
 	{
 		if (match.PendingTimer is null || !match.PendingTimerIsAutoStart) return;
@@ -352,6 +427,9 @@ public sealed class MatchMembershipService(
 			EnqueueChat(match, bot.Name, bot.Id, "Match start cancelled — room settings changed.");
 	}
 
+	/// <summary>Removes a match and its channel from the registries and marks it ended in the database.</summary>
+	/// <param name="match">The match to tear down.</param>
+	/// <param name="channel">The match's chat channel, or <see langword="null" /> when it was never registered.</param>
 	private void TeardownMatch(MatchSession match, ChannelSession? channel)
 	{
 		match.PendingTimer?.Cancel();
@@ -367,10 +445,17 @@ public sealed class MatchMembershipService(
 			channelMembership.BroadcastToMembers(lobby, ServerPacketWriter.DisposeMatch(match.Id));
 	}
 
+	/// <summary>Starts the match: validates the beatmap, marks players as playing, creates the round, and broadcasts.</summary>
+	/// <param name="match">The match to start.</param>
+	/// <param name="cancellationToken">A token that cancels the persistence and broadcast operations.</param>
+	/// <returns>
+	///     <see langword="true" /> when the match started; otherwise, <see langword="false" /> when the assigned beatmap
+	///     no longer exists on the server.
+	/// </returns>
 	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var bmap = match.MapId > 0
-			? await mapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
+			? await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
 			: null;
 
 		if (match.MapId > 0 && bmap is null)
@@ -407,6 +492,11 @@ public sealed class MatchMembershipService(
 		return true;
 	}
 
+	/// <summary>Broadcasts a raw packet to the match channel and, for public rooms, the non-empty lobby.</summary>
+	/// <param name="match">The match whose channel to broadcast into.</param>
+	/// <param name="data">The serialized packet bytes.</param>
+	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
+	/// <param name="immune">Player ids to exclude from the broadcast, or <see langword="null" /> for none.</param>
 	public void Enqueue(MatchSession match, byte[] data, bool lobby = true, IReadOnlyCollection<int>? immune = null)
 	{
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
@@ -416,6 +506,11 @@ public sealed class MatchMembershipService(
 			BroadcastToNonEmptyLobby(data, lobby);
 	}
 
+	/// <summary>Broadcasts a chat message into the match channel.</summary>
+	/// <param name="match">The match whose channel to broadcast into.</param>
+	/// <param name="senderName">The message sender's name.</param>
+	/// <param name="senderId">The message sender's id.</param>
+	/// <param name="text">The message text.</param>
 	public void EnqueueChat(MatchSession match, string senderName, int senderId, string text)
 	{
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
@@ -424,6 +519,15 @@ public sealed class MatchMembershipService(
 		channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
 	}
 
+	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
+	/// <remarks>
+	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
+	///     then rebuilds and publishes the main, settings, and per-slot snapshots through
+	///     <see cref="IMatchLiveEvents" />.
+	/// </remarks>
+	/// <param name="match">The match whose state to broadcast.</param>
+	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
+	/// <param name="cancellationToken">A token that cancels the snapshot builds.</param>
 	public async Task EnqueueStateAsync(MatchSession match, bool lobby = true,
 		CancellationToken cancellationToken = default)
 	{
@@ -436,10 +540,10 @@ public sealed class MatchMembershipService(
 			BroadcastToNonEmptyLobby(
 				ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
 
-		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, userRepo, mapRepo);
+		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, userRepo, beatmapRepo);
 		eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
 
-		var settings = await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, userRepo, mapRepo);
+		var settings = await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, userRepo, beatmapRepo);
 		var settingsDelta = match.SettingsSnapshot.Publish(settings);
 		eventBus.PublishSettings(match.DbId, settingsDelta);
 
@@ -450,6 +554,9 @@ public sealed class MatchMembershipService(
 		}
 	}
 
+	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
+	/// <param name="match">The match whose host to publish.</param>
+	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
 	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo);
@@ -457,6 +564,9 @@ public sealed class MatchMembershipService(
 		eventBus.PublishHost(match.DbId, delta);
 	}
 
+	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
+	/// <param name="match">The match whose referees to publish.</param>
+	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
 	public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, userRepo);
@@ -464,6 +574,9 @@ public sealed class MatchMembershipService(
 		eventBus.PublishRefs(match.DbId, delta);
 	}
 
+	/// <summary>Rebuilds and republishes the ban list snapshot channel.</summary>
+	/// <param name="match">The match whose ban list to publish.</param>
+	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
 	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo);
@@ -471,12 +584,17 @@ public sealed class MatchMembershipService(
 		eventBus.PublishBans(match.DbId, delta);
 	}
 
+	/// <summary>Republishes the countdown timer snapshot channel.</summary>
+	/// <param name="match">The match whose timer to publish.</param>
 	public void PublishTimer(MatchSession match)
 	{
 		var delta = match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match));
 		eventBus.PublishTimer(match.DbId, delta);
 	}
 
+	/// <summary>Rebuilds and republishes the slots snapshot channel.</summary>
+	/// <param name="match">The match whose slots to publish.</param>
+	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
 	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo);
@@ -484,6 +602,9 @@ public sealed class MatchMembershipService(
 		eventBus.PublishSlots(match.DbId, delta);
 	}
 
+	/// <summary>Broadcasts a packet to the lobby channel, but only when it is non-empty.</summary>
+	/// <param name="data">The serialized packet bytes.</param>
+	/// <param name="lobby"><see langword="true" /> to allow the lobby broadcast; otherwise, <see langword="false" />.</param>
 	private void BroadcastToNonEmptyLobby(byte[] data, bool lobby)
 	{
 		if (!lobby) return;

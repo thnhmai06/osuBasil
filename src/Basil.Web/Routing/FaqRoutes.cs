@@ -5,21 +5,25 @@ using Basil.Web.OpenApi;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/faqs` — public read access to the same FAQ entries `!faq` serves in chat, plus admin-key-gated
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="FaqRoutes" /> is static and can't be a
+///     type argument.
+/// </summary>
+internal sealed class FaqRoutesLog;
+
+/// <summary>
+///     `/faqs`: public read access to the same FAQ entries `!faq` serves in chat, plus admin-key-gated
 ///     writes with a "no silent override" rule: `POST` only creates a brand-new entry (409 if the name
 ///     is already taken), `PUT` only replaces an existing one (404 if it isn't). Backed by
 ///     <see cref="FaqService" />, shared with <see cref="Basil.Application.Services.Bot.CommandDispatcher" />.
 /// </summary>
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="FaqRoutes" /> is static and can't be a type
-///     argument.
-/// </summary>
-internal sealed class FaqRoutesLog;
-
 internal static class FaqRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
+	/// <summary>
+	///     Registers the `/faqs` read and admin-key-gated write routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapFaqRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/faqs/", (FaqService faq) => Results.Json(faq.ListEntries()))

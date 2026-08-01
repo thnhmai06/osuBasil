@@ -9,12 +9,16 @@ public enum OsuStream : byte
 {
 	/// <summary>The stable release stream.</summary>
 	Stable,
+
 	/// <summary>The beta release stream.</summary>
 	Beta,
+
 	/// <summary>The cutting-edge release stream.</summary>
 	CuttingEdge,
+
 	/// <summary>The tournament build stream.</summary>
 	Tourney,
+
 	/// <summary>The developer release stream.</summary>
 	Dev
 }

@@ -6,10 +6,16 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Channels;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's ChannelPart (Player.leave_channel). No kick packet is sent
-///     back — the client already knows it left, since it's the one that sent this packet (unlike a
-///     server-initiated part elsewhere, which does need one).
+///     Handles the <see cref="ClientPackets.ChannelPart" /> packet, which the client sends when it
+///     wants to leave a chat channel. Reads the channel name, ignores the client-managed virtual
+///     channels, and calls <see cref="ChannelMembershipService.Part" /> when the named channel exists.
 /// </summary>
+/// <remarks>
+///     The part is performed without a kick packet: the client already knows it left because it sent
+///     this packet, unlike a server-initiated part, which does need one. The membership logic in
+///     <see cref="ChannelMembershipService" /> broadcasts the updated channel_info and the IRC-shaped
+///     PART message to the remaining members.
+/// </remarks>
 public sealed class ChannelPartHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
 	: IBanchoPacketHandler
 {

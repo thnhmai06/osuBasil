@@ -5,30 +5,30 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj" />
+		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Persistence\Migrations\*.sql" />
+		<EmbeddedResource Include="Persistence\Migrations\*.sql"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="BCrypt.Net-Next" />
-		<PackageReference Include="BouncyCastle.Cryptography" />
-		<PackageReference Include="Dapper" />
-		<PackageReference Include="dbup-sqlite" />
-		<PackageReference Include="FFMpegCore" />
-		<PackageReference Include="Microsoft.Data.Sqlite" />
-		<PackageReference Include="Microsoft.Extensions.Caching.Memory" />
-		<PackageReference Include="Microsoft.Extensions.Http" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
-		<PackageReference Include="ppy.osu.Game.Rulesets.Osu" />
-		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko" />
-		<PackageReference Include="ppy.osu.Game.Rulesets.Catch" />
-		<PackageReference Include="ppy.osu.Game.Rulesets.Mania" />
-		<PackageReference Include="SixLabors.ImageSharp" />
+		<PackageReference Include="BCrypt.Net-Next"/>
+		<PackageReference Include="BouncyCastle.Cryptography"/>
+		<PackageReference Include="Dapper"/>
+		<PackageReference Include="dbup-sqlite"/>
+		<PackageReference Include="FFMpegCore"/>
+		<PackageReference Include="Microsoft.Data.Sqlite"/>
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
+		<PackageReference Include="Microsoft.Extensions.Http"/>
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
+		<PackageReference Include="SixLabors.ImageSharp"/>
 	</ItemGroup>
 
 </Project>

@@ -2,26 +2,37 @@ using Basil.Application.Configuration;
 
 namespace Basil.Infrastructure.Persistence;
 
-/// <summary>Shared by DI registration and the startup migration runner so both build the identical connection string.</summary>
+/// <summary>Builds the SQLite connection string for the persistence layer from <see cref="DatabaseOptions" />.</summary>
+/// <remarks>
+///     A shared helper so every caller that opens a SQLite connection, such as a repository and the
+///     migration runner, uses the identical connection string for the same configured database
+///     file.
+/// </remarks>
 public static class DatabaseConnectionStringBuilder
 {
 	/// <summary>
 	///     Resolves <see cref="DatabaseOptions.Path" /> to an absolute path, anchored to the
 	///     executable's directory (not the process's working directory) when relative.
 	/// </summary>
+	/// <param name="options">The database options carrying the path to resolve.</param>
+	/// <returns>The resolved absolute path.</returns>
 	public static string ResolvePath(DatabaseOptions options)
 	{
 		return Path.IsPathRooted(options.Path) ? options.Path : Path.Combine(AppContext.BaseDirectory, options.Path);
 	}
 
+	/// <summary>Builds the SQLite connection string for the database file described by the given options.</summary>
+	/// <param name="options">The database options carrying the file path.</param>
+	/// <returns>The connection string.</returns>
+	/// <remarks>
+	///     The connection string always carries <c>Foreign Keys=True</c>, because SQLite disables
+	///     foreign key enforcement per-connection by default while the schema declares foreign keys,
+	///     and <c>Default Timeout=5</c>, which maps to SQLite's busy_timeout. The server is
+	///     deliberately multithreaded, so concurrent writers across different matches are expected;
+	///     without the timeout they would throw SQLITE_BUSY immediately instead of waiting.
+	/// </remarks>
 	public static string Build(DatabaseOptions options)
 	{
-		// Foreign Keys=True: SQLite disables FK enforcement per-connection by default; the schema
-		// declares FKs (e.g. UserStats -> Users) and MySQL always enforced them.
-		// Default Timeout: maps to SQLite's busy_timeout. The server is deliberately multithreaded
-		// (see MatchSession.Lock) and writes across different matches are not serialized, so
-		// concurrent writers are expected — without this they'd throw SQLITE_BUSY immediately
-		// instead of waiting.
 		return $"Data Source={ResolvePath(options)};Foreign Keys=True;Default Timeout=5";
 	}
 }

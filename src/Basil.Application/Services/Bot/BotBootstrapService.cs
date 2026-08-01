@@ -10,10 +10,13 @@ using Microsoft.Extensions.Options;
 namespace Basil.Application.Services.Bot;
 
 /// <summary>
-///     Boots the seeded id=0 BanchoBot row into an in-memory PlayerSession at startup, so chat/mp
-///     commands have a real sender identity to reply from. Not a login — there is no client
-///     connection behind this session, so it skips the normal handshake entirely.
+///     Boots the seeded id=0 bot user into an in-memory <see cref="PlayerSession" /> at startup.
 /// </summary>
+/// <remarks>
+///     This gives chat and <c>!mp</c> commands a real sender identity to reply from. It is not a
+///     login: no client connection sits behind this session, so the normal handshake is skipped
+///     entirely and the session is registered directly with <see cref="IPlayerSessionRegistry" />.
+/// </remarks>
 public sealed class BotBootstrapService(
 	IUserRepository users,
 	IPlayerSessionRegistry sessionRegistry,
@@ -24,6 +27,15 @@ public sealed class BotBootstrapService(
 	public const int BotId = 0;
 	private const string BotToken = "bancho-bot-session";
 
+	/// <summary>
+	///     Creates the bot's session, synchronizing its stored name and country with the configured
+	///     options and joining it to every auto-join channel.
+	/// </summary>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <returns>
+	///     The bot's <see cref="PlayerSession" />, or <see langword="null" /> when the seeded user row
+	///     is missing.
+	/// </returns>
 	public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await users.FetchByIdAsync(BotId, cancellationToken);

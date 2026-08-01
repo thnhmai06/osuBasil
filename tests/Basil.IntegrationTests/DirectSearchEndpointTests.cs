@@ -16,22 +16,22 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Ported from app/api/domains/osu.py's osuSearchHandler/osuSearchSetHandler, replumbed to query
-///     the local maps table instead of a mirror. Only wiring (auth gate, query binding, dispatch to
+///     the local beatmaps table instead of a mirror. Only wiring (auth gate, query binding, dispatch to
 ///     the right formatter) is covered here — DirectSearchService/DirectSearchResponseFormatter have
 ///     their own unit tests.
 /// </summary>
 public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly WebApplicationFactory<Program> _factory;
-	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
 	private IReadOnlyList<IReadOnlyList<Beatmap>> _searchResult = [];
 	private Beatmap? _setInfo;
 
 	public DirectSearchEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		_maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
+		_beatmaps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _setInfo);
-		_maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		_beatmaps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 			Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
 
 		var users = Substitute.For<IUserRepository>();
@@ -55,7 +55,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(users);
 				services.AddSingleton(TestDoubles.FixedPasswordHasher());
-				services.AddSingleton(_maps);
+				services.AddSingleton(_beatmaps);
 			});
 		});
 	}

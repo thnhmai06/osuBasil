@@ -7,26 +7,46 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Anticheat;
 
-/// <summary>Ported from app/services/client_integrity.py's ClientIntegrityResult.</summary>
+/// <summary>
+///     Indicates whether a LastFM telemetry report was fully handled.
+/// </summary>
 public enum ClientIntegrityResult : byte
 {
+	/// <summary>No violation was detected.</summary>
 	Empty,
+
+	/// <summary>The report needs no further processing.</summary>
 	StopSending
 }
 
 /// <summary>
-///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
-///     Diverges from Python by explicit user decision: the restrict/force-logout/random-ban-roll/
-///     Discord-webhook side effects are all dropped, since Basil has no restrict machinery. Instead
-///     of a log entry, a flagged player currently in a match gets BasilBot posting a warning to that
-///     match's own chat channel, plus a DM to every referee of that match naming the player/room/
-///     reason. A flagged player not in any match produces no side effect at all.
+///     Evaluates anticheat flags reported by osu! clients through the LastFM telemetry endpoint.
 /// </summary>
+/// <remarks>
+///     A flagged player who is currently in a match gets BasilBot posting a warning to that match's
+///     own chat channel and a direct message to every referee of the match, naming the player,
+///     room, and reason. A flagged player who is not in a match produces no side effect at all.
+///     This deliberately drops the restrict, force-logout, and ban-roll machinery that a ranked
+///     server would apply, because Basil has no restrict system.
+/// </remarks>
 public sealed class ClientIntegrityService(
 	IPlayerSessionRegistry sessionRegistry,
 	MatchMembershipService matchMembership,
 	ILogger<ClientIntegrityService> logger)
 {
+	/// <summary>
+	///     Evaluates a single LastFM telemetry report for client integrity violations.
+	/// </summary>
+	/// <param name="player">The player session the report belongs to.</param>
+	/// <param name="beatmapIdOrHiddenFlag">The telemetry value: either a beatmap id or the encoded anticheat flag payload.</param>
+	/// <param name="cancellationToken">A token that cancels the report.</param>
+	/// <returns>A <see cref="ClientIntegrityResult" /> describing the outcome.</returns>
+	/// <remarks>
+	///     Only values beginning with the <c>a</c> marker are treated as flag payloads; the flag
+	///     bits after the marker are parsed defensively, so malformed input is ignored rather than
+	///     thrown. HQ-cheat assembly, HQ-cheat file, and registry-edit flags trigger a report; all
+	///     other flags are ignored.
+	/// </remarks>
 	public Task<ClientIntegrityResult> HandleLastFmFlagsAsync(
 		PlayerSession player, string beatmapIdOrHiddenFlag, CancellationToken cancellationToken = default)
 	{

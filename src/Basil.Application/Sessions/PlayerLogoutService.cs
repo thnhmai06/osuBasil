@@ -8,9 +8,13 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Sessions;
 
 /// <summary>
-///     Ported from Player.logout, minus the LOGOUT packet's 1-second login-grace-period check (which
-///     stays in LogoutHandler since it's specific to that packet, not part of "logout" semantics).
-///     Shared with !reconnect, which forces the same cleanup on a session outside of that packet.
+///     Performs the coordinated cleanup that runs when a player goes offline: leaving the current
+///     multiplayer match, tearing down spectator relationships, parting every joined channel with
+///     the appropriate broadcast, and removing the session from the registry. Shared by the LOGOUT
+///     packet handler and the <c>!reconnect</c> command, both of which force the same cleanup on a
+///     session outside of the normal logout flow. The LOGOUT packet's one-second login-grace-period
+///     check is deliberately absent here because it is specific to that packet rather than part of
+///     logout semantics.
 /// </summary>
 public sealed class PlayerLogoutService(
 	IPlayerSessionRegistry sessionRegistry,
@@ -19,6 +23,15 @@ public sealed class PlayerLogoutService(
 	MatchMembershipService matchMembership,
 	ILogger<PlayerLogoutService> logger)
 {
+	/// <summary>
+	///     Logs <paramref name="player" /> out, running each teardown step in order: leaving the
+	///     current match under its lock, removing spectator relationships (including BasilBot's own
+	///     watch on this player), parting all joined channels with membership broadcasts, removing
+	///     the session from the registry, and notifying every remaining player of the logout.
+	/// </summary>
+	/// <param name="player">The session of the player being logged out.</param>
+	/// <param name="cancellationToken">A token that cancels the wait on the match lock when the player is in a match.</param>
+	/// <returns>A task that completes when the logout cleanup has finished.</returns>
 	public async Task LogoutAsync(PlayerSession player, CancellationToken cancellationToken = default)
 	{
 		logger.LogInformation("- User logged out: UserId={UserId} Username={Username}", player.Id, player.Name);

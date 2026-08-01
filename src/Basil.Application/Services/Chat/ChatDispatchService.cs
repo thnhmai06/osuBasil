@@ -12,16 +12,22 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Chat;
 
 /// <summary>
-///     Single entry point for "a sender said `text` to `channelOrNick`" — used identically by bancho's
-///     SendPublicMessage/SendPrivateMessage handlers and by a real IRC connection's PRIVMSG. A leading
-///     '#' routes to the channel path (broadcast + `!`-command dispatch); anything else resolves to a
-///     user (bot command shortcut, or block/away/silence-checked delivery — online only, no offline
-///     persistence).
-///     Lives one layer above <see cref="ChannelMembershipService" /> specifically to avoid a DI cycle:
-///     this depends on <see cref="ICommandDispatcher" />, which chains back down to
-///     <c>MatchMembershipService</c> -&gt; <see cref="ChannelMembershipService" /> — that class itself
-///     must stay free of any dependency on this one.
+///     Routes an outgoing chat message to a channel or a private recipient.
 /// </summary>
+/// <remarks>
+///     This is the single entry point for "a sender said <c>text</c> to <c>channelOrNick</c>", used
+///     identically by the bancho packet handlers
+///     <see cref="Basil.Application.PacketHandlers.Channels.SendPublicMessageHandler" /> and
+///     <see cref="Basil.Application.PacketHandlers.Channels.SendPrivateMessageHandler" /> and by a
+///     real IRC connection's PRIVMSG. A leading <c>#</c> routes to the channel path, which broadcasts
+///     and dispatches any <c>!</c> command; anything else resolves to a user, either the bot for a
+///     command shortcut or a regular recipient whose message is checked against block, PM-privacy,
+///     and silence state. Delivery is online only, with no offline persistence. The service lives one
+///     layer above <see cref="ChannelMembershipService" /> specifically to avoid a dependency cycle:
+///     it depends on <see cref="ICommandDispatcher" />, which chains back down through the match
+///     services to <see cref="ChannelMembershipService" />, so that class must stay free of any
+///     dependency on this one.
+/// </remarks>
 public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
 	IPlayerSessionRegistry sessionRegistry,
@@ -34,6 +40,16 @@ public sealed class ChatDispatchService(
 {
 	private const int MaxMessageLength = 2000;
 
+	/// <summary>
+	///     Dispatches a chat message from <paramref name="sender" /> to either a channel or a private
+	///     recipient.
+	/// </summary>
+	/// <param name="sender">The player sending the message.</param>
+	/// <param name="channelOrNick">
+	///     The destination: a <c>#</c>-prefixed channel name, or the name of the receiving user.
+	/// </param>
+	/// <param name="text">The message body.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	public async Task SendPrivmsgAsync(PlayerSession sender, string channelOrNick, string text,
 		CancellationToken cancellationToken = default)
 	{
@@ -60,19 +76,29 @@ public sealed class ChatDispatchService(
 	}
 
 	/// <summary>
-	///     A bancho client only ever knows a match/spectator channel by its fixed alias
-	///     (<c>#multiplayer</c>/<c>#spectator</c>) — never the internal registry name
-	///     (<see cref="MatchSession.ChatChannelName" />, e.g. <c>#multi_5</c>) that
-	///     <see cref="IChannelRegistry.GetByName" /> actually indexes on. Mirrors the inverse
-	///     translation in <c>BanchoIrcBridgeConnection.TranslateRecipient</c> (outbound direction).
+	///     Translates the fixed alias a bancho client uses for a match or spectator channel into the
+	///     registry's internal channel name.
 	/// </summary>
+	/// <remarks>
+	///     A bancho client only ever knows a match or spectator channel by its fixed alias
+	///     (<c>#multiplayer</c> or <c>#spectator</c>), never the internal registry name
+	///     (<see cref="MatchSession.ChatChannelName" />, for example <c>#multi_5</c>) that
+	///     <see cref="IChannelRegistry.GetByName" /> actually indexes on. This mirrors the inverse
+	///     translation done for outbound messages in <c>BanchoIrcBridgeConnection.TranslateRecipient</c>.
+	/// </remarks>
+	/// <param name="sender">The player sending the message.</param>
+	/// <param name="channelName">The channel name as the client wrote it.</param>
+	/// <returns>
+	///     The internal channel name that indexes the registry, or the input unchanged when no
+	///     translation applies.
+	/// </returns>
 	private static string ResolveClientChannelName(PlayerSession sender, string channelName)
 	{
 		if (channelName == "#multiplayer" && sender.Match is { } match) return match.ChatChannelName;
 
 		if (channelName == "#spectator")
 		{
-			var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : (int?)null);
+			var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : null);
 			if (hostId is { } id) return $"#spec_{id}";
 		}
 
@@ -162,16 +188,22 @@ public sealed class ChatDispatchService(
 	}
 
 	/// <summary>
-	///     Reply sink for a command run from inside a channel (<c>#lobby</c>, a match's own chat, ...):
-	///     <see cref="Reply" /> broadcasts back into that same channel; <see cref="ReplyDm" /> (used only
-	///     by `!help`/`!mp help`) always goes to the sender's DM instead.
+	///     Routes a command's reply back into the channel the command was issued from.
 	/// </summary>
+	/// <remarks>
+	///     Used for a command run inside a channel such as <c>#lobby</c> or a match's own chat.
+	///     <see cref="Reply" /> broadcasts each line back into that same channel;
+	///     <see cref="ReplyDm" />, used only by <c>!help</c> and <c>!mp help</c>, always goes to the
+	///     sender's DM instead.
+	/// </remarks>
 	private sealed class ChannelReplySink(
 		ChannelMembershipService membership,
 		ChannelSession channel,
 		PlayerSession bot,
 		PlayerSession sender) : ICommandReplySink
 	{
+		/// <summary>Broadcasts a reply line into the source channel.</summary>
+		/// <param name="text">The reply text to send.</param>
 		public void Reply(string text)
 		{
 			// A reply may embed `\n` (e.g. !faq's file contents, !mp settings) — each line becomes its
@@ -181,6 +213,8 @@ public sealed class ChatDispatchService(
 				membership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
 		}
 
+		/// <summary>Sends a reply line to the sender's DM instead of the source channel.</summary>
+		/// <param name="text">The reply text to send.</param>
 		public void ReplyDm(string text)
 		{
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
@@ -189,14 +223,18 @@ public sealed class ChatDispatchService(
 	}
 
 	/// <summary>
-	///     Reply sink for a command run via DM to the bot: <see cref="Reply" /> always DMs the sender,
-	///     prefixed with <c>[#id]</c> once the sender is resolvably scoped to a match (mirroring
-	///     <see cref="Bot.CommandDispatcher.ResolveScope" />'s own MpScopeMatchId-then-physical-match
-	///     precedence, re-checked per call since `!mp make`/`!mp in` only establish that scope as part of
-	///     the very reply being sent) — and additionally broadcasts an unprefixed copy into that match's
-	///     own channel, so referees running the room remotely stay visible to it. <see cref="ReplyDm" />
-	///     (help) never prefixes or broadcasts.
+	///     Routes a command run via DM to the bot back to the sender, scoped to the sender's current
+	///     match.
 	/// </summary>
+	/// <remarks>
+	///     <see cref="Reply" /> always DMs the sender, prefixed with <c>[#id]</c> once the sender is
+	///     resolvably scoped to a match. Scope resolution mirrors
+	///     <see cref="CommandDispatcher.ResolveScope" />'s precedence, re-checked per call because
+	///     <c>!mp make</c> and <c>!mp in</c> establish that scope as part of the very reply being sent.
+	///     When a match resolves, an unprefixed copy is also broadcast into the match's own channel, so
+	///     referees running the room remotely stay visible to it. <see cref="ReplyDm" />, used for
+	///     help, never prefixes or broadcasts.
+	/// </remarks>
 	private sealed class DmReplySink(
 		PlayerSession sender,
 		PlayerSession bot,
@@ -204,6 +242,11 @@ public sealed class ChatDispatchService(
 		IChannelRegistry channelRegistry,
 		IMatchRegistry matchRegistry) : ICommandReplySink
 	{
+		/// <summary>
+		///     Sends each reply line to the sender's DM, prefixed with the resolved match's
+		///     <c>[#id]</c>, and broadcasts an unprefixed copy into that match's channel.
+		/// </summary>
+		/// <param name="text">The reply text to send.</param>
 		public void Reply(string text)
 		{
 			var scope = ResolveScope();
@@ -216,16 +259,24 @@ public sealed class ChatDispatchService(
 
 				var channel = channelRegistry.GetByName(scope.ChatChannelName);
 				if (channel is not null)
-					membership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+					membership.BroadcastPrivmsg(channel,
+						IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
 			}
 		}
 
+		/// <summary>Sends a reply line to the sender's DM with no prefix and no broadcast.</summary>
+		/// <param name="text">The reply text to send.</param>
 		public void ReplyDm(string text)
 		{
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
 				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
 		}
 
+		/// <summary>
+		///     Resolves the sender's current match scope, preferring the out-of-room scope set by
+		///     <c>!mp in</c> and falling back to the match the sender is physically in.
+		/// </summary>
+		/// <returns>The match the sender is scoped to, or <see langword="null" /> for none.</returns>
 		private MatchSession? ResolveScope()
 		{
 			if (sender.MpScopeMatchId is { } dbId)

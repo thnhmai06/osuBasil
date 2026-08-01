@@ -9,21 +9,41 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
-/// <summary>
-///     Ported from app/api/domains/cho.py's MatchChangeSettings. The `is_scrimming` branch (send a
-///     bot message instead of changing team type) is skipped — scrim state isn't ported to
-///     MatchSession in this slice, so `IsScrimming` is always false and the else-branch always runs,
-///     exactly matching the Python source's behavior for every match today.
-/// </summary>
+/// <summary>Handles the host's request to apply a new set of room settings.</summary>
+/// <remarks>
+///     Applies a full settings snapshot sent by the host client. Turning freemods on keeps only the
+///     speed-changing mods on the match and strips them from every occupied slot; turning it off
+///     restores the host slot's mods to the match and clears the mods of every other occupied slot. The
+///     beatmap selection is handled through a clear-and-resolve handshake: a snapshot with MapId -1
+///     clears the current selection (unreadying all players, remembering the previous map, and
+///     cancelling a queued auto-start), while a match that currently has no map re-attempts resolution
+///     of the snapshot's md5 against the local repository, applying the resolved beatmap and updating
+///     the game mode from the host's current status, or warning once through a bot chat message when
+///     the beatmap is not found locally. Changing the team type normalizes every occupied slot to
+///     Neutral (for HeadToHead and TagCoop) or Red (for all other types), and any team-type or
+///     win-condition change cancels a queued auto-start. The room name is adopted from the snapshot and
+///     the final state is broadcast. All mutation runs under the match's
+///     <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
+/// </remarks>
 public sealed class MatchChangeSettingsHandler(
-	IMapRepository mapRepository,
+	IBeatmapRepository beatmapRepository,
 	IPlayerSessionRegistry sessionRegistry,
 	MatchMembershipService matchMembership) : IBanchoPacketHandler
 {
+	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchChangeSettings;
 
+	/// <summary>
+	///     Gets a value that indicates whether the handler may run for restricted players. Always
+	///     <see langword="false" />: settings changes are not processed for restricted players.
+	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
+	/// <summary>Processes the change-settings packet for the given player.</summary>
+	/// <param name="player">The player session that sent the packet.</param>
+	/// <param name="reader">The packet reader positioned at the payload holding the full settings snapshot.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
@@ -73,9 +93,9 @@ public sealed class MatchChangeSettingsHandler(
 			else if (match.MapId == -1)
 			{
 				// Always re-attempt the lookup (not gated on UnresolvedMapMd5) so a beatmap ingested
-				// later while the room sits idle resolves silently on the next settings packet — only
+				// later while the room sits idle resolves silently on the next settings packet. Only
 				// the warning below is deduped, not the lookup itself.
-				var bmap = await mapRepository.FetchOneAsync(md5: matchData.MapMd5);
+				var bmap = await beatmapRepository.FetchOneAsync(md5: matchData.MapMd5);
 				if (bmap is not null)
 				{
 					match.MapId = bmap.Id;
@@ -89,12 +109,12 @@ public sealed class MatchChangeSettingsHandler(
 				}
 				else if (matchData.MapMd5 != match.UnresolvedMapMd5)
 				{
-					// Diverges from bancho.py's cho.py, which blindly accepts the client-supplied
-					// id/md5/name here — that let a beatmap absent from this server's local DB get
-					// written into authoritative match state, corrupting round/match-report data.
-					// Osu! clients resend their full settings snapshot on ANY room-setting change
-					// (freemod, team type, ...), not just a new map pick, so without UnresolvedMapMd5
-					// this warning would re-fire on every one of those instead of just the first.
+					// The client-supplied id/md5/name is never written into authoritative match state
+					// here: a beatmap absent from this server's local DB would otherwise corrupt round
+					// and match-report data. Osu! clients resend their full settings snapshot on any
+					// room-setting change (freemod, team type, ...), not just a new map pick, so without
+					// UnresolvedMapMd5 this warning would re-fire on every one of those instead of just
+					// the first.
 					match.UnresolvedMapMd5 = matchData.MapMd5;
 					var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 					if (bot is not null)

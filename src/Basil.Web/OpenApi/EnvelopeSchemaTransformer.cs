@@ -12,29 +12,29 @@ namespace Basil.Web.OpenApi;
 ///     <list type="bullet">
 ///         <item>
 ///             Every status code carrying a JSON-ish content type (`application/json` AND
-///             `application/problem+json` — `.ProducesProblem(...)` responses were previously never
+///             `application/problem+json`, `.ProducesProblem(...)` responses were previously never
 ///             touched at all, since only the exact `application/json` key was checked) gets rewritten,
 ///             including a bare `401` with no declared type or content (added by
 ///             <see cref="SecuritySchemeTransformers" />, which must run before this transformer per its
-///             registration order in <c>Program.cs</c>) — every JSON-ish response ends up under the one
+///             registration order in <c>Program.cs</c>), every JSON-ish response ends up under the one
 ///             canonical `application/json` key, since that's the only content type
 ///             <see cref="EnvelopeMiddleware" /> ever actually emits.
 ///         </item>
 ///         <item>
 ///             `data` is `null`-only for every &gt;=400 response (matching
-///             <c>EnvelopeBuilder.Build</c>'s guarantee — an error body's `data` is never anything else),
+///             <c>EnvelopeBuilder.Build</c>'s guarantee, an error body's `data` is never anything else),
 ///             not the originally-declared `ErrorResponse`/`ProblemDetails` shape.
 ///         </item>
 ///         <item>
 ///             `data`/`meta`/`errors` are properly nullable (`oneOf: [{type: null}, ...]`, the same
 ///             pattern the framework's own nullable-property schemas already use elsewhere in this
-///             document) — previously `meta`/`data` on a non-paginated success response showed as
+///             document), previously `meta`/`data` on a non-paginated success response showed as
 ///             required-non-null even though they're `null` whenever unused.
 ///         </item>
 ///         <item>
 ///             `data`'s schema for a success response is obtained via
 ///             <see cref="OpenApiOperationTransformerContext.GetOrCreateSchemaAsync" /> against the
-///             *original* declared type (not a synthesized closed <c>Envelope&lt;T&gt;</c> generic) — this
+///             *original* declared type (not a synthesized closed <c>Envelope&lt;T&gt;</c> generic), this
 ///             is the same call the framework's own default response-schema generation uses, so it
 ///             correctly reuses an already-registered named component via `$ref` instead of re-inlining
 ///             the whole nested object graph on every single operation (the previous
@@ -45,18 +45,18 @@ namespace Basil.Web.OpenApi;
 ///             The envelope's six non-`data` fields (`success`/`code`/`message`/`meta`/`errors`/
 ///             `timestamp`) are a single shared <c>Envelope</c> component combined via `allOf` with a
 ///             per-operation `{ data: ... }` object, instead of re-declaring all seven properties inline
-///             on every response — `meta`/`errors` further reference shared, once-registered
+///             on every response. `meta`/`errors` further reference shared, once-registered
 ///             <c>PageMeta</c>/<c>FieldError</c> components instead of re-inlining their own shape.
 ///         </item>
 ///         <item>
 ///             Any response left without an example after all of the above gets a minimal synthesized
 ///             one (`{success,code,message,data:null,...}` for an error; nothing invented for a success
-///             body, since real sample data can't be guessed) — closes most of the "no `.WithExample`"
+///             body, since real sample data can't be guessed), closes most of the "no `.WithExample`"
 ///             gap on error responses as a side effect of visiting every one of them anyway.
 ///         </item>
 ///     </list>
-///     On a route carrying <see cref="SseEndpointMarker" />, only the 2xx response is left alone — that's
-///     the actual live stream, a raw un-enveloped JSON line by design (see the marker's own doc comment).
+///     On a route carrying <see cref="SseEndpointMarker" />, only the 2xx response is left alone because
+///     that's the actual live stream, a raw un-enveloped JSON line by design (see the marker's own doc comment).
 ///     Any other status on that same route (409/404/400 returned synchronously before a stream opens) is
 ///     enveloped exactly like every other route's error response.
 /// </summary>
@@ -66,6 +66,11 @@ internal static class EnvelopeSchemaTransformer
 	private const string PageMetaSchemaId = "PageMeta";
 	private const string FieldErrorSchemaId = "FieldError";
 
+	/// <summary>
+	///     Registers the operation and document transformers that rewrite every non-SSE JSON response
+	///     schema to the real <see cref="Envelope{T}" /> shape.
+	/// </summary>
+	/// <param name="options">The OpenAPI options to register the transformers on.</param>
 	public static void AddEnvelopeSchemaTransformer(this OpenApiOptions options)
 	{
 		options.AddOperationTransformer((operation, context, _) =>
@@ -154,6 +159,12 @@ internal static class EnvelopeSchemaTransformer
 		});
 	}
 
+	/// <summary>
+	///     Finds the response's JSON media type entry, preferring <c>application/json</c> over
+	///     <c>application/problem+json</c>.
+	/// </summary>
+	/// <param name="response">The OpenAPI response to inspect.</param>
+	/// <returns>The matching media type entry, or <see langword="null" /> when the response has no JSON content.</returns>
 	private static OpenApiMediaType? FindJsonMediaType(IOpenApiResponse response)
 	{
 		if (response.Content is null) return null;
@@ -162,6 +173,11 @@ internal static class EnvelopeSchemaTransformer
 		return null;
 	}
 
+	/// <summary>
+	///     Registers the shared PageMeta, FieldError, and Envelope components once each, when not already
+	///     present in the document.
+	/// </summary>
+	/// <param name="document">The OpenAPI document whose components the schemas are registered on.</param>
 	private static void EnsureSharedComponentsRegistered(OpenApiDocument document)
 	{
 		document.Components ??= new OpenApiComponents();
@@ -215,6 +231,12 @@ internal static class EnvelopeSchemaTransformer
 		});
 	}
 
+	/// <summary>
+	///     Combines the shared Envelope component with a per-operation data schema via <c>allOf</c>.
+	/// </summary>
+	/// <param name="document">The OpenAPI document the envelope reference is resolved against.</param>
+	/// <param name="dataSchema">The schema for the response's data member.</param>
+	/// <returns>The combined envelope schema object.</returns>
 	private static OpenApiSchema BuildEnvelopeObjectSchema(OpenApiDocument document, IOpenApiSchema dataSchema)
 	{
 		return new OpenApiSchema
@@ -234,7 +256,7 @@ internal static class EnvelopeSchemaTransformer
 
 	/// <summary>
 	///     Same `oneOf: [{type: null}, ...]` pattern the framework's own nullable-property schemas
-	///     already use elsewhere in this document (e.g. a PATCH request's optional fields) — works
+	///     already use elsewhere in this document (e.g. a PATCH request's optional fields), works
 	///     uniformly whether <paramref name="schema" /> is a `$ref` or an inline object/array schema.
 	/// </summary>
 	private static IOpenApiSchema NullableWrap(IOpenApiSchema schema)
@@ -242,6 +264,12 @@ internal static class EnvelopeSchemaTransformer
 		return new OpenApiSchema { OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, schema] };
 	}
 
+	/// <summary>
+	///     Builds a minimal example envelope for an error response that has no declared example.
+	/// </summary>
+	/// <param name="statusCode">The HTTP status code of the error response.</param>
+	/// <param name="description">The response description to use as the message, or <see langword="null" />.</param>
+	/// <returns>The synthesized example envelope as a JSON object.</returns>
 	private static JsonNode BuildSyntheticErrorExample(int statusCode, string? description)
 	{
 		return new JsonObject
@@ -257,7 +285,7 @@ internal static class EnvelopeSchemaTransformer
 	}
 
 	/// <summary>
-	///     Removes any `components.schemas` entry nothing in the document actually `$ref`s — e.g. the
+	///     Removes any `components.schemas` entry nothing in the document actually `$ref`s, e.g. the
 	///     `PagedResult&lt;T&gt;` schemas the framework's default response-type discovery registers before
 	///     this transformer replaces the actual response schema with the paginated `data`/`meta` split
 	///     above, or a domain type (like the bare `User` record) that no route documents directly anymore.

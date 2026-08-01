@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Caching;
 
-public class CachingMapRepositoryTests
+public class CachingBeatmapRepositoryTests
 {
 	private static Beatmap MakeBeatmap(int id, string md5)
 	{
@@ -20,10 +20,10 @@ public class CachingMapRepositoryTests
 	public async Task FetchOneAsync_ById_SecondCall_DoesNotHitInner()
 	{
 		var beatmap = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingMapRepository();
+		var inner = new CountingBeatmapRepository();
 		inner.ById[1] = beatmap;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
-			NullLogger<CachingMapRepository>.Instance);
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
 
 		await repo.FetchOneAsync(1);
 		await repo.FetchOneAsync(1);
@@ -35,10 +35,10 @@ public class CachingMapRepositoryTests
 	public async Task FetchOneAsync_ByMd5_SecondCall_DoesNotHitInner()
 	{
 		var beatmap = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingMapRepository();
+		var inner = new CountingBeatmapRepository();
 		inner.ByMd5[beatmap.Md5] = beatmap;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
-			NullLogger<CachingMapRepository>.Instance);
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
 
 		await repo.FetchOneAsync(md5: beatmap.Md5);
 		await repo.FetchOneAsync(md5: beatmap.Md5);
@@ -49,9 +49,9 @@ public class CachingMapRepositoryTests
 	[Fact]
 	public async Task FetchOneAsync_ByFilenameAndSetId_AlwaysPassesThrough()
 	{
-		var inner = new CountingMapRepository();
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
-			NullLogger<CachingMapRepository>.Instance);
+		var inner = new CountingBeatmapRepository();
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
 
 		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
 		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
@@ -63,11 +63,11 @@ public class CachingMapRepositoryTests
 	public async Task UpsertAsync_InvalidatesBothIdAndMd5Entries()
 	{
 		var original = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingMapRepository();
+		var inner = new CountingBeatmapRepository();
 		inner.ById[1] = original;
 		inner.ByMd5[original.Md5] = original;
-		var repo = new CachingMapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
-			NullLogger<CachingMapRepository>.Instance);
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
 
 		await repo.FetchOneAsync(1);
 		await repo.FetchOneAsync(md5: original.Md5);
@@ -85,7 +85,7 @@ public class CachingMapRepositoryTests
 		Assert.Equal(4, inner.FetchOneCalls);
 	}
 
-	private sealed class CountingMapRepository : IMapRepository
+	private sealed class CountingBeatmapRepository : IBeatmapRepository
 	{
 		public int FetchOneCalls { get; private set; }
 		public Dictionary<int, Beatmap> ById { get; } = new();

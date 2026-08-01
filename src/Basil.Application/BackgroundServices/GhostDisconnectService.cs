@@ -5,50 +5,64 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.BackgroundServices;
 
 /// <summary>
-///     Ported from app/bg_loops.py's _disconnect_ghosts: every OSU_CLIENT_MIN_PING_INTERVAL/3
-///     seconds, force-logs-out any player whose last recv time exceeds
-///     OSU_CLIENT_MIN_PING_INTERVAL — mirrors the (osu!-defined) client ping interval, not a value
-///     bancho.py invented. Delegates the actual cleanup to <see cref="PlayerLogoutService" /> (the
-///     same method a graceful LOGOUT packet uses) rather than hand-rolling a second copy — bancho.py's
-///     own _disconnect_ghosts does the same, just calling player.logout(). A hand-rolled duplicate
-///     here previously drifted out of sync: it never called into match-leave, so a ghost's slot stayed
-///     stuck at SlotStatus.Playing forever, permanently blocking every other player's MatchComplete
-///     from ever completing the round ("Waiting for other players to finish..." with no way out short
-///     of a manual !mp kick).
+///     Background watchdog that logs out players whose connection has been silent for longer than
+///     the osu!-defined client ping interval.
 /// </summary>
+/// <remarks>
+///     Runs a cleanup pass every <c>OsuClientMinPingIntervalSeconds / 3</c> seconds and force-logs-out
+///     any player whose last received packet is older than the full interval; the threshold mirrors
+///     the interval the osu! client itself uses to ping the server. Cleanup is delegated to
+///     <see cref="PlayerLogoutService" />, the same service a graceful logout packet uses, rather than
+///     being duplicated here. A hand-rolled duplicate previously drifted out of sync: it never called
+///     into match-leave, so a ghost's slot stayed stuck at SlotStatus.Playing forever and permanently
+///     blocked every other player's MatchComplete from completing the round.
+/// </remarks>
+/// <param name="sessionRegistry">The registry of live player sessions this watchdog scans.</param>
+/// <param name="playerLogout">The logout service that performs the actual session cleanup.</param>
+/// <param name="logger">The logger used to record cleanup failures.</param>
 public sealed class GhostDisconnectService(
-    IPlayerSessionRegistry sessionRegistry,
-    PlayerLogoutService playerLogout,
-    ILogger<GhostDisconnectService> logger) : BackgroundService
+	IPlayerSessionRegistry sessionRegistry,
+	PlayerLogoutService playerLogout,
+	ILogger<GhostDisconnectService> logger) : BackgroundService
 {
-    private const int OsuClientMinPingIntervalSeconds = 300;
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds / 3.0);
+	private const int OsuClientMinPingIntervalSeconds = 300;
+	private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds / 3.0);
 
-    public async Task RunOnce(CancellationToken cancellationToken = default)
-    {
-        var currentTime = DateTimeOffset.UtcNow;
+	/// <summary>
+	///     Runs a single cleanup pass over every registered player session.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cooperatively cancels the operation.</param>
+	/// <returns>A task that completes when the pass has finished.</returns>
+	public async Task RunOnce(CancellationToken cancellationToken = default)
+	{
+		var currentTime = DateTimeOffset.UtcNow;
 
-        foreach (var player in sessionRegistry.All)
-            if (!player.IsBot && currentTime - player.LastRecvTime >
-                TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
-                try
-                {
-                    await playerLogout.LogoutAsync(player, cancellationToken);
-                }
-                catch (Exception e)
-                {
-                    // This watchdog is the only path that ever reaps a dead connection — one throw
-                    // must never kill the loop and silently stop reaping every future ghost too.
-                    logger.LogError(e, "Ghost-disconnect cleanup failed: UserId={UserId}", player.Id);
-                }
-    }
+		foreach (var player in sessionRegistry.All)
+			if (!player.IsBot && currentTime - player.LastRecvTime >
+			    TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
+				try
+				{
+					await playerLogout.LogoutAsync(player, cancellationToken);
+				}
+				catch (Exception e)
+				{
+					// This watchdog is the only path that ever reaps a dead connection — one throw
+					// must never kill the loop and silently stop reaping every future ghost too.
+					logger.LogError(e, "Ghost-disconnect cleanup failed: UserId={UserId}", player.Id);
+				}
+	}
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await Task.Delay(CheckInterval, stoppingToken);
-            await RunOnce(stoppingToken);
-        }
-    }
+	/// <summary>
+	///     Runs the periodic cleanup loop until the host requests shutdown.
+	/// </summary>
+	/// <param name="stoppingToken">A token that is triggered when the host is stopping.</param>
+	/// <returns>A task that completes when the loop exits.</returns>
+	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	{
+		while (!stoppingToken.IsCancellationRequested)
+		{
+			await Task.Delay(CheckInterval, stoppingToken);
+			await RunOnce(stoppingToken);
+		}
+	}
 }

@@ -7,16 +7,35 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
+/// <summary>Handles the host's request to transfer the host role to another player.</summary>
+/// <remarks>
+///     Reads the target slot id and bounds-checks it against the fixed sixteen-slot layout. Only the
+///     current host may transfer the role, and the target slot must be occupied. The match's HostId is
+///     updated, a <c>MatchTransferHost</c> packet is enqueued for the new host, the updated state is
+///     broadcast, and a <c>HostGranted</c> match event is persisted through
+///     <see cref="IMatchPersistenceRepository.CreateEventAsync" />, without awaiting the write. All of
+///     this runs under the match's <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
+/// </remarks>
 public sealed class MatchTransferHostHandler(
 	IPlayerSessionRegistry sessionRegistry,
 	MatchMembershipService matchMembership,
 	IMatchPersistenceRepository matchPersistence,
 	ILogger<MatchTransferHostHandler> logger) : IBanchoPacketHandler
 {
+	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchTransferHost;
 
+	/// <summary>
+	///     Gets a value that indicates whether the handler may run for restricted players. Always
+	///     <see langword="false" />: host transfers are not processed for restricted players.
+	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
+	/// <summary>Processes the transfer-host packet for the given player.</summary>
+	/// <param name="player">The player session that sent the packet.</param>
+	/// <param name="reader">The packet reader positioned at the payload holding the target slot id.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

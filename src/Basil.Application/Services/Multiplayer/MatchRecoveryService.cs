@@ -3,10 +3,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Multiplayer;
 
+/// <summary>
+///     Recovers matches and rounds left open by an abnormal shutdown.
+/// </summary>
+/// <remarks>
+///     Runs once at startup. Every match whose row never recorded an end is treated as orphaned:
+///     its open rounds are marked ended (aborted) and the match itself is marked ended, each
+///     accompanied by a <c>Closed</c> event noting server shutdown recovery.
+/// </remarks>
 public sealed class MatchRecoveryService(
 	IMatchPersistenceRepository persistence,
 	ILogger<MatchRecoveryService> logger)
 {
+	/// <summary>Marks every unrecovered match and round from a previous shutdown as ended.</summary>
+	/// <param name="cancellationToken">A token that cancels the recovery writes.</param>
 	public async Task RecoverAsync(CancellationToken cancellationToken = default)
 	{
 		var openMatches = await persistence.FetchUnrecoveredMatchesAsync(cancellationToken);

@@ -3,23 +3,30 @@ using Basil.Protocol.Irc;
 namespace Basil.Application.Sessions.Irc;
 
 /// <summary>
-///     A transport-agnostic sink for IRC-shaped chat traffic bound to one <see cref="PlayerSession" /> — either a
-///     real TCP IRC client, or a bridge that re-encodes into bancho packets for an osu! client. Every
-///     <see cref="PlayerSession" /> has exactly one, so <see cref="Sessions.Channels.ChannelMembershipService" />
-///     can broadcast chat text without knowing which world the recipient is actually connected through.
+///     A transport-agnostic sink for IRC-shaped chat traffic bound to one
+///     <see cref="PlayerSession" />, either a real TCP IRC client or a bridge that re-encodes into
+///     bancho packets for an osu! client. Every <see cref="PlayerSession" /> has exactly one, so
+///     <see cref="Sessions.Channels.ChannelMembershipService" /> can broadcast chat text without
+///     knowing which transport the recipient is actually connected through.
 /// </summary>
 public interface IIrcConnection
 {
+	/// <summary>Gets the session this connection carries chat for.</summary>
 	PlayerSession Player { get; }
 
 	/// <summary>
-	///     True for a real TCP IRC client, false for the bancho packet bridge — drives the `+` NAMES
-	///     prefix osu!Bancho's own IRC gateway uses for "connected via external IRC client" (see
-	///     help.ppy.sh's IRC page). An interface flag instead of a concrete-type check, since Application
-	///     can't reference the Infrastructure project that implements the real TCP connection.
+	///     Gets a value that indicates whether this connection is a real external IRC client, as
+	///     opposed to the bancho packet bridge. Drives the <c>+</c> NAMES prefix that marks a user
+	///     as connected via an external IRC client. Declared as an interface flag rather than a
+	///     concrete-type check because Application cannot reference the Infrastructure project that
+	///     implements the real TCP connection.
 	/// </summary>
 	bool IsExternalIrcClient { get; }
 
-	/// <summary>Must never block on I/O — mirrors <c>IMatchLiveEvents</c>'s non-blocking publish contract.</summary>
+	/// <summary>
+	///     Sends an IRC-shaped message to the recipient. Must never block on I/O, matching
+	///     <see cref="Multiplayer.IMatchLiveEvents" />'s non-blocking publish contract.
+	/// </summary>
+	/// <param name="message">The IRC-shaped message to deliver.</param>
 	void Send(IrcMessage message);
 }

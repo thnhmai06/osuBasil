@@ -22,7 +22,7 @@ namespace Basil.Web.Routing;
 ///     `/matches`, `/matches/{matchId}/settings`, and the merged main live SSE channel). Every resource
 ///     here follows the same JSON-vs-SSE path split as `/settings`: the bare path is always plain JSON
 ///     (404 if the match isn't currently live), and a `.../live` sibling is always SSE (409, enveloped,
-///     if the match isn't currently live — never a stream that would never receive a frame). Reads are
+///     if the match isn't currently live, never a stream that would never receive a frame). Reads are
 ///     public; every write is admin-key gated. Every write handler resolves the match, 404s if it isn't
 ///     currently live, then holds <see cref="MatchSession.Lock" /> across the whole
 ///     read-mutate-broadcast sequence, exactly like every other match write in this codebase.
@@ -31,6 +31,11 @@ internal static class MatchSubResourceRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
+	/// <summary>
+	///     Registers the `/matches/{matchId}` host, referees, ban, slots, timer, abort, and close
+	///     sub-routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMatchSubResourceRoutes(this RouteGroupBuilder group)
 	{
 		MapHosts(group);
@@ -42,6 +47,12 @@ internal static class MatchSubResourceRoutes
 		MapClose(group);
 	}
 
+	/// <summary>
+	///     Converts a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
+	///     consumes, translating a <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it keys on
+	///     (or null for a neutral team).
+	/// </summary>
+	/// <param name="slots">The slot assignments from the request body.</param>
 	private static IReadOnlyDictionary<int, MatchControlService.SlotPatchEntry> ToPatchEntries(
 		IReadOnlyList<SlotAssignment> slots)
 	{
@@ -62,6 +73,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /hosts ----
 
+	/// <summary>Registers the `/matches/{matchId}/hosts` read and write routes.</summary>
 	private static void MapHosts(RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:int}/hosts", async (int matchId, IMatchRegistry matchRegistry,
@@ -177,6 +189,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /refs ----
 
+	/// <summary>Registers the `/matches/{matchId}/refs` read and write routes.</summary>
 	private static void MapRefs(RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:int}/refs", async (int matchId, IMatchRegistry matchRegistry,
@@ -361,6 +374,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /ban ----
 
+	/// <summary>Registers the `/matches/{matchId}/ban` read and write routes.</summary>
 	private static void MapBans(RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:int}/ban", async (int matchId, IMatchRegistry matchRegistry,
@@ -510,6 +524,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /slots (view/reassign + kick/invite) ----
 
+	/// <summary>Registers the `/matches/{matchId}/slots` read, reassign, kick, and invite routes.</summary>
 	private static void MapSlots(RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:int}/slots", async (int matchId, IMatchRegistry matchRegistry,
@@ -746,6 +761,11 @@ internal static class MatchSubResourceRoutes
 		return new MatchSlotsView(slots);
 	}
 
+	/// <summary>
+	///     Shared implementation for `PUT`/`PATCH /matches/{matchId}/slots`: validates slot indexes,
+	///     converts the body to patch entries, and applies them under <see cref="MatchSession.Lock" />,
+	///     mapping <see cref="MatchControlService.SetSlotsAsync" /> results onto 200/400/409 responses.
+	/// </summary>
 	private static async Task<IResult> HandleSlotsWrite(int matchId, IReadOnlyList<SlotAssignment> slots,
 		bool isFullReplace, IMatchRegistry matchRegistry, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
 		MatchControlService matchControl, CancellationToken cancellationToken)
@@ -784,6 +804,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /timer ----
 
+	/// <summary>Registers the `/matches/{matchId}/timer` read, start, and abort routes.</summary>
 	private static void MapTimer(RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:int}/timer", (int matchId, IMatchRegistry matchRegistry) =>
@@ -913,11 +934,12 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /abort ----
 
+	/// <summary>Registers the `POST /matches/{matchId}/abort` route.</summary>
 	private static void MapAbort(RouteGroupBuilder group)
 	{
 		group.MapPost("/matches/{matchId:int}/abort", async (int matchId, IMatchRegistry matchRegistry,
 				MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
-				IMapRepository maps, CancellationToken cancellationToken) =>
+				IBeatmapRepository beatmaps, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -930,7 +952,7 @@ internal static class MatchSubResourceRoutes
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
 
 					return Results.Json(
-						await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, users, maps,
+						await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, users, beatmaps,
 							cancellationToken));
 				}
 				finally
@@ -954,6 +976,7 @@ internal static class MatchSubResourceRoutes
 
 	// ---- /close ----
 
+	/// <summary>Registers the `POST /matches/{matchId}/close` route.</summary>
 	private static void MapClose(RouteGroupBuilder group)
 	{
 		group.MapPost("/matches/{matchId:int}/close", async (int matchId, IMatchRegistry matchRegistry,
@@ -985,6 +1008,10 @@ internal static class MatchSubResourceRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
+	/// <summary>
+	///     Resolves a list of numeric user ids into their online <see cref="PlayerSession" />s, returning a
+	///     400 <c>IResult</c> as the error half as soon as any id is missing or offline.
+	/// </summary>
 	private static (IReadOnlyCollection<PlayerSession> Targets, IResult? Error) ResolveOnlineTargets(
 		IReadOnlyList<int> userIds, IPlayerSessionRegistry sessionRegistry)
 	{
@@ -1002,31 +1029,45 @@ internal static class MatchSubResourceRoutes
 		return (targets, null);
 	}
 
+	/// <summary>Body for `PUT /matches/{matchId}/hosts`.</summary>
 	public sealed record SetHostRequest(int UserId);
 
+	/// <summary>Body for `PUT /matches/{matchId}/refs`: full replace of the referee list.</summary>
 	public sealed record ReplaceRefereesRequest(IReadOnlyList<int> UserIds);
 
+	/// <summary>Body for `PATCH /matches/{matchId}/refs`: additive referee update.</summary>
 	public sealed record UpdateRefereesRequest(IReadOnlyList<int> UserIds);
 
+	/// <summary>Body for `PUT /matches/{matchId}/ban`: full replace of the ban list.</summary>
 	public sealed record ReplaceBansRequest(IReadOnlyList<int> UserIds);
 
+	/// <summary>Body for `PATCH /matches/{matchId}/ban`: additive ban update.</summary>
 	public sealed record UpdateBansRequest(IReadOnlyList<int> UserIds);
 
+	/// <summary>Body for `DELETE /matches/{matchId}/slots` (kick a seated player).</summary>
 	public sealed record KickPlayerRequest(int UserId);
 
+	/// <summary>
+	///     Body for `POST /matches/{matchId}/slots` (invite): one target per id, optionally forced
+	///     straight into the room.
+	/// </summary>
 	public sealed record InviteRequest(IReadOnlyList<int> UserIds, bool Force);
 
+	/// <summary>Per-target outcome carried by `POST /matches/{matchId}/slots`'s response.</summary>
 	public sealed record InviteResult(int UserId, bool Ok, string? Error);
 
+	/// <summary>Body for `POST /matches/{matchId}/timer`.</summary>
 	public sealed record StartTimerRequest(int Seconds, bool AutoStart);
 
 	/// <summary>
-	///     One per-slot entry shared by <see cref="ReplaceSlotsRequest" />/<see cref="UpdateSlotsRequest" /> — inherently
-	///     a per-slot partial shape either way.
+	///     One per-slot entry shared by <see cref="ReplaceSlotsRequest" /> and <see cref="UpdateSlotsRequest" />:
+	///     inherently a per-slot partial shape either way.
 	/// </summary>
 	public sealed record SlotAssignment(int Index, int? UserId = null, MatchTeam? Team = null, bool? Locked = null);
 
+	/// <summary>Body for `PUT /matches/{matchId}/slots`: every seated player must appear exactly once.</summary>
 	public sealed record ReplaceSlotsRequest(IReadOnlyList<SlotAssignment> Slots);
 
+	/// <summary>Body for `PATCH /matches/{matchId}/slots`: only the given slots are validated and touched.</summary>
 	public sealed record UpdateSlotsRequest(IReadOnlyList<SlotAssignment> Slots);
 }

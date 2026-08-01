@@ -5,23 +5,27 @@ using Basil.Web.OpenApi;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/seasonals` — public read access to seasonal background images (already public via the osu!
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="SeasonalRoutes" /> is static and can't be
+///     a type argument.
+/// </summary>
+internal sealed class SeasonalRoutesLog;
+
+/// <summary>
+///     `/seasonals`: public read access to seasonal background images (already public via the osu!
 ///     client's own `GET osu.&lt;domain&gt;/web/osu-getseasonal.php`/`GET /seasonal/{fileName}` pair),
 ///     plus admin-key-gated writes with the same "no silent override" rule as `/faq`: `POST` only
 ///     creates a brand-new file (409 if the name is taken), `PUT` only replaces an existing one (404 if
 ///     it isn't). Backed by <see cref="SeasonalService" />, replacing the old admin-only `/seasonals`
 ///     surface.
 /// </summary>
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="SeasonalRoutes" /> is static and can't be a
-///     type argument.
-/// </summary>
-internal sealed class SeasonalRoutesLog;
-
 internal static class SeasonalRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
+	/// <summary>
+	///     Registers the `/seasonals` read and admin-key-gated write routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapSeasonalRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/seasonals/", (SeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))

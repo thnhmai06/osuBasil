@@ -6,11 +6,15 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Channels;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SendMessage (public channel messages). All routing/
-///     broadcast/command-dispatch logic lives in <see cref="ChatDispatchService" /> — shared with
-///     private messages and real IRC PRIVMSG, so a bancho client, an IRC client, and BanchoBot all
-///     go through the exact same chat core.
+///     Handles the <see cref="ClientPackets.SendPublicMessage" /> packet, which carries a message
+///     addressed to a chat channel. Reads the message and routes it through
+///     <see cref="ChatDispatchService.SendPrivmsgAsync" />.
 /// </summary>
+/// <remarks>
+///     All routing, broadcast and command-dispatch logic lives in <see cref="ChatDispatchService" />,
+///     shared with private messages and real IRC PRIVMSG. A bancho client, an IRC client and BanchoBot
+///     all go through the same chat core.
+/// </remarks>
 public sealed class SendPublicMessageHandler(ChatDispatchService chatDispatch) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.SendPublicMessage;

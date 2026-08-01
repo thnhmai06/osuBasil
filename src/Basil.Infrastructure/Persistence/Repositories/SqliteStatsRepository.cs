@@ -6,8 +6,14 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IStatsRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>StatsRow</c> DTO, since Dapper fills by property
+///     name rather than through a positional record constructor; the stored mode column is cast to
+///     <see cref="GameMode" /> during mapping. Each method opens its own connection.
+/// </remarks>
 public sealed class SqliteStatsRepository(string connectionString) : IStatsRepository
 {
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<Stats>> FetchAllForUserAsync(int userId,
 		CancellationToken cancellationToken = default)
 	{
@@ -18,6 +24,11 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
 		return [.. rows.Select(r => r.ToStats())];
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     An upsert keyed on the user and mode: a user's first play in a mode inserts the stats
+	///     row, and later plays add the deltas to the totals and bump the play count by one.
+	/// </remarks>
 	public async Task IncrementAsync(int userId, GameMode mode, long totalScoreDelta, long rankedScoreDelta,
 		CancellationToken cancellationToken = default)
 	{
@@ -38,11 +49,16 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
 			});
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the UserStats table columns. Mutable because Dapper fills by
+	///     property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class StatsRow
 	{
 		public int Id { get; set; }
@@ -51,6 +67,8 @@ public sealed class SqliteStatsRepository(string connectionString) : IStatsRepos
 		public long RankedScore { get; set; }
 		public int Plays { get; set; }
 
+		/// <summary>Builds a <see cref="Stats" /> from this row, casting the stored mode column.</summary>
+		/// <returns>The domain stats record.</returns>
 		public Stats ToStats()
 		{
 			return new Stats(Id, (GameMode)Mode, TotalScore, RankedScore, Plays);

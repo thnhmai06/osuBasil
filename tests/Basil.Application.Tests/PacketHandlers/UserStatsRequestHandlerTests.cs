@@ -26,7 +26,8 @@ public class UserStatsRequestHandlerTests
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
-		var expected = ServerPacketWriter.UserStats(2, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 100.0,
+		var expected = ServerPacketWriter.UserStats(2, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900,
+			100.0,
 			10,
 			1000, 3, 0);
 		Assert.Equal(expected, self.Dequeue());

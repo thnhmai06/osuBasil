@@ -13,7 +13,7 @@ namespace Basil.Web.Routing;
 
 /// <summary>
 ///     ASP.NET Core's native SSE support (<c>TypedResults.ServerSentEvents</c>) for the api. host's
-///     live TRT channels. These are server-to-client push only — no client message is ever expected —
+///     live TRT channels. These are server-to-client push only: no client message is ever expected,
 ///     so each connection just subscribes a C# event (<see cref="IMatchLiveEvents" />/
 ///     <see cref="IPlayerInputEvents" />) into its own <see cref="Channel{T}" /> and hands that
 ///     straight to the framework; <see cref="Channel{T}" />'s reader is already an
@@ -23,7 +23,7 @@ namespace Basil.Web.Routing;
 ///     which is often still holding <c>MatchSession.Lock</c>. <c>EventType</c> tags each stream
 ///     ("main"/"playerScore"/"input") so a client can <c>EventSource.addEventListener</c> per feed;
 ///     <c>EventId</c>/resumption is deliberately not used since these feeds have no backlog to
-///     resume from after a reconnect — a fresh full snapshot (see <see cref="SubscribeWithSnapshot" />)
+///     resume from after a reconnect: a fresh full snapshot (see <see cref="SubscribeWithSnapshot" />)
 ///     takes its place for the channels that carry one.
 /// </summary>
 internal static class LiveSseRoutes
@@ -31,7 +31,7 @@ internal static class LiveSseRoutes
 	/// <summary>
 	///     The "main" channel now carries deltas (see <see cref="SnapshotChannel{T}" />/
 	///     <see cref="MatchMembershipService.EnqueueStateAsync" />) instead of a full re-snapshot on every
-	///     change — a fresh connection reads <see cref="MatchSession.MainSnapshot" /> directly for its
+	///     change: a fresh connection reads <see cref="MatchSession.MainSnapshot" /> directly for its
 	///     first event, then this subscription forwards every delta published after that.
 	/// </summary>
 	public static IResult HandleMain(HttpContext context, int matchId, IMatchLiveEvents events,
@@ -171,7 +171,7 @@ internal static class LiveSseRoutes
 	///     slot's own state (full-then-delta, "slot"), the current occupant's live score frames
 	///     ("score", forwarded as-is), and their raw spectator input frames ("input", forwarded as-is).
 	///     Score/input are matched against whoever currently occupies the slot at the moment each frame
-	///     arrives (read fresh off <paramref name="match" /> per event) — if the occupant changes, later
+	///     arrives (read fresh off <paramref name="match" /> per event); if the occupant changes, later
 	///     frames simply start matching the new occupant instead, with no separate re-subscribe step.
 	/// </summary>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
@@ -240,7 +240,7 @@ internal static class LiveSseRoutes
 	/// <summary>
 	///     Every `.../live` route is <see cref="Middleware.SseEndpointMarker" />-tagged, so
 	///     <see cref="Middleware.EnvelopeMiddleware" /> unconditionally skips buffering it (buffering
-	///     would silently turn a real live stream into one that never delivers a single event) — a
+	///     would silently turn a real live stream into one that never delivers a single event), a
 	///     genuine synchronous JSON error returned before any stream opens has to envelope itself by
 	///     hand instead. Used when the requested match/resource isn't currently live, so there's nothing
 	///     to stream.
@@ -274,13 +274,13 @@ internal static class LiveSseRoutes
 
 	/// <summary>
 	///     Lock-free full-then-delta subscribe sequence: (1) subscribe first so no publish in the gap
-	///     is missed, (2) drain-and-discard anything already queued (non-blocking) — safe to discard
+	///     is missed, (2) drain-and-discard anything already queued (non-blocking); safe to discard
 	///     because the publisher always writes its <see cref="SnapshotChannel{T}" /> before raising the
 	///     event, so anything sitting in the channel here is already reflected in the fresh read that
 	///     follows, (3) read the latest full snapshot and yield it, (4) resume the normal blocking
 	///     drain loop, forwarding every subsequent publish as a delta. Uses an unbounded channel
 	///     (unlike <see cref="Subscribe" />'s bounded/drop-oldest one) because a dropped delta
-	///     permanently desyncs a client — there's no full-resnapshot fallback once deltas start.
+	///     permanently desyncs a client: there's no full re-snapshot fallback once deltas start.
 	/// </summary>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot(
 		[EnumeratorCancellation] CancellationToken cancellationToken,
@@ -306,7 +306,7 @@ internal static class LiveSseRoutes
 	/// <summary>
 	///     Same subscribe-drain-read-resume sequence as <see cref="SubscribeWithSnapshot" />, but for a
 	///     stream fed by more than one event source at once (each publish carrying its own event-type
-	///     tag) — only <paramref name="snapshotEventType" />'s source gets the initial full-state read.
+	///     tag); only <paramref name="snapshotEventType" />'s source gets the initial full-state read.
 	/// </summary>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(
 		[EnumeratorCancellation] CancellationToken cancellationToken,

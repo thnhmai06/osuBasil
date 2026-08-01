@@ -10,9 +10,15 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IScoreRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>*RowDto</c> DTOs, since Dapper fills by property
+///     name rather than through a positional record constructor; the stored integer enum columns
+///     are cast to their domain enum types during mapping. Each method opens its own connection.
+/// </remarks>
 public sealed class SqliteScoreRepository(string connectionString, ILogger<SqliteScoreRepository> logger)
 	: IScoreRepository
 {
+	/// <inheritdoc />
 	public async Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -22,6 +28,12 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return row?.ToRow();
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The <see cref="ScoreInsertRow" /> is passed straight to Dapper, whose property names line
+	///     up with the insert's columns. The insert and the id read-back are one batched statement,
+	///     so the returned id is the immediately inserted row's.
+	/// </remarks>
 	public async Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -40,6 +52,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return id;
 	}
 
+	/// <inheritdoc />
 	public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
 		CancellationToken cancellationToken = default)
 	{
@@ -49,6 +62,11 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			new { OnlineChecksum = onlineChecksum });
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The query joins Users and keeps only rows whose privilege flags still carry the
+	///     <see cref="UserPrivileges.Unrestricted" /> bit, ranking by raw score descending.
+	/// </remarks>
 	public async Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
 		CancellationToken cancellationToken = default)
 	{
@@ -72,6 +90,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return row?.ToRow();
 	}
 
+	/// <inheritdoc />
 	public async Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -87,6 +106,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return row?.ToRow();
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
 		CancellationToken cancellationToken = default)
 	{
@@ -104,6 +124,11 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Joins the Users table so each score carries its submitter's name, and orders the round's
+	///     scores by score descending.
+	/// </remarks>
 	public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
 		CancellationToken cancellationToken = default)
 	{
@@ -121,6 +146,11 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The count is read from the Counters table under the <c>Scores:Total</c> counter, not
+	///     counted from the Scores table directly.
+	/// </remarks>
 	public async Task<int> FetchCountAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -128,11 +158,16 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			"SELECT Value FROM Counters WHERE Name = 'Scores:Total'");
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the round-score SELECT's columns. Mutable because Dapper
+	///     fills by property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class RoundScoreRowDto
 	{
 		public long Id { get; set; }
@@ -153,6 +188,10 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		public bool Perfect { get; set; }
 		public DateTime SubmittedAt { get; set; }
 
+		/// <summary>
+		///     Builds a <see cref="RoundScoreRow" /> from this row, casting the stored enum columns.
+		/// </summary>
+		/// <returns>The domain round score row.</returns>
 		public RoundScoreRow ToRow()
 		{
 			return new RoundScoreRow(
@@ -161,28 +200,41 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the owner lookup SELECT's columns.
+	/// </summary>
 	private sealed class ScoreOwnerRowDto
 	{
 		public int UserId { get; set; }
 		public int Mode { get; set; }
 
+		/// <summary>Builds a <see cref="ScoreOwnerRow" /> from this row, casting the stored mode column.</summary>
+		/// <returns>The domain score owner row.</returns>
 		public ScoreOwnerRow ToRow()
 		{
 			return new ScoreOwnerRow(UserId, (GameMode)Mode);
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the first-place SELECT's columns.
+	/// </summary>
 	private sealed class FirstPlaceScoreRowDto
 	{
 		public int Id { get; set; }
 		public string Name { get; set; } = "";
 
+		/// <summary>Builds a <see cref="FirstPlaceScoreRow" /> from this row.</summary>
+		/// <returns>The domain first-place score row.</returns>
 		public FirstPlaceScoreRow ToRow()
 		{
 			return new FirstPlaceScoreRow(Id, Name);
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the full Scores SELECT's columns.
+	/// </summary>
 	private sealed class ScoreRowDto
 	{
 		public long Id { get; set; }
@@ -209,6 +261,10 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		public string OnlineChecksum { get; set; } = "";
 		public DateTime SubmittedAt { get; set; }
 
+		/// <summary>
+		///     Builds a <see cref="ScoreRow" /> from this row, casting the stored enum columns.
+		/// </summary>
+		/// <returns>The domain score row.</returns>
 		public ScoreRow ToRow()
 		{
 			return new ScoreRow(

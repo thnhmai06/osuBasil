@@ -5,9 +5,16 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Basil.Infrastructure.Media;
 
-/// <inheritdoc cref="IImageResizer" />
+/// <summary>
+///     Implements <see cref="IImageResizer" /> with SixLabors.ImageSharp.
+/// </summary>
+/// <remarks>
+///     Crops to fill the target rectangle (<see cref="ResizeMode.Crop" />) rather than letterboxing,
+///     matching how osu!'s own thumbnails behave, and encodes the result as JPEG.
+/// </remarks>
 public sealed class ImageSharpResizer : IImageResizer
 {
+	/// <inheritdoc cref="IImageResizer.ResizeAsync" />
 	public async Task<byte[]> ResizeAsync(byte[] sourceImage, int width, int height,
 		CancellationToken cancellationToken = default)
 	{

@@ -23,6 +23,7 @@ public abstract record BeatmapObjectCounts
 {
 	/// <summary>Gets or sets the total number of hit objects in the beatmap.</summary>
 	public int Total { get; init; }
+
 	/// <summary>Gets or sets the maximum combo achievable on the beatmap.</summary>
 	public int MaxCombo { get; init; }
 }
@@ -34,8 +35,10 @@ public sealed record OsuBeatmapObjectCounts : BeatmapObjectCounts
 {
 	/// <summary>Gets or sets the number of circles in the beatmap.</summary>
 	public int Circles { get; init; }
+
 	/// <summary>Gets or sets the number of sliders in the beatmap.</summary>
 	public int Sliders { get; init; }
+
 	/// <summary>Gets or sets the number of spinners in the beatmap.</summary>
 	public int Spinners { get; init; }
 }
@@ -47,8 +50,10 @@ public sealed record TaikoBeatmapObjectCounts : BeatmapObjectCounts
 {
 	/// <summary>Gets or sets the number of hit notes in the beatmap.</summary>
 	public int Hits { get; init; }
+
 	/// <summary>Gets or sets the number of drum rolls in the beatmap.</summary>
 	public int DrumRolls { get; init; }
+
 	/// <summary>Gets or sets the number of den-den drums in the beatmap.</summary>
 	public int Dendens { get; init; }
 }
@@ -60,10 +65,13 @@ public sealed record CatchBeatmapObjectCounts : BeatmapObjectCounts
 {
 	/// <summary>Gets or sets the number of fruits in the beatmap.</summary>
 	public int Fruits { get; init; }
+
 	/// <summary>Gets or sets the number of droplets in the beatmap.</summary>
 	public int Droplets { get; init; }
+
 	/// <summary>Gets or sets the number of tiny droplets in the beatmap.</summary>
 	public int TinyDroplets { get; init; }
+
 	/// <summary>Gets or sets the number of bananas in the beatmap.</summary>
 	public int Bananas { get; init; }
 }
@@ -75,6 +83,7 @@ public sealed record ManiaBeatmapObjectCounts : BeatmapObjectCounts
 {
 	/// <summary>Gets or sets the number of notes in the beatmap.</summary>
 	public int Notes { get; init; }
+
 	/// <summary>Gets or sets the number of hold notes in the beatmap.</summary>
 	public int HoldNotes { get; init; }
 }

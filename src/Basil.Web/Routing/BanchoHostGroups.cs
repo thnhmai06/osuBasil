@@ -31,16 +31,17 @@ using Scalar.AspNetCore;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="BanchoHostGroups" /> is static and can't be a
-///     type argument.
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="BanchoHostGroups" /> is static and
+///     can't be a type argument.
 /// </summary>
 internal sealed class BanchoHostGroupsLog;
 
 /// <summary>
-///     Ports bancho.py's app/api/init_api.py:init_routes — routes are selected by hostname, not
-///     path prefix. For every domain in ("ppy.sh", configured DOMAIN): c./ce./c4./c5./c6.{domain}
-///     serve the bancho realtime protocol, osu.{domain} serves the osu! web endpoints, b.{domain}
-///     serves beatmap assets, and api.{domain} serves the developer-facing API.
+///     Registers every host group for each of the fallback `ppy.sh` and the configured domain: the
+///     `c.`/`ce.`/`c4.`/`c5.`/`c6.` hosts serve the bancho realtime protocol, `osu.{domain}` serves
+///     the osu! web endpoints, `b.{domain}` serves beatmap assets, `a.{domain}` serves avatars, and
+///     `api.{domain}` serves the developer-facing API. Routes are selected by hostname, not path
+///     prefix.
 /// </summary>
 public static class BanchoHostGroups
 {
@@ -75,6 +76,16 @@ public static class BanchoHostGroups
 
 	private static readonly string[] VideoExtensions = [".mp4", ".avi", ".flv", ".wmv", ".mkv", ".mov"];
 
+	/// <summary>
+	///     Mounts each of the five host groups (bancho, `osu.` web, `b.` beatmap assets, `a.` avatars,
+	///     `api.`) at "/" restricted to their respective hostnames, for both the configured domain and
+	///     the fallback `ppy.sh`.
+	/// </summary>
+	/// <param name="app">The web application to register the host-restricted route groups on.</param>
+	/// <param name="configuredDomain">
+	///     The server's configured `Server:Domain` (falling back to `localhost`), mounted alongside
+	///     `ppy.sh`.
+	/// </param>
 	public static void MapAll(WebApplication app, string configuredDomain)
 	{
 		var domains = new[] { "ppy.sh", configuredDomain }.Distinct().ToArray();
@@ -101,10 +112,11 @@ public static class BanchoHostGroups
 	///     video file and appends " [no video]" to the returned filename. Returns null when the set
 	///     has no local folder or the folder is empty.
 	/// </summary>
-	internal static async Task<(byte[] Bytes, string FileName)?> BuildOszArchiveAsync(IMapRepository maps,
+	internal static async Task<(byte[] Bytes, string FileName)?> BuildOszArchiveAsync(
+		IBeatmapRepository beatmapRepository,
 		StorageOptions storage, int setId, bool noVideo, CancellationToken cancellationToken)
 	{
-		var beatmaps = await maps.FetchAllBySetIdAsync(setId, cancellationToken: cancellationToken);
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, cancellationToken: cancellationToken);
 		if (beatmaps.Count == 0) return null;
 
 		var mapset = beatmaps[0].Mapset;
@@ -126,7 +138,7 @@ public static class BanchoHostGroups
 				}
 
 				var entry = archive.CreateEntry(Path.GetRelativePath(folder, filePath));
-				await using var entryStream = entry.Open();
+				await using var entryStream = await entry.OpenAsync(cancellationToken);
 				await using var fileStream = File.OpenRead(filePath);
 				await fileStream.CopyToAsync(entryStream, cancellationToken);
 				wroteAny = true;
@@ -139,12 +151,21 @@ public static class BanchoHostGroups
 		return (zipStream.ToArray(), name);
 	}
 
-	// bancho.py has no local avatar storage (the a.{domain} host there always forwards to a real CDN).
+	// This server stores avatars locally rather than proxying a remote CDN.
 	// Files are stored flat as "{userId}.{ext}" under StorageOptions.AvatarsPath.
 
 	// Writes to a per-call temp file then renames into place, so concurrent first-avatar-request
 	// races (fresh deploy, several clients fetching the same not-yet-materialized fallback at once)
 	// each finish with a complete file instead of racing File.Create on the same destination path.
+	/// <summary>
+	///     Writes an embedded resource to <paramref name="destinationPath" /> as a per-call temp file that
+	///     is then renamed into place, so concurrent first-use races (several requests materializing the
+	///     same fallback image at once) each finish with a complete file instead of racing
+	///     <c>File.Create</c> on the same destination path. Silently does nothing when the resource is
+	///     missing.
+	/// </summary>
+	/// <param name="resourceName">The fully-qualified name of the embedded resource to extract.</param>
+	/// <param name="destinationPath">The final file path to write the resource to.</param>
 	private static void TryWriteEmbeddedResource(string resourceName, string destinationPath)
 	{
 		using var stream = typeof(BanchoHostGroups).Assembly.GetManifestResourceStream(resourceName);
@@ -159,6 +180,7 @@ public static class BanchoHostGroups
 		File.Move(tempPath, destinationPath, true);
 	}
 
+	/// <summary>Serves the 80x60 cover thumbnail for a mapset, resized on demand and cached.</summary>
 	private static Task<IResult> HandleThumbnailSmall(int setId, IMapsetRepository mapsets,
 		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
 		CancellationToken cancellationToken)
@@ -166,6 +188,7 @@ public static class BanchoHostGroups
 		return HandleThumbnailAsync(setId, false, 80, 60, mapsets, storage, cache, resizer, cancellationToken);
 	}
 
+	/// <summary>Serves the 160x120 list-icon thumbnail for a mapset, resized on demand and cached.</summary>
 	private static Task<IResult> HandleThumbnailLarge(int setId, IMapsetRepository mapsets,
 		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
 		CancellationToken cancellationToken)
@@ -174,11 +197,10 @@ public static class BanchoHostGroups
 	}
 
 	/// <summary>
-	///     Resizes the mapset's background image to a fixed size and serves it directly — no longer a
-	///     redirect to the `api.` host's own (unresized) background route, since a real osu! client
-	///     expects a thumb-sized image at this exact URL, not an arbitrary-resolution one. Cached under
-	///     `Data/Cache/thumb/` (see <see cref="IResponseCache" />) so the resize only ever runs once
-	///     per mapset per size.
+	///     Resizes the mapset's background image to a fixed size and serves it directly, rather than
+	///     redirecting to the `api.` host's own (unresized) background route, because a real osu! client
+	///     expects a thumb-sized image at this exact URL. Cached under `Data/Cache/thumb/` (see
+	///     <see cref="IResponseCache" />) so the resize only ever runs once per mapset per size.
 	/// </summary>
 	private static async Task<IResult> HandleThumbnailAsync(int setId, bool large, int width, int height,
 		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
@@ -201,23 +223,26 @@ public static class BanchoHostGroups
 		return Results.File(resized, "image/jpeg");
 	}
 
-	private static async Task<IResult> HandleAudioPreview(int setId, IMapRepository maps, IMapsetRepository mapsets,
+	/// <summary>Serves the mapset's audio preview clip as `audio/mpeg`, or 404 when no clip can be produced.</summary>
+	private static async Task<IResult> HandleAudioPreview(int setId, IBeatmapRepository beatmaps,
+		IMapsetRepository mapsets,
 		IOptions<StorageOptions> storage, IResponseCache cache, IAudioPreviewExtractor extractor,
 		CancellationToken cancellationToken)
 	{
-		var clip = await GetOrGeneratePreviewClipAsync(setId, maps, mapsets, storage, cache, extractor,
+		var clip = await GetOrGeneratePreviewClipAsync(setId, beatmaps, mapsets, storage, cache, extractor,
 			cancellationToken);
 		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
 	}
 
 	/// <summary>
 	///     Shared by both the `b.` host's `/preview/{setId}.mp3` and the `api.` host's
-	///     `/beatmapsets/{setId}/audiopreview` — same 10s-mp3-from-PreviewTime clip, same
-	///     <see cref="IResponseCache" /> key (`preview/{setId}.mp3`), so a request through either host
-	///     benefits from a request already made through the other. Null on any 404 condition (missing/
-	///     private mapset, no audio file on disk) — the caller decides the actual response shape.
+	///     `/beatmapsets/{setId}/audiopreview`: the same 10s mp3 clip cut from the preview beatmap's
+	///     PreviewTime, under the same <see cref="IResponseCache" /> key (`preview/{setId}.mp3`), so a
+	///     request through either host benefits from a request already made through the other. Returns
+	///     null on any 404 condition (missing or private mapset, no audio file on disk); the caller
+	///     decides the actual response shape.
 	/// </summary>
-	internal static async Task<byte[]?> GetOrGeneratePreviewClipAsync(int setId, IMapRepository maps,
+	internal static async Task<byte[]?> GetOrGeneratePreviewClipAsync(int setId, IBeatmapRepository beatmapRepository,
 		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache,
 		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
 	{
@@ -228,7 +253,7 @@ public static class BanchoHostGroups
 		var cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
 		if (cached is not null) return cached;
 
-		var beatmaps = await maps.FetchAllBySetIdAsync(setId, false, cancellationToken);
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, false, cancellationToken);
 		var preview = beatmaps.MinBy(b => b.Id);
 		if (preview?.AudioFile is null) return null;
 
@@ -249,6 +274,12 @@ public static class BanchoHostGroups
 	// same content whether this server is self-hosted or run locally; the GitHub Pages copy is a
 	// separate, fully static build of the same 3 pages (see docs-site/ and the CI workflow) with
 	// Try-it-out disabled, since it has no live backend behind it.
+	/// <summary>
+	///     Registers the `api.` host's routes: the TRT snapshot and per-resource SSE live channels, file
+	///     downloads, admin-key-gated management CRUD, a trivial `/health` probe, the abbreviation
+	///     redirects, and the generated OpenAPI/Scalar documentation site.
+	/// </summary>
+	/// <param name="group">The `api.{domain}` route group.</param>
 	private static void MapApiGroup(this RouteGroupBuilder group)
 	{
 		group.MapOpenApi().ExcludeFromDescription();
@@ -339,7 +370,8 @@ public static class BanchoHostGroups
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
 			created, false, false, BeatmapStatus.Loved, 1);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
-		var objectCounts = new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
+		var objectCounts = new OsuBeatmapObjectCounts
+			{ Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
 		var beatmap = new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
 			difficulty, objectCounts, false, beatmapset);
 
@@ -361,6 +393,10 @@ public static class BanchoHostGroups
 	// in MapOsuWebGroup, MapBeatmapAssetGroup, and MapApiGroup respectively.
 	extension(RouteGroupBuilder group)
 	{
+		/// <summary>
+		///     Registers the bancho binary-protocol host group: a `GET /` liveness stub plus the `POST /`
+		///     login or authenticated packet-exchange endpoint.
+		/// </summary>
 		private void MapBanchoGroup()
 		{
 			group.MapGet("/", () => "cho")
@@ -370,11 +406,11 @@ public static class BanchoHostGroups
 				                 "only exists as a liveness probe for this host.")
 				.WithTags("Bancho Protocol");
 
-			// Ported from app/api/domains/cho.py's bancho_handler: no osu-token header means this is
-			// a login request; a present-but-unknown token means the server restarted since the
-			// client's last request, so it's told to reconnect. Services are resolved from
-			// context.RequestServices rather than as delegate parameters so the (DB/Redis-backed)
-			// login use case is only ever constructed on the branch that actually needs it.
+			// No osu-token header means this is a login request; a present-but-unknown token
+			// means the server restarted since the client's last request, so it's told to
+			// reconnect. Services are resolved from context.RequestServices rather than as
+			// delegate parameters so the DB-backed login use case is only ever constructed on
+			// the branch that actually needs it.
 			group.MapPost("/", async (HttpContext context, CancellationToken cancellationToken) =>
 				{
 					var request = context.Request;
@@ -391,13 +427,13 @@ public static class BanchoHostGroups
 						var headers = request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
 						// In production a reverse proxy (nginx) always sets X-Forwarded-For; without one
 						// in front (e.g. local dev), synthesise it from the direct TCP peer so
-						// IpResolver — which intentionally mirrors bancho.py's proxy-only assumption
-						// — still has something to read.
+						// IpResolver only ever trusts the forwarded headers, never the direct peer
+						// address, so it still has something to read.
 						if (!headers.ContainsKey("CF-Connecting-IP") && !headers.ContainsKey("X-Forwarded-For"))
 						{
 							// IpResolver falls back to X-Real-IP whenever X-Forwarded-For has a
-							// single entry (matching bancho.py's own assumption about nginx's config) —
-							// both need synthesising together, not just one.
+							// single entry (the proxy config is assumed to always set both), so both
+							// need synthesising together, not just one.
 							var remoteIp = (context.Connection.RemoteIpAddress ?? IPAddress.Loopback).ToString();
 							headers["X-Forwarded-For"] = remoteIp;
 							headers["X-Real-IP"] = remoteIp;
@@ -447,6 +483,11 @@ public static class BanchoHostGroups
 				.WithTags("Bancho Protocol");
 		}
 
+		/// <summary>
+		///     Registers the `osu.{domain}` host's `/web/*.php` endpoints: leaderboard status, osu!direct
+		///     search and set lookup, mapset download, .osu file fetch, score submission, replay download,
+		///     anticheat flag receiver, seasonal backgrounds, client stubs, and in-game registration.
+		/// </summary>
 		private void MapOsuWebGroup()
 		{
 			group.MapGet("/", () => "osu")
@@ -455,16 +496,14 @@ public static class BanchoHostGroups
 				.WithDescription("Returns the literal string \"osu\". Not called by the real osu! client.")
 				.WithTags("Stubs");
 
-			// Ported from app/api/domains/osu.py's getScores, reduced to a status-only reply — this
-			// server doesn't support browsing a beatmap's leaderboard (out of scope), but it still
-			// reports the map's real BeatmapStatus (matching osu-search.php/osu-search-set.php)
-			// instead of the "-1|false" (NotSubmitted) stub bancho.py falls back to when there's no
-			// leaderboard, so Song Select's map icon doesn't disagree with osu!Direct. Matches the
-			// old BeatmapLeaderboardResultCode.NoLeaderboard wire format (see git history) minus the
-			// leaderboard rows themselves. `c` (md5) is also the one request osu! sends on every
-			// song-select map change carrying mode/mods (m/mods) — that side effect (mirrors
-			// ChangeActionHandler/BeatmapLeaderboardService._update_player_status_if_needed) still
-			// needs to run so other players see an accurate status.
+			// Reduced to a status-only reply: this server doesn't support browsing a beatmap's
+			// leaderboard (out of scope), but it still reports the map's real BeatmapStatus
+			// (matching osu-search.php/osu-search-set.php) instead of the "-1|false" (NotSubmitted)
+			// stub used when there's no leaderboard, so Song Select's map icon doesn't disagree with
+			// osu!Direct. Matches the old BeatmapLeaderboardResultCode.NoLeaderboard wire format (see
+			// git history) minus the leaderboard rows themselves. `c` (md5) is also the one request
+			// osu! sends on every song-select map change carrying mode/mods (m/mods); that call's
+			// player-status side effect still needs to run so other players see an accurate status.
 			group.MapGet("/web/osu-osz2-getscores.php", async (
 					[FromQuery(Name = "us")] string username,
 					[FromQuery(Name = "ha")] string ha,
@@ -496,7 +535,7 @@ public static class BanchoHostGroups
 					Beatmap? bmap = null;
 					if (!string.IsNullOrEmpty(checksum))
 					{
-						var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+						var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 						bmap = await maps.FetchOneAsync(md5: checksum, cancellationToken: cancellationToken);
 					}
 
@@ -513,8 +552,8 @@ public static class BanchoHostGroups
 				                 "the real osu! response is always empty.")
 				.WithTags("Beatmaps");
 
-			// Ported from app/api/domains/osu.py's osuSearchHandler, replumbed to query the local
-			// maps table instead of proxying a mirror API — runs fully offline now.
+			// Queries the local beatmaps table instead of proxying a mirror API, so it runs fully
+			// offline.
 			group.MapGet("/web/osu-search.php", async (
 					[FromQuery(Name = "u")] string username,
 					[FromQuery(Name = "h")] string passwordMd5,
@@ -543,8 +582,8 @@ public static class BanchoHostGroups
 				                 "Response is osu!'s pipe/newline wire format, not JSON.")
 				.WithTags("Beatmaps");
 
-			// Ported from app/api/domains/osu.py's osuSearchSetHandler. "s"/"b"/"c" are all optional —
-			// exactly one is expected per request, matching the Python source's if/elif/elif/else.
+			// "s"/"b"/"c" are all optional, but exactly one is expected per request; when all three
+			// are absent an empty body is returned.
 			group.MapGet("/web/osu-search-set.php", async (
 					[FromQuery(Name = "u")] string username,
 					[FromQuery(Name = "h")] string passwordMd5,
@@ -562,7 +601,7 @@ public static class BanchoHostGroups
 					if (mapSetId is null && mapId is null && checksum is null)
 						return Results.Text("", "text/html", Encoding.UTF8);
 
-					var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+					var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 					var bmapSet =
 						await maps.FetchOneAsync(mapId, checksum, setId: mapSetId,
 							cancellationToken: cancellationToken);
@@ -576,11 +615,11 @@ public static class BanchoHostGroups
 				                 "of the three parameters is present. Response is osu!'s pipe-delimited set-info line, not JSON.")
 				.WithTags("Beatmaps");
 
-			// Ported from app/api/domains/osu.py's get_osz, extended for this server's fully-offline
-			// scope: if the set was locally ingested (BeatmapIngestionService/BeatmapWatcherService), a
-			// fresh .osz is packaged on the fly from the mapset's own storage folder (the full original
-			// archive contents — audio/images/video/.osu — not just difficulty files). Only falls back
-			// to a configured mirror (kept from the original port) when the set has nothing local.
+			// Extended for this server's fully-offline scope: if the set was locally ingested
+			// (BeatmapIngestionService/BeatmapWatcherService), a fresh .osz is packaged on the fly
+			// from the mapset's own storage folder (the full original archive contents, i.e.
+			// audio/images/video/.osu, not just difficulty files). Only falls back to a configured
+			// mirror when the set has nothing local.
 			group.MapGet("/d/{mapSetId}",
 					async (string mapSetId, HttpContext context, CancellationToken cancellationToken) =>
 					{
@@ -590,7 +629,7 @@ public static class BanchoHostGroups
 
 						if (int.TryParse(rawSetId, out var setId))
 						{
-							var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+							var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 							var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
 							var osz = await BuildOszArchiveAsync(maps, storage, setId, noVideo, cancellationToken);
 							if (osz is not null)
@@ -619,12 +658,12 @@ public static class BanchoHostGroups
 				                 "tooling; this route exists specifically for the in-game client.")
 				.WithTags("Beatmaps");
 
-			// Ported from app/api/domains/osu.py's get_updated_beatmap, replumbed to serve the locally
-			// ingested file instead of redirecting to osu.ppy.sh (this server runs fully offline).
-			group.MapGet("/web/maps/{mapFilename}", async (string mapFilename, HttpContext context,
+			// Serves the locally ingested .osu file directly instead of redirecting to an external
+			// host (this server runs fully offline).
+			group.MapGet("/web/beatmaps/{mapFilename}", async (string mapFilename, HttpContext context,
 					CancellationToken cancellationToken) =>
 				{
-					var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+					var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 					var bmap = await maps.FetchOneAsync(filename: mapFilename, cancellationToken: cancellationToken);
 					if (bmap is null) return Results.NotFound();
 
@@ -642,11 +681,11 @@ public static class BanchoHostGroups
 				                 "Content-Type `application/x-osu-beatmap`.")
 				.WithTags("Beatmaps");
 
-			// Ported from app/api/domains/osu.py's osuSubmitModularSelector. The "score" field name is
-			// reused by the client for both the base64 score-data string and the replay file upload —
-			// ASP.NET Core's multipart parser already separates text parts from file parts by name, so
-			// (unlike Starlette/FastAPI) no manual form-field workaround is needed here. Unused fields
-			// the Python source reads but never forwards into submission (fs/x/i) are not bound at all.
+			// The "score" field name is reused by the client for both the base64 score-data string
+			// and the replay file upload; ASP.NET Core's multipart parser already separates text parts
+			// from file parts by name, so no manual form-field workaround is needed here. Unused
+			// fields the client sends but this handler never forwards into submission (fs/x/i) are
+			// not bound at all.
 			group.MapPost("/web/osu-submit-modular-selector.php",
 					async (HttpContext context, CancellationToken cancellationToken) =>
 					{
@@ -703,9 +742,8 @@ public static class BanchoHostGroups
 				                 "returns JSON, always `text/html` in osu!'s own response grammar, even on failure.")
 				.WithTags("Score Submission");
 
-			// Ported from app/api/domains/osu.py's getReplay. `mode` is accepted by the client but
-			// never actually used in the Python source's fetch_replay_file call, so it's not bound
-			// here either.
+			// `mode` is accepted by the client but never actually used when fetching the replay
+			// file, so it's not bound here either.
 			group.MapGet("/web/osu-getreplay.php", async (
 					[FromQuery(Name = "u")] string username,
 					[FromQuery(Name = "h")] string passwordMd5,
@@ -733,8 +771,8 @@ public static class BanchoHostGroups
 				                 "for external tooling; this route requires client-style authentication.")
 				.WithTags("Replays");
 
-			// Ported from app/api/domains/osu.py's osuGetBeatmapInfo, reduced to a stub — per-map grade
-			// lookup is out of scope (this server doesn't support browsing beatmap leaderboards).
+			// Reduced to a stub: per-map grade lookup is out of scope (this server doesn't support
+			// browsing beatmap leaderboards).
 			group.MapPost("/web/osu-getbeatmapinfo.php", async (
 					[FromQuery(Name = "u")] string username,
 					[FromQuery(Name = "h")] string passwordMd5,
@@ -755,9 +793,9 @@ public static class BanchoHostGroups
 				                 "server doesn't track a leaderboard to grade against.")
 				.WithTags("Stubs");
 
-			// Ported from app/api/domains/osu.py's lastFM. Per explicit user decision, detected
-			// cheat-tool flags are only logged (ClientIntegrityService) — no restrict/kick machinery
-			// exists, so only logging for manual review.
+			// Per explicit user decision, detected cheat-tool flags are only logged
+			// (ClientIntegrityService): no restrict/kick machinery exists, so only logging for manual
+			// review.
 			group.MapGet("/web/lastfm.php", async (
 					[FromQuery(Name = "b")] string beatmapIdOrHiddenFlag,
 					[FromQuery(Name = "us")] string username,
@@ -787,8 +825,8 @@ public static class BanchoHostGroups
 				                 "flags for this session, or an empty body otherwise.")
 				.WithTags("Anticheat");
 
-			// Ported from app/api/domains/osu.py's osuMarkAsRead. No offline-mail persistence exists here
-			// (chat is online-only), so this is just an auth-gated no-op to keep the client happy.
+			// No offline-mail persistence exists here (chat is online-only), so this is just an
+			// auth-gated no-op to keep the client happy.
 			group.MapGet("/web/osu-markasread.php", async (
 					[FromQuery(Name = "u")] string username,
 					[FromQuery(Name = "h")] string passwordMd5,
@@ -810,10 +848,8 @@ public static class BanchoHostGroups
 				                 "failure.")
 				.WithTags("Mail");
 
-			// Ported from app/api/domains/osu.py's osuSeasonal, replumbed to list
-			// StorageOptions.SeasonalsPath instead of the settings-configured SEASONAL_BGS the Python
-			// source reads — this server has no config-file list, just a folder an admin drops images
-			// into (served back by the /seasonal/{file} route below).
+			// Lists StorageOptions.SeasonalsPath: this server has no config-file list, just a folder
+			// an admin drops images into (served back by the /seasonal/{file} route below).
 			group.MapGet("/web/osu-getseasonal.php", (HttpContext context) =>
 				{
 					var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
@@ -859,8 +895,8 @@ public static class BanchoHostGroups
 				                 "`application/octet-stream`).")
 				.WithTags("Seasonal Backgrounds");
 
-			// Ported from app/api/domains/osu.py's banchoConnect — unauthenticated by design in the
-			// Python source too (can be called before a session exists).
+			// Deliberately unauthenticated: this is called before a bancho session exists, so there
+			// is no credential to check against.
 			group.MapGet("/web/bancho_connect.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
 				.WithSummary("Client connectivity check (stub).")
@@ -868,7 +904,7 @@ public static class BanchoHostGroups
 				                 "exists, so it is deliberately unauthenticated.")
 				.WithTags("Stubs");
 
-			// Ported from app/api/domains/osu.py's checkUpdates (always an empty stub response there too).
+			// Always an empty stub response (this server does not manage or distribute client updates).
 			group.MapGet("/web/check-updates.php", () => Results.Text("", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
 				.WithSummary("Client update check (stub).")
@@ -905,7 +941,7 @@ public static class BanchoHostGroups
 			group.MapGet("/web/osu-rate.php", () => Results.Text("not ranked", "text/html", Encoding.UTF8))
 				.WithGroupName("osuweb")
 				.WithSummary("Rate a beatmap (always reports \"not ranked\").")
-				.WithDescription("Always returns the literal `not ranked` response osu! itself uses for maps " +
+				.WithDescription("Always returns the literal `not ranked` response osu! itself uses for beatmaps " +
 				                 "that can't be rated. Beatmap rating is out of scope for this server (every map here is " +
 				                 "always treated as Loved, never Ranked).")
 				.WithTags("Stubs");
@@ -1018,13 +1054,12 @@ public static class BanchoHostGroups
 				                 "privileges (Unrestricted | Verified | Supporter).")
 				.WithTags("Registration");
 
-			// Ported from app/api/domains/osu.py's difficultyRatingHandler — the Python source
-			// unconditionally redirects to osu.ppy.sh's difficulty-rating webpage (opened in the
-			// user's system browser, not parsed by the client itself); this server has no such
-			// webpage, so it computes the star rating locally with IOsuCalculator
-			// instead and caches the NoMod result onto Beatmaps.Sr. `b` (beatmap id) and `mods`
-			// (bitmask) are read from the query string since the real client sends neither a body nor
-			// documented form fields for this endpoint.
+			// The real client expects this to open a difficulty-rating webpage in the user's system
+			// browser (the response isn't parsed by the client itself); this server has no such
+			// webpage, so it computes the star rating locally with IOsuCalculator instead and caches
+			// the NoMod result onto Beatmaps.Sr. `b` (beatmap id) and `mods` (bitmask) are read from
+			// the query string since the real client sends neither a body nor documented form fields
+			// for this endpoint.
 			group.MapPost("/difficulty-rating", async (
 					[FromQuery(Name = "b")] int? beatmapId,
 					HttpContext context,
@@ -1035,7 +1070,7 @@ public static class BanchoHostGroups
 						return Results.Text("Difficulty rating requires a beatmap id (?b=).", "text/html",
 							Encoding.UTF8);
 
-					var maps = context.RequestServices.GetRequiredService<IMapRepository>();
+					var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 					var bmap = await maps.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
 					if (bmap is null) return Results.NotFound();
 
@@ -1076,6 +1111,10 @@ public static class BanchoHostGroups
 
 	extension(RouteGroupBuilder group)
 	{
+		/// <summary>
+		///     Registers the `b.{domain}` host's routes: beatmapset thumbnails and audio previews, resized
+		///     or trimmed on demand and cached on disk after the first request.
+		/// </summary>
 		private void MapBeatmapAssetGroup()
 		{
 			// No longer proxies osu.ppy.sh (this server is meant to run fully offline) — the cover
@@ -1108,6 +1147,10 @@ public static class BanchoHostGroups
 				.WithTags("Beatmap Assets");
 		}
 
+		/// <summary>
+		///     Registers the `a.{domain}` host's per-user avatar route, serving a locally-uploaded avatar
+		///     or falling back to built-in images for BasilBot (user id 0) and users with no upload.
+		/// </summary>
 		private void MapAvatarGroup()
 		{
 			group.MapGet("/{userId:int}", (int userId, HttpContext context) =>

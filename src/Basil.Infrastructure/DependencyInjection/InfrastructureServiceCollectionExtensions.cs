@@ -35,6 +35,15 @@ namespace Basil.Infrastructure.DependencyInjection;
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
+	/// <summary>
+	///     Registers every Infrastructure service into the container: the port implementations
+	///     (SQLite repositories, caching decorators, media processors, the osu!lazer calculator, the
+	///     password hasher and score decryptor, session registries, and storage providers) plus the
+	///     background services that watch and garbage-collect the mapsets folder.
+	/// </summary>
+	/// <param name="services">The service collection to register into.</param>
+	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
+	/// <returns>The same <paramref name="services" /> instance, for chaining.</returns>
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services,
 		IConfiguration configuration)
 	{
@@ -79,11 +88,11 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddSingleton<IRelationshipRepository>(sp =>
 			new SqliteRelationshipRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteRelationshipRepository>>()));
-		services.AddSingleton<IMapRepository>(sp =>
-			new CachingMapRepository(
-				new SqliteMapRepository(BuildConnectionString(sp),
-					sp.GetRequiredService<ILogger<SqliteMapRepository>>()),
-				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingMapRepository>>()));
+		services.AddSingleton<IBeatmapRepository>(sp =>
+			new CachingBeatmapRepository(
+				new SqliteBeatmapRepository(BuildConnectionString(sp),
+					sp.GetRequiredService<ILogger<SqliteBeatmapRepository>>()),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingBeatmapRepository>>()));
 		services.AddSingleton<IMapsetRepository>(sp =>
 			new CachingMapsetRepository(
 				new SqliteMapsetRepository(BuildConnectionString(sp),
@@ -104,7 +113,7 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
 		services.AddSingleton<IImageResizer, ImageSharpResizer>();
-		services.AddSingleton<IAudioPreviewExtractor, FFMpegAudioPreviewExtractor>();
+		services.AddSingleton<IAudioPreviewExtractor, FfmpegAudioPreviewExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();

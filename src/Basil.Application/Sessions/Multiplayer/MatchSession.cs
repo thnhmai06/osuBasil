@@ -6,14 +6,37 @@ using Basil.Domain.Scores;
 namespace Basil.Application.Sessions.Multiplayer;
 
 /// <summary>
-///     An osu! multiplayer match. Ported from app/objects/match.py's Match.
-///     Unlike bancho.py, which relies on asyncio's single-threaded event loop to make slot mutations
-///     atomic between `await` points, ASP.NET Core dispatches packet handlers on the real thread
-///     pool — there is nothing to "port" for synchronization, since the Python source has no lock of
-///     any kind. <see cref="Lock" /> is this port's from-scratch answer: callers that read-then-mutate
-///     slot state (join, change-slot, part, ...) must hold it for the whole read-mutate-broadcast
-///     sequence, exactly mirroring the atomicity asyncio gave Python for free.
+///     Represents an osu! multiplayer match in memory, holding the room's settings, its live slot
+///     state, and the snapshot state that feeds the live event channels.
 /// </summary>
+/// <remarks>
+///     Concurrency model: ASP.NET Core dispatches packet handlers on the real thread pool, so a
+///     read-then-mutate of slot or settings state is not atomic between awaits. <see cref="Lock" />
+///     is the per-match answer: callers that read then mutate slot state (join, change-slot, part,
+///     and so on) must hold it across the whole read-mutate-broadcast sequence. The snapshot state
+///     on this type is deliberately lock-free instead (see <see cref="SnapshotChannel{T}" />).
+/// </remarks>
+/// <param name="id">
+///     The 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the
+///     match id.
+/// </param>
+/// <param name="name">The room's name.</param>
+/// <param name="password">The room's password, used in its invitation url.</param>
+/// <param name="mapName">The name of the currently selected beatmap.</param>
+/// <param name="mapId">The id of the currently selected beatmap.</param>
+/// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
+/// <param name="hostId">The id of the player hosting the room.</param>
+/// <param name="mode">The game mode the room plays in.</param>
+/// <param name="mods">The mods applied to the whole room.</param>
+/// <param name="winCondition">The condition that decides the winner of a round.</param>
+/// <param name="teamType">The team arrangement used for the room.</param>
+/// <param name="freemods">A value that indicates whether freemod mode is enabled.</param>
+/// <param name="seed">The room's random seed, broadcast to clients as part of the match's data.</param>
+/// <param name="chatChannelName">The name of the chat channel bound to this room.</param>
+/// <param name="createdViaMakeCommand">
+///     A value that indicates whether the room was created by the <c>!mp make</c> command
+///     rather than the client's MATCH_CREATE packet.
+/// </param>
 public sealed class MatchSession(
 	int id,
 	string name,
@@ -36,221 +59,312 @@ public sealed class MatchSession(
 	private readonly HashSet<int> _referees = [];
 	private readonly HashSet<int> _tourneyClients = [];
 
-	/// <summary>Held for the duration of any read-then-mutate-then-broadcast sequence on this match's slots or settings.</summary>
+	/// <summary>
+	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
+	///     sequences on this match's slots and settings, held for the duration of any such sequence.
+	/// </summary>
 	public SemaphoreSlim Lock { get; } = new(1, 1);
 
 	/// <summary>
-	///     Lock-free full-snapshot/delta state for the `api.` host's `GET /match/{id}` live SSE
-	///     channel — see <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded
-	///     by <see cref="Lock" />.
+	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. See
+	///     <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded by
+	///     <see cref="Lock" />.
 	/// </summary>
 	public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new();
 
-	/// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /match/{id}/settings` channel.</summary>
+	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's settings channel.</summary>
 	public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
 
 	/// <summary>
-	///     One <see cref="SnapshotChannel{T}" /> per slot (0-based, matching <see cref="Slots" />), for
-	///     the `GET /match/{id}/live/{slotIndex}` channel's "slot" sub-event.
+	///     Gets one <see cref="SnapshotChannel{T}" /> per slot, indexed like <see cref="Slots" />,
+	///     feeding the per-slot "slot" sub-event channel.
 	/// </summary>
 	public IReadOnlyList<SnapshotChannel<MatchSlotView>> SlotSnapshots { get; } =
 		[.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchSlotView>())];
 
-	/// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/hosts` channel.</summary>
+	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's host channel.</summary>
 	public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new();
 
-	/// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/refs` channel.</summary>
+	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's referee-list channel.</summary>
 	public SnapshotChannel<MatchRefereesView> RefsSnapshot { get; } = new();
 
-	/// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/ban` channel.</summary>
+	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's ban-list channel.</summary>
 	public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new();
 
-	/// <summary>Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/timer` channel.</summary>
+	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's countdown-timer channel.</summary>
 	public SnapshotChannel<MatchTimerView> TimerSnapshot { get; } = new();
 
 	/// <summary>
-	///     Same lock-free full-snapshot/delta state, scoped to the `GET /matches/{matchId}/slots`
-	///     channel — a whole-arrangement dict view, distinct from <see cref="SlotSnapshots" />'s
-	///     per-index list (which still backs `/matches/{matchId}/live/{slotIndex}`'s "slot" sub-event).
+	///     Gets the same lock-free full-snapshot and delta state, scoped to the match's slots channel:
+	///     a whole-arrangement dict view, distinct from <see cref="SlotSnapshots" />'s per-index list
+	///     (which still feeds the per-slot "slot" sub-event).
 	/// </summary>
 	public SnapshotChannel<MatchSlotsView> SlotsSnapshot { get; } = new();
 
+	/// <summary>
+	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match
+	///     id.
+	/// </summary>
 	public int Id { get; } = id;
+
+	/// <summary>Gets or sets the room's name.</summary>
 	public string Name { get; set; } = name;
+
+	/// <summary>Gets or sets the room's password, used in its invitation url.</summary>
 	public string Password { get; set; } = password;
 
+	/// <summary>Gets or sets the id of the current host.</summary>
 	public int HostId { get; set; } = hostId;
 
+	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
 	public int MapId { get; set; } = mapId;
+
+	/// <summary>
+	///     Gets or sets the id of the beatmap that was selected before the current one, updated whenever the room's map
+	///     changes.
+	/// </summary>
 	public int PrevMapId { get; set; }
+
+	/// <summary>Gets or sets the md5 of the currently selected beatmap.</summary>
 	public string MapMd5 { get; set; } = mapMd5;
+
+	/// <summary>Gets or sets the name of the currently selected beatmap.</summary>
 	public string MapName { get; set; } = mapName;
 
 	/// <summary>
-	///     The MapMd5 of the last client-supplied map selection that failed to resolve locally, or null
-	///     if none is currently pending — set when the "Beatmap not found locally" warning fires,
-	///     cleared on a successful resolve or an explicit deselect. Exists solely to dedupe that
-	///     warning: osu! clients resend their full settings snapshot on any unrelated room-setting
-	///     change, and without this the warning would re-fire on every one of those instead of just the
-	///     first failed lookup — see MatchChangeSettingsHandler.
+	///     Gets or sets the md5 of the last client-supplied map selection that failed to resolve
+	///     locally, or null when none is currently pending. Set when the "Beatmap not found locally"
+	///     warning fires, cleared on a successful resolve or an explicit deselect. Exists solely to
+	///     deduplicate that warning: osu! clients resend their full settings snapshot on any
+	///     unrelated room-setting change, and without this field the warning would re-fire on every
+	///     one of those instead of only the first failed lookup (see MatchChangeSettingsHandler).
 	/// </summary>
 	public string? UnresolvedMapMd5 { get; set; }
 
+	/// <summary>Gets or sets the mods applied to the whole room.</summary>
 	public Mods Mods { get; set; } = mods;
+
+	/// <summary>Gets or sets the game mode the room plays in.</summary>
 	public GameMode Mode { get; set; } = mode;
+
+	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
 	public bool Freemods { get; set; } = freemods;
 
+	/// <summary>Gets the name of the chat channel bound to this room.</summary>
 	public string ChatChannelName { get; } = chatChannelName;
 
+	/// <summary>Gets or sets the team arrangement used for the room.</summary>
 	public MatchTeamType TeamType { get; set; } = teamType;
+
+	/// <summary>Gets or sets the condition that decides the winner of a round.</summary>
 	public MatchWinCondition WinCondition { get; set; } = winCondition;
 
+	/// <summary>Gets or sets a value that indicates whether a round is currently being played.</summary>
 	public bool InProgress { get; set; }
+
+	/// <summary>Gets the room's random seed, broadcast to clients as part of the match's data.</summary>
 	public int Seed { get; } = seed;
 
 	/// <summary>
-	///     Set by `!mp lock`/`!mp unlock` (no slot argument) — blocks new players from joining the
-	///     room entirely, matching real Bancho's room-level lock. Distinct from a slot's own
-	///     <see cref="SlotStatus.Locked" />, which is set by the `MatchLock` wire packet (in-client
-	///     per-slot lock) and by `!mp size` shrinking the room.
+	///     Gets or sets a value that indicates whether the room is locked against new players
+	///     entirely. Set by <c>!mp lock</c> and <c>!mp unlock</c> (without a slot argument),
+	///     matching real Bancho's room-level lock. Distinct from a slot's own
+	///     <see cref="SlotStatus.Locked" />, which is set by the MatchLock wire packet (an in-client
+	///     per-slot lock) and by <c>!mp size</c> shrinking the room.
 	/// </summary>
 	public bool IsLocked { get; set; }
 
 	/// <summary>
-	///     Set by <c>!mp private [0|1]</c> — when <c>true</c>, the room cannot be (re)joined by anyone
-	///     but staff or <see cref="InvitedIds" />, via any path (<c>!mp join</c>, the native client
-	///     join packet, or an <c>osump://</c> URL) — see
-	///     <see cref="MatchMembershipService.JoinAsync" />. The host
-	///     is NOT exempt: hosting only grants in-room settings control, not a standing invite, so a
-	///     host who leaves a private room needs a referee's <c>!mp invite</c> like anyone else to get
-	///     back in. Also hidden from <c>#lobby</c>. Distinct from <see cref="IsLocked" />, which blocks
-	///     every non-member outright regardless of invite status. Defaults to <c>false</c> for all new
-	///     rooms. Not persisted to the database — a room that closes while private loses this flag
-	///     (and its invite list).
+	///     Gets or sets a value that indicates whether the room is private. Set by
+	///     <c>!mp private [0|1]</c>; when true, the room cannot be (re)joined by anyone but staff or
+	///     <see cref="InvitedIds" />, through any path (<c>!mp join</c>, the native client join
+	///     packet, or an <c>osump://</c> url), see <see cref="MatchMembershipService.JoinAsync" />.
+	///     The host is not exempt: hosting only grants in-room settings control, not a standing
+	///     invite, so a host who leaves a private room needs a referee's <c>!mp invite</c> like
+	///     anyone else to get back in. Also hidden from <c>#lobby</c>. Distinct from
+	///     <see cref="IsLocked" />, which blocks every non-member outright regardless of invite
+	///     status. Defaults to <see langword="false" /> for all new rooms. Not persisted to the
+	///     database: a room that closes while private loses this flag, along with its invite list.
 	/// </summary>
 	public bool IsPrivate { get; set; }
 
 	/// <summary>
-	///     Teardown-strategy marker, not a privacy/history flag: true for rooms made via `!mp make`,
-	///     which persist until `!mp close` or until <see cref="Referees" /> empties out, instead of
+	///     Gets a value that indicates whether the room was made via <c>!mp make</c>. This is a
+	///     teardown-strategy marker rather than a privacy or history flag: such rooms persist until
+	///     <c>!mp close</c> or until <see cref="Referees" /> empties out, instead of following
 	///     MatchMembershipService.Leave's normal all-slots-empty auto-teardown (which still applies
-	///     unchanged to rooms created the normal way, via the client's `MATCH_CREATE` packet).
+	///     unchanged to rooms created the normal way, via the client's MATCH_CREATE packet).
 	/// </summary>
 	public bool CreatedViaMakeCommand { get; } = createdViaMakeCommand;
 
 	/// <summary>
-	///     Non-null while a `!mp start &lt;seconds&gt;`/`!mp timer` countdown is running for this match —
-	///     `!mp aborttimer` cancels it, and it must be cancelled whenever the match itself is torn down
-	///     (see MatchMembershipService.TeardownMatch) so no announcement fires into a dead channel.
+	///     Gets or sets a non-null source while a <c>!mp start &lt;seconds&gt;</c> or <c>!mp timer</c>
+	///     countdown is running for this match. <c>!mp aborttimer</c> cancels it, and it must also be
+	///     cancelled whenever the match is torn down (see MatchMembershipService.TeardownMatch) so no
+	///     announcement fires into a dead channel.
 	/// </summary>
 	public CancellationTokenSource? PendingTimer { get; set; }
 
 	/// <summary>
-	///     True when <see cref="PendingTimer" /> is a `!mp start &lt;seconds&gt;` countdown that will
-	///     actually start the match when it reaches zero, as opposed to a plain `!mp timer` (which only
-	///     announces). A gameplay-affecting settings change (map, team type, win condition, size, a
-	///     player's team) cancels only this kind — see MatchMembershipService.CancelQueuedAutoStart.
+	///     Gets or sets a value that indicates whether <see cref="PendingTimer" /> is a
+	///     <c>!mp start &lt;seconds&gt;</c> countdown that will actually start the match when it
+	///     reaches zero, as opposed to a plain <c>!mp timer</c> that only announces. A
+	///     gameplay-affecting settings change (map, team type, win condition, size, a player's team)
+	///     cancels only this kind (see MatchMembershipService.CancelQueuedAutoStart).
 	/// </summary>
 	public bool PendingTimerIsAutoStart { get; set; }
 
 	/// <summary>
-	///     Set alongside <see cref="PendingTimer" />, cleared alongside it — backs `GET /matches/{matchId}/timer`'s
-	///     remaining-seconds computation.
+	///     Gets or sets the time the current countdown started, set alongside <see cref="PendingTimer" />
+	///     and cleared alongside it. Backs the remaining-seconds computation of GET
+	///     /matches/{matchId}/timer.
 	/// </summary>
 	public DateTimeOffset? TimerStartedAt { get; set; }
 
-	/// <summary>Set alongside <see cref="PendingTimer" />, cleared alongside it.</summary>
+	/// <summary>
+	///     Gets or sets the total length of the current countdown in seconds, set alongside <see cref="PendingTimer" />
+	///     and cleared alongside it.
+	/// </summary>
 	public int? TimerTotalSeconds { get; set; }
 
 	/// <summary>
-	///     The persistent database Matches.Id for this room, distinct from <see cref="Id" /> (the
-	///     0-63 in-memory registry slot, which is what the bancho wire protocol actually uses as a
-	///     match id). Set once, right after the room is created, by MatchMembershipService.CreateAsync.
+	///     Gets or sets the persistent database Matches.Id for this room, distinct from
+	///     <see cref="Id" /> (the 0 to 63 in-memory registry slot, which is what the bancho wire
+	///     protocol actually uses as a match id). Set once, right after the room is created, by
+	///     MatchMembershipService.CreateAsync.
 	/// </summary>
 	public int DbId { get; set; }
 
 	/// <summary>
-	///     The Rounds.Id of the beatmap currently being played, or null when no round is in progress.
-	///     Set at match start (a new Round row is created per beatmap played) and cleared at
-	///     MatchComplete. Score submissions link to this so score-to-round linking doesn't depend on
-	///     any gather/wait step at MatchComplete — see ScoreSubmissionService's doc comment.
+	///     Gets or sets the Rounds.Id of the beatmap currently being played, or null when no round is
+	///     in progress. Set at match start, when a new Round row is created per beatmap played, and
+	///     cleared at MatchComplete. Score submissions link to this so score-to-round linking does
+	///     not depend on any gather or wait step at MatchComplete (see ScoreSubmissionService).
 	/// </summary>
 	public int? CurrentRoundId { get; set; }
 
-	/// <summary>1-based index of the next Round to be created for this match (incremented at match start).</summary>
+	/// <summary>Gets or sets the 1-based index of the next Round to be created for this match, incremented at match start.</summary>
 	public int NextRoundIndex { get; set; } = 1;
 
-	/// <summary>Ported from Match.url — the match's invitation url.</summary>
+	/// <summary>Gets the room's invitation url.</summary>
 	public string Url => $"osump://{Id}/{Password}";
 
-	/// <summary>Ported from Match.embed — an osu! chat embed for this match.</summary>
+	/// <summary>Gets an osu! chat embed for this room, formatted as a clickable name linked to <see cref="Url" />.</summary>
 	public string Embed => $"[{Url} {Name}]";
 
+	/// <summary>Gets the match's 16 slots, in order.</summary>
 	public IReadOnlyList<MatchSlot> Slots { get; } = [.. Enumerable.Range(0, 16).Select(_ => new MatchSlot())];
 
+	/// <summary>Gets the ids of the players granted referee authority for this match.</summary>
 	public IReadOnlyCollection<int> Referees => _referees;
 
+	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
 	public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
 
+	/// <summary>Gets the ids of the players banned from this match.</summary>
 	public IReadOnlyCollection<int> BannedIds => _bannedIds;
 
-	/// <summary>Players `!mp invite` has been used on — see <see cref="IsPrivate" />'s doc comment.</summary>
+	/// <summary>Gets the ids of the players a referee has invited via <c>!mp invite</c>, see <see cref="IsPrivate" />.</summary>
 	public IReadOnlyCollection<int> InvitedIds => _invitedIds;
 
+	/// <summary>
+	///     Grants referee authority on this match to a player.
+	/// </summary>
+	/// <param name="playerId">The id of the player being granted referee authority.</param>
 	public void AddReferee(int playerId)
 	{
 		_referees.Add(playerId);
 	}
 
+	/// <summary>
+	///     Revokes referee authority on this match from a player.
+	/// </summary>
+	/// <param name="playerId">The id of the player whose referee authority is being revoked.</param>
 	public void RemoveReferee(int playerId)
 	{
 		_referees.Remove(playerId);
 	}
 
+	/// <summary>
+	///     Adds a player to this match's ban list, blocking them from joining.
+	/// </summary>
+	/// <param name="playerId">The id of the player being banned.</param>
 	public void AddBan(int playerId)
 	{
 		_bannedIds.Add(playerId);
 	}
 
+	/// <summary>
+	///     Removes a player from this match's ban list.
+	/// </summary>
+	/// <param name="playerId">The id of the player being unbanned.</param>
 	public void RemoveBan(int playerId)
 	{
 		_bannedIds.Remove(playerId);
 	}
 
+	/// <summary>
+	///     Adds a player to this match's invite list, letting them join a private room.
+	/// </summary>
+	/// <param name="playerId">The id of the player being invited.</param>
 	public void AddInvite(int playerId)
 	{
 		_invitedIds.Add(playerId);
 	}
 
 	/// <summary>
-	///     Whether `playerId` may issue `!mp` commands on this match. Referee is a pure permission
-	///     flag granted by `!mp addref`/`!mp make` (auto-added at creation) — it does NOT require
-	///     being physically in the room, and the host is not automatically a referee: hosting only
-	///     grants direct in-client settings control (MatchChangeSettings etc.), which ranks below
-	///     referee authority for `!mp` purposes.
+	///     Gets a value that indicates whether <paramref name="playerId" /> may issue <c>!mp</c>
+	///     commands on this match.
 	/// </summary>
+	/// <remarks>
+	///     Referee is a pure permission flag granted by <c>!mp addref</c> or <c>!mp make</c> (which
+	///     auto-adds one at creation). It does not require being physically in the room, and the host
+	///     is not automatically a referee: hosting only grants direct in-client settings control,
+	///     which ranks below referee authority for <c>!mp</c> purposes.
+	/// </remarks>
+	/// <param name="playerId">The id of the player to check.</param>
+	/// <returns><see langword="true" /> if the player is a referee; otherwise, <see langword="false" />.</returns>
 	public bool IsReferee(int playerId)
 	{
 		return _referees.Contains(playerId);
 	}
 
+	/// <summary>
+	///     Adds a player to this match's tourney-client set, marking their connection as a
+	///     tournament client.
+	/// </summary>
+	/// <param name="playerId">The id of the player whose connection is a tourney client.</param>
 	public void AddTourneyClient(int playerId)
 	{
 		_tourneyClients.Add(playerId);
 	}
 
+	/// <summary>
+	///     Removes a player from this match's tourney-client set.
+	/// </summary>
+	/// <param name="playerId">The id of the player whose tourney-client connection is being removed.</param>
 	public void RemoveTourneyClient(int playerId)
 	{
 		_tourneyClients.Remove(playerId);
 	}
 
-	/// <summary>Ported from Match.get_slot.</summary>
+	/// <summary>
+	///     Gets the slot currently occupied by <paramref name="playerId" />, or null when the player
+	///     is not in the match.
+	/// </summary>
+	/// <param name="playerId">The id of the player to look up.</param>
+	/// <returns>The player's slot, or null when the player is not in the match.</returns>
 	public MatchSlot? GetSlot(int playerId)
 	{
 		return Slots.FirstOrDefault(s => s.PlayerId == playerId);
 	}
 
-	/// <summary>Ported from Match.get_slot_id.</summary>
+	/// <summary>
+	///     Gets the index of the slot currently occupied by <paramref name="playerId" />, or null
+	///     when the player is not in the match.
+	/// </summary>
+	/// <param name="playerId">The id of the player to look up.</param>
+	/// <returns>The player's slot index, or null when the player is not in the match.</returns>
 	public int? GetSlotId(int playerId)
 	{
 		for (var i = 0; i < Slots.Count; i++)
@@ -261,9 +375,14 @@ public sealed class MatchSession(
 	}
 
 	/// <summary>
-	///     Ported from Match.get_free. THE race: reading this and then occupying the returned slot
-	///     is not atomic — callers MUST hold <see cref="Lock" /> across both steps.
+	///     Gets the index of the first slot with <see cref="SlotStatus.Open" />, or null when every
+	///     slot is occupied.
 	/// </summary>
+	/// <remarks>
+	///     Reading this and then occupying the returned slot is not atomic: callers must hold
+	///     <see cref="Lock" /> across both steps.
+	/// </remarks>
+	/// <returns>The index of a free slot, or null when all slots are occupied.</returns>
 	public int? GetFreeSlotId()
 	{
 		for (var i = 0; i < Slots.Count; i++)
@@ -273,13 +392,20 @@ public sealed class MatchSession(
 		return null;
 	}
 
-	/// <summary>Ported from Match.get_host_slot.</summary>
+	/// <summary>
+	///     Gets the slot currently occupied by the host, or null when the host is not in the match.
+	/// </summary>
+	/// <returns>The host's slot, or null when the host is not in the match.</returns>
 	public MatchSlot? GetHostSlot()
 	{
 		return GetSlot(HostId);
 	}
 
-	/// <summary>Ported from Match.unready_players.</summary>
+	/// <summary>
+	///     Sets every slot whose status equals <paramref name="expected" /> to
+	///     <see cref="SlotStatus.NotReady" />, used to unready all ready players when a round restarts.
+	/// </summary>
+	/// <param name="expected">The status to reset, defaulting to ready.</param>
 	public void UnreadyPlayers(SlotStatus expected = SlotStatus.Ready)
 	{
 		foreach (var slot in Slots)
@@ -287,7 +413,10 @@ public sealed class MatchSession(
 				slot.Status = SlotStatus.NotReady;
 	}
 
-	/// <summary>Ported from Match.reset_players_loaded_status.</summary>
+	/// <summary>
+	///     Clears the loaded and skipped flags on every slot, called at the start of a round so the
+	///     match can wait for each player's load and skip again.
+	/// </summary>
 	public void ResetPlayersLoadedStatus()
 	{
 		foreach (var slot in Slots)

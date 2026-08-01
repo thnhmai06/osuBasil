@@ -5,16 +5,16 @@ namespace Basil.Web.Logging;
 
 /// <summary>
 ///     Tags each log event with a fixed "Category" property inferred from its SourceContext (the
-///     full class name <c>ILogger&lt;T&gt;</c> attaches automatically) — a static subsystem label, not
+///     full class name <c>ILogger&lt;T&gt;</c> attaches automatically), a static subsystem label, not
 ///     a per-operation correlation id. Exact matches are checked before prefix matches so a specific
 ///     class never falls through to a broader namespace rule. Anything matching none of these rules
-///     falls back to <see cref="FallbackCategory" /> — always set, never left blank, so
+///     falls back to <see cref="FallbackCategory" />, always set, never left blank, so
 ///     <c>[{Category}]</c> in the output template never renders as an empty bracket pair.
 /// </summary>
 public sealed class CategoryEnricher : ILogEventEnricher
 {
 	/// <summary>
-	///     Category for every SourceContext that matches no rule below — also the marker
+	///     Category for every SourceContext that matches no rule below, also the marker
 	///     <c>Program.ConfigureSerilog</c>'s noise filter uses to demote unclassified chatter to
 	///     Warning+ only, since it isn't one of the domain scopes worth showing at Information by
 	///     default.
@@ -38,6 +38,12 @@ public sealed class CategoryEnricher : ILogEventEnricher
 		("Basil.Web.Program", false, "Host")
 	];
 
+	/// <summary>
+	///     Adds a "Category" property to the log event when one is not already present, derived from the
+	///     event's SourceContext.
+	/// </summary>
+	/// <param name="logEvent">The log event to enrich with a "Category" property.</param>
+	/// <param name="propertyFactory">The factory used to create the "Category" property value.</param>
 	public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
 	{
 		var category = FallbackCategory;

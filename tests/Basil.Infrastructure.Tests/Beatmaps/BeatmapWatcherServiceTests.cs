@@ -22,9 +22,9 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 [Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapWatcherServiceTests : IDisposable
 {
+	private readonly SqliteBeatmapRepository _beatmaps;
 	private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
 	private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
-	private readonly SqliteMapRepository _maps;
 	private readonly string _mapsetsPath;
 	private readonly BeatmapWatcherService _watcher;
 	private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
@@ -37,7 +37,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 		var connectionString = $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5;Pooling=False";
 		SqlMigrationRunner.RunMigrations(connectionString);
 
-		_maps = new SqliteMapRepository(connectionString, NullLogger<SqliteMapRepository>.Instance);
+		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 		var mapsets = new SqliteMapsetRepository(connectionString, NullLogger<SqliteMapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
@@ -50,7 +50,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 			SeasonalsPath = "",
 			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
 		});
-		var ingestion = new BeatmapIngestionService(_maps, mapsets, new FakeOsuCalculator(), options,
+		var ingestion = new BeatmapIngestionService(_beatmaps, mapsets, new FakeOsuCalculator(), options,
 			new FileSystemResponseCache(options), _ingestionLog);
 		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
 	}
@@ -84,10 +84,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var deadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < deadline &&
-			       await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
+			       await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
 				await Task.Delay(200);
 
-			var found = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
+			var found = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
 			Assert.True(found is not null,
 				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
 				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
@@ -115,10 +115,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < ingestDeadline &&
-			       await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
+			       await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
 				await Task.Delay(200);
 
-			var beatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
+			var beatmap = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
 			Assert.NotNull(beatmap);
 
 			// ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
@@ -142,10 +142,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < deleteDeadline &&
-			       await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
+			       await _beatmaps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
 				await Task.Delay(200);
 
-			Assert.Null(await _maps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
+			Assert.Null(await _beatmaps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
 		}
 		finally
 		{
@@ -182,10 +182,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < ingestDeadline &&
-			       await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
+			       await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
 				await Task.Delay(200);
 
-			Assert.True(await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null,
+			Assert.True(await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true) is not null,
 				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
 				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
 
@@ -195,10 +195,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 			// the mapset to vanish; it must not, for the whole window.
 			var survivalDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < survivalDeadline &&
-			       await _maps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
+			       await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
 				await Task.Delay(200);
 
-			var survived = await _maps.FetchOneAsync(setId: 900000, includePrivate: true);
+			var survived = await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true);
 			Assert.True(survived is not null,
 				"Mapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
 				string.Join(" | ", _ingestionLog.Messages) +

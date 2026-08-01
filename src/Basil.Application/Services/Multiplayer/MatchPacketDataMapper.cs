@@ -5,13 +5,19 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>
-///     Maps the richer <see cref="MatchSession" /> domain/session model onto the flat wire shape
-///     <see cref="ServerPacketWriter.WriteMatch" /> needs. The real password is always passed through
-///     unmasked — <c>WriteMatch</c>'s own <c>sendPassword</c> flag decides whether it's actually
-///     written or replaced with a placeholder, matching write_match in app/packets.py.
+///     Maps the richer <see cref="MatchSession" /> model onto the flat wire shape
+///     <see cref="ServerPacketWriter.WriteMatch" /> needs.
 /// </summary>
+/// <remarks>
+///     The real password is always passed through unmasked. <c>WriteMatch</c>'s own
+///     <c>sendPassword</c> flag decides whether it is actually written to the wire or replaced with a
+///     placeholder.
+/// </remarks>
 public static class MatchPacketDataMapper
 {
+	/// <summary>Converts a match session into its wire packet representation.</summary>
+	/// <param name="match">The match to convert.</param>
+	/// <returns>The <see cref="MatchPacketData" /> describing the match.</returns>
 	public static MatchPacketData ToPacketData(MatchSession match)
 	{
 		return new MatchPacketData(

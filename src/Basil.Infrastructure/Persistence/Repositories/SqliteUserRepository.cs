@@ -8,9 +8,15 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IUserRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>UserRow</c> DTO, since Dapper fills by property
+///     name rather than through a positional record constructor. Each method opens its own
+///     connection.
+/// </remarks>
 public sealed class SqliteUserRepository(string connectionString, ILogger<SqliteUserRepository> logger)
 	: IUserRepository
 {
+	/// <inheritdoc />
 	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -20,6 +26,11 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		return row?.ToUser();
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The lookup is against the <c>SafeName</c> column, populated via
+	///     <see cref="User.MakeSafeName" />, so a name matches regardless of case or spaces.
+	/// </remarks>
 	public async Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -29,6 +40,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		return row?.ToUser();
 	}
 
+	/// <inheritdoc />
 	public async Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -37,6 +49,11 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 			new { Id = id });
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The country is stored as its two-letter acronym, produced by the
+	///     <c>Country.ToAcronym()</c> extension.
+	/// </remarks>
 	public async Task UpdateCountryAsync(int id, Country country, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -46,6 +63,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		logger.LogDebug("User row updated: Id={Id} Country={Country}", id, country);
 	}
 
+	/// <inheritdoc />
 	public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 		CancellationToken cancellationToken = default)
 	{
@@ -56,6 +74,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		logger.LogDebug("User row updated: Id={Id} Privilege={Privilege}", id, privilege);
 	}
 
+	/// <inheritdoc />
 	public async Task UpdateNameAsync(int id, string name, string safeName,
 		CancellationToken cancellationToken = default)
 	{
@@ -66,6 +85,15 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		logger.LogDebug("User row updated: Id={Id} Name={Name}", id, name);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The safe form of the name is derived via <see cref="User.MakeSafeName" />, and the
+	///     default privilege set, when <paramref name="privilege" /> is <see langword="null" />, is
+	///     the unrestricted, verified, and supporter flags. A duplicate display or safe name
+	///     surfaces as a SQLite constraint violation (error code 19), which is swallowed and
+	///     reported as <see langword="null" />. The insert and the id read-back are one batched
+	///     statement, and the new row is then re-read and returned.
+	/// </remarks>
 	public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country,
 		UserPrivileges? privilege = null,
 		CancellationToken cancellationToken = default)
@@ -99,6 +127,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		return (await FetchByIdAsync(id, cancellationToken))!;
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -106,13 +135,17 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		return [.. rows.Select(r => r.ToUser())];
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
-	// Mutable DTO so Dapper maps by property name (coercing column types loosely) instead of
-	// strict positional-constructor-type matching.
+	/// <summary>
+	///     A mutable row DTO matching the Users table columns. Mutable because Dapper fills by
+	///     property name (coercing column types loosely) rather than through a positional record
+	///     constructor.
+	/// </summary>
 	private sealed class UserRow
 	{
 		public int Id { get; set; }
@@ -122,6 +155,13 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		public string Country { get; set; } = "";
 		public DateTime SilenceEnd { get; set; }
 
+		/// <summary>Builds a <see cref="User" /> from this row.</summary>
+		/// <returns>The domain user.</returns>
+		/// <remarks>
+		///     The stored country acronym is parsed back to a <see cref="Country" /> value, falling
+		///     back to <see cref="Country.Xx" /> when unrecognized, and the silence-end time is
+		///     reinterpreted as UTC before being exposed as an offset.
+		/// </remarks>
 		public User ToUser()
 		{
 			var country = Enum.TryParse<Country>(Country, true, out var parsed)

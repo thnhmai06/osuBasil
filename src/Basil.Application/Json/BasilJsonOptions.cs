@@ -4,18 +4,20 @@ using Basil.Application.Services.Multiplayer;
 namespace Basil.Application.Json;
 
 /// <summary>
-///     The one <see cref="JsonSerializerOptions" /> instance every live-payload serialization on the
-///     `api.` host should use — <see cref="SnapshotChannel{T}" />/<c>JsonMergePatch</c> (full snapshots
-///     and RFC 7396 deltas), the packet handlers that publish onto those same channels
-///     (<c>MatchScoreUpdateHandler</c>/<c>SpectateFramesHandler</c>), and every match sub-resource
-///     route's SSE payload. Web-style camelCase naming plus <see cref="CountryJsonConverter" />/<see cref="TimeSpanSecondsJsonConverter" /> —
-///     matching what <c>Program.cs</c>'s <c>ConfigureHttpJsonOptions</c> configures for regular JSON
-///     responses, since <c>Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions</c> has
-///     no public setter to point at this instance directly, <c>Program.cs</c> copies this instance's
-///     converters onto ASP.NET Core's own options instead — see its own doc comment.
+///     The shared <see cref="JsonSerializerOptions" /> instance that every live-payload
+///     serialization should use.
 /// </summary>
+/// <remarks>
+///     Consumed by <see cref="SnapshotChannel{T}" /> and the RFC 7396 merge-patch serialization
+///     (full snapshots and deltas), and by the packet handlers that publish onto those channels
+///     (<c>MatchScoreUpdateHandler</c> and <c>SpectateFramesHandler</c>). It uses the web defaults
+///     (camelCase naming) plus the <see cref="CountryJsonConverter" /> and
+///     <see cref="TimeSpanSecondsJsonConverter" /> converters, so a Country and a TimeSpan
+///     serialize the same way in every payload.
+/// </remarks>
 public static class BasilJsonOptions
 {
+	/// <summary>Gets the shared <see cref="JsonSerializerOptions" /> instance for live-payload serialization.</summary>
 	public static readonly JsonSerializerOptions Instance = CreateOptions();
 
 	private static JsonSerializerOptions CreateOptions()

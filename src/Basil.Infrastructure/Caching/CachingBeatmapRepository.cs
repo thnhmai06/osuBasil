@@ -6,23 +6,28 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Caching;
 
 /// <summary>
-///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IMapRepository" />
-///     — eliminates the N+1 that embedding a full <see cref="Beatmap" /> reference into every
-///     multiplayer/score/TRT response would otherwise cause. Only the two single-row lookup shapes
-///     actually used by API routes/report building (by <c>Id</c>, by <c>Md5</c>) are cached; a
-///     filename/setId-qualified call always passes through — Simplicity First, those aren't the hot
-///     paths this decorator exists for. Every write invalidates the affected entry immediately; the
-///     TTL is only a safety net, not a substitute for it.
+///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IBeatmapRepository" />:
+///     eliminates the N+1 that embedding a full <see cref="Beatmap" /> reference into every response
+///     that carries one would otherwise cause. Only the two single-row lookup shapes (by <c>Id</c>,
+///     by <c>Md5</c>) are cached; a filename/setId-qualified call always passes through, since those
+///     are not the hot paths this decorator exists for. Every write invalidates the affected entry
+///     immediately; the TTL is only a safety net, not a substitute for it.
 /// </summary>
-public sealed class CachingMapRepository(
-	IMapRepository inner,
+public sealed class CachingBeatmapRepository(
+	IBeatmapRepository inner,
 	IMemoryCache cache,
-	ILogger<CachingMapRepository> logger,
+	ILogger<CachingBeatmapRepository> logger,
 	TimeSpan? ttl = null)
-	: IMapRepository
+	: IBeatmapRepository
 {
+	/// <summary>The entry TTL: the safety net beneath explicit invalidation.</summary>
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
 
+	/// <inheritdoc cref="IBeatmapRepository.FetchOneAsync" />
+	/// <remarks>
+	///     Lookups qualified by id alone, or by md5 alone, are served from the cache; any other
+	///     combination passes straight through to the underlying repository.
+	/// </remarks>
 	public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
 		int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
 	{
@@ -38,6 +43,10 @@ public sealed class CachingMapRepository(
 		return inner.FetchOneAsync(id, md5, filename, setId, includePrivate, cancellationToken);
 	}
 
+	/// <inheritdoc cref="IBeatmapRepository.UpsertAsync" />
+	/// <remarks>
+	///     Invalidates both the id- and md5-keyed entries for the resolved beatmap after persisting.
+	/// </remarks>
 	public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
 		var resolved = await inner.UpsertAsync(beatmap, cancellationToken);
@@ -45,6 +54,11 @@ public sealed class CachingMapRepository(
 		return resolved;
 	}
 
+	/// <inheritdoc cref="IBeatmapRepository.DeleteByMd5Async" />
+	/// <remarks>
+	///     Reads the cached row (if any) so its id-keyed entry can be invalidated alongside the md5
+	///     entry.
+	/// </remarks>
 	public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
 	{
 		cache.TryGetValue(Md5Key(md5), out Beatmap? cached);
@@ -53,31 +67,41 @@ public sealed class CachingMapRepository(
 		if (cached is not null) cache.Remove(IdKey(cached.Id));
 	}
 
-	/// <summary>Uncached — a discovery/listing surface, not a specific-row lookup.</summary>
+	/// <summary>Uncached: a discovery/listing surface, not a specific-row lookup.</summary>
 	public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
 		int amount, CancellationToken cancellationToken = default)
 	{
 		return inner.SearchAsync(query, mode, offset, amount, cancellationToken);
 	}
 
+	/// <inheritdoc cref="IBeatmapRepository.FetchMaxIdAsync" />
+	/// <remarks>Passes straight through: not a specific-row lookup worth caching.</remarks>
 	public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
 	{
 		return inner.FetchMaxIdAsync(cancellationToken);
 	}
 
+	/// <inheritdoc cref="IBeatmapRepository.UpdateDiffAsync" />
+	/// <remarks>Invalidates the id-keyed entry after updating.</remarks>
 	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
 	{
 		await inner.UpdateDiffAsync(id, diff, cancellationToken);
 		cache.Remove(IdKey(id));
 	}
 
-	/// <summary>Uncached — a list-shaped call (every difficulty in a set), not a single-row lookup.</summary>
+	/// <summary>Uncached: a list-shaped call (every difficulty in a set), not a single-row lookup.</summary>
 	public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
 		CancellationToken cancellationToken = default)
 	{
 		return inner.FetchAllBySetIdAsync(setId, includePrivate, cancellationToken);
 	}
 
+	/// <summary>
+	///     Reads a keyed entry, falling back to the given fetch and caching its non-null result.
+	/// </summary>
+	/// <param name="key">The cache key to read and populate.</param>
+	/// <param name="fetch">The lookup to run on a cache miss.</param>
+	/// <returns>The cached or freshly fetched beatmap, or <see langword="null" /> when absent.</returns>
 	private async Task<Beatmap?> FetchCachedAsync(string key, Func<Task<Beatmap?>> fetch)
 	{
 		if (cache.TryGetValue(key, out Beatmap? cached))
@@ -92,17 +116,20 @@ public sealed class CachingMapRepository(
 		return beatmap;
 	}
 
+	/// <summary>Removes both the id- and md5-keyed entries for a beatmap.</summary>
 	private void Invalidate(Beatmap beatmap)
 	{
 		cache.Remove(IdKey(beatmap.Id));
 		cache.Remove(Md5Key(beatmap.Md5));
 	}
 
+	/// <summary>Builds the id-qualified cache key for a beatmap.</summary>
 	private static string IdKey(int id)
 	{
 		return $"Beatmap:Id:{id}";
 	}
 
+	/// <summary>Builds the md5-qualified cache key for a beatmap.</summary>
 	private static string Md5Key(string md5)
 	{
 		return $"Beatmap:Md5:{md5}";

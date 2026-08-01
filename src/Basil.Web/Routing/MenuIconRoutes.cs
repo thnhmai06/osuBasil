@@ -5,20 +5,19 @@ using Basil.Web.OpenApi;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/menuicon` — the in-game main menu icon, split into its image (`/menuicon/icon`) and its
-///     click-through URL (`/menuicon/url`), replacing the old hardcoded
-///     `ServerOptions.MenuIconPath`/`MenuOnclickUrl` config and the `osu.` host's `GET /web/menuicon`
-///     route (bancho.py has no server-hosted menuicon image at all — it sends an external URL
-///     straight in the login packet). Reads are public; writes are admin-key gated. Both files are
-///     singletons (no `{name}`/`{entry}` segment, unlike `/faqs`/`/seasonals`) — `PUT` is an upsert,
-///     not create-only. Backed by <see cref="MenuIconService" />.
-/// </summary>
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="MenuIconRoutes" /> is static and can't be a
-///     type argument.
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="MenuIconRoutes" /> is static and can't be
+///     a type argument.
 /// </summary>
 internal sealed class MenuIconRoutesLog;
 
+/// <summary>
+///     `/menuicon`: the in-game main menu icon, split into its image (`/menuicon/icon`) and its
+///     click-through URL (`/menuicon/url`), replacing the old hardcoded
+///     `ServerOptions.MenuIconPath`/`MenuOnclickUrl` config and the `osu.` host's `GET /web/menuicon`
+///     route. Reads are public; writes are admin-key gated. Both files are singletons (no
+///     `{name}`/`{entry}` segment, unlike `/faqs`/`/seasonals`), so `PUT` is an upsert, not
+///     create-only. Backed by <see cref="MenuIconService" />.
+/// </summary>
 internal static class MenuIconRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -26,6 +25,10 @@ internal static class MenuIconRoutes
 	private const string LoginEffectNote = " Takes effect for players who log in after this change. " +
 	                                       "Already-connected sessions keep whatever menu icon they were sent at login.";
 
+	/// <summary>
+	///     Registers the `/menuicon` image and URL read/write routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMenuIconRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/menuicon/icon", (MenuIconService menuIcon) =>

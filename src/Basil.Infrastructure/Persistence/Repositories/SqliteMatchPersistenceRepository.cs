@@ -9,10 +9,20 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMatchPersistenceRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>*RowDto</c> DTOs, since Dapper fills by property
+///     name rather than through a positional record constructor; the stored integer enum columns
+///     are cast to their domain enum types during mapping. Each method opens its own connection.
+/// </remarks>
 public sealed class SqliteMatchPersistenceRepository(
 	string connectionString,
 	ILogger<SqliteMatchPersistenceRepository> logger) : IMatchPersistenceRepository
 {
+	/// <inheritdoc />
+	/// <remarks>
+	///     The insert and the id read-back are one batched statement, so the auto-increment id is
+	///     the immediately inserted row's.
+	/// </remarks>
 	public async Task<int> CreateMatchAsync(
 		string name, DateTime createdAt, CancellationToken cancellationToken = default)
 	{
@@ -28,6 +38,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return id;
 	}
 
+	/// <inheritdoc />
 	public async Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -37,6 +48,11 @@ public sealed class SqliteMatchPersistenceRepository(
 		logger.LogDebug("Match row ended: MatchId={MatchId}", matchId);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The enum columns are stored as their integer values. The insert and the id read-back are
+	///     one batched statement, so the auto-increment id is the immediately inserted row's.
+	/// </remarks>
 	public async Task<int> CreateRoundAsync(
 		int matchId, int roundIndex, string mapMd5,
 		GameMode mode, MatchWinCondition winCondition, MatchTeamType teamType,
@@ -65,6 +81,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return id;
 	}
 
+	/// <inheritdoc />
 	public async Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
 		CancellationToken cancellationToken = default)
 	{
@@ -75,6 +92,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		logger.LogDebug("Round row ended: RoundId={RoundId} Aborted={Aborted}", roundId, aborted);
 	}
 
+	/// <inheritdoc />
 	public async Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -83,6 +101,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return row?.ToRow();
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
 		CancellationToken cancellationToken = default)
 	{
@@ -92,6 +111,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -99,6 +119,11 @@ public sealed class SqliteMatchPersistenceRepository(
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Deletes the match's scores (via a subquery over its rounds), events, rounds, and the
+	///     match row itself inside a single transaction.
+	/// </remarks>
 	public async Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -117,6 +142,10 @@ public sealed class SqliteMatchPersistenceRepository(
 		logger.LogDebug("Match row deleted (with scores/events/rounds): MatchId={MatchId}", matchId);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The event type is stored as its integer value.
+	/// </remarks>
 	public async Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -139,6 +168,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		logger.LogDebug("MatchEvent row created: MatchId={MatchId} EventType={EventType}", row.MatchId, row.EventType);
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
 		CancellationToken cancellationToken = default)
 	{
@@ -149,6 +179,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(
 		CancellationToken cancellationToken = default)
 	{
@@ -158,6 +189,7 @@ public sealed class SqliteMatchPersistenceRepository(
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
 		CancellationToken cancellationToken = default)
 	{
@@ -168,11 +200,16 @@ public sealed class SqliteMatchPersistenceRepository(
 		return [.. rows.Select(r => r.ToRow())];
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the Matches table columns. Mutable because Dapper fills by
+	///     property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class MatchRowDto
 	{
 		public int Id { get; set; }
@@ -180,12 +217,18 @@ public sealed class SqliteMatchPersistenceRepository(
 		public DateTime CreatedAt { get; set; }
 		public DateTime? EndedAt { get; set; }
 
+		/// <summary>Builds a <see cref="MatchRow" /> from this row.</summary>
+		/// <returns>The domain match row.</returns>
 		public MatchRow ToRow()
 		{
 			return new MatchRow(Id, Name, CreatedAt, EndedAt);
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the Rounds table columns. Mutable because Dapper fills by
+	///     property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class RoundRowDto
 	{
 		public int Id { get; set; }
@@ -200,6 +243,10 @@ public sealed class SqliteMatchPersistenceRepository(
 		public DateTime StartedAt { get; set; }
 		public DateTime? EndedAt { get; set; }
 
+		/// <summary>
+		///     Builds a <see cref="RoundRow" /> from this row, casting the stored enum columns.
+		/// </summary>
+		/// <returns>The domain round row.</returns>
 		public RoundRow ToRow()
 		{
 			return new RoundRow(Id, MatchId, RoundIndex, MapMd5,
@@ -208,6 +255,10 @@ public sealed class SqliteMatchPersistenceRepository(
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the MatchEvents table columns. Mutable because Dapper fills by
+	///     property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class MatchEventRowDto
 	{
 		public int Id { get; set; }
@@ -220,6 +271,8 @@ public sealed class SqliteMatchPersistenceRepository(
 		public DateTime Timestamp { get; set; }
 		public string? Detail { get; set; }
 
+		/// <summary>Builds a <see cref="MatchEventRow" /> from this row.</summary>
+		/// <returns>The domain match event row.</returns>
 		public MatchEventRow ToRow()
 		{
 			return new MatchEventRow(MatchId, EventType,

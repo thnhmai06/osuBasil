@@ -4,17 +4,26 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Sessions.Irc;
 
 /// <summary>
-///     Default <see cref="IIrcConnection" /> for every bancho <see cref="PlayerSession" /> — re-encodes chat text
-///     routed through the IRC core back into a bancho SEND_MESSAGE packet, enqueued for the client's next
-///     HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN/PART/QUIT/numerics are IRC-only and ignored here
-///     (bancho clients already get channel presence via ChannelInfo, not per-user join/part events).
+///     The default <see cref="IIrcConnection" /> for a bancho <see cref="PlayerSession" />: it
+///     re-encodes chat text routed through the IRC core back into a bancho SEND_MESSAGE packet,
+///     enqueued for the client's next HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN, PART,
+///     QUIT, and numerics are IRC-only and ignored here, because bancho clients already receive
+///     channel presence through ChannelInfo rather than per-user join and part events.
 /// </summary>
 public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnection
 {
+	/// <summary>Gets the player session this bridge sends chat on behalf of.</summary>
 	public PlayerSession Player { get; } = player;
 
+	/// <summary>Gets a value that indicates whether the recipient is a real external IRC client; always false for this bridge.</summary>
 	public bool IsExternalIrcClient => false;
 
+	/// <summary>
+	///     Converts a PRIVMSG into a bancho SEND_MESSAGE packet and enqueues it for the player's
+	///     next HTTP poll. Every other IRC command is ignored, as is any message whose prefix cannot
+	///     be parsed into a sender name and id.
+	/// </summary>
+	/// <param name="message">The IRC-shaped message to translate.</param>
 	public void Send(IrcMessage message)
 	{
 		if (message.Command != "PRIVMSG") return;
@@ -25,19 +34,25 @@ public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnec
 	}
 
 	/// <summary>
-	///     A match/spectator channel's internal registry name (<c>#multi_{id}</c>/<c>#spec_{id}</c>)
-	///     is never what the bancho client knows the channel as — it only ever joined the fixed alias
-	///     <c>#multiplayer</c>/<c>#spectator</c> (<see cref="Sessions.Channels.ChannelMembershipService.Join" />
-	///     sends <c>ChannelSession.DisplayName</c>, not <c>Name</c>). Without this translation, every
-	///     PRIVMSG addressed to the internal name matches no window the client has open and is silently
-	///     dropped — see bancho.py's <c>Channel.name</c> property, which performs the same aliasing for
-	///     every outgoing packet.
+	///     Translates an internal channel registry name into the alias the bancho client knows the
+	///     channel as. A match or spectator channel's internal name (<c>#multi_{id}</c> or
+	///     <c>#spec_{id}</c>) is never what the client joined: it only ever joined the fixed aliases
+	///     <c>#multiplayer</c> and <c>#spectator</c>, because
+	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" /> sends
+	///     <c>ChannelSession.DisplayName</c> rather than <c>Name</c>. Without this translation, a
+	///     PRIVMSG addressed to the internal name would match no window the client has open and be
+	///     silently dropped.
 	/// </summary>
+	/// <param name="internalName">The internal registry name of the message's recipient channel.</param>
+	/// <returns>
+	///     The client-facing alias for the channel, or <paramref name="internalName" /> unchanged when it is not an
+	///     instance channel.
+	/// </returns>
 	private string TranslateRecipient(string internalName)
 	{
 		if (internalName == Player.Match?.ChatChannelName) return "#multiplayer";
 
-		var spectatorHostId = Player.Spectating?.Id ?? (Player.Spectators.Count > 0 ? Player.Id : (int?)null);
+		var spectatorHostId = Player.Spectating?.Id ?? (Player.Spectators.Count > 0 ? Player.Id : null);
 		if (spectatorHostId is { } hostId && internalName == $"#spec_{hostId}") return "#spectator";
 
 		return internalName;

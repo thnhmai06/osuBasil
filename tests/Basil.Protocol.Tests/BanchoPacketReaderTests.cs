@@ -208,7 +208,8 @@ public class BanchoPacketReaderTests
 		Assert.Equal(42, bundle.Sequence);
 		Assert.Equal(ReplayAction.Standard, bundle.Action);
 		Assert.Equal(2, bundle.Frames.Count);
-		Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, TaikoByte.None, 100.5f, 200.25f, 1000), bundle.Frames[0]);
+		Assert.Equal(new ReplayFrameData(Keys.Left1 | Keys.Left2, TaikoByte.None, 100.5f, 200.25f, 1000),
+			bundle.Frames[0]);
 		Assert.Equal(new ReplayFrameData(Keys.None, TaikoByte.None, 150.0f, 250.0f, 1016), bundle.Frames[1]);
 		Assert.Equal(new ScoreFrameData(1016, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false),
 			bundle.ScoreFrame);

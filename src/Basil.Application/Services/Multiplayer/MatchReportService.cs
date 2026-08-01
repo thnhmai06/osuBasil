@@ -12,14 +12,27 @@ using Basil.Domain.Scores;
 
 namespace Basil.Application.Services.Multiplayer;
 
+/// <summary>
+///     Builds the tournament match report (TRT) for a match from its persisted rows.
+/// </summary>
+/// <remarks>
+///     The report is never persisted; it is assembled at read time from the <c>Matches</c>,
+///     <c>Rounds</c>, and <c>Scores</c> tables, or from the live <see cref="MatchSession" /> for an
+///     in-progress match. Round winners are derived from the stored scores per the round's win
+///     condition.
+/// </remarks>
 public sealed class MatchReportService(
 	IMatchRegistry matchRegistry,
 	IMatchPersistenceRepository matchPersistence,
 	IScoreRepository scores,
 	IPlayerSessionRegistry sessionRegistry,
 	IUserRepository users,
-	IMapRepository maps)
+	IBeatmapRepository beatmaps)
 {
+	/// <summary>Builds the full report for a match id.</summary>
+	/// <param name="matchId">The database match id.</param>
+	/// <param name="cancellationToken">A token that cancels the persistence lookups.</param>
+	/// <returns>The <see cref="MatchReport" />, or <see langword="null" /> when no such match exists.</returns>
 	public async Task<MatchReport?> BuildAsync(int matchId, CancellationToken cancellationToken = default)
 	{
 		var matchRow = await matchPersistence.FetchMatchAsync(matchId, cancellationToken);
@@ -51,13 +64,18 @@ public sealed class MatchReportService(
 		var live = matchRegistry.GetByDbId(matchId);
 		var liveInfo = live is null
 			? null
-			: await MatchLiveSnapshotBuilder.BuildRoomLive(live, maps, cancellationToken);
+			: await MatchLiveSnapshotBuilder.BuildRoomLive(live, beatmaps, cancellationToken);
 
 		return new MatchReport(
 			matchRow.Id, matchRow.Name, matchRow.CreatedAt, matchRow.EndedAt,
 			liveInfo, reportEvents, rounds);
 	}
 
+	/// <summary>Builds one round's report, deriving its winner and per-player scores from the stored rows.</summary>
+	/// <param name="round">The round row.</param>
+	/// <param name="roundScores">The round's stored scores.</param>
+	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
+	/// <returns>The <see cref="MatchReportRound" />.</returns>
 	private async Task<MatchReportRound> BuildRound(RoundRow round, IReadOnlyList<RoundScoreRow> roundScores,
 		CancellationToken cancellationToken)
 	{
@@ -72,7 +90,7 @@ public sealed class MatchReportService(
 		}
 		else if (roundScores.Count == 1)
 		{
-			// One player — they win by default, diff = 0
+			// A single player wins by default, with a diff of 0
 			var only = roundScores[0];
 			if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))
 			{
@@ -96,7 +114,7 @@ public sealed class MatchReportService(
 
 			if (teams.Count < 2)
 			{
-				// Only one team has players — that team wins, diff = 0
+				// Only one team has players, so that team wins with a diff of 0
 				winnerTeam = teams[0].Key ?? MatchTeam.Neutral;
 				winDiff = 0;
 			}
@@ -114,7 +132,7 @@ public sealed class MatchReportService(
 
 				if (sorted[0].Total == sorted[1].Total)
 				{
-					// Draw — no winner, diff = 0
+					// A draw, so there is no winner and the diff is 0
 					winDiff = 0;
 				}
 				else
@@ -134,7 +152,7 @@ public sealed class MatchReportService(
 
 			if (sorted[0].Metric == sorted[1].Metric)
 			{
-				// Draw — no winner, diff = 0
+				// A draw, so there is no winner and the diff is 0
 				winDiff = 0;
 			}
 			else
@@ -159,7 +177,7 @@ public sealed class MatchReportService(
 				Enum.Parse<Grade>(s.Grade), s.Perfect, s.SubmittedAt));
 		}
 
-		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(round.MapMd5, maps, cancellationToken);
+		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(round.MapMd5, beatmaps, cancellationToken);
 
 		return new MatchReportRound(
 			round.RoundIndex, round.MapMd5, beatmap,
@@ -167,6 +185,14 @@ public sealed class MatchReportService(
 			winner, winnerTeam, winMetric, winDiff, reportScores);
 	}
 
+	/// <summary>Normalizes a score row to the metric compared for a win condition.</summary>
+	/// <remarks>
+	///     Accuracy is scaled by 1000 to preserve 3 decimal places; combo compares max combo; everything else compares
+	///     raw score.
+	/// </remarks>
+	/// <param name="s">The score row.</param>
+	/// <param name="winCondition">The round's win condition.</param>
+	/// <returns>The metric value to compare.</returns>
 	private static long GetMetric(RoundScoreRow s, MatchWinCondition winCondition)
 	{
 		return winCondition switch
@@ -178,7 +204,17 @@ public sealed class MatchReportService(
 	}
 }
 
-/// <summary>The TRT (match report) DTO.</summary>
+/// <summary>Represents the tournament match report (TRT) for one match.</summary>
+/// <param name="MatchId">The database match id.</param>
+/// <param name="Name">The room name.</param>
+/// <param name="CreatedAt">When the match was created.</param>
+/// <param name="EndedAt">When the match ended, or <see langword="null" /> while it is still open.</param>
+/// <param name="Live">
+///     The live room configuration for an in-progress match, or <see langword="null" /> when not tracked in
+///     memory.
+/// </param>
+/// <param name="Events">The match's lifecycle events.</param>
+/// <param name="Rounds">The match's rounds.</param>
 public sealed record MatchReport(
 	int MatchId,
 	string Name,
@@ -188,7 +224,12 @@ public sealed record MatchReport(
 	IReadOnlyList<MatchReportEvent> Events,
 	IReadOnlyList<MatchReportRound> Rounds);
 
-/// <summary>One match lifecycle event.</summary>
+/// <summary>Represents one match lifecycle event.</summary>
+/// <param name="EventType">The kind of event.</param>
+/// <param name="Actor">The acting user, or <see langword="null" /> for system events.</param>
+/// <param name="Target">The affected user, or <see langword="null" /> when the event has no target.</param>
+/// <param name="Timestamp">When the event occurred.</param>
+/// <param name="Detail">Optional event-specific detail text.</param>
 public sealed record MatchReportEvent(
 	MatchEventType EventType,
 	UserBrief? Actor,
@@ -196,11 +237,31 @@ public sealed record MatchReportEvent(
 	DateTime Timestamp,
 	string? Detail);
 
-/// <summary>
-///     One beatmap played within the match. Only `MapMd5` is stored on the underlying Round row —
-///     `Beatmap` is resolved live at report-build time via the cached `IMapRepository`, null once
-///     that md5 no longer resolves (content changed/removed since).
-/// </summary>
+/// <summary>Represents one beatmap played within a match.</summary>
+/// <remarks>
+///     Only <c>MapMd5</c> is stored on the underlying round. <see cref="Beatmap" /> is resolved
+///     live at report-build time via <see cref="IBeatmapRepository" />, and is
+///     <see langword="null" /> once that md5 no longer resolves (the content changed or was removed
+///     since).
+/// </remarks>
+/// <param name="RoundIndex">The 1-based round index within the match.</param>
+/// <param name="MapMd5">The stored md5 of the beatmap played.</param>
+/// <param name="Beatmap">The resolved beatmap detail, or <see langword="null" /> when the md5 no longer resolves.</param>
+/// <param name="Mode">The game mode the round was played in.</param>
+/// <param name="WinCondition">The win condition the round used.</param>
+/// <param name="TeamType">The team type the round used.</param>
+/// <param name="Mods">The mods the round used.</param>
+/// <param name="Aborted">Whether the round was aborted.</param>
+/// <param name="StartedAt">When the round started.</param>
+/// <param name="EndedAt">When the round ended, or <see langword="null" /> while it is still open.</param>
+/// <param name="Winner">The winning player, or <see langword="null" /> for a team win or a draw.</param>
+/// <param name="WinnerTeam">The winning team, or <see langword="null" /> for an individual win or a draw.</param>
+/// <param name="WinMetric">The win condition the winner was determined by, when a winner exists.</param>
+/// <param name="WinDiff">
+///     The margin between the winner and the runner-up, or <see langword="null" /> when no winner was
+///     determined.
+/// </param>
+/// <param name="Scores">The round's stored scores.</param>
 public sealed record MatchReportRound(
 	int RoundIndex,
 	string MapMd5,
@@ -218,6 +279,22 @@ public sealed record MatchReportRound(
 	long? WinDiff,
 	IReadOnlyList<MatchReportScore> Scores);
 
+/// <summary>Represents one player's stored score within a round.</summary>
+/// <param name="User">The player who submitted the score.</param>
+/// <param name="Team">The team the player was on, or <see langword="null" /> for individual modes.</param>
+/// <param name="Mods">The mods applied for the play.</param>
+/// <param name="Score">The total score.</param>
+/// <param name="Accuracy">The play's accuracy.</param>
+/// <param name="MaxCombo">The maximum combo achieved.</param>
+/// <param name="Num300">The number of 300 judgments.</param>
+/// <param name="Num100">The number of 100 judgments.</param>
+/// <param name="Num50">The number of 50 judgments.</param>
+/// <param name="NumMiss">The number of misses.</param>
+/// <param name="NumGeki">The number of geki judgments.</param>
+/// <param name="NumKatu">The number of katu judgments.</param>
+/// <param name="Grade">The awarded grade.</param>
+/// <param name="Perfect">Whether the play was perfect.</param>
+/// <param name="SubmittedAt">When the score was submitted.</param>
 public sealed record MatchReportScore(
 	UserBrief User,
 	MatchTeam? Team,

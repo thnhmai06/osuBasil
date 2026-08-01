@@ -4,12 +4,19 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Core;
 
 /// <summary>
-///     Shared packet-assembly helpers reading a PlayerSession's own cached state (geoloc, per-mode
-///     stats) — used by both LoginService and packet handlers that need to (re-)send a player's
-///     presence/stats. Ported from app/packets.py's user_presence(player)/user_stats(player).
+///     Assembles user-presence and user-stats Bancho packets from a session's in-memory state.
 /// </summary>
+/// <remarks>
+///     These helpers read only <see cref="PlayerSession" /> state kept in memory, such as
+///     geolocation, privilege, and the current mode's stats, so they can be called freely by login
+///     and packet-handling code that needs to send or re-send a player's presence and stats without
+///     touching the database.
+/// </remarks>
 public static class PacketBuilders
 {
+	/// <summary>Builds a user-presence packet describing the given session.</summary>
+	/// <param name="session">The session whose presence data is serialized.</param>
+	/// <returns>A byte array containing the wrapped presence packet.</returns>
 	public static byte[] BuildUserPresence(PlayerSession session)
 	{
 		return ServerPacketWriter.UserPresence(
@@ -18,6 +25,9 @@ public static class PacketBuilders
 			session.Geoloc.Longitude, session.Geoloc.Latitude, session.CurrentStats?.Rank ?? 0);
 	}
 
+	/// <summary>Builds a user-stats packet describing the given session's status and current-mode stats.</summary>
+	/// <param name="session">The session whose status and stats are serialized.</param>
+	/// <returns>A byte array containing the wrapped user-stats packet.</returns>
 	public static byte[] BuildUserStats(PlayerSession session)
 	{
 		return ServerPacketWriter.UserStats(

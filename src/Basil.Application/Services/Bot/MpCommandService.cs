@@ -14,31 +14,32 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Bot;
 
 /// <summary>
-///     `!mp` subcommands, matched against real osu! Bancho's own wiki/chat behaviour rather than
-///     bancho.py — see docs/working-scopes.md for what's a deliberate Basil-only addition vs a real
-///     Bancho command. <c>makeprivate</c> is no longer an alias of <c>make</c> — it now redirects to
-///     <see cref="SetPrivate" /> (setting the room private), and <c>!mp private [0|1]</c> is the
-///     canonical way to view/change privacy. <c>!mp join &lt;id&gt;</c> bypasses the referee gate
-///     (routed from <see cref="CommandDispatcher" /> directly). Every subcommand except
-///     <c>help</c>/<c>make</c>/<c>join</c>/<c>in</c> requires <see cref="MatchSession.IsReferee" /> —
-///     unmet permission is a silent no-op (no error reply), not an upgraded error message. Referee is
-///     a pure permission flag (doesn't require physical presence in the room); the host is NOT
-///     automatically a referee — hosting only grants direct in-client settings control, which ranks
-///     below referee authority for `!mp` purposes.
-///     Every method below sends its own reply through the <see cref="ICommandReplySink" /> passed in
-///     (see that type's doc comment) and returns only success/failure — nothing here returns reply
-///     text for a caller to route.
-///     The actual room-mutation logic lives in <see cref="MatchControlService" /> — shared with the
-///     `api.` host's HTTP write routes so both surfaces call the identical state-mutation/broadcast
-///     code. This class owns everything chat-specific: parsing raw argument tokens, resolving a
-///     target player by name (<see cref="IPlayerSessionRegistry.GetByName" />), the referee gate, and
-///     sending a reply for the result.
+///     Implements the <c>!mp</c> chat subcommands for match control.
 /// </summary>
+/// <remarks>
+///     The subcommand set is matched against the official osu! multiplayer server's own chat
+///     behavior; see docs/working-scopes.md for what is a deliberate Basil-only addition versus a
+///     real Bancho command. <c>makeprivate</c> is not an alias of <c>make</c>: it redirects to
+///     <see cref="SetPrivate" /> to make the existing room private, and <c>!mp private [0|1]</c> is
+///     the canonical way to view or change privacy. <c>!mp join &lt;id&gt;</c> bypasses the referee
+///     gate because it is routed directly from <see cref="CommandDispatcher" />. Every other
+///     subcommand requires <see cref="MatchSession.IsReferee" />, and unmet permission is a silent
+///     no-op with no error reply. Referee is a pure permission flag that does not require physical
+///     presence in the room, and the host is not automatically a referee: hosting only grants direct
+///     in-client settings control, which ranks below referee authority for <c>!mp</c> purposes.
+///     Every method sends its own reply through the <see cref="ICommandReplySink" /> passed in and
+///     returns only success or failure; nothing here returns reply text for a caller to route. The
+///     actual room-mutation logic lives in <see cref="MatchControlService" />, shared with the
+///     <c>api.</c> host's HTTP write routes so both surfaces call the identical state-mutation and
+///     broadcast code. This class owns everything chat-specific: parsing raw argument tokens,
+///     resolving a target player by name via <see cref="IPlayerSessionRegistry.GetByName" />, the
+///     referee gate, and sending a reply for the result.
+/// </remarks>
 public sealed class MpCommandService(
 	MatchMembershipService matchMembership,
 	IMatchRegistry matchRegistry,
 	IMatchPersistenceRepository matchPersistence,
-	IMapRepository mapRepository,
+	IBeatmapRepository beatmapRepository,
 	IPlayerSessionRegistry sessionRegistry,
 	IUserRepository userRepository,
 	ILogger<MpCommandService> logger,
@@ -47,11 +48,16 @@ public sealed class MpCommandService(
 	private const int MaxMatchNameLength = 50;
 
 	/// <summary>
-	///     Single source of truth for `!mp help`'s output — add a subcommand here, and it shows up with
-	///     no separate help string to keep in sync. `make`/`makeprivate`/`in` are listed in
-	///     <see cref="CommandDispatcher" />'s own help instead, since they run outside this class'
-	///     switch (see <see cref="TryHandleAsync" />'s doc comment).
+	///     The <c>!mp</c> subcommands listed by <c>!mp help</c>, the single source of truth for that
+	///     output.
 	/// </summary>
+	/// <remarks>
+	///     Add a subcommand here and it appears in <c>!mp help</c> with no separate help string to
+	///     keep in sync. <c>make</c>, <c>join</c>, and <c>in</c> are not listed here because they run
+	///     outside this class's subcommand switch, routed directly from
+	///     <see cref="CommandDispatcher" />, which lists them in its own <c>!help</c>. The legacy
+	///     <c>makeprivate</c> alias is not listed either; <c>!mp private</c> is the canonical form.
+	/// </remarks>
 	private static readonly CommandInfo[] Commands =
 	[
 		new("!mp settings", "show match id, map, team type, win condition, mods, and slots"),
@@ -87,16 +93,29 @@ public sealed class MpCommandService(
 		new("!mp close", "close the match immediately")
 	];
 
+	/// <summary>The <c>!mp help</c> text, built once from <see cref="Commands" />.</summary>
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchPersistence, mapRepository, sessionRegistry, matchControlLogger);
+		new(matchMembership, matchPersistence, beatmapRepository, sessionRegistry, matchControlLogger);
 
 	/// <summary>
-	///     Main `!mp` subcommand switch — help bypasses the referee gate (always DM'd, see
-	///     <see cref="ICommandReplySink.ReplyDm" />) and every other subcommand requires
-	///     <see cref="MatchSession.IsReferee" />, rejecting silently (no reply) otherwise.
+	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
 	/// </summary>
+	/// <remarks>
+	///     This is the main subcommand switch. Help bypasses the referee gate and is always delivered
+	///     by DM (see <see cref="ICommandReplySink.ReplyDm" />); every other subcommand requires
+	///     <see cref="MatchSession.IsReferee" /> and is rejected silently, with no reply, otherwise.
+	/// </remarks>
+	/// <param name="sender">The player issuing the subcommand.</param>
+	/// <param name="match">The match the subcommand operates on.</param>
+	/// <param name="subcommand">The subcommand name without its <c>!mp</c> prefix.</param>
+	/// <param name="args">The raw argument tokens following the subcommand.</param>
+	/// <param name="sink">The destination for the subcommand's reply.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <returns>
+	///     A value that indicates whether the subcommand was recognized and ran successfully.
+	/// </returns>
 	public async Task<bool> TryHandleAsync(PlayerSession sender, MatchSession match, string subcommand,
 		IReadOnlyList<string> args, ICommandReplySink sink, CancellationToken cancellationToken = default)
 	{
@@ -133,7 +152,8 @@ public sealed class MpCommandService(
 			"name" => await RunLockedAsync(match, () => SetName(match, args, sink)),
 			"password" => await RunLockedAsync(match, () => SetPassword(match, args, sink)),
 			"invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args, sink))),
-			"addref" => await RunLockedAsync(match, () => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
+			"addref" => await RunLockedAsync(match,
+				() => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
 			"removeref" => await RunLockedAsync(match,
 				() => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
 			"listrefs" => ListReferees(match, sink),
@@ -155,17 +175,19 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Backs `!mp make`/`!mp makeprivate` — one shared implementation, no `isPrivate` flag or any
-	///     other parameter distinguishes the two trigger words (see <see cref="CommandDispatcher" />).
-	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet (there's
-	///     nothing to be a referee of), so it bypasses <see cref="TryHandleAsync" /> entirely — reusing
-	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a real
-	///     `MATCH_CREATE` packet, except the creator is also auto-added as a referee (required to
-	///     bootstrap — nobody could otherwise ever pass the outer <see cref="MatchSession.IsReferee" />
-	///     gate on their own brand-new room). Marked <see cref="MatchSession.CreatedViaMakeCommand" />
-	///     so it persists until `!mp close` or the referee list empties, instead of auto-tearing down
-	///     once every slot empties like a normal client-created room.
+	///     Backs <c>!mp make</c>, creating a tournament room and scoping the creator to it.
 	/// </summary>
+	/// <remarks>
+	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet, since there
+	///     is nothing to be a referee of; it bypasses <see cref="TryHandleAsync" /> entirely and reuses
+	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a client-created
+	///     match, except the creator is also auto-added as a referee. That bootstrap step is required
+	///     because a brand-new room would otherwise never pass the
+	///     <see cref="MatchSession.IsReferee" /> gate. The match is marked
+	///     <see cref="MatchSession.CreatedViaMakeCommand" /> so it persists until <c>!mp close</c> or
+	///     until the referee list empties, instead of auto-tearing down once every slot empties like a
+	///     normal client-created room.
+	/// </remarks>
 	public async Task<bool> MakeAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
@@ -187,18 +209,28 @@ public sealed class MpCommandService(
 
 		match.AddReferee(sender.Id);
 		sender.MpScopeMatchId = match.DbId;
-		sink.Reply($"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.");
+		sink.Reply(
+			$"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.");
 		return true;
 	}
 
 	/// <summary>
-	///     Backs `!mp join &lt;id&gt; [password]` — lets any player join a match by its persistent room
-	///     id (<see cref="MatchSession.DbId" />, unbounded — not the 0-63 wire-format slot id). A private
-	///     match rejects everyone but staff and invitees, host included (see
-	///     <see cref="MatchSession.IsPrivate" />); locked rooms and banned players are rejected too,
-	///     with a descriptive message. Runs with no <see cref="MatchSession" /> scope (routed directly
-	///     from <see cref="CommandDispatcher" />, bypassing scope resolution).
+	///     Backs <c>!mp join &lt;id&gt; [password]</c>, letting any player join a match by its
+	///     persistent room id.
 	/// </summary>
+	/// <remarks>
+	///     The match is resolved by <see cref="MatchSession.DbId" />, the unbounded persistent id
+	///     rather than the 0-63 wire-format slot id. A private match rejects everyone but staff and
+	///     invitees, the host included (see <see cref="MatchSession.IsPrivate" />); locked rooms and
+	///     banned players are also rejected, each with a descriptive reply. The command runs with no
+	///     <see cref="MatchSession" /> scope because it is routed directly from
+	///     <see cref="CommandDispatcher" />, bypassing scope resolution.
+	/// </remarks>
+	/// <param name="sender">The player joining.</param>
+	/// <param name="args">The argument tokens: the match id and an optional password.</param>
+	/// <param name="sink">The destination for the join reply.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <returns>A value that indicates whether the player joined.</returns>
 	public async Task<bool> JoinAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
@@ -253,12 +285,23 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Backs `!mp in [match_id]` — lets a referee target a match they aren't physically joined to,
-	///     so `CommandDispatcher` can resolve `!mp` scope from <see cref="PlayerSession.MpScopeMatchId" />
-	///     instead of the sender's current chat channel. No argument reports the current scope instead of
-	///     setting one. Runs with no <see cref="MatchSession" /> yet, like `make`/`makeprivate`, since the
-	///     whole point is reaching a match the sender isn't in.
+	///     Backs <c>!mp in [match_id]</c>, targeting a match the sender is not physically joined to.
 	/// </summary>
+	/// <remarks>
+	///     Lets a referee point <c>!mp</c> scope at a specific match via
+	///     <see cref="PlayerSession.MpScopeMatchId" /> instead of the sender's current chat channel,
+	///     so the dispatcher can resolve subsequent commands against it. With no argument it reports
+	///     the current scope, plus every match the sender is a referee of, rather than setting one. It
+	///     runs with no <see cref="MatchSession" /> yet, since the point is reaching a match the
+	///     sender is not in.
+	/// </remarks>
+	/// <param name="sender">The player issuing the command.</param>
+	/// <param name="args">The argument tokens: an optional match id.</param>
+	/// <param name="sink">The destination for the reply.</param>
+	/// <returns>
+	///     A value that indicates whether the requested scope was set, or whether the reported scope
+	///     still exists when no argument was given.
+	/// </returns>
 	public bool SetScopeAsync(PlayerSession sender, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count == 0)
@@ -311,6 +354,12 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>
+	///     Executes a subcommand action while holding <see cref="MatchSession.Lock" />.
+	/// </summary>
+	/// <param name="match">The match whose lock is held for the duration.</param>
+	/// <param name="action">The read-mutate-broadcast action to run under the lock.</param>
+	/// <returns>The action's result.</returns>
 	private static async Task<bool> RunLockedAsync(MatchSession match, Func<Task<bool>> action)
 	{
 		await match.Lock.WaitAsync();
@@ -325,17 +374,20 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Ported to match real Bancho's `!mp settings` output shape (one field per line, so each
-	///     becomes its own chat message — see <see cref="SendPublicMessageHandler" />'s reply-splitting).
-	///     Real Bancho links the room's `osu.ppy.sh/mp/{id}` history page and each player's profile —
-	///     Basil has neither (no public match-history page, no profile pages), so those are plain
-	///     text/IDs here instead of links.
+	///     Builds the <c>!mp settings</c> report, one field per line so each line becomes its own chat
+	///     message.
 	/// </summary>
+	/// <remarks>
+	///     The one-field-per-line layout matches how the client displays multi-line chat messages (see
+	///     <see cref="SendPublicMessageHandler" />'s reply splitting). The official server links the
+	///     room's history page and each player's profile; Basil has neither a public match-history page
+	///     nor profile pages, so those are plain text and ids here instead of links.
+	/// </remarks>
 	private async Task<bool> SettingsAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
 		var beatmapLine = match.MapId > 0
-			? await mapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
+			? await beatmapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
 				? $"Beatmap: {bmap.Id} {bmap.FullName}"
 				: "Beatmap: Not found"
 			: $"Beatmap: {match.MapId} {match.MapName}";
@@ -374,6 +426,11 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Formats a <see cref="SlotStatus" /> as the friendly text <c>!mp settings</c> displays.</summary>
+	/// <param name="status">The slot status to format.</param>
+	/// <returns>
+	///     The friendly label, or the status's own name when no friendlier label exists.
+	/// </returns>
 	private static string SlotStatusText(SlotStatus status)
 	{
 		return status switch
@@ -384,6 +441,13 @@ public sealed class MpCommandService(
 		};
 	}
 
+	/// <summary>Implements <c>!mp lock</c> and <c>!mp unlock</c>, locking or unlocking the match.</summary>
+	/// <param name="match">The match to lock or unlock.</param>
+	/// <param name="locked">The new locked state.</param>
+	/// <param name="sink">The destination for the reply.</param>
+	/// <returns>
+	///     <see langword="true" />; the action always succeeds.
+	/// </returns>
 	private bool SetRoomLocked(MatchSession match, bool locked, ICommandReplySink sink)
 	{
 		_matchControl.SetLocked(match, locked);
@@ -391,6 +455,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp size &lt;1-16&gt;</c>, resizing the room's slot count.</summary>
 	private async Task<bool> SetSize(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size))
@@ -405,6 +470,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp move &lt;name&gt; &lt;slot&gt;</c>, moving a player to another slot.</summary>
 	private async Task<bool> MoveSlot(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 2 || !int.TryParse(args[^1], out var destSlotId))
@@ -438,6 +504,7 @@ public sealed class MpCommandService(
 		}
 	}
 
+	/// <summary>Implements <c>!mp host &lt;name&gt;</c>, transferring host to another player in the room.</summary>
 	private async Task<bool> SetHost(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1)
@@ -459,6 +526,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp clearhost</c>, clearing the match's current host.</summary>
 	private async Task<bool> ClearHost(MatchSession match, ICommandReplySink sink)
 	{
 		await _matchControl.ClearHostAsync(match);
@@ -466,6 +534,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp name &lt;text&gt;</c>, renaming the match.</summary>
 	private async Task<bool> SetName(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1)
@@ -479,6 +548,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp password [text]</c>, setting or clearing the room password.</summary>
 	private async Task<bool> SetPassword(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		var password = args.Count == 0 ? "" : string.Join(' ', args);
@@ -487,6 +557,13 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>
+	///     Implements <c>!mp private [0|1]</c>, viewing or changing the room's privacy.
+	/// </summary>
+	/// <remarks>
+	///     With no argument it reports the current state. The <c>makeprivate</c> trigger also routes
+	///     here, passing <c>1</c> to force the room private.
+	/// </remarks>
 	private async Task<bool> SetPrivate(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count == 0)
@@ -508,6 +585,7 @@ public sealed class MpCommandService(
 		return false;
 	}
 
+	/// <summary>Implements <c>!mp invite &lt;name&gt;</c>, inviting an online player to the room.</summary>
 	private bool Invite(PlayerSession sender, MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1)
@@ -535,6 +613,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp addref &lt;name&gt;</c>, adding a referee to the match.</summary>
 	private async Task<bool> AddRefereeAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -558,9 +637,12 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     At least one referee must always remain — removing the last one is rejected instead of
-	///     disbanding the room (see <see cref="MatchControlService.RemoveOneRefereeAsync" />).
+	///     Implements <c>!mp removeref &lt;name&gt;</c>, removing a referee from the match.
 	/// </summary>
+	/// <remarks>
+	///     At least one referee must always remain, so removing the last one is rejected instead of
+	///     disbanding the room (see <see cref="MatchControlService.RemoveOneRefereeAsync" />).
+	/// </remarks>
 	private async Task<bool> RemoveRefereeAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -594,6 +676,7 @@ public sealed class MpCommandService(
 		}
 	}
 
+	/// <summary>Implements <c>!mp listrefs</c>, listing the match's current referees.</summary>
 	private bool ListReferees(MatchSession match, ICommandReplySink sink)
 	{
 		if (match.Referees.Count == 0)
@@ -609,6 +692,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp banlist</c>, listing the players banned from the match.</summary>
 	private async Task<bool> BanListAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -629,6 +713,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp team &lt;name&gt; &lt;red|blue&gt;</c>, assigning a player's team.</summary>
 	private async Task<bool> SetTeam(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 2)
@@ -665,6 +750,10 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>
+	///     Implements <c>!mp set &lt;teammode 0-3&gt; [scoremode 0-3] [size 1-16]</c>, setting team
+	///     type, win condition, and size in one call.
+	/// </summary>
 	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		const string usage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
@@ -705,6 +794,13 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Parses a team-mode argument in the 0-3 range.</summary>
+	/// <param name="arg">The argument text to parse.</param>
+	/// <param name="teamType">The parsed team type when parsing succeeds.</param>
+	/// <returns>
+	///     <see langword="true" /> when the argument is an integer in range; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	private static bool TryParseTeamType(string arg, out MatchTeamType teamType)
 	{
 		teamType = default;
@@ -714,6 +810,13 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Parses a win-condition argument in the 0-3 range.</summary>
+	/// <param name="arg">The argument text to parse.</param>
+	/// <param name="winCondition">The parsed win condition when parsing succeeds.</param>
+	/// <returns>
+	///     <see langword="true" /> when the argument is an integer in range; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	private static bool TryParseWinCondition(string arg, out MatchWinCondition winCondition)
 	{
 		winCondition = default;
@@ -723,6 +826,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp map &lt;beatmap id&gt;</c>, changing the match's selected map.</summary>
 	private async Task<bool> SetMapAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -744,10 +848,14 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Ported to match real Bancho exactly: `!mp mods` is the ONLY mod-setting command — freemod is
-	///     just one of the values it accepts (`!mp mods Freemod`), not a separate `!mp freemods` toggle.
-	///     `None` clears the mods (and freemod, if on).
+	///     Implements <c>!mp mods &lt;mods&gt;|Freemod|None</c>, setting the match's mods.
 	/// </summary>
+	/// <remarks>
+	///     <c>!mp mods</c> is the only mod-setting command, matching the official server: freemod is
+	///     just one of the values it accepts (<c>!mp mods Freemod</c>), not a separate
+	///     <c>!mp freemods</c> toggle. <c>None</c> clears the mods and also disables freemod when it
+	///     is on.
+	/// </remarks>
 	private async Task<bool> SetMods(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		if (args.Count < 1)
@@ -779,12 +887,17 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Reports which mods this call turned on/off relative to the match's previous global mods,
-	///     plus the current freemod state — matches real Bancho's wording for the plain (non-`Freemod`)
-	///     case. Real Bancho's diff also covers mixing a mod list with the `Freemod` keyword in one
-	///     call; that combined case isn't reproduced here (see the `Freemod` branch above, which just
-	///     reports "Enabled FreeMod" instead).
+	///     Builds the reply text describing a mod change relative to the match's previous mods.
 	/// </summary>
+	/// <remarks>
+	///     Reports which mods were enabled and disabled and whether freemod was turned off. The
+	///     combined case of mixing a mod list with the <c>Freemod</c> keyword in one call is not
+	///     reproduced here: the <c>Freemod</c> branch above reports only "Enabled FreeMod".
+	/// </remarks>
+	/// <param name="before">The match's mods before the change.</param>
+	/// <param name="after">The match's mods after the change.</param>
+	/// <param name="wasFreemod">A value that indicates whether freemod was on before the change.</param>
+	/// <returns>The enabled/disabled mod summary, or "No mod changes" when nothing changed.</returns>
 	private static string DescribeModChange(Mods before, Mods after, bool wasFreemod)
 	{
 		var enabled = after & ~before;
@@ -798,6 +911,9 @@ public sealed class MpCommandService(
 		return parts.Count > 0 ? string.Join(", ", parts) : "No mod changes";
 	}
 
+	/// <summary>
+	///     Implements <c>!mp start [seconds]</c>, starting the match now or queueing a countdown.
+	/// </summary>
 	private async Task<bool> StartAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -825,6 +941,7 @@ public sealed class MpCommandService(
 		}
 	}
 
+	/// <summary>Implements <c>!mp timer [seconds]</c>, starting a countdown without auto-starting.</summary>
 	private bool Timer(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
 		var seconds = 30;
@@ -839,6 +956,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp aborttimer</c>, cancelling a running countdown.</summary>
 	private bool AbortTimer(MatchSession match, ICommandReplySink sink)
 	{
 		var result = _matchControl.AbortTimer(match);
@@ -852,6 +970,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp abort</c>, aborting a match in progress.</summary>
 	private async Task<bool> AbortAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -866,6 +985,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp kick &lt;name&gt;</c>, removing a player from the room.</summary>
 	private async Task<bool> KickAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -888,6 +1008,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp ban &lt;name&gt;</c>, kicking a player and blocking them from rejoining.</summary>
 	private async Task<bool> BanAsync(PlayerSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -910,6 +1031,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp unban &lt;name&gt;</c>, allowing a banned player to rejoin.</summary>
 	private async Task<bool> UnbanAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -938,6 +1060,7 @@ public sealed class MpCommandService(
 		return true;
 	}
 
+	/// <summary>Implements <c>!mp close</c>, closing the match immediately.</summary>
 	private async Task<bool> CloseAsync(PlayerSession sender, MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -947,14 +1070,28 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Forwards to <see cref="MatchControlService.ComputeAnnounceCheckpoints" /> — kept here too since
-	///     existing tests reference it as <c>MpCommandService.ComputeAnnounceCheckpoints</c>.
+	///     Computes the announcement checkpoints for a countdown, forwarding to
+	///     <see cref="MatchControlService.ComputeAnnounceCheckpoints" />.
 	/// </summary>
+	/// <remarks>
+	///     Also kept here so existing tests can reference it as
+	///     <c>MpCommandService.ComputeAnnounceCheckpoints</c>.
+	/// </remarks>
+	/// <param name="totalSeconds">The total countdown length in seconds.</param>
+	/// <param name="autoStart">
+	///     When <see langword="true" />, the final checkpoint triggers the match start.
+	/// </param>
+	/// <returns>The countdown checkpoints in seconds.</returns>
 	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds, bool autoStart = true)
 	{
 		return MatchControlService.ComputeAnnounceCheckpoints(totalSeconds, autoStart);
 	}
 
-	/// <summary>One entry in the auto-generated `!mp help` listing — usage plus a one-line description.</summary>
+	/// <summary>
+	///     A single entry in the auto-generated <c>!mp help</c> listing.
+	/// </summary>
+	/// <remarks>
+	///     Combines a usage string with a one-line description.
+	/// </remarks>
 	private readonly record struct CommandInfo(string Usage, string Description);
 }

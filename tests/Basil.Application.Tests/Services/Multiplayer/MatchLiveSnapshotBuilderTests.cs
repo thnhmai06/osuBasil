@@ -14,7 +14,7 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 /// </summary>
 public class MatchLiveSnapshotBuilderTests
 {
-	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 
 	private static MatchSession MakeMatch(string mapMd5 = "")
 	{
@@ -28,10 +28,10 @@ public class MatchLiveSnapshotBuilderTests
 	{
 		var match = MakeMatch();
 
-		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _maps);
+		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
 
 		Assert.Null(live.Beatmap);
-		await _maps.DidNotReceive().FetchOneAsync(
+		await _beatmaps.DidNotReceive().FetchOneAsync(
 			Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<bool>(),
 			Arg.Any<CancellationToken>());
 	}
@@ -41,7 +41,7 @@ public class MatchLiveSnapshotBuilderTests
 	{
 		var match = MakeMatch();
 
-		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _maps);
+		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
 
 		Assert.Equal(5, live.Id);
 		Assert.Equal("Grand Finals", live.Name);
@@ -55,10 +55,11 @@ public class MatchLiveSnapshotBuilderTests
 	public async Task BuildRoomLive_UnresolvableMapMd5_BeatmapNull()
 	{
 		var match = MakeMatch("d41d8cd98f00b204e9800998ecf8427e");
-		_maps.FetchOneAsync(md5: match.MapMd5, includePrivate: true, cancellationToken: Arg.Any<CancellationToken>())
+		_beatmaps.FetchOneAsync(md5: match.MapMd5, includePrivate: true,
+				cancellationToken: Arg.Any<CancellationToken>())
 			.Returns((Beatmap?)null);
 
-		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _maps);
+		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
 
 		Assert.Null(live.Beatmap);
 	}

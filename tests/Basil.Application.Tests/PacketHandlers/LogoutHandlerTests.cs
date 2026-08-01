@@ -36,7 +36,7 @@ public class LogoutHandlerTests
 				new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(),
 					Substitute.For<IChannelRegistry>()),
 				Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
-				Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 				NullLogger<MatchMembershipService>.Instance),
 			NullLogger<PlayerLogoutService>.Instance), NullLogger<LogoutHandler>.Instance);
 	}

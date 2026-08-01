@@ -6,13 +6,17 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Channels;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's ChannelJoin, which delegates to Player.join_channel:
-///     updates membership on both sides (Channel.append + Player.channels.append) then broadcasts
-///     the updated channel_info to every session that can read it. Login only sends channel_info
-///     for auto-join channels — the client is expected to send this packet itself to actually join.
-///     Membership/broadcast logic itself lives in <see cref="ChannelMembershipService" /> — shared with
-///     server-initiated joins (spectator, multiplayer) and real IRC connections.
+///     Handles the <see cref="ClientPackets.ChannelJoin" /> packet, which the client sends when it
+///     wants to join a chat channel. Reads the channel name, ignores the client-managed virtual
+///     channels, and delegates the membership update to <see cref="ChannelMembershipService" /> when
+///     the named channel exists.
 /// </summary>
+/// <remarks>
+///     Login only sends channel_info for the auto-join channels; the client is expected to send this
+///     packet itself to actually join one of them. The join logic in
+///     <see cref="ChannelMembershipService" /> also broadcasts the updated channel_info, and is shared
+///     with server-initiated joins (spectator, multiplayer) and real IRC connections.
+/// </remarks>
 public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
 	: IBanchoPacketHandler
 {

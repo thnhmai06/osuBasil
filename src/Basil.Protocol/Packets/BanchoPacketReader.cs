@@ -5,17 +5,22 @@ using Basil.Protocol.Multiplayer;
 namespace Basil.Protocol.Packets;
 
 /// <summary>
-///     Reads Bancho packet primitives from a client request body. Ported from
-///     app/packets.py's BanchoPacketReader (read-side only; the packet_map-driven
-///     iteration/dispatch loop is wired up in Basil.Web).
-///     All multi-byte integers are little-endian, per the osu! protocol.
+///     Reads Bancho packet primitives from a client request body. This is the read side of the
+///     Bancho binary protocol; the packet-id driven iteration and dispatch loop is wired up in
+///     Basil.Web. All multi-byte integers are little-endian, per the osu! protocol.
 /// </summary>
+/// <param name="buffer">The request body to read from.</param>
 public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 {
 	private ReadOnlyMemory<byte> _buffer = buffer;
 
+	/// <summary>Gets the number of bytes not yet consumed from the buffer.</summary>
+	/// <value>The count of remaining bytes.</value>
 	public int RemainingLength => _buffer.Length;
 
+	/// <summary>Reads and copies the next <paramref name="length" /> bytes from the buffer.</summary>
+	/// <param name="length">The number of bytes to read.</param>
+	/// <returns>A new byte array containing the next <paramref name="length" /> bytes.</returns>
 	public byte[] ReadRaw(int length)
 	{
 		var value = _buffer[..length].ToArray();
@@ -23,13 +28,14 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
-	/// <summary>Advances past `length` bytes without allocating/copying — for skipping unhandled packet payloads.</summary>
+	/// <summary>Advances past `length` bytes without allocating/copying, for skipping unhandled packet payloads.</summary>
 	public void SkipRaw(int length)
 	{
 		_buffer = _buffer[length..];
 	}
 
-	/// <summary>Reads the 7-byte Bancho packet header (id: u16, padding: u8, length: u32). Ported from _read_header.</summary>
+	/// <summary>Reads the 7-byte Bancho packet header (id: u16, padding: u8, length: u32).</summary>
+	/// <returns>The packet type and the declared payload length.</returns>
 	public (ClientPackets Type, int Length) ReadHeader()
 	{
 		var type = (ClientPackets)BinaryPrimitives.ReadUInt16LittleEndian(_buffer.Span);
@@ -40,6 +46,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 
 	// integral types
 
+	/// <summary>Reads a signed 8-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public int ReadI8()
 	{
 		var value = _buffer.Span[0];
@@ -47,6 +55,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return unchecked((sbyte)value);
 	}
 
+	/// <summary>Reads an unsigned 8-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public int ReadU8()
 	{
 		var value = _buffer.Span[0];
@@ -54,6 +64,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads a signed 16-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public int ReadI16()
 	{
 		var value = BinaryPrimitives.ReadInt16LittleEndian(_buffer.Span);
@@ -61,6 +73,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads an unsigned 16-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public int ReadU16()
 	{
 		var value = BinaryPrimitives.ReadUInt16LittleEndian(_buffer.Span);
@@ -68,6 +82,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads a signed 32-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public int ReadI32()
 	{
 		var value = BinaryPrimitives.ReadInt32LittleEndian(_buffer.Span);
@@ -75,6 +91,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads an unsigned 32-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public uint ReadU32()
 	{
 		var value = BinaryPrimitives.ReadUInt32LittleEndian(_buffer.Span);
@@ -82,6 +100,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads a signed 64-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public long ReadI64()
 	{
 		var value = BinaryPrimitives.ReadInt64LittleEndian(_buffer.Span);
@@ -89,6 +109,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads an unsigned 64-bit integer from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public ulong ReadU64()
 	{
 		var value = BinaryPrimitives.ReadUInt64LittleEndian(_buffer.Span);
@@ -98,6 +120,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 
 	// floating-point types
 
+	/// <summary>Reads a single-precision floating-point number from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public float ReadF32()
 	{
 		var value = BinaryPrimitives.ReadSingleLittleEndian(_buffer.Span);
@@ -105,6 +129,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
+	/// <summary>Reads a double-precision floating-point number from the buffer.</summary>
+	/// <returns>The value read.</returns>
 	public double ReadF64()
 	{
 		var value = BinaryPrimitives.ReadDoubleLittleEndian(_buffer.Span);
@@ -115,6 +141,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 	// complex types
 
 	// XXX: some osu! packets use i16 for array length, while others use i32
+	/// <summary>Reads a list of 32-bit integers prefixed by a 16-bit unsigned count.</summary>
+	/// <returns>The list of values read.</returns>
 	public IReadOnlyList<int> ReadI32ListI16L()
 	{
 		var length = ReadU16();
@@ -124,6 +152,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return values;
 	}
 
+	/// <summary>Reads a list of 32-bit integers prefixed by a 32-bit unsigned count.</summary>
+	/// <returns>The list of values read.</returns>
 	public IReadOnlyList<int> ReadI32ListI32L()
 	{
 		var length = (int)ReadU32();
@@ -133,6 +163,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 		return values;
 	}
 
+	/// <summary>Reads an osu!-format string: an existence byte, a ULEB128 length, then the UTF-8 bytes.</summary>
+	/// <returns>The string value read, or an empty string when the existence byte is <c>0x00</c>.</returns>
 	public string ReadString()
 	{
 		var exists = _buffer.Span[0] == 0x0B;
@@ -161,6 +193,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 
 	// custom osu! types
 
+	/// <summary>Reads a <see cref="BanchoMessage" /> from the buffer.</summary>
+	/// <returns>The message read.</returns>
 	public BanchoMessage ReadMessage()
 	{
 		return new BanchoMessage(
@@ -170,6 +204,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 			ReadI32());
 	}
 
+	/// <summary>Reads a multiplayer match from the buffer into a <see cref="ReadMatchResult" />.</summary>
+	/// <returns>The match state read.</returns>
 	public ReadMatchResult ReadMatch()
 	{
 		var id = ReadI16();
@@ -214,9 +250,15 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 			slotMods, seed);
 	}
 
+	/// <summary>
+	///     Reads a fixed 29-byte score frame, plus two doubles when score v2 is active, into a
+	///     <see cref="ScoreFrameData" />.
+	/// </summary>
+	/// <returns>The score frame read.</returns>
 	public ScoreFrameData ReadScoreFrame()
 	{
-		// matches SCOREFRAME_FMT = struct.Struct("<iBHHHHHHiHH?BB?") — 29 bytes.
+		// 29-byte scoreframe layout: i32 time, u8 id, six u16 counts, i32 total, u16 max/current
+		// combo, u8 perfect, u8 hp, u8 tag, u8 scoreV2.
 		var span = _buffer.Span;
 
 		var time = BinaryPrimitives.ReadInt32LittleEndian(span);
@@ -250,6 +292,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 			currentCombo, perfect, currentHp, tagByte, scoreV2, comboPortion, bonusPortion);
 	}
 
+	/// <summary>Reads a single replay frame from the buffer.</summary>
+	/// <returns>The replay frame read.</returns>
 	public ReplayFrameData ReadReplayFrame()
 	{
 		return new ReplayFrameData(
@@ -260,7 +304,8 @@ public sealed class BanchoPacketReader(ReadOnlyMemory<byte> buffer)
 			ReadI32());
 	}
 
-	/// <summary>Ported from BanchoPacketReader.read_replayframe_bundle in app/packets.py.</summary>
+	/// <summary>Reads a complete replay frame bundle, including its frames, action, score frame, and sequence number.</summary>
+	/// <returns>The replay frame bundle read.</returns>
 	public SpectateFrameBundle ReadReplayFrameBundle()
 	{
 		var extra = ReadI32();

@@ -7,9 +7,21 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IClientHashRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>ClientHashRow</c> and <c>ClientHashWithPlayerRow</c>
+///     DTOs, since Dapper fills by property name rather than through a positional record
+///     constructor. Each method opens its own connection.
+/// </remarks>
 public sealed class SqliteClientHashRepository(string connectionString, ILogger<SqliteClientHashRepository> logger)
 	: IClientHashRepository
 {
+	/// <inheritdoc />
+	/// <remarks>
+	///     An upsert keyed on the full fingerprint: the first insert creates a row with one
+	///     occurrence, and a later login with the same fingerprint bumps <c>Occurrences</c> and
+	///     refreshes <c>LastSeenAt</c>. The persisted row is then re-read by the same fingerprint
+	///     and returned.
+	/// </remarks>
 	public async Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default)
 	{
@@ -49,6 +61,14 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		return row.ToClientHash();
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Under Wine only the uninstall id is compared, since adapter and disk fingerprints are
+	///     unreliable there; otherwise a match on adapters, uninstall id, or disk serial (when
+	///     supplied) counts as shared hardware. The query joins the Users table so each result
+	///     carries the other account's name and privileges, and always excludes
+	///     <paramref name="userId" /> itself.
+	/// </remarks>
 	public async Task<IReadOnlyList<ClientHashWithPlayer>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
@@ -87,11 +107,16 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		return [.. rows.Select(r => r.ToClientHashWithPlayer())];
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the ClientHashes table columns. Mutable because Dapper fills
+	///     by property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class ClientHashRow
 	{
 		public int UserId { get; set; }
@@ -102,12 +127,18 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public DateTime LastSeenAt { get; set; }
 		public int Occurrences { get; set; }
 
+		/// <summary>Builds a <see cref="ClientHash" /> from this row.</summary>
+		/// <returns>The domain client hash record.</returns>
 		public ClientHash ToClientHash()
 		{
 			return new ClientHash(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences);
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the ClientHashes table columns joined with the owning user's
+	///     name and privileges.
+	/// </summary>
 	private sealed class ClientHashWithPlayerRow
 	{
 		public int UserId { get; set; }
@@ -120,6 +151,11 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public string Name { get; set; } = "";
 		public int Privilege { get; set; }
 
+		/// <summary>
+		///     Builds a <see cref="ClientHashWithPlayer" /> from this row, casting the stored
+		///     privilege column.
+		/// </summary>
+		/// <returns>The domain client hash-with-player record.</returns>
 		public ClientHashWithPlayer ToClientHashWithPlayer()
 		{
 			return new ClientHashWithPlayer(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,

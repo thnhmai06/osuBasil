@@ -6,8 +6,13 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="ILogRepository" />
+/// <remarks>
+///     A single append-only insert into the UserLogs table, with the timestamp produced in SQL via
+///     <c>datetime('now')</c>.
+/// </remarks>
 public sealed class SqliteLogRepository(string connectionString, ILogger<SqliteLogRepository> logger) : ILogRepository
 {
+	/// <inheritdoc />
 	public async Task CreateAsync(int fromId, int toId, string action, string message,
 		CancellationToken cancellationToken = default)
 	{

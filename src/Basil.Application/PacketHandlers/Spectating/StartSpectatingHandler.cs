@@ -6,7 +6,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Spectating;
 
-/// <summary>Ported from app/api/domains/cho.py's StartSpectating.</summary>
+/// <summary>
+///     Handles the <see cref="ClientPackets.StartSpectating" /> packet, which the client sends to
+///     start spectating another player. Reads the target's id, resolves the target session, and
+///     switches the player's spectate target through <see cref="SpectatorService" />.
+/// </summary>
+/// <remarks>
+///     When the player already spectates the requested host, the packet is treated as a map
+///     re-download and the host and fellow spectators are re-notified, unless the player is in stealth
+///     mode. When the player spectates a different host, it is removed from that host first. A request
+///     for an unknown target id is ignored.
+/// </remarks>
 public sealed class StartSpectatingHandler(
 	IPlayerSessionRegistry sessionRegistry,
 	SpectatorService spectatorService,

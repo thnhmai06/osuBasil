@@ -9,7 +9,7 @@ namespace Basil.Application.Tests.UseCases.Beatmaps;
 /// <summary>Ported from app/services/direct_search.py's DirectSearchService, DB-backed instead of mirror-backed.</summary>
 public class DirectSearchServiceTests
 {
-	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 
 	[Theory]
 	[InlineData("Newest")]
@@ -20,45 +20,45 @@ public class DirectSearchServiceTests
 	[InlineData("Most Played")]
 	public async Task NonTextQuery_PassesNullQueryThrough(string query)
 	{
-		_maps.SearchAsync(null, null, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(null, null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
 			new DirectSearchRequest(query, -1, 0));
 
-		await _maps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task TextQuery_PassedThrough()
 	{
-		_maps.SearchAsync("camellia", null, 0, 100).Returns([]);
+		_beatmaps.SearchAsync("camellia", null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
 			new DirectSearchRequest("camellia", -1, 0));
 
-		await _maps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task ModeNotMinusOne_FiltersByMode()
 	{
-		_maps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
 
-		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
 			new DirectSearchRequest("Newest", 1, 0));
 
-		await _maps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task PageNum_MultipliedByOneHundredForOffset()
 	{
-		_maps.SearchAsync(null, null, 200, 100).Returns([]);
+		_beatmaps.SearchAsync(null, null, 200, 100).Returns([]);
 
-		await new DirectSearchService(_maps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
 			new DirectSearchRequest("Newest", -1, 2));
 
-		await _maps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
 	}
 
 	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",

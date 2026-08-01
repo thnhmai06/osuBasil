@@ -7,16 +7,22 @@ public enum BeatmapStatus : sbyte
 {
 	/// <summary>The beatmap has not been submitted.</summary>
 	NotSubmitted = -1,
+
 	/// <summary>The beatmap is pending review.</summary>
 	Pending = 0,
+
 	/// <summary>A newer version of the beatmap is available.</summary>
 	UpdateAvailable = 1,
+
 	/// <summary>The beatmap is ranked.</summary>
 	Ranked = 2,
+
 	/// <summary>The beatmap is approved for play.</summary>
 	Approved = 3,
+
 	/// <summary>The beatmap is qualified.</summary>
 	Qualified = 4,
+
 	/// <summary>The beatmap is loved.</summary>
 	Loved = 5
 }

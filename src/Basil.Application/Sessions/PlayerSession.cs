@@ -9,102 +9,160 @@ using Basil.Domain.Users;
 namespace Basil.Application.Sessions;
 
 /// <summary>
-///     Server-side representation of an online player. Ported from app/objects/player.py's Player.
-///     Holds runtime session state: packet queue, channel memberships, spectator list, match
-///     reference, per-mode stats, geolocation, and IRC transport bridge.
+///     Represents the server-side runtime state of a single online player, created at login and
+///     discarded at logout. Holds the outgoing packet queue, joined channels, the spectator
+///     relationship, the current multiplayer match, per-mode cached stats, geolocation, and the
+///     IRC-shaped chat transport bound to the session.
 /// </summary>
+/// <param name="id">The persistent id of the player.</param>
+/// <param name="name">The player's username.</param>
+/// <param name="token">The login token the session is keyed by, used to authenticate HTTP polls.</param>
+/// <param name="privilege">The server-side privilege flags granted at login.</param>
+/// <param name="loginTime">The time at which the session was created.</param>
 public sealed class PlayerSession(int id, string name, string token, UserPrivileges privilege, DateTimeOffset loginTime)
 {
 	private readonly ConcurrentDictionary<string, byte> _channels = new();
 	private readonly ConcurrentQueue<byte[]> _packetQueue = new();
 	private readonly ConcurrentDictionary<int, PlayerSession> _spectators = new();
 
+	/// <summary>Gets the persistent id of the player.</summary>
 	public int Id { get; } = id;
+
+	/// <summary>Gets the player's username.</summary>
 	public string Name { get; } = name;
+
+	/// <summary>Gets the login token this session is keyed by.</summary>
 	public string Token { get; } = token;
+
+	/// <summary>
+	///     Gets or sets the server-side privilege flags for this session, mutable when a player is promoted, demoted, or
+	///     restricted.
+	/// </summary>
 	public UserPrivileges Privilege { get; set; } = privilege;
+
+	/// <summary>Gets the time at which this session was created.</summary>
 	public DateTimeOffset LoginTime { get; } = loginTime;
+
+	/// <summary>Gets or sets the time of the last packet or poll received from the client, used to reap dead sessions.</summary>
 	public DateTimeOffset LastRecvTime { get; set; } = loginTime;
 
+	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; init; }
 
 	/// <summary>
-	///     True only for the bootstrapped BanchoBot session. Never sends real ping packets, so
-	///     <see cref="LastRecvTime" /> never advances — exempted from GhostDisconnectService's reap
-	///     sweep for exactly that reason.
+	///     Gets a value that indicates whether this session is the bootstrapped BanchoBot.
 	/// </summary>
+	/// <remarks>
+	///     The bot never sends real ping packets, so its <see cref="LastRecvTime" /> never advances;
+	///     GhostDisconnectService exempts it from the dead-session reap sweep for exactly that reason.
+	/// </remarks>
 	public bool IsBot { get; init; }
 
-	/// <summary>Set at login from the client's login body, but mutable at runtime via TOGGLE_BLOCK_NON_FRIEND_DMS.</summary>
+	/// <summary>
+	///     Gets or sets a value that indicates whether this player accepts private messages only
+	///     from friends. Set at login from the client's login body, but mutable at runtime via the
+	///     TOGGLE_BLOCK_NON_FRIEND_DMS packet.
+	/// </summary>
 	public bool PmPrivate { get; set; }
 
+	/// <summary>
+	///     Gets or sets the time at which the player's current silence expires, or Unix epoch when the player is not
+	///     silenced.
+	/// </summary>
 	public DateTimeOffset SilenceEnd { get; set; } = DateTimeOffset.UnixEpoch;
+
+	/// <summary>
+	///     Gets or sets the away message shown to other players while this player is idle, or null when the player is not
+	///     away.
+	/// </summary>
 	public string? AwayMessage { get; set; }
+
+	/// <summary>
+	///     Gets or sets the presence filter preference reported by the client, controlling which users appear in its
+	///     presence list.
+	/// </summary>
 	public PresenceFilter PresenceFilter { get; set; } = PresenceFilter.Nil;
 
 	/// <summary>
-	///     Set by `!mp in &lt;match_id&gt;` — the <see cref="Sessions.Multiplayer.MatchSession.DbId" /> of
-	///     the match this referee is currently targeting from outside that match's own chat channel.
-	///     Overrides the channel-derived match scope for every `!mp` subcommand until changed by another
-	///     `!mp in` or cleared implicitly by `!mp make`/`makeprivate` re-pointing it at the new room.
+	///     Gets or sets the database id of the match a referee is currently targeting from outside
+	///     that match's own chat channel, set by the <c>!mp in &lt;match_id&gt;</c> command. Overrides
+	///     the channel-derived match scope for every <c>!mp</c> subcommand until changed by another
+	///     <c>!mp in</c>, or cleared implicitly when <c>!mp make</c> or <c>!mp makeprivate</c> points
+	///     the scope at a new room.
 	/// </summary>
 	public int? MpScopeMatchId { get; set; }
 
 	/// <summary>
-	///     Ported from Player.in_lobby — set while the client is viewing the multiplayer lobby screen
-	///     (between <see cref="Basil.Protocol.Packets.ClientPackets.JoinLobby" /> and
-	///     <see cref="Basil.Protocol.Packets.ClientPackets.PartLobby" />).
+	///     Gets or sets a value that indicates whether the client is currently viewing the
+	///     multiplayer lobby screen, between the <see cref="Basil.Protocol.Packets.ClientPackets.JoinLobby" />
+	///     and <see cref="Basil.Protocol.Packets.ClientPackets.PartLobby" /> packets.
 	/// </summary>
 	public bool InLobby { get; set; }
 
-	/// <summary>Ported from Player.geoloc — defaults to "xx"/0/0 when unavailable, matching Player.__init__.</summary>
+	/// <summary>
+	///     Gets or sets the player's geolocation, captured at login and defaulting to
+	///     <see cref="Country.Xx" /> with zero coordinates when the client does not report one.
+	/// </summary>
 	public Geolocation Geoloc { get; set; } = new(0.0, 0.0, Country.Xx);
 
 	/// <summary>
-	///     Ported from Player.client_details — the hardware/version fingerprint captured at login,
-	///     re-checked against score submission's own client_hash to catch a submission from a
-	///     different client session than the one currently logged in.
+	///     Gets or sets the hardware and client fingerprint captured at login, re-checked against
+	///     score submission's own client hash to catch a submission coming from a different client
+	///     session than the one currently logged in.
 	/// </summary>
 	public ClientDetails? Client { get; set; }
 
 	/// <summary>
-	///     The osu! client version captured at login (alongside <see cref="Client" />) — kept separate
-	///     since <see cref="ClientDetails" /> no longer carries a version date (it isn't part of the
-	///     client-hash string). Score submission's version-mismatch check compares against this.
+	///     Gets or sets the osu! client version captured at login, kept separate from
+	///     <see cref="Client" /> because <see cref="ClientDetails" /> no longer carries a version
+	///     date. Score submission's version-mismatch check compares against this.
 	/// </summary>
 	public OsuVersion? OsuVersion { get; set; }
 
-	/// <summary>Ported from Player.spectating — the session this player is currently spectating, if any.</summary>
+	/// <summary>Gets or sets the session this player is currently spectating, or null when the player is not spectating.</summary>
 	public PlayerSession? Spectating { get; set; }
 
-	/// <summary>Ported from Player.match — the multiplayer match this player is currently in, if any.</summary>
+	/// <summary>Gets or sets the multiplayer match this player is currently in, or null when the player is not in a match.</summary>
 	public MatchSession? Match { get; set; }
 
 	/// <summary>
-	///     Ported from Player.stealth — an admin spectating without the target being informed.
-	///     Toggled by the `!stealth` command; defaults off.
+	///     Gets or sets a value that indicates whether this player is spectating someone without the
+	///     target being informed. Toggled by the <c>!stealth</c> command and off by default.
 	/// </summary>
 	public bool Stealth { get; set; }
 
-	/// <summary>Ported from Player.spectators — the sessions currently spectating this player.</summary>
+	/// <summary>Gets the sessions currently spectating this player, as a snapshot collection.</summary>
 	public IReadOnlyCollection<PlayerSession> Spectators => [.. _spectators.Values];
 
+	/// <summary>Gets the client's currently reported presence state, including activity, selected map, mods, and mode.</summary>
 	public PlayerStatus Status { get; } = new();
 
 	/// <summary>
-	///     Per-mode stats, cached in memory at login (stats_from_sql_full) and never re-queried per
-	///     packet. Ported from Player.stats (dict[GameMode, ModeData]).
+	///     Gets the per-mode stats for this player, loaded into memory at login and never re-queried
+	///     per packet.
 	/// </summary>
 	public Dictionary<GameMode, CachedPlayerStats> ModeStats { get; } = new();
 
-	/// <summary>Ported from Player.gm_stats — the cached stats for the player's currently selected mode.</summary>
+	/// <summary>Gets the cached stats for the player's currently selected mode, or null when that mode has no cached entry.</summary>
 	public CachedPlayerStats? CurrentStats => ModeStats.GetValueOrDefault(Status.Mode);
 
+	/// <summary>
+	///     Gets the case-normalized form of <see cref="Name" /> produced by
+	///     <see cref="Basil.Domain.Users.User.MakeSafeName" />.
+	/// </summary>
 	public string SafeName => User.MakeSafeName(Name);
 
+	/// <summary>
+	///     Gets a value that indicates whether the player is restricted, that is, lacks the
+	///     <see cref="UserPrivileges.Unrestricted" /> flag.
+	/// </summary>
 	public bool Restricted => (Privilege & UserPrivileges.Unrestricted) == 0;
 
-	/// <summary>Ported from Player.bancho_priv — maps server-side privileges to client-facing ones.</summary>
+	/// <summary>
+	///     Gets the client-facing bancho protocol privileges derived from the server-side
+	///     <see cref="Privilege" />, mapping the unrestricted, donator, moderator, administrator,
+	///     and developer roles onto their protocol equivalents.
+	/// </summary>
 	public ClientPrivileges BanchoPrivilege
 	{
 		get
@@ -124,58 +182,95 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
 		}
 	}
 
+	/// <summary>Gets the time remaining in the player's current silence, or zero when the player is not silenced.</summary>
 	public TimeSpan RemainingSilence =>
 		SilenceEnd > DateTimeOffset.UtcNow ? SilenceEnd - DateTimeOffset.UtcNow : TimeSpan.Zero;
 
+	/// <summary>Gets a value that indicates whether the player is currently silenced.</summary>
 	public bool Silenced => RemainingSilence != TimeSpan.Zero;
 
-	/// <summary>Ported from Player.channels — the set of channel names this session has joined.</summary>
+	/// <summary>Gets the set of channel names this session has joined, as a snapshot collection.</summary>
 	public IReadOnlyCollection<string> Channels => [.. _channels.Keys];
 
 	/// <summary>
-	///     The IRC-shaped transport chat is routed through for this session — a bancho packet bridge by
-	///     default, replaced with a real <c>TcpIrcConnection</c> for a session created by an actual IRC
-	///     login. Lazily defaults to a bridge wrapping this session, so any <see cref="PlayerSession" />
-	///     works out of the box even if the constructing code never wires one explicitly (tests, mostly)
-	///     — a plain auto-property can't self-reference `this` in its initializer, hence the backing field.
+	///     Gets or initializes the IRC-shaped transport chat traffic is routed through for this
+	///     session: a bancho packet bridge by default, replaced with a real TCP IRC connection for a
+	///     session created by an actual IRC login.
 	/// </summary>
+	/// <remarks>
+	///     If never supplied during initialization, this lazily defaults to a bridge wrapping this
+	///     session, so any <see cref="PlayerSession" /> works out of the box even when the
+	///     constructing code never wires one explicitly (tests, mostly). A plain auto-property cannot
+	///     self-reference <c>this</c> in its initializer, hence the backing field.
+	/// </remarks>
 	public IIrcConnection IrcConnection
 	{
 		get => field ??= new BanchoIrcBridgeConnection(this);
 		init;
 	}
 
+	/// <summary>
+	///     Adds a session to this player's spectator list, replacing any previous entry for the same
+	///     player id.
+	/// </summary>
+	/// <param name="spectator">The session of the player who started spectating this player.</param>
 	public void AddSpectator(PlayerSession spectator)
 	{
 		_spectators[spectator.Id] = spectator;
 	}
 
+	/// <summary>
+	///     Removes a session from this player's spectator list.
+	/// </summary>
+	/// <param name="spectator">The session of the player who stopped spectating this player.</param>
 	public void RemoveSpectator(PlayerSession spectator)
 	{
 		_spectators.TryRemove(spectator.Id, out _);
 	}
 
+	/// <summary>
+	///     Appends a chunk of raw bancho packet bytes to this session's outgoing queue, delivered to
+	///     the client on its next HTTP poll.
+	/// </summary>
+	/// <param name="data">The raw packet bytes to send.</param>
 	public void Enqueue(byte[] data)
 	{
 		_packetQueue.Enqueue(data);
 	}
 
+	/// <summary>
+	///     Adds a channel name to this session's joined-channel set.
+	/// </summary>
+	/// <param name="name">The registry name of the channel to join.</param>
 	public void JoinChannel(string name)
 	{
 		_channels[name] = 0;
 	}
 
+	/// <summary>
+	///     Removes a channel name from this session's joined-channel set.
+	/// </summary>
+	/// <param name="name">The registry name of the channel to leave.</param>
 	public void LeaveChannel(string name)
 	{
 		_channels.TryRemove(name, out _);
 	}
 
+	/// <summary>
+	///     Gets a value that indicates whether this session has joined the named channel.
+	/// </summary>
+	/// <param name="name">The registry name of the channel.</param>
+	/// <returns><see langword="true" /> if the channel is joined; otherwise, <see langword="false" />.</returns>
 	public bool InChannel(string name)
 	{
 		return _channels.ContainsKey(name);
 	}
 
-	/// <summary>Drains and concatenates all queued outgoing packet bytes, clearing the queue.</summary>
+	/// <summary>
+	///     Drains every queued outgoing packet chunk and returns them concatenated into a single
+	///     byte array, clearing the queue.
+	/// </summary>
+	/// <returns>The concatenated bytes of all queued packets, or an empty array when the queue is empty.</returns>
 	public byte[] Dequeue()
 	{
 		using var buffer = new MemoryStream();
@@ -186,16 +281,37 @@ public sealed class PlayerSession(int id, string name, string token, UserPrivile
 	}
 }
 
-/// <summary>Ported from app/objects/player.py's Status — the client's currently reported state.</summary>
+/// <summary>
+///     Represents the client's currently reported presence state, updated as the player idles,
+///     selects a map, changes mods, or switches modes.
+/// </summary>
 public sealed class PlayerStatus
 {
+	/// <summary>Gets or sets the activity the client is currently reporting.</summary>
 	public UserActivity UserActivity { get; set; } = UserActivity.Idle;
+
+	/// <summary>Gets or sets the free-form status text accompanying the activity, shown to other players.</summary>
 	public string InfoText { get; set; } = "";
+
+	/// <summary>Gets or sets the md5 of the beatmap the player is currently playing or selecting.</summary>
 	public string MapMd5 { get; set; } = "";
+
+	/// <summary>Gets or sets the mods the player currently has active.</summary>
 	public Mods Mods { get; set; } = Mods.NoMod;
+
+	/// <summary>Gets or sets the game mode the player currently has selected.</summary>
 	public GameMode Mode { get; set; } = GameMode.Standard;
+
+	/// <summary>Gets or sets the id of the beatmap the player is currently playing or selecting.</summary>
 	public int MapId { get; set; }
 }
 
-/// <summary>Ported from app/objects/player.py's ModeData — a player's cached stats in a single gamemode.</summary>
+/// <summary>
+///     Represents a player's cached stats for a single game mode, loaded at login and never
+///     re-queried per packet.
+/// </summary>
+/// <param name="TotalScore">The player's lifetime total score in the mode.</param>
+/// <param name="RankedScore">The player's lifetime ranked score in the mode.</param>
+/// <param name="Plays">The number of plays the player has in the mode.</param>
+/// <param name="Rank">The player's rank in the mode.</param>
 public sealed record CachedPlayerStats(long TotalScore, long RankedScore, int Plays, int Rank);

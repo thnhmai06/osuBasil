@@ -89,11 +89,11 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
 		var client = Configure(factory)
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/web/maps/Some%20Map.osu"));
+		var response = await client.SendAsync(MakeRequest("/web/beatmaps/Some%20Map.osu"));
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	// Database:Path is "" for this test host (no real DB) — /d/{setId} and /web/maps/{filename}
-	// still call IMapRepository unconditionally, so they need a stub rather than a real connection.
+	// Database:Path is "" for this test host (no real DB) — /d/{setId} and /web/beatmaps/{filename}
+	// still call IBeatmapRepository unconditionally, so they need a stub rather than a real connection.
 }

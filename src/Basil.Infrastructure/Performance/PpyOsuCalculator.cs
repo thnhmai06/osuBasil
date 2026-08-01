@@ -1,7 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using DomainBeatmaps = Basil.Domain.Beatmaps;
 using osu.Framework.Audio.Track;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
@@ -11,10 +10,14 @@ using osu.Game.Beatmaps.Legacy;
 using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
+using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Mania;
+using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Taiko;
+using osu.Game.Rulesets.Taiko.Objects;
 using osu.Game.Skinning;
 using osu.Game.Utils;
 using Beatmap = osu.Game.Beatmaps.Beatmap;
@@ -24,13 +27,15 @@ namespace Basil.Infrastructure.Performance;
 
 /// <inheritdoc cref="IOsuCalculator" />
 /// <remarks>
-///     Uses ppy's own osu!lazer ruleset libraries (the same engine the real client/website run) —
-///     see the sibling osu-difficulty-calculator repo for the reference pattern this is based on.
-///     (That repo is a batch CLI orchestrator around the same NuGet packages, not a callable server,
-///     so we reference the packages directly instead of shelling out to it.)
+///     Uses ppy's own osu!lazer ruleset libraries, the same engine the real client and website run,
+///     by referencing the NuGet packages directly. The sibling osu-difficulty-calculator repo is a
+///     batch CLI orchestrator around those same packages, not a callable server, so shelling out to
+///     it is neither possible nor needed.
 /// </remarks>
 public sealed class PpyOsuCalculator : IOsuCalculator
 {
+	/// <inheritdoc cref="IOsuCalculator.Analyze" />
+	/// <exception cref="InvalidOperationException">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
 	{
 		try
@@ -71,7 +76,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength * rate : 0;
 			var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength() / rate);
 
-			var difficulty = new DomainBeatmaps.Difficulty(
+			var difficulty = new Difficulty(
 				mode, Round(bpm, 1), totalLength,
 				Round(displayDifficulty.CircleSize, 1), Round(displayDifficulty.ApproachRate, 1),
 				Round(displayDifficulty.OverallDifficulty, 1), Round(displayDifficulty.DrainRate, 1),
@@ -88,6 +93,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 		}
 	}
 
+	/// <inheritdoc cref="IOsuCalculator.ComputeBeatmapMd5" />
 	public string ComputeBeatmapMd5(byte[] beatmapBytes)
 	{
 		using var stream = new MemoryStream(beatmapBytes);
@@ -98,6 +104,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	// HR's 6 * 1.3) — round once here, at the single place every Difficulty gets built. Sr gets an
 	// extra decimal of precision (2 vs 1) since star rating differences below 0.1 are still
 	// meaningful for map selection.
+	/// <summary>Rounds a computed difficulty value to the given number of digits, half away from zero.</summary>
 	private static double Round(double value, int digits)
 	{
 		return Math.Round(value, digits, MidpointRounding.AwayFromZero);
@@ -105,17 +112,16 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 
 	/// <summary>
 	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjectCounts" />
-	///     subtype. Standard/Taiko/Mania count <paramref name="hitObjects" /> at the top level only —
-	///     confirmed by direct inspection that <c>playable.HitObjects</c> already excludes nested slider
-	///     parts for osu!std, and Taiko/Mania have no equivalent container objects. Catch is the
-	///     exception: <c>JuiceStream</c>/<c>BananaShower</c> are containers whose Droplet/TinyDroplet/
-	///     Banana children only exist in <see cref="HitObject.NestedHitObjects" />, so counting must
-	///     recurse (confirmed empirically — top-level counting only yields Fruit/JuiceStream/
-	///     BananaShower, never the droplet/banana breakdown the API needs). <see cref="CatchBeatmapObjectCounts.TinyDroplets" />
+	///     subtype. Standard/Taiko/Mania count <paramref name="hitObjects" /> at the top level only:
+	///     <c>playable.HitObjects</c> already excludes nested slider parts for osu!std, and Taiko/Mania
+	///     have no equivalent container objects. Catch is the exception: <c>JuiceStream</c> and
+	///     <c>BananaShower</c> are containers whose Droplet/TinyDroplet/Banana children only exist in
+	///     <see cref="HitObject.NestedHitObjects" />, so counting recurses.
+	///     <see cref="CatchBeatmapObjectCounts.TinyDroplets" />
 	///     is checked before <see cref="CatchBeatmapObjectCounts.Droplets" /> since
 	///     <c>TinyDroplet</c> derives from <c>Droplet</c>.
 	/// </summary>
-	private static DomainBeatmaps.BeatmapObjectCounts BuildObjectCounts(GameMode mode, IReadOnlyList<HitObject> hitObjects,
+	private static BeatmapObjectCounts BuildObjectCounts(GameMode mode, IReadOnlyList<HitObject> hitObjects,
 		int maxCombo)
 	{
 		switch (mode)
@@ -126,12 +132,12 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					switch (h)
 					{
-						case osu.Game.Rulesets.Osu.Objects.HitCircle: circles++; break;
-						case osu.Game.Rulesets.Osu.Objects.Slider: sliders++; break;
-						case osu.Game.Rulesets.Osu.Objects.Spinner: spinners++; break;
+						case HitCircle: circles++; break;
+						case Slider: sliders++; break;
+						case Spinner: spinners++; break;
 					}
 
-				return new DomainBeatmaps.OsuBeatmapObjectCounts
+				return new OsuBeatmapObjectCounts
 				{
 					Total = circles + sliders + spinners, MaxCombo = maxCombo,
 					Circles = circles, Sliders = sliders, Spinners = spinners
@@ -143,12 +149,12 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					switch (h)
 					{
-						case osu.Game.Rulesets.Taiko.Objects.DrumRoll: drumRolls++; break;
-						case osu.Game.Rulesets.Taiko.Objects.Swell: dendens++; break;
-						case osu.Game.Rulesets.Taiko.Objects.Hit: hits++; break;
+						case DrumRoll: drumRolls++; break;
+						case Swell: dendens++; break;
+						case Hit: hits++; break;
 					}
 
-				return new DomainBeatmaps.TaikoBeatmapObjectCounts
+				return new TaikoBeatmapObjectCounts
 				{
 					Total = hits + drumRolls + dendens, MaxCombo = maxCombo,
 					Hits = hits, DrumRolls = drumRolls, Dendens = dendens
@@ -160,7 +166,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				return new DomainBeatmaps.CatchBeatmapObjectCounts
+				return new CatchBeatmapObjectCounts
 				{
 					Total = fruits + droplets + tinyDroplets + bananas, MaxCombo = maxCombo,
 					Fruits = fruits, Droplets = droplets, TinyDroplets = tinyDroplets, Bananas = bananas
@@ -172,11 +178,11 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					switch (h)
 					{
-						case osu.Game.Rulesets.Mania.Objects.HoldNote: holdNotes++; break;
-						case osu.Game.Rulesets.Mania.Objects.Note: notes++; break;
+						case HoldNote: holdNotes++; break;
+						case Note: notes++; break;
 					}
 
-				return new DomainBeatmaps.ManiaBeatmapObjectCounts
+				return new ManiaBeatmapObjectCounts
 				{
 					Total = notes + holdNotes, MaxCombo = maxCombo, Notes = notes, HoldNotes = holdNotes
 				};
@@ -186,21 +192,23 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 		}
 	}
 
+	/// <summary>Recursively counts a Catch hit object and its nested parts into the per-type totals.</summary>
 	private static void CountCatchRecursive(HitObject h, ref int fruits, ref int droplets, ref int tinyDroplets,
 		ref int bananas)
 	{
 		switch (h)
 		{
-			case osu.Game.Rulesets.Catch.Objects.TinyDroplet: tinyDroplets++; break;
-			case osu.Game.Rulesets.Catch.Objects.Droplet: droplets++; break;
-			case osu.Game.Rulesets.Catch.Objects.Banana: bananas++; break;
-			case osu.Game.Rulesets.Catch.Objects.Fruit: fruits++; break;
+			case TinyDroplet: tinyDroplets++; break;
+			case Droplet: droplets++; break;
+			case Banana: bananas++; break;
+			case Fruit: fruits++; break;
 		}
 
 		foreach (var nested in h.NestedHitObjects)
 			CountCatchRecursive(nested, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 	}
 
+	/// <summary>Creates the osu!lazer ruleset instance for the given game mode.</summary>
 	private static Ruleset CreateRuleset(GameMode mode)
 	{
 		return mode switch
@@ -214,7 +222,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	}
 
 	/// <summary>
-	///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only — no
+	///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only: no
 	///     osu!framework host, audio, or texture access is needed or provided.
 	/// </summary>
 	private sealed class StreamlessWorkingBeatmap(Beatmap beatmap)

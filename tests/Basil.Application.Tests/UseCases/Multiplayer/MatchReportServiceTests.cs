@@ -16,7 +16,7 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 
 public class MatchReportServiceTests
 {
-	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly IMatchPersistenceRepository _matchPersistence = Substitute.For<IMatchPersistenceRepository>();
 	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
@@ -34,7 +34,7 @@ public class MatchReportServiceTests
 
 	private MatchReportService MakeService()
 	{
-		return new MatchReportService(_matchRegistry, _matchPersistence, _scores, _sessionRegistry, _users, _maps);
+		return new MatchReportService(_matchRegistry, _matchPersistence, _scores, _sessionRegistry, _users, _beatmaps);
 	}
 
 	private static MatchRow MakeMatchRow(int id = 5)

@@ -4,12 +4,15 @@ using System.Text;
 namespace Basil.Protocol.Packets;
 
 /// <summary>
-///     Low-level binary primitives for the Bancho protocol. Ported from the write-side helpers in
-///     app/packets.py (write_uleb128, write_string, write_i32_list, and the packet header assembled
-///     in write()). All multi-byte integers are little-endian, per the osu! protocol.
+///     Low-level binary primitives for the Bancho protocol: ULEB128 lengths, osu!-format strings,
+///     32-bit integer lists, and the 7-byte packet header. All multi-byte integers are little-endian,
+///     per the osu! protocol.
 /// </summary>
 public static class PacketWriter
 {
+	/// <summary>Encodes an integer as a ULEB128 variable-length byte sequence.</summary>
+	/// <param name="value">The value to encode.</param>
+	/// <returns>The ULEB128 bytes for the value.</returns>
 	public static byte[] WriteUleb128(int value)
 	{
 		if (value == 0) return [0x00];
@@ -29,6 +32,9 @@ public static class PacketWriter
 		return [.. bytes];
 	}
 
+	/// <summary>Encodes a string in the osu! wire format: an existence byte, a ULEB128 length, then the UTF-8 bytes.</summary>
+	/// <param name="value">The string to encode.</param>
+	/// <returns>The encoded bytes, or a single <c>0x00</c> byte when the string is empty or <see langword="null" />.</returns>
 	public static byte[] WriteString(string value)
 	{
 		if (string.IsNullOrEmpty(value)) return [0x00];
@@ -43,6 +49,9 @@ public static class PacketWriter
 		return result;
 	}
 
+	/// <summary>Encodes a list of 32-bit integers with a 16-bit unsigned count prefix.</summary>
+	/// <param name="values">The values to encode.</param>
+	/// <returns>The encoded bytes.</returns>
 	public static byte[] WriteI32List(IReadOnlyList<int> values)
 	{
 		var result = new byte[2 + values.Count * 4];
@@ -54,6 +63,9 @@ public static class PacketWriter
 		return result;
 	}
 
+	/// <summary>Encodes a 32-bit integer as four little-endian bytes.</summary>
+	/// <param name="value">The value to encode.</param>
+	/// <returns>The encoded bytes.</returns>
 	public static byte[] WriteInt32(int value)
 	{
 		var result = new byte[4];
@@ -61,6 +73,9 @@ public static class PacketWriter
 		return result;
 	}
 
+	/// <summary>Encodes an unsigned 32-bit integer as four little-endian bytes.</summary>
+	/// <param name="value">The value to encode.</param>
+	/// <returns>The encoded bytes.</returns>
 	public static byte[] WriteUInt32(uint value)
 	{
 		var result = new byte[4];
@@ -69,6 +84,9 @@ public static class PacketWriter
 	}
 
 	/// <summary>Wraps a payload with the 7-byte Bancho packet header (id: u16, padding: u8, length: u32).</summary>
+	/// <param name="packetId">The server packet id to place in the header.</param>
+	/// <param name="payload">The payload to place after the header.</param>
+	/// <returns>The complete packet bytes, header followed by payload.</returns>
 	public static byte[] Wrap(ServerPackets packetId, ReadOnlySpan<byte> payload)
 	{
 		var result = new byte[7 + payload.Length];

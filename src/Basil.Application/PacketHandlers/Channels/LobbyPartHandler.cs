@@ -5,7 +5,15 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Channels;
 
-/// <summary>Ported from app/api/domains/cho.py's PartLobby: leaves `#lobby`, no kick packet needed.</summary>
+/// <summary>
+///     Handles the <see cref="ClientPackets.PartLobby" /> packet, which the client sends when it
+///     leaves the multiplayer lobby screen. Marks the player as no longer in the lobby and parts the
+///     `#lobby` channel.
+/// </summary>
+/// <remarks>
+///     The part is performed without a kick packet because the client already knows it left the
+///     channel by sending this packet.
+/// </remarks>
 public sealed class LobbyPartHandler(IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
 	: IBanchoPacketHandler
 {

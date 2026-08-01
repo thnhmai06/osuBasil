@@ -9,6 +9,13 @@ namespace Basil.Web.OpenApi;
 /// </summary>
 internal static class MultipartRequestBodyExtensions
 {
+	/// <summary>
+	///     Declares the route's request body as a required <c>multipart/form-data</c> upload carrying a
+	///     single binary file field.
+	/// </summary>
+	/// <param name="builder">The route to declare the multipart request body on.</param>
+	/// <param name="fieldName">The name of the multipart file field. The default is <c>"file"</c>.</param>
+	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
 	public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder,
 		string fieldName = "file")
 	{

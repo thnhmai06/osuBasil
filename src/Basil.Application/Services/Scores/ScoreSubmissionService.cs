@@ -11,20 +11,50 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Services.Scores;
 
+/// <summary>
+///     Identifies the outcome of a score submission attempt.
+/// </summary>
 public enum ScoreSubmissionResultCode
 {
+	/// <summary>The score was stored successfully.</summary>
 	Success,
+
+	/// <summary>The submitted beatmap MD5 does not match any stored beatmap.</summary>
 	BeatmapNotFound,
+
+	/// <summary>The submitting player could not be authenticated as an online player.</summary>
 	PlayerNotFound,
+
+	/// <summary>A score with the same online checksum was already stored.</summary>
 	DuplicateSubmission
 }
 
 /// <summary>
-///     Ported from app/services/score_submission.py's ScoreSubmissionRequest. ScoreDataFields is the
-///     full decrypted colon-delimited submission (beatmap_md5, username, then the 16 score fields) —
-///     decryption happens at the HTTP endpoint, which owns the encrypted form fields this use case
-///     doesn't need to see.
+///     Holds the raw, decrypted data of a single score submission.
 /// </summary>
+/// <param name="ScoreDataFields">
+///     The full colon-delimited submission: the beatmap MD5, the username, then the sixteen
+///     score fields.
+/// </param>
+/// <param name="PasswordMd5">The MD5 hash of the player's password.</param>
+/// <param name="OsuVersion">The osu! version string sent with the submission.</param>
+/// <param name="ClientHash">The client hash of the submitting client.</param>
+/// <param name="UniqueIds">The pipe-delimited unique-id string sent by the client.</param>
+/// <param name="StoryboardMd5">
+///     The MD5 of the beatmap's storyboard file, or <see langword="null" /> if the beatmap has
+///     none.
+/// </param>
+/// <param name="UpdatedBeatmapHash">
+///     The beatmap hash the client claims, compared against the stored one during integrity
+///     validation.
+/// </param>
+/// <param name="ScoreTime">The duration of a passed play, in milliseconds.</param>
+/// <param name="FailTime">The duration of a failed play, in milliseconds.</param>
+/// <param name="ReplayData">The raw replay bytes from the submission, or <see langword="null" /> for a failed play.</param>
+/// <remarks>
+///     Decryption happens at the HTTP endpoint, which owns the encrypted form fields this use case
+///     never sees.
+/// </remarks>
 public sealed record ScoreSubmissionRequest(
 	IReadOnlyList<string> ScoreDataFields,
 	string PasswordMd5,
@@ -38,11 +68,19 @@ public sealed record ScoreSubmissionRequest(
 	byte[]? ReplayData);
 
 /// <summary>
-///     A submitted score plus everything about it that isn't intrinsic to the score fact itself: its
-///     persisted id (DB-generated, never carried on <see cref="Submission" />), the resolved
-///     beatmap and player name (looked up once, threaded through rather than re-queried), and the
-///     rank reported back to the client.
+///     A stored score together with the context that surrounds it but is not part of the score
+///     fact itself.
 /// </summary>
+/// <param name="Score">The stored submission.</param>
+/// <param name="ScoreId">The database id assigned to the stored score.</param>
+/// <param name="Beatmap">The beatmap the score was played on.</param>
+/// <param name="PlayerName">The submitting player's name.</param>
+/// <param name="Rank">The per-beatmap rank reported back to the client, or <see langword="null" /> for a failed play.</param>
+/// <remarks>
+///     <see cref="ScoreId" /> is database-generated and never carried on
+///     <see cref="Submission" />. The beatmap and player name are looked up once during submission
+///     and threaded through rather than re-queried by the response path.
+/// </remarks>
 public sealed record SubmittedScoreResult(
 	Submission Score,
 	long ScoreId,
@@ -50,28 +88,36 @@ public sealed record SubmittedScoreResult(
 	string PlayerName,
 	int? Rank);
 
+/// <summary>
+///     The outcome of a score submission attempt.
+/// </summary>
+/// <param name="Code">The result of the attempt.</param>
+/// <param name="Result">
+///     The stored score and its context when the submission succeeded, or <see langword="null" />
+///     otherwise.
+/// </param>
 public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, SubmittedScoreResult? Result = null);
 
 /// <summary>
-///     Ported from app/services/score_submission.py's ScoreSubmissionService.submit_score, collapsed
-///     to Basil's no-pp scope (every `pp`-vs-`score` branch in the Python source always takes the
-///     score branch here) and its 100%-offline scope (no `.osu` file fetch). Every valid submission
-///     is persisted unconditionally, solo or in a room, matching bancho.py's own unconditional
-///     persistence — the only server-side rejections are an unknown beatmap and a duplicate
-///     checksum. If the submitting player is currently in a multiplayer match with an active round,
+///     Persists a score submitted by an osu! client and reports the outcome back.
+/// </summary>
+/// <remarks>
+///     Runs in Basil's no-pp, fully-offline scope: every valid submission is stored
+///     unconditionally, solo or in a room, with no pp calculation and no fetch of the beatmap's
+///     <c>.osu</c> file. The only server-side rejections are an unknown beatmap and a duplicate
+///     online checksum. When the submitting player is in a multiplayer match with an active round,
 ///     the score is opportunistically linked to that round
 ///     (<see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" />) with the
-///     player's slot team, which is what lets the TRT and Scores read paths reconstruct a match's
-///     results; a solo score (or one that arrives after its round already ended — see
-///     <c>MatchCompleteHandler</c>'s doc comment) is simply persisted with a null RoundId/Team instead,
-///     exactly like the schema's own `Scores` table comment describes. Every persisted submission
-///     (pass or fail) also bumps <see cref="IStatsRepository.IncrementAsync" /> — TotalScore always,
-///     RankedScore only when linked to a round — and the submitting player's own in-memory
-///     <see cref="PlayerSession.ModeStats" /> cache, so their next `ChangeAction`-triggered UserStats
-///     packet reflects it without needing to re-login.
-/// </summary>
+///     player's slot team, which is what lets the match report and score read paths reconstruct a
+///     match's results. A solo score, or one that arrives after its round already ended, is stored
+///     with a null round id and team instead. Every stored submission, pass or fail, also bumps
+///     <see cref="IStatsRepository.IncrementAsync" /> (TotalScore always, RankedScore only when
+///     linked to a round) and refreshes the player's in-memory
+///     <see cref="PlayerSession.ModeStats" /> cache, so the next user-stats packet reflects the
+///     change without a re-login.
+/// </remarks>
 public sealed class ScoreSubmissionService(
-	IMapRepository maps,
+	IBeatmapRepository beatmaps,
 	IScoreRepository scores,
 	IStatsRepository stats,
 	AuthenticationService authentication,
@@ -80,15 +126,27 @@ public sealed class ScoreSubmissionService(
 {
 	private const int MinReplaySize = 24;
 
-	// Ported from ScoreSubmissionLocks — one lock per in-flight online_checksum, so duplicate
-	// near-simultaneous submissions of the same score can't both pass the duplicate check.
+	// One lock per in-flight online checksum, so two near-simultaneous submissions of the same
+	// score cannot both pass the duplicate check.
 	private static readonly ConcurrentDictionary<string, SemaphoreSlim> ChecksumLocks = new();
 
+	/// <summary>
+	///     Submits a single score to the server.
+	/// </summary>
+	/// <param name="request">The decrypted score submission data.</param>
+	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <returns>A <see cref="ScoreSubmissionOutcome" /> describing the result.</returns>
+	/// <remarks>
+	///     Rejects the submission when the beatmap is unknown or the player cannot be authenticated
+	///     as an online player. A valid, non-duplicate submission is stored unconditionally, its
+	///     replay file written when present and large enough, and the result linked to the player's
+	///     active match round when one exists.
+	/// </remarks>
 	public async Task<ScoreSubmissionOutcome> SubmitAsync(ScoreSubmissionRequest request,
 		CancellationToken cancellationToken = default)
 	{
 		var beatmapMd5 = request.ScoreDataFields[0];
-		var beatmap = await maps.FetchOneAsync(md5: beatmapMd5, cancellationToken: cancellationToken);
+		var beatmap = await beatmaps.FetchOneAsync(md5: beatmapMd5, cancellationToken: cancellationToken);
 		if (beatmap is null)
 		{
 			logger.LogInformation("Score submission rejected: BeatmapMd5={BeatmapMd5} not found", beatmapMd5);
@@ -121,7 +179,7 @@ public sealed class ScoreSubmissionService(
 		}
 		catch (ScoreSubmissionIntegrityException e)
 		{
-			// Non-fatal: bancho.py only logs + records a metric here — ported as-is.
+			// Non-fatal: an integrity failure is only logged; the score is still processed.
 			logger.LogInformation("Score submission integrity check failed: UserId={UserId} Reason={Reason}",
 				player.Id, e.Message);
 		}
@@ -132,9 +190,9 @@ public sealed class ScoreSubmissionService(
 			player.Status.Mode = score.Mode;
 		}
 
-		// Ported from Player.match — captured before the checksum lock so a slot/team change
-		// racing with this submission can't matter (the round the player was actually playing is
-		// whatever their match/slot said at the moment gameplay ended).
+		// Captured before the checksum lock so a slot/team change racing with this submission
+		// cannot matter: the round the player was actually playing is whatever their match and slot
+		// said when gameplay ended.
 		var match = player.Match;
 		var roundId = match?.CurrentRoundId;
 		MatchTeam? team = match?.GetSlot(player.Id)?.Team is { } slotTeam and not MatchTeam.Neutral
@@ -158,7 +216,8 @@ public sealed class ScoreSubmissionService(
 			var replayData = score.IsPassed ? request.ReplayData : null;
 			if (replayData is not null && replayData.Length < MinReplaySize)
 			{
-				// No restriction/moderation system — only the replay is discarded; the score still counts.
+				// No restriction or moderation system here, so only the replay is discarded; the
+				// score still counts.
 				logger.LogDebug("Replay discarded (under MinReplaySize): UserId={UserId}", player.Id);
 				replayData = null;
 			}
@@ -194,13 +253,21 @@ public sealed class ScoreSubmissionService(
 	}
 
 	/// <summary>
-	///     Every passed score is unconditionally the player's best (no comparison against prior
-	///     scores) and always reported at rank 1 — a deliberate product decision so the osu! client
-	///     always believes it achieved a top score and uploads its replay. This is the per-beatmap
-	///     chart rank shown on the results screen — unrelated to the player's overall/global rank
-	///     (<see cref="Basil.Application.Sessions.CachedPlayerStats.Rank" />), which is the player's own
-	///     user id instead (see <c>LoginService</c>).
+	///     Determines the per-beatmap rank to report for the submission.
 	/// </summary>
+	/// <param name="score">The parsed submission.</param>
+	/// <param name="scoreTime">The duration of a passed play, in milliseconds.</param>
+	/// <param name="failTime">The duration of a failed play, in milliseconds.</param>
+	/// <returns>The submission with its elapsed time set and the rank to report.</returns>
+	/// <remarks>
+	///     Every passed score is unconditionally reported at rank 1, never compared against earlier
+	///     scores, so the osu! client always believes it achieved a top score and uploads its
+	///     replay. This rank is the per-beatmap chart rank shown on the results screen and is
+	///     unrelated to the player's overall rank
+	///     (<see cref="Basil.Application.Sessions.CachedPlayerStats.Rank" />), which holds the
+	///     player's own user id instead (see
+	///     <see cref="Basil.Application.Services.Authentication.LoginService" />).
+	/// </remarks>
 	private static (Submission Score, int? Rank) CalculateSubmissionStatus(
 		Submission score, int scoreTime, int failTime)
 	{
@@ -237,9 +304,10 @@ public sealed class ScoreSubmissionService(
 	}
 
 	/// <summary>
-	///     Ported from score_submission_username — a supporter client appends a trailing space; a username ending in a
-	///     real space must be preserved.
+	///     Removes the trailing space the client appends to the username of a supporter account.
 	/// </summary>
+	/// <param name="rawUsername">The username field as submitted by the client.</param>
+	/// <returns>The username with one trailing space removed when present.</returns>
 	private static string ExtractUsername(string rawUsername)
 	{
 		return rawUsername.EndsWith(' ') ? rawUsername[..^1] : rawUsername;

@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Tests.Media;
 ///     docs/run-deployment.md's Docker-vs-manual-publish split for where ffmpeg is expected to come
 ///     from in a real deployment).
 /// </summary>
-public class FFMpegAudioPreviewExtractorTests
+public class FfmpegAudioPreviewExtractorTests
 {
 	[Fact]
 	public async Task ExtractAsync_RealFfmpeg_ProducesNonEmptyMp3Clip()
@@ -21,7 +21,7 @@ public class FFMpegAudioPreviewExtractorTests
 		{
 			await GenerateSineWaveAsync(sourcePath, TimeSpan.FromSeconds(3));
 
-			var extractor = new FFMpegAudioPreviewExtractor();
+			var extractor = new FfmpegAudioPreviewExtractor();
 			var clip = await extractor.ExtractAsync(sourcePath, 0, TimeSpan.FromSeconds(2));
 
 			Assert.True(clip.Length > 1000, "expected a non-trivial mp3 clip");

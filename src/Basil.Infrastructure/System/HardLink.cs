@@ -4,6 +4,10 @@ using System.Runtime.InteropServices;
 namespace Basil.Infrastructure.System;
 
 /// <summary>Cross-platform hard-Link creation.</summary>
+/// <remarks>
+///     Dispatches to the Win32 <c>CreateHardLinkW</c> API on Windows and to libc's <c>link</c>
+///     elsewhere, throwing <see cref="IOException" /> when the underlying call fails.
+/// </remarks>
 public static partial class HardLink
 {
 	/// <summary>
@@ -13,8 +17,9 @@ public static partial class HardLink
 	/// <param name="linkPath">Path where the hard Link will be created.</param>
 	/// <param name="targetPath">Path to the existing file to Link to.</param>
 	/// <param name="force">
-	///     When <c>true</c> (default), deletes any existing file at <paramref name="linkPath" /> before creating
-	///     the Link. When <c>false</c>, throws <see cref="IOException" /> if the path is already occupied.
+	///     <see langword="true" /> to delete any existing file at <paramref name="linkPath" /> before creating
+	///     the Link (the default); <see langword="false" /> to throw <see cref="IOException" /> when the path is
+	///     already occupied.
 	/// </param>
 	/// <exception cref="IOException">The OS call failed or <paramref name="force" /> is false and the path exists.</exception>
 	public static void Create(string linkPath, string targetPath, bool force = true)
@@ -35,6 +40,7 @@ public static partial class HardLink
 	private static partial bool CreateHardLinkW(string lpFileName, string lpExistingFileName,
 		IntPtr lpSecurityAttributes);
 
+	/// <summary>Creates a hard link through the Win32 <c>CreateHardLinkW</c> API.</summary>
 	private static void CreateWindows(string linkPath, string targetPath)
 	{
 		if (!CreateHardLinkW(linkPath, targetPath, IntPtr.Zero))
@@ -49,6 +55,7 @@ public static partial class HardLink
 	[LibraryImport("libc", EntryPoint = "link", SetLastError = true, StringMarshalling = StringMarshalling.Utf8)]
 	private static partial int Link(string oldPath, string newPath);
 
+	/// <summary>Creates a hard link through libc's <c>link</c> function.</summary>
 	private static void CreateUnix(string linkPath, string targetPath)
 	{
 		if (Link(targetPath, linkPath) != 0)

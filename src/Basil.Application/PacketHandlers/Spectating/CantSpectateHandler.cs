@@ -5,7 +5,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.PacketHandlers.Spectating;
 
-/// <summary>Ported from app/api/domains/cho.py's CantSpectate.</summary>
+/// <summary>
+///     Handles the <see cref="ClientPackets.CantSpectate" /> packet, which the client sends when it
+///     cannot spectate its target, usually because the target's current map is missing. Notifies the
+///     spectated host and every fellow spectator that this player cannot spectate.
+/// </summary>
+/// <remarks>
+///     The notification is skipped when the player is not currently spectating anyone or is in stealth
+///     mode. Each recipient receives the same spectator-cant-spectate packet addressed to this
+///     player's id.
+/// </remarks>
 public sealed class CantSpectateHandler(ILogger<CantSpectateHandler> logger) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.CantSpectate;

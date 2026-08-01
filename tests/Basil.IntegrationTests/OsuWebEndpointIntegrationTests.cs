@@ -234,5 +234,5 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 	}
 
 	// Database:Path is "" for this test host (no real DB) — /difficulty-rating still calls
-	// IMapRepository unconditionally, so it needs a stub rather than a real connection.
+	// IBeatmapRepository unconditionally, so it needs a stub rather than a real connection.
 }

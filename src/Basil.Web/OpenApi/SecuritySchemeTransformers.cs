@@ -16,6 +16,11 @@ internal static class SecuritySchemeTransformers
 {
 	private const string SchemeId = "AdminKey";
 
+	/// <summary>
+	///     Registers the document and operation transformers that declare the admin key security scheme
+	///     and attach it to every operation that enforces the admin key policy.
+	/// </summary>
+	/// <param name="options">The OpenAPI options to register the transformers on.</param>
 	public static void AddAdminKeyDocumentTransformer(this OpenApiOptions options)
 	{
 		options.AddDocumentTransformer((document, _, _) =>

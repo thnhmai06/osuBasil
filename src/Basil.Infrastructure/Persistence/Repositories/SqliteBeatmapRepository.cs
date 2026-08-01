@@ -7,9 +7,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Repositories;
 
-/// <inheritdoc cref="IMapRepository" />
-public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteMapRepository> logger)
-	: IMapRepository
+/// <inheritdoc cref="IBeatmapRepository" />
+/// <remarks>
+///     Reads join the Beatmaps and Mapsets tables and map through the private mutable row DTOs
+///     (<c>BeatmapRow</c> and <c>MapsetRow</c>), since Dapper materializes by property name rather
+///     than through a positional record constructor. Each method opens its own connection.
+/// </remarks>
+public sealed class SqliteBeatmapRepository(string connectionString, ILogger<SqliteBeatmapRepository> logger)
+	: IBeatmapRepository
 {
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
@@ -18,6 +23,15 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Dapper has no multi-map <c>QueryFirstOrDefaultAsync</c> overload, so the JOIN is queried
+	///     with <c>QueryAsync</c> and the first row taken. Id, md5, and filename each match at most
+	///     one row because of their unique constraints, but setId can match several difficulties
+	///     within the same set, in which case any one of them satisfies the lookup. When
+	///     <paramref name="includePrivate" /> is <see langword="false" />, a mapset-level privacy
+	///     filter (<c>m.IsPrivate = 0</c>) is added to the query.
+	/// </remarks>
 	public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
 		int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
 	{
@@ -54,9 +68,6 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		if (!includePrivate) conditions.Add("m.IsPrivate = 0");
 
 		await using var connection = Connect();
-		// Dapper has no multi-map QueryFirstOrDefaultAsync overload — QueryAsync + FirstOrDefault.
-		// id/md5/filename each match at most one row (unique constraints), but setId can match
-		// several maps within the same set — any one will do.
 		var beatmaps = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
 			$"""
 			 SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
@@ -68,6 +79,15 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		return beatmaps.FirstOrDefault();
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     The row is matched by <see cref="Beatmap.Md5" /> first: when that md5 already exists its
+	///     id is kept regardless of the incoming id, so a re-ingested difficulty never changes
+	///     identity. Otherwise the incoming id is used when positive, or a fresh local id is
+	///     allocated from <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c>. The write is
+	///     a <c>REPLACE INTO</c> that overwrites every column, and
+	///     <see cref="BeatmapObjectCounts" /> is serialized to JSON before storage.
+	/// </remarks>
 	public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
 		var existing =
@@ -115,6 +135,7 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		return resolved;
 	}
 
+	/// <inheritdoc />
 	public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -122,6 +143,13 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		logger.LogDebug("Beatmap deleted: Md5={Md5}", md5);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Runs in two passes: first the distinct matching set ids are collected, newest setId
+	///     first, with the page applied at the set level; then the full rows for those sets are
+	///     read back and grouped by set. Each set's difficulties come back ordered by star rating
+	///     ascending, and only sets whose id survived the first pass are included.
+	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
 		string? query, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default)
@@ -172,12 +200,14 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
 	}
 
+	/// <inheritdoc />
 	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Beatmaps");
 	}
 
+	/// <inheritdoc />
 	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -185,6 +215,11 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		logger.LogDebug("Beatmap diff updated: Id={Id} Sr={Sr}", id, diff);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     Applies the same mapset-level privacy filter as <see cref="FetchOneAsync" />, excluding
+	///     the set's beatmaps when <paramref name="includePrivate" /> is <see langword="false" />.
+	/// </remarks>
 	public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
 		CancellationToken cancellationToken = default)
 	{
@@ -203,13 +238,17 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		return [.. rows];
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
-	// Mutable DTOs so Dapper maps by property name instead of strict positional-constructor-type
-	// matching. Split into Beatmaps-only and Mapsets-only halves for the JOIN's multi-mapping.
+	/// <summary>
+	///     A mutable row DTO matching the Beatmaps columns of the shared SELECT, split off from the
+	///     Mapsets columns so Dapper's multi-mapping can map each half of the JOIN. Mutable because
+	///     Dapper fills by property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class BeatmapRow
 	{
 		public string Md5 { get; set; } = "";
@@ -229,6 +268,13 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		public int? PreviewTime { get; set; }
 		public string ObjectCounts { get; set; } = "{}";
 
+		/// <summary>Builds a <see cref="Beatmap" /> from this row, deserializing the JSON object counts.</summary>
+		/// <param name="mapset">The owning mapset, built from the Mapsets half of the JOIN.</param>
+		/// <returns>The domain beatmap.</returns>
+		/// <exception cref="InvalidOperationException">
+		///     The stored <c>BeatmapObjectCounts</c> column is not a valid JSON
+		///     object-counts payload.
+		/// </exception>
 		public Beatmap ToBeatmap(Mapset mapset)
 		{
 			var objectCounts = JsonSerializer.Deserialize<BeatmapObjectCounts>(ObjectCounts)
@@ -241,6 +287,10 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		}
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the Mapsets columns of the shared SELECT, the other half of
+	///     the JOIN's multi-mapping.
+	/// </summary>
 	private sealed class MapsetRow
 	{
 		public int Id { get; set; }
@@ -252,6 +302,8 @@ public sealed class SqliteMapRepository(string connectionString, ILogger<SqliteM
 		public bool IsFrozen { get; set; }
 		public bool IsPrivate { get; set; }
 
+		/// <summary>Builds a <see cref="Mapset" /> from this row.</summary>
+		/// <returns>The domain mapset.</returns>
 		public Mapset ToMapset()
 		{
 			return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);

@@ -5,16 +5,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/maps.py, scoped to what beatmap resolution needs:
+///     Ported from app/repositories/beatmaps.py, scoped to what beatmap resolution needs:
 ///     lookup by id/md5/filename and upsert. `server` is hardcoded to "osu!" everywhere.
 /// </summary>
-public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
+public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteMapsetRepository _mapsetRepository =
 		new(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
 
-	private readonly SqliteMapRepository _repository =
-		new(fixture.ConnectionString, NullLogger<SqliteMapRepository>.Instance);
+	private readonly SqliteBeatmapRepository _repository =
+		new(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 
 	private static Mapset MakeMapset(int id, string artist = "Camellia",
 		string title = "Exit This Earth's Atomosphere", string creator = "cmyui", bool isPrivate = false)
@@ -56,7 +56,8 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var bmap = MakeBeatmap(103, "cccccccccccccccccccccccccccccccc") with
 		{
 			BackgroundFile = "bg.jpg",
-			BeatmapObjectCounts = new OsuBeatmapObjectCounts { Total = 167, MaxCombo = 500, Circles = 120, Sliders = 45, Spinners = 2 }
+			BeatmapObjectCounts = new OsuBeatmapObjectCounts
+				{ Total = 167, MaxCombo = 500, Circles = 120, Sliders = 45, Spinners = 2 }
 		};
 
 		await UpsertBeatmapAsync(bmap);
@@ -129,7 +130,10 @@ public class SqliteMapRepositoryTests(SqliteFixture fixture) : IClassFixture<Sql
 		var original = MakeBeatmap(107, "bb000000000000000000000000000b");
 		var firstResolved = await UpsertBeatmapAsync(original);
 
-		var reupserted = original with { Id = 999_999, BeatmapObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 7 } };
+		var reupserted = original with
+		{
+			Id = 999_999, BeatmapObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 7 }
+		};
 		var secondResolved = await UpsertBeatmapAsync(reupserted);
 
 		Assert.Equal(firstResolved.Id, secondResolved.Id);

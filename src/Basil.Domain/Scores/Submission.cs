@@ -201,6 +201,7 @@ public sealed record Submission
 
 	/// <summary>Gets or sets the MD5 hash of the beatmap the score was played on.</summary>
 	public required string BeatmapMd5 { get; init; }
+
 	/// <summary>Gets or sets the id of the player who submitted the score.</summary>
 	public required int UserId { get; init; }
 
@@ -210,6 +211,7 @@ public sealed record Submission
 
 	/// <summary>Gets or sets the game mode the score was played in.</summary>
 	public required GameMode Mode { get; init; }
+
 	/// <summary>Gets or sets the mods applied to the play.</summary>
 	public required Mods Mods { get; init; }
 
@@ -219,10 +221,13 @@ public sealed record Submission
 
 	/// <summary>Gets or sets the hit-judgment counts of the play.</summary>
 	public required HitCounts HitCounts { get; init; }
+
 	/// <summary>Gets or sets the total score of the play.</summary>
 	public required long Score { get; init; }
+
 	/// <summary>Gets or sets the maximum combo achieved in the play.</summary>
 	public required int MaxCombo { get; init; }
+
 	/// <summary>Gets or sets the letter grade of the play.</summary>
 	public required Grade Grade { get; init; }
 
@@ -234,6 +239,7 @@ public sealed record Submission
 
 	/// <summary>Gets or sets a value that indicates whether the play was passed.</summary>
 	public required bool IsPassed { get; init; }
+
 	/// <summary>Gets or sets a value that indicates whether the play was a full combo. Also known as IsPerfect.</summary>
 	public required bool IsFullCombo { get; init; } // IsPerfect
 
@@ -243,8 +249,10 @@ public sealed record Submission
 
 	/// <summary>Gets or sets the time the client recorded for the play, in UTC.</summary>
 	public required DateTime ClientTime { get; init; }
+
 	/// <summary>Gets the time the server received the submission, in UTC.</summary>
 	public DateTime ServerTime { get; init; } = DateTime.UtcNow;
+
 	/// <summary>Gets or sets the duration of the play.</summary>
 	public TimeSpan TimeElapsed { get; init; }
 
@@ -254,6 +262,7 @@ public sealed record Submission
 
 	/// <summary>Gets or sets the anticheat flags the client reported with the submission.</summary>
 	public ClientFlags ClientFlags { get; init; } = ClientFlags.Clean;
+
 	/// <summary>Gets or sets the checksum the client supplied with the submission.</summary>
 	public string ClientChecksum { get; init; } = string.Empty;
 

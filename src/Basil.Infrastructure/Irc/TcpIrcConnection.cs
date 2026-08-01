@@ -15,10 +15,24 @@ namespace Basil.Infrastructure.Irc;
 
 /// <summary>
 ///     One real TCP IRC client. Owns the socket's read loop (handshake, then PRIVMSG/JOIN/PART/AWAY/
-///     PING/QUIT dispatch) and a bounded-channel write pump mirroring <c>LiveSseRoutes</c>'s
-///     pattern — <see cref="Send" /> is a non-blocking <c>TryWrite</c> so a slow/dead client can never
-///     stall a broadcast still holding a lock elsewhere in the chat core.
+///     PING/QUIT dispatch) and a bounded-channel write pump. <see cref="Send" /> is a non-blocking
+///     <c>TryWrite</c>, so a slow or dead client can never stall a broadcast
+///     made while another lock is held elsewhere in the chat core.
 /// </summary>
+/// <remarks>
+///     Implements <see cref="IIrcConnection" /> for a real external IRC client. Outgoing messages
+///     queue on a bounded outbox that drops the oldest entry when full, honoring the port's
+///     non-blocking send contract. The connection id scopes this connection's log events.
+/// </remarks>
+/// <param name="client">The accepted TCP socket to read from and write to.</param>
+/// <param name="authService">Authenticates the PASS/NICK handshake and builds the session on success.</param>
+/// <param name="chatDispatch">Routes registered PRIVMSG traffic into the shared chat core.</param>
+/// <param name="channelMembership">Handles JOIN/PART commands and the quit performed at teardown.</param>
+/// <param name="channelRegistry">Resolves JOIN/PART channel names to their live sessions.</param>
+/// <param name="sessionRegistry">The registry the authenticated session is added to and later removed from.</param>
+/// <param name="options">Provides the gateway's display name used in numerics and PINGs.</param>
+/// <param name="logger">Logs this connection's lifecycle events.</param>
+/// <param name="connectionId">The per-process-unique id assigned to this connection by the listener.</param>
 public sealed class TcpIrcConnection(
 	TcpClient client,
 	IrcAuthenticationService authService,
@@ -30,22 +44,43 @@ public sealed class TcpIrcConnection(
 	ILogger<TcpIrcConnection> logger,
 	long connectionId) : IIrcConnection
 {
+	/// <summary>The interval at which a keepalive PING is sent to a registered client.</summary>
 	private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
 
+	/// <summary>
+	///     The bounded outbox drained by the write pump. When full, the oldest queued message is
+	///     dropped so a slow client can never block a sender.
+	/// </summary>
 	private readonly Channel<IrcMessage> _outbox = Channel.CreateBounded<IrcMessage>(
 		new BoundedChannelOptions(64) { FullMode = BoundedChannelFullMode.DropOldest });
 
+	/// <summary>Indicates whether the PASS/NICK handshake has completed and <see cref="Player" /> is set.</summary>
 	private bool _registered;
 
+	/// <inheritdoc />
+	/// <remarks>Null until authentication succeeds.</remarks>
 	public PlayerSession Player { get; private set; } = null!;
 
+	/// <inheritdoc />
+	/// <remarks>Always <see langword="true" />: this type is the real external IRC transport.</remarks>
 	public bool IsExternalIrcClient => true;
 
+	/// <summary>
+	///     Enqueues to the bounded outbox with a non-blocking <c>TryWrite</c>.
+	///     When the outbox is full the oldest queued message is dropped rather than this call stalling.
+	/// </summary>
 	public void Send(IrcMessage message)
 	{
 		_outbox.Writer.TryWrite(message);
 	}
 
+	/// <summary>
+	///     Runs the connection until the client closes the socket or <paramref name="cancellationToken" />
+	///     is cancelled. Starts the write pump and ping loop, drives the read loop, then on teardown
+	///     quits the session's channels and removes it from the session registry.
+	/// </summary>
+	/// <param name="cancellationToken">A token that stops the connection and triggers teardown.</param>
+	/// <returns>A task that completes when the connection has finished its teardown.</returns>
 	public async Task RunAsync(CancellationToken cancellationToken)
 	{
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["ConnectionId"] = connectionId });
@@ -79,6 +114,12 @@ public sealed class TcpIrcConnection(
 		}
 	}
 
+	/// <summary>
+	///     Reads client lines until the socket closes. Before registration, buffers the PASS and NICK
+	///     values and attempts authentication once both are present. After registration, dispatches
+	///     each line through <see cref="HandleRegisteredCommandAsync" /> and refreshes the session's
+	///     <see cref="PlayerSession.LastRecvTime" />.
+	/// </summary>
 	private async Task ReadLoopAsync(StreamReader reader, CancellationToken cancellationToken)
 	{
 		string? nick = null;
@@ -159,6 +200,10 @@ public sealed class TcpIrcConnection(
 		return true;
 	}
 
+	/// <summary>
+	///     Attempts authentication with the supplied nick and password, sending each reply message
+	///     from the outcome, and on success stores the session and marks the connection registered.
+	/// </summary>
 	private async Task TryRegisterAsync(string nick, string pass, CancellationToken cancellationToken)
 	{
 		var outcome = await authService.AuthenticateAsync(nick, pass, this, cancellationToken);
@@ -175,6 +220,7 @@ public sealed class TcpIrcConnection(
 		logger.LogInformation("IRC login succeeded: UserId={UserId} Nick={Nick}", Player.Id, Player.Name);
 	}
 
+	/// <summary>Drains the outbox, writing each message to the socket as a CRLF-terminated wire line.</summary>
 	private async Task PumpWritesAsync(StreamWriter writer, CancellationToken cancellationToken)
 	{
 		try
@@ -192,6 +238,7 @@ public sealed class TcpIrcConnection(
 		}
 	}
 
+	/// <summary>Sends a keepalive PING to a registered client every <see cref="PingInterval" />.</summary>
 	private async Task PingLoopAsync(CancellationToken cancellationToken)
 	{
 		try

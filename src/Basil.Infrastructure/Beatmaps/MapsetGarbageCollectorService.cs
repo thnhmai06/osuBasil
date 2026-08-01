@@ -7,12 +7,12 @@ namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
 ///     Physically deletes <see cref="BeatmapIngestionService.DeletedFolderInfix" />-marked mapset
-///     folders — the atomic in-place rename the `api.` host's async mapset-delete route performs
-///     (and <see cref="BeatmapWatcherService" />/<see cref="BeatmapIngestionService" /> already treat
-///     as "gone" for DB purposes) leaves the folder itself on disk until this pass reclaims it. Runs
-///     on its own timer (not driven by the live <see cref="FileSystemWatcher" />) so a locked file
-///     (an in-flight read from another process) just gets retried next cycle instead of failing the
-///     delete route or the watcher's debounce.
+///     folders. The atomic in-place rename that marks a folder for deletion leaves the folder itself
+///     on disk until this pass reclaims it: <see cref="BeatmapWatcherService" /> and
+///     <see cref="BeatmapIngestionService" /> already treat such folders as gone for DB purposes.
+///     Runs on its own timer (not driven by the live <see cref="FileSystemWatcher" />) so a locked
+///     file (an in-flight read from another process) just gets retried next cycle instead of failing
+///     that cycle's pass.
 /// </summary>
 public sealed class MapsetGarbageCollectorService(
 	IOptions<StorageOptions> options,
@@ -20,6 +20,10 @@ public sealed class MapsetGarbageCollectorService(
 {
 	private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
 
+	/// <summary>
+	///     Runs the collection loop until shutdown: one immediate pass, then another every
+	///     <see cref="Interval" />.
+	/// </summary>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		while (!stoppingToken.IsCancellationRequested)
@@ -37,6 +41,11 @@ public sealed class MapsetGarbageCollectorService(
 		}
 	}
 
+	/// <summary>
+	///     Deletes every folder under <see cref="StorageOptions.MapsetsPath" /> whose name carries the
+	///     deletion marker, logging a warning for any that fail (typically a locked file) so they
+	///     retry next cycle.
+	/// </summary>
 	private void CollectOnce()
 	{
 		var path = options.Value.MapsetsPath;

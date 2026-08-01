@@ -3,13 +3,27 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Core;
 
-/// <summary>Ported from app/api/domains/cho.py's Ping — a no-op.</summary>
+/// <summary>
+///     Handles the Ping packet, which the client sends to keep the connection alive.
+/// </summary>
+/// <remarks>
+///     The packet carries no meaningful payload and requires no response, so handling it is a no-op.
+///     Keeping the session marked as alive is handled by the transport layer when it reads the
+///     request, not by this handler.
+/// </remarks>
 public sealed class PingHandler : IBanchoPacketHandler
 {
+	/// <summary>The <see cref="ClientPackets.Ping" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.Ping;
 
+	/// <summary>Restricted players may ping, so this handler is always available.</summary>
 	public bool AllowedWhenRestricted => true;
 
+	/// <summary>Does nothing.</summary>
+	/// <param name="player">The player session that sent the ping.</param>
+	/// <param name="reader">The packet reader positioned at the Ping body.</param>
+	/// <param name="cancellationToken">The token used to cancel the operation.</param>
+	/// <returns>A completed task.</returns>
 	public Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

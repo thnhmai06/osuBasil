@@ -12,22 +12,31 @@ public enum Grade : byte
 {
 	/// <summary>No grade, used for failed or incomplete plays.</summary>
 	N = 0,
+
 	/// <summary>Fail grade, awarded when the play fails.</summary>
 	F = 1,
+
 	/// <summary>D grade.</summary>
 	D = 2,
+
 	/// <summary>C grade.</summary>
 	C = 3,
+
 	/// <summary>B grade.</summary>
 	B = 4,
+
 	/// <summary>A grade.</summary>
 	A = 5,
+
 	/// <summary>S grade.</summary>
 	S = 6,
+
 	/// <summary>S grade achieved with the Hidden mod.</summary>
 	Sh = 7,
+
 	/// <summary>SS grade, achieved with all 300 judgments.</summary>
 	X = 8,
+
 	/// <summary>SS grade achieved with the Hidden mod.</summary>
 	Xh = 9
 }

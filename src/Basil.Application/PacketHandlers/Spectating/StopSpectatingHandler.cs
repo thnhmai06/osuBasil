@@ -5,7 +5,14 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Spectating;
 
-/// <summary>Ported from app/api/domains/cho.py's StopSpectating.</summary>
+/// <summary>
+///     Handles the <see cref="ClientPackets.StopSpectating" /> packet, which the client sends to stop
+///     spectating. Removes the player from its current spectate target through
+///     <see cref="SpectatorService.RemoveSpectator" />.
+/// </summary>
+/// <remarks>
+///     The packet is a no-op when the player is not currently spectating anyone.
+/// </remarks>
 public sealed class StopSpectatingHandler(SpectatorService spectatorService) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.StopSpectating;

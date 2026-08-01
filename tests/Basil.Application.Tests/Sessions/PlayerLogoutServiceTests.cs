@@ -30,7 +30,7 @@ public class PlayerLogoutServiceTests
 		Substitute.For<IPlayerSessionRegistry>(),
 		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
 		Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
-		Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
 
 	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
@@ -136,7 +136,7 @@ public class PlayerLogoutServiceTests
 			new ChannelMembershipService(sessionRegistry, channelRegistry),
 			new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
-			Substitute.For<IMapRepository>(), Substitute.For<IUserRepository>(),
+			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		var host = new PlayerSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.All.Returns([host]);

@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;

@@ -18,15 +18,15 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 [Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
+	private readonly SqliteBeatmapRepository _beatmaps;
 	private readonly IResponseCache _cache;
-	private readonly SqliteMapRepository _maps;
 	private readonly SqliteMapsetRepository _mapsets;
 	private readonly string _mapsetsPath;
 	private readonly BeatmapIngestionService _service;
 
 	public BeatmapIngestionServiceTests(SqliteFixture fixture)
 	{
-		_maps = new SqliteMapRepository(fixture.ConnectionString, NullLogger<SqliteMapRepository>.Instance);
+		_beatmaps = new SqliteBeatmapRepository(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 		_mapsets = new SqliteMapsetRepository(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
@@ -39,7 +39,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
 		});
 		_cache = new FileSystemResponseCache(options);
-		_service = new BeatmapIngestionService(_maps, _mapsets, new FakeOsuCalculator(), options, _cache,
+		_service = new BeatmapIngestionService(_beatmaps, _mapsets, new FakeOsuCalculator(), options, _cache,
 			NullLogger<BeatmapIngestionService>.Instance);
 	}
 
@@ -73,7 +73,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.Equal(1, ingestedInFolder);
 		Assert.NotNull(setId);
 
-		var beatmap = await _maps.FetchOneAsync(setId: setId.Value);
+		var beatmap = await _beatmaps.FetchOneAsync(setId: setId.Value);
 		Assert.NotNull(beatmap);
 		Assert.Equal("vivid_osu_file.osu", beatmap.Filename);
 		Assert.Equal("FAIRY FORE", beatmap.Mapset.Artist);
@@ -98,7 +98,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
 		Assert.Equal(1, secondCount);
 		Assert.Equal(setId, secondSetId);
-		Assert.NotNull(await _maps.FetchOneAsync(setId: setId.Value));
+		Assert.NotNull(await _beatmaps.FetchOneAsync(setId: setId.Value));
 	}
 
 	[Fact]
@@ -140,7 +140,10 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.NotNull(mapset);
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
-				{ ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "", CachePath = "" },
+			{
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "",
+				CachePath = ""
+			},
 			mapset);
 		Directory.Move(tempFolder, resolvedFolder);
 		Directory.Delete(resolvedFolder, true);
@@ -148,7 +151,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		await _service.ReconcileDeletedFolderAsync(resolvedFolder);
 
 		Assert.Null(await _mapsets.FetchByIdAsync(setId.Value));
-		Assert.Null(await _maps.FetchOneAsync(setId: setId.Value, includePrivate: true));
+		Assert.Null(await _beatmaps.FetchOneAsync(setId: setId.Value, includePrivate: true));
 	}
 
 	[Fact]
@@ -167,7 +170,10 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
-				{ ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "", CachePath = "" },
+			{
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "",
+				CachePath = ""
+			},
 			mapset!);
 		Directory.Move(tempFolder, resolvedFolder);
 		Directory.Delete(resolvedFolder, true);
@@ -191,16 +197,17 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var (ingestedInFolder, setId) = await _service.ReconcileFolderAsync(folder);
 		Assert.Equal(2, ingestedInFolder);
 
-		var keptBeatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId);
-		var removedBeatmap = await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId);
+		var keptBeatmap = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId);
+		var removedBeatmap = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId);
 		Assert.NotNull(keptBeatmap);
 		Assert.NotNull(removedBeatmap);
 
 		File.Delete(removedPath);
 		await _service.ReconcileFolderAsync(folder);
 
-		Assert.Null(await _maps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId, includePrivate: true));
-		Assert.NotNull(await _maps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId));
+		Assert.Null(await _beatmaps.FetchOneAsync(filename: "vivid_osu_file_hard.osu", setId: setId,
+			includePrivate: true));
+		Assert.NotNull(await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", setId: setId));
 	}
 
 	[Fact]
@@ -219,12 +226,15 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
 		var folder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
-				{ ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "", CachePath = "" },
+			{
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, SeasonalsPath = "", FaqsPath = "",
+				CachePath = ""
+			},
 			mapset!);
 		Directory.Move(tempFolder, folder);
 		var osuPath = Path.Combine(folder, "vivid_osu_file.osu");
 
-		var original = await _maps.FetchOneAsync(setId: setId.Value);
+		var original = await _beatmaps.FetchOneAsync(setId: setId.Value);
 		Assert.NotNull(original);
 		var oldMd5 = original.Md5;
 
@@ -234,11 +244,11 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		// This is the exact mechanism the api. host's nullable Beatmap embeds rely on: once content
 		// changes, the old md5 permanently stops resolving (a stale round/score's reference goes
 		// "null beatmap"), while the row's own Id is preserved across the content change.
-		var updated = await _maps.FetchOneAsync(setId: setId.Value);
+		var updated = await _beatmaps.FetchOneAsync(setId: setId.Value);
 		Assert.NotNull(updated);
 		Assert.NotEqual(oldMd5, updated.Md5);
 		Assert.Equal(original.Id, updated.Id);
-		Assert.Null(await _maps.FetchOneAsync(md5: oldMd5, includePrivate: true));
+		Assert.Null(await _beatmaps.FetchOneAsync(md5: oldMd5, includePrivate: true));
 	}
 
 	[Fact]
@@ -257,7 +267,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.Equal(2, ingestedInFolder);
 		Assert.NotNull(setId);
 
-		var beatmaps = await _maps.FetchAllBySetIdAsync(setId.Value, true);
+		var beatmaps = await _beatmaps.FetchAllBySetIdAsync(setId.Value, true);
 		var lowest = beatmaps.MinBy(b => b.Id)!;
 
 		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
@@ -277,7 +287,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var (_, setId) = await _service.ReconcileFolderAsync(folder);
 		Assert.NotNull(setId);
 
-		var beatmaps = await _maps.FetchAllBySetIdAsync(setId.Value, true);
+		var beatmaps = await _beatmaps.FetchAllBySetIdAsync(setId.Value, true);
 		var lowest = beatmaps.MinBy(b => b.Id)!;
 		var remaining = beatmaps.First(b => b.Id != lowest.Id);
 

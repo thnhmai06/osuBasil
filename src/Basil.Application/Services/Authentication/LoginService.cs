@@ -1,7 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configuration;
@@ -21,10 +20,17 @@ using Microsoft.Extensions.Options;
 namespace Basil.Application.Services.Authentication;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's handle_osu_login_request (spec §3.1 in
-///     docs/csharp-migration-plan.md). Login has no specific packet — it's the request the osu!
-///     Client sends it without an "osu-token" header.
+///     Processes the osu! client's login request, validating credentials and client hardware against
+///     the database and, on success, building the session and the full login packet bundle the
+///     client expects.
 /// </summary>
+/// <remarks>
+///     Login is not a packet exchange. The client sends a raw request with no <c>osu-token</c>
+///     header, which <see cref="ExecuteAsync" /> decodes, validates, and answers with a
+///     <see cref="LoginResult" /> holding the response body and, on success, the new session token.
+///     A relogin evicts the user's previous session so a single account holds at most one online
+///     session, except for tourney spectator clients.
+/// </remarks>
 public sealed class LoginService(
 	IUserRepository users,
 	IStatsRepository stats,
@@ -45,6 +51,15 @@ public sealed class LoginService(
 	private static readonly string InactionableDiskSignatureMd5 =
 		Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
 
+	/// <summary>
+	///     Executes the login handshake for a raw osu! client login request.
+	/// </summary>
+	/// <param name="request">The raw login request to process.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <returns>
+	///     A <see cref="LoginResult" /> carrying the packet body to send back to the client and the
+	///     session token on success.
+	/// </returns>
 	public async Task<LoginResult> ExecuteAsync(LoginRequest request,
 		CancellationToken cancellationToken = default)
 	{
@@ -185,9 +200,7 @@ public sealed class LoginService(
 		// distinguishable per-player number for the client's player-list/profile display.
 		foreach (var (_, mode, totalScore, rankedScore, plays) in
 		         await stats.FetchAllForUserAsync(user.Id, cancellationToken))
-		{
 			session.ModeStats[mode] = new CachedPlayerStats(totalScore, rankedScore, plays, user.Id);
-		}
 
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
 		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
@@ -253,6 +266,13 @@ public sealed class LoginService(
 		return new LoginResult(session.Token, Concat([.. data]));
 	}
 
+	/// <summary>Determines whether a privilege set carries both of two required flags.</summary>
+	/// <param name="privileges">The privilege set to test.</param>
+	/// <param name="required1">The first required flag.</param>
+	/// <param name="required2">The second required flag.</param>
+	/// <returns>
+	///     <see langword="true" /> when both flags are set; otherwise, <see langword="false" />.
+	/// </returns>
 	private static bool HasPrivileges(UserPrivileges privileges, UserPrivileges required1, UserPrivileges required2)
 	{
 		return (privileges & required1) != 0 && (privileges & required2) != 0;
@@ -261,11 +281,24 @@ public sealed class LoginService(
 	// No network geolocation lookup — this server runs fully offline, so the fallback (when no
 	// Cloudflare/nginx headers are present) is the country already stored at registration, with
 	// lat/long left at 0.0 (matching Geolocation's own unresolved default).
+	/// <summary>
+	///     Builds a <see cref="Geolocation" /> from a stored country when the request carries no
+	///     geolocation headers.
+	/// </summary>
+	/// <param name="country">The country to use.</param>
+	/// <returns>A <see cref="Geolocation" /> at the origin with the given country.</returns>
 	private static Geolocation GeolocationFromCountry(Country country)
 	{
 		return new Geolocation(0.0, 0.0, country);
 	}
 
+	/// <summary>
+	///     Reads the optional MOTD file and returns its trimmed contents as a notification packet,
+	///     or <see langword="null" /> when the file is absent or empty.
+	/// </summary>
+	/// <returns>
+	///     The notification packet to append to the login bundle, or <see langword="null" /> for none.
+	/// </returns>
 	private static byte[]? WelcomeNotification()
 	{
 		var motdPath = Path.Combine(AppContext.BaseDirectory, MotdPath);
@@ -274,6 +307,13 @@ public sealed class LoginService(
 		return !string.IsNullOrEmpty(text) ? ServerPacketWriter.Notification(text) : null;
 	}
 
+	/// <summary>
+	///     Builds the failure result for a login request whose body could not be parsed.
+	/// </summary>
+	/// <param name="tokenOverride">The error-code string to place in the result's token slot.</param>
+	/// <returns>
+	///     A <see cref="LoginResult" /> telling the client to restart, with a failed login reply.
+	/// </returns>
 	private LoginResult InvalidRequestFailure(string tokenOverride)
 	{
 		logger.LogDebug("Login request rejected: malformed body. Reason={Reason}", tokenOverride);
@@ -282,6 +322,15 @@ public sealed class LoginService(
 			ServerPacketWriter.Notification("Please restart your osu! and try again.")));
 	}
 
+	/// <summary>
+	///     Builds the failure result for a login request with an unknown user or a bad password.
+	/// </summary>
+	/// <param name="username">The username that failed to authenticate.</param>
+	/// <param name="ip">The client's IP address, recorded in the failure log.</param>
+	/// <returns>
+	///     A <see cref="LoginResult" /> carrying the "incorrect-credentials" error and the failure
+	///     packets to send.
+	/// </returns>
 	private LoginResult IncorrectCredentials(string username, IPAddress ip)
 	{
 		logger.LogInformation("Login failed: incorrect credentials. Username={Username} Ip={Ip}", username, ip);
@@ -291,6 +340,9 @@ public sealed class LoginService(
 			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
 	}
 
+	/// <summary>Concatenates the given packet byte arrays in order.</summary>
+	/// <param name="parts">The packet byte arrays to join.</param>
+	/// <returns>A single byte array containing all the input bytes in order.</returns>
 	private static byte[] Concat(params byte[][] parts)
 	{
 		return [.. parts.SelectMany(p => p)];

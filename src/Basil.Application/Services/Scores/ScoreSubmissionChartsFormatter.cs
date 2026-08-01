@@ -5,17 +5,36 @@ using Basil.Domain.Scores;
 namespace Basil.Application.Services.Scores;
 
 /// <summary>
-///     Ported from app/api/domains/osu.py's chart_entry/build_submission_charts. Achievements are
-///     dropped entirely (per scope) — the achievements-new field is always empty. `pp` chart entries
-///     are always passed 0 (no-pp scope); chart_entry's own "0 or ''" falsy formatting empties them
-///     automatically, so the field is kept (preserving the protocol's key/value shape for the osu!
-///     client's result-screen parser) without any pp-specific special-casing. The "overall" (profile
-///     stats) section has no before/after delta to show — stats are fixed, not updated on submission
-///     (see docs/working-scopes.md) — so every overall entry is emitted empty rather than fetching
-///     stats that would never have actually changed.
+///     Formats the chart section of the score submission response.
 /// </summary>
+/// <remarks>
+///     The output is a pipe-delimited list of key/value pairs describing a beatmap ranking chart
+///     and an overall ranking chart, which the osu! client's result screen parses. Achievements
+///     are out of scope, so the achievements field is always empty, and plays and passes are not
+///     tracked, so the play and pass counts are always emitted as zero. pp chart entries are
+///     always passed zero because Basil has no pp. These zero and empty values keep the protocol's
+///     fixed key/value shape intact without any pp-specific or plays/passes-specific
+///     special-casing. The overall chart carries no before/after delta because user stats are
+///     never updated on submission, so every entry is emitted empty rather than reading stats that
+///     would never change.
+/// </remarks>
 public static class ScoreSubmissionChartsFormatter
 {
+	/// <summary>
+	///     Formats the complete chart section for a single score submission.
+	/// </summary>
+	/// <param name="score">The submitted score being charted.</param>
+	/// <param name="beatmap">The beatmap the score was played on.</param>
+	/// <param name="scoreId">The database id assigned to the submitted score.</param>
+	/// <param name="rank">The per-beatmap rank reported to the client, or <see langword="null" /> for a failed play.</param>
+	/// <param name="domain">The server's domain, used to build the chart URLs.</param>
+	/// <returns>The pipe-delimited chart string for the submission.</returns>
+	/// <remarks>
+	///     The emitted sequence is the beatmap header (ids, play and pass counts, approval date), the
+	///     <c>beatmap</c> chart with its ranking entries, the online score id, and the
+	///     <c>overall</c> chart with its always-empty entries, terminated by an empty achievements
+	///     field.
+	/// </remarks>
 	public static string Format(Submission score, Beatmap beatmap, long scoreId, int? rank, string domain)
 	{
 		var beatmapEntries = new[]
@@ -42,9 +61,6 @@ public static class ScoreSubmissionChartsFormatter
 		{
 			$"beatmapId:{beatmap.Id}",
 			$"beatmapSetId:{beatmap.Mapset.Id}",
-			// No Plays/Passes tracking (per scope) — always 0, same convention as the pp fields above:
-			// the key is kept (preserving the protocol's fixed key/value shape for the osu! client's
-			// result-screen parser) without any Plays/Passes-specific special-casing.
 			"beatmapPlaycount:0",
 			"beatmapPasscount:0",
 			$"approvedDate:{beatmap.Mapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",

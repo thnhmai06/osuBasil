@@ -6,26 +6,38 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Spectating;
 
 /// <summary>
-///     Ported from Player.add_spectator/remove_spectator. Each spectated player gets a dedicated
-///     `#spec_{hostId}` instance channel (client-visible name always "#spectator", regardless of
-///     which host's instance a given client is currently in — see ChannelSession's doc comment),
-///     created on the first spectator and torn down once the last one leaves.
-///     One simplification versus the Python source: bancho.py's add_spectator/remove_spectator each
-///     send an extra, fully redundant channel_info broadcast on top of the one Player.join_channel/
-///     leave_channel already sends internally (harmless duplicate packets, tolerated by the client).
-///     This port relies on ChannelMembershipService's single broadcast and layers only the
-///     spectator-specific notifications (spectator_joined/fellow_spectator_joined/etc.) on top.
+///     Manages the spectate channels that connect a player and their spectators.
 /// </summary>
+/// <remarks>
+///     Each spectated player gets a dedicated <c>#spec_{hostId}</c> instance channel. Its
+///     client-visible name is always <c>#spectator</c>, regardless of which host's instance a given
+///     client is currently in (see <see cref="ChannelSession" />'s doc comment). The channel is
+///     created when the first spectator joins and torn down once the last one leaves. The
+///     implementation relies on <see cref="ChannelMembershipService" />'s single channel broadcast
+///     and layers only the spectator-specific notifications (spectator joined, fellow spectator
+///     joined, and so on) on top; it emits no redundant extra channel-info broadcast.
+/// </remarks>
 public sealed class SpectatorService(
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	ILogger<SpectatorService> logger)
 {
+	/// <summary>Builds the instance channel name for a spectated player.</summary>
+	/// <param name="hostId">The spectated player's id.</param>
+	/// <returns>The <c>#spec_{id}</c> channel name.</returns>
 	private static string ChannelNameFor(int hostId)
 	{
 		return $"#spec_{hostId}";
 	}
 
+	/// <summary>Joins a spectator to a host's spectate channel, notifying the host and fellow spectators.</summary>
+	/// <remarks>
+	///     Creates the host's spectate channel and joins the host to it when this is the first
+	///     spectator. A stealth spectator is only given visibility into existing spectators; the host
+	///     and other spectators are never told the player joined.
+	/// </remarks>
+	/// <param name="host">The spectated player.</param>
+	/// <param name="spectator">The player starting to spectate.</param>
 	public void AddSpectator(PlayerSession host, PlayerSession spectator)
 	{
 		var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
@@ -54,7 +66,7 @@ public sealed class SpectatorService(
 		else
 		{
 			// Stealth: only give the (admin) spectator visibility into existing spectators, not
-			// vice-versa — the host and other spectators are never told this player joined.
+			// vice-versa: the host and other spectators are never told this player joined.
 			foreach (var existing in host.Spectators)
 				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
 		}
@@ -64,6 +76,10 @@ public sealed class SpectatorService(
 		logger.LogDebug("Spectator joined: HostId={HostId} SpectatorId={SpectatorId}", host.Id, spectator.Id);
 	}
 
+	/// <summary>Parts a spectator from a host's spectate channel, notifying the remaining spectators.</summary>
+	/// <remarks>Tears the channel down (parting the host as well) when the last spectator leaves.</remarks>
+	/// <param name="host">The spectated player.</param>
+	/// <param name="spectator">The player stopping to spectate.</param>
 	public void RemoveSpectator(PlayerSession host, PlayerSession spectator)
 	{
 		host.RemoveSpectator(spectator);

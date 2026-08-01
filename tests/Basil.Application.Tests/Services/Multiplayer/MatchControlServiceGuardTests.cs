@@ -17,7 +17,7 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchPersistence, _fixture.MapRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchPersistence, _fixture.BeatmapRepository,
 			_fixture.SessionRegistry, NullLogger<MatchControlService>.Instance);
 	}
 

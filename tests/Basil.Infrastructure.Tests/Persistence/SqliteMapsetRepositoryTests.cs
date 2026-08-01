@@ -6,8 +6,8 @@ namespace Basil.Infrastructure.Tests.Persistence;
 
 public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteMapRepository _mapRepository =
-		new(fixture.ConnectionString, NullLogger<SqliteMapRepository>.Instance);
+	private readonly SqliteBeatmapRepository _beatmapRepository =
+		new(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 
 	private readonly SqliteMapsetRepository _mapsetRepository =
 		new(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
@@ -58,12 +58,12 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 		var beatmap = new Beatmap(new string('z', 32), 9003001, mapset, "Hyper", "z.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
-		await _mapRepository.UpsertAsync(beatmap);
+		await _beatmapRepository.UpsertAsync(beatmap);
 
 		await _mapsetRepository.DeleteAsync(mapset.Id);
 
 		Assert.Null(await _mapsetRepository.FetchByIdAsync(mapset.Id));
-		Assert.Null(await _mapRepository.FetchOneAsync(beatmap.Id, includePrivate: true));
+		Assert.Null(await _beatmapRepository.FetchOneAsync(beatmap.Id, includePrivate: true));
 	}
 
 	[Fact]
@@ -109,10 +109,10 @@ public class SqliteMapsetRepositoryTests(SqliteFixture fixture) : IClassFixture<
 		var privateOnly = MakeMapset(9041, true);
 		await _mapsetRepository.UpsertAsync(visible);
 		await _mapsetRepository.UpsertAsync(privateOnly);
-		await _mapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
+		await _beatmapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
-		await _mapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
+		await _beatmapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
 

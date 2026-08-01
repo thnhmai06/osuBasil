@@ -4,9 +4,19 @@ using FFMpegCore.Enums;
 
 namespace Basil.Infrastructure.Media;
 
-/// <inheritdoc cref="IAudioPreviewExtractor" />
-public sealed class FFMpegAudioPreviewExtractor : IAudioPreviewExtractor
+/// <summary>
+///     Implements <see cref="IAudioPreviewExtractor" /> by shelling out to the ffmpeg binary through
+///     FFMpegCore.
+/// </summary>
+/// <remarks>
+///     Trims the clip by seeking to the requested start offset (clamped to 0), disables the video
+///     channel, and encodes the requested duration with the libmp3lame codec at 128kbps. The output
+///     goes to a uniquely named temp file which is read back as bytes and deleted in a
+///     <c>finally</c> block. Requires a ffmpeg executable on PATH.
+/// </remarks>
+public sealed class FfmpegAudioPreviewExtractor : IAudioPreviewExtractor
 {
+	/// <inheritdoc cref="IAudioPreviewExtractor.ExtractAsync" />
 	public async Task<byte[]> ExtractAsync(string audioFilePath, int startMs, TimeSpan duration,
 		CancellationToken cancellationToken = default)
 	{

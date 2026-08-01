@@ -13,14 +13,17 @@ namespace Basil.Application.Services.Irc;
 
 /// <summary>
 ///     Authenticates a real IRC connection's PASS/NICK/USER handshake and, on success, wires up a
-///     virtual <see cref="PlayerSession" /> the same way <c>BotBootstrapService</c> does for
-///     BanchoBot — no bancho socket behind it, just a session
-///     <see cref="Basil.Application.Services.Bot.ICommandDispatcher" /> and the rest of the chat core
-///     can treat identically to a real osu! client.
-///     PASS is checked against the user's account password (same bcrypt/MD5 flow as osu! client
-///     login — the client sends MD5(password) hex at login, IRC sends plaintext PASS which we
-///     MD5 here before bcrypt verify).
+///     virtual <see cref="PlayerSession" /> for it.
 /// </summary>
+/// <remarks>
+///     The session is built the same way <see cref="Basil.Application.Services.Bot.BotBootstrapService" />
+///     builds one for the bot: there is no bancho socket behind it, only a session that
+///     <see cref="Basil.Application.Services.Bot.ICommandDispatcher" /> and the rest of the chat core
+///     can treat identically to a real osu! client. PASS is checked against the account password
+///     using the same MD5-then-bcrypt flow as client login: the osu! client sends the MD5 of its
+///     password as hex at login, while an IRC client sends the password in plaintext, so the
+///     plaintext PASS is MD5-hashed here before verification.
+/// </remarks>
 public sealed class IrcAuthenticationService(
 	IUserRepository users,
 	IPlayerSessionRegistry sessionRegistry,
@@ -29,6 +32,18 @@ public sealed class IrcAuthenticationService(
 	IOptions<IrcOptions> options,
 	IPasswordHasher passwordHasher)
 {
+	/// <summary>
+	///     Validates an IRC nick and password against the stored account and, on success, creates the
+	///     session and builds the welcome message sequence for a fresh IRC login.
+	/// </summary>
+	/// <param name="nick">The nick the connection wants, treated as the player's username.</param>
+	/// <param name="pass">The plaintext password supplied via the PASS command.</param>
+	/// <param name="connection">The IRC connection being authenticated.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <returns>
+	///     An <see cref="IrcLoginOutcome" /> that either describes the failure with the numeric reply
+	///     to send, or carries the new session and the welcome, topic, and names messages to emit.
+	/// </returns>
 	public async Task<IrcLoginOutcome> AuthenticateAsync(string nick, string pass, IIrcConnection connection,
 		CancellationToken cancellationToken = default)
 	{
@@ -87,6 +102,13 @@ public sealed class IrcAuthenticationService(
 		return IrcLoginOutcome.Ok(session, messages);
 	}
 
+	/// <summary>
+	///     Builds the RPL_NAMREPLY and RPL_ENDOFNAMES numeric pair that reports a channel's member
+	///     list.
+	/// </summary>
+	/// <param name="requesterName">The nick the reply is addressed to.</param>
+	/// <param name="channel">The channel whose members are listed.</param>
+	/// <returns>The two numerics that form the channel's /NAMES reply.</returns>
 	private IEnumerable<IrcMessage> BuildNamesReply(string requesterName, ChannelSession channel)
 	{
 		var names = channel.MemberIds
@@ -102,7 +124,18 @@ public sealed class IrcAuthenticationService(
 			"End of /NAMES list");
 	}
 
-	/// <summary>Ported from help.ppy.sh's IRC page: `@` = chat moderator, `+` = connected via external IRC client.</summary>
+	/// <summary>
+	///     Computes the IRC status prefix that precedes a channel member's nick in a /NAMES reply.
+	/// </summary>
+	/// <param name="member">The member whose prefix is computed.</param>
+	/// <returns>
+	///     The one-character status prefix, or an empty string for an unmarked member.
+	/// </returns>
+	/// <remarks>
+	///     A member with moderator privileges is prefixed with <c>@</c>; any other member connected
+	///     via an external IRC client is prefixed with <c>+</c>, matching the IRC status prefixes the
+	///     official server uses.
+	/// </remarks>
 	private static string NamePrefix(PlayerSession member)
 	{
 		if ((member.Privilege & UserPrivileges.Moderator) != 0) return "@";

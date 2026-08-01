@@ -12,11 +12,15 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Irc;
 
 /// <summary>
-///     Embedded IRC gateway — accepts raw TCP connections on <see cref="IrcOptions.Port" /> and hands
-///     each one off to its own <see cref="TcpIrcConnection" />. Runs in-process alongside Basil.Web's
-///     Kestrel host (no separate executable, no Docker), matching the "embedded" decision in
-///     docs/architecture.md's chat section.
+///     Embedded IRC gateway: accepts raw TCP connections on <see cref="IrcOptions.Port" /> and hands
+///     each one off to its own <see cref="TcpIrcConnection" />. Runs in-process as a
+///     <see cref="BackgroundService" />, so no separate executable or container is required.
 /// </summary>
+/// <remarks>
+///     A listener that fails to bind its port logs the error and stops, rather than throwing out of
+///     <see cref="BackgroundService" />'s execution path and taking the host down with it. Each
+///     accepted connection is assigned a fresh per-process id and runs detached.
+/// </remarks>
 public sealed class TcpIrcListener(
 	IOptions<IrcOptions> options,
 	IrcAuthenticationService authService,
@@ -27,10 +31,17 @@ public sealed class TcpIrcListener(
 	ILogger<TcpIrcListener> logger,
 	ILogger<TcpIrcConnection> connectionLogger) : BackgroundService
 {
-	// Unique for the lifetime of this server process — never persisted, never reused, per the
-	// ConnectionId contract (see docs on TcpIrcConnection).
+	/// <summary>
+	///     The next connection id to assign. Unique for the lifetime of this server process, never
+	///     persisted or reused.
+	/// </summary>
 	private static long _nextConnectionId;
 
+	/// <inheritdoc />
+	/// <remarks>
+	///     When the listener cannot bind (for example the port is already in use), an error is logged
+	///     and the method returns so the rest of the host keeps running with chat unavailable.
+	/// </remarks>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		var listener = new TcpListener(IPAddress.Any, options.Value.Port);
@@ -74,6 +85,10 @@ public sealed class TcpIrcListener(
 		}
 	}
 
+	/// <summary>
+	///     Runs a single connection to completion, swallowing socket and IO errors that mean the
+	///     client dropped mid-read/write, and always disposing the underlying <see cref="TcpClient" />.
+	/// </summary>
 	private async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client, long connectionId,
 		CancellationToken stoppingToken)
 	{

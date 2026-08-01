@@ -6,10 +6,15 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.PacketHandlers.Channels;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SendMessage (private). All routing (bot-command shortcut,
-///     block/PmPrivate/silence checks) lives in <see cref="ChatDispatchService" /> — shared with public
-///     messages and real IRC PRIVMSG.
+///     Handles the <see cref="ClientPackets.SendPrivateMessage" /> packet, which carries a private
+///     message addressed to a single user. Reads the message and routes it through
+///     <see cref="ChatDispatchService.SendPrivmsgAsync" />.
 /// </summary>
+/// <remarks>
+///     All routing and delivery checks, including the bot command shortcut and the block, pm-private
+///     and silence checks, live in <see cref="ChatDispatchService" />. The same service is shared with
+///     public messages and real IRC PRIVMSG.
+/// </remarks>
 public sealed class SendPrivateMessageHandler(ChatDispatchService chatDispatch) : IBanchoPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.SendPrivateMessage;

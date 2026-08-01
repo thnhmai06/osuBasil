@@ -6,8 +6,14 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IChannelRepository" />
+/// <remarks>
+///     Rows map through the private mutable <c>ChannelRow</c> DTO, since Dapper fills by property
+///     name rather than through a positional record constructor. Each method opens its own
+///     connection.
+/// </remarks>
 public sealed class SqliteChannelRepository(string connectionString) : IChannelRepository
 {
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<Channel>> FetchAllAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -15,6 +21,7 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 		return [.. rows.Select(r => r.ToChannel())];
 	}
 
+	/// <inheritdoc />
 	public async Task<Channel?> FetchOneByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -24,11 +31,16 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 		return row?.ToChannel();
 	}
 
+	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return new SqliteConnection(connectionString);
 	}
 
+	/// <summary>
+	///     A mutable row DTO matching the Channels table columns. Mutable because Dapper fills by
+	///     property name, not through a positional record constructor.
+	/// </summary>
 	private sealed class ChannelRow
 	{
 		public int Id { get; set; }
@@ -38,6 +50,8 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 		public int WritePrivilege { get; set; }
 		public bool AutoJoin { get; set; }
 
+		/// <summary>Builds a <see cref="Channel" /> from this row, casting the stored privilege columns.</summary>
+		/// <returns>The domain channel.</returns>
 		public Channel ToChannel()
 		{
 			return new Channel(Id, Name, Topic, (UserPrivileges)ReadPrivilege, (UserPrivileges)WritePrivilege,

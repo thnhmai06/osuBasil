@@ -23,6 +23,14 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
+	// ---- GET /beatmapsets/{mapsetId}/{beatmapId}/video ----
+
+	private const string OsuFileWithVideo = """
+	                                        osu file format v14
+	                                        [Events]
+	                                        Video,0,"video.mp4"
+	                                        """;
+
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
 	private Beatmap? _byFilename;
@@ -34,7 +42,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 	public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		var maps = Substitute.For<IMapRepository>();
+		var maps = Substitute.For<IBeatmapRepository>();
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => call.ArgAt<string?>(2) is not null ? _byFilename : _oneBeatmap);
@@ -175,7 +183,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"version\":\"Normal\"", body);
 		// filename is deliberately never serialized (Phase 2's BeatmapView drops it — internal-only,
-		// still used server-side for ingestion/`GET /web/maps/{filename}`).
+		// still used server-side for ingestion/`GET /web/beatmaps/{filename}`).
 		Assert.DoesNotContain("\"filename\"", body);
 	}
 
@@ -216,14 +224,6 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
 	}
-
-	// ---- GET /beatmapsets/{mapsetId}/{beatmapId}/video ----
-
-	private const string OsuFileWithVideo = """
-	                                         osu file format v14
-	                                         [Events]
-	                                         Video,0,"video.mp4"
-	                                         """;
 
 	[Fact]
 	public async Task DownloadVideo_UnknownBeatmap_ReturnsNotFound()
@@ -416,7 +416,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		var folder = MapsetFolder(700);
 		await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
 
-		var request = new HttpRequestMessage(HttpMethod.Get, "/web/maps/Some%20Map.osu")
+		var request = new HttpRequestMessage(HttpMethod.Get, "/web/beatmaps/Some%20Map.osu")
 			{ Headers = { Host = "osu.test.local" } };
 		var response = await _factory.CreateClient().SendAsync(request);
 

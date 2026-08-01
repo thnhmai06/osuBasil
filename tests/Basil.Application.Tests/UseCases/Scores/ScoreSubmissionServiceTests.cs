@@ -16,7 +16,7 @@ namespace Basil.Application.Tests.UseCases.Scores;
 
 public class ScoreSubmissionServiceTests
 {
-	private readonly IMapRepository _maps = Substitute.For<IMapRepository>();
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
@@ -27,7 +27,7 @@ public class ScoreSubmissionServiceTests
 	private ScoreSubmissionService MakeUseCase()
 	{
 		return new ScoreSubmissionService(
-			_maps, _scores, _stats,
+			_beatmaps, _scores, _stats,
 			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
 				NullLogger<AuthenticationService>.Instance),
 			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
@@ -103,7 +103,7 @@ public class ScoreSubmissionServiceTests
 	[Fact]
 	public async Task BeatmapNotFound_ReturnsBeatmapNotFound()
 	{
-		_maps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns((Beatmap?)null);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "cookiezi ", MakeScoreFields()));
@@ -114,7 +114,7 @@ public class ScoreSubmissionServiceTests
 	[Fact]
 	public async Task PlayerNotOnline_ReturnsPlayerNotFound()
 	{
-		_maps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(MakeBeatmap());
 		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((PlayerSession?)null);
 
@@ -127,7 +127,8 @@ public class ScoreSubmissionServiceTests
 	public async Task NotInMatch_StillPersists_WithNullRoundIdAndTeam()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		MakePlayer(); // player.Match stays null — not in any room
 		StubPersistence(321L);
 
@@ -143,7 +144,8 @@ public class ScoreSubmissionServiceTests
 	public async Task InMatchButNoActiveRound_StillPersists_WithNullRoundId()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		player.Match = new MatchSession(0, "Lobby", "", "map", 1, new string('a', 32), player.Id,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0");
@@ -161,7 +163,8 @@ public class ScoreSubmissionServiceTests
 	public async Task SubmitAsync_SoloSubmission_BumpsTotalScoreAndPlaysOnly()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer(); // player.Match stays null — not in any room
 		StubPersistence();
 
@@ -179,7 +182,8 @@ public class ScoreSubmissionServiceTests
 	public async Task SubmitAsync_InRoundMultiplayerSubmission_BumpsBothTotalAndRankedScore()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		StubPersistence();
@@ -198,7 +202,8 @@ public class ScoreSubmissionServiceTests
 	public async Task UsernameTrailingSupporterSpace_IsStrippedBeforeLookup()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer(name: "cookiezi");
 		PutInActiveRound(player);
 		StubPersistence();
@@ -212,7 +217,8 @@ public class ScoreSubmissionServiceTests
 	public async Task DuplicateChecksum_ReturnsDuplicateSubmission()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(true);
@@ -227,7 +233,8 @@ public class ScoreSubmissionServiceTests
 	public async Task PassedRankedScore_AlwaysBestWithTopRank_Persists()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
@@ -247,7 +254,8 @@ public class ScoreSubmissionServiceTests
 	public async Task FailedScore_SkipsStatusPlacementAndUsesFailTime()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
@@ -264,7 +272,8 @@ public class ScoreSubmissionServiceTests
 	public async Task InvalidReplay_DiscardsReplayButStillPersistsScore()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
@@ -281,7 +290,8 @@ public class ScoreSubmissionServiceTests
 	public async Task ValidReplay_IsWrittenUnderNewScoreId()
 	{
 		var bmap = MakeBeatmap();
-		_maps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(bmap);
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
 		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);

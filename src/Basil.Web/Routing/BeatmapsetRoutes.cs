@@ -14,25 +14,29 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/beatmapsets` — resource-oriented routes replacing the admin-only `/beatmaps` search/upload
+///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="BeatmapsetRoutes" /> is static and
+///     can't be a type argument.
+/// </summary>
+internal sealed class BeatmapsetRoutesLog;
+
+/// <summary>
+///     `/beatmapsets`: resource-oriented routes replacing the admin-only `/beatmaps` search/upload
 ///     surface plus the old bare `GET /mapset/{id}`. Reads are public, with a soft admin-only
 ///     elevation (a private mapset's beatmaps become visible); every write is admin-key gated.
 ///     `PUT`/`DELETE` are filesystem-first and asynchronous (202 Accepted, never touch the database
-///     directly) — the live <see cref="BeatmapWatcherService" /> reconciles the database from the
+///     directly): the live <see cref="BeatmapWatcherService" /> reconciles the database from the
 ///     resulting filesystem change within its own debounce window. See
 ///     <see cref="BeatmapIngestionService.DeletedFolderInfix" /> for how delete's atomic rename-in-place
 ///     is recognized as "gone" before the physical folder is actually reclaimed.
 /// </summary>
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker — <see cref="BeatmapsetRoutes" /> is static and can't be a
-///     type argument.
-/// </summary>
-internal sealed class BeatmapsetRoutesLog;
-
 internal static class BeatmapsetRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
+	/// <summary>
+	///     Registers the `/beatmapsets` read, write, and file-download routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapBeatmapsetRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/beatmapsets", HandleList)
@@ -299,14 +303,16 @@ internal static class BeatmapsetRoutes
 		var created = DateTime.Parse("2026-06-01T10:00:00Z");
 		var mapset = new Mapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
-		var objectCounts = new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
+		var objectCounts = new OsuBeatmapObjectCounts
+			{ Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
 		return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
 			"camellia - exit this earth's atmosphere (rlc) [extreme].osu",
 			difficulty, objectCounts);
 	}
 
 	private static async Task<IResult> HandleList([FromQuery] int? page, [FromQuery] int? pageSize,
-		HttpContext context, IMapsetRepository mapsets, IMapRepository maps, CancellationToken cancellationToken)
+		HttpContext context, IMapsetRepository mapsets, IBeatmapRepository beatmaps,
+		CancellationToken cancellationToken)
 	{
 		var (p, ps) = Pagination.Normalize(page, pageSize);
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
@@ -316,7 +322,7 @@ internal static class BeatmapsetRoutes
 		var items = new List<BeatmapsetSummary>(overqueried.Count);
 		foreach (var m in overqueried)
 		{
-			var beatmapCount = (await maps.FetchAllBySetIdAsync(m.Id, isAdmin, cancellationToken)).Count;
+			var beatmapCount = (await beatmaps.FetchAllBySetIdAsync(m.Id, isAdmin, cancellationToken)).Count;
 			items.Add(m.ToSummary(beatmapCount));
 		}
 
@@ -355,7 +361,7 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleGet(int mapsetId, HttpContext context, IMapsetRepository mapsets,
-		IMapRepository maps, CancellationToken cancellationToken)
+		IBeatmapRepository beatmapRepository, CancellationToken cancellationToken)
 	{
 		var mapset = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
 		if (mapset is null) return Results.NotFound();
@@ -363,7 +369,7 @@ internal static class BeatmapsetRoutes
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		if (mapset.IsPrivate && !isAdmin) return Results.NotFound();
 
-		var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		return Results.Json(mapset.ToDetail(beatmaps));
 	}
 
@@ -430,7 +436,7 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandlePatch(int mapsetId, BeatmapsetPatchBody body,
-		IMapsetRepository mapsets, IMapRepository maps, ILogger<BeatmapsetRoutesLog> logger,
+		IMapsetRepository mapsets, IBeatmapRepository beatmapRepository, ILogger<BeatmapsetRoutesLog> logger,
 		CancellationToken cancellationToken)
 	{
 		if (await mapsets.FetchByIdAsync(mapsetId, cancellationToken) is null) return Results.NotFound();
@@ -441,30 +447,30 @@ internal static class BeatmapsetRoutes
 			mapsetId, body.Frozen, body.Private);
 
 		var updated = await mapsets.FetchByIdAsync(mapsetId, cancellationToken);
-		var beatmaps = await maps.FetchAllBySetIdAsync(mapsetId, true,
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(mapsetId, true,
 			cancellationToken);
 		return Results.Json(updated!.ToDetail(beatmaps));
 	}
 
 	private static async Task<IResult> HandleBeatmapInfo(int mapsetId, int beatmapId, HttpContext context,
-		IMapRepository maps, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
-		var siblings = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Mapset.ToSummary(siblings.Count);
 		return Results.Json(bmap.ToDetail(beatmapset));
 	}
 
 	private static async Task<IResult> HandleBeatmapDifficulty(int mapsetId, int beatmapId,
-		[FromQuery] int? mode, [FromQuery] uint? mods, HttpContext context, IMapRepository maps,
+		[FromQuery] int? mode, [FromQuery] uint? mods, HttpContext context, IBeatmapRepository beatmaps,
 		IOsuCalculator calculator, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
@@ -488,7 +494,7 @@ internal static class BeatmapsetRoutes
 				$"Beatmap can't be analyzed as mode {resolvedMode} — likely an unsupported ruleset conversion."));
 		}
 
-		var siblings = await maps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Mapset.ToSummary(siblings.Count);
 		var detail = new BeatmapDetail(bmap.Md5, bmap.Id, bmap.Version, analysis.Difficulty,
 			analysis.BeatmapObjectCounts, bmap.IsLocallyIngested, beatmapset);
@@ -497,10 +503,10 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,
-		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
@@ -509,10 +515,10 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleDownloadBackground(int mapsetId, int beatmapId, HttpContext context,
-		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
@@ -547,10 +553,10 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleDownloadAudio(int mapsetId, int beatmapId, HttpContext context,
-		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
@@ -584,10 +590,10 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleDownloadVideo(int mapsetId, int beatmapId, HttpContext context,
-		IMapRepository maps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await maps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
 		if (bmap is null || bmap.Mapset.Id != mapsetId) return Results.NotFound();
 
@@ -609,11 +615,11 @@ internal static class BeatmapsetRoutes
 		};
 	}
 
-	private static async Task<IResult> HandleAudioPreview(int mapsetId, IMapRepository maps,
+	private static async Task<IResult> HandleAudioPreview(int mapsetId, IBeatmapRepository beatmaps,
 		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache,
 		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
 	{
-		var clip = await BanchoHostGroups.GetOrGeneratePreviewClipAsync(mapsetId, maps, mapsets, storage, cache,
+		var clip = await BanchoHostGroups.GetOrGeneratePreviewClipAsync(mapsetId, beatmaps, mapsets, storage, cache,
 			extractor, cancellationToken);
 		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
 	}
@@ -627,15 +633,17 @@ internal static class BeatmapsetRoutes
 		return osbPath is null ? Results.NotFound() : Results.File(osbPath, "application/x-osu-storyboard");
 	}
 
-	private static async Task<IResult> HandleDownloadArchive(int mapsetId, IMapRepository maps,
+	private static async Task<IResult> HandleDownloadArchive(int mapsetId, IBeatmapRepository beatmaps,
 		IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
-		var osz = await BanchoHostGroups.BuildOszArchiveAsync(maps, storage.Value, mapsetId, false, cancellationToken);
+		var osz = await BanchoHostGroups.BuildOszArchiveAsync(beatmaps, storage.Value, mapsetId, false,
+			cancellationToken);
 		return osz is null
 			? Results.NotFound()
 			: Results.File(osz.Value.Bytes, "application/x-osu-beatmap-archive", osz.Value.FileName);
 	}
 
+	/// <summary>Body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
 	public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
 
 	private sealed record IngestResult(int Ingested);
@@ -644,7 +652,7 @@ internal static class BeatmapsetRoutes
 	public sealed record MapsetOperationAccepted(int MapsetId, string Operation);
 
 	/// <summary>
-	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty` — <see cref="Mods" /> echoes the
+	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty`: <see cref="Mods" /> echoes the
 	///     actually-applied mod combination (after <see cref="ModsExtensions.FilterInvalidCombos" /> resolves any
 	///     conflicting pair like `EZ+HR`), since it can differ from the raw `mods` query param the caller sent.
 	/// </summary>

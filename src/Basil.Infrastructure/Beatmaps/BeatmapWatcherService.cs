@@ -7,22 +7,34 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any create/
-///     change/delete/rename under that folder is debounced (a dragged-in mapset fires many rapid
-///     events for the same folder — only the last one after a quiet period actually reconciles) and
-///     handed to <see cref="BeatmapIngestionService" />'s per-folder methods. The one-time full pass
-///     (<see cref="BeatmapIngestionService.ReconcileAllAsync" />) runs separately in Program.cs
-///     before the host starts, so there's no duplicate scan or race with this service's first events.
+///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any create,
+///     change, delete, or rename under that folder is debounced (a dragged-in mapset fires many
+///     rapid events for the same folder, so only the last one after a quiet period actually
+///     reconciles) and handed to <see cref="BeatmapIngestionService" />'s per-folder methods. The
+///     one-time full pass (<see cref="BeatmapIngestionService.ReconcileAllAsync" />) is a separate
+///     sweep of the whole storage root, so there is no duplicate scan or race with this service's
+///     first events.
 /// </summary>
 public sealed class BeatmapWatcherService(
 	BeatmapIngestionService ingestion,
 	IOptions<StorageOptions> options,
 	ILogger<BeatmapWatcherService> logger) : BackgroundService
 {
+	/// <summary>Quiet period after the last filesystem event for a path before it reconciles.</summary>
 	private static readonly TimeSpan DebounceWindow = TimeSpan.FromSeconds(2);
+
+	/// <summary>Settles currently reconciling, tracked so shutdown waits for them.</summary>
 	private readonly ConcurrentDictionary<Task, byte> _inFlightSettles = new();
+
+	/// <summary>Per-path debounce timers, keyed by the affected top-level entry path.</summary>
 	private readonly ConcurrentDictionary<string, Timer> _timers = new();
 
+	/// <summary>
+	///     Runs the filesystem watch loop until shutdown: installs a recursive
+	///     <see cref="FileSystemWatcher" /> on the mapsets folder, then waits on an indefinite delay.
+	///     On shutdown, disposes any armed-but-not-yet-fired timers and awaits any reconciliation
+	///     still in flight so the DB is never mutated while the host is stopping.
+	/// </summary>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		var path = options.Value.MapsetsPath;
@@ -67,14 +79,13 @@ public sealed class BeatmapWatcherService(
 
 	/// <summary>
 	///     A rename into a `.deleted_`-suffixed name (see
-	///     <see cref="BeatmapIngestionService.DeletedFolderInfix" /> — the atomic marker the `api.`
-	///     host's async mapset-delete route uses) means the folder's *new* name is never a live
-	///     mapset. Debouncing on the *old* path instead lets <see cref="Settle" />'s own
-	///     Directory.Exists/File.Exists checks naturally resolve it to
-	///     <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" /> — the old path no longer
-	///     exists on disk, and its name (unlike the new one) still carries the mapset's real leading
-	///     id. Any other rename (e.g. a human renaming a mapset folder) still debounces on the new
-	///     path as before.
+	///     <see cref="BeatmapIngestionService.DeletedFolderInfix" />, the atomic marker of a folder
+	///     mid-deletion) means the folder's *new* name is never a live mapset. Debouncing on the
+	///     *old* path instead lets <see cref="Settle" />'s own Directory.Exists/File.Exists checks
+	///     naturally resolve it to <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />:
+	///     the old path no longer exists on disk, and its name (unlike the new one) still carries the
+	///     mapset's real leading id. Any other rename (e.g. a human renaming a mapset folder) still
+	///     debounces on the new path as before.
 	/// </summary>
 	private void DebounceRenamed(string root, RenamedEventArgs e)
 	{
@@ -89,6 +100,10 @@ public sealed class BeatmapWatcherService(
 		Debounce(newAffected);
 	}
 
+	/// <summary>
+	///     Arms or re-arms a per-path timer so a burst of filesystem events for the same entry
+	///     settles into a single reconciliation after <see cref="DebounceWindow" /> of quiet.
+	/// </summary>
 	private void Debounce(string? affected)
 	{
 		if (affected is null) return;
@@ -114,11 +129,19 @@ public sealed class BeatmapWatcherService(
 			});
 	}
 
+	/// <summary>
+	///     Creates a one-shot timer that runs <see cref="TrackSettle" /> for the given path after
+	///     <see cref="DebounceWindow" />.
+	/// </summary>
 	private Timer NewTimer(string affected)
 	{
 		return new Timer(_ => TrackSettle(affected), null, DebounceWindow, Timeout.InfiniteTimeSpan);
 	}
 
+	/// <summary>
+	///     Kicks off <see cref="Settle" /> for the given path and registers the returned task in
+	///     <see cref="_inFlightSettles" /> so shutdown can await it.
+	/// </summary>
 	private void TrackSettle(string affected)
 	{
 		var task = Settle(affected);
@@ -126,6 +149,12 @@ public sealed class BeatmapWatcherService(
 		task.ContinueWith(t => _inFlightSettles.TryRemove(t, out _), TaskScheduler.Default);
 	}
 
+	/// <summary>
+	///     Disposes the path's timer, then reconciles the affected entry: an existing directory
+	///     reconciles as a mapset folder, an existing ".osz" as a loose archive, and a path that no
+	///     longer exists (and is not a ".osz") as a deleted mapset folder. A `.deleted_`-marked
+	///     folder and any path that fits none of those shapes are skipped.
+	/// </summary>
 	private async Task Settle(string affected)
 	{
 		_timers.TryRemove(affected, out var timer);

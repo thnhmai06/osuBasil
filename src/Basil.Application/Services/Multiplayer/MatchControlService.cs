@@ -12,21 +12,23 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>
-///     The room-adjustment mutation logic every `!mp` subcommand (see <c>MpCommandService</c>) and the
-///     matching HTTP write route (see the <c>api.</c> host's <c>/match/{id}/settings</c> and
-///     <c>/match/{id}/{action}</c>) both need — extracted so the two surfaces call the identical
-///     state-mutation/broadcast code instead of duplicating it. Callers own everything surface-specific:
-///     resolving a target player (chat resolves by name via <see cref="IPlayerSessionRegistry.GetByName" />,
-///     HTTP resolves by numeric id via <see cref="IPlayerSessionRegistry.GetById" />), parsing/validating
-///     raw input, and formatting a reply/response from the result. Every method here assumes the caller
-///     already holds the match's <see cref="MatchSession.Lock" /> for the whole read-mutate-broadcast
-///     sequence, exactly like every packet handler and <c>MpCommandService</c>'s own <c>RunLockedAsync</c>
-///     wrapper already do — this class never acquires the lock itself.
+///     Provides the room-adjustment mutations shared by every <c>!mp</c> subcommand (see
+///     <c>MpCommandService</c>) and the matching HTTP write routes on the <c>api.</c> host.
 /// </summary>
+/// <remarks>
+///     Extracted so both surfaces call the identical state-mutation and broadcast code instead of
+///     duplicating it. Callers own everything surface-specific: resolving a target player (chat
+///     resolves by name via <see cref="IPlayerSessionRegistry.GetByName" />, HTTP resolves by
+///     numeric id via <see cref="IPlayerSessionRegistry.GetById" />), parsing and validating raw
+///     input, and formatting a reply or response from the result. Every method here assumes the
+///     caller already holds the match's <see cref="MatchSession.Lock" /> for the whole
+///     read-mutate-broadcast sequence, exactly like every packet handler and <c>MpCommandService</c>'s
+///     own <c>RunLockedAsync</c> wrapper already do. This class never acquires the lock itself.
+/// </remarks>
 public sealed class MatchControlService(
 	MatchMembershipService matchMembership,
 	IMatchPersistenceRepository matchPersistence,
-	IMapRepository mapRepository,
+	IBeatmapRepository beatmapRepository,
 	IPlayerSessionRegistry sessionRegistry,
 	ILogger<MatchControlService> logger)
 {
@@ -120,21 +122,31 @@ public sealed class MatchControlService(
 	private const int PeriodicReminderIntervalSeconds = 60;
 	private const int NearTotalIgnoreWindowSeconds = 5;
 
-	/// <summary>`!mp start`'s countdown ticks down to 3, then goes silent until "Good luck, have fun!".</summary>
+	/// <summary>
+	///     Announcement seconds for a <c>!mp start</c> countdown, ticking down to 3 before going silent until "Good luck,
+	///     have fun!".
+	/// </summary>
 	private static readonly int[] StartCheckpoints = [60, 30, 10, 5, 4, 3];
 
-	/// <summary>`!mp timer` skips the fast final tick entirely — no 5/4/3/2/1, just the higher marks.</summary>
+	/// <summary>Announcement seconds for a <c>!mp timer</c> countdown, which skips the fast final tick entirely.</summary>
 	private static readonly int[] TimerOnlyCheckpoints = [60, 30, 10];
 
-	/// <summary>
-	///     Ported from `!mp lock`/`!mp unlock` verbatim — note no <c>EnqueueState</c> broadcast happens
-	///     here, matching the pre-existing chat behavior (not something this extraction changes).
-	/// </summary>
+	/// <summary>Sets whether the room accepts new players.</summary>
+	/// <remarks>
+	///     Unlike every other mutation in this class, no <c>EnqueueState</c> broadcast happens here,
+	///     matching the pre-existing <c>!mp lock</c>/<c>!mp unlock</c> behavior.
+	/// </remarks>
+	/// <param name="match">The match to update.</param>
+	/// <param name="locked"><see langword="true" /> to block new joins; otherwise, <see langword="false" />.</param>
 	public void SetLocked(MatchSession match, bool locked)
 	{
 		match.IsLocked = locked;
 	}
 
+	/// <summary>Sets whether the room is private and broadcasts the resulting state.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="isPrivate"><see langword="true" /> to make the room private; otherwise, <see langword="false" />.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetPrivateAsync(MatchSession match, bool isPrivate, CancellationToken cancellationToken = default)
 	{
 		match.IsPrivate = isPrivate;
@@ -142,6 +154,10 @@ public sealed class MatchControlService(
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
+	/// <summary>Applies a new room size, clamped to the 1 through 16 range, and broadcasts the resulting state.</summary>
+	/// <param name="match">The match to resize.</param>
+	/// <param name="size">The desired size, clamped to the 1 through 16 range.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetSizeAsync(MatchSession match, int size, CancellationToken cancellationToken = default)
 	{
 		size = Math.Clamp(size, 1, 16);
@@ -151,6 +167,12 @@ public sealed class MatchControlService(
 		matchMembership.CancelQueuedAutoStart(match);
 	}
 
+	/// <summary>
+	///     Opens or locks slots so the match exposes exactly <paramref name="size" /> open slots, preserving any
+	///     occupants.
+	/// </summary>
+	/// <param name="match">The match whose slots to adjust.</param>
+	/// <param name="size">The target number of open slots.</param>
 	public static void ApplySize(MatchSession match, int size)
 	{
 		for (var i = 0; i < 16; i++)
@@ -163,7 +185,17 @@ public sealed class MatchControlService(
 		}
 	}
 
-	/// <summary><paramref name="destSlotIndex" /> is 0-based; callers convert from their own 1-based input.</summary>
+	/// <summary>Moves a player into an open destination slot and vacates their previous one.</summary>
+	/// <remarks><paramref name="destSlotIndex" /> is 0-based; callers convert from their own 1-based input.</remarks>
+	/// <param name="match">The match whose slots to rearrange.</param>
+	/// <param name="target">The player to move.</param>
+	/// <param name="destSlotIndex">The 0-based index of the destination slot.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <returns>
+	///     <see cref="MoveResult.Ok" /> on success, <see cref="MoveResult.DestinationNotOpen" /> when the
+	///     destination slot is not open, or <see cref="MoveResult.TargetNotInMatch" /> when the target
+	///     occupies no slot in this match.
+	/// </returns>
 	public async Task<MoveResult> MoveSlotAsync(MatchSession match, PlayerSession target, int destSlotIndex,
 		CancellationToken cancellationToken = default)
 	{
@@ -179,6 +211,10 @@ public sealed class MatchControlService(
 		return MoveResult.Ok;
 	}
 
+	/// <summary>Transfers hosting to another player and records the grant as a match event.</summary>
+	/// <param name="match">The match whose host changes.</param>
+	/// <param name="target">The player who becomes the host.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
 	public async Task SetHostAsync(MatchSession match, PlayerSession target,
 		CancellationToken cancellationToken = default)
 	{
@@ -198,6 +234,9 @@ public sealed class MatchControlService(
 		await matchMembership.PublishHostAsync(match, cancellationToken);
 	}
 
+	/// <summary>Clears the host assignment (setting the host id to 0) and republishes host state.</summary>
+	/// <param name="match">The match whose host to clear.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
 	public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		match.HostId = 0;
@@ -205,6 +244,10 @@ public sealed class MatchControlService(
 		await matchMembership.PublishHostAsync(match, cancellationToken);
 	}
 
+	/// <summary>Sets the room name, truncating it to <see cref="MaxMatchNameLength" /> characters, and broadcasts the state.</summary>
+	/// <param name="match">The match to rename.</param>
+	/// <param name="name">The new room name.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetNameAsync(MatchSession match, string name, CancellationToken cancellationToken = default)
 	{
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
@@ -213,7 +256,11 @@ public sealed class MatchControlService(
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
-	/// <summary>Empty string clears the password, matching `!mp password` with no argument.</summary>
+	/// <summary>Sets the room password and broadcasts the resulting state.</summary>
+	/// <remarks>An empty string clears the password, matching <c>!mp password</c> with no argument.</remarks>
+	/// <param name="match">The match to update.</param>
+	/// <param name="password">The new password, or an empty string to clear it.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetPasswordAsync(MatchSession match, string password,
 		CancellationToken cancellationToken = default)
 	{
@@ -221,6 +268,14 @@ public sealed class MatchControlService(
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
+	/// <summary>Sends a match invite to another player and records them as invited.</summary>
+	/// <param name="sender">The player sending the invite.</param>
+	/// <param name="match">The match being invited to.</param>
+	/// <param name="target">The player being invited.</param>
+	/// <returns>
+	///     <see cref="InviteResult.Ok" /> when the invite was sent, or
+	///     <see cref="InviteResult.TargetAlreadyInRoom" /> when the target is already in the match.
+	/// </returns>
 	public InviteResult Invite(PlayerSession sender, MatchSession match, PlayerSession target)
 	{
 		if (target.Match == match) return InviteResult.TargetAlreadyInRoom;
@@ -230,6 +285,12 @@ public sealed class MatchControlService(
 		return InviteResult.Ok;
 	}
 
+	/// <summary>Grants referee status to a single player and records the grant as a match event.</summary>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system or HTTP action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="match">The match to update.</param>
+	/// <param name="target">The player to grant referee status.</param>
+	/// <param name="cancellationToken">A token that cancels the event write and referee publish.</param>
 	public async Task AddRefereeAsync(int? actorId, string? actorName, MatchSession match, PlayerSession target,
 		CancellationToken cancellationToken = default)
 	{
@@ -245,7 +306,19 @@ public sealed class MatchControlService(
 		await matchMembership.PublishRefsAsync(match, cancellationToken);
 	}
 
-	/// <summary>PUT — full replace. 409 (<see cref="SetRefereesResult.WouldLeaveEmpty" />) if it would end up empty.</summary>
+	/// <summary>Replaces the full referee list and records the resulting add and remove events.</summary>
+	/// <remarks>
+	///     This is the PUT variant. An empty <paramref name="targets" /> collection is rejected with
+	///     <see cref="SetRefereesResult.WouldLeaveEmpty" /> (HTTP 409) rather than leaving the room
+	///     without any referees.
+	/// </remarks>
+	/// <param name="match">The match whose referees to replace.</param>
+	/// <param name="targets">The complete set of players to keep as referees.</param>
+	/// <param name="cancellationToken">A token that cancels the event writes and referee publish.</param>
+	/// <returns>
+	///     <see cref="SetRefereesResult.Ok" /> on success, or
+	///     <see cref="SetRefereesResult.WouldLeaveEmpty" /> when <paramref name="targets" /> is empty.
+	/// </returns>
 	public async Task<SetRefereesResult> SetRefereesAsync(MatchSession match,
 		IReadOnlyCollection<PlayerSession> targets,
 		CancellationToken cancellationToken = default)
@@ -277,7 +350,14 @@ public sealed class MatchControlService(
 		return SetRefereesResult.Ok;
 	}
 
-	/// <summary>PATCH — add a batch. Never triggers the empty guard (it only ever adds referees).</summary>
+	/// <summary>Adds a batch of referees without removing any existing ones.</summary>
+	/// <remarks>
+	///     This is the PATCH variant. Since it only ever adds referees, it can never trigger the
+	///     empty guard.
+	/// </remarks>
+	/// <param name="match">The match whose referees to extend.</param>
+	/// <param name="targets">The players to grant referee status.</param>
+	/// <param name="cancellationToken">A token that cancels the event writes and referee publish.</param>
 	public async Task AddRefereesAsync(MatchSession match, IReadOnlyCollection<PlayerSession> targets,
 		CancellationToken cancellationToken = default)
 	{
@@ -294,12 +374,23 @@ public sealed class MatchControlService(
 		await matchMembership.PublishRefsAsync(match, cancellationToken);
 	}
 
-	/// <summary>
-	///     Replaces the old bool-returning "auto-close a `!mp make` room when its last referee is
-	///     removed" behavior with a guard that blocks removing the last referee at all — the auto-close
-	///     branch is now unreachable dead code, since a match can never actually reach zero referees
-	///     through this path anymore.
-	/// </summary>
+	/// <summary>Revokes referee status from a single player and records the removal as a match event.</summary>
+	/// <remarks>
+	///     A guard blocks removing the last referee, replacing the old behavior of auto-closing a
+	///     <c>!mp make</c> room when its last referee left. The auto-close branch is now unreachable
+	///     dead code, since a match can never actually reach zero referees through this path.
+	/// </remarks>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system or HTTP action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="match">The match to update.</param>
+	/// <param name="target">The referee to remove.</param>
+	/// <param name="cancellationToken">A token that cancels the event write and referee publish.</param>
+	/// <returns>
+	///     <see cref="RemoveRefereeResult.Ok" /> on success,
+	///     <see cref="RemoveRefereeResult.NotAReferee" /> when the target holds no referee status, or
+	///     <see cref="RemoveRefereeResult.WouldLeaveEmpty" /> when removing them would leave the room
+	///     without any referees.
+	/// </returns>
 	public async Task<RemoveRefereeResult> RemoveOneRefereeAsync(int? actorId, string? actorName, MatchSession match,
 		PlayerSession target, CancellationToken cancellationToken = default)
 	{
@@ -319,6 +410,15 @@ public sealed class MatchControlService(
 		return RemoveRefereeResult.Ok;
 	}
 
+	/// <summary>Assigns a player's team and broadcasts the resulting state.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="target">The player whose team to set.</param>
+	/// <param name="team">The team to assign.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <returns>
+	///     <see cref="TeamResult.Ok" /> on success, or <see cref="TeamResult.TargetNotInMatch" /> when
+	///     the target occupies no slot in this match.
+	/// </returns>
 	public async Task<TeamResult> SetTeamAsync(MatchSession match, PlayerSession target, MatchTeam team,
 		CancellationToken cancellationToken = default)
 	{
@@ -333,6 +433,9 @@ public sealed class MatchControlService(
 		return TeamResult.Ok;
 	}
 
+	/// <summary>Reassigns every occupied slot's team to fit a new team type, when it differs from the current one.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="newType">The team type to apply.</param>
 	public static void ApplyTeamType(MatchSession match, MatchTeamType newType)
 	{
 		if (match.TeamType == newType) return;
@@ -348,6 +451,12 @@ public sealed class MatchControlService(
 		match.TeamType = newType;
 	}
 
+	/// <summary>Applies a new team type, win condition, and size in one pass and broadcasts the resulting state.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="teamType">The team type to apply.</param>
+	/// <param name="winCondition">The new win condition, or <see langword="null" /> to leave it unchanged.</param>
+	/// <param name="size">The new size, or <see langword="null" /> to leave it unchanged.</param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetTeamTypeWinConditionAndSizeAsync(MatchSession match, MatchTeamType teamType,
 		MatchWinCondition? winCondition, int? size, CancellationToken cancellationToken = default)
 	{
@@ -362,11 +471,19 @@ public sealed class MatchControlService(
 		matchMembership.CancelQueuedAutoStart(match);
 	}
 
-	/// <summary>Returns the resolved beatmap alongside the result so callers don't need a second lookup.</summary>
+	/// <summary>Assigns a beatmap to the match, unreadies all players, and broadcasts the resulting state.</summary>
+	/// <remarks>Returns the resolved beatmap alongside the result so callers do not need a second lookup.</remarks>
+	/// <param name="match">The match to update.</param>
+	/// <param name="beatmapId">The id of the beatmap to assign.</param>
+	/// <param name="cancellationToken">A token that cancels the beatmap lookup and state broadcast.</param>
+	/// <returns>
+	///     <see cref="SetMapResult.Ok" /> with the resolved beatmap, or
+	///     <see cref="SetMapResult.BeatmapNotFound" /> with <see langword="null" />.
+	/// </returns>
 	public async Task<(SetMapResult Result, Beatmap? Beatmap)> SetMapAsync(MatchSession match, int beatmapId,
 		CancellationToken cancellationToken = default)
 	{
-		var bmap = await mapRepository.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
+		var bmap = await beatmapRepository.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
 		if (bmap is null) return (SetMapResult.BeatmapNotFound, null);
 
 		match.UnreadyPlayers();
@@ -380,11 +497,19 @@ public sealed class MatchControlService(
 		return (SetMapResult.Ok, bmap);
 	}
 
-	/// <summary>
-	///     Ported to match real Bancho exactly: mod-setting is the ONLY place freemod toggles — it's
-	///     just one of the values a caller can pass (<paramref name="enableFreemod" />), not a separate
-	///     command. Passing <paramref name="enableFreemod" /> ignores <paramref name="mods" />.
-	/// </summary>
+	/// <summary>Applies match mods, toggling freemod mode when requested, and broadcasts the resulting state.</summary>
+	/// <remarks>
+	///     Mod-setting is the only place freemod toggles. It is just one of the values a caller can
+	///     pass (<paramref name="enableFreemod" />), not a separate command. Passing
+	///     <paramref name="enableFreemod" /> ignores <paramref name="mods" />.
+	/// </remarks>
+	/// <param name="match">The match to update.</param>
+	/// <param name="mods">The mods to apply when not enabling freemod.</param>
+	/// <param name="enableFreemod">
+	///     <see langword="true" /> to switch the room into freemod mode; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	public async Task SetModsAsync(MatchSession match, Mods mods, bool enableFreemod,
 		CancellationToken cancellationToken = default)
 	{
@@ -403,6 +528,8 @@ public sealed class MatchControlService(
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
+	/// <summary>Switches the room into freemod mode, stripping speed-changing mods from every occupied slot.</summary>
+	/// <param name="match">The match to update.</param>
 	private static void EnableFreemods(MatchSession match)
 	{
 		if (match.Freemods) return;
@@ -415,6 +542,8 @@ public sealed class MatchControlService(
 		match.Mods &= ModsExtensions.SpeedChangingMods;
 	}
 
+	/// <summary>Switches the room out of freemod mode, folding the host slot's mods back into the room mods.</summary>
+	/// <param name="match">The match to update.</param>
 	private static void DisableFreemods(MatchSession match)
 	{
 		var hostSlot = match.GetHostSlot();
@@ -427,7 +556,20 @@ public sealed class MatchControlService(
 				slot.Mods = Mods.NoMod;
 	}
 
-	/// <summary><paramref name="countdownSeconds" /> null/non-positive starts immediately instead of queuing.</summary>
+	/// <summary>Starts the match immediately, or queues a countdown when one is requested.</summary>
+	/// <remarks>
+	///     A <see langword="null" /> or non-positive <paramref name="countdownSeconds" /> starts immediately instead of
+	///     queuing.
+	/// </remarks>
+	/// <param name="match">The match to start.</param>
+	/// <param name="countdownSeconds">The countdown length in seconds, or <see langword="null" /> to start immediately.</param>
+	/// <param name="cancellationToken">A token that cancels the immediate start.</param>
+	/// <returns>
+	///     <see cref="StartResult.AlreadyInProgress" /> when the match is already running,
+	///     <see cref="StartResult.CountdownQueued" /> when a countdown was queued, or
+	///     <see cref="StartResult.Started" /> or <see cref="StartResult.BeatmapMissing" /> for an
+	///     immediate start.
+	/// </returns>
 	public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds,
 		CancellationToken cancellationToken = default)
 	{
@@ -443,21 +585,32 @@ public sealed class MatchControlService(
 		return started ? StartResult.Started : StartResult.BeatmapMissing;
 	}
 
-	/// <summary>Backs `!mp timer` — a countdown that never auto-starts the match when it finishes.</summary>
+	/// <summary>Starts a plain countdown that announces but never auto-starts the match when it finishes.</summary>
+	/// <param name="match">The match whose timer to start.</param>
+	/// <param name="seconds">The countdown length in seconds.</param>
 	public void Timer(MatchSession match, int seconds)
 	{
 		logger.LogDebug("Timer started: MatchId={MatchId} Seconds={Seconds}", match.DbId, seconds);
 		BeginCountdown(match, seconds, false);
 	}
 
-	/// <summary>
-	///     Fixed marks plus an extra reminder every 60s for long countdowns (e.g. a 5-minute timer also
-	///     announces at 240/180/120). A mark that's a multiple of 60 (whether from the fixed list's own
-	///     "60" or a periodic one) is dropped if it's within <see cref="NearTotalIgnoreWindowSeconds" />
-	///     of <paramref name="totalSeconds" /> — otherwise it'd fire almost immediately after "Queued...",
-	///     which is redundant. The sub-60 marks (30/10/5/4/3/2/1) are exempt from that check — they're
-	///     meant to fire close together as the final countdown ticks down.
-	/// </summary>
+	/// <summary>Computes the descending list of seconds at which a countdown announces.</summary>
+	/// <remarks>
+	///     Comprises the fixed marks (which depend on <paramref name="autoStart" />) plus an extra
+	///     reminder every 60 seconds for long countdowns (for example, a 5-minute timer also
+	///     announces at 240, 180, and 120). A mark that is a multiple of 60, whether from the fixed
+	///     list's own 60 or a periodic one, is dropped if it falls within
+	///     <see cref="NearTotalIgnoreWindowSeconds" /> of <paramref name="totalSeconds" />; otherwise
+	///     it would fire almost immediately after "Queued...", which is redundant. The sub-60 marks
+	///     (30/10/5/4/3/2/1) are exempt from that check, since they are meant to fire close together
+	///     as the final countdown ticks down.
+	/// </remarks>
+	/// <param name="totalSeconds">The total countdown length in seconds.</param>
+	/// <param name="autoStart">
+	///     <see langword="true" /> for a <c>!mp start</c> countdown; otherwise, <see langword="false" />
+	///     for a plain <c>!mp timer</c>.
+	/// </param>
+	/// <returns>The checkpoint seconds in descending order.</returns>
 	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds, bool autoStart = true)
 	{
 		var periodic = Enumerable.Range(1, int.MaxValue)
@@ -476,12 +629,18 @@ public sealed class MatchControlService(
 		];
 	}
 
-	/// <summary>
-	///     Kicks off a fire-and-forget countdown, cancelling any timer already pending on this match.
+	/// <summary>Starts a fire-and-forget countdown, cancelling any timer already pending on the match.</summary>
+	/// <remarks>
 	///     The loop itself (<see cref="CountdownLoopAsync" />) only holds <see cref="MatchSession.Lock" />
-	///     briefly at its final tick — never across a `Task.Delay` — matching this codebase's rule
+	///     briefly at its final tick, never across a <c>Task.Delay</c>, matching this codebase's rule
 	///     against holding the lock across an unrelated await.
-	/// </summary>
+	/// </remarks>
+	/// <param name="match">The match whose countdown to start.</param>
+	/// <param name="totalSeconds">The countdown length in seconds.</param>
+	/// <param name="autoStart">
+	///     <see langword="true" /> to start the match when the countdown finishes; otherwise,
+	///     <see langword="false" />.
+	/// </param>
 	private void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart)
 	{
 		match.PendingTimer?.Cancel();
@@ -495,7 +654,7 @@ public sealed class MatchControlService(
 			match.DbId, totalSeconds, autoStart);
 
 		// Cuts the countdown loop's AsyncLocal inheritance (RequestId/etc.) from the request that
-		// triggered it — the loop can run up to `totalSeconds` after that request has ended, so it
+		// triggered it: the loop can run up to `totalSeconds` after that request has ended, so it
 		// must not carry a now-stale RequestId. It pushes its own MatchId scope below instead.
 		using (ExecutionContext.SuppressFlow())
 		{
@@ -503,6 +662,14 @@ public sealed class MatchControlService(
 		}
 	}
 
+	/// <summary>Runs a countdown, announcing at each checkpoint and optionally starting the match at zero.</summary>
+	/// <param name="match">The match the countdown belongs to.</param>
+	/// <param name="totalSeconds">The total countdown length in seconds.</param>
+	/// <param name="autoStart">
+	///     <see langword="true" /> to start the match when the countdown finishes; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <param name="cts">The token source that owns the countdown's cancellation token.</param>
 	private async Task CountdownLoopAsync(MatchSession match, int totalSeconds, bool autoStart,
 		CancellationTokenSource cts)
 	{
@@ -552,7 +719,13 @@ public sealed class MatchControlService(
 		}
 	}
 
-	/// <summary>Returns false (caller should stop) if cancelled during the delay.</summary>
+	/// <summary>Waits the given number of seconds and reports whether the wait was cancelled.</summary>
+	/// <param name="seconds">The delay length in seconds; zero or negative delays complete immediately.</param>
+	/// <param name="token">A token that cancels the wait.</param>
+	/// <returns>
+	///     <see langword="true" /> when the full delay elapsed; otherwise, <see langword="false" /> when cancelled,
+	///     meaning the caller should stop.
+	/// </returns>
 	private static async Task<bool> DelayAsync(int seconds, CancellationToken token)
 	{
 		if (seconds <= 0) return !token.IsCancellationRequested;
@@ -568,6 +741,9 @@ public sealed class MatchControlService(
 		}
 	}
 
+	/// <summary>Posts a message into the match channel from the bot account, when the bot is online.</summary>
+	/// <param name="match">The match whose channel to announce into.</param>
+	/// <param name="text">The message to post.</param>
 	private void Announce(MatchSession match, string text)
 	{
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
@@ -576,6 +752,12 @@ public sealed class MatchControlService(
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
 	}
 
+	/// <summary>Cancels a pending countdown and republishes the timer state.</summary>
+	/// <param name="match">The match whose timer to abort.</param>
+	/// <returns>
+	///     <see cref="AbortTimerResult.Ok" /> when a timer was running and was cancelled, or
+	///     <see cref="AbortTimerResult.NoTimerRunning" /> when none was.
+	/// </returns>
 	public AbortTimerResult AbortTimer(MatchSession match)
 	{
 		if (match.PendingTimer is null) return AbortTimerResult.NoTimerRunning;
@@ -590,6 +772,13 @@ public sealed class MatchControlService(
 		return AbortTimerResult.Ok;
 	}
 
+	/// <summary>Stops an in-progress match, unreadying playing players and ending the current round.</summary>
+	/// <param name="match">The match to abort.</param>
+	/// <param name="cancellationToken">A token that cancels the round-end write and state broadcast.</param>
+	/// <returns>
+	///     <see cref="AbortResult.Ok" /> when the match was aborted, or
+	///     <see cref="AbortResult.NotInProgress" /> when it was not running.
+	/// </returns>
 	public async Task<AbortResult> AbortAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		if (!match.InProgress) return AbortResult.NotInProgress;
@@ -612,6 +801,16 @@ public sealed class MatchControlService(
 		return AbortResult.Ok;
 	}
 
+	/// <summary>Removes a player from the match and records the kick as a match event.</summary>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system or HTTP action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="match">The match to update.</param>
+	/// <param name="target">The player to kick.</param>
+	/// <param name="cancellationToken">A token that cancels the leave and event write.</param>
+	/// <returns>
+	///     <see cref="KickResult.Ok" /> on success, or <see cref="KickResult.TargetNotInMatch" /> when
+	///     the target is not in the match.
+	/// </returns>
 	public async Task<KickResult> KickAsync(int? actorId, string? actorName, MatchSession match, PlayerSession target,
 		CancellationToken cancellationToken = default)
 	{
@@ -631,6 +830,16 @@ public sealed class MatchControlService(
 		return KickResult.Ok;
 	}
 
+	/// <summary>Adds a player to the ban list, kicks them from the match, and records the ban as a match event.</summary>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system or HTTP action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="match">The match to update.</param>
+	/// <param name="target">The player to ban.</param>
+	/// <param name="cancellationToken">A token that cancels the leave, event write, and ban-list publish.</param>
+	/// <returns>
+	///     <see cref="KickResult.Ok" /> on success, or <see cref="KickResult.TargetNotInMatch" /> when
+	///     the target is not in the match.
+	/// </returns>
 	public async Task<KickResult> BanAsync(int? actorId, string? actorName, MatchSession match, PlayerSession target,
 		CancellationToken cancellationToken = default)
 	{
@@ -652,6 +861,14 @@ public sealed class MatchControlService(
 		return KickResult.Ok;
 	}
 
+	/// <summary>Removes a player from the ban list and republishes the ban list.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="targetUserId">The banned player's id to unban.</param>
+	/// <param name="cancellationToken">A token that cancels the ban-list publish.</param>
+	/// <returns>
+	///     <see cref="UnbanResult.Ok" /> when the player was unbanned, or
+	///     <see cref="UnbanResult.NotBanned" /> when they were not on the ban list.
+	/// </returns>
 	public async Task<UnbanResult> UnbanAsync(MatchSession match, int targetUserId,
 		CancellationToken cancellationToken = default)
 	{
@@ -663,7 +880,13 @@ public sealed class MatchControlService(
 		return UnbanResult.Ok;
 	}
 
-	/// <summary>PUT — full replace of the ban list. No empty guard: banning down to zero is fine.</summary>
+	/// <summary>Replaces the full ban list, kicking any newly banned players who are currently seated.</summary>
+	/// <remarks>
+	///     This is the PUT variant. There is no empty guard: banning down to zero players is fine.
+	/// </remarks>
+	/// <param name="match">The match whose ban list to replace.</param>
+	/// <param name="userIds">The complete set of banned player ids.</param>
+	/// <param name="cancellationToken">A token that cancels the kicks and the ban-list publish.</param>
 	public async Task SetBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
 		CancellationToken cancellationToken = default)
 	{
@@ -677,7 +900,11 @@ public sealed class MatchControlService(
 		await matchMembership.PublishBansAsync(match, cancellationToken);
 	}
 
-	/// <summary>PATCH — add a batch of bans, each newly-banned id who is currently seated is also kicked.</summary>
+	/// <summary>Adds a batch of bans, kicking any newly banned players who are currently seated.</summary>
+	/// <remarks>This is the PATCH variant; it only ever adds bans.</remarks>
+	/// <param name="match">The match whose ban list to extend.</param>
+	/// <param name="userIds">The player ids to ban.</param>
+	/// <param name="cancellationToken">A token that cancels the kicks and the ban-list publish.</param>
 	public async Task AddBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
 		CancellationToken cancellationToken = default)
 	{
@@ -690,6 +917,10 @@ public sealed class MatchControlService(
 		await matchMembership.PublishBansAsync(match, cancellationToken);
 	}
 
+	/// <summary>Adds a player to the ban list and kicks them from the match if they are currently seated.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="userId">The player id to ban.</param>
+	/// <param name="cancellationToken">A token that cancels the leave operation.</param>
 	private async Task AddBanAndKickIfSeated(MatchSession match, int userId,
 		CancellationToken cancellationToken = default)
 	{
@@ -702,11 +933,20 @@ public sealed class MatchControlService(
 		seated.Enqueue(ServerPacketWriter.MatchJoinFail());
 	}
 
-	/// <summary>
-	///     `force: true` on `POST /matches/{matchId}/invite` — bypasses password/private/locked gating
-	///     and seats the target directly, but a banned target is still rejected (the one gate force does
-	///     not cross).
-	/// </summary>
+	/// <summary>Seats a player directly, bypassing password, private, and locked gating.</summary>
+	/// <remarks>
+	///     Backs <c>force: true</c> on <c>POST /matches/{matchId}/invite</c>. A banned target is still
+	///     rejected; that is the one gate force does not cross.
+	/// </remarks>
+	/// <param name="match">The match to seat into.</param>
+	/// <param name="target">The player to seat.</param>
+	/// <param name="cancellationToken">A token that cancels the join operation.</param>
+	/// <returns>
+	///     <see cref="ForceInviteResult.Ok" /> when seated (or already in the room),
+	///     <see cref="ForceInviteResult.NoFreeSlot" /> when the room is full,
+	///     <see cref="ForceInviteResult.TargetBanned" /> when the target is banned, or
+	///     <see cref="ForceInviteResult.TargetInAnotherMatch" /> when the target is already elsewhere.
+	/// </returns>
 	public async Task<ForceInviteResult> ForceInviteAsync(MatchSession match, PlayerSession target,
 		CancellationToken cancellationToken = default)
 	{
@@ -719,17 +959,30 @@ public sealed class MatchControlService(
 			: ForceInviteResult.NoFreeSlot;
 	}
 
-	/// <summary>
-	///     Reassigns/re-teams/locks slots in one atomic pass. Every <see cref="SlotPatchEntry.UserId" />
-	///     referenced anywhere in <paramref name="entries" /> must already occupy some slot in this
-	///     match (<see cref="SetSlotsResult.UnknownUserId" /> otherwise) — this never seats a new
-	///     player, only rearranges existing occupants. <paramref name="isFullReplace" /> (PUT) also
-	///     requires the referenced user ids to exactly match the match's current full occupant set
-	///     (<see cref="SetSlotsResult.PlayerCountMismatch" /> otherwise); PATCH only touches the slots
-	///     actually given. A <see cref="SlotPatchEntry.Team" /> value other than the literal strings
-	///     `"Red"`/`"Blue"` is a no-op — the destination slot's existing team is preserved, never reset
-	///     to neutral, and never inherited from the moving player's previous slot.
-	/// </summary>
+	/// <summary>Reassigns, re-teams, and locks slots in one atomic pass, then republishes the slot views.</summary>
+	/// <remarks>
+	///     Every <see cref="SlotPatchEntry.UserId" /> referenced anywhere in <paramref name="entries" />
+	///     must already occupy some slot in this match (<see cref="SetSlotsResult.UnknownUserId" />
+	///     otherwise). This never seats a new player; it only rearranges existing occupants.
+	///     <paramref name="isFullReplace" /> (PUT) also requires the referenced user ids to exactly
+	///     match the match's current full occupant set (<see cref="SetSlotsResult.PlayerCountMismatch" />
+	///     otherwise); PATCH only touches the slots actually given. A <see cref="SlotPatchEntry.Team" />
+	///     value other than the literal strings <c>"Red"</c> or <c>"Blue"</c> is a no-op: the
+	///     destination slot's existing team is preserved, never reset to neutral, and never inherited
+	///     from the moving player's previous slot.
+	/// </remarks>
+	/// <param name="match">The match whose slots to rearrange.</param>
+	/// <param name="entries">The slot patches keyed by 0-based slot index.</param>
+	/// <param name="isFullReplace">
+	///     <see langword="true" /> to require the entries to cover every occupied slot; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the slot-view publish.</param>
+	/// <returns>
+	///     <see cref="SetSlotsResult.Ok" /> on success, or
+	///     <see cref="SetSlotsResult.SlotOccupiedAndLocked" />, <see cref="SetSlotsResult.UnknownUserId" />,
+	///     or <see cref="SetSlotsResult.PlayerCountMismatch" /> on validation failure.
+	/// </returns>
 	public async Task<SetSlotsResult> SetSlotsAsync(MatchSession match,
 		IReadOnlyDictionary<int, SlotPatchEntry> entries,
 		bool isFullReplace, CancellationToken cancellationToken = default)
@@ -765,7 +1018,7 @@ public sealed class MatchControlService(
 		var destinationSlots = entries.Where(kv => kv.Value.UserId is not null).Select(kv => kv.Key).ToHashSet();
 
 		// Vacate the previous slot of every moved player, unless that slot is itself a destination
-		// in this same payload (a direct swap doesn't need clearing — it gets overwritten below).
+		// in this same payload (a direct swap doesn't need clearing; it gets overwritten below).
 		foreach (var (slotIndex, entry) in entries)
 		{
 			if (entry.UserId is not { } uid) continue;
@@ -801,12 +1054,27 @@ public sealed class MatchControlService(
 		return SetSlotsResult.Ok;
 	}
 
+	/// <summary>Closes a match, parting every seated player and tearing the room down.</summary>
+	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system action.</param>
+	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="match">The match to close.</param>
+	/// <param name="cancellationToken">A token that cancels the close event write.</param>
 	public async Task CloseAsync(int? actorId, string? actorName, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
 		await matchMembership.CloseAsync(match, actorId, actorName, cancellationToken);
 	}
 
-	/// <summary>One entry in a `PUT`/`PATCH /matches/{matchId}/slots` request, keyed by slot index (0-based).</summary>
+	/// <summary>Represents one entry in a <c>PUT</c> or <c>PATCH /matches/{matchId}/slots</c> request.</summary>
+	/// <remarks>Each entry is keyed by slot index (0-based) in the request dictionary.</remarks>
+	/// <param name="UserId">The id of the player to move into the slot, or <see langword="null" /> to leave occupancy alone.</param>
+	/// <param name="Team">
+	///     The literal <c>"Red"</c> or <c>"Blue"</c> team to assign, or <see langword="null" /> to keep the
+	///     current team.
+	/// </param>
+	/// <param name="Locked">
+	///     <see langword="true" /> to lock an empty slot, <see langword="false" /> to open it, or
+	///     <see langword="null" /> to leave its status alone.
+	/// </param>
 	public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
 }

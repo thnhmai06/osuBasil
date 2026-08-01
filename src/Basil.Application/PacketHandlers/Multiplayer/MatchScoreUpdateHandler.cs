@@ -8,21 +8,35 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.PacketHandlers.Multiplayer;
 
-/// <summary>
-///     Ported from app/api/domains/cho.py's MatchScoreUpdate — runs very frequently during a match,
-///     so the bancho-protocol relay stays a raw forward (no parsing) exactly like the Python source's
-///     "fastpath" comment. The one addition here is decoding the same bytes into a
-///     <see cref="Protocol.Multiplayer.ScoreFrameData" /> to publish on the api. host's SSE
-///     /match/{id}/{playerName} live channel — a second, independent read of the same buffer, not a
-///     change to the relayed packet.
-/// </summary>
+/// <summary>Handles the client's live score update during a match play.</summary>
+/// <remarks>
+///     MatchScoreUpdate arrives very frequently during a play, so the bancho relay stays a raw forward:
+///     the payload bytes are re-wrapped into a <c>MatchScoreUpdate</c> server packet with the player's
+///     slot id written into the wrapped header, then enqueued for the match channel without any parsing.
+///     As a secondary, independent read of the same buffer, the frame is decoded into a
+///     <see cref="Basil.Protocol.Multiplayer.ScoreFrameData" /> and, when subscribers are connected,
+///     published on the player's live score channel through
+///     <see cref="IMatchLiveEvents" />. A malformed or short frame is swallowed so it can never break
+///     the relay. Both reads happen while holding the match's
+///     <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
+/// </remarks>
 public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership, IMatchLiveEvents eventBus)
 	: IBanchoPacketHandler
 {
+	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;
 
+	/// <summary>
+	///     Gets a value that indicates whether the handler may run for restricted players. Always
+	///     <see langword="false" />: score updates are not processed for restricted players.
+	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
+	/// <summary>Processes the score-update packet for the given player.</summary>
+	/// <param name="player">The player session that sent the packet.</param>
+	/// <param name="reader">The packet reader positioned at the payload holding the raw score frame bytes.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(PlayerSession player, BanchoPacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
@@ -37,8 +51,8 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 			var slotId = match.GetSlotId(player.Id);
 			if (slotId is null) return;
 
-			// scorev2 adds an extra 8 bytes to play_data — either way, byte 11 (4 bytes into the
-			// wrapped body) is overwritten with the slot id, matching MatchScoreUpdate.handle.
+			// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the
+			// wrapped body) is overwritten with the slot id so clients can attribute the frame.
 			var packet = PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, playData);
 			packet[11] = (byte)slotId.Value;
 
@@ -54,8 +68,8 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 				}
 				catch (Exception)
 				{
-					// A malformed/short scoreframe must never break the bancho relay above — the live
-					// WS channel just misses this one update.
+					// A malformed or short scoreframe must never break the bancho relay above; the live
+					// score channel just misses this one update.
 				}
 		}
 		finally

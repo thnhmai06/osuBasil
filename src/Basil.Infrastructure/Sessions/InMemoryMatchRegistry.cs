@@ -3,13 +3,25 @@ using Basil.Application.Sessions.Multiplayer;
 namespace Basil.Infrastructure.Sessions;
 
 /// <inheritdoc cref="IMatchRegistry" />
+/// <remarks>
+///     A fixed 64-element array of <see cref="MatchSession" /> references guarded by a single lock.
+///     The array index is the wire-protocol slot id, so ids outside 0 to 63 are rejected rather
+///     than stored. <see cref="GetByDbId" /> and <see cref="All" /> scan the array under the same
+///     lock because the database id and the slot id are unrelated keys.
+/// </remarks>
 public sealed class InMemoryMatchRegistry : IMatchRegistry
 {
+	/// <summary>The number of wire-protocol match slots the registry holds.</summary>
 	private const int MaxMatches = 64;
-	private readonly object _registryLock = new();
 
+	/// <summary>Guards every read and write of <see cref="_slots" />.</summary>
+	private readonly Lock _registryLock = new();
+
+	/// <summary>The match sessions by wire-protocol slot id, with null for free slots.</summary>
 	private readonly MatchSession?[] _slots = new MatchSession?[MaxMatches];
 
+	/// <inheritdoc />
+	/// <remarks>Ids outside the 0 to 63 slot range return null without touching the lock.</remarks>
 	public MatchSession? GetById(int id)
 	{
 		if (id is < 0 or >= MaxMatches) return null;
@@ -20,6 +32,8 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 		}
 	}
 
+	/// <inheritdoc />
+	/// <remarks>Scans every slot until the first session whose <see cref="MatchSession.DbId" /> matches.</remarks>
 	public MatchSession? GetByDbId(int dbId)
 	{
 		lock (_registryLock)
@@ -28,6 +42,8 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 		}
 	}
 
+	/// <inheritdoc />
+	/// <remarks>Claims the lowest-numbered free slot.</remarks>
 	public MatchSession? TryCreate(Func<int, MatchSession> factory)
 	{
 		lock (_registryLock)
@@ -44,6 +60,8 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 		}
 	}
 
+	/// <inheritdoc />
+	/// <remarks>Ids outside the 0 to 63 slot range are ignored.</remarks>
 	public void Remove(int id)
 	{
 		if (id is < 0 or >= MaxMatches) return;
@@ -54,6 +72,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 		}
 	}
 
+	/// <inheritdoc />
 	public IReadOnlyList<MatchSession> All
 	{
 		get

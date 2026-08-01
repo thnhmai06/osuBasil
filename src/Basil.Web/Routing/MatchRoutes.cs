@@ -21,23 +21,27 @@ using Microsoft.AspNetCore.Mvc;
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     `/matches` — resource-oriented routes replacing the old admin-key-only `/matches` listing plus
+///     `/matches`: resource-oriented routes replacing the old admin-key-only `/matches` listing plus
 ///     the bare TRT report/SSE routes. Reads (list/report/live channels) are public, with a soft
 ///     admin-only elevation for private-match visibility; every write (create/settings/actions) is
 ///     admin-key gated. Settings/action mutation logic lives in <see cref="MatchControlService" />,
-///     shared with `!mp`'s chat commands — this file only resolves HTTP-specific input (numeric
-///     `userId` targets, JSON bodies) and maps results to HTTP responses.
+///     shared with `!mp`'s chat commands; this file only resolves HTTP-specific input (numeric
+///     `userId` targets, JSON bodies) and beatmaps results to HTTP responses.
 /// </summary>
 internal static class MatchRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
 	/// <summary>
-	///     `!mp make`'s own default room size — applied when <see cref="CreateMatchRequest.Size" /> is omitted (JSON
+	///     `!mp make`'s own default room size, applied when <see cref="CreateMatchRequest.Size" /> is omitted (JSON
 	///     default 0).
 	/// </summary>
 	private const int DefaultCreateSize = 16;
 
+	/// <summary>
+	///     Registers the `/matches` list, create, settings, and live-stream routes on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMatchRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/matches", HandleList)
@@ -194,7 +198,7 @@ internal static class MatchRoutes
 	private static async Task<IResult> HandleList(
 		[FromQuery] string? status, [FromQuery] int? page, [FromQuery] int? pageSize,
 		HttpContext context, IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
-		IMapRepository maps, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var (p, ps) = Pagination.Normalize(page, pageSize);
 		var mode = (status ?? "online").ToLowerInvariant();
@@ -218,7 +222,7 @@ internal static class MatchRoutes
 		foreach (var t in filtered)
 		{
 			var live = t.Live is not null
-				? await MatchLiveSnapshotBuilder.BuildRoomLive(t.Live, maps, cancellationToken)
+				? await MatchLiveSnapshotBuilder.BuildRoomLive(t.Live, beatmaps, cancellationToken)
 				: null;
 			items.Add(new MatchListItem(t.Row.Id, t.Row.Name, t.Row.CreatedAt, t.Row.EndedAt, live));
 		}
@@ -229,7 +233,7 @@ internal static class MatchRoutes
 
 	private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchMembershipService matchMembership,
 		MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
-		IMapRepository maps, CancellationToken cancellationToken)
+		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
 		if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
@@ -262,19 +266,19 @@ internal static class MatchRoutes
 		}
 
 		var settings =
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken);
+			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken);
 		return Results.Created($"/matches/{match.DbId}/settings", settings);
 	}
 
 	private static async Task<IResult> HandleSettingsGet(int matchId, IMatchRegistry matchRegistry,
-		IPlayerSessionRegistry sessionRegistry, IUserRepository users, IMapRepository maps,
+		IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound();
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
 	}
 
 	private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
@@ -322,7 +326,7 @@ internal static class MatchRoutes
 
 	private static async Task<IResult> HandleSettingsReplace(int matchId, ReplaceMatchSettingsRequest body,
 		IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
-		IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
+		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound();
@@ -349,12 +353,12 @@ internal static class MatchRoutes
 		}
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
 	}
 
 	private static async Task<IResult> HandleSettingsUpdate(int matchId, UpdateMatchSettingsRequest body,
 		IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
-		IUserRepository users, IMapRepository maps, CancellationToken cancellationToken)
+		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound();
@@ -371,16 +375,16 @@ internal static class MatchRoutes
 		}
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, maps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
 	}
 
 	/// <summary>
-	///     Shared by <see cref="HandleCreate" />/<see cref="HandleSettingsReplace" /> — both apply every
+	///     Shared by <see cref="HandleCreate" /> and <see cref="HandleSettingsReplace" />: both apply every
 	///     field unconditionally (PUT-style, no "was this given" check), unlike
 	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `-1` is the established
 	///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids auto-
 	///     increment from 1 in this schema (see CLAUDE.md), so 0 (JSON's default for an omitted field)
-	///     can never be a real beatmap either — both are skipped entirely rather than attempted as a
+	///     can never be a real beatmap either; both are skipped entirely rather than attempted as a
 	///     lookup (which would otherwise fail with a confusing "beatmap not found" error for a caller
 	///     correctly signalling "no map").
 	/// </summary>
@@ -396,7 +400,7 @@ internal static class MatchRoutes
 	}
 
 	/// <summary>
-	///     Shared by <see cref="HandleCreate" />/<see cref="HandleSettingsReplace" /> — `freemod: true` ignores `mods`
+	///     Shared by <see cref="HandleCreate" /> and <see cref="HandleSettingsReplace" />: `freemod: true` ignores `mods`
 	///     for that call, matching real Bancho.
 	/// </summary>
 	private static async Task ApplyFullModsAsync(MatchSession match, Mods mods, bool freemod,
@@ -475,13 +479,14 @@ internal static class MatchRoutes
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
 			created, false, false, BeatmapStatus.Loved, 1);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
-		var objectCounts = new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
+		var objectCounts = new OsuBeatmapObjectCounts
+			{ Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
 		return new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
 			difficulty, objectCounts, false, beatmapset);
 	}
 }
 
-/// <summary>Body for `POST /matches` — every field required except `password`. `mapId: -1` means no beatmap chosen.</summary>
+/// <summary>Body for `POST /matches`: every field required except `password`. `mapId: -1` means no beatmap chosen.</summary>
 public sealed record CreateMatchRequest(
 	string Name,
 	string? Password,
@@ -494,7 +499,7 @@ public sealed record CreateMatchRequest(
 	int Size);
 
 /// <summary>
-///     Body for `PUT /matches/{matchId}/settings` — full replace, every field required except `password`. `mapId: -1`
+///     Body for `PUT /matches/{matchId}/settings`: full replace, every field required except `password`. `mapId: -1`
 ///     means no beatmap chosen.
 /// </summary>
 public sealed record ReplaceMatchSettingsRequest(
@@ -509,7 +514,7 @@ public sealed record ReplaceMatchSettingsRequest(
 	MatchTeamType TeamType,
 	MatchWinCondition WinCondition);
 
-/// <summary>Body for `PATCH /matches/{matchId}/settings` — every field optional, only present ones are applied.</summary>
+/// <summary>Body for `PATCH /matches/{matchId}/settings`: every field optional, only present ones are applied.</summary>
 public sealed record UpdateMatchSettingsRequest(
 	string? Name = null,
 	string? Password = null,

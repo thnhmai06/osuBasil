@@ -3,6 +3,16 @@ namespace Basil.Protocol.Irc;
 /// <summary>Parses a single raw IRC line (no trailing CRLF) into an <see cref="IrcMessage" />.</summary>
 public static class IrcMessageParser
 {
+	/// <summary>
+	///     Tries to parse a raw IRC line into an <see cref="IrcMessage" />.
+	///     Accepts the optional ":prefix", space-separated middle parameters, and an optional ":trailing" parameter.
+	/// </summary>
+	/// <param name="line">The raw IRC line to parse, without a trailing CRLF.</param>
+	/// <param name="message">
+	///     When this method returns, contains the parsed message, or <see langword="null" /> if parsing
+	///     failed. This parameter is treated as uninitialized.
+	/// </param>
+	/// <returns><see langword="true" /> if the line parsed successfully; otherwise, <see langword="false" />.</returns>
 	public static bool TryParse(string line, out IrcMessage? message)
 	{
 		message = null;
@@ -45,6 +55,10 @@ public static class IrcMessageParser
 		return true;
 	}
 
+	/// <summary>Parses a raw IRC line into an <see cref="IrcMessage" />, throwing when the line is malformed.</summary>
+	/// <param name="line">The raw IRC line to parse, without a trailing CRLF.</param>
+	/// <returns>The parsed <see cref="IrcMessage" />.</returns>
+	/// <exception cref="FormatException">The line is empty or cannot be parsed into an IRC message.</exception>
 	public static IrcMessage Parse(string line)
 	{
 		return TryParse(line, out var message)

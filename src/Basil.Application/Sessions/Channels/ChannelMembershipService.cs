@@ -4,18 +4,24 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Sessions.Channels;
 
 /// <summary>
-///     Ported from Player.join_channel/leave_channel — the shared membership logic bancho.py reuses
-///     for both client-initiated CHANNEL_JOIN/CHANNEL_PART packets and server-initiated instance
-///     membership (spectator, later multiplayer). Broadcast scope differs by channel kind: an
-///     instance channel only notifies its own current members; an ordinary channel notifies every
-///     session that can read it.
-///     Also owns the IRC-shaped JOIN/PART/QUIT/PRIVMSG broadcast primitives — kept dependency-free of
-///     <c>ICommandDispatcher</c> on purpose (CommandDispatcher -&gt; MpCommandService -&gt;
-///     MatchMembershipService -&gt; this class already forms a chain; adding the reverse edge here would
-///     be a DI cycle). Command dispatch lives one layer up, in <c>ChatDispatchService</c>.
+///     Provides the shared join and part logic for channels, used by both client-initiated
+///     CHANNEL_JOIN and CHANNEL_PART packets and server-initiated instance membership such as
+///     spectator channels. Broadcast scope differs by channel kind: an instance channel only
+///     notifies its own current members, while an ordinary channel notifies every session that can
+///     read it. Also owns the IRC-shaped JOIN, PART, QUIT, and PRIVMSG broadcast primitives, kept
+///     dependency-free of <c>ICommandDispatcher</c> on purpose: command dispatch lives one layer up
+///     in <c>ChatDispatchService</c>, and referencing the dispatcher here would create a dependency
+///     cycle (CommandDispatcher to MpCommandService to MatchMembershipService to this class).
 /// </summary>
 public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegistry, IChannelRegistry channelRegistry)
 {
+	/// <summary>
+	///     Adds a player to a channel and broadcasts the join to existing members, returning false
+	///     when the player has already joined or lacks read access.
+	/// </summary>
+	/// <param name="player">The session of the player joining the channel.</param>
+	/// <param name="channel">The channel to join.</param>
+	/// <returns><see langword="true" /> if the player was added to the channel; otherwise, <see langword="false" />.</returns>
 	public bool Join(PlayerSession player, ChannelSession channel)
 	{
 		if (player.InChannel(channel.Name) || !channel.CanRead(player.Privilege)) return false;
@@ -33,6 +39,15 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 		return true;
 	}
 
+	/// <summary>
+	///     Removes a player from a channel and broadcasts the part to the remaining members.
+	/// </summary>
+	/// <param name="player">The session of the player leaving the channel.</param>
+	/// <param name="channel">The channel to leave.</param>
+	/// <param name="kick">
+	///     When <see langword="true" />, also sends the player a ChannelKick packet so the client drops the
+	///     channel from its chat list; when <see langword="false" />, the player leaves silently.
+	/// </param>
 	public void Part(PlayerSession player, ChannelSession channel, bool kick = true)
 	{
 		if (!player.InChannel(channel.Name)) return;
@@ -50,11 +65,14 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 	}
 
 	/// <summary>
-	///     Cleans up every channel <paramref name="player" /> is in and notifies the remaining IRC-shaped
-	///     connections with a single QUIT each (deduped across shared channels) — called when a real IRC
-	///     TCP connection disconnects. Bancho sessions never call this (they leave via GhostDisconnectService,
-	///     which doesn't need a QUIT broadcast since bancho clients only ever saw ChannelInfo counts).
+	///     Cleans up every channel <paramref name="player" /> is in and notifies the remaining
+	///     IRC-shaped connections with a single QUIT each (deduplicated across shared channels).
+	///     Called when a real IRC TCP connection disconnects; bancho sessions never call this,
+	///     since they leave via GhostDisconnectService and bancho clients only ever saw ChannelInfo
+	///     counts rather than per-user quit events.
 	/// </summary>
+	/// <param name="player">The session of the disconnecting player.</param>
+	/// <param name="reason">The quit reason reported to the remaining members.</param>
 	public void Quit(PlayerSession player, string reason)
 	{
 		var quitMessage = IrcMessageWriter.Quit(player.Name, player.Id, reason);
@@ -76,11 +94,13 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 	}
 
 	/// <summary>
-	///     Ported from Channel.enqueue — sends raw packet bytes to every session currently in the
-	///     channel (not everyone who merely *can read* it), optionally skipping an immune set. Used
-	///     by multiplayer's match.enqueue/enqueue_state, which routes through the match's chat
-	///     channel exactly like the Python source.
+	///     Sends raw packet bytes to every session currently in the channel, not everyone who merely
+	///     can read it, optionally skipping the given immune set. Multiplayer routes
+	///     match.enqueue and enqueue_state through the match's chat channel by calling this.
 	/// </summary>
+	/// <param name="channel">The channel whose members receive the packet.</param>
+	/// <param name="packet">The raw bancho packet bytes to enqueue on each member's session.</param>
+	/// <param name="immune">The set of member ids to skip, or null to broadcast to everyone.</param>
 	public void BroadcastToMembers(ChannelSession channel, byte[] packet, IReadOnlyCollection<int>? immune = null)
 	{
 		foreach (var memberId in channel.MemberIds)
@@ -92,10 +112,13 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 	}
 
 	/// <summary>
-	///     IRC-shaped counterpart of <see cref="BroadcastToMembers" /> for chat text specifically —
-	///     routes through each member's <see cref="Sessions.Irc.IIrcConnection" /> instead of a raw
+	///     The IRC-shaped counterpart of <see cref="BroadcastToMembers" /> for chat text specifically.
+	///     Routes through each member's <see cref="Sessions.Irc.IIrcConnection" /> rather than a raw
 	///     bancho packet, so it reaches real IRC clients and bancho clients alike.
 	/// </summary>
+	/// <param name="channel">The channel whose members receive the message.</param>
+	/// <param name="message">The IRC-shaped message to deliver.</param>
+	/// <param name="skipMemberId">The id of a member to skip, typically the message's sender, or null to deliver to everyone.</param>
 	public void BroadcastPrivmsg(ChannelSession channel, IrcMessage message, int? skipMemberId = null)
 	{
 		foreach (var memberId in channel.MemberIds)
