@@ -341,10 +341,10 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_BanList_ListsBannedNames()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		_fixture.RegisterAll(host);
+		var banned = MultiplayerTestSupport.MakePlayer(2, "banned_guy");
+		_fixture.RegisterAll(host, banned);
 		var match = _fixture.CreateMatch(host);
 		match.AddBan(2);
-		_users.FetchByIdAsync(2, Arg.Any<CancellationToken>()).Returns(MakeUser(2, "banned_guy"));
 
 		var reply = await Run(MakeService(), host, match, "banlist", []);
 
@@ -403,7 +403,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "map", ["999"]);
 
-		Assert.Equal("No beatmap with id 999 found locally.", reply);
+		Assert.Equal("No beatmap with ID 999 found.", reply);
 	}
 
 	[Fact]
@@ -435,7 +435,7 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_Mods_WhileFreemod_DisablesFreemodAndSetsMatchMods()
 	{
 		// !mp mods with a real mod token turns freemod back off — Freemod is only ever entered/exited
-		// via the value passed to !mp mods, there's no separate freemods on/off command anymore.
+		// via the value passed to !mp mods, there are no separate freemods on/off command anymore.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
@@ -445,7 +445,7 @@ public class MpCommandServiceTests
 
 		Assert.False(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Mods);
-		Assert.Equal("Enabled Hidden, disabled FreeMod", reply);
+		Assert.Equal("Enabled Hidden, Disabled FreeMod", reply);
 	}
 
 	[Fact]
@@ -460,7 +460,7 @@ public class MpCommandServiceTests
 
 		Assert.True(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Slots[0].Mods);
-		Assert.Equal("Enabled FreeMod", reply);
+		Assert.Equal("Disabled Hidden, Enabled FreeMod", reply);
 	}
 
 	[Fact]
@@ -707,11 +707,7 @@ public class MpCommandServiceTests
 	}
 
 	/// <summary>
-	///     Diagnostic/regression test for the real end-to-end announce pipeline (checkpoint computation
-	///     alone is covered by <see cref="ComputeAnnounceCheckpoints_ReturnsExpectedMarks" />, but every
-	///     other timer test cancels the countdown immediately, so nothing exercises whether
-	///     <see cref="Basil.Application.Services.Multiplayer.MatchControlService" />'s fire-and-forget task actually reaches
-	///     the match channel with a real bot session registered).
+	///     Diagnostic/regression test for the real end-to-end announce pipeline.
 	/// </summary>
 	[Fact]
 	public async Task HandleAsync_Timer_AnnouncesQueuedAndFinishedMessagesToMatchChannel()
@@ -726,7 +722,7 @@ public class MpCommandServiceTests
 
 		await Run(MakeService(), host, match, "timer", ["2"]);
 
-		var queuedPacket = ServerPacketWriter.SendMessage("BasilBot", "Queued the match to start in 2 seconds",
+		var queuedPacket = ServerPacketWriter.SendMessage("BasilBot", "Started a 2-second countdown.",
 			"#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(queuedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
 
@@ -755,9 +751,9 @@ public class MpCommandServiceTests
 	}
 
 	[Theory]
-	[InlineData(15, new[] { 10 })]
-	[InlineData(45, new[] { 30, 10 })]
-	[InlineData(300, new[] { 240, 180, 120, 60, 30, 10 })]
+	[InlineData(15, new[] { 10, 5 })]
+	[InlineData(45, new[] { 30, 10, 5 })]
+	[InlineData(300, new[] { 240, 180, 120, 60, 30, 10, 5 })]
 	public void ComputeAnnounceCheckpoints_Timer_SkipsFastFinalTick(int total, int[] expected)
 	{
 		var result = MpCommandService.ComputeAnnounceCheckpoints(total, false);
@@ -843,7 +839,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
 		Assert.DoesNotContain(other.Id, match.BannedIds);
-		Assert.Equal("other is not in this match.", reply);
+		Assert.Equal("User is not in this match or not registered.", reply);
 	}
 
 	[Fact]

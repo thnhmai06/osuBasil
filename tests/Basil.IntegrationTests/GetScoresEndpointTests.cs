@@ -135,7 +135,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		var response = await _factory.CreateClient().SendAsync(request);
 		var body = await response.Content.ReadAsStringAsync();
 
-		Assert.Equal($"{(int)BeatmapStatus.Loved}|false", body);
+		Assert.Equal($"{(int)BeatmapStatus.Approved}|false", body);
 	}
 
 	[Fact]

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Web;
@@ -249,7 +250,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		var response = await client.SendAsync(MakeRequest("/beatmapsets/9001/1/difficulty"));
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>();
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.NoMod, body.Data.Mods);
 		Assert.Equal(4.88, body.Data.Beatmap.Difficulty.Sr, 2);
@@ -264,7 +265,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		var response = await client.SendAsync(MakeRequest("/beatmapsets/9002/2/difficulty?mods=16"));
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>();
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.HardRock, body.Data.Mods);
 		Assert.Equal(5.93, body.Data.Beatmap.Difficulty.Sr, 2);

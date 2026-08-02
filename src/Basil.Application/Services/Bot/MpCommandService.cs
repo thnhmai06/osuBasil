@@ -158,7 +158,7 @@ public sealed class MpCommandService(
 			"removeref" => await RunLockedAsync(match,
 				() => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
 			"listrefs" => ListReferees(match, sink),
-			"banlist" => await BanListAsync(match, sink),
+			"banlist" => BanListAsync(match, sink),
 			"team" => await RunLockedAsync(match, () => SetTeam(match, args, sink)),
 			"set" => await RunLockedAsync(match, () => Set(match, args, sink)),
 			"map" => await RunLockedAsync(match, () => SetMapAsync(match, args, sink, cancellationToken)),
@@ -710,7 +710,7 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp banlist</c>, listing the players banned from the match.</summary>
-	private async Task<bool> BanListAsync(MatchSession match, ICommandReplySink sink)
+	private bool BanListAsync(MatchSession match, ICommandReplySink sink)
 	{
 		if (match.BannedIds.Count == 0)
 		{
@@ -903,7 +903,7 @@ public sealed class MpCommandService(
 		}
 
 		await _matchControl.SetModsAsync(match, mods, freemod);
-		sink.Reply(DescribeModChange(before, mods, wasFreemod));
+		sink.Reply(DescribeModChange(before, mods, wasFreemod, match.Freemods));
 
 		return true;
 	}
@@ -919,18 +919,34 @@ public sealed class MpCommandService(
 	/// <param name="before">The match's mods before the change.</param>
 	/// <param name="after">The match's mods after the change.</param>
 	/// <param name="wasFreemod">A value that indicates whether freemod was on before the change.</param>
+	/// <param name="isFreemod">A value that indicates whether freemod is on after the change.</param>
 	/// <returns>The enabled/disabled mod summary, or "No mod changes" when nothing changed.</returns>
-	private static string DescribeModChange(Mods before, Mods after, bool wasFreemod)
+	private static string DescribeModChange(Mods before, Mods after, bool wasFreemod, bool isFreemod)
 	{
 		var enabled = after & ~before;
 		var disabled = before & ~after;
 
 		var parts = new List<string>();
-		if (enabled != Mods.NoMod) parts.Add($"Enabled {enabled}");
-		if (disabled != Mods.NoMod) parts.Add($"Disabled {disabled}");
-		if (wasFreemod) parts.Add("Disabled FreeMod");
 
-		return parts.Count > 0 ? string.Join(", ", parts) : "No mod changes";
+		if (enabled != Mods.NoMod)
+			parts.Add($"Enabled {enabled}");
+
+		if (disabled != Mods.NoMod)
+			parts.Add($"Disabled {disabled}");
+
+		switch (wasFreemod)
+		{
+			case true when !isFreemod:
+				parts.Add("Disabled FreeMod");
+				break;
+			case false when isFreemod:
+				parts.Add("Enabled FreeMod");
+				break;
+		}
+
+		return parts.Count > 0
+			? string.Join(", ", parts)
+			: "No mod changes";
 	}
 
 	/// <summary>

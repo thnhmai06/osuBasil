@@ -5,21 +5,23 @@ namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
 ///     Ported from app/repositories/stats.py, scoped to what login (User.stats_from_sql_full)
-///     needs: fetch all per-mode stat rows for a user. migrations/base.sql seeds 8 mode rows for the
-///     BasilBot user (id=1).
+///     needs: fetch all per-mode stat rows for a user. migrations/base.sql seeds 4 mode rows
+///     (Standard/Taiko/Catch/Mania) for the BasilBot user (id=0) — one per supported GameMode.
 /// </summary>
 public class SqliteUserStatRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteUserStatRepository _repository = new(fixture.ConnectionString);
 
 	[Fact]
-	public async Task FetchAllForUser_SeededBasilBot_ReturnsEightModes()
+	public async Task FetchAllForUser_SeededBasilBot_ReturnsAllSupportedModes()
 	{
 		var stats = await _repository.FetchAllForUserAsync(0);
 
-		Assert.Equal(8, stats.Count);
-		Assert.Contains(stats, s => (int)s.Mode == 0);
-		Assert.Contains(stats, s => (int)s.Mode == 8); // ap!std
+		Assert.Equal(4, stats.Count);
+		Assert.Contains(stats, s => s.Mode == GameMode.Standard);
+		Assert.Contains(stats, s => s.Mode == GameMode.Taiko);
+		Assert.Contains(stats, s => s.Mode == GameMode.Catch);
+		Assert.Contains(stats, s => s.Mode == GameMode.Mania);
 		Assert.All(stats, s => Assert.Equal(0, s.Id));
 	}
 
@@ -34,7 +36,7 @@ public class SqliteUserStatRepositoryTests(SqliteFixture fixture) : IClassFixtur
 	/// <summary>
 	///     Uses BasilBot's own seeded Taiko row (untouched by the other tests in this class, which
 	///     share the same SqliteFixture database) so this doesn't perturb
-	///     FetchAllForUser_SeededBasilBot_ReturnsEightModes's row-count assertion.
+	///     FetchAllForUser_SeededBasilBot_ReturnsAllSupportedModes's row-count assertion.
 	/// </summary>
 	[Fact]
 	public async Task IncrementAsync_CalledTwice_AccumulatesDeltasAndPlays()

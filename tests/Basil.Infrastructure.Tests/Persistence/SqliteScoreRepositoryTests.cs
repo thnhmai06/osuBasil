@@ -37,7 +37,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 			"""
 			INSERT INTO Scores (
 			    MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
+			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum,
 			    SubmittedAt, RoundId, Team
 			) VALUES (
 			    @MapMd5, @Score, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
@@ -85,18 +85,18 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 	private async Task<string?> FetchChecksumAsync(long scoreId)
 	{
 		await using var connection = new SqliteConnection(fixture.ConnectionString);
-		return await connection.ExecuteScalarAsync<string>("SELECT OnlineChecksum FROM Scores WHERE Id = @Id",
+		return await connection.ExecuteScalarAsync<string>("SELECT Checksum FROM Scores WHERE Id = @Id",
 			new { Id = scoreId });
 	}
 
 	[Fact]
-	public async Task ExistsByOnlineChecksum_NotFound_ReturnsFalse()
+	public async Task ExistsByChecksum_NotFound_ReturnsFalse()
 	{
 		Assert.False(await _repository.CheckExistAsync(Guid.NewGuid().ToString("N")));
 	}
 
 	[Fact]
-	public async Task ExistsByOnlineChecksum_Found_ReturnsTrue()
+	public async Task ExistsByChecksum_Found_ReturnsTrue()
 	{
 		var mapMd5 = new string('c', 32);
 		await InsertUserAsync(317, "olivia");
@@ -203,7 +203,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 			"""
 			INSERT INTO Scores (
 			    MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum,
+			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum,
 			    SubmittedAt
 			) VALUES (
 			    @MapMd5, @Score, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,

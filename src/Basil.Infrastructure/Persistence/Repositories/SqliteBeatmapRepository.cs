@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IBeatmapRepository" />
 /// <remarks>
-///     Reads join the Beatmaps and Mapsets tables and map through the private mutable row DTOs
+///     Reads join the Beatmaps and Beatmapsets tables and map through the private mutable row DTOs
 ///     (<c>BeatmapRow</c> and <c>MapsetRow</c>), since Dapper materializes by property name rather
 ///     than through a positional record constructor. Each method opens its own connection.
 /// </remarks>
@@ -70,7 +70,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		var beatmaps = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
 			 WHERE {string.Join(" AND ", conditions)}
 			 """,
 			(b, m) => b.ToBeatmap(m.ToMapset()),
@@ -176,7 +176,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		var setIds = (await connection.QueryAsync<int>(
 			$"""
-			 SELECT DISTINCT b.MapsetId FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+			 SELECT DISTINCT b.MapsetId FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
 			 {whereClause}
 			 ORDER BY b.MapsetId DESC LIMIT @Amount OFFSET @Offset
 			 """,
@@ -186,7 +186,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
 			 WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0
 			 ORDER BY b.Sr ASC
 			 """,
@@ -229,7 +229,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			: "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
 		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Mapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
 			 {whereClause}
 			 """,
 			(b, m) => b.ToBeatmap(m.ToMapset()),
@@ -246,7 +246,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <summary>
 	///     A mutable row DTO matching the Beatmaps columns of the shared SELECT, split off from the
-	///     Mapsets columns so Dapper's multi-mapping can map each half of the JOIN. Mutable because
+	///     Beatmapsets columns so Dapper's multi-mapping can map each half of the JOIN. Mutable because
 	///     Dapper fills by property name, not through a positional record constructor.
 	/// </summary>
 	private sealed class BeatmapRow
@@ -269,7 +269,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		public string ObjectCounts { get; set; } = "{}";
 
 		/// <summary>Builds a <see cref="Beatmap" /> from this row, deserializing the JSON object counts.</summary>
-		/// <param name="beatmapset">The owning beatmapset, built from the Mapsets half of the JOIN.</param>
+		/// <param name="beatmapset">The owning beatmapset, built from the Beatmapsets half of the JOIN.</param>
 		/// <returns>The domain beatmap.</returns>
 		/// <exception cref="InvalidOperationException">
 		///     The stored <c>ObjectCounts</c> column is not a valid JSON
@@ -288,7 +288,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Mapsets columns of the shared SELECT, the other half of
+	///     A mutable row DTO matching the Beatmapsets columns of the shared SELECT, the other half of
 	///     the JOIN's multi-mapping.
 	/// </summary>
 	private sealed class MapsetRow

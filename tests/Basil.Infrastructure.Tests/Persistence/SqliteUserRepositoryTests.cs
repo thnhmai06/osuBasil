@@ -94,9 +94,9 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 	{
 		var created = (await _repository.CreateAsync("Fresh User", "some-hash", Country.Us))!;
 
-		Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
+		Assert.Equal("fresh_user", User.MakeSafeName(created.Name));
 
-		var fetched = await _repository.FetchByNameAsync("fresh userSession");
+		var fetched = await _repository.FetchByNameAsync("FRESH USER");
 		Assert.Equal(created.Id, fetched!.Id);
 	}
 

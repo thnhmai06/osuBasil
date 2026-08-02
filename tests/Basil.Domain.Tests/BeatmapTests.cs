@@ -29,12 +29,4 @@ public class BeatmapTests
 
 		Assert.Equal("Camellia - Exit This Earth's Atomosphere [Hyper]", bmap.FullName);
 	}
-
-	[Fact]
-	public void Status_AlwaysLoved()
-	{
-		var bmap = MakeBeatmap();
-
-		Assert.Equal(BeatmapStatus.Loved, Beatmapset.Status);
-	}
 }

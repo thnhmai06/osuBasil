@@ -297,9 +297,9 @@ public sealed class MatchMembershipService(
 				.Where(s => s.PlayerId is not null)
 				.GroupBy(s => s.Team)
 				.ToDictionary(g => g.Key, g => g.Count());
-			slot.Team = counts[MatchTeam.Red] <= counts[MatchTeam.Blue]
-				? MatchTeam.Red
-				: MatchTeam.Blue;
+			counts.TryGetValue(MatchTeam.Red, out var redCount);
+			counts.TryGetValue(MatchTeam.Blue, out var blueCount);
+			slot.Team = redCount <= blueCount ? MatchTeam.Red : MatchTeam.Blue;
 		}
 
 		slot.Status = SlotStatus.NotReady;

@@ -87,7 +87,7 @@ public class DirectSearchServiceTests
 		var response = DirectSearchService.Format([set]);
 
 		var expectedSetLine =
-			"100.osz|Artist|Title|cmyui|4|10.0|2020-03-15 10:30:00|100|0|0|0|0|0|[6.50⭐] Hyper {cs: 4 / od: 8 / ar: 9 / hp: 5}@0";
+			"100.osz|Artist|Title|cmyui|2|10.0|2020-03-15 10:30:00|100|0|0|0|0|0|[6.50⭐] Hyper {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0";
 		Assert.Equal("1\n" + expectedSetLine, response);
 	}
 
@@ -102,7 +102,7 @@ public class DirectSearchServiceTests
 
 		var response = DirectSearchService.Format([set]);
 
-		Assert.Contains("[2.00⭐] Easy {cs: 4 / od: 8 / ar: 9 / hp: 5}@0,[4.50⭐] Hard {cs: 4 / od: 8 / ar: 9 / hp: 5}@0",
+		Assert.Contains("[2.00⭐] Easy {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0,[4.50⭐] Hard {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0",
 			response);
 	}
 
@@ -152,6 +152,6 @@ public class DirectSearchServiceTests
 
 		var response = DirectSearchService.FormatSet(bmap);
 
-		Assert.Equal("100.osz|Art|ist|Title|cmyui|5|10.0|2020-03-15 10:30:00|100|0|0|0|0|0", response);
+		Assert.Equal("100.osz|Art|ist|Title|cmyui|3|10.0|2020-03-15 10:30:00|100|0|0|0|0|0", response);
 	}
 }

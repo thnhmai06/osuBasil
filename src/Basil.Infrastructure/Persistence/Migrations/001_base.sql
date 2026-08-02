@@ -52,7 +52,7 @@ create table UserStats
 -- (see Beatmaps.BackgroundFile/AudioFile below), resolved against the mapset's own storage folder
 -- — kept in sync by ingestion, backs b.<domain>'s per-set thumbnail/audio preview and the api.
 -- host's set-level background/audio routes.
-create table Mapsets
+create table Beatmapsets
 (
 	Id             int                   not null primary key,
 	Artist         varchar(128)          not null,
@@ -94,7 +94,7 @@ create table Beatmaps
 	PreviewTime    int                                                                                           null,
 	ObjectCounts   text         default '{"mode":0,"Total":0,"MaxCombo":0,"Circles":0,"Sliders":0,"Spinners":0}' not null,
 	constraint Beatmaps_Md5_uindex unique (Md5),
-	constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
+	constraint Beatmaps_Beatmapsets_Id_fk foreign key (MapsetId) references Beatmapsets (Id) on delete cascade
 );
 create index Beatmaps_MapsetId_index on Beatmaps (MapsetId);
 create index Beatmaps_Filename_index on Beatmaps (Filename);
@@ -220,7 +220,7 @@ create table Scores
 	ClientFlags    int                    not null,
 	UserId         int                    not null,
 	Perfect        boolean                not null,
-	OnlineChecksum char(32)               not null,
+	Checksum       char(32)               not null,
 	SubmittedAt    datetime               not null,
 	constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
@@ -228,7 +228,7 @@ create index Scores_MapMd5_index on Scores (MapMd5);
 create index Scores_Score_index on Scores (Score);
 create index Scores_Mode_index on Scores (Mode);
 create index Scores_UserId_index on Scores (UserId);
-create index Scores_OnlineChecksum_index on Scores (OnlineChecksum);
+create index Scores_Checksum_index on Scores (Checksum);
 create index Scores_RoundId_index on Scores (RoundId);
 
 -- Chronological log of match lifecycle events. ActorUserId is null for system actions
@@ -250,8 +250,8 @@ create index MatchEvents_MatchId_index on MatchEvents (MatchId);
 
 -- Cached row counts for the api. host's paginated list routes' `meta.totalRecords`, so a page
 -- request never needs its own COUNT(*) — kept in sync purely by triggers below, never written to
--- directly by application code. Mapsets:Public excludes IsPrivate mapsets (what a non-admin caller's
--- `GET /beatmapsets` sees); Mapsets:Total is unfiltered (what an admin caller sees). Scores are never
+-- directly by application code. Beatmapsets:Public excludes IsPrivate mapsets (what a non-admin caller's
+-- `GET /beatmapsets` sees); Beatmapsets:Total is unfiltered (what an admin caller sees). Scores are never
 -- hard-deleted (see the Scores table comment above), so Scores:Total only ever needs an insert
 -- trigger. GET /matches and GET /users (admin) don't get a counter here — see docs/architecture.md
 -- for why (their totals are already cheaply available without one).
@@ -262,34 +262,34 @@ create table Counters
 );
 
 insert into Counters (Name, Value)
-values ('Mapsets:Total', 0),
-       ('Mapsets:Public', 0),
+values ('Beatmapsets:Total', 0),
+       ('Beatmapsets:Public', 0),
        ('Scores:Total', 0);
 
-create trigger Counters_Mapsets_AfterInsert
+create trigger Counters_Beatmapsets_AfterInsert
 	after insert
-	on Mapsets
+	on Beatmapsets
 begin
-	update Counters set Value = Value + 1 where Name = 'Mapsets:Total';
-	update Counters set Value = Value + 1 where Name = 'Mapsets:Public' and NEW.IsPrivate = 0;
+	update Counters set Value = Value + 1 where Name = 'Beatmapsets:Total';
+	update Counters set Value = Value + 1 where Name = 'Beatmapsets:Public' and NEW.IsPrivate = 0;
 end;
 
-create trigger Counters_Mapsets_AfterDelete
+create trigger Counters_Beatmapsets_AfterDelete
 	after delete
-	on Mapsets
+	on Beatmapsets
 begin
-	update Counters set Value = Value - 1 where Name = 'Mapsets:Total';
-	update Counters set Value = Value - 1 where Name = 'Mapsets:Public' and OLD.IsPrivate = 0;
+	update Counters set Value = Value - 1 where Name = 'Beatmapsets:Total';
+	update Counters set Value = Value - 1 where Name = 'Beatmapsets:Public' and OLD.IsPrivate = 0;
 end;
 
-create trigger Counters_Mapsets_AfterUpdatePrivacy
+create trigger Counters_Beatmapsets_AfterUpdatePrivacy
 	after update of IsPrivate
-	on Mapsets
+	on Beatmapsets
 	when OLD.IsPrivate <> NEW.IsPrivate
 begin
 	update Counters
 	set Value = Value + case when NEW.IsPrivate = 0 then 1 else -1 end
-	where Name = 'Mapsets:Public';
+	where Name = 'Beatmapsets:Public';
 end;
 
 create trigger Counters_Scores_AfterInsert

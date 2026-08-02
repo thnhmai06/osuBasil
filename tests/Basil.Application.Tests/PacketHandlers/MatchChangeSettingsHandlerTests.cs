@@ -116,7 +116,7 @@ public class MatchChangeSettingsHandlerTests
 		Assert.Equal(previousMd5, match.MapMd5);
 		Assert.Equal(previousName, match.MapName);
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found on the server — map selection ignored.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
@@ -139,7 +139,7 @@ public class MatchChangeSettingsHandlerTests
 		// First packet: map selection fails, warning fires once.
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found on the server — map selection ignored.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 
@@ -209,7 +209,7 @@ public class MatchChangeSettingsHandlerTests
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
 
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found locally — map selection ignored.",
+			ServerPacketWriter.SendMessage(bot.Name, "Beatmap not found on the server — map selection ignored.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}

@@ -52,13 +52,13 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> CheckExistAsync(string onlineChecksum,
+	public async Task<bool> CheckExistAsync(string checksum,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<bool>(
 			"SELECT EXISTS(SELECT 1 FROM Scores WHERE Checksum = @Checksum)",
-			new { OnlineChecksum = onlineChecksum });
+			new { Checksum = checksum });
 	}
 
 	/// <inheritdoc />
@@ -213,7 +213,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		public int ClientFlags { get; set; }
 		public int UserId { get; set; }
 		public bool Perfect { get; set; }
-		public string OnlineChecksum { get; set; } = "";
+		public string Checksum { get; set; } = "";
 		public DateTime SubmittedAt { get; set; }
 
 		/// <summary>
@@ -225,7 +225,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			return new ScoreRow(
 				Id, RoundId, (MatchTeam?)Team, MapMd5, Score, Accuracy, MaxCombo, (Mods)Mods, N300, N100, N50,
 				NMiss, NGeki, NKatu, Grade, (GameMode)Mode, PlayTime, TimeElapsed, (ClientFlags)ClientFlags,
-				UserId, Perfect, OnlineChecksum, SubmittedAt);
+				UserId, Perfect, Checksum, SubmittedAt);
 		}
 	}
 }

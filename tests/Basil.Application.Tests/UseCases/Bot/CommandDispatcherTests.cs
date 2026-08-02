@@ -324,7 +324,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where nobody", null);
 
-		Assert.Equal("nobody is in XX", reply);
+		Assert.Equal("nobody is in Unknown", reply);
 	}
 
 	[Fact]

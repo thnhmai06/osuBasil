@@ -20,7 +20,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	{
 		await using var connection = Connect();
 		var row = await connection.QuerySingleOrDefaultAsync<MapsetRow>(
-			"SELECT * FROM Mapsets WHERE Id = @Id", new { Id = id });
+			"SELECT * FROM Beatmapsets WHERE Id = @Id", new { Id = id });
 		return row?.ToMapset();
 	}
 
@@ -28,7 +28,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	/// <remarks>
 	///     Uses <c>INSERT ... ON CONFLICT DO UPDATE</c>, not <c>REPLACE INTO</c>: a replace deletes
 	///     then reinserts on a primary-key conflict, and that delete cascades through the
-	///     Beatmaps-Mapsets foreign key, wiping every beatmap under the set on every re-upsert. The
+	///     Beatmaps-Beatmapsets foreign key, wiping every beatmap under the set on every re-upsert. The
 	///     update clause overwrites only the shared metadata columns; <see cref="Beatmapset.IsFrozen" />,
 	///     <see cref="Beatmapset.IsPrivate" />, and the media-file columns are deliberately left alone so
 	///     a re-ingestion pass never clears an admin-set freeze lock or privacy flag, and because the
@@ -41,7 +41,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 		await using var connection = Connect();
 		await connection.ExecuteAsync(
 			"""
-			INSERT INTO Mapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
+			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
 			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile, @AudioFile)
 			ON CONFLICT(Id) DO UPDATE SET
 			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
@@ -69,7 +69,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task SetFrozenAsync(int id, bool frozen, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Mapsets SET IsFrozen = @Frozen WHERE Id = @Id",
+		await connection.ExecuteAsync("UPDATE Beatmapsets SET IsFrozen = @Frozen WHERE Id = @Id",
 			new { Id = id, Frozen = frozen });
 		logger.LogDebug("Beatmapset frozen flag set: Id={Id} Frozen={Frozen}", id, frozen);
 	}
@@ -78,7 +78,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Mapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
+		await connection.ExecuteAsync("UPDATE Beatmapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
 			new { Id = id, IsPrivate = isPrivate });
 		logger.LogDebug("Beatmapset private flag set: Id={Id} IsPrivate={IsPrivate}", id, isPrivate);
 	}
@@ -88,7 +88,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Mapsets SET BackgroundFile = @BackgroundFile WHERE Id = @Id",
+		await connection.ExecuteAsync("UPDATE Beatmapsets SET BackgroundFile = @BackgroundFile WHERE Id = @Id",
 			new { Id = id, BackgroundFile = backgroundFile });
 		logger.LogDebug("Beatmapset background file set: Id={Id}", id);
 	}
@@ -97,21 +97,21 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Mapsets SET AudioFile = @AudioFile WHERE Id = @Id",
+		await connection.ExecuteAsync("UPDATE Beatmapsets SET AudioFile = @AudioFile WHERE Id = @Id",
 			new { Id = id, AudioFile = audioFile });
 		logger.LogDebug("Beatmapset audio file set: Id={Id}", id);
 	}
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Beatmaps owned by the set cascade through the Beatmaps-Mapsets foreign key, so no
+	///     Beatmaps owned by the set cascade through the Beatmaps-Beatmapsets foreign key, so no
 	///     separate cleanup is issued.
 	/// </remarks>
 	public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		// Beatmaps rows cascade via Beatmaps_Mapsets_Id_fk (on delete cascade), so no manual cleanup is needed.
-		await connection.ExecuteAsync("DELETE FROM Mapsets WHERE Id = @Id", new { Id = id });
+		// Beatmaps rows cascade via Beatmaps_Beatmapsets_Id_fk (on delete cascade), so no manual cleanup is needed.
+		await connection.ExecuteAsync("DELETE FROM Beatmapsets WHERE Id = @Id", new { Id = id });
 		logger.LogDebug("Beatmapset deleted: Id={Id}", id);
 	}
 
@@ -119,14 +119,14 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Mapsets");
+		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Beatmapsets");
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		var ids = await connection.QueryAsync<int>("SELECT Id FROM Mapsets");
+		var ids = await connection.QueryAsync<int>("SELECT Id FROM Beatmapsets");
 		return [.. ids];
 	}
 
@@ -142,7 +142,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 		var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
 		var rows = await connection.QueryAsync<MapsetRow>(
 			$"""
-			 SELECT m.* FROM Mapsets m
+			 SELECT m.* FROM Beatmapsets m
 			 {whereClause}
 			 ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
 			 """,
@@ -152,16 +152,16 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     The count is read from the Counters table under the <c>Mapsets:Total</c> or
-	///     <c>Mapsets:Public</c> counter depending on <paramref name="includePrivate" />, not counted
-	///     from the Mapsets table directly.
+	///     The count is read from the Counters table under the <c>Beatmapsets:Total</c> or
+	///     <c>Beatmapsets:Public</c> counter depending on <paramref name="includePrivate" />, not counted
+	///     from the Beatmapsets table directly.
 	/// </remarks>
 	public async Task<int> FetchCountAsync(bool includePrivate, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<int>(
 			"SELECT Value FROM Counters WHERE Name = @Name",
-			new { Name = includePrivate ? "Mapsets:Total" : "Mapsets:Public" });
+			new { Name = includePrivate ? "Beatmapsets:Total" : "Beatmapsets:Public" });
 	}
 
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
@@ -171,7 +171,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Mapsets table columns. Mutable because Dapper fills by
+	///     A mutable row DTO matching the Beatmapsets table columns. Mutable because Dapper fills by
 	///     property name, not through a positional record constructor.
 	/// </summary>
 	private sealed class MapsetRow

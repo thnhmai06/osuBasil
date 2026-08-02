@@ -22,7 +22,7 @@ public interface IScoreRepository
 	/// <summary>
 	///     Checks whether a score with the given online checksum already exists.
 	/// </summary>
-	/// <param name="onlineChecksum">The online checksum to look up.</param>
+	/// <param name="checksum">The online checksum to look up.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> if a score with the checksum exists; otherwise,
@@ -32,7 +32,7 @@ public interface IScoreRepository
 	///     Feeds the duplicate-submission check. Only the existence is needed, so the lookup never
 	///     materializes a full row.
 	/// </remarks>
-	Task<bool> CheckExistAsync(string onlineChecksum, CancellationToken cancellationToken = default);
+	Task<bool> CheckExistAsync(string checksum, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Fetches who owns the given score and in which mode it was played.
@@ -142,7 +142,7 @@ public sealed record ScoreReport(
 /// <param name="ClientFlags">The client flags reported with the submission.</param>
 /// <param name="UserId">The id of the user who submitted the score.</param>
 /// <param name="Perfect">A value that indicates whether the play had a perfect combo.</param>
-/// <param name="OnlineChecksum">The online checksum sent by the client, used for duplicate detection.</param>
+/// <param name="Checksum">The online checksum sent by the client, used for duplicate detection.</param>
 /// <param name="SubmittedAt">The time the score was submitted, in UTC.</param>
 /// <param name="RoundId">The id of the multiplayer round the score belongs to, or <see langword="null" />.</param>
 /// <param name="Team">The team the user played for, or <see langword="null" /> outside team play.</param>
@@ -169,7 +169,7 @@ public record ScoreInsertRow(
 	ClientFlags ClientFlags,
 	int UserId,
 	bool Perfect,
-	string OnlineChecksum,
+	string Checksum,
 	DateTime SubmittedAt,
 	int? RoundId = null,
 	MatchTeam? Team = null);
@@ -198,7 +198,7 @@ public record ScoreInsertRow(
 /// <param name="ClientFlags">The client flags reported with the submission.</param>
 /// <param name="UserId">The id of the user who submitted the score.</param>
 /// <param name="Perfect">A value that indicates whether the play had a perfect combo.</param>
-/// <param name="OnlineChecksum">The online checksum sent by the client, used for duplicate detection.</param>
+/// <param name="Checksum">The online checksum sent by the client, used for duplicate detection.</param>
 /// <param name="SubmittedAt">The time the score was submitted, in UTC.</param>
 /// <remarks>
 ///     Whether the score's beatmap is still the one actually played is a read-time fact, decided by
@@ -227,7 +227,7 @@ public sealed record ScoreRow(
 	ClientFlags ClientFlags,
 	int UserId,
 	bool Perfect,
-	string OnlineChecksum,
+	string Checksum,
 	DateTime SubmittedAt) : ScoreInsertRow(MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki,
-	NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, SubmittedAt, RoundId,
+	NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum, SubmittedAt, RoundId,
 	Team);
