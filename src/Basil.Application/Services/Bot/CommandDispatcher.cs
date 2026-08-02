@@ -1,7 +1,7 @@
-using System.Globalization;
 using System.Text;
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -27,19 +27,20 @@ public sealed class CommandDispatcher(
 	///     The chat commands listed by <c>!help</c>, the single source of truth for that output.
 	/// </summary>
 	/// <remarks>
-	///     Add a command here and it appears in <c>!help</c> with no separate help string to keep in
+	///     Add a command here, and it appears in <c>!help</c> with no separate help string to keep in
 	///     sync. The <c>!mp</c> subcommands live in their own list, <see cref="MpCommandService.HelpText" />.
 	/// </remarks>
 	private static readonly CommandInfo[] ChatCommands =
 	[
 		new("!roll [max]", "roll a random number from 0 to max (default 100)"),
-		new("!where <username>", "show a player's country"),
+		new("!where <username>", "show a userSession's country"),
 		new("!faq <entry>|list", "print a FAQ entry, or list every entry"),
 		new("!mp make <name>", "create a tournament room from anywhere, scoping you to it"),
+		new("!mp makeprivate <name>",
+			"create a private tournament room from anywhere, scoping you to it (hidden from lobby, invite-only)"),
 		new("!mp join <id> [password]", "join a match by id (private rooms need an invite from the host/a referee)"),
-		new("!mp in [match_id]",
-			"target/show a match you're not physically in (DM only — needs referee permission there)"),
-		new("!mp help", "list multiplayer subcommands (usable while scoped to a match)")
+		new("!mp in [match_id]", "scope to a live match (DM only - needs referee permission there)"),
+		new("!mp help", "list multiplayer subcommands (only usable while scoped to a match)")
 	];
 
 	private static readonly string HelpText = BuildHelpText(ChatCommands);
@@ -65,7 +66,7 @@ public sealed class CommandDispatcher(
 	private readonly FaqService _faq = new(storageOptions);
 
 	/// <inheritdoc />
-	public async Task<bool> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
+	public async Task<bool> DispatchAsync(UserSession sender, string rawMessage, MatchSession? matchScope,
 		string? channelName, ICommandReplySink sink, bool prefixOptional = false,
 		CancellationToken cancellationToken = default)
 	{
@@ -78,7 +79,7 @@ public sealed class CommandDispatcher(
 		else return false;
 
 		// Always run the message through the quote/escape-aware splitter, even when it's a single
-		// command with no `;`/`&&` at all — that's what lets `!mp name "a; b"` keep its literal
+		// command with no `;`/`&&` at all — that's what lets `!mp name "a ; b"` keep its literal
 		// semicolon without the message needing to look like a chain. A lone segment (the common case)
 		// just falls through to the same single-command dispatch as before; 2+ segments is a real chain
 		// and gets the stricter local-!mp-subcommand-only validation in DispatchChainAsync.
@@ -102,7 +103,7 @@ public sealed class CommandDispatcher(
 	/// <summary>
 	///     Dispatches a single command segment, matching its trigger against the known chat commands.
 	/// </summary>
-	private async Task<bool> DispatchSingleAsync(PlayerSession sender, string rawMessage, string prefix,
+	private async Task<bool> DispatchSingleAsync(UserSession sender, string rawMessage, string prefix,
 		MatchSession? matchScope, string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
 		var parts = rawMessage[prefix.Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -136,13 +137,13 @@ public sealed class CommandDispatcher(
 	///     Dispatches a <c>!mp</c> command, applying the channel-eligibility rules and resolving the
 	///     command's match scope.
 	/// </summary>
-	private async Task<bool> DispatchMpAsync(PlayerSession sender, string[] args, MatchSession? matchScope,
+	private async Task<bool> DispatchMpAsync(UserSession sender, string[] args, MatchSession? matchScope,
 		string? channelName, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
 		var subcommand = args.Length > 0 ? args[0].ToLowerInvariant() : "";
 		var subArgs = args[1..];
 
-		// `!mp help` never needs a resolved scope — bypass ResolveScope entirely so it always answers,
+		// `!mp help` never needs a resolved scope — bypass ResolveScope entirely, so it always answers,
 		// even for a sender with no MpScopeMatchId and no physical match (see the 1.7a doc comment on
 		// ResolveScope for why that fallback exists at all).
 		if (subcommand is "" or "help")
@@ -163,7 +164,7 @@ public sealed class CommandDispatcher(
 			// MpCommandService.MakeAsync/JoinAsync/SetScopeAsync. `makeprivate` is NOT an alias of
 			// `make` (see MpCommandService's own doc comment) — it sets privacy on an EXISTING match,
 			// so it falls through to the normal ResolveScope path below like any other subcommand; its
-			// presence in the #lobby allow-list above is harmless since #lobby never carries a resolvable
+			// presence in the #lobby allowlist above is harmless since #lobby never carries a resolvable
 			// scope for it to act on.
 			case "make":
 				return await mpCommands.MakeAsync(sender, subArgs, sink, cancellationToken);
@@ -197,14 +198,14 @@ public sealed class CommandDispatcher(
 	///     The scope set by <c>!mp in</c> is preferred over the sender's literal chat channel, so a
 	///     referee juggling several matches from one place keeps targeting the match they picked even
 	///     when they are sitting in a different match's own channel. The fallbacks are the
-	///     channel-derived scope and finally the match the sender is physically sitting in, so a DM
+	///     channel-derived scope, and finally the match the sender is physically sitting in, so a DM
 	///     <c>!mp abort</c> or any other subcommand still resolves for a sender who never ran
 	///     <c>!mp make</c> or <c>!mp in</c>. A stored scope whose match no longer exists is cleared.
 	/// </remarks>
-	/// <param name="sender">The player issuing the command.</param>
+	/// <param name="sender">The userSession issuing the command.</param>
 	/// <param name="channelScope">The match derived from the sender's current chat channel, if any.</param>
 	/// <returns>The match the command targets, or <see langword="null" /> when none resolves.</returns>
-	private MatchSession? ResolveScope(PlayerSession sender, MatchSession? channelScope)
+	private MatchSession? ResolveScope(UserSession sender, MatchSession? channelScope)
 	{
 		if (sender.MpScopeMatchId is { } dbId)
 		{
@@ -229,9 +230,9 @@ public sealed class CommandDispatcher(
 	///     <c>!faq</c>, is not a <c>!mp</c> command at all, and its presence in a chain rejects the
 	///     whole line rather than running part of it silently. <c>#lobby</c> never reaches here with
 	///     anything runnable, since every chainable subcommand is already outside that channel's
-	///     allow-list.
+	///     allowlist.
 	/// </remarks>
-	private async Task<bool> DispatchChainAsync(PlayerSession sender,
+	private async Task<bool> DispatchChainAsync(UserSession sender,
 		IReadOnlyList<ChatCommandChain.Segment> segments, MatchSession? matchScope, string? channelName,
 		string prefix, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
@@ -291,10 +292,10 @@ public sealed class CommandDispatcher(
 	}
 
 	/// <summary>Computes the reply text for <c>!roll</c>.</summary>
-	/// <param name="sender">The player rolling.</param>
+	/// <param name="sender">The userSession rolling.</param>
 	/// <param name="args">The command arguments, carrying the optional upper bound.</param>
 	/// <returns>The formatted roll result.</returns>
-	private static string Roll(PlayerSession sender, IReadOnlyList<string> args)
+	private static string Roll(UserSession sender, IReadOnlyList<string> args)
 	{
 		var max = 100;
 		if (args.Count > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = Math.Min(parsed, RollMaxCap);
@@ -303,7 +304,7 @@ public sealed class CommandDispatcher(
 		return $"{sender.Name} rolls {roll} point(s)";
 	}
 
-	/// <summary>Answers <c>!where</c>, reporting the registered country of the named player.</summary>
+	/// <summary>Answers <c>!where</c>, reporting the registered country of the named userSession.</summary>
 	private async Task<bool> Where(IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -321,27 +322,8 @@ public sealed class CommandDispatcher(
 			return false;
 		}
 
-		sink.Reply($"{user.Name} is in {DescribeCountry(user.Country.ToAcronym())}");
+		sink.Reply($"{user.Name} is in {user.Country.Describe()}");
 		return true;
-	}
-
-	/// <summary>Resolves an ISO country code to its English region name.</summary>
-	/// <param name="code">The two-letter country code.</param>
-	/// <returns>
-	///     The English region name, or the bare code when it is not a real ISO region.
-	/// </returns>
-	private static string DescribeCountry(string code)
-	{
-		try
-		{
-			return new RegionInfo(code.ToUpperInvariant()).EnglishName;
-		}
-		catch (ArgumentException)
-		{
-			// Some pseudocode (oc, eu, xx, a2, o1, ...) isn't real ISO regions and throws here —
-			// fall back to the bare code rather than maintaining a hand-rolled name table.
-			return code.ToUpperInvariant();
-		}
 	}
 
 	/// <summary>
@@ -417,7 +399,7 @@ public sealed class CommandDispatcher(
 /// </remarks>
 internal static class ChatCommandChain
 {
-	public enum ChainOperator
+	public enum ChainOperator : byte
 	{
 		/// <summary>The first segment on the line; nothing precedes it.</summary>
 		None,

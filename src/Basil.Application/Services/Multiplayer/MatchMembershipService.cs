@@ -29,9 +29,9 @@ namespace Basil.Application.Services.Multiplayer;
 public sealed class MatchMembershipService(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	ChannelMembershipService channelMembership,
-	IMatchPersistenceRepository matchPersistence,
+	IMatchRepository matchRepository,
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
@@ -46,7 +46,7 @@ public sealed class MatchMembershipService(
 	///     <see langword="true" /> when the host id matches and the name is short enough; otherwise,
 	///     <see langword="false" />.
 	/// </returns>
-	public static bool ValidateMatchData(ReadMatchResult data, int expectedHostId)
+	public static bool ValidateMatchData(MatchState data, int expectedHostId)
 	{
 		return data.HostId == expectedHostId && data.Name.Length <= MaxMatchNameLength;
 	}
@@ -62,13 +62,13 @@ public sealed class MatchMembershipService(
 	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
 	/// <param name="id">The in-memory registry slot id.</param>
 	/// <param name="data">The parsed match-create data.</param>
-	/// <param name="hostId">The id of the player who created the room.</param>
+	/// <param name="hostId">The id of the userSession who created the room.</param>
 	/// <param name="createdViaMakeCommand">
 	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
 	///     <see langword="false" />.
 	/// </param>
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	public static MatchSession BuildNew(int id, ReadMatchResult data, int hostId, bool createdViaMakeCommand = false)
+	public static MatchSession BuildNew(int id, MatchState data, int hostId, bool createdViaMakeCommand = false)
 	{
 		return new MatchSession(
 			id,
@@ -98,16 +98,17 @@ public sealed class MatchMembershipService(
 	}
 
 	/// <summary>Creates a match, persists its row, records the creation event, and seats the host in slot 0.</summary>
-	/// <param name="host">The player creating the room.</param>
+	/// <param name="host">The userSession creating the room.</param>
 	/// <param name="data">The parsed match-create data.</param>
-	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
 	/// <param name="createdViaMakeCommand">
 	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
 	///     <see langword="false" />.
 	/// </param>
+	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
 	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
-	public async Task<MatchSession?> CreateAsync(PlayerSession host, ReadMatchResult data,
-		CancellationToken cancellationToken = default, bool createdViaMakeCommand = false)
+	public async Task<MatchSession?> CreateAsync(UserSession host, MatchState data,
+		bool createdViaMakeCommand = false,
+		CancellationToken cancellationToken = default)
 	{
 		var match = matchRegistry.TryCreate(id =>
 		{
@@ -118,14 +119,15 @@ public sealed class MatchMembershipService(
 
 		if (match is null) return null;
 
-		match.DbId = await matchPersistence.CreateMatchAsync(
+		match.DbId = await matchRepository.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 		logger.LogInformation("+ Match created: MatchId={MatchId} HostId={HostId} Name={Name}",
 			match.DbId, host.Id, match.Name);
 
-		await matchPersistence.CreateEventAsync(new MatchEventRow(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Created,
-			host.Id, host.Name, null, null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+			host.Id, host.Name, null, null,
+			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -143,7 +145,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Creates a match with nobody in it, persisting its row and recording the creation event.</summary>
 	/// <remarks>
 	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
-	///     is no player to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
+	///     is no <see cref="UserSession"/> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
 	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays 0 and the referee list stays empty
 	///     until a caller assigns them via <c>PATCH /match/{id}/settings</c>, the <c>host</c> action,
 	///     or the <c>addref</c> action. It is marked <see cref="MatchSession.CreatedViaMakeCommand" />
@@ -153,7 +155,7 @@ public sealed class MatchMembershipService(
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
 	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
-	public async Task<MatchSession?> CreateEmptyAsync(ReadMatchResult data,
+	public async Task<MatchSession?> CreateEmptyAsync(MatchState data,
 		CancellationToken cancellationToken = default)
 	{
 		var match = matchRegistry.TryCreate(id =>
@@ -165,70 +167,74 @@ public sealed class MatchMembershipService(
 
 		if (match is null) return null;
 
-		match.DbId = await matchPersistence.CreateMatchAsync(
+		match.DbId = await matchRepository.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=0 Name={Name} (via HTTP)",
 			match.DbId, match.Name);
 
-		await matchPersistence.CreateEventAsync(new MatchEventRow(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Created,
 			null, null, null, null, DateTimeOffset.UtcNow.UtcDateTime, "Created via HTTP API"), cancellationToken);
 
 		return match;
 	}
 
-	/// <summary>Seats a player in a match after applying every join gate.</summary>
+	/// <summary>Seats a <see cref="UserSession"/> in a match after applying every join gate.</summary>
 	/// <remarks>
-	///     Rejects the join, sending a <c>MatchJoinFail</c> packet, when the player is already in a
+	///     Rejects the join, sending a <c>MatchJoinFail</c> packet, when the userSession is already in a
 	///     match, is a tourney client, is banned, or the room is locked; when the room is private and
-	///     the player holds no staff privileges or invite; when the password is wrong; or when no free
+	///     the userSession holds no staff privileges or invite; when the password is wrong; or when no free
 	///     slot exists. The host bypasses the free-slot check and always takes slot 0.
 	/// </remarks>
-	/// <param name="player">The player joining.</param>
+	/// <param name="userSession">The userSession joining.</param>
 	/// <param name="match">The match to join.</param>
-	/// <param name="password">The password supplied by the player.</param>
+	/// <param name="password">The password supplied by the userSession.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	/// <returns><see langword="true" /> when the player was seated; otherwise, <see langword="false" />.</returns>
-	public async Task<bool> JoinAsync(PlayerSession player, MatchSession match, string password,
+	/// <returns><see langword="true" /> when the userSession was seated; otherwise, <see langword="false" />.</returns>
+	public async Task<bool> JoinAsync(
+		UserSession userSession, MatchSession match, string password,
 		CancellationToken cancellationToken = default)
 	{
-		if (player.Match is not null || match.TourneyClients.Contains(player.Id) ||
-		    match.BannedIds.Contains(player.Id) ||
+		if (userSession.Match is not null || match.TourneyClients.Contains(userSession.Id) ||
+		    match.BannedIds.Contains(userSession.Id) ||
 		    match.IsLocked)
 		{
-			var reason = player.Match is not null ? "AlreadyInMatch"
-				: match.TourneyClients.Contains(player.Id) ? "TourneyClient"
-				: match.BannedIds.Contains(player.Id) ? "Banned"
+			var reason = userSession.Match is not null ? "AlreadyInMatch"
+				: match.TourneyClients.Contains(userSession.Id) ? "TourneyClient"
+				: match.BannedIds.Contains(userSession.Id) ? "Banned"
 				: "Locked";
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason={Reason}",
-				match.DbId, player.Id, reason);
-			player.Enqueue(ServerPacketWriter.MatchJoinFail());
+				match.DbId, userSession.Id, reason);
+			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
 			return false;
 		}
 
-		if (match.IsPrivate && (player.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(player.Id))
+		if (match.IsPrivate && (userSession.Privilege & UserPrivileges.Staff) == 0 &&
+		    !match.InvitedIds.Contains(userSession.Id))
 		{
-			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId, player.Id);
-			player.Enqueue(ServerPacketWriter.MatchJoinFail());
+			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId,
+				userSession.Id);
+			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
 			return false;
 		}
 
 		int slotId;
-		if (player.Id != match.HostId)
+		if (userSession.Id != match.HostId)
 		{
-			if (password != match.Password && (player.Privilege & UserPrivileges.Staff) == 0)
+			if (password != match.Password && (userSession.Privilege & UserPrivileges.Staff) == 0)
 			{
 				logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=WrongPassword",
-					match.DbId, player.Id);
-				player.Enqueue(ServerPacketWriter.MatchJoinFail());
+					match.DbId, userSession.Id);
+				userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
 				return false;
 			}
 
 			var free = match.GetFreeSlotId();
 			if (free is null)
 			{
-				logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId, player.Id);
-				player.Enqueue(ServerPacketWriter.MatchJoinFail());
+				logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId,
+					userSession.Id);
+				userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
 				return false;
 			}
 
@@ -239,26 +245,26 @@ public sealed class MatchMembershipService(
 			slotId = 0;
 		}
 
-		return await OccupySlot(player, match, slotId, cancellationToken);
+		return await OccupySlot(userSession, match, slotId, cancellationToken);
 	}
 
-	/// <summary>Seats a player directly, bypassing every join gate.</summary>
+	/// <summary>Seats a userSession directly, bypassing every join gate.</summary>
 	/// <remarks>
 	///     Server-initiated seating for a force-invite (<see cref="MatchControlService.ForceInviteAsync" />).
 	///     Password, private, locked, and ban gates are not re-checked here; the caller already did.
-	///     Fails only when the player is already in a match or the room is full.
+	///     Fails only when the userSession is already in a match or the room is full.
 	/// </remarks>
-	/// <param name="player">The player to seat.</param>
+	/// <param name="userSession">The userSession to seat.</param>
 	/// <param name="match">The match to seat into.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	/// <returns><see langword="true" /> when the player was seated; otherwise, <see langword="false" />.</returns>
-	public async Task<bool> ForceJoinAsync(PlayerSession player, MatchSession match,
+	/// <returns><see langword="true" /> when the userSession was seated; otherwise, <see langword="false" />.</returns>
+	public async Task<bool> ForceJoinAsync(UserSession userSession, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
-		if (player.Match is not null) return false;
+		if (userSession.Match is not null) return false;
 
 		var free = match.GetFreeSlotId();
-		return free is not null && await OccupySlot(player, match, free.Value, cancellationToken);
+		return free is not null && await OccupySlot(userSession, match, free.Value, cancellationToken);
 	}
 
 	/// <summary>Occupies a specific slot, runs the shared join tail, and broadcasts the new state.</summary>
@@ -267,61 +273,71 @@ public sealed class MatchMembershipService(
 	///     channel join, the team default, the slot fields, the <c>MatchJoinSuccess</c> packet, the
 	///     state broadcast, and the <c>PlayerJoined</c> event.
 	/// </remarks>
-	/// <param name="player">The player being seated.</param>
+	/// <param name="userSession">The userSession being seated.</param>
 	/// <param name="match">The match being joined.</param>
 	/// <param name="slotId">The 0-based slot index to occupy.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
 	/// <returns>
-	///     <see langword="true" /> when the player was seated; otherwise, <see langword="false" /> when the channel is
+	///     <see langword="true" /> when the userSession was seated; otherwise, <see langword="false" /> when the channel is
 	///     missing or the channel join failed.
 	/// </returns>
-	private async Task<bool> OccupySlot(PlayerSession player, MatchSession match, int slotId,
+	private async Task<bool> OccupySlot(UserSession userSession, MatchSession match, int slotId,
 		CancellationToken cancellationToken = default)
 	{
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is null || !channelMembership.Join(player, channel)) return false;
+		if (channel is null || !channelMembership.Join(userSession, channel)) return false;
 
 		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null && player.InChannel(lobby.Name)) channelMembership.Part(player, lobby);
+		if (lobby is not null && userSession.InChannel(lobby.Name)) channelMembership.Part(userSession, lobby);
 
 		var slot = match.Slots[slotId];
-		if (match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs) slot.Team = MatchTeam.Red;
+		if (match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs)
+		{
+			var counts = match.Slots
+				.Where(s => s.PlayerId is not null)
+				.GroupBy(s => s.Team)
+				.ToDictionary(g => g.Key, g => g.Count());
+			slot.Team = counts[MatchTeam.Red] <= counts[MatchTeam.Blue]
+				? MatchTeam.Red
+				: MatchTeam.Blue;
+		}
 
 		slot.Status = SlotStatus.NotReady;
-		slot.PlayerId = player.Id;
-		player.Match = match;
+		slot.PlayerId = userSession.Id;
+		userSession.Match = match;
 
-		player.Enqueue(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)));
+		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
-		logger.LogInformation("+ Player joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
-			match.DbId, player.Id, slotId);
+		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
+			match.DbId, userSession.Id, slotId);
 
-		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
+		_ = matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerJoined,
-			player.Id, player.Name, null, null, DateTimeOffset.UtcNow.UtcDateTime, null));
+			userSession.Id, userSession.Name, null,
+			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		return true;
 	}
 
-	/// <summary>Parts a player from a match, transferring the host when needed and tearing the room down when it empties.</summary>
-	/// <param name="player">The player leaving.</param>
+	/// <summary>Parts a userSession from a match, transferring the host when needed and tearing the room down when it empties.</summary>
+	/// <param name="userSession">The userSession leaving.</param>
 	/// <param name="match">The match being left.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task LeaveAsync(PlayerSession player, MatchSession match,
+	public async Task LeaveAsync(UserSession userSession, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
-		var slot = match.GetSlot(player.Id);
+		var slot = match.GetSlot(userSession.Id);
 		if (slot is null)
 		{
-			player.Match = null;
+			userSession.Match = null;
 			return;
 		}
 
 		slot.Reset(slot.Status == SlotStatus.Locked ? SlotStatus.Locked : SlotStatus.Open);
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null) channelMembership.Part(player, channel);
+		if (channel is not null) channelMembership.Part(userSession, channel);
 
 		var hostTransfer = false;
 		int? prevHostId = null;
@@ -334,7 +350,7 @@ public sealed class MatchMembershipService(
 		}
 		else
 		{
-			if (player.Id == match.HostId)
+			if (userSession.Id == match.HostId)
 			{
 				prevHostId = match.HostId;
 				var newHostSlot = match.Slots.FirstOrDefault(s => !s.Empty);
@@ -350,13 +366,14 @@ public sealed class MatchMembershipService(
 			await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		}
 
-		player.Match = null;
+		userSession.Match = null;
 
-		logger.LogInformation("- Player left match: MatchId={MatchId} UserId={UserId}", match.DbId, player.Id);
+		logger.LogInformation("- User left match: MatchId={MatchId} UserId={UserId}", match.DbId, userSession.Id);
 
-		_ = matchPersistence.CreateEventAsync(new MatchEventRow(
+		_ = matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerLeft,
-			player.Id, player.Name, null, null, DateTimeOffset.UtcNow.UtcDateTime, null));
+			userSession.Id, userSession.Name, null,
+			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		if (hostTransfer)
 		{
@@ -370,17 +387,18 @@ public sealed class MatchMembershipService(
 			var newHostName = newHostId is not null
 				? sessionRegistry.GetById(newHostId.Value)?.Name
 				: null;
-			_ = matchPersistence.CreateEventAsync(new MatchEventRow(
+			_ = matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
-				prevHostId, prevHostName, newHostId, newHostName, DateTimeOffset.UtcNow.UtcDateTime, null));
+				prevHostId, prevHostName, newHostId, newHostName,
+				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 	}
 
-	/// <summary>Closes a match: parts every seated player, tears the room down, and records a close event.</summary>
+	/// <summary>Closes a match: parts every seated userSession, tears the room down, and records a close event.</summary>
 	/// <param name="match">The match to close.</param>
-	/// <param name="actorId">The acting player's id, or <see langword="null" /> for a system action.</param>
-	/// <param name="actorName">The acting player's name, or <see langword="null" /> when unknown.</param>
-	/// <param name="cancellationToken">A token that cancels the close event write.</param>
+	/// <param name="actorId">The acting userSession's id, or <see langword="null" /> for a system action.</param>
+	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
+	/// <param name="cancellationToken">A token that cancels the close event writes.</param>
 	public async Task CloseAsync(MatchSession match, int? actorId = null, string? actorName = null,
 		CancellationToken cancellationToken = default)
 	{
@@ -401,7 +419,7 @@ public sealed class MatchMembershipService(
 		TeardownMatch(match, channel);
 		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
-		await matchPersistence.CreateEventAsync(new MatchEventRow(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Closed,
 			actorId, actorName, null, null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 	}
@@ -409,7 +427,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Cancels a pending auto-start countdown when one is queued, announcing why.</summary>
 	/// <remarks>
 	///     Called whenever a gameplay-affecting setting (map, team type, win condition, size, or a
-	///     player's team) changes while a <c>!mp start &lt;seconds&gt;</c> countdown is queued, since
+	///     userSession's team) changes while a <c>!mp start &lt;seconds&gt;</c> countdown is queued, since
 	///     starting the match under rules different from what was queued against would be misleading.
 	///     A plain <c>!mp timer</c>, which does not start anything on its own, is left alone.
 	/// </remarks>
@@ -438,7 +456,7 @@ public sealed class MatchMembershipService(
 		matchRegistry.Remove(match.Id);
 		if (channel is not null) channelRegistry.Remove(channel.Name);
 
-		_ = matchPersistence.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
+		_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
 
 		var lobby = channelRegistry.GetByName("#lobby");
 		if (lobby is not null)
@@ -454,18 +472,17 @@ public sealed class MatchMembershipService(
 	/// </returns>
 	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var bmap = match.MapId > 0
+		var beatmap = match.MapId > 0
 			? await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
 			: null;
 
-		if (match.MapId > 0 && bmap is null)
+		if (match.MapId > 0 && beatmap is null)
 		{
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
 				match.DbId, match.MapId);
 			var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-			if (bot is not null)
-				EnqueueChat(match, bot.Name, bot.Id,
-					"Match cannot start because the beatmap does not exist on the server.");
+			if (bot is not null) EnqueueChat(match, bot.Name, bot.Id,
+				"Match cannot start because the beatmap does not exist on the server.");
 			return false;
 		}
 
@@ -481,12 +498,12 @@ public sealed class MatchMembershipService(
 
 		match.InProgress = true;
 
-		match.CurrentRoundId = await matchPersistence.CreateRoundAsync(
+		match.CurrentRoundId = await matchRepository.CreateRoundAsync(
 			match.DbId, match.NextRoundIndex++, match.MapMd5,
 			match.Mode, match.WinCondition, match.TeamType,
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
-		Enqueue(match, ServerPacketWriter.MatchStart(MatchPacketDataMapper.ToPacketData(match)), false, noMap);
+		Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
@@ -496,14 +513,13 @@ public sealed class MatchMembershipService(
 	/// <param name="match">The match whose channel to broadcast into.</param>
 	/// <param name="data">The serialized packet bytes.</param>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
-	/// <param name="immune">Player ids to exclude from the broadcast, or <see langword="null" /> for none.</param>
+	/// <param name="immune">User ids to exclude from the broadcast, or <see langword="null" /> for none.</param>
 	public void Enqueue(MatchSession match, byte[] data, bool lobby = true, IReadOnlyCollection<int>? immune = null)
 	{
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is not null) channelMembership.BroadcastToMembers(channel, data, immune);
 
-		if (!match.IsPrivate)
-			BroadcastToNonEmptyLobby(data, lobby);
+		if (!match.IsPrivate) BroadcastToNonEmptyLobby(data, lobby);
 	}
 
 	/// <summary>Broadcasts a chat message into the match channel.</summary>
@@ -516,7 +532,8 @@ public sealed class MatchMembershipService(
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is null) return;
 
-		channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
+		channelMembership.BroadcastPrivmsg(channel,
+			IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
 	}
 
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
@@ -534,16 +551,17 @@ public sealed class MatchMembershipService(
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is not null)
 			channelMembership.BroadcastToMembers(channel,
-				ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match)));
+				ServerPacketWriter.UpdateMatch(match.ToPacket()));
 
 		if (!match.IsPrivate)
-			BroadcastToNonEmptyLobby(
-				ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false), lobby);
+			BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
 
-		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(match, sessionRegistry, userRepo, beatmapRepo);
+		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
+			match, sessionRegistry, userRepo, beatmapRepo, cancellationToken);
 		eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
 
-		var settings = await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, userRepo, beatmapRepo);
+		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
+			match, sessionRegistry, userRepo, beatmapRepo, cancellationToken);
 		var settingsDelta = match.SettingsSnapshot.Publish(settings);
 		eventBus.PublishSettings(match.DbId, settingsDelta);
 
@@ -559,7 +577,7 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
 	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo);
+		var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo, cancellationToken);
 		var delta = match.HostSnapshot.Publish(host);
 		eventBus.PublishHost(match.DbId, delta);
 	}
@@ -569,17 +587,18 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
 	public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var refs = await MatchLiveSnapshotBuilder.BuildRefs(match, sessionRegistry, userRepo);
+		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
+			match, sessionRegistry, userRepo, cancellationToken);
 		var delta = match.RefsSnapshot.Publish(refs);
 		eventBus.PublishRefs(match.DbId, delta);
 	}
 
-	/// <summary>Rebuilds and republishes the ban list snapshot channel.</summary>
-	/// <param name="match">The match whose ban list to publish.</param>
+	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
+	/// <param name="match">The match whose banlist to publish.</param>
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
 	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo);
+		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo, cancellationToken);
 		var delta = match.BansSnapshot.Publish(bans);
 		eventBus.PublishBans(match.DbId, delta);
 	}
@@ -592,12 +611,12 @@ public sealed class MatchMembershipService(
 		eventBus.PublishTimer(match.DbId, delta);
 	}
 
-	/// <summary>Rebuilds and republishes the slots snapshot channel.</summary>
+	/// <summary>Rebuilds and republishes the slots' snapshot channel.</summary>
 	/// <param name="match">The match whose slots to publish.</param>
 	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
 	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo);
+		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo, cancellationToken);
 		var delta = match.SlotsSnapshot.Publish(slots);
 		eventBus.PublishSlots(match.DbId, delta);
 	}

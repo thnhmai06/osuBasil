@@ -11,20 +11,17 @@ namespace Basil.Infrastructure.Sessions;
 /// </remarks>
 public sealed class InMemoryMatchRegistry : IMatchRegistry
 {
-	/// <summary>The number of wire-protocol match slots the registry holds.</summary>
-	private const int MaxMatches = 64;
-
 	/// <summary>Guards every read and write of <see cref="_slots" />.</summary>
 	private readonly Lock _registryLock = new();
 
 	/// <summary>The match sessions by wire-protocol slot id, with null for free slots.</summary>
-	private readonly MatchSession?[] _slots = new MatchSession?[MaxMatches];
+	private readonly MatchSession?[] _slots = new MatchSession?[IMatchRegistry.MaxMatches];
 
 	/// <inheritdoc />
 	/// <remarks>Ids outside the 0 to 63 slot range return null without touching the lock.</remarks>
 	public MatchSession? GetById(int id)
 	{
-		if (id is < 0 or >= MaxMatches) return null;
+		if (id is < 0 or >= IMatchRegistry.MaxMatches) return null;
 
 		lock (_registryLock)
 		{
@@ -48,7 +45,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 	{
 		lock (_registryLock)
 		{
-			for (var i = 0; i < MaxMatches; i++)
+			for (var i = 0; i < IMatchRegistry.MaxMatches; i++)
 				if (_slots[i] is null)
 				{
 					var match = factory(i);
@@ -64,7 +61,7 @@ public sealed class InMemoryMatchRegistry : IMatchRegistry
 	/// <remarks>Ids outside the 0 to 63 slot range are ignored.</remarks>
 	public void Remove(int id)
 	{
-		if (id is < 0 or >= MaxMatches) return;
+		if (id is < 0 or >= IMatchRegistry.MaxMatches) return;
 
 		lock (_registryLock)
 		{

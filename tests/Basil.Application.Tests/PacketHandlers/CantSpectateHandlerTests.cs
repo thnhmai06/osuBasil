@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Spectating;
+using Basil.Application.Packets.Spectating;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -9,9 +9,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's CantSpectate.</summary>
 public class CantSpectateHandlerTests
 {
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Fact]
@@ -20,7 +20,7 @@ public class CantSpectateHandlerTests
 		var player = MakePlayer(1, "alice");
 
 		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
-			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Empty(player.Dequeue());
 	}
@@ -36,7 +36,7 @@ public class CantSpectateHandlerTests
 		player.Spectating = host;
 
 		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
-			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		var expected = ServerPacketWriter.SpectatorCantSpectate(player.Id);
 		Assert.Equal(expected, host.Dequeue());
@@ -53,7 +53,7 @@ public class CantSpectateHandlerTests
 		player.Stealth = true;
 
 		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
-			new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Empty(host.Dequeue());
 	}

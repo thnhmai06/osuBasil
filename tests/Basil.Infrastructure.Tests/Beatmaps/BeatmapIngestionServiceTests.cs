@@ -1,6 +1,6 @@
 using System.IO.Compression;
 using Basil.Application.Abstractions.Storage;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
 using Basil.Infrastructure.Storage;
@@ -19,15 +19,16 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDisposable
 {
 	private readonly SqliteBeatmapRepository _beatmaps;
+	private readonly SqliteBeatmapsetRepository _beatmapsetRepository;
 	private readonly IResponseCache _cache;
-	private readonly SqliteMapsetRepository _mapsets;
 	private readonly string _mapsetsPath;
 	private readonly BeatmapIngestionService _service;
 
 	public BeatmapIngestionServiceTests(SqliteFixture fixture)
 	{
 		_beatmaps = new SqliteBeatmapRepository(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		_mapsets = new SqliteMapsetRepository(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
+		_beatmapsetRepository =
+			new SqliteBeatmapsetRepository(fixture.ConnectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
 		var options = Options.Create(new StorageOptions
@@ -39,7 +40,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
 		});
 		_cache = new FileSystemResponseCache(options);
-		_service = new BeatmapIngestionService(_beatmaps, _mapsets, new FakeOsuCalculator(), options, _cache,
+		_service = new BeatmapIngestionService(_beatmaps, _beatmapsetRepository, new FakeOsuCalculator(), options,
+			_cache,
 			NullLogger<BeatmapIngestionService>.Instance);
 	}
 
@@ -76,11 +78,11 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var beatmap = await _beatmaps.FetchOneAsync(setId: setId.Value);
 		Assert.NotNull(beatmap);
 		Assert.Equal("vivid_osu_file.osu", beatmap.Filename);
-		Assert.Equal("FAIRY FORE", beatmap.Mapset.Artist);
-		Assert.Equal("Vivid", beatmap.Mapset.Title);
+		Assert.Equal("FAIRY FORE", beatmap.Beatmapset.Artist);
+		Assert.Equal("Vivid", beatmap.Beatmapset.Title);
 		Assert.Equal("Insane", beatmap.Version);
-		Assert.Equal("Hitoshirenu Shourai", beatmap.Mapset.Creator);
-		Assert.True(beatmap.Mapset.Id >= 900_000_000);
+		Assert.Equal("Hitoshirenu Shourai", beatmap.Beatmapset.Creator);
+		Assert.True(beatmap.Beatmapset.Id >= 900_000_000);
 	}
 
 	[Fact]
@@ -127,7 +129,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileDeletedFolderAsync_RemovesMapsetAndBeatmap()
 	{
-		// ReconcileDeletedFolderAsync parses the Mapset id from the folder's own leading digits, so
+		// ReconcileDeletedFolderAsync parses the Beatmapset id from the folder's own leading digits, so
 		// the folder must be renamed to its actually-resolved id first (a fresh ingestion doesn't
 		// reuse whatever number a human happened to type in the folder name).
 		var tempFolder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
@@ -136,7 +138,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
 		Assert.NotNull(setId);
 
-		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
 		Assert.NotNull(mapset);
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
@@ -150,7 +152,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
 		await _service.ReconcileDeletedFolderAsync(resolvedFolder);
 
-		Assert.Null(await _mapsets.FetchByIdAsync(setId.Value));
+		Assert.Null(await _beatmapsetRepository.FetchByIdAsync(setId.Value));
 		Assert.Null(await _beatmaps.FetchOneAsync(setId: setId.Value, includePrivate: true));
 	}
 
@@ -167,7 +169,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		await _cache.PutAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, true), [1]);
 		await _cache.PutAsync("preview", ResponseCacheKeys.Preview(setId.Value), [1]);
 
-		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
 			{
@@ -213,7 +215,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileFolderAsync_ContentChanged_MovesOntoNewMd5ButKeepsId()
 	{
-		// Every file's content is about to change (there's only one), so the mapset resolver can't
+		// Every file's content is about to change (there's only one), so the beatmapset resolver can't
 		// match by content-hash on the second pass and falls back to the folder's own leading-id
 		// name — so, like ReconcileDeletedFolderAsync_RemovesMapsetAndBeatmap above, the folder must
 		// be renamed to its actually-resolved id first rather than an arbitrary placeholder number.
@@ -223,7 +225,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
 		Assert.NotNull(setId);
 
-		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
 		var folder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
 			{
@@ -270,7 +272,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var beatmaps = await _beatmaps.FetchAllBySetIdAsync(setId.Value, true);
 		var lowest = beatmaps.MinBy(b => b.Id)!;
 
-		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
 		Assert.Equal(lowest.BackgroundFile, mapset!.BackgroundFile);
 	}
 
@@ -294,7 +296,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		File.Delete(Path.Combine(folder, lowest.Filename));
 		await _service.ReconcileFolderAsync(folder);
 
-		var mapset = await _mapsets.FetchByIdAsync(setId.Value);
+		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
 		Assert.Equal(remaining.BackgroundFile, mapset!.BackgroundFile);
 	}
 

@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -32,9 +32,9 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		// Minimal in-memory fake so CreateMatchAsync/FetchAllMatchesAsync/DeleteMatchAsync behave
 		// realistically without a real SQLite file.
-		var matches = new Dictionary<int, MatchRow>();
+		var matches = new Dictionary<int, Match>();
 		var nextId = 1;
-		var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+		var matchPersistence = Substitute.For<IMatchRepository>();
 		// Never exercised by these tests -- throw, matching the old fake, instead of the NSubstitute
 		// default of a silently-completed Task<0>.
 		matchPersistence.CreateRoundAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<GameMode>(),
@@ -48,7 +48,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 			.Returns(call =>
 			{
 				var id = nextId++;
-				matches[id] = new MatchRow(id, call.ArgAt<string>(0), call.ArgAt<DateTime>(1), null);
+				matches[id] = new Match(id, call.ArgAt<string>(0), call.ArgAt<DateTime>(1), null);
 				return id;
 			});
 		matchPersistence.WhenForAnyArgs(m => m.SetMatchEndedAsync(default, default))
@@ -60,17 +60,17 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		matchPersistence.FetchMatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => matches.GetValueOrDefault(call.ArgAt<int>(0)));
 		matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 		matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<MatchRow>)[.. matches.Values.OrderByDescending(m => m.Id)]);
+			.Returns(_ => (IReadOnlyList<Match>)[.. matches.Values.OrderByDescending(m => m.Id)]);
 		matchPersistence.WhenForAnyArgs(m => m.DeleteMatchAsync(default))
 			.Do(call => matches.Remove(call.ArgAt<int>(0)));
 		matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<MatchEventRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<MatchEvent>>([]));
 		matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<MatchRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Match>>([]));
 		matchPersistence.FetchUnrecoveredRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

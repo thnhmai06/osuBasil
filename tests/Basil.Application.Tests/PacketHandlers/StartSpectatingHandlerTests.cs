@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Spectating;
+using Basil.Application.Packets.Spectating;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -13,22 +13,22 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's StartSpectating.</summary>
 public class StartSpectatingHandlerTests
 {
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	private static BanchoPacketReader TargetIdReader(int targetId)
+	private static PacketReader TargetIdReader(int targetId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(targetId));
+		return new PacketReader(PacketWriter.WriteInt32(targetId));
 	}
 
 	[Fact]
 	public async Task Handle_UnknownTarget_NoOp()
 	{
-		_sessionRegistry.GetById(999).Returns((PlayerSession?)null);
+		_sessionRegistry.GetById(999).Returns((UserSession?)null);
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, new FakeChannelRegistry()),

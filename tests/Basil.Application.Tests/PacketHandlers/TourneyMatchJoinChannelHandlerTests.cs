@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
@@ -11,12 +11,12 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchJoinChannel.</summary>
 public class TourneyMatchJoinChannelHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int matchId)
+	private static PacketReader ReaderFor(int matchId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(matchId));
+		return new PacketReader(PacketWriter.WriteInt32(matchId));
 	}
 
-	private static PlayerSession MakeDonator(int id, string name)
+	private static UserSession MakeDonator(int id, string name)
 	{
 		var player = MakePlayer(id, name);
 		player.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;

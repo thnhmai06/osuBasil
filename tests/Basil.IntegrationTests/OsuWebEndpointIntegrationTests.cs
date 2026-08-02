@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +14,7 @@ namespace Basil.IntegrationTests;
 ///     (getbeatmapinfo, lastfm, markasread, seasonal, bancho_connect, check-updates,
 ///     b.* redirect) plus the endpoints deliberately stubbed out (screenshot, favourites, rate,
 ///     comment, in-game registration, difficulty-rating).
-///     Authenticated routes only need "player not online" coverage here (no DB access happens before
+///     Authenticated routes only need "userSession not online" coverage here (no DB access happens before
 ///     that check — see AuthenticationService); their real logic is unit-tested separately.
 /// </summary>
 public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> factory)

@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -60,8 +60,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 	[Fact]
 	public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-		var session = new PlayerSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var session = new UserSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		session.Enqueue(ServerPacketWriter.Notification("hello"));
 		sessionRegistry.Add(session);

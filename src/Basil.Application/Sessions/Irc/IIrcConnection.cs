@@ -4,15 +4,15 @@ namespace Basil.Application.Sessions.Irc;
 
 /// <summary>
 ///     A transport-agnostic sink for IRC-shaped chat traffic bound to one
-///     <see cref="PlayerSession" />, either a real TCP IRC client or a bridge that re-encodes into
-///     bancho packets for an osu! client. Every <see cref="PlayerSession" /> has exactly one, so
+///     <see cref="UserSession" />, either a real TCP IRC client or a bridge that re-encodes into
+///     bancho packets for an osu! client. Every <see cref="UserSession" /> has exactly one, so
 ///     <see cref="Sessions.Channels.ChannelMembershipService" /> can broadcast chat text without
 ///     knowing which transport the recipient is actually connected through.
 /// </summary>
 public interface IIrcConnection
 {
 	/// <summary>Gets the session this connection carries chat for.</summary>
-	PlayerSession Player { get; }
+	UserSession User { get; }
 
 	/// <summary>
 	///     Gets a value that indicates whether this connection is a real external IRC client, as

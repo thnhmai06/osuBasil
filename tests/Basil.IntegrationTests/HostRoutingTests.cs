@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -94,11 +94,11 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	public async Task BeatmapAssetSubdomain_KnownMapsetNoBackgroundFile_ReturnsNotFound(string host)
 	{
 		// /thumb no longer redirects to the api. host's background route — it resizes and serves the
-		// mapset's background directly (see HandleThumbnailAsync). A mapset with no BackgroundFile on
+		// beatmapset's background directly (see HandleThumbnailAsync). A beatmapset with no BackgroundFile on
 		// record has nothing to resize, so this is a 404 rather than a redirect now.
-		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-		var mapsets = Substitute.For<IMapsetRepository>();
-		mapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Mapset?>(mapset));
+		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		var mapsets = Substitute.For<IBeatmapsetRepository>();
+		mapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(mapset));
 
 		var factory = _factory.WithWebHostBuilder(builder =>
 			builder.ConfigureServices(services => services.AddSingleton(mapsets)));

@@ -3,14 +3,14 @@ using Basil.Protocol.Packets;
 namespace Basil.Protocol.Tests;
 
 /// <summary>
-///     Ported from app/packets.py's BanchoPacketReader._read_header + the packet_map-driven skip
+///     Ported from app/packets.py's PacketReader._read_header + the packet_map-driven skip
 ///     behavior in __next__ ("packet type not handled, remove from internal buffer and continue").
 /// </summary>
 public class BanchoPacketReaderHeaderTests
 {
-	private static BanchoPacketReader Reader(string hex)
+	private static PacketReader Reader(string hex)
 	{
-		return new BanchoPacketReader(Convert.FromHexString(hex));
+		return new PacketReader(Convert.FromHexString(hex));
 	}
 
 	[Fact]

@@ -20,14 +20,14 @@ public class ScoreSubmissionServiceTests
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
-	private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	private ScoreSubmissionService MakeUseCase()
 	{
 		return new ScoreSubmissionService(
-			_beatmaps, _scores, _stats,
+			_beatmaps, _scores, _userStatRepository,
 			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
 				NullLogger<AuthenticationService>.Instance),
 			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
@@ -35,31 +35,31 @@ public class ScoreSubmissionServiceTests
 
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Mapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
 			new string('a', 32), 42, mapset, "c",
 			"f.osu", new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
-	private PlayerSession MakePlayer(int id = 7, string name = "cookiezi")
+	private UserSession MakePlayer(int id = 7, string name = "cookiezi")
 	{
-		var session = new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.GetByName(name).Returns(session);
 		_users.FetchPasswordHashAsync(id, Arg.Any<CancellationToken>()).Returns("hashed");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "hashed").Returns(true);
 		return session;
 	}
 
-	/// <summary>Puts the player in an active multiplayer round — the only state that satisfies the multiplayer-only gate.</summary>
-	private static void PutInActiveRound(PlayerSession player, int roundId = 10)
+	/// <summary>Puts the userSession in an active multiplayer round — the only state that satisfies the multiplayer-only gate.</summary>
+	private static void PutInActiveRound(UserSession userSession, int roundId = 10)
 	{
-		var match = new MatchSession(0, "Grand Finals", "", "map", 1, new string('a', 32), player.Id,
+		var match = new MatchSession(0, "Grand Finals", "", "map", 1, new string('a', 32), userSession.Id,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0")
 		{
 			CurrentRoundId = roundId
 		};
-		player.Match = match;
+		userSession.Match = match;
 	}
 
 	/// <summary>16 score fields (after client_checksum/username stripping) — matches the Rijndael/FromSubmission fixture.</summary>
@@ -116,7 +116,7 @@ public class ScoreSubmissionServiceTests
 	{
 		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(MakeBeatmap());
-		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((PlayerSession?)null);
+		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((UserSession?)null);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "ghost ", MakeScoreFields()));
 
@@ -129,7 +129,7 @@ public class ScoreSubmissionServiceTests
 		var bmap = MakeBeatmap();
 		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(bmap);
-		MakePlayer(); // player.Match stays null — not in any room
+		MakePlayer(); // userSession.Match stays null — not in any room
 		StubPersistence(321L);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
@@ -137,7 +137,7 @@ public class ScoreSubmissionServiceTests
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		Assert.Equal(321L, result.Result!.ScoreId);
 		await _scores.Received(1).CreateAsync(
-			Arg.Is<ScoreInsertRow>(row => row.RoundId == null && row.Team == null), Arg.Any<CancellationToken>());
+			Arg.Is<ScoreInsertRow>(row => row!.RoundId == null && row.Team == null), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -156,7 +156,7 @@ public class ScoreSubmissionServiceTests
 
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		await _scores.Received(1)
-			.CreateAsync(Arg.Is<ScoreInsertRow>(row => row.RoundId == null), Arg.Any<CancellationToken>());
+			.CreateAsync(Arg.Is<ScoreInsertRow>(row => row!.RoundId == null), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -165,12 +165,12 @@ public class ScoreSubmissionServiceTests
 		var bmap = MakeBeatmap();
 		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(bmap);
-		var player = MakePlayer(); // player.Match stays null — not in any room
+		var player = MakePlayer(); // userSession.Match stays null — not in any room
 		StubPersistence();
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
 
-		await _stats.Received(1)
+		await _userStatRepository.Received(1)
 			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 0, Arg.Any<CancellationToken>());
 		var updated = player.ModeStats[GameMode.Standard];
 		Assert.Equal(500_000, updated.TotalScore);
@@ -190,7 +190,7 @@ public class ScoreSubmissionServiceTests
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
 
-		await _stats.Received(1)
+		await _userStatRepository.Received(1)
 			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 500_000, Arg.Any<CancellationToken>());
 		var updated = player.ModeStats[GameMode.Standard];
 		Assert.Equal(500_000, updated.TotalScore);
@@ -221,7 +221,7 @@ public class ScoreSubmissionServiceTests
 			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
-		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(true);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(true);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
@@ -237,7 +237,7 @@ public class ScoreSubmissionServiceTests
 			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
-		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence(999L);
 
 		var result = await MakeUseCase()
@@ -258,7 +258,7 @@ public class ScoreSubmissionServiceTests
 			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
-		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence();
 
 		var result =
@@ -276,7 +276,7 @@ public class ScoreSubmissionServiceTests
 			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
-		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence();
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), [1, 2, 3]));
@@ -294,7 +294,7 @@ public class ScoreSubmissionServiceTests
 			.Returns(bmap);
 		var player = MakePlayer();
 		PutInActiveRound(player);
-		_scores.ExistsByOnlineChecksumAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
 		StubPersistence(555L);
 		var replayBytes = new byte[30];
 

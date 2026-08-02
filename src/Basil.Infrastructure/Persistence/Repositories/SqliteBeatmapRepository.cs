@@ -19,7 +19,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
 	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
-	                                     b.PreviewTime, b.BeatmapObjectCounts,
+	                                     b.PreviewTime, b.ObjectCounts,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
 
@@ -29,7 +29,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     with <c>QueryAsync</c> and the first row taken. Id, md5, and filename each match at most
 	///     one row because of their unique constraints, but setId can match several difficulties
 	///     within the same set, in which case any one of them satisfies the lookup. When
-	///     <paramref name="includePrivate" /> is <see langword="false" />, a mapset-level privacy
+	///     <paramref name="includePrivate" /> is <see langword="false" />, a beatmapset-level privacy
 	///     filter (<c>m.IsPrivate = 0</c>) is added to the query.
 	/// </remarks>
 	public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
@@ -104,17 +104,17 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			"""
 			REPLACE INTO Beatmaps (
 			    Md5, Id, MapsetId, Version, Filename, TotalLength,
-			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, BeatmapObjectCounts
+			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
 			) VALUES (
 			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength,
-			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @BeatmapObjectCounts
+			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
 			)
 			""",
 			new
 			{
 				resolved.Md5,
 				resolved.Id,
-				MapsetId = resolved.Mapset.Id,
+				MapsetId = resolved.Beatmapset.Id,
 				resolved.Version,
 				resolved.Filename,
 				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
@@ -128,7 +128,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 				resolved.BackgroundFile,
 				resolved.AudioFile,
 				resolved.PreviewTime,
-				ObjectCounts = JsonSerializer.Serialize(resolved.BeatmapObjectCounts)
+				ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
 			});
 		logger.LogDebug("Beatmap upserted: Id={Id} Md5={Md5}", resolved.Id, resolved.Md5);
 
@@ -194,7 +194,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			new { SetIds = setIds },
 			splitOn: "Id");
 
-		var mapsBySet = rows.GroupBy(b => b.Mapset.Id)
+		var mapsBySet = rows.GroupBy(b => b.Beatmapset.Id)
 			.ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)[.. g]);
 
 		return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
@@ -217,7 +217,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Applies the same mapset-level privacy filter as <see cref="FetchOneAsync" />, excluding
+	///     Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />, excluding
 	///     the set's beatmaps when <paramref name="includePrivate" /> is <see langword="false" />.
 	/// </remarks>
 	public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
@@ -269,19 +269,19 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		public string ObjectCounts { get; set; } = "{}";
 
 		/// <summary>Builds a <see cref="Beatmap" /> from this row, deserializing the JSON object counts.</summary>
-		/// <param name="mapset">The owning mapset, built from the Mapsets half of the JOIN.</param>
+		/// <param name="beatmapset">The owning beatmapset, built from the Mapsets half of the JOIN.</param>
 		/// <returns>The domain beatmap.</returns>
 		/// <exception cref="InvalidOperationException">
-		///     The stored <c>BeatmapObjectCounts</c> column is not a valid JSON
+		///     The stored <c>ObjectCounts</c> column is not a valid JSON
 		///     object-counts payload.
 		/// </exception>
-		public Beatmap ToBeatmap(Mapset mapset)
+		public Beatmap ToBeatmap(Beatmapset beatmapset)
 		{
 			var objectCounts = JsonSerializer.Deserialize<BeatmapObjectCounts>(ObjectCounts)
 			                   ?? throw new InvalidOperationException(
-				                   $"Beatmap {Id}'s BeatmapObjectCounts column is not a valid BeatmapObjectCounts payload.");
+				                   $"Beatmap {Id}'s ObjectCounts column is not a valid ObjectCounts payload.");
 			return new Beatmap(
-				Md5, Id, mapset, Version, Filename,
+				Md5, Id, beatmapset, Version, Filename,
 				new Difficulty((GameMode)Mode, Bpm, TimeSpan.FromSeconds(TotalLength), Cs, Ar, Od, Hp, Sr),
 				objectCounts, BackgroundFile, AudioFile, PreviewTime);
 		}
@@ -302,11 +302,11 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		public bool IsFrozen { get; set; }
 		public bool IsPrivate { get; set; }
 
-		/// <summary>Builds a <see cref="Mapset" /> from this row.</summary>
-		/// <returns>The domain mapset.</returns>
-		public Mapset ToMapset()
+		/// <summary>Builds a <see cref="Beatmapset" /> from this row.</summary>
+		/// <returns>The domain beatmapset.</returns>
+		public Beatmapset ToMapset()
 		{
-			return new Mapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
+			return new Beatmapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
 		}
 	}
 }

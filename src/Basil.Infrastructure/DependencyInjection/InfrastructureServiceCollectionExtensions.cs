@@ -1,12 +1,13 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
@@ -39,7 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
 	///     Registers every Infrastructure service into the container: the port implementations
 	///     (SQLite repositories, caching decorators, media processors, the osu!lazer calculator, the
 	///     password hasher and score decryptor, session registries, and storage providers) plus the
-	///     background services that watch and garbage-collect the mapsets folder.
+	///     background services that watch and garbage-collect the beatmapsetRepository folder.
 	/// </summary>
 	/// <param name="services">The service collection to register into.</param>
 	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
@@ -77,13 +78,13 @@ public static class InfrastructureServiceCollectionExtensions
 				new SqliteUserRepository(BuildConnectionString(sp),
 					sp.GetRequiredService<ILogger<SqliteUserRepository>>()),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingUserRepository>>()));
-		services.AddSingleton<IStatsRepository>(sp => new SqliteStatsRepository(BuildConnectionString(sp)));
+		services.AddSingleton<IUserStatRepository>(sp => new SqliteUserStatRepository(BuildConnectionString(sp)));
 		services.AddSingleton<IClientHashRepository>(sp =>
 			new SqliteClientHashRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteClientHashRepository>>()));
-		services.AddSingleton<IIngameLoginRepository>(sp =>
-			new SqliteIngameLoginRepository(BuildConnectionString(sp),
-				sp.GetRequiredService<ILogger<SqliteIngameLoginRepository>>()));
+		services.AddSingleton<ILoginRepository>(sp =>
+			new SqliteLoginRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteLoginRepository>>()));
 		services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
 		services.AddSingleton<IRelationshipRepository>(sp =>
 			new SqliteRelationshipRepository(BuildConnectionString(sp),
@@ -93,19 +94,20 @@ public static class InfrastructureServiceCollectionExtensions
 				new SqliteBeatmapRepository(BuildConnectionString(sp),
 					sp.GetRequiredService<ILogger<SqliteBeatmapRepository>>()),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingBeatmapRepository>>()));
-		services.AddSingleton<IMapsetRepository>(sp =>
-			new CachingMapsetRepository(
-				new SqliteMapsetRepository(BuildConnectionString(sp),
-					sp.GetRequiredService<ILogger<SqliteMapsetRepository>>()),
-				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingMapsetRepository>>()));
+		services.AddSingleton<IBeatmapsetRepository>(sp =>
+			new CachingBeatmapsetRepository(
+				new SqliteBeatmapsetRepository(BuildConnectionString(sp),
+					sp.GetRequiredService<ILogger<SqliteBeatmapsetRepository>>()),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingBeatmapsetRepository>>()));
 		services.AddSingleton<IScoreRepository>(sp =>
 			new SqliteScoreRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteScoreRepository>>()));
-		services.AddSingleton<ILogRepository>(sp =>
-			new SqliteLogRepository(BuildConnectionString(sp), sp.GetRequiredService<ILogger<SqliteLogRepository>>()));
-		services.AddSingleton<IMatchPersistenceRepository>(sp =>
-			new SqliteMatchPersistenceRepository(BuildConnectionString(sp),
-				sp.GetRequiredService<ILogger<SqliteMatchPersistenceRepository>>()));
+		services.AddSingleton<IUserLogRepository>(sp =>
+			new SqliteUserLogRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteUserLogRepository>>()));
+		services.AddSingleton<IMatchRepository>(sp =>
+			new SqliteMatchRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<ILogger<SqliteMatchRepository>>()));
 		services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
 
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
@@ -118,7 +120,7 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
-		services.AddSingleton<IPlayerSessionRegistry, InMemoryPlayerSessionRegistry>();
+		services.AddSingleton<IUserSessionRegistry, InMemoryUserSessionRegistry>();
 		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
 		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();

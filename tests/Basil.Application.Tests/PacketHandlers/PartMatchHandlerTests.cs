@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -14,7 +14,7 @@ public class PartMatchHandlerTests
 		var player = MakePlayer(1, "alice");
 		var handler = new PartMatchHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(player, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(player, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Null(player.Match);
 	}
@@ -28,7 +28,7 @@ public class PartMatchHandlerTests
 		var match = fixture.CreateMatch(host);
 		var handler = new PartMatchHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Null(host.Match);
 		Assert.Null(fixture.MatchRegistry.GetById(match.Id));

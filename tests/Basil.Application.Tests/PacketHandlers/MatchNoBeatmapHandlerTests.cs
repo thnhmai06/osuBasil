@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -17,7 +17,7 @@ public class MatchNoBeatmapHandlerTests
 		var match = fixture.CreateMatch(host);
 		var handler = new MatchNoBeatmapHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Equal(SlotStatus.NoMap, match.GetSlot(host.Id)!.Status);
 	}

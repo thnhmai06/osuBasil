@@ -1,7 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
@@ -13,12 +14,12 @@ namespace Basil.Application.Services.Irc;
 
 /// <summary>
 ///     Authenticates a real IRC connection's PASS/NICK/USER handshake and, on success, wires up a
-///     virtual <see cref="PlayerSession" /> for it.
+///     virtual <see cref="UserSession" /> for it.
 /// </summary>
 /// <remarks>
 ///     The session is built the same way <see cref="Basil.Application.Services.Bot.BotBootstrapService" />
 ///     builds one for the bot: there is no bancho socket behind it, only a session that
-///     <see cref="Basil.Application.Services.Bot.ICommandDispatcher" /> and the rest of the chat core
+///     <see cref="ICommandDispatcher" /> and the rest of the chat core
 ///     can treat identically to a real osu! client. PASS is checked against the account password
 ///     using the same MD5-then-bcrypt flow as client login: the osu! client sends the MD5 of its
 ///     password as hex at login, while an IRC client sends the password in plaintext, so the
@@ -26,7 +27,7 @@ namespace Basil.Application.Services.Irc;
 /// </remarks>
 public sealed class IrcAuthenticationService(
 	IUserRepository users,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IOptions<IrcOptions> options,
@@ -36,13 +37,13 @@ public sealed class IrcAuthenticationService(
 	///     Validates an IRC nick and password against the stored account and, on success, creates the
 	///     session and builds the welcome message sequence for a fresh IRC login.
 	/// </summary>
-	/// <param name="nick">The nick the connection wants, treated as the player's username.</param>
+	/// <param name="nick">The nick the connection wants, treated as the userSession's username.</param>
 	/// <param name="pass">The plaintext password supplied via the PASS command.</param>
 	/// <param name="connection">The IRC connection being authenticated.</param>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	/// <returns>
 	///     An <see cref="IrcLoginOutcome" /> that either describes the failure with the numeric reply
-	///     to send, or carries the new session and the welcome, topic, and names messages to emit.
+	///     to send or carries the new session and the welcome, topic, and names messages to emit.
 	/// </returns>
 	public async Task<IrcLoginOutcome> AuthenticateAsync(string nick, string pass, IIrcConnection connection,
 		CancellationToken cancellationToken = default)
@@ -71,7 +72,7 @@ public sealed class IrcAuthenticationService(
 					"Nickname is already in use"));
 
 		var loginTime = DateTimeOffset.UtcNow;
-		var session = new PlayerSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
+		var session = new UserSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
 		{
 			SilenceEnd = user.SilenceEnd,
 			IrcConnection = connection
@@ -136,7 +137,7 @@ public sealed class IrcAuthenticationService(
 	///     via an external IRC client is prefixed with <c>+</c>, matching the IRC status prefixes the
 	///     official server uses.
 	/// </remarks>
-	private static string NamePrefix(PlayerSession member)
+	private static string NamePrefix(UserSession member)
 	{
 		if ((member.Privilege & UserPrivileges.Moderator) != 0) return "@";
 

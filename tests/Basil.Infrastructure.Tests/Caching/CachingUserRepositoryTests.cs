@@ -30,9 +30,14 @@ public class CachingUserRepositoryTests
 	[Fact]
 	public async Task FetchByIdAsync_DifferentIds_BothHitInner()
 	{
-		var inner = new CountingUserRepository();
-		inner.UsersById[7] = MakeUser(7, "Alice");
-		inner.UsersById[8] = MakeUser(8, "Bob");
+		var inner = new CountingUserRepository
+		{
+			UsersById =
+			{
+				[7] = MakeUser(7, "Alice"),
+				[8] = MakeUser(8, "Bob")
+			}
+		};
 		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingUserRepository>.Instance);
 
@@ -59,8 +64,14 @@ public class CachingUserRepositoryTests
 	[Fact]
 	public async Task UpdateNameAsync_InvalidatesBothOldAndNewNameLookups()
 	{
-		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
-		inner.UsersByName["alice"] = MakeUser(7, "Alice");
+		var inner = new CountingUserRepository
+		{
+			UserById = MakeUser(7, "Alice"),
+			UsersByName =
+			{
+				["alice"] = MakeUser(7, "Alice")
+			}
+		};
 		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingUserRepository>.Instance);
 

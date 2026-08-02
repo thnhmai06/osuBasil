@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -23,7 +23,7 @@ public class MatchLoadCompleteHandlerTests
 		guest.Dequeue();
 		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.True(match.Slots[0].Loaded);
 		Assert.Empty(host.Dequeue());
@@ -45,7 +45,7 @@ public class MatchLoadCompleteHandlerTests
 		guest.Dequeue();
 		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Contains(ServerPacketWriter.MatchAllPlayersLoaded(), Chunk(host.Dequeue()));
 	}

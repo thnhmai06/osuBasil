@@ -11,7 +11,7 @@ namespace Basil.Application.Services.Scores;
 ///     produced. The <see cref="NotFound" /> result covers both a score id that does not exist and
 ///     a score with no stored replay file.
 /// </remarks>
-public enum ReplayFetchResultCode
+public enum ReplayFetchResultCode : byte
 {
 	/// <summary>A replay file was found and returned.</summary>
 	Found,

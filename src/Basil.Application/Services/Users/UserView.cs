@@ -1,5 +1,6 @@
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+// ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Users;
 

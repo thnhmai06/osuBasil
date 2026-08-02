@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Users;
 using Basil.Web;
 using Basil.Web.Routing;

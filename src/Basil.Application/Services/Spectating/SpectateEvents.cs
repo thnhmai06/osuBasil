@@ -1,10 +1,11 @@
 using Basil.Application.Services.Multiplayer;
 using Basil.Protocol.Multiplayer;
+// ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Spectating;
 
-/// <summary>Defines the base shape for the live spectate event family.</summary>
-/// <param name="User">The spectated player.</param>
+/// <summary>Defines the base shape for the live spectating event family.</summary>
+/// <param name="User">The spectated userSession.</param>
 public abstract record SpectateEvent(UserBrief User);
 
 /// <summary>
@@ -12,12 +13,12 @@ public abstract record SpectateEvent(UserBrief User);
 ///     event.
 /// </summary>
 /// <remarks>
-///     Fires once per bundle. It reuses the wire-level <see cref="ReplayFrameData" /> and
-///     <see cref="ScoreFrameData" /> protocol types directly, following the same convention as
-///     <see cref="PlayerLiveScore" /> (built from <see cref="ScoreFrameData" /> elsewhere), rather
+///     Fires once per bundle. It reuses the wire-level <see cref="ReplayFrame" /> and
+///     <see cref="Protocol.Multiplayer.ScoreFrame" /> protocol types directly, following the same convention as
+///     <see cref="PlayerLiveScore" /> (built from <see cref="Protocol.Multiplayer.ScoreFrame" /> elsewhere), rather
 ///     than duplicating an API-layer copy of the same fields.
 /// </remarks>
-/// <param name="User">The spectated player.</param>
+/// <param name="User">The spectated userSession.</param>
 /// <param name="Action">The replay action for the frame bundle.</param>
 /// <param name="ExtraByte">The frame bundle's extra byte.</param>
 /// <param name="Frames">The decoded replay frames.</param>
@@ -26,16 +27,16 @@ public sealed record SpectateFramesEvent(
 	UserBrief User,
 	ReplayAction Action,
 	int ExtraByte,
-	IReadOnlyList<ReplayFrameData> Frames,
-	ScoreFrameData ScoreFrame) : SpectateEvent(User);
+	IReadOnlyList<ReplayFrame> Frames,
+	ScoreFrame ScoreFrame) : SpectateEvent(User);
 
 /// <summary>Describes a spectate session lifecycle state, emitted as the <c>state</c> event.</summary>
-public enum SpectateState
+public enum SpectateState : byte
 {
-	/// <summary>The spectated player's session began.</summary>
+	/// <summary>The spectated userSession's session began.</summary>
 	Start,
 
-	/// <summary>The spectated player's session ended.</summary>
+	/// <summary>The spectated userSession's session ended.</summary>
 	Stop,
 
 	/// <summary>Another spectator joined the spectate session.</summary>
@@ -46,6 +47,6 @@ public enum SpectateState
 }
 
 /// <summary>Represents a spectate session state change, emitted as the <c>state</c> event.</summary>
-/// <param name="User">The spectated player.</param>
+/// <param name="User">The spectated userSession.</param>
 /// <param name="State">The state that changed.</param>
 public sealed record SpectateStateEvent(UserBrief User, SpectateState State) : SpectateEvent(User);

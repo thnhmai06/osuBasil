@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Scores;
 
@@ -106,7 +107,13 @@ public enum Mods : uint
 	ScoreV2 = 1 << 29,
 
 	/// <summary>Mirrors the column layout of the notes.</summary>
-	Mirror = 1 << 30
+	Mirror = 1 << 30,
+
+	// Groups
+	SpeedChangingMods = DoubleTime | Nightcore | HalfTime,
+	KeyMods = Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7 | Key8 | Key9,
+	OsuSpecificMods = Autopilot | SpunOut | Target,
+	ManiaSpecificMods = Mirror | Random | FadeIn | KeyMods
 }
 
 /// <summary>
@@ -114,21 +121,6 @@ public enum Mods : uint
 /// </summary>
 public static class ModsExtensions
 {
-	/// <summary>
-	///     The mods that change the speed of the beatmap.
-	/// </summary>
-	/// <remarks>
-	///     Used by multiplayer's freemods setting to split the applied mods into match-wide and
-	///     per-slot groups.
-	/// </remarks>
-	public const Mods SpeedChangingMods = Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime;
-
-	private const Mods KeyMods = Mods.Key1 | Mods.Key2 | Mods.Key3 | Mods.Key4 | Mods.Key5
-	                             | Mods.Key6 | Mods.Key7 | Mods.Key8 | Mods.Key9;
-
-	private const Mods OsuSpecificMods = Mods.Autopilot | Mods.SpunOut | Mods.Target;
-	private const Mods ManiaSpecificMods = Mods.Mirror | Mods.Random | Mods.FadeIn | KeyMods;
-
 	private static readonly ImmutableDictionary<string, Mods> ModStrToMod = ImmutableDictionary.CreateRange(
 		StringComparer.OrdinalIgnoreCase, new Dictionary<string, Mods>
 		{
@@ -204,16 +196,13 @@ public static class ModsExtensions
 	///     Removes invalid mod combinations, leaving only the legal ones.
 	/// </summary>
 	/// <param name="mods">The mod combination to filter.</param>
-	/// <param name="modeVn">
-	///     The version number of the game mode: 0 for standard, 1 for taiko, 2 for catch, and 3 for
-	///     mania.
-	/// </param>
+	/// <param name="mode">The gamemode used.</param>
 	/// <returns>The filtered mod combination.</returns>
 	/// <remarks>
 	///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
 	///     and keeps only the first key mod when several are set.
 	/// </remarks>
-	public static Mods FilterInvalidCombos(this Mods mods, int modeVn)
+	public static Mods FilterInvalidCombos(this Mods mods, GameMode mode)
 	{
 		var result = mods;
 
@@ -238,21 +227,21 @@ public static class ModsExtensions
 			result &= ~Mods.SuddenDeath; // PFSD
 
 		// 2. remove mode-unique mods from incorrect gamemodes
-		if (modeVn != 0) // osu! specific
-			result &= ~OsuSpecificMods;
+		if (mode != GameMode.Standard) // osu! specific
+			result &= ~Mods.OsuSpecificMods;
 
 		// ctb & taiko have no unique mods
-		if (modeVn != 3) // mania specific
-			result &= ~ManiaSpecificMods;
+		if (mode != GameMode.Mania) // mania specific
+			result &= ~Mods.ManiaSpecificMods;
 
-		switch (modeVn)
+		switch (mode)
 		{
 			// 3. mode-specific mod conflictions
-			case 0 when (result & Mods.Autopilot) != Mods.NoMod
-			            && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod:
+			case GameMode.Standard when (result & Mods.Autopilot) != Mods.NoMod
+			                              && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod:
 				result &= ~Mods.Autopilot; // (SO|RX)AP
 				break;
-			case 3:
+			case GameMode.Mania:
 			{
 				result &= ~Mods.Relax; // rx is std/taiko/ctb common
 				if ((result & Mods.Hidden) != Mods.NoMod &&
@@ -262,7 +251,7 @@ public static class ModsExtensions
 		}
 
 		// 4. remove multiple keymods, keeping only the first
-		var keymodsUsed = result & KeyMods;
+		var keymodsUsed = result & Mods.KeyMods;
 		if (CountSetBits(keymodsUsed) > 1)
 		{
 			var firstKeymod =
@@ -280,7 +269,7 @@ public static class ModsExtensions
 	/// <summary>
 	///     Parses a mod string of two-character chunks into a <see cref="Mods" /> value.
 	/// </summary>
-	/// <param name="s">The mod string, for example "HDDTRX".</param>
+	/// <param name="s">The mod string, for example, "HDDTRX".</param>
 	/// <returns>
 	///     The parsed mod combination. Chunks that are not recognized mod codes are ignored.
 	/// </returns>
@@ -300,12 +289,10 @@ public static class ModsExtensions
 	/// <summary>
 	///     Parses a now-playing mod string into a <see cref="Mods" /> value.
 	/// </summary>
-	/// <param name="s">The space-delimited now-playing mod string, for example "+Hidden +DoubleTime".</param>
-	/// <param name="modeVn">
-	///     The version number of the game mode, used to filter out invalid combinations.
-	/// </param>
+	/// <param name="s">The space-delimited now-playing mod string, for example, "+Hidden +DoubleTime".</param>
+	/// <param name="mode">The gamemode used</param>
 	/// <returns>The parsed mod combination, filtered for the given mode.</returns>
-	public static Mods FromNowPlayingString(string s, int modeVn)
+	public static Mods FromNowPlayingString(string s, GameMode mode)
 	{
 		var mods = Mods.NoMod;
 
@@ -313,7 +300,7 @@ public static class ModsExtensions
 			if (NpStrToMod.TryGetValue(token, out var mod))
 				mods |= mod;
 
-		return mods.FilterInvalidCombos(modeVn);
+		return mods.FilterInvalidCombos(mode);
 	}
 
 	private static int CountSetBits(Mods value)

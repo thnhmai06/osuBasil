@@ -1,7 +1,7 @@
 namespace Basil.Protocol;
 
 /// <summary>Specifies why a login attempt was rejected, sent as the user id value of the login reply packet on failure.</summary>
-public enum LoginFailureReason
+public enum LoginFailureReason : sbyte
 {
 	/// <summary>The supplied credentials did not match a valid account.</summary>
 	AuthenticationFailed = -1,

@@ -17,15 +17,15 @@ namespace Basil.Application.Tests.UseCases.Multiplayer;
 public class MatchReportServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
-	private readonly IMatchPersistenceRepository _matchPersistence = Substitute.For<IMatchPersistenceRepository>();
 	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
+	private readonly IMatchRepository _matchRepository = Substitute.For<IMatchRepository>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	public MatchReportServiceTests()
 	{
-		// No session-registry setup in these tests means every player is "offline" — fall back to a
+		// No session-registry setup in these tests means every userSession is "offline" — fall back to a
 		// generic resolvable user so UserBriefResolver never returns null for the ids exercised here.
 		_users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => new User(call.Arg<int>(), $"player{call.Arg<int>()}", Country.Xx,
@@ -34,19 +34,19 @@ public class MatchReportServiceTests
 
 	private MatchReportService MakeService()
 	{
-		return new MatchReportService(_matchRegistry, _matchPersistence, _scores, _sessionRegistry, _users, _beatmaps);
+		return new MatchReportService(_matchRegistry, _matchRepository, _scores, _sessionRegistry, _users, _beatmaps);
 	}
 
-	private static MatchRow MakeMatchRow(int id = 5)
+	private static Match MakeMatchRow(int id = 5)
 	{
-		return new MatchRow(id, "Grand Finals",
+		return new Match(id, "Grand Finals",
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
 	}
 
 	[Fact]
 	public async Task BuildAsync_UnknownMatch_ReturnsNull()
 	{
-		_matchPersistence.FetchMatchAsync(999, Arg.Any<CancellationToken>()).Returns((MatchRow?)null);
+		_matchRepository.FetchMatchAsync(999, Arg.Any<CancellationToken>()).Returns((Match?)null);
 
 		var report = await MakeService().BuildAsync(999);
 
@@ -56,11 +56,11 @@ public class MatchReportServiceTests
 	[Fact]
 	public async Task BuildAsync_NotInRegistry_IsLiveFalseAndNoSlots()
 	{
-		_matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-		_matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<RoundRow>)[]);
-		_matchPersistence.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEventRow>)[]);
+		_matchRepository.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
+		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Round>)[]);
+		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MatchEvent>)[]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
 		var report = await MakeService().BuildAsync(5);
@@ -72,11 +72,11 @@ public class MatchReportServiceTests
 	[Fact]
 	public async Task BuildAsync_InRegistry_IsLiveTrueWithSlotsAndCurrentMap()
 	{
-		_matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-		_matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<RoundRow>)[]);
-		_matchPersistence.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEventRow>)[]);
+		_matchRepository.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
+		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Round>)[]);
+		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MatchEvent>)[]);
 
 		var live = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 1, GameMode.Standard,
 				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
@@ -94,21 +94,22 @@ public class MatchReportServiceTests
 	[Fact]
 	public async Task BuildAsync_RoundWithTeamScores_WinnerIsHigherScoringTeam()
 	{
-		_matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-		var round = new RoundRow(10, 5, 1, new string('a', 32),
+		_matchRepository.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
+		var round = new Round(10, 5, 1, new string('a', 32),
 			0, 0, 0, false, 0,
 			new DateTime(2026, 1, 1, 0, 0, 5, DateTimeKind.Utc), null);
-		_matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<RoundRow>)[round]);
-		_matchPersistence.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEventRow>)[]);
+		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Round>)[round]);
+		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MatchEvent>)[]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
-		_scores.FetchByRoundIdAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<RoundScoreRow>)
+		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)
 		[
-			new RoundScoreRow(1, 7, "red-player", MatchTeam.Red, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0,
+			new ScoreReport(1, 7, "red-userSession", MatchTeam.Red, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0,
 				"S", true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
-			new RoundScoreRow(2, 8, "blue-player", MatchTeam.Blue, Mods.NoMod, 300_000, 0.90, 700, 250, 20, 5, 0, 0, 0,
+			new ScoreReport(2, 8, "blue-userSession", MatchTeam.Blue, Mods.NoMod, 300_000, 0.90, 700, 250, 20, 5, 0, 0,
+				0,
 				"A", false, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))
 		]);
 
@@ -124,21 +125,23 @@ public class MatchReportServiceTests
 	[Fact]
 	public async Task BuildAsync_RoundWithoutTeams_WinnerIsTopScoringPlayer()
 	{
-		_matchPersistence.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
-		var round = new RoundRow(10, 5, 1, new string('a', 32),
+		_matchRepository.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
+		var round = new Round(10, 5, 1, new string('a', 32),
 			0, 0, 0, false, 0,
 			new DateTime(2026, 1, 1, 0, 0, 5, DateTimeKind.Utc), null);
-		_matchPersistence.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<RoundRow>)[round]);
-		_matchPersistence.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEventRow>)[]);
+		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Round>)[round]);
+		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MatchEvent>)[]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
-		_scores.FetchByRoundIdAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<RoundScoreRow>)
+		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)
 		[
-			new RoundScoreRow(1, 7, "player-one", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S", true,
+			new ScoreReport(1, 7, "userSession-one", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S",
+				true,
 				new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
-			new RoundScoreRow(2, 8, "player-two", null, Mods.NoMod, 600_000, 0.90, 700, 250, 20, 5, 0, 0, 0, "A", false,
+			new ScoreReport(2, 8, "userSession-two", null, Mods.NoMod, 600_000, 0.90, 700, 250, 20, 5, 0, 0, 0, "A",
+				false,
 				new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))
 		]);
 

@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -25,7 +26,7 @@ public class CommandDispatcherTests
 	///     is inferred to mean "sent in that match's own chat channel", matching every existing test's
 	///     actual intent (see <see cref="ICommandDispatcher.DispatchAsync" />'s doc comment on matchScope).
 	/// </summary>
-	private static async Task<string?> Run(CommandDispatcher dispatcher, PlayerSession sender, string message,
+	private static async Task<string?> Run(CommandDispatcher dispatcher, UserSession sender, string message,
 		MatchSession? matchScope, bool prefixOptional = false)
 	{
 		var sink = new RecordingReplySink();
@@ -38,7 +39,7 @@ public class CommandDispatcherTests
 	///     needed for a `;`-chained line, where each segment now sends its own reply immediately instead
 	///     of the dispatcher joining them into one string.
 	/// </summary>
-	private static async Task<IReadOnlyList<string>> RunAll(CommandDispatcher dispatcher, PlayerSession sender,
+	private static async Task<IReadOnlyList<string>> RunAll(CommandDispatcher dispatcher, UserSession sender,
 		string message, MatchSession? matchScope)
 	{
 		var sink = new RecordingReplySink();
@@ -60,7 +61,7 @@ public class CommandDispatcherTests
 	{
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
-		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchPersistence,
+		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchRepository,
 			_beatmaps,
 			fixture.SessionRegistry, Substitute.For<IUserRepository>(), NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
@@ -227,7 +228,7 @@ public class CommandDispatcherTests
 	public async Task DispatchAsync_MpJoin_NonExistent_ReturnsError()
 	{
 		var dispatcher = MakeDispatcher();
-		var sender = MultiplayerTestSupport.MakePlayer(1, "player");
+		var sender = MultiplayerTestSupport.MakePlayer(1, "userSession");
 
 		var reply = await Run(dispatcher, sender, "!mp join 999", null);
 
@@ -240,7 +241,7 @@ public class CommandDispatcherTests
 		var fixture = new MultiplayerTestSupport.Fixture();
 		var dispatcher = MakeDispatcher(fixture: fixture);
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var player = MultiplayerTestSupport.MakePlayer(2, "player");
+		var player = MultiplayerTestSupport.MakePlayer(2, "userSession");
 		fixture.RegisterAll(host, player);
 		var match = fixture.CreateMatch(host);
 		match.IsPrivate = true;
@@ -256,7 +257,7 @@ public class CommandDispatcherTests
 		var fixture = new MultiplayerTestSupport.Fixture();
 		var dispatcher = MakeDispatcher(fixture: fixture);
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var player = MultiplayerTestSupport.MakePlayer(2, "player");
+		var player = MultiplayerTestSupport.MakePlayer(2, "userSession");
 		fixture.RegisterAll(host, player);
 		var match = fixture.CreateMatch(host);
 

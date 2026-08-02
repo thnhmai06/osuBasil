@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -34,10 +34,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
 	private Beatmap? _byFilename;
-	private Mapset? _mapset;
+	private Beatmapset? _mapset;
 	private Beatmap? _oneBeatmap;
 	private byte[]? _replayBytes;
-	private ScoreOwnerRow? _scoreOwner;
+	private ScoreOwner? _scoreOwner;
 	private IReadOnlyList<Beatmap> _setBeatmaps = [];
 
 	public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
@@ -47,14 +47,14 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => call.ArgAt<string?>(2) is not null ? _byFilename : _oneBeatmap);
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Mapset.Id == call.ArgAt<int>(0)
+			.Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Beatmapset.Id == call.ArgAt<int>(0)
 				? _setBeatmaps
 				: []);
 		maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 
-		var mapsets = Substitute.For<IMapsetRepository>();
+		var mapsets = Substitute.For<IBeatmapsetRepository>();
 		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
 
@@ -105,14 +105,14 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		return new HttpRequestMessage(method, path) { Headers = { Host = host } };
 	}
 
-	private static Mapset MakeMapset(int id)
+	private static Beatmapset MakeMapset(int id)
 	{
-		return new Mapset(id, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		return new Beatmapset(id, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 	}
 
-	private static Beatmap MakeBeatmap(int id, Mapset mapset, string filename = "diff.osu")
+	private static Beatmap MakeBeatmap(int id, Beatmapset beatmapset, string filename = "diff.osu")
 	{
-		return new Beatmap(new string('a', 32), id, mapset, "Normal", filename,
+		return new Beatmap(new string('a', 32), id, beatmapset, "Normal", filename,
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
@@ -427,7 +427,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	[Fact]
 	public async Task ReplayDownload_Exists_ReturnsCorrectMimeType()
 	{
-		_scoreOwner = new ScoreOwnerRow(1, GameMode.Standard);
+		_scoreOwner = new ScoreOwner(1, GameMode.Standard);
 		_replayBytes = [1, 2, 3];
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));

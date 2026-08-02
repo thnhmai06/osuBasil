@@ -48,16 +48,16 @@ public interface IResponseCache
 /// </summary>
 /// <remarks>
 ///     Shared between the services that populate the caches (thumbnail and audio-preview
-///     generation) and <c>BeatmapIngestionService</c>, which invalidates the caches when a mapset is
+///     generation) and <c>BeatmapIngestionService</c>, which invalidates the caches when a beatmapset is
 ///     deleted. Living in this layer rather than in either producer keeps both in sync without a
 ///     cross-layer reference.
 /// </remarks>
 public static class ResponseCacheKeys
 {
 	/// <summary>
-	///     Builds the cache key for a mapset's thumbnail.
+	///     Builds the cache key for a beatmapset's thumbnail.
 	/// </summary>
-	/// <param name="mapsetId">The id of the mapset.</param>
+	/// <param name="mapsetId">The id of the beatmapset.</param>
 	/// <param name="large">
 	///     <see langword="true" /> for the large 160x120 thumbnail; otherwise, <see langword="false" />
 	///     for the small 80x60 one.
@@ -69,9 +69,9 @@ public static class ResponseCacheKeys
 	}
 
 	/// <summary>
-	///     Builds the cache key for a mapset's audio preview.
+	///     Builds the cache key for a beatmapset's audio preview.
 	/// </summary>
-	/// <param name="mapsetId">The id of the mapset.</param>
+	/// <param name="mapsetId">The id of the beatmapset.</param>
 	/// <returns>The relative cache path for the audio preview.</returns>
 	public static string Preview(int mapsetId)
 	{

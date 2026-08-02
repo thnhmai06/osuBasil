@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Json;
+using Basil.Application.Formats;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Domain.Login;
@@ -132,8 +132,8 @@ internal static class OpenApiExampleExtensions
 					Summary = "event: input",
 					Value = JsonSerializer.SerializeToNode(
 						new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us), ReplayAction.Standard, 0,
-							[new ReplayFrameData(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
-							new ScoreFrameData(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)),
+							[new ReplayFrame(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
+							new ScoreFrame(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)),
 						JsonWebOptions)
 				}
 			};

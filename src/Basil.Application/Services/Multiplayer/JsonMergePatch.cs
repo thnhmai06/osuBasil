@@ -12,7 +12,7 @@ namespace Basil.Application.Services.Multiplayer;
 ///     was present in <c>previous</c> is represented as <c>null</c> (meaning "remove this member");
 ///     a changed member is replaced wholesale, since arrays are never merged element by element, only
 ///     replaced; an unchanged member is omitted from the patch entirely. Only object members are
-///     diffed recursively, while arrays and scalars are compared by value and, if different,
+///     divided recursively, while arrays and scalars are compared by value and, if different,
 ///     included in full.
 /// </remarks>
 public static class JsonMergePatch
@@ -42,11 +42,10 @@ public static class JsonMergePatch
 		return JsonNode.DeepEquals(previous, current) ? null : current?.DeepClone();
 	}
 
-	private static JsonNode? DiffObjects(JsonObject previous, JsonObject current)
+	private static JsonObject DiffObjects(JsonObject previous, JsonObject current)
 	{
 		var patch = new JsonObject();
-
-		foreach (var (key, previousValue) in previous)
+		foreach (var (key, _) in previous)
 			if (!current.ContainsKey(key))
 				patch[key] = null;
 
@@ -61,7 +60,7 @@ public static class JsonMergePatch
 			if (previousValue is JsonObject previousChildObject && currentValue is JsonObject currentChildObject)
 			{
 				var nested = DiffObjects(previousChildObject, currentChildObject);
-				if (nested is JsonObject { Count: > 0 })
+				if (nested is { Count: > 0 })
 					patch[key] = nested;
 				continue;
 			}

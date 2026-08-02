@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Physically deletes <see cref="BeatmapIngestionService.DeletedFolderInfix" />-marked mapset
+///     Physically deletes <see cref="BeatmapIngestionService.DeletedFolderInfix" />-marked beatmapset
 ///     folders. The atomic in-place rename that marks a folder for deletion leaves the folder itself
 ///     on disk until this pass reclaims it: <see cref="BeatmapWatcherService" /> and
 ///     <see cref="BeatmapIngestionService" /> already treat such folders as gone for DB purposes.
@@ -60,13 +60,13 @@ public sealed class MapsetGarbageCollectorService(
 			try
 			{
 				Directory.Delete(folder, true);
-				logger.LogInformation("- Mapset folder physically removed: {Path}", folder);
+				logger.LogInformation("- Beatmapset folder physically removed: {Path}", folder);
 			}
 			catch (Exception e)
 			{
 				// A locked file (in-flight read elsewhere) just retries next cycle instead of
 				// aborting the whole pass.
-				logger.LogWarning(e, "Failed to garbage-collect deleted mapset folder {Path}; will retry next cycle.",
+				logger.LogWarning(e, "Failed to garbage-collect deleted beatmapset folder {Path}; will retry next cycle.",
 					folder);
 			}
 		}

@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
@@ -13,9 +13,14 @@ public class RequestStatusUpdateHandlerTests
 	[Fact]
 	public async Task Handle_EnqueuesOwnUserStatsPacket()
 	{
-		var session = new PlayerSession(42, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(1000, 900, 10, 3);
-		var reader = new BanchoPacketReader(Array.Empty<byte>());
+		var session = new UserSession(42, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{
+				ModeStats =
+				{
+					[GameMode.Standard] = new CachedPlayerStats(1000, 900, 10, 3)
+				}
+			};
+		var reader = new PacketReader(Array.Empty<byte>());
 
 		await new RequestStatusUpdateHandler().HandleAsync(session, reader);
 

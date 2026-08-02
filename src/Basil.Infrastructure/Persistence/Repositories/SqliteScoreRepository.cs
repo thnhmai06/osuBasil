@@ -2,7 +2,6 @@ using Basil.Application.Abstractions.Scores;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -19,7 +18,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	: IScoreRepository
 {
 	/// <inheritdoc />
-	public async Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
+	public async Task<ScoreOwner?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		var row = await connection.QuerySingleOrDefaultAsync<ScoreOwnerRowDto>(
@@ -41,10 +40,10 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			"""
 			INSERT INTO Scores
 			    (MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-			     Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, RoundId, Team, SubmittedAt)
+			     Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum, RoundId, Team, SubmittedAt)
 			VALUES
 			    (@MapMd5, @Score, @Accuracy, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
-			     @Grade, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @OnlineChecksum, @RoundId, @Team, @SubmittedAt);
+			     @Grade, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @Checksum, @RoundId, @Team, @SubmittedAt);
 			SELECT last_insert_rowid();
 			""",
 			row);
@@ -53,41 +52,13 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum,
+	public async Task<bool> CheckExistAsync(string onlineChecksum,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<bool>(
-			"SELECT EXISTS(SELECT 1 FROM Scores WHERE OnlineChecksum = @OnlineChecksum)",
+			"SELECT EXISTS(SELECT 1 FROM Scores WHERE Checksum = @Checksum)",
 			new { OnlineChecksum = onlineChecksum });
-	}
-
-	/// <inheritdoc />
-	/// <remarks>
-	///     The query joins Users and keeps only rows whose privilege flags still carry the
-	///     <see cref="UserPrivileges.Unrestricted" /> bit, ranking by raw score descending.
-	/// </remarks>
-	public async Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
-		CancellationToken cancellationToken = default)
-	{
-		await using var connection = Connect();
-		var row = await connection.QuerySingleOrDefaultAsync<FirstPlaceScoreRowDto>(
-			"""
-			SELECT u.Id AS Id, u.Name AS Name
-			FROM Users u
-			JOIN Scores s ON u.Id = s.UserId
-			WHERE s.MapMd5 = @MapMd5 AND s.Mode = @Mode
-			  AND (u.Privilege & @Unrestricted) != 0
-			ORDER BY s.Score DESC
-			LIMIT 1
-			""",
-			new
-			{
-				MapMd5 = mapMd5,
-				Mode = (int)mode,
-				Unrestricted = (int)UserPrivileges.Unrestricted
-			});
-		return row?.ToRow();
 	}
 
 	/// <inheritdoc />
@@ -98,7 +69,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			"""
 			SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
 			       NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
-			       OnlineChecksum, SubmittedAt
+			       Checksum, SubmittedAt
 			FROM Scores
 			WHERE Id = @Id
 			""",
@@ -115,7 +86,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 			"""
 			SELECT Id, RoundId, Team, MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss,
 			       NGeki, NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect,
-			       OnlineChecksum, SubmittedAt
+			       Checksum, SubmittedAt
 			FROM Scores
 			ORDER BY Id DESC
 			LIMIT @Limit OFFSET @Offset
@@ -129,7 +100,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	///     Joins the Users table so each score carries its submitter's name, and orders the round's
 	///     scores by score descending.
 	/// </remarks>
-	public async Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId,
+	public async Task<IReadOnlyList<ScoreReport>> FetchByRoundAsync(int roundId,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -189,12 +160,12 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		public DateTime SubmittedAt { get; set; }
 
 		/// <summary>
-		///     Builds a <see cref="RoundScoreRow" /> from this row, casting the stored enum columns.
+		///     Builds a <see cref="ScoreReport" /> from this row, casting the stored enum columns.
 		/// </summary>
 		/// <returns>The domain round score row.</returns>
-		public RoundScoreRow ToRow()
+		public ScoreReport ToRow()
 		{
-			return new RoundScoreRow(
+			return new ScoreReport(
 				Id, UserId, UserName, (MatchTeam?)Team, (Mods)Mods, Score, Accuracy, MaxCombo, N300, N100, N50,
 				NMiss, NGeki, NKatu, Grade, Perfect, SubmittedAt);
 		}
@@ -208,27 +179,11 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 		public int UserId { get; set; }
 		public int Mode { get; set; }
 
-		/// <summary>Builds a <see cref="ScoreOwnerRow" /> from this row, casting the stored mode column.</summary>
+		/// <summary>Builds a <see cref="ScoreOwner" /> from this row, casting the stored mode column.</summary>
 		/// <returns>The domain score owner row.</returns>
-		public ScoreOwnerRow ToRow()
+		public ScoreOwner ToRow()
 		{
-			return new ScoreOwnerRow(UserId, (GameMode)Mode);
-		}
-	}
-
-	/// <summary>
-	///     A mutable row DTO matching the first-place SELECT's columns.
-	/// </summary>
-	private sealed class FirstPlaceScoreRowDto
-	{
-		public int Id { get; set; }
-		public string Name { get; set; } = "";
-
-		/// <summary>Builds a <see cref="FirstPlaceScoreRow" /> from this row.</summary>
-		/// <returns>The domain first-place score row.</returns>
-		public FirstPlaceScoreRow ToRow()
-		{
-			return new FirstPlaceScoreRow(Id, Name);
+			return new ScoreOwner(UserId, (GameMode)Mode);
 		}
 	}
 

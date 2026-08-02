@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web;
@@ -17,27 +17,27 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Covers the admin-key-gated `/beatmapsets` write routes: `PUT`/`DELETE` (both filesystem-first
 ///     and asynchronous — 202, never a synchronous DB touch) and `PATCH` (the combined frozen/private
-///     write-lock those two respect — frozen blocks `PUT`/`DELETE`, private hides the mapset and every
-///     beatmap under it from non-admin reads). A stub `IMapsetRepository` stands in for the database
-///     (this suite is about the route/filesystem behavior, not persistence), while the mapset's
+///     write-lock those two respect — frozen blocks `PUT`/`DELETE`, private hides the beatmapset and every
+///     beatmap under it from non-admin reads). A stub `IBeatmapsetRepository` stands in for the database
+///     (this suite is about the route/filesystem behavior, not persistence), while the beatmapset's
 ///     storage folder is a real temp directory so `Directory.Move`/zip-extraction actually run.
 /// </summary>
 public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
-	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-mapset-mgmt-tests-").FullName;
+	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmapset-mgmt-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
-	private Mapset? _mapset;
+	private Beatmapset? _mapset;
 
 	public BeatmapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		var mapsets = Substitute.For<IMapsetRepository>();
+		var mapsets = Substitute.For<IBeatmapsetRepository>();
 		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
 		mapsets.FetchAllIdsAsync(Arg.Any<CancellationToken>())
 			.Returns(_ => (IReadOnlyList<int>)(_mapset is not null ? [_mapset.Id] : []));
 		mapsets.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<Mapset>)(_mapset is not null ? [_mapset] : []));
+			.Returns(_ => (IReadOnlyList<Beatmapset>)(_mapset is not null ? [_mapset] : []));
 		mapsets.WhenForAnyArgs(m => m.SetFrozenAsync(default, default))
 			.Do(call =>
 			{
@@ -129,7 +129,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PutBeatmapset_Frozen_ReturnsConflict()
 	{
-		_mapset = new Mapset(700, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
+		_mapset = new Beatmapset(700, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
 		MapsetFolder(700);
 
 		var request = MakeRequest(HttpMethod.Put, "/beatmapsets/700");
@@ -144,7 +144,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PutBeatmapset_Valid_ExtractsIntoResolvedFolderAndReturns202()
 	{
-		_mapset = new Mapset(701, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		_mapset = new Beatmapset(701, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = MapsetFolder(701);
 		await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content");
 
@@ -172,7 +172,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task DeleteBeatmapset_Frozen_ReturnsConflict_FolderUntouched()
 	{
-		_mapset = new Mapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
+		_mapset = new Beatmapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
 		var folder = MapsetFolder(800);
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"));
@@ -184,7 +184,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task DeleteBeatmapset_Valid_RenamesToDeletedMarkerAndReturns202()
 	{
-		_mapset = new Mapset(801, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		_mapset = new Beatmapset(801, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = MapsetFolder(801);
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/801"));
@@ -212,7 +212,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PatchBeatmapset_TogglesFrozenAndPrivateTogether()
 	{
-		_mapset = new Mapset(900, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		_mapset = new Beatmapset(900, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 
 		var setRequest = MakeRequest(HttpMethod.Patch, "/beatmapsets/900");
 		setRequest.Content = JsonContent.Create(new { frozen = true, @private = true });
@@ -233,7 +233,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PatchBeatmapset_OmittedField_LeavesItUnchanged()
 	{
-		_mapset = new Mapset(902, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow,
+		_mapset = new Beatmapset(902, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow,
 			IsPrivate: true);
 
 		var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/902");
@@ -247,7 +247,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PatchBeatmapset_MissingAdminKey_ReturnsUnauthorized()
 	{
-		_mapset = new Mapset(901, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		_mapset = new Beatmapset(901, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 
 		var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/901", null);
 		request.Content = JsonContent.Create(new { frozen = true });

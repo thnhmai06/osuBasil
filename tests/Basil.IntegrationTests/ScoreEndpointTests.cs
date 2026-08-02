@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Web;
@@ -22,7 +22,7 @@ namespace Basil.IntegrationTests;
 public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
 	private readonly WebApplicationFactory<Program> _factory;
-	private ScoreOwnerRow? _owner;
+	private ScoreOwner? _owner;
 	private byte[]? _replayBytes;
 	private ScoreRow? _row;
 
@@ -34,8 +34,8 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 		scores.FetchByIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _row);
 		scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<ScoreRow>>([]));
-		scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));
+		scores.FetchByRoundAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<IReadOnlyList<ScoreReport>>([]));
 
 		var replayStorage = Substitute.For<IReplayStorage>();
 		replayStorage.ReadAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(_ => _replayBytes);
@@ -104,7 +104,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 	[Fact]
 	public async Task GetReplay_KnownScoreNoStoredReplay_ReturnsNotFound()
 	{
-		_owner = new ScoreOwnerRow(7, GameMode.Standard);
+		_owner = new ScoreOwner(7, GameMode.Standard);
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
 
@@ -114,7 +114,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 	[Fact]
 	public async Task GetReplay_Found_ReturnsReplayBytes()
 	{
-		_owner = new ScoreOwnerRow(7, GameMode.Standard);
+		_owner = new ScoreOwner(7, GameMode.Standard);
 		_replayBytes = [1, 2, 3, 4];
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));

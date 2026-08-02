@@ -10,16 +10,16 @@ namespace Basil.Infrastructure.Tests.Persistence;
 /// </summary>
 public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteMapsetRepository _mapsetRepository =
-		new(fixture.ConnectionString, NullLogger<SqliteMapsetRepository>.Instance);
+	private readonly SqliteBeatmapsetRepository _beatmapsetRepository =
+		new(fixture.ConnectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 
 	private readonly SqliteBeatmapRepository _repository =
 		new(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 
-	private static Mapset MakeMapset(int id, string artist = "Camellia",
+	private static Beatmapset MakeMapset(int id, string artist = "Camellia",
 		string title = "Exit This Earth's Atomosphere", string creator = "cmyui", bool isPrivate = false)
 	{
-		return new Mapset(id, artist, title, creator,
+		return new Beatmapset(id, artist, title, creator,
 			new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
 			IsPrivate: isPrivate);
 	}
@@ -34,7 +34,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 	private async Task<Beatmap> UpsertBeatmapAsync(Beatmap beatmap)
 	{
-		await _mapsetRepository.UpsertAsync(beatmap.Mapset);
+		await _beatmapsetRepository.UpsertAsync(beatmap.Beatmapset);
 		return await _repository.UpsertAsync(beatmap);
 	}
 
@@ -56,7 +56,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var bmap = MakeBeatmap(103, "cccccccccccccccccccccccccccccccc") with
 		{
 			BackgroundFile = "bg.jpg",
-			BeatmapObjectCounts = new OsuBeatmapObjectCounts
+			ObjectCounts = new OsuBeatmapObjectCounts
 				{ Total = 167, MaxCombo = 500, Circles = 120, Sliders = 45, Spinners = 2 }
 		};
 
@@ -65,7 +65,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 		Assert.NotNull(fetched);
 		Assert.Equal("bg.jpg", fetched.BackgroundFile);
-		Assert.Equal(bmap.BeatmapObjectCounts, fetched.BeatmapObjectCounts);
+		Assert.Equal(bmap.ObjectCounts, fetched.ObjectCounts);
 	}
 
 	[Fact]
@@ -104,11 +104,11 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var bmap = MakeBeatmap(104, "dddddddddddddddddddddddddddddddd");
 		await UpsertBeatmapAsync(bmap);
 
-		var updated = bmap with { BeatmapObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 42 } };
+		var updated = bmap with { ObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 42 } };
 		await UpsertBeatmapAsync(updated);
 
 		var fetched = await _repository.FetchOneAsync(bmap.Id);
-		Assert.Equal(42, fetched!.BeatmapObjectCounts.MaxCombo);
+		Assert.Equal(42, fetched!.ObjectCounts.MaxCombo);
 	}
 
 	[Fact]
@@ -116,7 +116,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	{
 		var bmap = MakeBeatmap(0, "aa000000000000000000000000000a");
 
-		await _mapsetRepository.UpsertAsync(bmap.Mapset);
+		await _beatmapsetRepository.UpsertAsync(bmap.Beatmapset);
 		var resolved = await _repository.UpsertAsync(bmap);
 
 		Assert.True(resolved.Id >= Beatmap.LocalIdFloor);
@@ -132,12 +132,12 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 		var reupserted = original with
 		{
-			Id = 999_999, BeatmapObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 7 }
+			Id = 999_999, ObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 7 }
 		};
 		var secondResolved = await UpsertBeatmapAsync(reupserted);
 
 		Assert.Equal(firstResolved.Id, secondResolved.Id);
-		Assert.Equal(7, secondResolved.BeatmapObjectCounts.MaxCombo);
+		Assert.Equal(7, secondResolved.ObjectCounts.MaxCombo);
 	}
 
 	[Fact]
@@ -163,10 +163,10 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var bmap = MakeBeatmap(106, "ffffffffffffffffffffffffffffffff");
 		await UpsertBeatmapAsync(bmap);
 
-		var fetched = await _repository.FetchOneAsync(setId: bmap.Mapset.Id);
+		var fetched = await _repository.FetchOneAsync(setId: bmap.Beatmapset.Id);
 
 		Assert.NotNull(fetched);
-		Assert.Equal(bmap.Mapset.Id, fetched.Mapset.Id);
+		Assert.Equal(bmap.Beatmapset.Id, fetched.Beatmapset.Id);
 	}
 
 	[Fact]
@@ -178,7 +178,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		Assert.Null(await _repository.FetchOneAsync(bmap.Id));
 		var fetched = await _repository.FetchOneAsync(bmap.Id, includePrivate: true);
 		Assert.NotNull(fetched);
-		Assert.True(fetched.Mapset.IsPrivate);
+		Assert.True(fetched.Beatmapset.IsPrivate);
 	}
 
 	[Fact]
@@ -221,10 +221,10 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(203, setB, new string('h', 32), "Alpha Artist", 3.0));
 
 		var results = await _repository.SearchAsync(null, null, 0, 100);
-		var relevant = results.Where(set => set[0].Mapset.Id is 5001 or 5002).ToList();
+		var relevant = results.Where(set => set[0].Beatmapset.Id is 5001 or 5002).ToList();
 
-		Assert.Equal(5002, relevant[0][0].Mapset.Id);
-		Assert.Equal(5001, relevant[1][0].Mapset.Id);
+		Assert.Equal(5002, relevant[0][0].Beatmapset.Id);
+		Assert.Equal(5001, relevant[1][0].Beatmapset.Id);
 		Assert.Equal(2, relevant[1].Count);
 		Assert.True(relevant[1][0].Difficulty.Sr < relevant[1][1].Difficulty.Sr);
 	}
@@ -238,7 +238,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var results = await _repository.SearchAsync("UniqueArtistName210", null, 0, 100);
 
 		Assert.Single(results);
-		Assert.Equal(setId, results[0][0].Mapset.Id);
+		Assert.Equal(setId, results[0][0].Beatmapset.Id);
 	}
 
 	[Fact]
@@ -266,7 +266,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 		Assert.Single(page1);
 		Assert.Single(page2);
-		Assert.NotEqual(page1[0][0].Mapset.Id, page2[0][0].Mapset.Id);
+		Assert.NotEqual(page1[0][0].Beatmapset.Id, page2[0][0].Beatmapset.Id);
 	}
 
 	[Fact]

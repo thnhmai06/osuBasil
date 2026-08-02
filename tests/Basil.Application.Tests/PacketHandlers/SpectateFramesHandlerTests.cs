@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Spectating;
+using Basil.Application.Packets.Spectating;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -21,9 +21,9 @@ public class SpectateFramesHandlerTests
 	private static readonly byte[] ValidBundleBytes =
 		Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000000000000");
 
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Fact]
@@ -37,7 +37,7 @@ public class SpectateFramesHandlerTests
 		var rawFrameData = new byte[] { 1, 2, 3, 4, 5 };
 		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(rawFrameData));
+		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(rawFrameData));
 
 		var expected = ServerPacketWriter.SpectateFrames(rawFrameData);
 		Assert.Equal(expected, spectator1.Dequeue());
@@ -50,7 +50,7 @@ public class SpectateFramesHandlerTests
 		var host = MakePlayer(1, "host");
 		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(new byte[] { 1 }));
+		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(new byte[] { 1 }));
 
 		Assert.Empty(host.Dequeue());
 	}
@@ -61,7 +61,7 @@ public class SpectateFramesHandlerTests
 		var host = MakePlayer(1, "host");
 		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(ValidBundleBytes));
+		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(ValidBundleBytes));
 
 		var publish = Assert.Single(playerInputEvents.Publishes);
 		Assert.Equal(host.Id, publish.PlayerId);
@@ -76,7 +76,7 @@ public class SpectateFramesHandlerTests
 		await fixture.MatchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id));
 		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
-		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new BanchoPacketReader(ValidBundleBytes));
+		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(ValidBundleBytes));
 
 		var publish = Assert.Single(playerInputEvents.Publishes);
 		Assert.Equal(host.Id, publish.PlayerId);
@@ -92,7 +92,7 @@ public class SpectateFramesHandlerTests
 		var tooShortToDecode = new byte[] { 1, 2, 3 };
 
 		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host,
-			new BanchoPacketReader(tooShortToDecode));
+			new PacketReader(tooShortToDecode));
 
 		Assert.Equal(ServerPacketWriter.SpectateFrames(tooShortToDecode), spectator.Dequeue());
 		Assert.Empty(playerInputEvents.Publishes);

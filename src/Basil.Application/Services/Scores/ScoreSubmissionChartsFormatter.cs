@@ -11,7 +11,7 @@ namespace Basil.Application.Services.Scores;
 ///     The output is a pipe-delimited list of key/value pairs describing a beatmap ranking chart
 ///     and an overall ranking chart, which the osu! client's result screen parses. Achievements
 ///     are out of scope, so the achievements field is always empty, and plays and passes are not
-///     tracked, so the play and pass counts are always emitted as zero. pp chart entries are
+///     tracked, so the play and pass counts are always emitted as zero. PP chart entries are
 ///     always passed zero because Basil has no pp. These zero and empty values keep the protocol's
 ///     fixed key/value shape intact without any pp-specific or plays/passes-specific
 ///     special-casing. The overall chart carries no before/after delta because user stats are
@@ -60,13 +60,13 @@ public static class ScoreSubmissionChartsFormatter
 		var parts = new List<string>
 		{
 			$"beatmapId:{beatmap.Id}",
-			$"beatmapSetId:{beatmap.Mapset.Id}",
+			$"beatmapSetId:{beatmap.Beatmapset.Id}",
 			"beatmapPlaycount:0",
 			"beatmapPasscount:0",
-			$"approvedDate:{beatmap.Mapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",
+			$"approvedDate:{beatmap.Beatmapset.LastUpdate:yyyy-MM-dd HH:mm:ss}",
 			"\n",
 			"chartId:beatmap",
-			$"chartUrl:https://osu.{domain}/s/{beatmap.Mapset.Id}",
+			$"chartUrl:https://osu.{domain}/s/{beatmap.Beatmapset.Id}",
 			"chartName:Beatmap Ranking"
 		};
 		parts.AddRange(beatmapEntries);

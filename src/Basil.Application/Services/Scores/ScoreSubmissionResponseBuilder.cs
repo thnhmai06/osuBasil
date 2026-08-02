@@ -7,8 +7,8 @@ namespace Basil.Application.Services.Scores;
 ///     A successful submission returns the chart payload from
 ///     <see cref="ScoreSubmissionChartsFormatter" /> for a passed play, or the literal
 ///     <c>error: no</c> for a failed play. Rejections map to the short response strings the client
-///     understands, with one exception: a player that is not online produces an empty body so the
-///     client retries the submission once the player logs in.
+///     understands, with one exception: a userSession that is not online produces an empty body, so the
+///     client retries the submission once the userSession logs in.
 /// </remarks>
 public static class ScoreSubmissionResponseBuilder
 {
@@ -34,7 +34,7 @@ public static class ScoreSubmissionResponseBuilder
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="code" /> is not a recognized rejection reason.</exception>
 	/// <remarks>
 	///     <see cref="ScoreSubmissionResultCode.PlayerNotFound" /> returns an empty body on purpose:
-	///     the client treats that as "not online now" and retries the submission once the player
+	///     the client treats that as "not online now" and retries the submission once the userSession
 	///     logs in.
 	/// </remarks>
 	public static string BuildError(ScoreSubmissionResultCode code)

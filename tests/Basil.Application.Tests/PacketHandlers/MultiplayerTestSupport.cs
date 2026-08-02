@@ -14,7 +14,7 @@ using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Channel = Basil.Application.Abstractions.Channels.Channel;
+using Channel = Basil.Domain.Channels.Channel;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -24,16 +24,16 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// </summary>
 internal static class MultiplayerTestSupport
 {
-	public static PlayerSession MakePlayer(int id, string name)
+	public static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	public static ReadMatchResult MakeMatchData(
+	public static MatchState MakeMatchData(
 		int hostId, string name = "test match", string password = "", bool freeMods = false,
 		int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead, int winCondition = 0)
 	{
-		return new ReadMatchResult(
+		return new MatchState(
 			0, false, 0, 0, name, password,
 			"Some Map", mapId, mapMd5.Length == 32 ? mapMd5 : new string('a', 32),
 			[], [], [], hostId, 0,
@@ -41,13 +41,13 @@ internal static class MultiplayerTestSupport
 	}
 
 	/// <summary>
-	///     Builds a raw wire-format buffer BanchoPacketReader.ReadMatch can parse — the inverse of
+	///     Builds a raw wire-format buffer PacketReader.ReadMatch can parse — the inverse of
 	///     that method, for handler tests that read a MultiplayerMatch packet body. All 16 slots are
-	///     left as status 0 (no player bits set), so no slot ids are written, matching what real
+	///     left as status 0 (no userSession bits set), so no slot ids are written, matching what real
 	///     CREATE_MATCH/MATCH_CHANGE_SETTINGS/MATCH_CHANGE_PASSWORD bodies look like from a client
 	///     that hasn't populated slots client-side yet.
 	/// </summary>
-	public static BanchoPacketReader MatchRequestReader(
+	public static PacketReader MatchRequestReader(
 		int id, string name, string password, string mapName, int mapId, string mapMd5,
 		int hostId, int mode = 0, int winCondition = 0, int teamType = 0, bool freeMods = false, int seed = 0)
 	{
@@ -61,9 +61,9 @@ internal static class MultiplayerTestSupport
 		parts.AddRange(PacketWriter.WriteString(mapName));
 		parts.AddRange(PacketWriter.WriteInt32(mapId));
 		parts.AddRange(PacketWriter.WriteString(mapMd5));
-		parts.AddRange(new byte[16]); // slot statuses — all 0 (no player)
+		parts.AddRange(new byte[16]); // slot statuses — all 0 (no userSession)
 		parts.AddRange(new byte[16]); // slot teams
-		// no slot ids: no status has any player bits set
+		// no slot ids: no status has any userSession bits set
 		parts.AddRange(PacketWriter.WriteInt32(hostId));
 		parts.Add((byte)mode);
 		parts.Add((byte)winCondition);
@@ -73,16 +73,16 @@ internal static class MultiplayerTestSupport
 			for (var i = 0; i < 16; i++)
 				parts.AddRange(PacketWriter
 					.WriteInt32(
-						0)); // per-slot mods — BanchoPacketReader.ReadMatch always reads 16 when freeMods is set
+						0)); // per-slot mods — PacketReader.ReadMatch always reads 16 when freeMods is set
 		parts.AddRange(PacketWriter.WriteInt32(seed));
-		return new BanchoPacketReader(parts.ToArray());
+		return new PacketReader(parts.ToArray());
 	}
 
 	/// <summary>Dummy valid beatmap for tests that need `beatmapRepository.FetchOneAsync` to resolve successfully.</summary>
 	public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
 	{
 		var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
-		var mapset = new Mapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
@@ -149,7 +149,7 @@ internal static class MultiplayerTestSupport
 
 		public MatchSession? TryCreate(Func<int, MatchSession> factory)
 		{
-			if (_nextId >= 64) return null;
+			if (_nextId >= IMatchRegistry.MaxMatches) return null;
 
 			var match = factory(_nextId);
 			_byId[_nextId] = match;
@@ -166,7 +166,7 @@ internal static class MultiplayerTestSupport
 	}
 
 	/// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
-	public sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+	public sealed class FakeMatchRepository : IMatchRepository
 	{
 		private int _nextMatchId = 1;
 		private int _nextRoundId = 1;
@@ -195,20 +195,20 @@ internal static class MultiplayerTestSupport
 			return Task.CompletedTask;
 		}
 
-		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<MatchRow?>(null);
+			return Task.FromResult<Match?>(null);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
 		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -216,26 +216,26 @@ internal static class MultiplayerTestSupport
 			return Task.CompletedTask;
 		}
 
-		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+			return Task.FromResult<IReadOnlyList<MatchEvent>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 	}
 
@@ -356,15 +356,15 @@ internal static class MultiplayerTestSupport
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchPersistence, EventBus,
+				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchRepository, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
 		public FakeMatchRegistry MatchRegistry { get; } = new();
-		public FakeMatchPersistenceRepository MatchPersistence { get; } = new();
+		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
-		public IPlayerSessionRegistry SessionRegistry { get; } = Substitute.For<IPlayerSessionRegistry>();
+		public IUserSessionRegistry SessionRegistry { get; } = Substitute.For<IUserSessionRegistry>();
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
@@ -372,7 +372,7 @@ internal static class MultiplayerTestSupport
 
 		public MatchMembershipService MatchMembership { get; }
 
-		public void RegisterAll(params PlayerSession[] sessions)
+		public void RegisterAll(params UserSession[] sessions)
 		{
 			SessionRegistry.All.Returns(sessions);
 			foreach (var session in sessions)
@@ -390,7 +390,7 @@ internal static class MultiplayerTestSupport
 		///     right away) — MatchSession.IsReferee itself does NOT auto-include the host; pass false to exercise
 		///     that real host-is-not-a-referee behavior.
 		/// </summary>
-		public MatchSession CreateMatch(PlayerSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
+		public MatchSession CreateMatch(UserSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
 			bool hostIsReferee = true)
 		{
 			var match = MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))

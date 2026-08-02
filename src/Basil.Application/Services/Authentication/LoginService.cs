@@ -1,16 +1,18 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Configurations;
+using Basil.Application.Packets;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Login;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
@@ -33,16 +35,15 @@ namespace Basil.Application.Services.Authentication;
 /// </remarks>
 public sealed class LoginService(
 	IUserRepository users,
-	IStatsRepository stats,
+	IUserStatRepository userStatRepository,
 	IClientHashRepository clientHashes,
-	IIngameLoginRepository ingameLogins,
+	ILoginRepository loginRepository,
 	IChannelRegistry channelRegistry,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	IRelationshipRepository relationships,
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
-	MenuIconService menuIconService,
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
@@ -63,10 +64,10 @@ public sealed class LoginService(
 	public async Task<LoginResult> ExecuteAsync(LoginRequest request,
 		CancellationToken cancellationToken = default)
 	{
-		LoginData loginData;
+		LoginForm loginForm;
 		try
 		{
-			loginData = LoginData.From(request.Body);
+			loginForm = LoginForm.From(request.Body);
 		}
 		catch (ArgumentException)
 		{
@@ -77,15 +78,15 @@ public sealed class LoginService(
 			return InvalidRequestFailure("invalid-adapters");
 		}
 
-		var clientDetails = loginData.ClientDetails;
+		var clientDetails = loginForm.ClientDetails;
 		if (!(clientDetails.IsRunningUnderWine || clientDetails.Adapters.Any(a => a.Length > 0)))
 			return InvalidRequestFailure("empty-adapters");
 
 		var loginTime = DateTimeOffset.UtcNow;
 
 		// disallow multiple sessions from a single user, except tourney spectator clients.
-		var existingSession = sessionRegistry.GetByName(loginData.Username);
-		if (existingSession is not null && loginData.OsuVersion.Stream != OsuStream.Tourney)
+		var existingSession = sessionRegistry.GetByName(loginForm.Username);
+		if (existingSession is not null && loginForm.OsuVersion.Stream != OsuStream.Tourney)
 		{
 			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(10))
 				return new LoginResult("user-already-logged-in", Concat(
@@ -93,7 +94,7 @@ public sealed class LoginService(
 					ServerPacketWriter.Notification("User already logged in.")));
 
 			// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
-			// the bot's spectate relationship on the departing session now, or a relogin would pile
+			// the bot's spectating relationship on the departing session now, or a relogin would pile
 			// a dead member reference onto the channel the new session's own AddSpectator call
 			// below re-creates.
 			var staleBot = sessionRegistry.GetById(BotBootstrapService.BotId);
@@ -103,15 +104,15 @@ public sealed class LoginService(
 			sessionRegistry.Remove(existingSession);
 		}
 
-		var user = await users.FetchByNameAsync(loginData.Username, cancellationToken);
-		if (user is null) return IncorrectCredentials(loginData.Username, request.Ip);
+		var user = await users.FetchByNameAsync(loginForm.Username, cancellationToken);
+		if (user is null) return IncorrectCredentials(loginForm.Username, request.Ip);
 
 		var passwordHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
 		if (passwordHash is null
-		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginData.PasswordMd5), passwordHash))
-			return IncorrectCredentials(loginData.Username, request.Ip);
+		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginForm.PasswordMd5), passwordHash))
+			return IncorrectCredentials(loginForm.Username, request.Ip);
 
-		if (loginData.OsuVersion.Stream == OsuStream.Tourney
+		if (loginForm.OsuVersion.Stream == OsuStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
 		{
 			logger.LogDebug("Tourney client rejected: not donator/unrestricted. Username={Username}", user.Name);
@@ -121,8 +122,8 @@ public sealed class LoginService(
 
 		/* login credentials verified */
 
-		await ingameLogins.CreateAsync(user.Id, request.Ip.ToString(), loginData.OsuVersion.Date,
-			loginData.OsuVersion.Stream.ToString().ToLowerInvariant(),
+		await loginRepository.CreateAsync(user.Id, request.Ip.ToString(), loginForm.OsuVersion.Date,
+			loginForm.OsuVersion.Stream.ToString().ToLowerInvariant(),
 			cancellationToken);
 
 		await clientHashes.CreateAsync(
@@ -150,20 +151,20 @@ public sealed class LoginService(
 				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
 		}
 
-		/* all checks passed, player is safe to login */
+		/* all checks passed, userSession is safe to login */
 
 		var geolocation = Geolocation.From(request.Headers) ?? GeolocationFromCountry(user.Country);
 
 		if (user.Country == Country.Xx)
 			await users.UpdateCountryAsync(user.Id, geolocation.Country, cancellationToken);
 
-		var session = new PlayerSession(user.Id, user.Name, tokenGenerator.GenerateToken(), user.Privilege, loginTime)
+		var session = new UserSession(user.Id, user.Name, tokenGenerator.GenerateToken(), user.Privilege, loginTime)
 		{
-			UtcOffset = loginData.UtcOffset,
-			PmPrivate = loginData.PmPrivate,
+			UtcOffset = loginForm.UtcOffset,
+			PmPrivate = loginForm.PmPrivate,
 			SilenceEnd = user.SilenceEnd,
 			Client = clientDetails,
-			OsuVersion = loginData.OsuVersion
+			OsuVersion = loginForm.OsuVersion
 		};
 
 		var data = new List<byte[]>
@@ -192,23 +193,23 @@ public sealed class LoginService(
 
 		session.Geoloc = geolocation;
 
-		// cache stats+rank for all 8 modes in memory (Player.stats_from_sql_full) — later packet
+		// cache stats+rank for all 8 modes in memory (User.stats_from_sql_full) — later packet
 		// handlers (REQUEST_STATUS_UPDATE, USER_STATS_REQUEST, CHANGE_ACTION broadcast) read this
 		// cache instead of re-querying the DB per packet; ScoreSubmissionService updates it directly
 		// on submission so a fresh login isn't needed to see a just-bumped total. Rank is the
-		// player's own user id rather than a real leaderboard position — just a stable,
-		// distinguishable per-player number for the client's player-list/profile display.
+		// userSession's own user id rather than a real leaderboard position — just a stable,
+		// distinguishable per-userSession number for the client's userSession-list/profile display.
 		foreach (var (_, mode, totalScore, rankedScore, plays) in
-		         await stats.FetchAllForUserAsync(user.Id, cancellationToken))
+		         await userStatRepository.FetchAllForUserAsync(user.Id, cancellationToken))
 			session.ModeStats[mode] = new CachedPlayerStats(totalScore, rankedScore, plays, user.Id);
 
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
 		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
 
-		if (menuIconService.FindIconPath() is not null)
+		if (MenuIconService.FindIconPath() is not null)
 		{
 			var menuIconUrl = $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
-			var onclickUrl = menuIconService.ReadUrl() ?? "https://github.com/thnhmai06/osuBasil";
+			var onclickUrl = MenuIconService.ReadUrl() ?? "https://github.com/thnhmai06/osuBasil";
 			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
 
@@ -255,7 +256,7 @@ public sealed class LoginService(
 
 		sessionRegistry.Add(session);
 
-		// BasilBot spectates every player from the moment they log in, so their input can be
+		// BasilBot spectates every userSession from the moment they log in, so their input can be
 		// exposed externally via the api. host's SSE /spec/{id} channel — the real osu! client only
 		// sends SpectateFrames packets while it believes it has >=1 spectator.
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
@@ -267,7 +268,7 @@ public sealed class LoginService(
 	}
 
 	/// <summary>Determines whether a privilege set carries both of two required flags.</summary>
-	/// <param name="privileges">The privilege set to test.</param>
+	/// <param name="privileges">The privilege set to the test.</param>
 	/// <param name="required1">The first required flag.</param>
 	/// <param name="required2">The second required flag.</param>
 	/// <returns>
@@ -348,3 +349,24 @@ public sealed class LoginService(
 		return [.. parts.SelectMany(p => p)];
 	}
 }
+
+/// <summary>
+///     Represents the raw data of an incoming osu! client login request before it is parsed.
+/// </summary>
+/// <remarks>
+///     The <see cref="Body" /> is the request's raw payload, decoded by
+///     <see cref="LoginForm.From" />; <see cref="Headers" /> are inspected for
+///     geolocation hints; <see cref="Ip" /> identifies the connecting client.
+/// </remarks>
+public sealed record LoginRequest(byte[] Body, IReadOnlyDictionary<string, string> Headers, IPAddress Ip);
+
+/// <summary>
+///     Represents the outcome of a login attempt: the token to issue the client and the packet
+///     response body to send back.
+/// </summary>
+/// <remarks>
+///     On success <see cref="OsuToken" /> carries the new session token. On failure, it carries an
+///     error-code string instead, such as "incorrect-credentials", and the body holds the matching
+///     notification and failure packets.
+/// </remarks>
+public sealed record LoginResult(string OsuToken, byte[] ResponseBody);

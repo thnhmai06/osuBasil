@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
@@ -27,7 +27,7 @@ public sealed class TcpIrcListener(
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	ILogger<TcpIrcListener> logger,
 	ILogger<TcpIrcConnection> connectionLogger) : BackgroundService
 {

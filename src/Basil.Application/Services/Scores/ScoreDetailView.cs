@@ -3,6 +3,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+// ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Scores;
 
@@ -10,7 +11,7 @@ namespace Basil.Application.Services.Scores;
 ///     Represents a single submitted score as returned by the score lookup endpoints.
 /// </summary>
 /// <param name="Id">The database id of the score.</param>
-/// <param name="User">The player who submitted the score.</param>
+/// <param name="User">The userSession who submitted the score.</param>
 /// <param name="Beatmap">The beatmap the score was played on.</param>
 /// <param name="Mode">The game mode the score was played in.</param>
 /// <param name="Mods">The mods applied during the play.</param>
@@ -25,10 +26,13 @@ namespace Basil.Application.Services.Scores;
 /// <param name="NumMiss">The number of miss hit judgments in the play.</param>
 /// <param name="Grade">The letter grade achieved in the play.</param>
 /// <param name="Perfect">A value that indicates whether the play was a perfect (full combo) play.</param>
-/// <param name="PlayTime">The time the play was recorded by the client, in UTC.</param>
-/// <param name="SubmittedAt">The time the submission was received by the server, in UTC.</param>
+/// <param name="PlayTime">The time the client recorded the play, in UTC.</param>
+/// <param name="SubmittedAt">The time the server received the submission, in UTC.</param>
 /// <param name="RoundId">The id of the match round the score is linked to, or <see langword="null" /> for a solo score.</param>
-/// <param name="Team">The player's team within the round, or <see langword="null" /> for a solo score or a neutral slot.</param>
+/// <param name="Team">
+///     The userSession's team within the round, or <see langword="null" /> for a solo score or a neutral
+///     slot.
+/// </param>
 /// <remarks>
 ///     Every user and beatmap reference is embedded as a full view record (<see cref="UserBrief" />
 ///     and <see cref="BeatmapDetail" />), never a bare id or MD5. <see cref="Grade" /> keeps its

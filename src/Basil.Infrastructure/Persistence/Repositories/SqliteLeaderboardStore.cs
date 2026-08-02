@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="ILeaderboardStore" />
 /// <remarks>
-///     Ranks are computed live from the UserStats table on every read: a player's rank is the
+///     Ranks are computed live from the UserStats table on every read: a userSession's rank is the
 ///     count of users with a higher ranked score in the mode, plus one. There is no separately
 ///     maintained leaderboard index, so the add/remove methods are no-ops.
 /// </remarks>
@@ -15,7 +15,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 {
 	/// <inheritdoc />
 	/// <remarks>
-	///     When the player has no UserStats row for the mode, the read returns
+	///     When the userSession has no UserStats row for the mode, the read returns
 	///     <see langword="null" /> before any count query runs.
 	/// </remarks>
 	public async Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode,
@@ -36,7 +36,7 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 	/// <inheritdoc />
 	/// <remarks>
 	///     The count query joins UserStats to Users to restrict the ranking to the given country
-	///     acronym. When the player has no UserStats row for the mode, the read returns
+	///     acronym. When the userSession has no UserStats row for the mode, the read returns
 	///     <see langword="null" /> before any count query runs.
 	/// </remarks>
 	public async Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,

@@ -20,7 +20,7 @@ public class ReplayServiceTests
 	[Fact]
 	public async Task FetchReplayFile_ScoreNotFound_ReturnsNotFound()
 	{
-		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns((ScoreOwnerRow?)null);
+		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns((ScoreOwner?)null);
 
 		var result = await _service.FetchReplayFileAsync(1);
 
@@ -30,7 +30,7 @@ public class ReplayServiceTests
 	[Fact]
 	public async Task FetchReplayFile_FileMissingOnDisk_ReturnsNotFound()
 	{
-		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwnerRow(10, GameMode.Standard));
+		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwner(10, GameMode.Standard));
 		_replayStorage.ReadAsync(1, Arg.Any<CancellationToken>()).Returns((byte[]?)null);
 
 		var result = await _service.FetchReplayFileAsync(1);
@@ -41,7 +41,7 @@ public class ReplayServiceTests
 	[Fact]
 	public async Task FetchReplayFile_Found_ReturnsData()
 	{
-		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwnerRow(10, GameMode.Standard));
+		_scores.FetchOwnerAsync(1, Arg.Any<CancellationToken>()).Returns(new ScoreOwner(10, GameMode.Standard));
 		_replayStorage.ReadAsync(1, Arg.Any<CancellationToken>()).Returns([1, 2, 3]);
 
 		var result = await _service.FetchReplayFileAsync(1);

@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
 ///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any create,
-///     change, delete, or rename under that folder is debounced (a dragged-in mapset fires many
+///     change, delete, or rename under that folder is debounced (a dragged-in beatmapset fires many
 ///     rapid events for the same folder, so only the last one after a quiet period actually
 ///     reconciles) and handed to <see cref="BeatmapIngestionService" />'s per-folder methods. The
 ///     one-time full pass (<see cref="BeatmapIngestionService.ReconcileAllAsync" />) is a separate
@@ -31,7 +31,7 @@ public sealed class BeatmapWatcherService(
 
 	/// <summary>
 	///     Runs the filesystem watch loop until shutdown: installs a recursive
-	///     <see cref="FileSystemWatcher" /> on the mapsets folder, then waits on an indefinite delay.
+	///     <see cref="FileSystemWatcher" /> on the beatmapsetRepository folder, then waits on an indefinite delay.
 	///     On shutdown, disposes any armed-but-not-yet-fired timers and awaits any reconciliation
 	///     still in flight so the DB is never mutated while the host is stopping.
 	/// </summary>
@@ -80,11 +80,11 @@ public sealed class BeatmapWatcherService(
 	/// <summary>
 	///     A rename into a `.deleted_`-suffixed name (see
 	///     <see cref="BeatmapIngestionService.DeletedFolderInfix" />, the atomic marker of a folder
-	///     mid-deletion) means the folder's *new* name is never a live mapset. Debouncing on the
+	///     mid-deletion) means the folder's *new* name is never a live beatmapset. Debouncing on the
 	///     *old* path instead lets <see cref="Settle" />'s own Directory.Exists/File.Exists checks
 	///     naturally resolve it to <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />:
 	///     the old path no longer exists on disk, and its name (unlike the new one) still carries the
-	///     mapset's real leading id. Any other rename (e.g. a human renaming a mapset folder) still
+	///     beatmapset's real leading id. Any other rename (e.g. a human renaming a beatmapset folder) still
 	///     debounces on the new path as before.
 	/// </summary>
 	private void DebounceRenamed(string root, RenamedEventArgs e)
@@ -151,8 +151,8 @@ public sealed class BeatmapWatcherService(
 
 	/// <summary>
 	///     Disposes the path's timer, then reconciles the affected entry: an existing directory
-	///     reconciles as a mapset folder, an existing ".osz" as a loose archive, and a path that no
-	///     longer exists (and is not a ".osz") as a deleted mapset folder. A `.deleted_`-marked
+	///     reconciles as a beatmapset folder, an existing ".osz" as a loose archive, and a path that no
+	///     longer exists (and is not a ".osz") as a deleted beatmapset folder. A `.deleted_`-marked
 	///     folder and any path that fits none of those shapes are skipped.
 	/// </summary>
 	private async Task Settle(string affected)
@@ -161,7 +161,7 @@ public sealed class BeatmapWatcherService(
 		if (timer is not null) await timer.DisposeAsync();
 
 		// A `.deleted_` folder is mid-deletion (rename-in-place done, physical removal pending the
-		// GC pass) — never a live mapset, so no reconciliation pathway applies to it.
+		// GC pass) — never a live beatmapset, so no reconciliation pathway applies to it.
 		if (Path.GetFileName(affected)
 		    .Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
 			return;
@@ -176,7 +176,7 @@ public sealed class BeatmapWatcherService(
 			else if (!File.Exists(affected) && !looksLikeOsz)
 				await ingestion.ReconcileDeletedFolderAsync(affected);
 			// else: a .osz that ReconcileOszAsync already extracted-then-deleted (its own Deleted
-			// event lands here too, and must NOT be treated as a live mapset folder disappearing —
+			// event lands here too, and must NOT be treated as a live beatmapset folder disappearing —
 			// see BeatmapWatcherServiceTests' repro), or a stray non-.osz file — no pathway applies.
 		}
 		catch (Exception ex)

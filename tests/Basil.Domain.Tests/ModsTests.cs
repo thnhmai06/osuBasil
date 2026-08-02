@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests;
@@ -24,7 +25,7 @@ public class ModsTests
 	[Fact]
 	public void FilterInvalidCombos_NonOsuMode_RemovesOsuSpecificMods()
 	{
-		var result = (Mods.Autopilot | Mods.SpunOut | Mods.Target | Mods.Hidden).FilterInvalidCombos(1);
+		var result = (Mods.Autopilot | Mods.SpunOut | Mods.Target | Mods.Hidden).FilterInvalidCombos(GameMode.Taiko);
 
 		Assert.Equal(Mods.Hidden, result);
 	}
@@ -32,7 +33,8 @@ public class ModsTests
 	[Fact]
 	public void FilterInvalidCombos_NonManiaMode_RemovesManiaSpecificMods()
 	{
-		var result = (Mods.Mirror | Mods.Random | Mods.FadeIn | Mods.Key4 | Mods.Hidden).FilterInvalidCombos(0);
+		var result =
+			(Mods.Mirror | Mods.Random | Mods.FadeIn | Mods.Key4 | Mods.Hidden).FilterInvalidCombos(GameMode.Standard);
 
 		Assert.Equal(Mods.Hidden, result);
 	}
@@ -56,7 +58,7 @@ public class ModsTests
 	[Fact]
 	public void FilterInvalidCombos_Mania_RemovesRelax()
 	{
-		var result = Mods.Relax.FilterInvalidCombos(3);
+		var result = Mods.Relax.FilterInvalidCombos(GameMode.Mania);
 
 		Assert.Equal(Mods.NoMod, result);
 	}
@@ -64,7 +66,7 @@ public class ModsTests
 	[Fact]
 	public void FilterInvalidCombos_Mania_HiddenWithFadeIn_RemovesFadeIn()
 	{
-		var result = (Mods.Hidden | Mods.FadeIn).FilterInvalidCombos(3);
+		var result = (Mods.Hidden | Mods.FadeIn).FilterInvalidCombos(GameMode.Mania);
 
 		Assert.Equal(Mods.Hidden, result);
 	}
@@ -72,7 +74,7 @@ public class ModsTests
 	[Fact]
 	public void FilterInvalidCombos_MultipleKeymods_KeepsOnlyFirst()
 	{
-		var result = (Mods.Key1 | Mods.Key2 | Mods.Key4).FilterInvalidCombos(3);
+		var result = (Mods.Key1 | Mods.Key2 | Mods.Key4).FilterInvalidCombos(GameMode.Mania);
 
 		Assert.Equal(Mods.Key1, result);
 	}

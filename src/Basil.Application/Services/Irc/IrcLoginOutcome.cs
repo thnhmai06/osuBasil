@@ -18,7 +18,7 @@ namespace Basil.Application.Services.Irc;
 ///     (welcome numerics, channel topics, and member lists). A failed outcome carries a
 ///     <see langword="null" /> session and a single numeric reply describing the failure.
 /// </remarks>
-public sealed record IrcLoginOutcome(bool Success, PlayerSession? Session, IReadOnlyList<IrcMessage> Messages)
+public sealed record IrcLoginOutcome(bool Success, UserSession? Session, IReadOnlyList<IrcMessage> Messages)
 {
 	/// <summary>Builds a failed outcome carrying a single error numeric.</summary>
 	/// <param name="error">The numeric reply that describes why the handshake failed.</param>
@@ -32,7 +32,7 @@ public sealed record IrcLoginOutcome(bool Success, PlayerSession? Session, IRead
 	/// <param name="session">The authenticated session.</param>
 	/// <param name="messages">The messages to emit to the connection on login.</param>
 	/// <returns>A successful <see cref="IrcLoginOutcome" />.</returns>
-	public static IrcLoginOutcome Ok(PlayerSession session, IReadOnlyList<IrcMessage> messages)
+	public static IrcLoginOutcome Ok(UserSession session, IReadOnlyList<IrcMessage> messages)
 	{
 		return new IrcLoginOutcome(true, session, messages);
 	}

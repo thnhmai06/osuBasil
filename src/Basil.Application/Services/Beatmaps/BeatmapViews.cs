@@ -9,7 +9,7 @@ namespace Basil.Application.Services.Beatmaps;
 /// <param name="Id">The osu! id of the beatmap.</param>
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="BeatmapObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="IsLocallyIngested">A value that indicates whether the beatmap was ingested without a real osu! online id.</param>
 /// <remarks>
 ///     Never carries <see cref="Beatmap.Filename" />, which is internal and marked
@@ -24,7 +24,7 @@ public abstract record BeatmapView(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts BeatmapObjectCounts,
+	BeatmapObjectCounts ObjectCounts,
 	bool IsLocallyIngested);
 
 /// <summary>
@@ -39,9 +39,9 @@ public sealed record BeatmapInSet(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts BeatmapObjectCounts,
+	BeatmapObjectCounts ObjectCounts,
 	bool IsLocallyIngested)
-	: BeatmapView(Md5, Id, Version, Difficulty, BeatmapObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     A beatmap embed that carries its parent beatmapset.
@@ -50,7 +50,7 @@ public sealed record BeatmapInSet(
 /// <param name="Id">The osu! id of the beatmap.</param>
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="BeatmapObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="IsLocallyIngested">A value that indicates whether the beatmap was ingested without a real osu! online id.</param>
 /// <param name="Beatmapset">The beatmapset summary the beatmap belongs to.</param>
 /// <remarks>
@@ -63,10 +63,10 @@ public sealed record BeatmapDetail(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts BeatmapObjectCounts,
+	BeatmapObjectCounts ObjectCounts,
 	bool IsLocallyIngested,
 	BeatmapsetSummary Beatmapset)
-	: BeatmapView(Md5, Id, Version, Difficulty, BeatmapObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
 
 /// <summary>
 ///     API-facing summary of a beatmapset.
@@ -86,7 +86,7 @@ public sealed record BeatmapDetail(
 /// <param name="BeatmapCount">The number of difficulties in the set.</param>
 /// <remarks>
 ///     Used both as a list item for the beatmapset list endpoint and as the parent embed on
-///     <see cref="BeatmapDetail" />. The domain/internal type stays <see cref="Mapset" /> and is
+///     <see cref="BeatmapDetail" />. The domain/internal type stays <see cref="Beatmapset" /> and is
 ///     not renamed.
 /// </remarks>
 public sealed record BeatmapsetSummary(
@@ -135,58 +135,62 @@ public sealed record BeatmapsetDetail(
 	IReadOnlyList<BeatmapInSet> Beatmaps);
 
 /// <summary>
-///     Maps the domain <see cref="Mapset" /> and <see cref="Beatmap" /> records onto the API-facing
+///     Maps the domain <see cref="Beatmapset" /> and <see cref="Beatmap" /> records onto the API-facing
 ///     view types in this file.
 /// </summary>
 public static class BeatmapViewMapper
 {
-	/// <summary>
-	///     Maps a <see cref="Mapset" /> to a <see cref="BeatmapsetSummary" />.
-	/// </summary>
-	/// <param name="mapset">The set to map.</param>
-	/// <param name="beatmapCount">The number of difficulties in the set.</param>
-	/// <returns>A summary of the set.</returns>
-	public static BeatmapsetSummary ToSummary(this Mapset mapset, int beatmapCount)
+	/// <param name="beatmapset">The set to map.</param>
+	extension(Beatmapset beatmapset)
 	{
-		return new BeatmapsetSummary(mapset.Id, mapset.Artist, mapset.Title, mapset.Creator, mapset.LastUpdate,
-			mapset.CreatedAt, mapset.IsFrozen, mapset.IsPrivate, mapset.Status, beatmapCount);
+		/// <summary>
+		///     Maps a <see cref="Beatmapset" /> to a <see cref="BeatmapsetSummary" />.
+		/// </summary>
+		/// <param name="beatmapCount">The number of difficulties in the set.</param>
+		/// <returns>A summary of the set.</returns>
+		public BeatmapsetSummary ToSummary(int beatmapCount)
+		{
+			return new BeatmapsetSummary(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator, beatmapset.LastUpdate,
+				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status, beatmapCount);
+		}
+
+		/// <summary>
+		///     Maps a <see cref="Beatmapset" /> and its difficulties to a <see cref="BeatmapsetDetail" />.
+		/// </summary>
+		/// <param name="beatmaps">The difficulties under the set.</param>
+		/// <returns>A detail view of the set.</returns>
+		public BeatmapsetDetail ToDetail(IReadOnlyList<Beatmap> beatmaps)
+		{
+			return new BeatmapsetDetail(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator, beatmapset.LastUpdate,
+				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status,
+				[.. beatmaps.Select(b => b.ToInSet())]);
+		}
 	}
 
-	/// <summary>
-	///     Maps a <see cref="Mapset" /> and its difficulties to a <see cref="BeatmapsetDetail" />.
-	/// </summary>
-	/// <param name="mapset">The set to map.</param>
-	/// <param name="beatmaps">The difficulties under the set.</param>
-	/// <returns>A detail view of the set.</returns>
-	public static BeatmapsetDetail ToDetail(this Mapset mapset, IReadOnlyList<Beatmap> beatmaps)
-	{
-		return new BeatmapsetDetail(mapset.Id, mapset.Artist, mapset.Title, mapset.Creator, mapset.LastUpdate,
-			mapset.CreatedAt, mapset.IsFrozen, mapset.IsPrivate, mapset.Status,
-			[.. beatmaps.Select(b => b.ToInSet())]);
-	}
-
-	/// <summary>
-	///     Maps a <see cref="Beatmap" /> to a <see cref="BeatmapInSet" />.
-	/// </summary>
 	/// <param name="beatmap">The difficulty to map.</param>
-	/// <returns>An embed of the difficulty without its parent set.</returns>
-	public static BeatmapInSet ToInSet(this Beatmap beatmap)
+	extension(Beatmap beatmap)
 	{
-		return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
-			beatmap.BeatmapObjectCounts,
-			beatmap.IsLocallyIngested);
-	}
+		/// <summary>
+		///     Maps a <see cref="Beatmap" /> to a <see cref="BeatmapInSet" />.
+		/// </summary>
+		/// <returns>An embed of the difficulty without its parent set.</returns>
+		public BeatmapInSet ToInSet()
+		{
+			return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
+				beatmap.ObjectCounts,
+				beatmap.IsLocallyIngested);
+		}
 
-	/// <summary>
-	///     Maps a <see cref="Beatmap" /> and its parent set summary to a <see cref="BeatmapDetail" />.
-	/// </summary>
-	/// <param name="beatmap">The difficulty to map.</param>
-	/// <param name="beatmapset">The summary of the set the difficulty belongs to.</param>
-	/// <returns>An embed of the difficulty with its parent set.</returns>
-	public static BeatmapDetail ToDetail(this Beatmap beatmap, BeatmapsetSummary beatmapset)
-	{
-		return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
-			beatmap.BeatmapObjectCounts,
-			beatmap.IsLocallyIngested, beatmapset);
+		/// <summary>
+		///     Maps a <see cref="Beatmap" /> and its parent set summary to a <see cref="BeatmapDetail" />.
+		/// </summary>
+		/// <param name="beatmapset">The summary of the set the difficulty belongs to.</param>
+		/// <returns>An embed of the difficulty with its parent set.</returns>
+		public BeatmapDetail ToDetail(BeatmapsetSummary beatmapset)
+		{
+			return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
+				beatmap.ObjectCounts,
+				beatmap.IsLocallyIngested, beatmapset);
+		}
 	}
 }

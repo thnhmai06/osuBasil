@@ -8,7 +8,7 @@ namespace Basil.Application.Tests.Sessions;
 /// <summary>
 ///     bancho.py's Match has no lock at all — it relies entirely on asyncio's single-threaded event
 ///     loop making `get_free()` immediately followed by occupying that slot atomic between `await`
-///     points (see MatchCreate/join_match in cho.py/player.py, both of which have no `await` between
+///     points (see MatchCreate/join_match in cho.py/userSession.py, both of which have no `await` between
 ///     the two steps). Under ASP.NET Core's real thread-pool concurrency there is no such guarantee,
 ///     so <see cref="MatchSession.Lock" /> exists to restore it. These tests prove both halves: the
 ///     race is real without synchronization, and <see cref="MatchSession.Lock" /> closes it.
@@ -26,7 +26,7 @@ public class MatchSessionRaceTests
 
 	/// <summary>
 	///     Reproduces the exact hazard get_free()+occupy would have without asyncio's atomicity: two
-	///     threads read the same free slot index before either writes, so one player's occupancy is
+	///     threads read the same free slot index before either writes, so one userSession's occupancy is
 	///     silently lost. A `Task.Delay` between the read and the write widens the window so the
 	///     interleaving is reliably observed rather than being timing-dependent.
 	/// </summary>

@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Storage;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Performance;
@@ -18,7 +18,7 @@ namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
 ///     Keeps the DB in sync with <see cref="StorageOptions.MapsetsPath" />: one subfolder per
-///     mapset (<c>"{MapsetId} {Artist} - {Title}"</c>, holding the full original .osz contents,
+///     beatmapset (<c>"{MapsetId} {Artist} - {Title}"</c>, holding the full original .osz contents,
 ///     audio/images/backgrounds/video/.osu, as extracted, not renamed), or a loose ".osz" at the
 ///     root waiting to be extracted. A single loose ".osu" file has no set context on its own and
 ///     is never ingested. Uses ppy.osu.Game's own decoder (the same one
@@ -29,15 +29,15 @@ namespace Basil.Infrastructure.Beatmaps;
 /// </summary>
 public sealed partial class BeatmapIngestionService(
 	IBeatmapRepository beatmaps,
-	IMapsetRepository mapsets,
+	IBeatmapsetRepository beatmapsetRepository,
 	IOsuCalculator osuCalculator,
 	IOptions<StorageOptions> options,
 	IResponseCache cache,
 	ILogger<BeatmapIngestionService> logger)
 {
 	/// <summary>
-	///     Marker infix for a mapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
-	///     doc comment): a folder whose name carries this infix is never treated as a live mapset.
+	///     Marker infix for a beatmapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
+	///     doc comment): a folder whose name carries this infix is never treated as a live beatmapset.
 	/// </summary>
 	public const string DeletedFolderInfix = ".deleted_";
 
@@ -48,26 +48,26 @@ public sealed partial class BeatmapIngestionService(
 	private static readonly Regex LeadingIdPattern = LeadingIdRegex();
 
 	/// <summary>
-	///     Builds the conventional folder name for a mapset: <c>"{Id} {Artist} - {Title}"</c>, with
+	///     Builds the conventional folder name for a beatmapset: <c>"{Id} {Artist} - {Title}"</c>, with
 	///     characters invalid in filenames stripped out.
 	/// </summary>
-	public static string MapsetFolderName(Mapset mapset)
+	public static string MapsetFolderName(Beatmapset beatmapset)
 	{
-		return Sanitize($"{mapset.Id} {mapset.Artist} - {mapset.Title}");
+		return Sanitize($"{beatmapset.Id} {beatmapset.Artist} - {beatmapset.Title}");
 	}
 
 	/// <summary>
 	///     Combines <see cref="MapsetFolderName" /> with <see cref="StorageOptions.MapsetsPath" /> to
-	///     get the path a mapset is expected to live at.
+	///     get the path a beatmapset is expected to live at.
 	/// </summary>
-	public static string MapsetFolderPath(StorageOptions storage, Mapset mapset)
+	public static string MapsetFolderPath(StorageOptions storage, Beatmapset beatmapset)
 	{
-		return Path.Combine(storage.MapsetsPath, MapsetFolderName(mapset));
+		return Path.Combine(storage.MapsetsPath, MapsetFolderName(beatmapset));
 	}
 
 	/// <summary>
-	///     Resolves a mapset's actual folder on disk by leading-id prefix rather than recomputing
-	///     <see cref="MapsetFolderPath" /> from the mapset's current (mutable) Artist/Title: those can
+	///     Resolves a beatmapset's actual folder on disk by leading-id prefix rather than recomputing
+	///     <see cref="MapsetFolderPath" /> from the beatmapset's current (mutable) Artist/Title: those can
 	///     drift from whatever the folder was actually named at ingestion time (e.g. a re-ingest that
 	///     revised the parsed title, or a folder that arrived pre-extracted with different
 	///     illegal-character handling than <see cref="Sanitize" /> uses), which would otherwise make
@@ -82,49 +82,49 @@ public sealed partial class BeatmapIngestionService(
 
 	/// <summary>
 	///     Resolves the path to a beatmap's `.osu` file on disk, or <see langword="null" /> when its
-	///     mapset folder can't be found.
+	///     beatmapset folder can't be found.
 	/// </summary>
 	public static string? OsuFilePath(StorageOptions storage, Beatmap beatmap)
 	{
-		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		var folder = FindMapsetFolder(storage, beatmap.Beatmapset.Id);
 		return folder is null ? null : Path.Combine(folder, beatmap.Filename);
 	}
 
-	/// <summary>Null if the beatmap has no recorded background filename or its mapset folder can't be found.</summary>
+	/// <summary>Null if the beatmap has no recorded background filename or its beatmapset folder can't be found.</summary>
 	public static string? BackgroundFilePath(StorageOptions storage, Beatmap beatmap)
 	{
 		if (beatmap.BackgroundFile is null) return null;
-		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		var folder = FindMapsetFolder(storage, beatmap.Beatmapset.Id);
 		return folder is null ? null : Path.Combine(folder, beatmap.BackgroundFile);
 	}
 
-	/// <summary>Null if the mapset has no recorded preview background or its folder can't be found.</summary>
-	public static string? BackgroundFilePath(StorageOptions storage, Mapset mapset)
+	/// <summary>Null if the beatmapset has no recorded preview background or its folder can't be found.</summary>
+	public static string? BackgroundFilePath(StorageOptions storage, Beatmapset beatmapset)
 	{
-		if (mapset.BackgroundFile is null) return null;
-		var folder = FindMapsetFolder(storage, mapset.Id);
-		return folder is null ? null : Path.Combine(folder, mapset.BackgroundFile);
+		if (beatmapset.BackgroundFile is null) return null;
+		var folder = FindMapsetFolder(storage, beatmapset.Id);
+		return folder is null ? null : Path.Combine(folder, beatmapset.BackgroundFile);
 	}
 
-	/// <summary>Null if the beatmap has no recorded audio filename or its mapset folder can't be found.</summary>
+	/// <summary>Null if the beatmap has no recorded audio filename or its beatmapset folder can't be found.</summary>
 	public static string? AudioFilePath(StorageOptions storage, Beatmap beatmap)
 	{
 		if (beatmap.AudioFile is null) return null;
-		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		var folder = FindMapsetFolder(storage, beatmap.Beatmapset.Id);
 		return folder is null ? null : Path.Combine(folder, beatmap.AudioFile);
 	}
 
-	/// <summary>Null if the mapset has no recorded preview audio or its folder can't be found.</summary>
-	public static string? AudioFilePath(StorageOptions storage, Mapset mapset)
+	/// <summary>Null if the beatmapset has no recorded preview audio or its folder can't be found.</summary>
+	public static string? AudioFilePath(StorageOptions storage, Beatmapset beatmapset)
 	{
-		if (mapset.AudioFile is null) return null;
-		var folder = FindMapsetFolder(storage, mapset.Id);
-		return folder is null ? null : Path.Combine(folder, mapset.AudioFile);
+		if (beatmapset.AudioFile is null) return null;
+		var folder = FindMapsetFolder(storage, beatmapset.Id);
+		return folder is null ? null : Path.Combine(folder, beatmapset.AudioFile);
 	}
 
 	/// <summary>
 	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing on disk, or
-	///     its mapset folder can't be found. Unlike <see cref="BackgroundFilePath(StorageOptions,Beatmap)" />/
+	///     its beatmapset folder can't be found. Unlike <see cref="BackgroundFilePath(StorageOptions,Beatmap)" />/
 	///     <see cref="AudioFilePath(StorageOptions,Beatmap)" />, video has no ingestion-time DB column:
 	///     the filename is re-derived from the `.osu`'s own <see cref="Storyboard" /> (osu.Game's own
 	///     module, the same one background-finding effectively relies on) via
@@ -142,13 +142,13 @@ public sealed partial class BeatmapIngestionService(
 		var videoFilename = storyboard.PrimaryVideo?.Path;
 		if (videoFilename is null) return null;
 
-		var folder = FindMapsetFolder(storage, beatmap.Mapset.Id);
+		var folder = FindMapsetFolder(storage, beatmap.Beatmapset.Id);
 		return folder is null ? null : Path.Combine(folder, videoFilename);
 	}
 
 	/// <summary>
 	///     Full pass: extracts every loose ".osz" at the storage root, reconciles every subfolder that
-	///     looks like a mapset (".osu" files at depth 1), then deletes any Mapset row whose folder no
+	///     looks like a beatmapset (".osu" files at depth 1), then deletes any Beatmapset row whose folder no
 	///     longer exists on disk. Returns the number of beatmaps added or updated this pass.
 	/// </summary>
 	public async Task<int> ReconcileAllAsync(CancellationToken cancellationToken = default)
@@ -184,9 +184,9 @@ public sealed partial class BeatmapIngestionService(
 		foreach (var strayOsu in Directory.EnumerateFiles(path, "*.osu"))
 			logger.LogWarning(
 				"Ignoring stray .osu file at Mapsets root: {Path}. A single .osu has no set context — " +
-				"drop a full .osz instead, or place it inside its own mapset folder.", strayOsu);
+				"drop a full .osz instead, or place it inside its own beatmapset folder.", strayOsu);
 
-		var known = await mapsets.FetchAllIdsAsync(cancellationToken);
+		var known = await beatmapsetRepository.FetchAllIdsAsync(cancellationToken);
 		foreach (var orphanId in known.Where(id => !seenSetIds.Contains(id)))
 			await DeleteMapsetAsync(orphanId, cancellationToken);
 
@@ -194,7 +194,7 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Extracts every entry of a loose ".osz" (audio/images/video/.osu, as-is) into its resolved mapset folder, then
+	///     Extracts every entry of a loose ".osz" (audio/images/video/.osu, as-is) into its resolved beatmapset folder, then
 	///     reconciles that folder.
 	/// </summary>
 	public async Task<(int Ingested, int? SetId)> ReconcileOszAsync(string oszPath,
@@ -261,9 +261,9 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Adds/updates/deletes beatmaps for one mapset folder to match its current ".osu" files at
+	///     Adds/updates/deletes beatmaps for one beatmapset folder to match its current ".osu" files at
 	///     depth 1. Returns 0 (and a null MapsetId) when the folder has no ".osu" files at all: not a
-	///     mapset folder.
+	///     beatmapset folder.
 	/// </summary>
 	public async Task<(int Ingested, int? SetId)> ReconcileFolderAsync(string folderPath,
 		CancellationToken cancellationToken = default)
@@ -298,7 +298,7 @@ public sealed partial class BeatmapIngestionService(
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
 			var analysis = cacheHit
-				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.BeatmapObjectCounts)
+				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts)
 				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
 			var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
 			var audioFile = cacheHit ? existingByPath!.AudioFile : info.Metadata.AudioFile;
@@ -311,7 +311,7 @@ public sealed partial class BeatmapIngestionService(
 				info.DifficultyName,
 				file.OriginalFilename,
 				analysis.Difficulty,
-				analysis.BeatmapObjectCounts,
+				analysis.ObjectCounts,
 				backgroundFile,
 				audioFile,
 				previewTime);
@@ -320,10 +320,10 @@ public sealed partial class BeatmapIngestionService(
 			ingested++;
 
 			if (existingByPath is null)
-				logger.LogInformation("+ Beatmap ingested: {Filename} (Mapset {MapsetId})", file.OriginalFilename,
+				logger.LogInformation("+ Beatmap ingested: {Filename} (Beatmapset {MapsetId})", file.OriginalFilename,
 					mapset.Id);
 			else if (!cacheHit)
-				logger.LogInformation("~ Beatmap updated: {Filename} (Mapset {MapsetId})", file.OriginalFilename,
+				logger.LogInformation("~ Beatmap updated: {Filename} (Beatmapset {MapsetId})", file.OriginalFilename,
 					mapset.Id);
 		}
 
@@ -332,21 +332,21 @@ public sealed partial class BeatmapIngestionService(
 		foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
 		{
 			await beatmaps.DeleteByMd5Async(gone.Md5, cancellationToken);
-			logger.LogInformation("- Beatmap removed: {Filename} (Mapset {MapsetId})", gone.Filename, mapset.Id);
+			logger.LogInformation("- Beatmap removed: {Filename} (Beatmapset {MapsetId})", gone.Filename, mapset.Id);
 		}
 
 		// decoded.Count > 0 (checked above) guarantees at least one beatmap survives this pass, so
 		// there's always a lowest-id one to derive the set's preview from.
 		var remaining = known.Where(k => onDisk.Contains(k.Filename)).ToList();
 		var preview = remaining.MinBy(b => b.Id);
-		await mapsets.SetBackgroundFileAsync(mapset.Id, preview?.BackgroundFile, cancellationToken);
-		await mapsets.SetAudioFileAsync(mapset.Id, preview?.AudioFile, cancellationToken);
+		await beatmapsetRepository.SetBackgroundFileAsync(mapset.Id, preview?.BackgroundFile, cancellationToken);
+		await beatmapsetRepository.SetAudioFileAsync(mapset.Id, preview?.AudioFile, cancellationToken);
 
 		return (ingested, mapset.Id);
 	}
 
 	/// <summary>
-	///     A mapset folder vanished from disk: drop its DB row (Beatmaps cascade via FK) if its
+	///     A beatmapset folder vanished from disk: drop its DB row (Beatmaps cascade via FK) if its
 	///     leading id is still parseable and known.
 	/// </summary>
 	public async Task ReconcileDeletedFolderAsync(string folderPath, CancellationToken cancellationToken = default)
@@ -355,49 +355,49 @@ public sealed partial class BeatmapIngestionService(
 		var match = LeadingIdPattern.Match(name);
 		if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
 
-		if (await mapsets.FetchByIdAsync(id, cancellationToken) is not null)
+		if (await beatmapsetRepository.FetchByIdAsync(id, cancellationToken) is not null)
 			await DeleteMapsetAsync(id, cancellationToken);
 		// A manually-renamed-away-from-convention folder that's then deleted leaves an orphan row
 		// until the next ReconcileAllAsync pass reclaims it — acceptable for a human-admin server.
 	}
 
 	/// <summary>
-	///     Drops the mapset's DB row (Beatmaps cascade via FK) and its resize/transcode cache entries
+	///     Drops the beatmapset's DB row (Beatmaps cascade via FK) and its resize/transcode cache entries
 	///     (thumb small/large, audio preview; see <see cref="ResponseCacheKeys" />), which would
-	///     otherwise keep serving stale bytes for a mapset id that has since been reused or is simply
+	///     otherwise keep serving stale bytes for a beatmapset id that has since been reused or is simply
 	///     gone. This is the single call site both <see cref="ReconcileAllAsync" />'s orphan sweep and
 	///     <see cref="ReconcileDeletedFolderAsync" />'s watcher path go through, so cache invalidation
 	///     can't be forgotten at one but not the other.
 	/// </summary>
 	private async Task DeleteMapsetAsync(int id, CancellationToken cancellationToken)
 	{
-		await mapsets.DeleteAsync(id, cancellationToken);
+		await beatmapsetRepository.DeleteAsync(id, cancellationToken);
 		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, false), cancellationToken);
 		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, true), cancellationToken);
 		await cache.DeleteAsync("preview", ResponseCacheKeys.Preview(id), cancellationToken);
-		logger.LogInformation("- Mapset removed: {MapsetId}", id);
+		logger.LogInformation("- Beatmapset removed: {MapsetId}", id);
 	}
 
 	/// <summary>
-	///     Resolves which Mapset a batch of decoded .osu files belongs to: content-hash match against
+	///     Resolves which Beatmapset a batch of decoded .osu files belongs to: content-hash match against
 	///     an existing Beatmap first (content identity wins over whatever the folder is currently
-	///     named), else a leading id parsed from the folder/file name if that Mapset still exists,
+	///     named), else a leading id parsed from the folder/file name if that Beatmapset still exists,
 	///     else a brand-new set (online MapsetId if the client embedded one, else a fresh local id).
 	/// </summary>
-	private async Task<Mapset> ResolveMapsetAsync(IReadOnlyList<DecodedFile> decoded, string folderOrFileName,
+	private async Task<Beatmapset> ResolveMapsetAsync(IReadOnlyList<DecodedFile> decoded, string folderOrFileName,
 		CancellationToken cancellationToken)
 	{
 		foreach (var file in decoded)
 		{
 			var existing = await beatmaps.FetchOneAsync(md5: file.Md5, includePrivate: true,
 				cancellationToken: cancellationToken);
-			if (existing is not null) return existing.Mapset;
+			if (existing is not null) return existing.Beatmapset;
 		}
 
 		var match = LeadingIdPattern.Match(folderOrFileName);
 		if (match.Success && int.TryParse(match.Groups[1].Value, out var leadingId))
 		{
-			var existingMapset = await mapsets.FetchByIdAsync(leadingId, cancellationToken);
+			var existingMapset = await beatmapsetRepository.FetchByIdAsync(leadingId, cancellationToken);
 			if (existingMapset is not null)
 				return await RefreshMapsetAsync(existingMapset, decoded[0], cancellationToken);
 		}
@@ -405,23 +405,23 @@ public sealed partial class BeatmapIngestionService(
 		var onlineSetId = decoded[0].Parsed.BeatmapInfo.BeatmapSet?.OnlineID;
 		var newId = onlineSetId is > 0
 			? onlineSetId.Value
-			: Math.Max(Beatmap.LocalIdFloor, await mapsets.FetchMaxIdAsync(cancellationToken) + 1);
+			: Math.Max(Beatmap.LocalIdFloor, await beatmapsetRepository.FetchMaxIdAsync(cancellationToken) + 1);
 
 		return await RefreshMapsetAsync(null, decoded[0], cancellationToken, newId);
 	}
 
 	/// <summary>
-	///     Creates or updates the Mapset row for a set, deriving artist, title, and creator from the
+	///     Creates or updates the Beatmapset row for a set, deriving artist, title, and creator from the
 	///     first decoded .osu file, preserving the original creation timestamp when an existing set is
 	///     refreshed, and allocating <paramref name="newId" /> when creating a new one.
 	/// </summary>
-	private async Task<Mapset> RefreshMapsetAsync(Mapset? existing, DecodedFile first,
+	private async Task<Beatmapset> RefreshMapsetAsync(Beatmapset? existing, DecodedFile first,
 		CancellationToken cancellationToken,
 		int? newId = null)
 	{
 		var info = first.Parsed.BeatmapInfo;
 		var now = DateTime.UtcNow;
-		var mapset = new Mapset(
+		var mapset = new Beatmapset(
 			existing?.Id ?? newId!.Value,
 			info.Metadata.Artist,
 			info.Metadata.Title,
@@ -430,10 +430,10 @@ public sealed partial class BeatmapIngestionService(
 			existing?.CreatedAt ?? now);
 
 		if (existing is null)
-			logger.LogInformation("+ Mapset created: {MapsetId} {Artist} - {Title}", mapset.Id, mapset.Artist,
+			logger.LogInformation("+ Beatmapset created: {MapsetId} {Artist} - {Title}", mapset.Id, mapset.Artist,
 				mapset.Title);
 
-		return await mapsets.UpsertAsync(mapset, cancellationToken);
+		return await beatmapsetRepository.UpsertAsync(mapset, cancellationToken);
 	}
 
 	/// <summary>
@@ -453,7 +453,7 @@ public sealed partial class BeatmapIngestionService(
 			// aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
 			var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
-			BeatmapObjectCounts emptyBeatmapObjectCounts = mode switch
+			BeatmapObjectCounts emptyObjectCounts = mode switch
 			{
 				GameMode.Standard => new OsuBeatmapObjectCounts(),
 				GameMode.Taiko => new TaikoBeatmapObjectCounts(),
@@ -461,7 +461,7 @@ public sealed partial class BeatmapIngestionService(
 				GameMode.Mania => new ManiaBeatmapObjectCounts(),
 				_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
 			};
-			return new BeatmapAnalysis(emptyDifficulty, emptyBeatmapObjectCounts);
+			return new BeatmapAnalysis(emptyDifficulty, emptyObjectCounts);
 		}
 	}
 

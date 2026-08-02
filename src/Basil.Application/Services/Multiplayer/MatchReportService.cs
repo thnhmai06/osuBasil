@@ -9,6 +9,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+// ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Multiplayer;
 
@@ -23,9 +24,9 @@ namespace Basil.Application.Services.Multiplayer;
 /// </remarks>
 public sealed class MatchReportService(
 	IMatchRegistry matchRegistry,
-	IMatchPersistenceRepository matchPersistence,
+	IMatchRepository matchRepository,
 	IScoreRepository scores,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps)
 {
@@ -35,18 +36,18 @@ public sealed class MatchReportService(
 	/// <returns>The <see cref="MatchReport" />, or <see langword="null" /> when no such match exists.</returns>
 	public async Task<MatchReport?> BuildAsync(int matchId, CancellationToken cancellationToken = default)
 	{
-		var matchRow = await matchPersistence.FetchMatchAsync(matchId, cancellationToken);
+		var matchRow = await matchRepository.FetchMatchAsync(matchId, cancellationToken);
 		if (matchRow is null) return null;
 
-		var roundRows = await matchPersistence.FetchRoundsAsync(matchId, cancellationToken);
+		var roundRows = await matchRepository.FetchRoundsAsync(matchId, cancellationToken);
 		var rounds = new List<MatchReportRound>(roundRows.Count);
 		foreach (var round in roundRows)
 		{
-			var roundScores = await scores.FetchByRoundIdAsync(round.Id, cancellationToken);
+			var roundScores = await scores.FetchByRoundAsync(round.Id, cancellationToken);
 			rounds.Add(await BuildRound(round, roundScores, cancellationToken));
 		}
 
-		var events = await matchPersistence.FetchEventsAsync(matchId, cancellationToken);
+		var events = await matchRepository.FetchEventsAsync(matchId, cancellationToken);
 		var reportEvents = new List<MatchReportEvent>(events.Count);
 		foreach (var e in events)
 		{
@@ -71,12 +72,12 @@ public sealed class MatchReportService(
 			liveInfo, reportEvents, rounds);
 	}
 
-	/// <summary>Builds one round's report, deriving its winner and per-player scores from the stored rows.</summary>
-	/// <param name="round">The round row.</param>
+	/// <summary>Builds one round's report, deriving its winner and per-userSession scores from the stored rows.</summary>
+	/// <param name="round">Rowhe round row. </param>
 	/// <param name="roundScores">The round's stored scores.</param>
 	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
 	/// <returns>The <see cref="MatchReportRound" />.</returns>
-	private async Task<MatchReportRound> BuildRound(RoundRow round, IReadOnlyList<RoundScoreRow> roundScores,
+	private async Task<MatchReportRound> BuildRound(Round round, IReadOnlyList<ScoreReport> roundScores,
 		CancellationToken cancellationToken)
 	{
 		int? winnerUserId = null;
@@ -84,81 +85,77 @@ public sealed class MatchReportService(
 		MatchWinCondition? winMetric = round.WinCondition;
 		long? winDiff = null;
 
-		if (roundScores.Count == 0)
+		switch (roundScores.Count)
 		{
-			// No players
-		}
-		else if (roundScores.Count == 1)
-		{
-			// A single player wins by default, with a diff of 0
-			var only = roundScores[0];
-			if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))
+			case 0: // No players
+				break;
+			case 1:
 			{
-				winnerTeam = only.Team ?? MatchTeam.Neutral;
+				// A single userSession wins by default, with a diff of 0
+				var only = roundScores[0];
+				if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))
+					winnerTeam = only.Team ?? MatchTeam.Neutral;
 				winnerUserId = only.UserId;
-			}
-			else
-			{
-				winnerUserId = only.UserId;
-			}
-
-			winDiff = 0;
-		}
-		else if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))
-		{
-			// Team mode (≥2 players)
-			var teams = roundScores
-				.Where(s => s.Team is not null && s.Team != MatchTeam.Neutral)
-				.GroupBy(s => s.Team)
-				.ToList();
-
-			if (teams.Count < 2)
-			{
-				// Only one team has players, so that team wins with a diff of 0
-				winnerTeam = teams[0].Key ?? MatchTeam.Neutral;
 				winDiff = 0;
+				break;
 			}
-			else
+			default:
 			{
-				var sorted = teams
-					.Select(g => new
-					{
-						Team = g.Key,
-						Total = g.Sum(s => GetMetric(s, round.WinCondition)),
-						Players = g.ToList()
-					})
-					.OrderByDescending(t => t.Total)
-					.ToList();
-
-				if (sorted[0].Total == sorted[1].Total)
+				if (roundScores.Any(s => s.Team is not null and not MatchTeam.Neutral))
 				{
-					// A draw, so there is no winner and the diff is 0
-					winDiff = 0;
+					// Team mode (≥2 players)
+					var teams = roundScores
+						.Where(s => s.Team is not null && s.Team != MatchTeam.Neutral)
+						.GroupBy(s => s.Team)
+						.ToList();
+
+					if (teams.Count < 2)
+					{
+						// Only one team has players, so that team wins with a diff of 0
+						winnerTeam = teams[0].Key ?? MatchTeam.Neutral;
+						winDiff = 0;
+					}
+					else
+					{
+						var sorted = teams
+							.Select(g => new
+							{
+								Team = g.Key,
+								Total = g.Sum(s => GetMetric(s, round.WinCondition)),
+								Players = g.ToList()
+							})
+							.OrderByDescending(t => t.Total)
+							.ToList();
+
+						if (sorted[0].Total == sorted[1].Total)
+							// A draw, so there is no winner, and the diff is 0
+							winDiff = 0;
+						else
+						{
+							winnerTeam = sorted[0].Team ?? MatchTeam.Neutral;
+							winDiff = sorted[0].Total - sorted[1].Total;
+						}
+					}
 				}
 				else
 				{
-					winnerTeam = sorted[0].Team ?? MatchTeam.Neutral;
-					winDiff = sorted[0].Total - sorted[1].Total;
-				}
-			}
-		}
-		else
-		{
-			// Individual mode (≥2 players)
-			var sorted = roundScores
-				.Select(s => new { s.UserId, Metric = GetMetric(s, round.WinCondition) })
-				.OrderByDescending(s => s.Metric)
-				.ToList();
+					// Individual mode (≥2 players)
+					var sorted = roundScores
+						.Select(s => new { s.UserId, Metric = GetMetric(s, round.WinCondition) })
+						.OrderByDescending(s => s.Metric)
+						.ToList();
 
-			if (sorted[0].Metric == sorted[1].Metric)
-			{
-				// A draw, so there is no winner and the diff is 0
-				winDiff = 0;
-			}
-			else
-			{
-				winnerUserId = sorted[0].UserId;
-				winDiff = sorted[0].Metric - sorted[1].Metric;
+					if (sorted[0].Metric == sorted[1].Metric)
+						// A draw, so there is no winner, and the diff is 0
+						winDiff = 0;
+					else
+					{
+						winnerUserId = sorted[0].UserId;
+						winDiff = sorted[0].Metric - sorted[1].Metric;
+					}
+				}
+
+				break;
 			}
 		}
 
@@ -193,7 +190,7 @@ public sealed class MatchReportService(
 	/// <param name="s">The score row.</param>
 	/// <param name="winCondition">The round's win condition.</param>
 	/// <returns>The metric value to compare.</returns>
-	private static long GetMetric(RoundScoreRow s, MatchWinCondition winCondition)
+	private static long GetMetric(ScoreReport s, MatchWinCondition winCondition)
 	{
 		return winCondition switch
 		{
@@ -254,7 +251,7 @@ public sealed record MatchReportEvent(
 /// <param name="Aborted">Whether the round was aborted.</param>
 /// <param name="StartedAt">When the round started.</param>
 /// <param name="EndedAt">When the round ended, or <see langword="null" /> while it is still open.</param>
-/// <param name="Winner">The winning player, or <see langword="null" /> for a team win or a draw.</param>
+/// <param name="Winner">The winning userSession, or <see langword="null" /> for a team win or a draw.</param>
 /// <param name="WinnerTeam">The winning team, or <see langword="null" /> for an individual win or a draw.</param>
 /// <param name="WinMetric">The win condition the winner was determined by, when a winner exists.</param>
 /// <param name="WinDiff">
@@ -279,9 +276,9 @@ public sealed record MatchReportRound(
 	long? WinDiff,
 	IReadOnlyList<MatchReportScore> Scores);
 
-/// <summary>Represents one player's stored score within a round.</summary>
-/// <param name="User">The player who submitted the score.</param>
-/// <param name="Team">The team the player was on, or <see langword="null" /> for individual modes.</param>
+/// <summary>Represents one userSession's stored score within a round.</summary>
+/// <param name="User">The userSession who submitted the score.</param>
+/// <param name="Team">The team the userSession was on, or <see langword="null" /> for individual modes.</param>
 /// <param name="Mods">The mods applied for the play.</param>
 /// <param name="Score">The total score.</param>
 /// <param name="Accuracy">The play's accuracy.</param>

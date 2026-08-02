@@ -1,7 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.BackgroundServices;
+using Basil.Application.Backgrounds;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
@@ -19,7 +19,7 @@ namespace Basil.Application.Tests.BackgroundServices;
 
 /// <summary>
 ///     Ported from app/bg_loops.py's _disconnect_ghosts: every OSU_CLIENT_MIN_PING_INTERVAL/3
-///     seconds (100s), any player whose last_recv_time exceeds OSU_CLIENT_MIN_PING_INTERVAL (300s)
+///     seconds (100s), any userSession whose last_recv_time exceeds OSU_CLIENT_MIN_PING_INTERVAL (300s)
 ///     is force-logged-out via the same <see cref="PlayerLogoutService" /> a graceful LOGOUT uses —
 ///     see GhostDisconnectService's own doc comment for why this is no longer a hand-rolled second
 ///     copy of that cleanup. Only the per-tick check is unit tested here — the sleep loop itself
@@ -29,18 +29,18 @@ public class GhostDisconnectServiceTests
 {
 	private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
-	private static PlayerSession MakeSession(int id, string token, DateTimeOffset lastRecvTime)
+	private static UserSession MakeSession(int id, string token, DateTimeOffset lastRecvTime)
 	{
-		return new PlayerSession(id, $"player{id}", token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		return new UserSession(id, $"player{id}", token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ LastRecvTime = lastRecvTime };
 	}
 
 	/// <summary>
 	///     Builds a real PlayerLogoutService wired the same way DI wires it — none of the tests below
-	///     put a player in a match, so MatchMembershipService is never actually exercised by them and
+	///     put a userSession in a match, so MatchMembershipService is never actually exercised by them and
 	///     can be built with throwaway fakes, matching MultiplayerTestSupport.Fixture's own pattern.
 	/// </summary>
-	private static PlayerLogoutService MakePlayerLogout(IPlayerSessionRegistry registry,
+	private static PlayerLogoutService MakePlayerLogout(IUserSessionRegistry registry,
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
@@ -48,7 +48,7 @@ public class GhostDisconnectServiceTests
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry, registry,
-			channelMembership, Substitute.For<IMatchPersistenceRepository>(),
+			channelMembership, Substitute.For<IMatchRepository>(),
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(registry, channelRegistry, spectatorService, matchMembership,
@@ -58,7 +58,7 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_SessionPastThreshold_IsRemovedFromRegistry()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
+		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		registry.Add(stale);
 
@@ -72,7 +72,7 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_SessionWithinThreshold_StaysConnected()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
+		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
 		registry.Add(fresh);
 
@@ -86,8 +86,8 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_BotSessionPastThreshold_IsNotRemoved()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
-		var bot = new PlayerSession(1, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var registry = new InMemoryUserSessionRegistryTestDouble();
+		var bot = new UserSession(1, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ LastRecvTime = Now.AddSeconds(-301), IsBot = true };
 		registry.Add(bot);
 
@@ -101,7 +101,7 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_DisconnectingUnrestrictedPlayer_BroadcastsLogoutToOthers()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
+		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		var bystander = MakeSession(2, "bystander-token", Now);
 		registry.Add(stale);
@@ -117,7 +117,7 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_SessionPastThreshold_PartsItsChannelsAndNotifiesRemainingMembers()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
+		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var channelRegistry = Substitute.For<IChannelRegistry>();
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		channelRegistry.GetByName("#osu").Returns(channel);
@@ -141,8 +141,8 @@ public class GhostDisconnectServiceTests
 	[Fact]
 	public async Task RunOnce_SessionPastThreshold_RemovesBotSpectateRelationship()
 	{
-		var registry = new InMemoryPlayerSessionRegistryTestDouble();
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var registry = new InMemoryUserSessionRegistryTestDouble();
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		registry.Add(bot);
@@ -160,9 +160,9 @@ public class GhostDisconnectServiceTests
 	}
 
 	/// <summary>
-	///     Regression test for the actual multiplayer-hang bug: a ghosted player whose slot was still
+	///     Regression test for the actual multiplayer-hang bug: a ghosted userSession whose slot was still
 	///     SlotStatus.Playing previously kept that slot stuck forever (GhostDisconnectService never
-	///     called into match-leave), permanently blocking every other player's MatchComplete from ever
+	///     called into match-leave), permanently blocking every other userSession's MatchComplete from ever
 	///     completing the round. Uses the real MatchMembershipService (via MultiplayerTestSupport.Fixture)
 	///     so LeaveAsync's actual slot-reset behavior is exercised, not a fake.
 	/// </summary>
@@ -193,38 +193,38 @@ public class GhostDisconnectServiceTests
 	}
 
 	/// <summary>
-	///     A trivial in-memory double (not the production InMemoryPlayerSessionRegistry, to keep
+	///     A trivial in-memory double (not the production InMemoryUserSessionRegistry, to keep
 	///     this Application-layer test free of an Infrastructure project reference).
 	/// </summary>
-	private sealed class InMemoryPlayerSessionRegistryTestDouble : IPlayerSessionRegistry
+	private sealed class InMemoryUserSessionRegistryTestDouble : IUserSessionRegistry
 	{
-		private readonly Dictionary<string, PlayerSession> _byToken = [];
+		private readonly Dictionary<string, UserSession> _byToken = [];
 
-		public void Add(PlayerSession session)
+		public void Add(UserSession session)
 		{
 			_byToken[session.Token] = session;
 		}
 
-		public void Remove(PlayerSession session)
+		public void Remove(UserSession session)
 		{
 			_byToken.Remove(session.Token);
 		}
 
-		public PlayerSession? GetByToken(string token)
+		public UserSession? GetByToken(string token)
 		{
 			return _byToken.GetValueOrDefault(token);
 		}
 
-		public PlayerSession? GetById(int id)
+		public UserSession? GetById(int id)
 		{
 			return _byToken.Values.FirstOrDefault(s => s.Id == id);
 		}
 
-		public PlayerSession? GetByName(string name)
+		public UserSession? GetByName(string name)
 		{
 			return _byToken.Values.FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
 		}
 
-		public IReadOnlyList<PlayerSession> All => [.. _byToken.Values];
+		public IReadOnlyList<UserSession> All => [.. _byToken.Values];
 	}
 }

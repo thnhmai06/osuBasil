@@ -12,9 +12,9 @@ namespace Basil.Application.Tests.UseCases.Anticheat;
 /// <summary>
 ///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
 ///     Per explicit user decision, restrict/force-logout/random-ban-roll/Discord-webhook side effects
-///     are dropped entirely (Basil has no restrict machinery); instead, a flagged player currently in
+///     are dropped entirely (Basil has no restrict machinery); instead, a flagged userSession currently in
 ///     a match gets a BasilBot warning on that match's own chat channel plus a DM to every referee —
-///     a flagged player outside any match produces no side effect at all.
+///     a flagged userSession outside any match produces no side effect at all.
 /// </summary>
 public class ClientIntegrityServiceTests
 {
@@ -85,7 +85,7 @@ public class ClientIntegrityServiceTests
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, referee, bot);
@@ -112,7 +112,7 @@ public class ClientIntegrityServiceTests
 	public async Task HandleLastFmFlagsAsync_RegistryEditsFlag_PlayerInMatch_WarnsMatchChannel()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);

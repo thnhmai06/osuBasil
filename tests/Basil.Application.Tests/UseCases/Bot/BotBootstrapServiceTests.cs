@@ -1,5 +1,5 @@
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -14,7 +14,7 @@ namespace Basil.Application.Tests.UseCases.Bot;
 public class BotBootstrapServiceTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	private static User MakeUser(string name)

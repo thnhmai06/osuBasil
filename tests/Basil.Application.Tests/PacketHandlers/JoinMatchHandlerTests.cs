@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -7,10 +7,10 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchJoin.</summary>
 public class JoinMatchHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int matchId, string password)
+	private static PacketReader ReaderFor(int matchId, string password)
 	{
 		byte[] body = [.. PacketWriter.WriteInt32(matchId), .. PacketWriter.WriteString(password)];
-		return new BanchoPacketReader(body);
+		return new PacketReader(body);
 	}
 
 	[Fact]

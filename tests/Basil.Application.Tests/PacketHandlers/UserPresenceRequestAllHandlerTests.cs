@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -12,18 +12,18 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// </summary>
 public class UserPresenceRequestAllHandlerTests
 {
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	[Fact]
 	public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
 	{
-		var self = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var unrestrictedOther = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var unrestrictedOther = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		var restrictedOther =
-			new PlayerSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
+			new UserSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
-		var reader = new BanchoPacketReader(PacketWriter.WriteInt32(0));
+		var reader = new PacketReader(PacketWriter.WriteInt32(0));
 
 		await new UserPresenceRequestAllHandler(_sessionRegistry).HandleAsync(self, reader);
 

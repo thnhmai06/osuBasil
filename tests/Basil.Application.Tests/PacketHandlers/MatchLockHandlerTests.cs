@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -8,9 +8,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchLock.</summary>
 public class MatchLockHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int slotId)
+	private static PacketReader ReaderFor(int slotId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
+		return new PacketReader(PacketWriter.WriteInt32(slotId));
 	}
 
 	[Fact]

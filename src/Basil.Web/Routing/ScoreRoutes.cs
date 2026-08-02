@@ -28,7 +28,7 @@ internal static class ScoreRoutes
 	public static void MapScoreRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
-				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+				IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var (p, ps) = Pagination.Normalize(page, pageSize);
@@ -53,7 +53,7 @@ internal static class ScoreRoutes
 			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
 		group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
-				IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+				IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
@@ -96,7 +96,7 @@ internal static class ScoreRoutes
 	///     Builds the public <see cref="ScoreDetailView" /> for a score row, resolving the submitting
 	///     user's embed and the played beatmap's embed (null once the stored md5 no longer resolves).
 	/// </summary>
-	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IPlayerSessionRegistry sessionRegistry,
+	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IUserSessionRegistry sessionRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users,

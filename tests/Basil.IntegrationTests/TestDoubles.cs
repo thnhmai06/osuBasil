@@ -3,6 +3,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Abstractions.Users;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using NSubstitute;
 
@@ -56,11 +57,11 @@ internal static class TestDoubles
 		return repo;
 	}
 
-	/// <summary>Every mapset unknown — used where routing doesn't care about beatmapsets.</summary>
-	public static IMapsetRepository NullMapsetRepository()
+	/// <summary>Every beatmapset unknown — used where routing doesn't care about beatmapsets.</summary>
+	public static IBeatmapsetRepository NullMapsetRepository()
 	{
-		var repo = Substitute.For<IMapsetRepository>();
-		repo.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Mapset?>(null));
+		var repo = Substitute.For<IBeatmapsetRepository>();
+		repo.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(null));
 		return repo;
 	}
 

@@ -1,5 +1,5 @@
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Storage;

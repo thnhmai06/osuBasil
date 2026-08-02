@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Content;
@@ -15,7 +15,7 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	/// <summary>
 	///     Identifies the outcome of a seasonal image creation.
 	/// </summary>
-	public enum CreateResult
+	public enum CreateResult : byte
 	{
 		/// <summary>The image was stored.</summary>
 		Created,
@@ -27,7 +27,7 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	/// <summary>
 	///     Identifies the outcome of a seasonal image replacement.
 	/// </summary>
-	public enum ReplaceResult
+	public enum ReplaceResult : byte
 	{
 		/// <summary>The image was replaced.</summary>
 		Replaced,

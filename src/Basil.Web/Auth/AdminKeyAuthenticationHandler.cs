@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +13,7 @@ namespace Basil.Web.Auth;
 ///     <see cref="AuthenticateResult.NoResult" /> rather than <see cref="AuthenticateResult.Fail(string)" />.
 ///     The request is simply left anonymous instead of being rejected outright, so routes with no
 ///     <c>[Authorize]</c> requirement are unaffected and can still check <c>User.IsInRole(AdminKeyDefaults.Role)</c>
-///     to decide whether to reveal an otherwise-hidden resource (private matches, frozen beatmaps/mapsets).
+///     to decide whether to reveal an otherwise-hidden resource (private matches, frozen beatmaps/beatmapsetRepository).
 ///     Mutation routes instead require the role via <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>, letting
 ///     the framework's own authorization middleware 401 automatically when the role is missing.
 /// </summary>

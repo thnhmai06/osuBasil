@@ -7,22 +7,22 @@ using NSubstitute;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from Player.join_channel/leave_channel, shared between client-initiated packets and server-initiated
+///     Ported from User.join_channel/leave_channel, shared between client-initiated packets and server-initiated
 ///     instance membership (spectator, mp).
 /// </summary>
 public class ChannelMembershipServiceTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_sessionRegistry, _channelRegistry);
 	}
 
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Fact]

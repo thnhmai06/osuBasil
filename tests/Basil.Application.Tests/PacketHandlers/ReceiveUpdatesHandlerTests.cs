@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -8,9 +8,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's ReceiveUpdates.</summary>
 public class ReceiveUpdatesHandlerTests
 {
-	private static PlayerSession MakeSession()
+	private static UserSession MakeSession()
 	{
-		return new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Theory]
@@ -20,7 +20,7 @@ public class ReceiveUpdatesHandlerTests
 	public async Task Handle_ValidValue_UpdatesPresenceFilter(int value, PresenceFilter expected)
 	{
 		var session = MakeSession();
-		var reader = new BanchoPacketReader(PacketWriter.WriteInt32(value));
+		var reader = new PacketReader(PacketWriter.WriteInt32(value));
 
 		await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 
@@ -32,7 +32,7 @@ public class ReceiveUpdatesHandlerTests
 	{
 		var session = MakeSession();
 		session.PresenceFilter = PresenceFilter.Friends;
-		var reader = new BanchoPacketReader(PacketWriter.WriteInt32(99));
+		var reader = new PacketReader(PacketWriter.WriteInt32(99));
 
 		await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 

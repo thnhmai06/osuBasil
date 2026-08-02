@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
@@ -62,7 +62,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
 	private static Beatmap MakeBeatmap(int id, int setId)
 	{
-		var mapset = new Mapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
 			new string('0', 32), id, mapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
@@ -88,8 +88,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task Search_Authenticated_ReturnsFormattedResults()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-		sessionRegistry.Add(new PlayerSession(60, "search-user", "tok", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		sessionRegistry.Add(new UserSession(60, "search-user", "tok", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=search-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
@@ -113,8 +113,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task SearchSet_UnknownSet_ReturnsEmptyBody()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-		sessionRegistry.Add(new PlayerSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		sessionRegistry.Add(new UserSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_setInfo = null;
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-unknown&h=correct-md5&s=999");
@@ -128,8 +128,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task SearchSet_KnownSet_ReturnsFormattedSetLine()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-		sessionRegistry.Add(new PlayerSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		sessionRegistry.Add(new UserSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_setInfo = MakeBeatmap(1, 100);
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-known&h=correct-md5&s=100");

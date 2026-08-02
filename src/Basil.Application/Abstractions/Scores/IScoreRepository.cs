@@ -4,20 +4,83 @@ using Basil.Domain.Scores;
 
 namespace Basil.Application.Abstractions.Scores;
 
+// TODO: Đưa Score record lên Domain
+
 /// <summary>
-///     The first-place score row for a beatmap in a mode, carrying only what a first-place display
-///     needs.
+///     Provides access to the Scores table.
 /// </summary>
-/// <param name="Id">The id of the user who holds first place.</param>
-/// <param name="Name">The name of the user who holds first place.</param>
-public sealed record FirstPlaceScoreRow(int Id, string Name);
+public interface IScoreRepository
+{
+	/// <summary>
+	///     Inserts a new score row.
+	/// </summary>
+	/// <param name="row">The score data to persist.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The auto-increment id of the newly created row.</returns>
+	Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Checks whether a score with the given online checksum already exists.
+	/// </summary>
+	/// <param name="onlineChecksum">The online checksum to look up.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     <see langword="true" /> if a score with the checksum exists; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
+	/// <remarks>
+	///     Feeds the duplicate-submission check. Only the existence is needed, so the lookup never
+	///     materializes a full row.
+	/// </remarks>
+	Task<bool> CheckExistAsync(string onlineChecksum, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Fetches who owns the given score and in which mode it was played.
+	/// </summary>
+	/// <param name="scoreId">The id of the score.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The owner and mode, or <see langword="null" /> when no such score exists.</returns>
+	Task<ScoreOwner?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Fetches one score's full row by id.
+	/// </summary>
+	/// <param name="id">The id of the score to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The full score row, or <see langword="null" /> when no score with this id exists.</returns>
+	Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Fetches a page of scores, newest first.
+	/// </summary>
+	/// <param name="offset">The number of scores to skip before returning results.</param>
+	/// <param name="limit">The maximum number of scores to return.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The requested page of score rows.</returns>
+	Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Fetches every score linked to a given round.
+	/// </summary>
+	/// <param name="roundId">The id of the round.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The round's scores, highest score first, with user names resolved.</returns>
+	Task<IReadOnlyList<ScoreReport>> FetchByRoundAsync(int roundId, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Gets the total number of scores in the database.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The total score count.</returns>
+	Task<int> FetchCountAsync(CancellationToken cancellationToken = default);
+}
 
 /// <summary>
 ///     The subset of a score row needed to resolve who a replay belongs to.
 /// </summary>
 /// <param name="UserId">The id of the user who submitted the score.</param>
 /// <param name="Mode">The game mode the score was played in.</param>
-public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
+public sealed record ScoreOwner(int UserId, GameMode Mode);
 
 /// <summary>
 ///     Every score submitted within one round, as read back for report building.
@@ -39,7 +102,7 @@ public sealed record ScoreOwnerRow(int UserId, GameMode Mode);
 /// <param name="Grade">The letter grade of the play.</param>
 /// <param name="Perfect">A value that indicates whether the play had a perfect combo.</param>
 /// <param name="SubmittedAt">The time the score was submitted, in UTC.</param>
-public sealed record RoundScoreRow(
+public sealed record ScoreReport(
 	long Id,
 	int UserId,
 	string UserName,
@@ -87,7 +150,7 @@ public sealed record RoundScoreRow(
 ///     The score column stores the raw value with no pp component: Basil has no pp system, so the
 ///     insert always writes 0 for it.
 /// </remarks>
-public sealed record ScoreInsertRow(
+public record ScoreInsertRow(
 	string MapMd5,
 	long Score,
 	double Accuracy,
@@ -139,7 +202,7 @@ public sealed record ScoreInsertRow(
 /// <param name="SubmittedAt">The time the score was submitted, in UTC.</param>
 /// <remarks>
 ///     Whether the score's beatmap is still the one actually played is a read-time fact, decided by
-///     whether <see cref="MapMd5" /> still resolves through the beatmap repository. It is not a
+///     whether <see cref="ScoreInsertRow.MapMd5" /> still resolves through the beatmap repository. It is not a
 ///     stored flag; the embed is built at the Web edge, not from this row alone.
 /// </remarks>
 public sealed record ScoreRow(
@@ -165,87 +228,6 @@ public sealed record ScoreRow(
 	int UserId,
 	bool Perfect,
 	string OnlineChecksum,
-	DateTime SubmittedAt);
-
-/// <summary>
-///     Provides access to the Scores table.
-/// </summary>
-public interface IScoreRepository
-{
-	/// <summary>
-	///     Inserts a new score row.
-	/// </summary>
-	/// <param name="row">The score data to persist.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The auto-increment id of the newly created row.</returns>
-	Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Checks whether a score with the given online checksum already exists.
-	/// </summary>
-	/// <param name="onlineChecksum">The online checksum to look up.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     <see langword="true" /> if a score with the checksum exists; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
-	/// <remarks>
-	///     Feeds the duplicate-submission check. Only the existence is needed, so the lookup never
-	///     materializes a full row.
-	/// </remarks>
-	Task<bool> ExistsByOnlineChecksumAsync(string onlineChecksum, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Fetches the highest-scoring unrestricted user on a beatmap in a mode.
-	/// </summary>
-	/// <param name="mapMd5">The content md5 of the beatmap.</param>
-	/// <param name="mode">The game mode.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The first-place row, or <see langword="null" /> when no unrestricted score exists.</returns>
-	/// <remarks>
-	///     Only unrestricted users are eligible for first place. Ranking is by raw score, since
-	///     Basil has no pp system.
-	/// </remarks>
-	Task<FirstPlaceScoreRow?> FetchFirstPlaceScoreAsync(string mapMd5, GameMode mode,
-		CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Fetches who owns the given score and in which mode it was played.
-	/// </summary>
-	/// <param name="scoreId">The id of the score.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The owner and mode, or <see langword="null" /> when no such score exists.</returns>
-	Task<ScoreOwnerRow?> FetchOwnerAsync(long scoreId, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Fetches one score's full row by id.
-	/// </summary>
-	/// <param name="id">The id of the score to read.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The full score row, or <see langword="null" /> when no score with this id exists.</returns>
-	Task<ScoreRow?> FetchByIdAsync(long id, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Fetches a page of scores, newest first.
-	/// </summary>
-	/// <param name="offset">The number of scores to skip before returning results.</param>
-	/// <param name="limit">The maximum number of scores to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The requested page of score rows.</returns>
-	Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Fetches every score linked to a given round.
-	/// </summary>
-	/// <param name="roundId">The id of the round.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The round's scores, highest score first, with user names resolved.</returns>
-	Task<IReadOnlyList<RoundScoreRow>> FetchByRoundIdAsync(int roundId, CancellationToken cancellationToken = default);
-
-	/// <summary>
-	///     Gets the total number of scores in the database.
-	/// </summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The total score count.</returns>
-	Task<int> FetchCountAsync(CancellationToken cancellationToken = default);
-}
+	DateTime SubmittedAt) : ScoreInsertRow(MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki,
+	NKatu, Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, OnlineChecksum, SubmittedAt, RoundId,
+	Team);

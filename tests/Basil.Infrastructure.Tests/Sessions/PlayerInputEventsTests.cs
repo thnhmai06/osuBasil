@@ -3,8 +3,8 @@ using Basil.Infrastructure.Sessions;
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>
-///     Player-scoped sibling of MatchLiveEvents, feeding the /spec/{id} SSE channel — keyed by
-///     player id rather than match id, since input frames are published regardless of match
+///     User-scoped sibling of MatchLiveEvents, feeding the /spec/{id} SSE channel — keyed by
+///     userSession id rather than match id, since input frames are published regardless of match
 ///     membership (see SpectateFramesHandler).
 /// </summary>
 public class PlayerInputEventsTests

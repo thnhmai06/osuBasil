@@ -10,7 +10,7 @@ public class CachingBeatmapRepositoryTests
 {
 	private static Beatmap MakeBeatmap(int id, string md5)
 	{
-		var mapset = new Mapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
+		var mapset = new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 		return new Beatmap(md5, id, mapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
@@ -20,8 +20,13 @@ public class CachingBeatmapRepositoryTests
 	public async Task FetchOneAsync_ById_SecondCall_DoesNotHitInner()
 	{
 		var beatmap = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingBeatmapRepository();
-		inner.ById[1] = beatmap;
+		var inner = new CountingBeatmapRepository
+		{
+			ById =
+			{
+				[1] = beatmap
+			}
+		};
 		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapRepository>.Instance);
 
@@ -35,8 +40,13 @@ public class CachingBeatmapRepositoryTests
 	public async Task FetchOneAsync_ByMd5_SecondCall_DoesNotHitInner()
 	{
 		var beatmap = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingBeatmapRepository();
-		inner.ByMd5[beatmap.Md5] = beatmap;
+		var inner = new CountingBeatmapRepository
+		{
+			ByMd5 =
+			{
+				[beatmap.Md5] = beatmap
+			}
+		};
 		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapRepository>.Instance);
 
@@ -63,9 +73,17 @@ public class CachingBeatmapRepositoryTests
 	public async Task UpsertAsync_InvalidatesBothIdAndMd5Entries()
 	{
 		var original = MakeBeatmap(1, new string('a', 32));
-		var inner = new CountingBeatmapRepository();
-		inner.ById[1] = original;
-		inner.ByMd5[original.Md5] = original;
+		var inner = new CountingBeatmapRepository
+		{
+			ById =
+			{
+				[1] = original
+			},
+			ByMd5 =
+			{
+				[original.Md5] = original
+			}
+		};
 		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapRepository>.Instance);
 

@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;

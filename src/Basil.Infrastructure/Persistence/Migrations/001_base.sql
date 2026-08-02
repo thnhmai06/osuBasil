@@ -26,7 +26,7 @@ create index Users_Privilege_index on Users (Privilege);
 -- null) — see ScoreSubmissionService.IncrementAsync call site.
 -- Plays: submission count, solo or multiplayer, pass or fail.
 -- No Accuracy column: this server reports a fixed 100% (see PacketBuilders.BuildUserStats) rather
--- than computing/storing a real weighted accuracy.
+-- than computing/storing real weighted accuracy.
 create table UserStats
 (
 	Id          int              not null,
@@ -62,8 +62,8 @@ create table Mapsets
 	CreatedAt      datetime              not null,
 	IsFrozen       boolean default false not null,
 	IsPrivate      boolean default false not null,
-	BackgroundFile text null,
-	AudioFile      text null
+	BackgroundFile text                  null,
+	AudioFile      text                  null
 );
 
 -- BackgroundFile/AudioFile: the beatmap's background image/audio filename (from its .osu
@@ -76,26 +76,25 @@ create table Mapsets
 -- carrying MaxCombo too (no standalone MaxCombo column — single source of truth).
 create table Beatmaps
 (
-	Id          int          not null primary key,
-	MapsetId    int          not null,
-	Md5         char(32)     not null,
-	Version     varchar(128) not null,
-	Filename    varchar(256) not null,
-	TotalLength int          not null,
-	Mode        int          not null,
-	Bpm         float(12, 2
-) default 0.00  not null,
-    Cs             float(4, 2)  default 0.00  not null,
-    Ar             float(4, 2)  default 0.00  not null,
-    Od             float(4, 2)  default 0.00  not null,
-    Hp             float(4, 2)  default 0.00  not null,
-    Sr             float(6, 3)  default 0.000 not null,
-    BackgroundFile text                       null,
-    AudioFile      text                       null,
-    PreviewTime    int                        null,
-    ObjectCounts   text         default '{"mode":0,"Total":0,"MaxCombo":0,"Circles":0,"Sliders":0,"Spinners":0}' not null,
-    constraint Beatmaps_Md5_uindex unique (Md5),
-    constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
+	Id             int                                                                                           not null primary key,
+	MapsetId       int                                                                                           not null,
+	Md5            char(32)                                                                                      not null,
+	Version        varchar(128)                                                                                  not null,
+	Filename       varchar(256)                                                                                  not null,
+	TotalLength    int                                                                                           not null,
+	Mode           int                                                                                           not null,
+	Bpm            float(12, 2) default 0.00                                                                     not null,
+	Cs             float(4, 2)  default 0.00                                                                     not null,
+	Ar             float(4, 2)  default 0.00                                                                     not null,
+	Od             float(4, 2)  default 0.00                                                                     not null,
+	Hp             float(4, 2)  default 0.00                                                                     not null,
+	Sr             float(6, 3)  default 0.000                                                                    not null,
+	BackgroundFile text                                                                                          null,
+	AudioFile      text                                                                                          null,
+	PreviewTime    int                                                                                           null,
+	ObjectCounts   text         default '{"mode":0,"Total":0,"MaxCombo":0,"Circles":0,"Sliders":0,"Spinners":0}' not null,
+	constraint Beatmaps_Md5_uindex unique (Md5),
+	constraint Beatmaps_Mapsets_Id_fk foreign key (MapsetId) references Mapsets (Id) on delete cascade
 );
 create index Beatmaps_MapsetId_index on Beatmaps (MapsetId);
 create index Beatmaps_Filename_index on Beatmaps (Filename);
@@ -138,22 +137,22 @@ create table IngameLogins
 	Id         INTEGER PRIMARY KEY AUTOINCREMENT,
 	UserId     int         not null,
 	Ip         varchar(45) not null,
-	OsuVer     date        not null,
+	OsuVersion date        not null,
 	OsuStream  varchar(11) not null,
 	LoggedInAt datetime    not null
 );
 
 -- CreatedAt is always supplied by the app on insert (see SqliteLogRepository) — never UPDATEd
--- afterwards, so no ON UPDATE trigger is needed (MySQL's `on update CURRENT_TIMESTAMP` here was
+-- afterward, so no ON UPDATE trigger is needed (MySQL's `on update CURRENT_TIMESTAMP` here was
 -- dead weight; nothing ever updates a UserLogs row).
 create table UserLogs
 (
 	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
-	FromId    int         not null,
-	ToId      int         not null,
-	Action    varchar(32) not null,
+	FromId    int           not null,
+	ToId      int           not null,
+	Action    varchar(32)   not null,
 	Msg       varchar(2048) null,
-	CreatedAt datetime    not null
+	CreatedAt datetime      not null
 );
 
 -- One multiplayer room = one Match. EndedAt is null while the room is still open in-memory.
@@ -164,7 +163,7 @@ create table Matches
 	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
 	Name      varchar(50) not null,
 	CreatedAt datetime    not null,
-	EndedAt   datetime null
+	EndedAt   datetime    null
 );
 
 -- One beatmap played within a Match = one Round. WinningTeam is intentionally NOT stored here —
@@ -192,7 +191,7 @@ create table Rounds
 );
 create index Rounds_MatchId_index on Rounds (MatchId);
 
--- MapMd5/Mode kept denormalised (not just via Round) so the solo-leaderboard-shaped read paths
+-- MapMd5/Mode kept denormalized (not just via Round) so the solo-leaderboard-shaped read paths
 -- (osu-osz2-getscores.php) can keep querying by map without joining through Rounds. RoundId/Team
 -- are null for a score submitted outside any match (not linked to a Round). A score row is never
 -- hard-deleted when its beatmap changes or disappears — its validity is a read-time fact instead
@@ -200,31 +199,30 @@ create index Rounds_MatchId_index on Rounds (MatchId);
 -- host's response is the equivalent signal an IsInvalidated column used to carry.
 create table Scores
 (
-	Id       INTEGER PRIMARY KEY AUTOINCREMENT,
-	RoundId  int null,
-	Team     int null,
-	MapMd5   char(32) not null,
-	Score    bigint   not null,
-	Accuracy float(6, 3
-) not null,
-    MaxCombo       int                    not null,
-    Mods           int                    not null,
-    N300           int                    not null,
-    N100           int                    not null,
-    N50            int                    not null,
-    NMiss          int                    not null,
-    NGeki          int                    not null,
-    NKatu          int                    not null,
-    Grade          varchar(2) default 'N' not null,
-    Mode           int                    not null,
-    PlayTime       datetime               not null,
-    TimeElapsed    int                    not null,
-    ClientFlags    int                    not null,
-    UserId         int                    not null,
-    Perfect        boolean                not null,
-    OnlineChecksum char(32)               not null,
-    SubmittedAt    datetime               not null,
-    constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
+	Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	RoundId        int                    null,
+	Team           int                    null,
+	MapMd5         char(32)               not null,
+	Score          bigint                 not null,
+	Accuracy       float(6, 3)            not null,
+	MaxCombo       int                    not null,
+	Mods           int                    not null,
+	N300           int                    not null,
+	N100           int                    not null,
+	N50            int                    not null,
+	NMiss          int                    not null,
+	NGeki          int                    not null,
+	NKatu          int                    not null,
+	Grade          varchar(2) default 'N' not null,
+	Mode           int                    not null,
+	PlayTime       datetime               not null,
+	TimeElapsed    int                    not null,
+	ClientFlags    int                    not null,
+	UserId         int                    not null,
+	Perfect        boolean                not null,
+	OnlineChecksum char(32)               not null,
+	SubmittedAt    datetime               not null,
+	constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
 );
 create index Scores_MapMd5_index on Scores (MapMd5);
 create index Scores_Score_index on Scores (Score);
@@ -234,17 +232,17 @@ create index Scores_OnlineChecksum_index on Scores (OnlineChecksum);
 create index Scores_RoundId_index on Scores (RoundId);
 
 -- Chronological log of match lifecycle events. ActorUserId is null for system actions
--- (e.g. server shutdown recovery, external API). Usernames denormalised for self-contained TRT.
+-- (e.g., server shutdown recovery, external API). Usernames denormalized for self-contained TRT.
 create table MatchEvents
 (
 	Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-	MatchId        int      not null,
-	EventType      int      not null,
-	ActorUserId    int null,
-	ActorUserName  varchar(32) null,
-	TargetUserId   int null,
-	TargetUserName varchar(32) null,
-	Timestamp      datetime not null,
+	MatchId        int          not null,
+	EventType      int          not null,
+	ActorUserId    int          null,
+	ActorUserName  varchar(32)  null,
+	TargetUserId   int          null,
+	TargetUserName varchar(32)  null,
+	Timestamp      datetime     not null,
 	Detail         varchar(512) null,
 	constraint MatchEvents_Matches_Id_fk foreign key (MatchId) references Matches (Id)
 );
@@ -315,14 +313,6 @@ insert into UserStats (Id, Mode)
 values (0, 2);
 insert into UserStats (Id, Mode)
 values (0, 3);
-insert into UserStats (Id, Mode)
-values (0, 4);
-insert into UserStats (Id, Mode)
-values (0, 5);
-insert into UserStats (Id, Mode)
-values (0, 6);
-insert into UserStats (Id, Mode)
-values (0, 8);
 
 insert into Channels (Name, Topic, ReadPrivilege, WritePrivilege, AutoJoin)
 values ('#osu', 'General discussion.', 1, 2, true),

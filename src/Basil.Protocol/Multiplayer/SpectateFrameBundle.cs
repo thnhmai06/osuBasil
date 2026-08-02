@@ -38,8 +38,8 @@ public enum ReplayAction : byte
 /// <param name="ExtraByte">The leading extra value of the bundle, whose meaning depends on <see cref="Action" />.</param>
 /// <param name="Sequence">The sequence number of the bundle.</param>
 public sealed record SpectateFrameBundle(
-	IReadOnlyList<ReplayFrameData> Frames,
-	ScoreFrameData ScoreFrame,
+	IReadOnlyList<ReplayFrame> Frames,
+	ScoreFrame ScoreFrame,
 	ReplayAction Action,
 	int ExtraByte,
 	int Sequence);

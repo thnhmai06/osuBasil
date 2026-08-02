@@ -5,7 +5,7 @@ namespace Basil.Protocol.Packets;
 
 /// <summary>
 ///     Low-level binary primitives for the Bancho protocol: ULEB128 lengths, osu!-format strings,
-///     32-bit integer lists, and the 7-byte packet header. All multi-byte integers are little-endian,
+///     32-bit integer lists, and the 7-byte packet header. All multibyte integers are little-endian,
 ///     per the osu! protocol.
 /// </summary>
 public static class PacketWriter

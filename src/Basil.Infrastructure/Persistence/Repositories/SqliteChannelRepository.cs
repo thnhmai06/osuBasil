@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Channels;
+using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;

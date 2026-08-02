@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Social;
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
@@ -17,15 +18,15 @@ public class FriendAddHandlerTests
 		return new FriendAddHandler(_relationships);
 	}
 
-	private static BanchoPacketReader TargetReader(int targetId)
+	private static PacketReader TargetReader(int targetId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(targetId));
+		return new PacketReader(PacketWriter.WriteInt32(targetId));
 	}
 
 	[Fact]
 	public async Task HandleAsync_NoExistingRelationship_CreatesFriendRelationship()
 	{
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_relationships.FetchOneAsync(1, 2).Returns((Relationship?)null);
 
 		await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -36,7 +37,7 @@ public class FriendAddHandlerTests
 	[Fact]
 	public async Task HandleAsync_RelationshipAlreadyExists_DoesNotCreateAgain()
 	{
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_relationships.FetchOneAsync(1, 2).Returns(new Relationship(1, 2, RelationshipType.Block));
 
 		await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -47,7 +48,7 @@ public class FriendAddHandlerTests
 	[Fact]
 	public async Task HandleAsync_TargetIsSelf_DoesNothing()
 	{
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, TargetReader(1));
 

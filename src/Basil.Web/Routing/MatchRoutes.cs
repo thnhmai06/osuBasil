@@ -2,7 +2,7 @@ using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Json;
+using Basil.Application.Formats;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -160,7 +160,7 @@ internal static class MatchRoutes
 			.WithDescription("Server-Sent Events stream (event name `main`) of the full live snapshot: " +
 			                 "room config, host, referees, current beatmap, in-progress flag, and every slot. The first " +
 			                 "event is the full current state; every event after is an RFC 7396 JSON Merge Patch against " +
-			                 "the previous one. This channel carries no per-player score data, see " +
+			                 "the previous one. This channel carries no per-userSession score data, see " +
 			                 "`GET /matches/{matchId}/live/{slotIndex}` for that. 409 (enveloped) if the match isn't " +
 			                 "currently live, since a stream that would never receive a frame is never opened. For a " +
 			                 "one-shot JSON snapshot including historical rounds/events, see `GET /matches/{matchId}`. " +
@@ -197,7 +197,7 @@ internal static class MatchRoutes
 
 	private static async Task<IResult> HandleList(
 		[FromQuery] string? status, [FromQuery] int? page, [FromQuery] int? pageSize,
-		HttpContext context, IMatchRegistry matchRegistry, IMatchPersistenceRepository matchPersistence,
+		HttpContext context, IMatchRegistry matchRegistry, IMatchRepository matchRepository,
 		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var (p, ps) = Pagination.Normalize(page, pageSize);
@@ -205,7 +205,7 @@ internal static class MatchRoutes
 		if (mode is not ("online" or "offline" or "all")) mode = "online";
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
-		var rows = await matchPersistence.FetchAllMatchesAsync(cancellationToken);
+		var rows = await matchRepository.FetchAllMatchesAsync(cancellationToken);
 		var filtered = rows
 			.Select(row => (Row: row, Live: matchRegistry.GetByDbId(row.Id)))
 			.Where(t =>
@@ -232,13 +232,13 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchMembershipService matchMembership,
-		MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry, IUserRepository users,
+		MatchControlService matchControl, IUserSessionRegistry sessionRegistry, IUserRepository users,
 		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
 		if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
 
-		var data = new ReadMatchResult(
+		var data = new MatchState(
 			0, false, 0, 0, name, body.Password ?? "",
 			"", 0, "",
 			[], [], [], 0, 0,
@@ -271,7 +271,7 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleSettingsGet(int matchId, IMatchRegistry matchRegistry,
-		IPlayerSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+		IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -309,7 +309,7 @@ internal static class MatchRoutes
 
 	private static IResult HandleLiveSlotStream(int matchId, int slotIndex, HttpContext context,
 		IMatchRegistry matchRegistry, IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents,
-		IPlayerSessionRegistry sessionRegistry, CancellationToken cancellationToken)
+		IUserSessionRegistry sessionRegistry, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null || slotIndex is < 1 or > 16)
@@ -325,7 +325,7 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleSettingsReplace(int matchId, ReplaceMatchSettingsRequest body,
-		IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
+		IMatchRegistry matchRegistry, MatchControlService matchControl, IUserSessionRegistry sessionRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -337,7 +337,7 @@ internal static class MatchRoutes
 			await matchControl.SetNameAsync(match, body.Name, cancellationToken);
 			await matchControl.SetPasswordAsync(match, body.Password ?? "", cancellationToken);
 			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
-			matchControl.SetLocked(match, body.IsLocked);
+			MatchControlService.SetLocked(match, body.IsLocked);
 			await matchControl.SetSizeAsync(match, body.Size, cancellationToken);
 
 			var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
@@ -357,7 +357,7 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleSettingsUpdate(int matchId, UpdateMatchSettingsRequest body,
-		IMatchRegistry matchRegistry, MatchControlService matchControl, IPlayerSessionRegistry sessionRegistry,
+		IMatchRegistry matchRegistry, MatchControlService matchControl, IUserSessionRegistry sessionRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -420,7 +420,7 @@ internal static class MatchRoutes
 		if (body.Password is not null) await matchControl.SetPasswordAsync(match, body.Password, cancellationToken);
 		if (body.IsPrivate is not null)
 			await matchControl.SetPrivateAsync(match, body.IsPrivate.Value, cancellationToken);
-		if (body.IsLocked is not null) matchControl.SetLocked(match, body.IsLocked.Value);
+		if (body.IsLocked is not null) MatchControlService.SetLocked(match, body.IsLocked.Value);
 		if (body.Size is not null) await matchControl.SetSizeAsync(match, body.Size.Value, cancellationToken);
 
 		if (body.MapId is not null)

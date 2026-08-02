@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Infrastructure.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

@@ -31,9 +31,9 @@ internal static class MenuIconRoutes
 	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMenuIconRoutes(this RouteGroupBuilder group)
 	{
-		group.MapGet("/menuicon/icon", (MenuIconService menuIcon) =>
+		group.MapGet("/menuicon/icon", () =>
 			{
-				var path = menuIcon.FindIconPath();
+				var path = MenuIconService.FindIconPath();
 				if (path is null) return Results.NotFound();
 
 				var contentType = Path.GetExtension(path).ToLowerInvariant() switch
@@ -68,9 +68,9 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-		group.MapDelete("/menuicon/icon", (MenuIconService menuIcon, ILogger<MenuIconRoutesLog> logger) =>
+		group.MapDelete("/menuicon/icon", (ILogger<MenuIconRoutesLog> logger) =>
 			{
-				menuIcon.DeleteIcon();
+				MenuIconService.DeleteIcon();
 				logger.LogInformation("Menu icon deleted via admin API");
 				return Results.Json(new MenuIconChangedView(true,
 					$"Menu icon removed.{LoginEffectNote}"));
@@ -86,10 +86,10 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK,
 				new MenuIconChangedView(true, $"Menu icon removed.{LoginEffectNote}"));
 
-		group.MapGet("/menuicon/url", (MenuIconService menuIcon) =>
+		group.MapGet("/menuicon/url", () =>
 			{
-				var url = menuIcon.ReadUrl()
-				          ?? (menuIcon.FindIconPath() is not null ? "https://github.com/thnhmai06/osuBasil" : null);
+				var url = MenuIconService.ReadUrl()
+				          ?? (MenuIconService.FindIconPath() is not null ? "https://github.com/thnhmai06/osuBasil" : null);
 				return Results.Json(new MenuIconUrlView(url));
 			})
 			.WithGroupName("basilapi")
@@ -102,10 +102,10 @@ internal static class MenuIconRoutes
 			.Produces<MenuIconUrlView>()
 			.WithExample(StatusCodes.Status200OK, new MenuIconUrlView("https://github.com/thnhmai06/osuBasil"));
 
-		group.MapPut("/menuicon/url", async (MenuIconUrlBody body, MenuIconService menuIcon,
+		group.MapPut("/menuicon/url", async (MenuIconUrlBody body,
 				ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
-				await menuIcon.SaveUrlAsync(body.Url, cancellationToken);
+				await MenuIconService.SaveUrlAsync(body.Url, cancellationToken);
 				logger.LogInformation("Menu icon URL updated via admin API");
 				return Results.Json(new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));
 			})
@@ -122,7 +122,7 @@ internal static class MenuIconRoutes
 				new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));
 	}
 
-	private static async Task<IResult> HandleReplaceIcon(HttpContext context, MenuIconService menuIcon,
+	private static async Task<IResult> HandleReplaceIcon(HttpContext context,
 		ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
@@ -137,7 +137,7 @@ internal static class MenuIconRoutes
 			return Results.BadRequest(new ErrorResponse("Only .png/.jpg/.jpeg/.gif uploads are accepted."));
 
 		await using var stream = file.OpenReadStream();
-		await menuIcon.SaveIconAsync(stream, extension, cancellationToken);
+		await MenuIconService.SaveIconAsync(stream, extension, cancellationToken);
 		logger.LogInformation("Menu icon updated via admin API");
 		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));
 	}

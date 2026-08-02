@@ -8,13 +8,14 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Microsoft.Extensions.Logging;
+// ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Scores;
 
 /// <summary>
 ///     Identifies the outcome of a score submission attempt.
 /// </summary>
-public enum ScoreSubmissionResultCode
+public enum ScoreSubmissionResultCode : byte
 {
 	/// <summary>The score was stored successfully.</summary>
 	Success,
@@ -22,7 +23,7 @@ public enum ScoreSubmissionResultCode
 	/// <summary>The submitted beatmap MD5 does not match any stored beatmap.</summary>
 	BeatmapNotFound,
 
-	/// <summary>The submitting player could not be authenticated as an online player.</summary>
+	/// <summary>The submitting userSession could not be authenticated as an online userSession.</summary>
 	PlayerNotFound,
 
 	/// <summary>A score with the same online checksum was already stored.</summary>
@@ -36,7 +37,7 @@ public enum ScoreSubmissionResultCode
 ///     The full colon-delimited submission: the beatmap MD5, the username, then the sixteen
 ///     score fields.
 /// </param>
-/// <param name="PasswordMd5">The MD5 hash of the player's password.</param>
+/// <param name="PasswordMd5">The MD5 hash of the userSession's password.</param>
 /// <param name="OsuVersion">The osu! version string sent with the submission.</param>
 /// <param name="ClientHash">The client hash of the submitting client.</param>
 /// <param name="UniqueIds">The pipe-delimited unique-id string sent by the client.</param>
@@ -74,11 +75,11 @@ public sealed record ScoreSubmissionRequest(
 /// <param name="Score">The stored submission.</param>
 /// <param name="ScoreId">The database id assigned to the stored score.</param>
 /// <param name="Beatmap">The beatmap the score was played on.</param>
-/// <param name="PlayerName">The submitting player's name.</param>
+/// <param name="PlayerName">The submitting userSession's name.</param>
 /// <param name="Rank">The per-beatmap rank reported back to the client, or <see langword="null" /> for a failed play.</param>
 /// <remarks>
 ///     <see cref="ScoreId" /> is database-generated and never carried on
-///     <see cref="Submission" />. The beatmap and player name are looked up once during submission
+///     <see cref="Submission" />. The beatmap and userSession name are looked up once during submission
 ///     and threaded through rather than re-queried by the response path.
 /// </remarks>
 public sealed record SubmittedScoreResult(
@@ -102,24 +103,24 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 ///     Persists a score submitted by an osu! client and reports the outcome back.
 /// </summary>
 /// <remarks>
-///     Runs in Basil's no-pp, fully-offline scope: every valid submission is stored
+///     Runs in Basil's no-pp, fully offline scope: every valid submission is stored
 ///     unconditionally, solo or in a room, with no pp calculation and no fetch of the beatmap's
 ///     <c>.osu</c> file. The only server-side rejections are an unknown beatmap and a duplicate
-///     online checksum. When the submitting player is in a multiplayer match with an active round,
+///     online checksum. When the submitting userSession is in a multiplayer match with an active round,
 ///     the score is opportunistically linked to that round
 ///     (<see cref="Basil.Application.Sessions.Multiplayer.MatchSession.CurrentRoundId" />) with the
-///     player's slot team, which is what lets the match report and score read paths reconstruct a
+///     userSession's slot team, which is what lets the match report and score read paths reconstruct a
 ///     match's results. A solo score, or one that arrives after its round already ended, is stored
 ///     with a null round id and team instead. Every stored submission, pass or fail, also bumps
-///     <see cref="IStatsRepository.IncrementAsync" /> (TotalScore always, RankedScore only when
-///     linked to a round) and refreshes the player's in-memory
-///     <see cref="PlayerSession.ModeStats" /> cache, so the next user-stats packet reflects the
+///     <see cref="IUserStatRepository.IncrementAsync" /> (TotalScore always, RankedScore only when
+///     linked to a round) and refreshes the userSession's in-memory
+///     <see cref="UserSession.ModeStats" /> cache, so the next user-stats packet reflects the
 ///     change without a re-login.
 /// </remarks>
 public sealed class ScoreSubmissionService(
 	IBeatmapRepository beatmaps,
 	IScoreRepository scores,
-	IStatsRepository stats,
+	IUserStatRepository userStatRepository,
 	AuthenticationService authentication,
 	IReplayStorage replayStorage,
 	ILogger<ScoreSubmissionService> logger)
@@ -137,9 +138,9 @@ public sealed class ScoreSubmissionService(
 	/// <param name="cancellationToken">A token that cancels the submission.</param>
 	/// <returns>A <see cref="ScoreSubmissionOutcome" /> describing the result.</returns>
 	/// <remarks>
-	///     Rejects the submission when the beatmap is unknown or the player cannot be authenticated
-	///     as an online player. A valid, non-duplicate submission is stored unconditionally, its
-	///     replay file written when present and large enough, and the result linked to the player's
+	///     Rejects the submission when the beatmap is unknown or the userSession cannot be authenticated
+	///     as an online userSession. A valid, non-duplicate submission is stored unconditionally, its
+	///     replay file is written when present and large enough, and the result linked to the userSession's
 	///     active match round when one exists.
 	/// </remarks>
 	public async Task<ScoreSubmissionOutcome> SubmitAsync(ScoreSubmissionRequest request,
@@ -190,8 +191,8 @@ public sealed class ScoreSubmissionService(
 			player.Status.Mode = score.Mode;
 		}
 
-		// Captured before the checksum lock so a slot/team change racing with this submission
-		// cannot matter: the round the player was actually playing is whatever their match and slot
+		// Captured before the checksum lock, so slot/team change racing with this submission
+		// cannot matter: the round the userSession was actually playing is whatever their match and slot
 		// said when gameplay ended.
 		var match = player.Match;
 		var roundId = match?.CurrentRoundId;
@@ -203,7 +204,7 @@ public sealed class ScoreSubmissionService(
 		await checksumLock.WaitAsync(cancellationToken);
 		try
 		{
-			if (await scores.ExistsByOnlineChecksumAsync(score.ClientChecksum, cancellationToken))
+			if (await scores.CheckExistAsync(score.ClientChecksum, cancellationToken))
 			{
 				logger.LogInformation("Score submission rejected: UserId={UserId} ClientChecksum={ClientChecksum} " +
 				                      "Reason=Duplicate", player.Id, score.ClientChecksum);
@@ -225,7 +226,8 @@ public sealed class ScoreSubmissionService(
 			var scoreId = await scores.CreateAsync(BuildInsertRow(score, roundId, team), cancellationToken);
 
 			var rankedScoreDelta = roundId is not null ? score.Score : 0L;
-			await stats.IncrementAsync(player.Id, score.Mode, score.Score, rankedScoreDelta, cancellationToken);
+			await userStatRepository.IncrementAsync(player.Id, score.Mode, score.Score, rankedScoreDelta,
+				cancellationToken);
 
 			var prevStats = player.ModeStats.GetValueOrDefault(score.Mode);
 			player.ModeStats[score.Mode] = new CachedPlayerStats(
@@ -262,10 +264,10 @@ public sealed class ScoreSubmissionService(
 	/// <remarks>
 	///     Every passed score is unconditionally reported at rank 1, never compared against earlier
 	///     scores, so the osu! client always believes it achieved a top score and uploads its
-	///     replay. This rank is the per-beatmap chart rank shown on the results screen and is
-	///     unrelated to the player's overall rank
+	///     replay. This rank is the per-beatmap chart rank shown on the result screen and is
+	///     unrelated to the userSession's overall rank
 	///     (<see cref="Basil.Application.Sessions.CachedPlayerStats.Rank" />), which holds the
-	///     player's own user id instead (see
+	///     userSession's own user id instead (see
 	///     <see cref="Basil.Application.Services.Authentication.LoginService" />).
 	/// </remarks>
 	private static (Submission Score, int? Rank) CalculateSubmissionStatus(

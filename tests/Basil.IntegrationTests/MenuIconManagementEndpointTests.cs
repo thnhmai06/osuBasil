@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

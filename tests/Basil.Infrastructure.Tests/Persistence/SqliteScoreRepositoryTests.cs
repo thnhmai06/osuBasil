@@ -79,7 +79,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		var id = await _repository.CreateAsync(MakeInsertRow(mapMd5, 316, 750_000, Guid.NewGuid().ToString("N")));
 
 		Assert.True(id > 0);
-		Assert.True(await _repository.ExistsByOnlineChecksumAsync((await FetchChecksumAsync(id))!));
+		Assert.True(await _repository.CheckExistAsync((await FetchChecksumAsync(id))!));
 	}
 
 	private async Task<string?> FetchChecksumAsync(long scoreId)
@@ -92,7 +92,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 	[Fact]
 	public async Task ExistsByOnlineChecksum_NotFound_ReturnsFalse()
 	{
-		Assert.False(await _repository.ExistsByOnlineChecksumAsync(Guid.NewGuid().ToString("N")));
+		Assert.False(await _repository.CheckExistAsync(Guid.NewGuid().ToString("N")));
 	}
 
 	[Fact]
@@ -104,29 +104,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		await InsertScoreAsync(mapMd5, 317, 500_000);
 		await _repository.CreateAsync(MakeInsertRow(mapMd5, 317, 500_000, checksum));
 
-		Assert.True(await _repository.ExistsByOnlineChecksumAsync(checksum));
-	}
-
-	[Fact]
-	public async Task FetchFirstPlaceScore_ReturnsTopUnrestrictedScore()
-	{
-		var mapMd5 = new string('e', 32);
-		await InsertUserAsync(319, "quinn");
-		await InsertUserAsync(320, "restricted-rick", restricted: true);
-		await InsertScoreAsync(mapMd5, 319, 700_000);
-		await InsertScoreAsync(mapMd5, 320, 999_999);
-
-		var firstPlace = await _repository.FetchFirstPlaceScoreAsync(mapMd5, GameMode.Standard);
-
-		Assert.NotNull(firstPlace);
-		Assert.Equal("quinn", firstPlace.Name);
-	}
-
-	[Fact]
-	public async Task FetchFirstPlaceScore_NoScores_ReturnsNull()
-	{
-		var mapMd5 = new string('f', 32);
-		Assert.Null(await _repository.FetchFirstPlaceScoreAsync(mapMd5, GameMode.Standard));
+		Assert.True(await _repository.CheckExistAsync(checksum));
 	}
 
 	[Fact]
@@ -175,7 +153,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 	[Fact]
 	public async Task FetchPage_ReturnsNewestFirst_RespectingOffsetAndLimit()
 	{
-		// FetchPageAsync has no per-mapset/round scoping to filter by (it lists every score, matching
+		// FetchPageAsync has no per-beatmapset/round scoping to filter by (it lists every score, matching
 		// GET /scores), so this uses its own dedicated database rather than the class-shared fixture
 		// — otherwise this test's absolute offset/limit assertions would race against every other
 		// test method's inserts into the same Scores table.
@@ -249,7 +227,7 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		// Not linked to the round — must not show up.
 		await InsertScoreAsync(mapMd5, 402, 999_999);
 
-		var rows = await _repository.FetchByRoundIdAsync(roundId);
+		var rows = await _repository.FetchByRoundAsync(roundId);
 
 		Assert.Equal(2, rows.Count);
 		Assert.Equal("roundwinner", rows[0].UserName);

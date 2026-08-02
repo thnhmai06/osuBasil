@@ -5,17 +5,6 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Beatmaps;
 
 /// <summary>
-///     The parameters of a single osu!direct search.
-/// </summary>
-/// <param name="Query">
-///     The search text, or one of the non-text query names (<c>Newest</c>, <c>Top Rated</c>,
-///     <c>Most Played</c>).
-/// </param>
-/// <param name="Mode">The game mode to filter by, or <c>-1</c> for any mode.</param>
-/// <param name="PageNum">The zero-based page of results to return.</param>
-public sealed record DirectSearchRequest(string Query, int Mode, int PageNum);
-
-/// <summary>
 ///     Queries the local beatmap database for the osu!direct panel and formats the results.
 /// </summary>
 /// <remarks>
@@ -85,10 +74,10 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 		lines.AddRange(from set in beatmapSets
 			let first = set[0]
 			let diffs = string.Join(",", set.Select(FormatDiff))
-			select string.Join('|', $"{first.Mapset.Id}.osz", RemovePipes(first.Mapset.Artist),
-				RemovePipes(first.Mapset.Title), first.Mapset.Creator,
-				first.Mapset.Status.ToOsuApi().ToString(), "10.0",
-				first.Mapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Mapset.Id.ToString(), "0", "0", "0", "0",
+			select string.Join('|', $"{first.Beatmapset.Id}.osz", RemovePipes(first.Beatmapset.Artist),
+				RemovePipes(first.Beatmapset.Title), first.Beatmapset.Creator,
+				Beatmapset.Status.ToOsuApi().ToString(), "10.0",
+				first.Beatmapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Beatmapset.Id.ToString(), "0", "0", "0", "0",
 				"0", diffs));
 
 		return string.Join("\n", lines);
@@ -113,22 +102,22 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 		if (beatmapSet is null) return "";
 
 		return string.Join('|',
-			$"{beatmapSet.Mapset.Id}.osz",
-			beatmapSet.Mapset.Artist,
-			beatmapSet.Mapset.Title,
-			beatmapSet.Mapset.Creator,
-			((int)beatmapSet.Mapset.Status).ToString(),
+			$"{beatmapSet.Beatmapset.Id}.osz",
+			beatmapSet.Beatmapset.Artist,
+			beatmapSet.Beatmapset.Title,
+			beatmapSet.Beatmapset.Creator,
+			((int)Beatmapset.Status).ToString(),
 			"10.0",
-			beatmapSet.Mapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"),
-			beatmapSet.Mapset.Id.ToString(),
+			beatmapSet.Beatmapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"),
+			beatmapSet.Beatmapset.Id.ToString(),
 			"0", "0", "0", "0", "0");
 	}
 
 	private static string FormatDiff(Beatmap beatmap)
 	{
 		return $"[{beatmap.Difficulty.Sr:0.00}⭐] {RemovePipes(beatmap.Version)} " +
-		       $"{{cs: {beatmap.Difficulty.Cs} / od: {beatmap.Difficulty.Od} / ar: {beatmap.Difficulty.Ar} / " +
-		       $"hp: {beatmap.Difficulty.Hp}}}@{(int)beatmap.Difficulty.Mode}";
+		       $"{{CS: {beatmap.Difficulty.Cs} / OD: {beatmap.Difficulty.Od} / AR: {beatmap.Difficulty.Ar} / " +
+		       $"HP: {beatmap.Difficulty.Hp}}}@{(int)beatmap.Difficulty.Mode}";
 	}
 
 	// "|" is the field delimiter in this response format, so any literal "|" in metadata would corrupt it.
@@ -137,3 +126,14 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 		return value.Replace('|', 'I');
 	}
 }
+
+/// <summary>
+///     The parameters of a single osu!direct search.
+/// </summary>
+/// <param name="Query">
+///     The search text, or one of the non-text query names (<c>Newest</c>, <c>Top Rated</c>,
+///     <c>Most Played</c>).
+/// </param>
+/// <param name="Mode">The game mode to filter by, or <c>-1</c> for any mode.</param>
+/// <param name="PageNum">The zero-based page of results to return.</param>
+public sealed record DirectSearchRequest(string Query, int Mode, int PageNum);

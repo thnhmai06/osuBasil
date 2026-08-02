@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -7,7 +7,7 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchCreate.</summary>
 public class CreateMatchHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int hostId, string name = "test match")
+	private static PacketReader ReaderFor(int hostId, string name = "test match")
 	{
 		return MatchRequestReader(0, name, "", "Some Map", 100, new string('a', 32), hostId);
 	}

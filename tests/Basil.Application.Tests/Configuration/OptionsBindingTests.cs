@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

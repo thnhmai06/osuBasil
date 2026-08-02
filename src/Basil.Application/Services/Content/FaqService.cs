@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Content;
@@ -15,7 +15,7 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
 	/// <summary>
 	///     Identifies the outcome of a FAQ entry creation.
 	/// </summary>
-	public enum CreateResult
+	public enum CreateResult : byte
 	{
 		/// <summary>The entry was created.</summary>
 		Created,
@@ -30,7 +30,7 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
 	/// <summary>
 	///     Identifies the outcome of a FAQ entry replacement.
 	/// </summary>
-	public enum ReplaceResult
+	public enum ReplaceResult : byte
 	{
 		/// <summary>The entry was replaced.</summary>
 		Replaced,
@@ -56,7 +56,7 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
 		return
 		[
 			.. Directory.EnumerateFiles(storage.Value.FaqsPath, "*.txt")
-				.Select(path => Path.GetFileNameWithoutExtension(path)!)
+				.Select(path => Path.GetFileNameWithoutExtension(path))
 				.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
 		];
 	}

@@ -1,6 +1,6 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
-using Basil.Application.Json;
+using Basil.Application.Formats;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
@@ -14,7 +14,7 @@ namespace Basil.Web.OpenApi;
 internal static class SchemaTypeTransformers
 {
 	/// <summary>
-	///     Enums that are genuinely combined by bitwise OR on the wire (a real player can have
+	///     Enums that are genuinely combined by bitwise OR on the wire (a real userSession can have
 	///     `Hidden | HardRock` set at once); the noun is used in <see cref="ApplyBitmaskDescription" />'s
 	///     generated prose. <c>SlotStatus</c> is `[Flags]` in C# too, but only for internal
 	///     grouped-comparison convenience (see <see cref="AddEnumValuesSchemaTransformer" />'s own doc
@@ -27,110 +27,113 @@ internal static class SchemaTypeTransformers
 		[typeof(UserPrivileges)] = "user privileges"
 	};
 
-	/// <summary>
-	///     A type with a custom <c>JsonConverter</c> (<see cref="CountryJsonConverter" />,
-	///     <see cref="TimeSpanSecondsJsonConverter" />) can't have its wire shape inferred by reflection,
-	///     so the generator emits an empty `{}` schema, and the real shape is declared by hand instead.
-	///     Scoped to the `basilapi` document (the only one using these converters).
-	/// </summary>
 	/// <param name="options">The OpenAPI options to register the schema transformer on.</param>
-	public static void AddCustomConverterSchemaTransformer(this OpenApiOptions options)
+	extension(OpenApiOptions options)
 	{
-		options.AddSchemaTransformer((schema, context, _) =>
+		/// <summary>
+		///     A type with a custom <c>JsonConverter</c> (<see cref="CountryJsonConverter" />,
+		///     <see cref="TimeSpanSecondsJsonConverter" />) can't have its wire shape inferred by reflection,
+		///     so the generator emits an empty `{}` schema, and the real shape is declared by hand instead.
+		///     Scoped to the `basilapi` document (the only one using these converters).
+		/// </summary>
+		public void AddCustomConverterSchemaTransformer()
 		{
-			if (context.JsonTypeInfo.Type == typeof(Country))
+			options.AddSchemaTransformer((schema, context, _) =>
 			{
-				var acronyms = Enum.GetValues<Country>().Select(c => c.ToAcronym()).Order().ToList();
-				schema.Type = JsonSchemaType.String;
-				schema.Description = "2-letter lowercase ISO 3166-1 country/region acronym, or \"xx\" if unknown. " +
-				                     $"Accepted values: {string.Join(", ", acronyms.Select(a => $"\"{a}\""))}.";
-				schema.Enum = [.. acronyms.Select(JsonNode (a) => JsonValue.Create(a))];
-			}
-			else if (context.JsonTypeInfo.Type == typeof(TimeSpan))
-			{
-				schema.Type = JsonSchemaType.Integer;
-				schema.Format = "int32";
-				schema.Description = "Whole seconds.";
-			}
+				if (context.JsonTypeInfo.Type == typeof(Country))
+				{
+					var acronyms = Enum.GetValues<Country>().Select(c => c.ToAcronym()).Order().ToList();
+					schema.Type = JsonSchemaType.String;
+					schema.Description =
+						"2-letter lowercase ISO 3166-1 country/region acronym, or \"xx\" if unknown. " +
+						$"Accepted values: {string.Join(", ", acronyms.Select(a => $"\"{a}\""))}.";
+					schema.Enum = [.. acronyms.Select(JsonNode (a) => JsonValue.Create(a))];
+				}
+				else if (context.JsonTypeInfo.Type == typeof(TimeSpan))
+				{
+					schema.Type = JsonSchemaType.Integer;
+					schema.Format = "int32";
+					schema.Description = "Whole seconds.";
+				}
 
-			return Task.CompletedTask;
-		});
-	}
+				return Task.CompletedTask;
+			});
+		}
 
-	/// <summary>
-	///     The default .NET OpenAPI generator represents every integer/number as accepting either a real
-	///     JSON number or a numeric string (`type: [integer, string]` plus a digits-only `pattern`), a
-	///     JS-safe-integer accommodation that's unconditionally unhelpful here. This server's JSON
-	///     serialization has never emitted a stringified number, on any field, at any size (`long`
-	///     included). Strips it down to the plain numeric type on every generated schema, across every
-	///     document (this is a generator-default artifact, not specific to any one document's types).
-	/// </summary>
-	/// <param name="options">The OpenAPI options to register the schema transformer on.</param>
-	public static void AddNumericSchemaSimplificationTransformer(this OpenApiOptions options)
-	{
-		options.AddSchemaTransformer((schema, _, _) =>
+		/// <summary>
+		///     The default .NET OpenAPI generator represents every integer/number as accepting either a real
+		///     JSON number or a numeric string (`type: [integer, string]` plus a digits-only `pattern`), a
+		///     JS-safe-integer accommodation that's unconditionally unhelpful here. This server's JSON
+		///     serialization has never emitted a stringified number, on any field, at any size (`long`
+		///     included). Strips it down to the plain numeric type on every generated schema, across every
+		///     document (this is a generator-default artifact, not specific to any one document's types).
+		/// </summary>
+		public void AddNumericSchemaSimplificationTransformer()
 		{
-			if (schema.Type is { } type && (type.HasFlag(JsonSchemaType.Integer) || type.HasFlag(JsonSchemaType.Number))
-			                            && type.HasFlag(JsonSchemaType.String))
+			options.AddSchemaTransformer((schema, _, _) =>
 			{
-				schema.Type = type & ~JsonSchemaType.String;
-				schema.Pattern = null;
-			}
+				if (schema.Type is { } type && (type.HasFlag(JsonSchemaType.Integer) ||
+				                                type.HasFlag(JsonSchemaType.Number))
+				                            && type.HasFlag(JsonSchemaType.String))
+				{
+					schema.Type = type & ~JsonSchemaType.String;
+					schema.Pattern = null;
+				}
 
-			return Task.CompletedTask;
-		});
-	}
+				return Task.CompletedTask;
+			});
+		}
 
-	/// <summary>
-	///     A non-<c>[Flags]</c> enum still serializes as a plain number (see the enum-wire-convention
-	///     bullet in <c>CLAUDE.md</c>, no <c>JsonStringEnumConverter</c> anywhere), but the *set* of
-	///     valid numbers is closed, unlike an arbitrary integer field, declaring it via `enum:` lets
-	///     Scalar/generated clients offer a fixed value list instead of a bare "integer" input, with the
-	///     name-to-value mapping spelled out in the description since OpenAPI's `enum:` carries no
-	///     built-in slot for member names. A genuinely combinable <c>[Flags]</c> enum (see
-	///     <see cref="CombinableFlagsNouns" />) gets bitmask prose instead, since `enum:` can't represent
-	///     "any OR-combination of these bits": the prose spells out each single-bit flag's value, that multiple
-	///     flags combine via bitwise OR, and a worked example. Any other `[Flags]` enum (currently just
-	///     <c>SlotStatus</c>) is treated as a regular closed enum, since its wire value is never actually
-	///     a combination despite the C# attribute. <see cref="Country" /> is excluded entirely, it
-	///     already gets its own string shape from <see cref="AddCustomConverterSchemaTransformer" /> and
-	///     has far too many members for a meaningful dropdown anyway.
-	///     <para>
-	///         Runs as a *document* transformer over the final `components.schemas`, matched by component
-	///         name against every public enum across the `Basil.*` assemblies, rather than as a schema
-	///         transformer keyed on <c>context.JsonTypeInfo.Type</c>. A schema transformer only reliably
-	///         mutates the *first* schema object generated for a given type, and for a type used at several
-	///         call sites (nullable in one place, non-nullable in another) that first mutation isn't
-	///         guaranteed to be the one that survives into the final named component (confirmed by
-	///         inspecting the generated document: some enum components kept the mutation, others silently
-	///         didn't). Operating on the fully-assembled document sidesteps that ordering entirely.
-	///     </para>
-	/// </summary>
-	/// <param name="options">The OpenAPI options to register the document transformer on.</param>
-	public static void AddEnumValuesSchemaTransformer(this OpenApiOptions options)
-	{
-		options.AddDocumentTransformer((document, _, _) =>
+		/// <summary>
+		///     A non-<c>[Flags]</c> enum still serializes as a plain number (see the enum-wire-convention
+		///     bullet in <c>CLAUDE.md</c>, no <c>JsonStringEnumConverter</c> anywhere), but the *set* of
+		///     valid numbers is closed, unlike an arbitrary integer field, declaring it via `enum:` lets
+		///     Scalar/generated clients offer a fixed value list instead of a bare "integer" input, with the
+		///     name-to-value mapping spelled out in the description since OpenAPI's `enum:` carries no
+		///     built-in slot for member names. A genuinely combinable <c>[Flags]</c> enum (see
+		///     <see cref="CombinableFlagsNouns" />) gets bitmask prose instead, since `enum:` can't represent
+		///     "any OR-combination of these bits": the prose spells out each single-bit flag's value, that multiple
+		///     flags combine via bitwise OR, and a worked example. Any other `[Flags]` enum (currently just
+		///     <c>SlotStatus</c>) is treated as a regular closed enum, since its wire value is never actually
+		///     a combination despite the C# attribute. <see cref="Country" /> is excluded entirely, it
+		///     already gets its own string shape from <see cref="AddCustomConverterSchemaTransformer" /> and
+		///     has far too many members for a meaningful dropdown anyway.
+		///     <para>
+		///         Runs as a *document* transformer over the final `components.schemas`, matched by component
+		///         name against every public enum across the `Basil.*` assemblies, rather than as a schema
+		///         transformer keyed on <c>context.JsonTypeInfo.Type</c>. A schema transformer only reliably
+		///         mutates the *first* schema object generated for a given type, and for a type used at several
+		///         call sites (nullable in one place, non-nullable in another) that first mutation isn't
+		///         guaranteed to be the one that survives into the final named component (confirmed by
+		///         inspecting the generated document: some enum components kept the mutation, others silently
+		///         didn't). Operating on the fully-assembled document sidesteps that ordering entirely.
+		///     </para>
+		/// </summary>
+		public void AddEnumValuesSchemaTransformer()
 		{
-			if (document.Components?.Schemas is not { } schemas) return Task.CompletedTask;
-
-			var enumTypesByName = AppDomain.CurrentDomain.GetAssemblies()
-				.Where(a => a.GetName().Name?.StartsWith("Basil.", StringComparison.Ordinal) == true)
-				.SelectMany(a => a.GetTypes())
-				.Where(t => t.IsEnum && t.IsPublic && t != typeof(Country))
-				.ToDictionary(t => t.Name);
-
-			foreach (var (name, schema) in schemas)
+			options.AddDocumentTransformer((document, _, _) =>
 			{
-				if (schema is not OpenApiSchema s || !enumTypesByName.TryGetValue(name, out var type)) continue;
+				if (document.Components?.Schemas is not { } schemas) return Task.CompletedTask;
 
-				if (CombinableFlagsNouns.TryGetValue(type, out var noun))
-					ApplyBitmaskDescription(s, type, noun);
-				else
-					ApplyClosedEnumValues(s, type);
-			}
+				var enumTypesByName = AppDomain.CurrentDomain.GetAssemblies()
+					.Where(a => a.GetName().Name?.StartsWith("Basil.", StringComparison.Ordinal) == true)
+					.SelectMany(a => a.GetTypes())
+					.Where(t => t.IsEnum && t.IsPublic && t != typeof(Country))
+					.ToDictionary(t => t.Name);
 
-			return Task.CompletedTask;
-		});
+				foreach (var (name, schema) in schemas)
+				{
+					if (schema is not OpenApiSchema s || !enumTypesByName.TryGetValue(name, out var type)) continue;
+
+					if (CombinableFlagsNouns.TryGetValue(type, out var noun))
+						ApplyBitmaskDescription(s, type, noun);
+					else
+						ApplyClosedEnumValues(s, type);
+				}
+
+				return Task.CompletedTask;
+			});
+		}
 	}
 
 	/// <summary>

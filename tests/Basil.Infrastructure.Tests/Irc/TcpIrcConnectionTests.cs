@@ -2,17 +2,18 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
-using Basil.Application.Services.Bot;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Channels;
 using Basil.Domain.Login;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Security;
@@ -45,7 +46,7 @@ public class TcpIrcConnectionTests
 		users.Add(new User(2, "bob", Country.Xx, 0, default),
 			HashPassword(hasher, "bob-key"));
 
-		var sessionRegistry = new InMemoryPlayerSessionRegistry();
+		var sessionRegistry = new InMemoryUserSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
@@ -100,7 +101,7 @@ public class TcpIrcConnectionTests
 	}
 
 	/// <summary>
-	///     Proves the cross-world seam: a "bancho" <see cref="PlayerSession" /> (no socket behind it,
+	///     Proves the cross-world seam: a "bancho" <see cref="UserSession" /> (no socket behind it,
 	///     exactly like a real one would look from the chat core's perspective) and a real IRC TCP
 	///     client share the same channel through <see cref="ChannelMembershipService" />/
 	///     <see cref="ChatDispatchService" /> — a message from either side reaches the other.
@@ -113,7 +114,7 @@ public class TcpIrcConnectionTests
 		users.Add(new User(1, "alice", Country.Xx, 0, default),
 			HashPassword(hasher, "alice-key"));
 
-		var sessionRegistry = new InMemoryPlayerSessionRegistry();
+		var sessionRegistry = new InMemoryUserSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
@@ -124,9 +125,9 @@ public class TcpIrcConnectionTests
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
 
-		// Stands in for a real bancho client: same PlayerSession/IrcConnection shape the chat core sees
+		// Stands in for a real bancho client: same UserSession/IrcConnection shape the chat core sees
 		// once LoginService logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
-		var banchoPlayer = new PlayerSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
+		var banchoPlayer = new UserSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		sessionRegistry.Add(banchoPlayer);
 		channelMembership.Join(banchoPlayer, channelRegistry.GetByName("#osu")!);
@@ -169,7 +170,7 @@ public class TcpIrcConnectionTests
 		listener.Stop();
 	}
 
-	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(PlayerSession session)
+	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(UserSession session)
 	{
 		using var cts = new CancellationTokenSource(ReadTimeout);
 		while (!cts.IsCancellationRequested)
@@ -300,7 +301,7 @@ public class TcpIrcConnectionTests
 	/// <summary>Never recognises a command — this test's "hello bob" text has no `!` prefix anyway.</summary>
 	private sealed class NullCommandDispatcher : ICommandDispatcher
 	{
-		public Task<bool> DispatchAsync(PlayerSession sender, string rawMessage, MatchSession? matchScope,
+		public Task<bool> DispatchAsync(UserSession sender, string rawMessage, MatchSession? matchScope,
 			string? channelName, ICommandReplySink sink, bool prefixOptional = false,
 			CancellationToken cancellationToken = default)
 		{

@@ -1,5 +1,5 @@
-using Basil.Application.Abstractions.Channels;
 using Basil.Application.Sessions.Channels;
+using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Sessions;
 

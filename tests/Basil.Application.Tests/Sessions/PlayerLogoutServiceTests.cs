@@ -16,7 +16,7 @@ using NSubstitute;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from Player.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
+///     Ported from User.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
 ///     out of LogoutHandler so !reconnect can force the same cleanup on a session without going
 ///     through the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not
 ///     part of "logout" semantics).
@@ -27,16 +27,16 @@ public class PlayerLogoutServiceTests
 
 	private readonly MatchMembershipService _matchMembership = new(
 		Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-		Substitute.For<IPlayerSessionRegistry>(),
-		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
-		Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
+		Substitute.For<IUserSessionRegistry>(),
+		new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(), Substitute.For<IChannelRegistry>()),
+		Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
 
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
-		new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(), Substitute.For<IChannelRegistry>()),
+		new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(), Substitute.For<IChannelRegistry>()),
 		NullLogger<SpectatorService>.Instance);
 
 	private PlayerLogoutService MakeService()
@@ -48,7 +48,7 @@ public class PlayerLogoutServiceTests
 	[Fact]
 	public async Task Logout_RemovesFromSessionRegistry()
 	{
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeService().LogoutAsync(player);
 
@@ -59,7 +59,7 @@ public class PlayerLogoutServiceTests
 	public async Task Logout_LeavesAllJoinedChannels()
 	{
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		channel.Join(player.Id);
 		player.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
@@ -73,8 +73,8 @@ public class PlayerLogoutServiceTests
 	[Fact]
 	public async Task Logout_UnrestrictedPlayer_BroadcastsLogoutPacket()
 	{
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var other = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.All.Returns([other]);
 
 		await MakeService().LogoutAsync(player);
@@ -86,8 +86,8 @@ public class PlayerLogoutServiceTests
 	public async Task Logout_RestrictedPlayer_DoesNotBroadcastLogoutPacket()
 	{
 		var player =
-			new PlayerSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
-		var other = new PlayerSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+			new UserSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+		var other = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.All.Returns([other]);
 
 		await MakeService().LogoutAsync(player);
@@ -98,8 +98,8 @@ public class PlayerLogoutServiceTests
 	[Fact]
 	public async Task Logout_WhileSpectating_StopsSpectatingAndClearsHostSpectatorList()
 	{
-		var host = new PlayerSession(2, "host", "host-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var host = new UserSession(2, "host", "host-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		host.AddSpectator(player);
 		player.Spectating = host;
 
@@ -112,11 +112,11 @@ public class PlayerLogoutServiceTests
 	[Fact]
 	public async Task Logout_PlayerWhoseOnlySpectatorIsTheBot_RemovesBotSpectateRelationship()
 	{
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
-		var player = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		player.AddSpectator(bot);
 		bot.Spectating = player;
 
@@ -131,14 +131,14 @@ public class PlayerLogoutServiceTests
 	{
 		var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
 		var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry();
-		var sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+		var sessionRegistry = Substitute.For<IUserSessionRegistry>();
 		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
 			new ChannelMembershipService(sessionRegistry, channelRegistry),
-			new MultiplayerTestSupport.FakeMatchPersistenceRepository(),
+			new MultiplayerTestSupport.FakeMatchRepository(),
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
 			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
-		var host = new PlayerSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var host = new UserSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.All.Returns([host]);
 		sessionRegistry.GetById(1).Returns(host);
 		var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
@@ -148,6 +148,6 @@ public class PlayerLogoutServiceTests
 		await service.LogoutAsync(host);
 
 		Assert.Null(host.Match);
-		Assert.Null(matchRegistry.GetById(match.Id)); // last player left -> match disposed, not a ghost slot
+		Assert.Null(matchRegistry.GetById(match.Id)); // last userSession left -> match disposed, not a ghost slot
 	}
 }

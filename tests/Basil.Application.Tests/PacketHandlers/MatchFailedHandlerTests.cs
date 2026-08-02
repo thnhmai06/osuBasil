@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -19,7 +19,7 @@ public class MatchFailedHandlerTests
 		host.Dequeue();
 		var handler = new MatchFailedHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(guest, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(guest, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Contains(ServerPacketWriter.MatchPlayerFailed(1), Chunk(host.Dequeue()));
 	}

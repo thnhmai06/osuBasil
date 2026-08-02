@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,10 +26,10 @@ public class MatchCompleteHandlerTests
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence,
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
 			NullLogger<MatchCompleteHandler>.Instance);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Equal(SlotStatus.Complete, match.Slots[0].Status);
 		Assert.True(match.InProgress);
@@ -55,11 +55,11 @@ public class MatchCompleteHandlerTests
 		host.Dequeue();
 		guest.Dequeue();
 		spectatorish.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchPersistence,
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
 			NullLogger<MatchCompleteHandler>.Instance);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
-		await handler.HandleAsync(guest, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(guest, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.False(match.InProgress);
 		Assert.False(match.Slots[1].Loaded);

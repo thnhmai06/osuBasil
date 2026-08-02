@@ -5,7 +5,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from app/objects/player.py's Player.stats (dict[GameMode, ModeData], populated once at
+///     Ported from app/objects/userSession.py's User.stats (dict[GameMode, ModeData], populated once at
 ///     login via stats_from_sql_full — never re-queried per packet) + the gm_stats property
 ///     (`self.stats[self.status.mode]`).
 /// </summary>
@@ -14,9 +14,14 @@ public class PlayerSessionStatsTests
 	[Fact]
 	public void CurrentStats_IndexesByCurrentStatusMode()
 	{
-		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		session.ModeStats[GameMode.Standard] = new CachedPlayerStats(100, 90, 10, 5);
-		session.ModeStats[GameMode.Taiko] = new CachedPlayerStats(200, 180, 20, 12);
+		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{
+				ModeStats =
+				{
+					[GameMode.Standard] = new CachedPlayerStats(100, 90, 10, 5),
+					[GameMode.Taiko] = new CachedPlayerStats(200, 180, 20, 12)
+				}
+			};
 
 		Assert.Equal(5, session.CurrentStats!.Rank);
 
@@ -27,7 +32,7 @@ public class PlayerSessionStatsTests
 	[Fact]
 	public void CurrentStats_NoEntryForMode_ReturnsNull()
 	{
-		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		Assert.Null(session.CurrentStats);
 	}

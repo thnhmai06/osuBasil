@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
@@ -20,11 +20,11 @@ namespace Basil.IntegrationTests;
 public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
 	private readonly WebApplicationFactory<Program> _factory;
-	private MatchRow? _match;
+	private Match? _match;
 
 	public MatchReportEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		var matchPersistence = Substitute.For<IMatchPersistenceRepository>();
+		var matchPersistence = Substitute.For<IMatchRepository>();
 		// Never exercised by this read-only report suite -- throw, matching the old fake, instead of
 		// the NSubstitute default of a silently-completed task.
 		matchPersistence.CreateMatchAsync(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
@@ -41,23 +41,21 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		matchPersistence.FetchMatchAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => _match?.Id == call.ArgAt<int>(0) ? _match : null);
 		matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 		matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<MatchRow>)(_match is null ? [] : [_match]));
+			.Returns(_ => (IReadOnlyList<Match>)(_match is null ? [] : [_match]));
 		matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<MatchEventRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<MatchEvent>>([]));
 		matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<MatchRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Match>>([]));
 		matchPersistence.FetchUnrecoveredRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundRow>>([]));
+			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 
 		var scores = Substitute.For<IScoreRepository>();
 		// Never exercised by this read-only report suite -- throw, matching the old fake.
 		scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>())
 			.Throws(new NotSupportedException());
-		scores.ExistsByOnlineChecksumAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-			.Throws(new NotSupportedException());
-		scores.FetchFirstPlaceScoreAsync(Arg.Any<string>(), Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
+		scores.CheckExistAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Throws(new NotSupportedException());
 		scores.FetchOwnerAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
 			.Throws(new NotSupportedException());
@@ -66,8 +64,8 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Throws(new NotSupportedException());
 		scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
-		scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));
+		scores.FetchByRoundAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<IReadOnlyList<ScoreReport>>([]));
 
 		var matchRegistry = Substitute.For<IMatchRegistry>();
 		matchRegistry.All.Returns((IReadOnlyList<MatchSession>)[]);
@@ -111,7 +109,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	[Fact]
 	public async Task GetMulti_KnownMatch_ReturnsReportJson()
 	{
-		_match = new MatchRow(5, "Grand Finals",
+		_match = new Match(5, "Grand Finals",
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
 		var client = _factory.CreateClient();
 

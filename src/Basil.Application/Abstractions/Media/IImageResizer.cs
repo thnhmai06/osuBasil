@@ -5,7 +5,7 @@ namespace Basil.Application.Abstractions.Media;
 /// </summary>
 /// <remarks>
 ///     Used to produce the resized thumbnails served by the <c>b.&lt;domain&gt;</c> host for a
-///     mapset's background image. The resize crops to fill the target rectangle rather than
+///     beatmapset's background image. The resize crops to fill the target rectangle rather than
 ///     letterboxing, which matches how osu!'s own thumbnails behave.
 /// </remarks>
 public interface IImageResizer

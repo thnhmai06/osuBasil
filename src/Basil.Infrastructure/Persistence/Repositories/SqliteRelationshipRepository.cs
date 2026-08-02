@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Social;
+using Basil.Domain.Social;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;

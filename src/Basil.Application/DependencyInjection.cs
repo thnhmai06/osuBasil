@@ -1,8 +1,10 @@
-using Basil.Application.BackgroundServices;
-using Basil.Application.PacketHandlers.Channels;
-using Basil.Application.PacketHandlers.Core;
-using Basil.Application.PacketHandlers.Multiplayer;
-using Basil.Application.PacketHandlers.Spectating;
+using Basil.Application.Abstractions.Bot;
+using Basil.Application.Backgrounds;
+using Basil.Application.Packets;
+using Basil.Application.Packets.Channels;
+using Basil.Application.Packets.Multiplayer;
+using Basil.Application.Packets.Spectating;
+using Basil.Application.Packets.Users;
 using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Beatmaps;
@@ -35,7 +37,7 @@ public static class DependencyInjection
 	///     services into the given service collection.
 	/// </summary>
 	/// <param name="services">The service collection to add the registrations to.</param>
-	/// <returns>The same service collection, for chaining further registrations.</returns>
+	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<LoginService>();
@@ -58,56 +60,55 @@ public static class DependencyInjection
 		services.AddSingleton<IrcAuthenticationService>();
 		services.AddSingleton<FaqService>();
 		services.AddSingleton<SeasonalService>();
-		services.AddSingleton<MenuIconService>();
 
-		services.AddSingleton<IBanchoPacketHandler, PingHandler>();
-		services.AddSingleton<IBanchoPacketHandler, LogoutHandler>();
-		services.AddSingleton<IBanchoPacketHandler, ChangeActionHandler>();
-		services.AddSingleton<IBanchoPacketHandler, RequestStatusUpdateHandler>();
-		services.AddSingleton<IBanchoPacketHandler, UserStatsRequestHandler>();
-		services.AddSingleton<IBanchoPacketHandler, UserPresenceRequestHandler>();
-		services.AddSingleton<IBanchoPacketHandler, UserPresenceRequestAllHandler>();
-		services.AddSingleton<IBanchoPacketHandler, ReceiveUpdatesHandler>();
-		services.AddSingleton<IBanchoPacketHandler, SetAwayMessageHandler>();
-		services.AddSingleton<IBanchoPacketHandler, FriendAddHandler>();
-		services.AddSingleton<IBanchoPacketHandler, FriendRemoveHandler>();
-		services.AddSingleton<IBanchoPacketHandler, ChannelJoinHandler>();
-		services.AddSingleton<IBanchoPacketHandler, ChannelPartHandler>();
-		services.AddSingleton<IBanchoPacketHandler, LobbyJoinHandler>();
-		services.AddSingleton<IBanchoPacketHandler, LobbyPartHandler>();
-		services.AddSingleton<IBanchoPacketHandler, SendPublicMessageHandler>();
-		services.AddSingleton<IBanchoPacketHandler, SendPrivateMessageHandler>();
-		services.AddSingleton<IBanchoPacketHandler, ToggleBlockNonFriendDmsHandler>();
-		services.AddSingleton<IBanchoPacketHandler, StartSpectatingHandler>();
-		services.AddSingleton<IBanchoPacketHandler, StopSpectatingHandler>();
-		services.AddSingleton<IBanchoPacketHandler, SpectateFramesHandler>();
-		services.AddSingleton<IBanchoPacketHandler, CantSpectateHandler>();
-		services.AddSingleton<IBanchoPacketHandler, CreateMatchHandler>();
-		services.AddSingleton<IBanchoPacketHandler, JoinMatchHandler>();
-		services.AddSingleton<IBanchoPacketHandler, PartMatchHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchChangeSlotHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchReadyHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchLockHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchChangeSettingsHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchStartHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchChangeModsHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchLoadCompleteHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchNoBeatmapHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchNotReadyHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchFailedHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchHasBeatmapHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchSkipRequestHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchTransferHostHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchChangeTeamHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchChangePasswordHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchScoreUpdateHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchCompleteHandler>();
-		services.AddSingleton<IBanchoPacketHandler, MatchInviteHandler>();
-		services.AddSingleton<IBanchoPacketHandler, TourneyMatchInfoRequestHandler>();
-		services.AddSingleton<IBanchoPacketHandler, TourneyMatchJoinChannelHandler>();
-		services.AddSingleton<IBanchoPacketHandler, TourneyMatchLeaveChannelHandler>();
+		services.AddSingleton<IPacketHandler, PingHandler>();
+		services.AddSingleton<IPacketHandler, LogoutHandler>();
+		services.AddSingleton<IPacketHandler, ChangeActionHandler>();
+		services.AddSingleton<IPacketHandler, RequestStatusUpdateHandler>();
+		services.AddSingleton<IPacketHandler, UserStatsRequestHandler>();
+		services.AddSingleton<IPacketHandler, UserPresenceRequestHandler>();
+		services.AddSingleton<IPacketHandler, UserPresenceRequestAllHandler>();
+		services.AddSingleton<IPacketHandler, ReceiveUpdatesHandler>();
+		services.AddSingleton<IPacketHandler, SetAwayMessageHandler>();
+		services.AddSingleton<IPacketHandler, FriendAddHandler>();
+		services.AddSingleton<IPacketHandler, FriendRemoveHandler>();
+		services.AddSingleton<IPacketHandler, ChannelJoinHandler>();
+		services.AddSingleton<IPacketHandler, ChannelPartHandler>();
+		services.AddSingleton<IPacketHandler, LobbyJoinHandler>();
+		services.AddSingleton<IPacketHandler, LobbyPartHandler>();
+		services.AddSingleton<IPacketHandler, SendPublicMessageHandler>();
+		services.AddSingleton<IPacketHandler, SendPrivateMessageHandler>();
+		services.AddSingleton<IPacketHandler, ToggleBlockNonFriendDmsHandler>();
+		services.AddSingleton<IPacketHandler, StartSpectatingHandler>();
+		services.AddSingleton<IPacketHandler, StopSpectatingHandler>();
+		services.AddSingleton<IPacketHandler, SpectateFramesHandler>();
+		services.AddSingleton<IPacketHandler, CantSpectateHandler>();
+		services.AddSingleton<IPacketHandler, CreateMatchHandler>();
+		services.AddSingleton<IPacketHandler, JoinMatchHandler>();
+		services.AddSingleton<IPacketHandler, PartMatchHandler>();
+		services.AddSingleton<IPacketHandler, MatchChangeSlotHandler>();
+		services.AddSingleton<IPacketHandler, MatchReadyHandler>();
+		services.AddSingleton<IPacketHandler, MatchLockHandler>();
+		services.AddSingleton<IPacketHandler, MatchChangeSettingsHandler>();
+		services.AddSingleton<IPacketHandler, MatchStartHandler>();
+		services.AddSingleton<IPacketHandler, MatchChangeModsHandler>();
+		services.AddSingleton<IPacketHandler, MatchLoadCompleteHandler>();
+		services.AddSingleton<IPacketHandler, MatchNoBeatmapHandler>();
+		services.AddSingleton<IPacketHandler, MatchNotReadyHandler>();
+		services.AddSingleton<IPacketHandler, MatchFailedHandler>();
+		services.AddSingleton<IPacketHandler, MatchHasBeatmapHandler>();
+		services.AddSingleton<IPacketHandler, MatchSkipRequestHandler>();
+		services.AddSingleton<IPacketHandler, MatchTransferHostHandler>();
+		services.AddSingleton<IPacketHandler, MatchChangeTeamHandler>();
+		services.AddSingleton<IPacketHandler, MatchChangePasswordHandler>();
+		services.AddSingleton<IPacketHandler, MatchScoreUpdateHandler>();
+		services.AddSingleton<IPacketHandler, MatchCompleteHandler>();
+		services.AddSingleton<IPacketHandler, MatchInviteHandler>();
+		services.AddSingleton<IPacketHandler, TourneyMatchInfoRequestHandler>();
+		services.AddSingleton<IPacketHandler, TourneyMatchJoinChannelHandler>();
+		services.AddSingleton<IPacketHandler, TourneyMatchLeaveChannelHandler>();
 
-		services.AddSingleton<BanchoPacketDispatcher>();
+		services.AddSingleton<PacketDispatcher>();
 
 		services.AddHostedService<GhostDisconnectService>();
 

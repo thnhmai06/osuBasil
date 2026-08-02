@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 
 /// <summary>
 ///     Thin glue over BeatmapIngestionService's already-tested reconciliation methods — one
-///     integration-style test dropping a real mapset folder in and polling for the DB row is enough.
+///     integration-style test dropping a real beatmapset folder in and polling for the DB row is enough.
 ///     Deliberately does NOT use the shared <c>SqliteFixture</c>/<c>IClassFixture</c> pattern used
 ///     elsewhere: xUnit already constructs a fresh instance of this class per test method (no
 ///     <c>IClassFixture</c> forces sharing), so giving each instance its own temp DB here means the
@@ -38,7 +38,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 		SqlMigrationRunner.RunMigrations(connectionString);
 
 		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		var mapsets = new SqliteMapsetRepository(connectionString, NullLogger<SqliteMapsetRepository>.Instance);
+		var mapsets = new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_mapsetsPath);
 
@@ -122,7 +122,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 			Assert.NotNull(beatmap);
 
 			// ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
-			// parses the Mapset id from the folder's own leading digits — rename to the actually
+			// parses the Beatmapset id from the folder's own leading digits — rename to the actually
 			// resolved id first, matching every other test here that relies on that lookup.
 			var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 				new StorageOptions
@@ -133,7 +133,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 					SeasonalsPath = "",
 					FaqsPath = "", CachePath = ""
 				},
-				beatmap.Mapset);
+				beatmap.Beatmapset);
 			Directory.Move(folder, resolvedFolder);
 
 			var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
@@ -142,10 +142,10 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < deleteDeadline &&
-			       await _beatmaps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true) is not null)
+			       await _beatmaps.FetchOneAsync(setId: beatmap.Beatmapset.Id, includePrivate: true) is not null)
 				await Task.Delay(200);
 
-			Assert.Null(await _beatmaps.FetchOneAsync(setId: beatmap.Mapset.Id, includePrivate: true));
+			Assert.Null(await _beatmaps.FetchOneAsync(setId: beatmap.Beatmapset.Id, includePrivate: true));
 		}
 		finally
 		{
@@ -166,12 +166,12 @@ public class BeatmapWatcherServiceTests : IDisposable
 			await Task.Delay(300);
 			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
 
-			// Fixture carries an explicit BeatmapSetID (900000) so the mapset ResolveMapsetAsync
+			// Fixture carries an explicit BeatmapSetID (900000) so the beatmapset ResolveMapsetAsync
 			// creates has a deterministic id, and the .osz's own filename below uses that same id —
 			// matching what a real osu!-downloaded archive looks like ("{setId} Artist - Title.osz").
 			// Without that alignment ReconcileDeletedFolderAsync (parsing the leading digits of
 			// whatever path it's given) would parse an id that happens not to match any row, and the
-			// bug this test exists to catch — deleting the just-ingested mapset — would go unnoticed.
+			// bug this test exists to catch — deleting the just-ingested beatmapset — would go unnoticed.
 			var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
 			using (var archive = ZipFile.Open(oszPath, ZipArchiveMode.Create))
 			{
@@ -192,7 +192,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 			// ReconcileOszAsync deletes the .osz right after extracting it, which raises this same
 			// watcher's own Deleted event for that path — poll out a generous window (rather than a
 			// single fixed sleep, which under CI-level parallel load can be too short) watching for
-			// the mapset to vanish; it must not, for the whole window.
+			// the beatmapset to vanish; it must not, for the whole window.
 			var survivalDeadline = DateTime.UtcNow.AddSeconds(10);
 			while (DateTime.UtcNow < survivalDeadline &&
 			       await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true) is not null)
@@ -200,7 +200,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			var survived = await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true);
 			Assert.True(survived is not null,
-				"Mapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
+				"Beatmapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
 				string.Join(" | ", _ingestionLog.Messages) +
 				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
 		}

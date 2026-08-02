@@ -1,11 +1,11 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
-using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -17,6 +17,7 @@ using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
 
 namespace Basil.Application.Tests.UseCases.Authentication;
 
@@ -29,14 +30,14 @@ public class LoginServiceTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
-	private readonly IIngameLoginRepository _ingameLogins = Substitute.For<IIngameLoginRepository>();
+	private readonly ILoginRepository _loginRepository = Substitute.For<ILoginRepository>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private readonly SpectatorService _spectatorService;
-	private readonly IStatsRepository _stats = Substitute.For<IStatsRepository>();
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
+	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	public LoginServiceTests()
@@ -48,18 +49,17 @@ public class LoginServiceTests
 	private LoginService MakeUseCase()
 	{
 		return new LoginService(
-			_users, _stats, _clientHashes, _ingameLogins, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher,
-			_tokenGenerator, _spectatorService, new MenuIconService(),
+			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
 			}), NullLogger<LoginService>.Instance);
 	}
 
-	private static PlayerSession MakeBot()
+	private static UserSession MakeBot()
 	{
-		return new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		return new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 	}
@@ -126,7 +126,7 @@ public class LoginServiceTests
 	[Fact]
 	public async Task DuplicateActiveSession_NonTourney_ReturnsUserAlreadyLoggedIn()
 	{
-		var existing = new PlayerSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-5)
 		};
@@ -146,7 +146,7 @@ public class LoginServiceTests
 	[Fact]
 	public async Task DuplicateExpiredSession_LogsOutOldSession_AndProceeds()
 	{
-		var existing = new PlayerSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
 		};
@@ -165,10 +165,10 @@ public class LoginServiceTests
 	public async Task DuplicateExpiredSession_RemovesOldSessionsBotSpectateRelationship()
 	{
 		// #spec_{userId} is keyed by the persistent user id, stable across relogins — without this
-		// cleanup a relogin would pile a dead member reference onto the previous session's channel.
+		// cleanup, a relogin would pile a dead member reference onto the previous session's channel.
 		var bot = MakeBot();
 		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
-		var existing = new PlayerSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
 		};
@@ -241,8 +241,8 @@ public class LoginServiceTests
 		// server) — the session's geoloc comes from the user's already-stored country instead.
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "jp");
 
-		PlayerSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
@@ -264,7 +264,7 @@ public class LoginServiceTests
 		_clientHashes.FetchAnyHardwareMatchesForUserAsync(10, false, Arg.Any<string>(), Arg.Any<string>(),
 				Arg.Any<string?>(), Arg.Any<CancellationToken>())
 			.Returns([
-				new ClientHashWithPlayer(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "banned-user",
+				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "banned-user",
 					UserPrivileges.Verified)
 			]);
 		var useCase = MakeUseCase();
@@ -286,7 +286,7 @@ public class LoginServiceTests
 		_clientHashes.FetchAnyHardwareMatchesForUserAsync(user.Id, false, Arg.Any<string>(), Arg.Any<string>(),
 				Arg.Any<string?>(), Arg.Any<CancellationToken>())
 			.Returns([
-				new ClientHashWithPlayer(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "other-account",
+				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "other-account",
 					UserPrivileges.Unrestricted)
 			]);
 		var useCase = MakeUseCase();
@@ -318,7 +318,7 @@ public class LoginServiceTests
 		await _users.Received(1).UpdatePrivilegesAsync(user.Id, UserPrivileges.Unrestricted | UserPrivileges.Verified,
 			Arg.Any<CancellationToken>());
 		_sessionRegistry.Received(1)
-			.Add(Arg.Is<PlayerSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
+			.Add(Arg.Is<UserSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
 	}
 
 	[Fact]
@@ -328,8 +328,8 @@ public class LoginServiceTests
 		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
-		PlayerSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
@@ -374,14 +374,14 @@ public class LoginServiceTests
 	public async Task HappyPath_CachesAllModeStatsAndGeolocOnSession()
 	{
 		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified);
-		_stats.FetchAllForUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
+		_userStatRepository.FetchAllForUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
 		[
 			new Stats(user.Id, GameMode.Standard, 100_000, 90_000, 50),
 			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80)
 		]);
 
-		PlayerSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<PlayerSession>())).Do(ci => captured = ci.Arg<PlayerSession>());
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
@@ -513,7 +513,7 @@ public class LoginServiceTests
 			.Returns([]);
 		_channelRegistry.AutoJoinChannels.Returns([]);
 		_sessionRegistry.All.Returns([]);
-		_stats.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+		_userStatRepository.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
 		_relationships.FetchAllAsync(userId, null, Arg.Any<CancellationToken>()).Returns([]);
 		_tokenGenerator.GenerateToken().Returns("generated-token");
 	}

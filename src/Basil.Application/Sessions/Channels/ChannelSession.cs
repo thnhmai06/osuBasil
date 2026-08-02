@@ -37,7 +37,7 @@ public sealed class ChannelSession(
 	/// <summary>Gets the channel's id.</summary>
 	public int Id { get; } = id;
 
-	/// <summary>Gets the registry key of the channel, used to look it up and to key a player's membership.</summary>
+	/// <summary>Gets the registry key of the channel, used to look it up and to key a userSession's membership.</summary>
 	public string Name { get; } = name;
 
 	/// <summary>
@@ -55,7 +55,10 @@ public sealed class ChannelSession(
 	/// <summary>Gets the privilege flags required to write to the channel, or zero when writing is unrestricted.</summary>
 	public UserPrivileges WritePrivilege { get; } = writePrivilege;
 
-	/// <summary>Gets a value that indicates whether the channel is joined automatically for every qualifying player at login.</summary>
+	/// <summary>
+	///     Gets a value that indicates whether the channel is joined automatically for every qualifying userSession at
+	///     login.
+	/// </summary>
 	public bool AutoJoin { get; } = autoJoin;
 
 	/// <summary>
@@ -71,50 +74,50 @@ public sealed class ChannelSession(
 	public IReadOnlyCollection<int> MemberIds => [.. _members.Keys];
 
 	/// <summary>
-	///     Gets a value that indicates whether a player with <paramref name="privilege" /> may read
+	///     Gets a value that indicates whether a userSession with <paramref name="privilege" /> may read
 	///     this channel: no read requirement, or at least one required flag present.
 	/// </summary>
-	/// <param name="privilege">The privilege flags of the player to check.</param>
-	/// <returns><see langword="true" /> if the player may read the channel; otherwise, <see langword="false" />.</returns>
+	/// <param name="privilege">The privilege flags of the userSession to check.</param>
+	/// <returns><see langword="true" /> if the userSession may read the channel; otherwise, <see langword="false" />.</returns>
 	public bool CanRead(UserPrivileges privilege)
 	{
 		return ReadPrivilege == 0 || (privilege & ReadPrivilege) != 0;
 	}
 
 	/// <summary>
-	///     Gets a value that indicates whether a player with <paramref name="privilege" /> may write
+	///     Gets a value that indicates whether a userSession with <paramref name="privilege" /> may write
 	///     to this channel: no write requirement, or at least one required flag present.
 	/// </summary>
-	/// <param name="privilege">The privilege flags of the player to check.</param>
-	/// <returns><see langword="true" /> if the player may write to the channel; otherwise, <see langword="false" />.</returns>
+	/// <param name="privilege">The privilege flags of the userSession to check.</param>
+	/// <returns><see langword="true" /> if the userSession may write to the channel; otherwise, <see langword="false" />.</returns>
 	public bool CanWrite(UserPrivileges privilege)
 	{
 		return WritePrivilege == 0 || (privilege & WritePrivilege) != 0;
 	}
 
 	/// <summary>
-	///     Adds a player to the channel's member set.
+	///     Adds a userSession to the channel's member set.
 	/// </summary>
-	/// <param name="playerId">The id of the player joining.</param>
+	/// <param name="playerId">The id of the userSession joining.</param>
 	public void Join(int playerId)
 	{
 		_members[playerId] = 0;
 	}
 
 	/// <summary>
-	///     Removes a player from the channel's member set.
+	///     Removes a userSession from the channel's member set.
 	/// </summary>
-	/// <param name="playerId">The id of the player leaving.</param>
+	/// <param name="playerId">The id of the userSession leaving.</param>
 	public void Part(int playerId)
 	{
 		_members.TryRemove(playerId, out _);
 	}
 
 	/// <summary>
-	///     Gets a value that indicates whether a player is currently in the channel.
+	///     Gets a value that indicates whether a userSession is currently in the channel.
 	/// </summary>
-	/// <param name="playerId">The id of the player to check.</param>
-	/// <returns><see langword="true" /> if the player is a member; otherwise, <see langword="false" />.</returns>
+	/// <param name="playerId">The id of the userSession to check.</param>
+	/// <returns><see langword="true" /> if the userSession is a member; otherwise, <see langword="false" />.</returns>
 	public bool Contains(int playerId)
 	{
 		return _members.ContainsKey(playerId);

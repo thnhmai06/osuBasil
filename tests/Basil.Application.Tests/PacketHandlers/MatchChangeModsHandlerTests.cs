@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -8,9 +8,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchChangeMods.</summary>
 public class MatchChangeModsHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(Mods mods)
+	private static PacketReader ReaderFor(Mods mods)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32((int)mods));
+		return new PacketReader(PacketWriter.WriteInt32((int)mods));
 	}
 
 	[Fact]

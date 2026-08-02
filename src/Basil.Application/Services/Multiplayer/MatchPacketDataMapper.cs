@@ -17,10 +17,10 @@ public static class MatchPacketDataMapper
 {
 	/// <summary>Converts a match session into its wire packet representation.</summary>
 	/// <param name="match">The match to convert.</param>
-	/// <returns>The <see cref="MatchPacketData" /> describing the match.</returns>
-	public static MatchPacketData ToPacketData(MatchSession match)
+	/// <returns>The <see cref="MatchPacket" /> describing the match.</returns>
+	public static MatchPacket ToPacket(this MatchSession match)
 	{
-		return new MatchPacketData(
+		return new MatchPacket(
 			match.Id,
 			match.InProgress,
 			(int)match.Mods,
@@ -29,7 +29,7 @@ public static class MatchPacketDataMapper
 			match.MapName,
 			match.MapId,
 			match.MapMd5,
-			[.. match.Slots.Select(s => new MatchSlotData((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
+			[.. match.Slots.Select(s => new MatchSlotPacket((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
 			match.HostId,
 			(int)match.Mode,
 			(int)match.WinCondition,

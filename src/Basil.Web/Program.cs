@@ -1,11 +1,12 @@
 using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
-using Basil.Application.Configuration;
-using Basil.Application.Json;
+using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
+using Basil.Domain.Channels;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
@@ -49,7 +50,7 @@ public sealed class Program
 			("Match Referees", "List/replace/add/remove the match's referees."),
 			("Match Bans", "List/replace/add players banned from the match, and unban."),
 			("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
-			                "invite players onto them, and kick a seated player."),
+			                "invite players onto them, and kick a seated userSession."),
 			("Match Timer", "Read, start, or abort the match's countdown timer."),
 			("Match Abort", "Abort the match currently in progress."),
 			("Match Close", "Close the match immediately.")
@@ -78,7 +79,7 @@ public sealed class Program
 		("Menu Icon",
 		[
 			("Menu Icon Image", "The in-game main menu icon image file."),
-			("Menu Icon URL", "The click-through URL opened when a player clicks the main menu icon.")
+			("Menu Icon URL", "The click-through URL opened when a userSession clicks the main menu icon.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -353,7 +354,7 @@ public sealed class Program
 			"Beatmapset thumbnail/preview asset requests, redirected to the api. host's own locally-" +
 			"stored background image (self-hosted, no osu.ppy.sh dependency). Served from the b. subdomain.");
 		AddOpenApiDocument(builder, "avatar", "osu! Client API: Avatar Files",
-			"Locally-stored player avatar images. Served from the a. subdomain.");
+			"Locally-stored userSession avatar images. Served from the a. subdomain.");
 		AddOpenApiDocument(builder, "basilapi", "Basil API",
 			"Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
 			"beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +

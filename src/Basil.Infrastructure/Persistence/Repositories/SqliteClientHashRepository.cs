@@ -69,7 +69,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	///     carries the other account's name and privileges, and always excludes
 	///     <paramref name="userId" /> itself.
 	/// </remarks>
-	public async Task<IReadOnlyList<ClientHashWithPlayer>> FetchAnyHardwareMatchesForUserAsync(
+	public async Task<IReadOnlyList<PlayerClientHash>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
 		string adapters,
@@ -152,13 +152,13 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public int Privilege { get; set; }
 
 		/// <summary>
-		///     Builds a <see cref="ClientHashWithPlayer" /> from this row, casting the stored
+		///     Builds a <see cref="PlayerClientHash" /> from this row, casting the stored
 		///     privilege column.
 		/// </summary>
-		/// <returns>The domain client hash-with-player record.</returns>
-		public ClientHashWithPlayer ToClientHashWithPlayer()
+		/// <returns>The domain client hash-with-userSession record.</returns>
+		public PlayerClientHash ToClientHashWithPlayer()
 		{
-			return new ClientHashWithPlayer(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
+			return new PlayerClientHash(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
 				Occurrences, Name, (UserPrivileges)Privilege);
 		}
 	}

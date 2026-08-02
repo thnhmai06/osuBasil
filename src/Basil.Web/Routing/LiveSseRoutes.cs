@@ -2,7 +2,8 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Json;
+using Basil.Application.Formats;
+using Basil.Application.Services;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -175,7 +176,7 @@ internal static class LiveSseRoutes
 	///     frames simply start matching the new occupant instead, with no separate re-subscribe step.
 	/// </summary>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
-		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, IPlayerSessionRegistry sessionRegistry,
+		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, IUserSessionRegistry sessionRegistry,
 		Func<byte[]?> readLatestSlotSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);

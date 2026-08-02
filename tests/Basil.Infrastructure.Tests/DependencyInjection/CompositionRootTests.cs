@@ -1,6 +1,6 @@
 using Basil.Application;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Spectating;
@@ -15,7 +15,7 @@ namespace Basil.Infrastructure.Tests.DependencyInjection;
 
 /// <summary>
 ///     Resolves the full Web-endpoint dependency graph (LoginService's 17 constructor deps,
-///     BanchoPacketDispatcher's 9 handlers, session registries) from the real DI container. A
+///     PacketDispatcher's 9 handlers, session registries) from the real DI container. A
 ///     deep constructor graph like this is exactly what silently breaks at runtime without a test
 ///     like this one — unit tests on the individual pieces can't see a missing/misconfigured
 ///     registration in the composition root itself.
@@ -50,15 +50,15 @@ public class CompositionRootTests
 	[Fact]
 	public void ResolvesBanchoPacketDispatcherWithAllHandlers()
 	{
-		Assert.NotNull(_provider.GetRequiredService<BanchoPacketDispatcher>());
-		Assert.Equal(46, _provider.GetServices<IBanchoPacketHandler>().Count());
+		Assert.NotNull(_provider.GetRequiredService<PacketDispatcher>());
+		Assert.Equal(46, _provider.GetServices<IPacketHandler>().Count());
 	}
 
 	[Fact]
 	public void ResolvesSessionRegistriesAsSharedSingletons()
 	{
-		var registry1 = _provider.GetRequiredService<IPlayerSessionRegistry>();
-		var registry2 = _provider.GetRequiredService<IPlayerSessionRegistry>();
+		var registry1 = _provider.GetRequiredService<IUserSessionRegistry>();
+		var registry2 = _provider.GetRequiredService<IUserSessionRegistry>();
 		Assert.Same(registry1, registry2);
 	}
 

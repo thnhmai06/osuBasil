@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -10,9 +10,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchLeaveChannel.</summary>
 public class TourneyMatchLeaveChannelHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int matchId)
+	private static PacketReader ReaderFor(int matchId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(matchId));
+		return new PacketReader(PacketWriter.WriteInt32(matchId));
 	}
 
 	[Fact]

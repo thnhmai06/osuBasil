@@ -1,4 +1,4 @@
-using Basil.Application.Abstractions.Channels;
+using Basil.Domain.Channels;
 
 namespace Basil.Application.Sessions.Channels;
 

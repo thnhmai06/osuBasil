@@ -1,5 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -77,7 +77,7 @@ public class MatchChangeSettingsHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.MapId = -1;
 		var newMd5 = new string('b', 32);
-		var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
@@ -173,7 +173,7 @@ public class MatchChangeSettingsHandlerTests
 
 		// Beatmap gets ingested while the room sits idle — the next settings packet (any resend)
 		// must still attempt the lookup despite UnresolvedMapMd5 being set, not skip it.
-		var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(md5, 777, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
@@ -214,7 +214,7 @@ public class MatchChangeSettingsHandlerTests
 			Chunk(host.Dequeue()));
 	}
 
-	private static (Fixture Fixture, PlayerSession Host, PlayerSession Bot, MatchSession Match)
+	private static (Fixture Fixture, UserSession Host, UserSession Bot, MatchSession Match)
 		SetUpMatchWithPendingAutoStart()
 	{
 		var fixture = new Fixture();
@@ -227,7 +227,7 @@ public class MatchChangeSettingsHandlerTests
 		return (fixture, host, bot, match);
 	}
 
-	private static void AssertAutoStartCancelled(MatchSession match, PlayerSession host, PlayerSession bot)
+	private static void AssertAutoStartCancelled(MatchSession match, UserSession host, UserSession bot)
 	{
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
@@ -256,7 +256,7 @@ public class MatchChangeSettingsHandlerTests
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
 		match.MapId = -1;
 		var newMd5 = new string('d', 32);
-		var mapset = new Mapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
 			newMd5, 500, mapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),

@@ -11,16 +11,16 @@ namespace Basil.Protocol.Tests;
 /// </summary>
 public class ServerPacketWriterTests
 {
-	private static MatchPacketData MakeMatch()
+	private static MatchPacket MakeMatch()
 	{
-		var slots = new List<MatchSlotData>
+		var slots = new List<MatchSlotPacket>
 		{
 			new(4, 1, 64, 1001),
 			new(8, 2, 16, 32)
 		};
-		for (var i = 0; i < 14; i++) slots.Add(new MatchSlotData(1, 0, 0, null));
+		for (var i = 0; i < 14; i++) slots.Add(new MatchSlotPacket(1, 0, 0, null));
 
-		return new MatchPacketData(
+		return new MatchPacket(
 			7,
 			true,
 			64,
@@ -265,7 +265,7 @@ public class ServerPacketWriterTests
 	[Fact]
 	public void MatchScoreUpdate_WithValues()
 	{
-		var frame = new ScoreFrameData(
+		var frame = new ScoreFrame(
 			38242, 28, 320, 48, 2, 32, 8,
 			3, 492_392, CurrentCombo: 39, MaxCombo: 122, Perfect: false,
 			CurrentHp: 245, TagByte: 0, ScoreV2: false);
@@ -276,7 +276,7 @@ public class ServerPacketWriterTests
 	[Fact]
 	public void MatchScoreUpdate_AllZero()
 	{
-		var frame = new ScoreFrameData(
+		var frame = new ScoreFrame(
 			0, 0, 0, 0, 0, 0, 0, 0,
 			0, CurrentCombo: 0, MaxCombo: 0, Perfect: false, CurrentHp: 0, TagByte: 0,
 			ScoreV2: false, ComboPortion: 0.0, BonusPortion: 0.0);

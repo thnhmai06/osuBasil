@@ -9,11 +9,11 @@ using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.UseCases.Spectating;
 
-/// <summary>Ported from Player.add_spectator/remove_spectator.</summary>
+/// <summary>Ported from User.add_spectator/remove_spectator.</summary>
 public class SpectatorServiceTests
 {
 	private readonly FakeChannelRegistry _channelRegistry = new();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private SpectatorService MakeService()
 	{
@@ -21,12 +21,12 @@ public class SpectatorServiceTests
 			NullLogger<SpectatorService>.Instance);
 	}
 
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	private void RegisterAll(params PlayerSession[] sessions)
+	private void RegisterAll(params UserSession[] sessions)
 	{
 		_sessionRegistry.All.Returns(sessions);
 		foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);

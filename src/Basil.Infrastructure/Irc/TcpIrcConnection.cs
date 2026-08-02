@@ -1,7 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
@@ -39,7 +39,7 @@ public sealed class TcpIrcConnection(
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	IOptions<IrcOptions> options,
 	ILogger<TcpIrcConnection> logger,
 	long connectionId) : IIrcConnection
@@ -54,12 +54,12 @@ public sealed class TcpIrcConnection(
 	private readonly Channel<IrcMessage> _outbox = Channel.CreateBounded<IrcMessage>(
 		new BoundedChannelOptions(64) { FullMode = BoundedChannelFullMode.DropOldest });
 
-	/// <summary>Indicates whether the PASS/NICK handshake has completed and <see cref="Player" /> is set.</summary>
+	/// <summary>Indicates whether the PASS/NICK handshake has completed and <see cref="User" /> is set.</summary>
 	private bool _registered;
 
 	/// <inheritdoc />
 	/// <remarks>Null until authentication succeeds.</remarks>
-	public PlayerSession Player { get; private set; } = null!;
+	public UserSession User { get; private set; } = null!;
 
 	/// <inheritdoc />
 	/// <remarks>Always <see langword="true" />: this type is the real external IRC transport.</remarks>
@@ -107,9 +107,9 @@ public sealed class TcpIrcConnection(
 
 			if (_registered)
 			{
-				logger.LogInformation("IRC client disconnected: UserId={UserId} Nick={Nick}", Player.Id, Player.Name);
-				channelMembership.Quit(Player, "Connection closed");
-				sessionRegistry.Remove(Player);
+				logger.LogInformation("IRC client disconnected: UserId={UserId} Nick={Nick}", User.Id, User.Name);
+				channelMembership.Quit(User, "Connection closed");
+				sessionRegistry.Remove(User);
 			}
 		}
 	}
@@ -118,7 +118,7 @@ public sealed class TcpIrcConnection(
 	///     Reads client lines until the socket closes. Before registration, buffers the PASS and NICK
 	///     values and attempts authentication once both are present. After registration, dispatches
 	///     each line through <see cref="HandleRegisteredCommandAsync" /> and refreshes the session's
-	///     <see cref="PlayerSession.LastRecvTime" />.
+	///     <see cref="UserSession.LastRecvTime" />.
 	/// </summary>
 	private async Task ReadLoopAsync(StreamReader reader, CancellationToken cancellationToken)
 	{
@@ -134,7 +134,7 @@ public sealed class TcpIrcConnection(
 
 			if (_registered)
 			{
-				Player.LastRecvTime = DateTimeOffset.UtcNow;
+				User.LastRecvTime = DateTimeOffset.UtcNow;
 				if (!await HandleRegisteredCommandAsync(message, cancellationToken)) return;
 
 				continue;
@@ -165,21 +165,21 @@ public sealed class TcpIrcConnection(
 		switch (message.Command)
 		{
 			case "PRIVMSG" when message.Params.Count >= 2:
-				await chatDispatch.SendPrivmsgAsync(Player, message.Params[0], message.Params[1], cancellationToken);
+				await chatDispatch.SendPrivmsgAsync(User, message.Params[0], message.Params[1], cancellationToken);
 				break;
 
 			case "JOIN" when message.Params.Count >= 1:
 				var joinTarget = channelRegistry.GetByName(message.Params[0]);
-				if (joinTarget is not null) channelMembership.Join(Player, joinTarget);
+				if (joinTarget is not null) channelMembership.Join(User, joinTarget);
 				break;
 
 			case "PART" when message.Params.Count >= 1:
 				var partTarget = channelRegistry.GetByName(message.Params[0]);
-				if (partTarget is not null) channelMembership.Part(Player, partTarget, false);
+				if (partTarget is not null) channelMembership.Part(User, partTarget, false);
 				break;
 
 			case "AWAY":
-				Player.AwayMessage = message.Params.Count > 0 ? message.Params[0] : null;
+				User.AwayMessage = message.Params.Count > 0 ? message.Params[0] : null;
 				break;
 
 			case "PING":
@@ -189,11 +189,11 @@ public sealed class TcpIrcConnection(
 			case "NICK":
 				// "Can I use another username? No." (osu!Bancho IRC FAQ) — nick is fixed at login.
 				Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrUnknownCommand,
-					Player.Name, "NICK", "Changing nickname is not supported"));
+					User.Name, "NICK", "Changing nickname is not supported"));
 				break;
 
 			case "QUIT":
-				logger.LogDebug("IRC client sent explicit QUIT: UserId={UserId}", Player.Id);
+				logger.LogDebug("IRC client sent explicit QUIT: UserId={UserId}", User.Id);
 				return false;
 		}
 
@@ -215,9 +215,9 @@ public sealed class TcpIrcConnection(
 			return;
 		}
 
-		Player = outcome.Session!;
+		User = outcome.Session!;
 		_registered = true;
-		logger.LogInformation("IRC login succeeded: UserId={UserId} Nick={Nick}", Player.Id, Player.Name);
+		logger.LogInformation("IRC login succeeded: UserId={UserId} Nick={Nick}", User.Id, User.Name);
 	}
 
 	/// <summary>Drains the outbox, writing each message to the socket as a CRLF-terminated wire line.</summary>

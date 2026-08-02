@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -23,7 +23,7 @@ public class MatchSkipRequestHandlerTests
 		guest.Dequeue();
 		var handler = new MatchSkipRequestHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.True(match.Slots[0].Skipped);
 		Assert.Contains(ServerPacketWriter.MatchPlayerSkipped(host.Id), Chunk(host.Dequeue()));
@@ -46,7 +46,7 @@ public class MatchSkipRequestHandlerTests
 		guest.Dequeue();
 		var handler = new MatchSkipRequestHandler(fixture.MatchMembership);
 
-		await handler.HandleAsync(host, new BanchoPacketReader(ReadOnlyMemory<byte>.Empty));
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Contains(ServerPacketWriter.MatchSkip(), Chunk(host.Dequeue()));
 	}

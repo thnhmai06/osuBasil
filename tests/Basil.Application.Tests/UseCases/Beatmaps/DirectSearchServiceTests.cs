@@ -64,7 +64,7 @@ public class DirectSearchServiceTests
 	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",
 		string title = "Title")
 	{
-		var mapset = new Mapset(setId, artist, title, "cmyui",
+		var mapset = new Beatmapset(setId, artist, title, "cmyui",
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc),
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc));
 		return new Beatmap(

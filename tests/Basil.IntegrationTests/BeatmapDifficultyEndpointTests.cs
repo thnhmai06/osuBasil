@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Web;
@@ -170,7 +170,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-difficulty-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
 	private Beatmap? _beatmap;
-	private Mapset? _mapset;
+	private Beatmapset? _mapset;
 
 	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Program> factory)
 	{
@@ -180,14 +180,14 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 			.Returns(call =>
 			{
 				var includePrivate = call.ArgAt<bool>(4);
-				return _beatmap is not null && (includePrivate || !_beatmap.Mapset.IsPrivate) ? _beatmap : null;
+				return _beatmap is not null && (includePrivate || !_beatmap.Beatmapset.IsPrivate) ? _beatmap : null;
 			});
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(_ => _beatmap is null ? [] : [_beatmap]);
 
-		var mapsets = Substitute.For<IMapsetRepository>();
+		var mapsets = Substitute.For<IBeatmapsetRepository>();
 		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(_ => _mapset?.Id == _beatmap?.Mapset.Id ? _mapset : null);
+			.Returns(_ => _mapset?.Id == _beatmap?.Beatmapset.Id ? _mapset : null);
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -230,7 +230,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 
 	private void SeedBeatmap(int mapsetId, int beatmapId, bool isPrivate = false)
 	{
-		_mapset = new Mapset(mapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
+		_mapset = new Beatmapset(mapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
 			DateTime.UnixEpoch, IsPrivate: isPrivate);
 		_beatmap = new Beatmap(new string('a', 32), beatmapId, _mapset, "Insane", "vivid.osu",
 			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());

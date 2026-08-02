@@ -1,5 +1,5 @@
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Login;
@@ -10,16 +10,16 @@ using Microsoft.Extensions.Options;
 namespace Basil.Application.Services.Bot;
 
 /// <summary>
-///     Boots the seeded id=0 bot user into an in-memory <see cref="PlayerSession" /> at startup.
+///     Boots the seeded id=0 bot user into an in-memory <see cref="UserSession" /> at startup.
 /// </summary>
 /// <remarks>
 ///     This gives chat and <c>!mp</c> commands a real sender identity to reply from. It is not a
 ///     login: no client connection sits behind this session, so the normal handshake is skipped
-///     entirely and the session is registered directly with <see cref="IPlayerSessionRegistry" />.
+///     entirely and the session is registered directly with <see cref="IUserSessionRegistry" />.
 /// </remarks>
 public sealed class BotBootstrapService(
 	IUserRepository users,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	IChannelRegistry channelRegistry,
 	IOptions<BotOptions> botOptions,
 	ILogger<BotBootstrapService> logger)
@@ -33,15 +33,15 @@ public sealed class BotBootstrapService(
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	/// <returns>
-	///     The bot's <see cref="PlayerSession" />, or <see langword="null" /> when the seeded user row
+	///     The bot's <see cref="UserSession" />, or <see langword="null" /> when the seeded user row
 	///     is missing.
 	/// </returns>
-	public async Task<PlayerSession?> BootstrapAsync(CancellationToken cancellationToken = default)
+	public async Task<UserSession?> BootstrapAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await users.FetchByIdAsync(BotId, cancellationToken);
 		if (user is null)
 		{
-			logger.LogWarning("BasilBot user row (id=0) missing — chat bot unavailable");
+			logger.LogError("BasilBot user row (id=0) missing — chat bot unavailable");
 			return null;
 		}
 
@@ -59,7 +59,7 @@ public sealed class BotBootstrapService(
 		}
 
 		var loginTime = DateTimeOffset.UtcNow;
-		var session = new PlayerSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
+		var session = new UserSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
 		{
 			IsBot = true
 		};

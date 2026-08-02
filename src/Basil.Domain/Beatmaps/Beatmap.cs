@@ -3,15 +3,15 @@ using System.Text.Json.Serialization;
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
-///     Represents a single difficulty within a <see cref="Mapset" />.
+///     Represents a single difficulty within a <see cref="Beatmapset" />.
 /// </summary>
 /// <param name="Md5">The MD5 hash of the beatmap file's contents.</param>
 /// <param name="Id">The osu! id of the beatmap.</param>
-/// <param name="Mapset">The set this difficulty belongs to.</param>
+/// <param name="Beatmapset">The set this difficulty belongs to.</param>
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Filename">The name of the beatmap file on disk.</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="BeatmapObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="BackgroundFile">
 ///     The background image file name resolved against the set's storage folder, or
 ///     <see langword="null" /> if the beatmap has no background.
@@ -36,7 +36,7 @@ public sealed record Beatmap(
 
 	string Md5,
 	int Id,
-	Mapset Mapset,
+	Beatmapset Beatmapset,
 
 	#endregion
 
@@ -50,7 +50,7 @@ public sealed record Beatmap(
 	#region Stats
 
 	Difficulty Difficulty,
-	BeatmapObjectCounts BeatmapObjectCounts,
+	BeatmapObjectCounts ObjectCounts,
 
 	#endregion
 
@@ -92,5 +92,5 @@ public sealed record Beatmap(
 	///     Gets the full display name of the beatmap.
 	/// </summary>
 	/// <value>An "Artist - Title [Version]" string.</value>
-	public string FullName => $"{Mapset.Artist} - {Mapset.Title} [{Version}]";
+	public string FullName => $"{Beatmapset.Artist} - {Beatmapset.Title} [{Version}]";
 }

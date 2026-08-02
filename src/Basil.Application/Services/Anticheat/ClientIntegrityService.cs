@@ -23,23 +23,22 @@ public enum ClientIntegrityResult : byte
 ///     Evaluates anticheat flags reported by osu! clients through the LastFM telemetry endpoint.
 /// </summary>
 /// <remarks>
-///     A flagged player who is currently in a match gets BasilBot posting a warning to that match's
-///     own chat channel and a direct message to every referee of the match, naming the player,
-///     room, and reason. A flagged player who is not in a match produces no side effect at all.
+///     A flagged userSession who is currently in a match gets BasilBot posting a warning to that match's
+///     own chat channel and a direct message to every referee of the match, naming the userSession,
+///     room, and reason. A flagged userSession who is not in a match produces no side effect at all.
 ///     This deliberately drops the restrict, force-logout, and ban-roll machinery that a ranked
 ///     server would apply, because Basil has no restrict system.
 /// </remarks>
 public sealed class ClientIntegrityService(
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	MatchMembershipService matchMembership,
 	ILogger<ClientIntegrityService> logger)
 {
 	/// <summary>
 	///     Evaluates a single LastFM telemetry report for client integrity violations.
 	/// </summary>
-	/// <param name="player">The player session the report belongs to.</param>
+	/// <param name="userSession">The userSession session the report belongs to.</param>
 	/// <param name="beatmapIdOrHiddenFlag">The telemetry value: either a beatmap id or the encoded anticheat flag payload.</param>
-	/// <param name="cancellationToken">A token that cancels the report.</param>
 	/// <returns>A <see cref="ClientIntegrityResult" /> describing the outcome.</returns>
 	/// <remarks>
 	///     Only values beginning with the <c>a</c> marker are treated as flag payloads; the flag
@@ -48,7 +47,7 @@ public sealed class ClientIntegrityService(
 	///     other flags are ignored.
 	/// </remarks>
 	public Task<ClientIntegrityResult> HandleLastFmFlagsAsync(
-		PlayerSession player, string beatmapIdOrHiddenFlag, CancellationToken cancellationToken = default)
+		UserSession userSession, string beatmapIdOrHiddenFlag)
 	{
 		if (string.IsNullOrEmpty(beatmapIdOrHiddenFlag) || beatmapIdOrHiddenFlag[0] != 'a')
 			return Task.FromResult(ClientIntegrityResult.StopSending);
@@ -63,38 +62,38 @@ public sealed class ClientIntegrityService(
 		if ((flags & (LastFmFlags.HqAssembly | LastFmFlags.HqFile)) != 0)
 		{
 			logger.LogInformation("Anticheat flag: UserId={UserId} Username={Username} Flags={Flags} MatchId={MatchId}",
-				player.Id, player.Name, flags, player.Match?.DbId);
-			ReportFlag(player, $"hq!osu running ({flags})");
+				userSession.Id, userSession.Name, flags, userSession.Match?.DbId);
+			ReportFlag(userSession, $"hq!osu running ({flags})");
 			return Task.FromResult(ClientIntegrityResult.StopSending);
 		}
 
 		if ((flags & LastFmFlags.RegistryEdits) != 0)
 		{
 			logger.LogInformation("Anticheat flag: UserId={UserId} Username={Username} Flags={Flags} MatchId={MatchId}",
-				player.Id, player.Name, flags, player.Match?.DbId);
-			ReportFlag(player, "hq!osu tool registry edits detected");
+				userSession.Id, userSession.Name, flags, userSession.Match?.DbId);
+			ReportFlag(userSession, "hq!osu tool registry edits detected");
 			return Task.FromResult(ClientIntegrityResult.StopSending);
 		}
 
 		return Task.FromResult(ClientIntegrityResult.Empty);
 	}
 
-	private void ReportFlag(PlayerSession player, string reason)
+	private void ReportFlag(UserSession userSession, string reason)
 	{
-		var match = player.Match;
+		var match = userSession.Match;
 		if (match is null)
 		{
 			logger.LogInformation("Anticheat flag had no effect: UserId={UserId} Reason={Reason} (not in a match)",
-				player.Id, reason);
+				userSession.Id, reason);
 			return;
 		}
 
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is null) return;
 
-		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {player.Name}: {reason}");
+		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
 
-		var dm = $"Anti-cheat flag in match #{match.DbId} {match.Name}: {player.Name} — {reason}";
+		var dm = $"Anti-cheat flag in match #{match.DbId} {match.Name}: {userSession.Name} — {reason}";
 		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",
 			match.DbId, match.Referees);
 		foreach (var refereeId in match.Referees)

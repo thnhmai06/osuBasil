@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Web;
@@ -31,8 +31,8 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => (IReadOnlyList<ScoreRow>)
 				[.. _rows.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
-		scores.FetchByRoundIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<RoundScoreRow>>([]));
+		scores.FetchByRoundAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<IReadOnlyList<ScoreReport>>([]));
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

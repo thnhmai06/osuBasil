@@ -10,7 +10,7 @@ public class BeatmapTests
 {
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Mapset(100, "Camellia", "Exit This Earth's Atomosphere", "cmyui",
+		var mapset = new Beatmapset(100, "Camellia", "Exit This Earth's Atomosphere", "cmyui",
 			new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 		return new Beatmap(
 			"d41d8cd98f00b204e9800998ecf8427e",
@@ -35,6 +35,6 @@ public class BeatmapTests
 	{
 		var bmap = MakeBeatmap();
 
-		Assert.Equal(BeatmapStatus.Loved, bmap.Mapset.Status);
+		Assert.Equal(BeatmapStatus.Loved, Beatmapset.Status);
 	}
 }

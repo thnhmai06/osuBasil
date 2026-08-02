@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -10,9 +10,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's TourneyMatchInfoRequest.</summary>
 public class TourneyMatchInfoRequestHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int matchId)
+	private static PacketReader ReaderFor(int matchId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(matchId));
+		return new PacketReader(PacketWriter.WriteInt32(matchId));
 	}
 
 	[Fact]
@@ -45,7 +45,7 @@ public class TourneyMatchInfoRequestHandlerTests
 
 		await handler.HandleAsync(requester, ReaderFor(match.Id));
 
-		Assert.Contains(ServerPacketWriter.UpdateMatch(MatchPacketDataMapper.ToPacketData(match), false),
+		Assert.Contains(ServerPacketWriter.UpdateMatch(match.ToPacket(), false),
 			Chunk(requester.Dequeue()));
 	}
 }

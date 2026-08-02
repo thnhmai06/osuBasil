@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
@@ -20,7 +20,7 @@ public class MatchScoreUpdateHandlerTests
 		var handler = new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus);
 		var frame = new byte[] { 1, 2, 3, 4, 5, 6 };
 
-		await handler.HandleAsync(guest, new BanchoPacketReader(frame));
+		await handler.HandleAsync(guest, new PacketReader(frame));
 
 		var forwarded = Chunk(host.Dequeue()).Single();
 		Assert.Equal((int)ServerPackets.MatchScoreUpdate, BitConverter.ToUInt16(forwarded, 0));
@@ -41,7 +41,7 @@ public class MatchScoreUpdateHandlerTests
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		var handler = new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus);
 
-		await handler.HandleAsync(guest, new BanchoPacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }));
+		await handler.HandleAsync(guest, new PacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }));
 
 		Assert.Empty(fixture.EventBus.PlayerPublishes);
 	}
@@ -64,7 +64,7 @@ public class MatchScoreUpdateHandlerTests
 		BitConverter.GetBytes((ushort)100).CopyTo(frame, 5); // num300
 		BitConverter.GetBytes(500_000).CopyTo(frame, 17); // totalScore (int, 4 bytes at offset 17)
 
-		await handler.HandleAsync(guest, new BanchoPacketReader(frame));
+		await handler.HandleAsync(guest, new PacketReader(frame));
 
 		var publish = Assert.Single(fixture.EventBus.PlayerPublishes);
 		Assert.Equal(match.DbId, publish.MatchDbId);

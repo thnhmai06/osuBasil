@@ -1,4 +1,4 @@
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 
 namespace Basil.Infrastructure.Persistence;
 

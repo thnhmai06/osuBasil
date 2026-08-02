@@ -13,26 +13,26 @@ namespace Basil.Application.Sessions.Channels;
 ///     in <c>ChatDispatchService</c>, and referencing the dispatcher here would create a dependency
 ///     cycle (CommandDispatcher to MpCommandService to MatchMembershipService to this class).
 /// </summary>
-public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegistry, IChannelRegistry channelRegistry)
+public sealed class ChannelMembershipService(IUserSessionRegistry sessionRegistry, IChannelRegistry channelRegistry)
 {
 	/// <summary>
-	///     Adds a player to a channel and broadcasts the join to existing members, returning false
-	///     when the player has already joined or lacks read access.
+	///     Adds a userSession to a channel and broadcasts the join to existing members, returning false
+	///     when the userSession has already joined or lacks read access.
 	/// </summary>
-	/// <param name="player">The session of the player joining the channel.</param>
+	/// <param name="userSession">The session of the userSession joining the channel.</param>
 	/// <param name="channel">The channel to join.</param>
-	/// <returns><see langword="true" /> if the player was added to the channel; otherwise, <see langword="false" />.</returns>
-	public bool Join(PlayerSession player, ChannelSession channel)
+	/// <returns><see langword="true" /> if the userSession was added to the channel; otherwise, <see langword="false" />.</returns>
+	public bool Join(UserSession userSession, ChannelSession channel)
 	{
-		if (player.InChannel(channel.Name) || !channel.CanRead(player.Privilege)) return false;
+		if (userSession.InChannel(channel.Name) || !channel.CanRead(userSession.Privilege)) return false;
 
-		channel.Join(player.Id);
-		player.JoinChannel(channel.Name);
-		player.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
+		channel.Join(userSession.Id);
+		userSession.JoinChannel(channel.Name);
+		userSession.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
 
 		BroadcastChannelInfo(channel);
 
-		var joinMessage = IrcMessageWriter.Join(player.Name, player.Id, channel.Name);
+		var joinMessage = IrcMessageWriter.Join(userSession.Name, userSession.Id, channel.Name);
 		foreach (var memberId in channel.MemberIds)
 			sessionRegistry.GetById(memberId)?.IrcConnection.Send(joinMessage);
 
@@ -40,55 +40,52 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 	}
 
 	/// <summary>
-	///     Removes a player from a channel and broadcasts the part to the remaining members.
+	///     Removes a userSession from a channel and broadcasts the part to the remaining members.
 	/// </summary>
-	/// <param name="player">The session of the player leaving the channel.</param>
+	/// <param name="userSession">The session of the userSession leaving the channel.</param>
 	/// <param name="channel">The channel to leave.</param>
 	/// <param name="kick">
-	///     When <see langword="true" />, also sends the player a ChannelKick packet so the client drops the
-	///     channel from its chat list; when <see langword="false" />, the player leaves silently.
+	///     When <see langword="true" />, also sends the userSession a ChannelKick packet so the client drops the
+	///     channel from its chat list; when <see langword="false" />, the userSession leaves silently.
 	/// </param>
-	public void Part(PlayerSession player, ChannelSession channel, bool kick = true)
+	public void Part(UserSession userSession, ChannelSession channel, bool kick = true)
 	{
-		if (!player.InChannel(channel.Name)) return;
+		if (!userSession.InChannel(channel.Name)) return;
 
-		var partMessage = IrcMessageWriter.Part(player.Name, player.Id, channel.Name);
+		var partMessage = IrcMessageWriter.Part(userSession.Name, userSession.Id, channel.Name);
 		foreach (var memberId in channel.MemberIds)
 			sessionRegistry.GetById(memberId)?.IrcConnection.Send(partMessage);
 
-		channel.Part(player.Id);
-		player.LeaveChannel(channel.Name);
+		channel.Part(userSession.Id);
+		userSession.LeaveChannel(channel.Name);
 
-		if (kick) player.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
+		if (kick) userSession.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
 
 		BroadcastChannelInfo(channel);
 	}
 
 	/// <summary>
-	///     Cleans up every channel <paramref name="player" /> is in and notifies the remaining
+	///     Cleans up every channel <paramref name="userSession" /> is in and notifies the remaining
 	///     IRC-shaped connections with a single QUIT each (deduplicated across shared channels).
 	///     Called when a real IRC TCP connection disconnects; bancho sessions never call this,
 	///     since they leave via GhostDisconnectService and bancho clients only ever saw ChannelInfo
 	///     counts rather than per-user quit events.
 	/// </summary>
-	/// <param name="player">The session of the disconnecting player.</param>
+	/// <param name="userSession">The session of the disconnecting userSession.</param>
 	/// <param name="reason">The quit reason reported to the remaining members.</param>
-	public void Quit(PlayerSession player, string reason)
+	public void Quit(UserSession userSession, string reason)
 	{
-		var quitMessage = IrcMessageWriter.Quit(player.Name, player.Id, reason);
+		var quitMessage = IrcMessageWriter.Quit(userSession.Name, userSession.Id, reason);
 		var notified = new HashSet<int>();
 
-		foreach (var channelName in player.Channels.ToList())
+		foreach (var channel in userSession.Channels.Select(channelRegistry.GetByName).OfType<ChannelSession>())
 		{
-			var channel = channelRegistry.GetByName(channelName);
-			if (channel is null) continue;
-
 			foreach (var memberId in channel.MemberIds)
-				if (memberId != player.Id && notified.Add(memberId))
+				if (memberId != userSession.Id && notified.Add(memberId))
 					sessionRegistry.GetById(memberId)?.IrcConnection.Send(quitMessage);
 
-			channel.Part(player.Id);
-			player.LeaveChannel(channel.Name);
+			channel.Part(userSession.Id);
+			userSession.LeaveChannel(channel.Name);
 			BroadcastChannelInfo(channel);
 		}
 	}
@@ -106,7 +103,6 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (immune is not null && immune.Contains(memberId)) continue;
-
 			sessionRegistry.GetById(memberId)?.Enqueue(packet);
 		}
 	}
@@ -124,7 +120,6 @@ public sealed class ChannelMembershipService(IPlayerSessionRegistry sessionRegis
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (memberId == skipMemberId) continue;
-
 			sessionRegistry.GetById(memberId)?.IrcConnection.Send(message);
 		}
 	}

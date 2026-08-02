@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
@@ -45,11 +45,11 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				// A stub avoids needing a real SQLite file for these plumbing tests (IMatchPersistenceRepository
+				// A stub avoids needing a real SQLite file for these plumbing tests (IMatchRepository
 				// is still resolved by other services in the DI graph even though the main SSE route itself
 				// no longer touches it — see RegisterLiveMatch, which registers matches directly against
 				// IMatchRegistry instead of going through the real persistence-backed creation flow).
-				services.AddSingleton<IMatchPersistenceRepository>(new NeverPersistedMatchRepository());
+				services.AddSingleton<IMatchRepository>(new NeverPersistedMatchRepository());
 			});
 		});
 	}
@@ -86,11 +86,11 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 
 		var (_, data) = await ReceiveAfterPublishAsync("/users/7/live", () =>
 		{
-			events.PublishInput(8, [.. "not for player 7"u8]);
-			events.PublishInput(7, [.. "for player 7"u8]);
+			events.PublishInput(8, [.. "not for userSession 7"u8]);
+			events.PublishInput(7, [.. "for userSession 7"u8]);
 		});
 
-		Assert.Equal("for player 7", data);
+		Assert.Equal("for userSession 7", data);
 	}
 
 	[Fact]
@@ -118,7 +118,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	private int RegisterLiveMatch(int dbId)
 	{
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-		var data = new ReadMatchResult(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
+		var data = new MatchState(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
 			0);
 		var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, 0))!;
 		match.DbId = dbId;
@@ -181,7 +181,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	}
 
 	/// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
-	private sealed class NeverPersistedMatchRepository : IMatchPersistenceRepository
+	private sealed class NeverPersistedMatchRepository : IMatchRepository
 	{
 		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
 			CancellationToken cancellationToken = default)
@@ -207,20 +207,20 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 			throw new NotSupportedException();
 		}
 
-		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<MatchRow?>(null);
+			return Task.FromResult<Match?>(null);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
 		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -228,26 +228,26 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 			return Task.CompletedTask;
 		}
 
-		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+			return Task.FromResult<IReadOnlyList<MatchEvent>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 	}
 }

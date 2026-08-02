@@ -9,13 +9,13 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 
 public class UserBriefResolverTests
 {
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	[Fact]
 	public async Task ResolveAsync_OnlinePlayer_UsesLiveSessionWithoutTouchingUserRepository()
 	{
-		var session = new PlayerSession(7, "Alice", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var session = new UserSession(7, "Alice", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			Geoloc = new Geolocation(0, 0, Country.Vn)
 		};
@@ -33,7 +33,7 @@ public class UserBriefResolverTests
 	[Fact]
 	public async Task ResolveAsync_OfflinePlayer_FallsBackToUserRepository()
 	{
-		_sessionRegistry.GetById(9).Returns((PlayerSession?)null);
+		_sessionRegistry.GetById(9).Returns((UserSession?)null);
 		_users.FetchByIdAsync(9, Arg.Any<CancellationToken>())
 			.Returns(new User(9, "Carol", Country.Us, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
 
@@ -48,7 +48,7 @@ public class UserBriefResolverTests
 	[Fact]
 	public async Task ResolveAsync_UnknownUser_ReturnsNull()
 	{
-		_sessionRegistry.GetById(999).Returns((PlayerSession?)null);
+		_sessionRegistry.GetById(999).Returns((UserSession?)null);
 		_users.FetchByIdAsync(999, Arg.Any<CancellationToken>()).Returns((User?)null);
 
 		var brief = await UserBriefResolver.ResolveAsync(999, _sessionRegistry, _users);

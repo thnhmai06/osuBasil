@@ -54,7 +54,7 @@ public static class ServerPacketWriter
 	///     send a blank password.
 	/// </param>
 	/// <returns>The match payload bytes, without the packet header.</returns>
-	public static byte[] WriteMatch(MatchPacketData match, bool sendPassword)
+	public static byte[] WriteMatch(MatchPacket match, bool sendPassword)
 	{
 		var parts = new List<byte[]>();
 
@@ -98,7 +98,7 @@ public static class ServerPacketWriter
 	/// <summary>Builds the fixed 29-byte score frame payload, plus two doubles when score v2 is active.</summary>
 	/// <param name="frame">The score frame data to serialize.</param>
 	/// <returns>The score frame payload bytes, without the packet header.</returns>
-	public static byte[] WriteScoreFrame(ScoreFrameData frame)
+	public static byte[] WriteScoreFrame(ScoreFrame frame)
 	{
 		var result = new byte[29];
 		var span = result.AsSpan();
@@ -308,7 +308,7 @@ public static class ServerPacketWriter
 	///     send a blank password.
 	/// </param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UpdateMatch(MatchPacketData match, bool sendPassword = true)
+	public static byte[] UpdateMatch(MatchPacket match, bool sendPassword = true)
 	{
 		return PacketWriter.Wrap(ServerPackets.UpdateMatch, WriteMatch(match, sendPassword));
 	}
@@ -317,7 +317,7 @@ public static class ServerPacketWriter
 	/// <summary>Builds the new-match packet announcing a match to the lobby.</summary>
 	/// <param name="match">The match data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] NewMatch(MatchPacketData match)
+	public static byte[] NewMatch(MatchPacket match)
 	{
 		return PacketWriter.Wrap(ServerPackets.NewMatch, WriteMatch(match, true));
 	}
@@ -343,7 +343,7 @@ public static class ServerPacketWriter
 	/// <summary>Builds the match-join-success packet confirming a join with the current match state.</summary>
 	/// <param name="match">The match data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchJoinSuccess(MatchPacketData match)
+	public static byte[] MatchJoinSuccess(MatchPacket match)
 	{
 		return PacketWriter.Wrap(ServerPackets.MatchJoinSuccess, WriteMatch(match, true));
 	}
@@ -378,7 +378,7 @@ public static class ServerPacketWriter
 	/// <summary>Builds the match-start packet beginning the match for all players.</summary>
 	/// <param name="match">The match data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchStart(MatchPacketData match)
+	public static byte[] MatchStart(MatchPacket match)
 	{
 		return PacketWriter.Wrap(ServerPackets.MatchStart, WriteMatch(match, true));
 	}
@@ -387,7 +387,7 @@ public static class ServerPacketWriter
 	/// <summary>Builds the match-score-update packet broadcasting a player's score frame.</summary>
 	/// <param name="frame">The score frame data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchScoreUpdate(ScoreFrameData frame)
+	public static byte[] MatchScoreUpdate(ScoreFrame frame)
 	{
 		return PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, WriteScoreFrame(frame));
 	}
@@ -418,7 +418,7 @@ public static class ServerPacketWriter
 	}
 
 	// packet id: 58
-	/// <summary>Builds the empty match-complete packet signalling the end of a played map.</summary>
+	/// <summary>Builds the empty match-complete packet signaling the end of a played map.</summary>
 	/// <returns>The complete packet.</returns>
 	public static byte[] MatchComplete()
 	{

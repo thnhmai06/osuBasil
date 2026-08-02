@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
@@ -41,7 +41,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton<IMatchPersistenceRepository>(new NoopMatchPersistenceRepository());
+				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});
 		});
@@ -181,7 +181,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		}
 	}
 
-	private sealed class NoopMatchPersistenceRepository : IMatchPersistenceRepository
+	private sealed class NoopMatchRepository : IMatchRepository
 	{
 		private int _nextId = 1;
 
@@ -209,20 +209,20 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			throw new NotSupportedException();
 		}
 
-		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<MatchRow?>(null);
+			return Task.FromResult<Match?>(null);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
 		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -230,26 +230,26 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			return Task.CompletedTask;
 		}
 
-		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+			return Task.FromResult<IReadOnlyList<MatchEvent>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 	}
 

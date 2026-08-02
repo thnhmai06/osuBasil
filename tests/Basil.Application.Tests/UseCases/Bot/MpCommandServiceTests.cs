@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
@@ -30,13 +31,13 @@ public class MpCommandServiceTests
 
 	private MpCommandService MakeService()
 	{
-		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchPersistence,
+		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchRepository,
 			_beatmaps,
 			_fixture.SessionRegistry, _users, NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 	}
 
-	private static async Task<string?> Run(MpCommandService svc, PlayerSession sender, MatchSession match,
+	private static async Task<string?> Run(MpCommandService svc, UserSession sender, MatchSession match,
 		string subcommand, IReadOnlyList<string> args)
 	{
 		var sink = new RecordingReplySink();
@@ -44,21 +45,21 @@ public class MpCommandServiceTests
 		return sink.Last;
 	}
 
-	private static async Task<string?> RunMake(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	private static async Task<string?> RunMake(MpCommandService svc, UserSession sender, IReadOnlyList<string> args)
 	{
 		var sink = new RecordingReplySink();
 		await svc.MakeAsync(sender, args, sink);
 		return sink.Last;
 	}
 
-	private static async Task<string?> RunJoin(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	private static async Task<string?> RunJoin(MpCommandService svc, UserSession sender, IReadOnlyList<string> args)
 	{
 		var sink = new RecordingReplySink();
 		await svc.JoinAsync(sender, args, sink);
 		return sink.Last;
 	}
 
-	private static string? RunSetScope(MpCommandService svc, PlayerSession sender, IReadOnlyList<string> args)
+	private static string? RunSetScope(MpCommandService svc, UserSession sender, IReadOnlyList<string> args)
 	{
 		var sink = new RecordingReplySink();
 		svc.SetScopeAsync(sender, args, sink);
@@ -380,7 +381,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var mapset = new Mapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var mapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(new string('a', 32), 500, mapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
@@ -642,7 +643,7 @@ public class MpCommandServiceTests
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var guest = MultiplayerTestSupport.MakePlayer(2, "guest");
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, guest, bot);
@@ -668,7 +669,7 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_MapChange_CancelsQueuedAutoStart()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);
@@ -716,7 +717,7 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_Timer_AnnouncesQueuedAndFinishedMessagesToMatchChannel()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var bot = new PlayerSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);
@@ -833,7 +834,7 @@ public class MpCommandServiceTests
 	[Fact]
 	public async Task HandleAsync_Ban_NotInMatch_Rejected()
 	{
-		// Ban only ever applies to physical room presence — an absent player can't be targeted.
+		// Ban only ever applies to physical room presence — an absent userSession can't be targeted.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
@@ -1018,7 +1019,7 @@ public class MpCommandServiceTests
 	public async Task MakeAsync_AllPlayersLeave_DoesNotTearDownWhileRefereesRemain()
 	{
 		// Reversed from the room's normal all-slots-empty auto-teardown: a `!mp make` room persists
-		// until `!mp close` or its referee list empties, regardless of player occupancy.
+		// until `!mp close` or its referee list empties, regardless of userSession occupancy.
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 		await RunMake(MakeService(), sender, ["Room"]);
@@ -1207,7 +1208,7 @@ public class MpCommandServiceTests
 	[Fact]
 	public async Task JoinAsync_NonExistent_ReturnsError()
 	{
-		var sender = MultiplayerTestSupport.MakePlayer(1, "player");
+		var sender = MultiplayerTestSupport.MakePlayer(1, "userSession");
 		_fixture.RegisterAll(sender);
 
 		var reply = await RunJoin(MakeService(), sender, ["999"]);
@@ -1219,7 +1220,7 @@ public class MpCommandServiceTests
 	public async Task JoinAsync_Private_Fails()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var player = MultiplayerTestSupport.MakePlayer(2, "player");
+		var player = MultiplayerTestSupport.MakePlayer(2, "userSession");
 		_fixture.RegisterAll(host, player);
 		var match = _fixture.CreateMatch(host);
 		match.IsPrivate = true;
@@ -1233,7 +1234,7 @@ public class MpCommandServiceTests
 	public async Task JoinAsync_Normal_Succeeds()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var player = MultiplayerTestSupport.MakePlayer(2, "player");
+		var player = MultiplayerTestSupport.MakePlayer(2, "userSession");
 		_fixture.RegisterAll(host, player);
 		var match = _fixture.CreateMatch(host);
 

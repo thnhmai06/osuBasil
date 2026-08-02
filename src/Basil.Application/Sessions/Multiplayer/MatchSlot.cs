@@ -11,7 +11,7 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// </summary>
 public sealed class MatchSlot
 {
-	/// <summary>Gets or sets the id of the player occupying this slot, or null when the slot is empty.</summary>
+	/// <summary>Gets or sets the id of the userSession occupying this slot, or null when the slot is empty.</summary>
 	public int? PlayerId { get; set; }
 
 	/// <summary>
@@ -35,7 +35,7 @@ public sealed class MatchSlot
 	/// <summary>Gets or sets a value that indicates whether the occupant has skipped the current beatmap's intro.</summary>
 	public bool Skipped { get; set; }
 
-	/// <summary>Gets a value that indicates whether no player occupies this slot.</summary>
+	/// <summary>Gets a value that indicates whether no userSession occupies this slot.</summary>
 	public bool Empty => PlayerId is null;
 
 	/// <summary>

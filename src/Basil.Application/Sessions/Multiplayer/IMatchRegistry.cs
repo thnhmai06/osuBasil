@@ -7,6 +7,9 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// </summary>
 public interface IMatchRegistry
 {
+	/// <summary>The number of wire-protocol match slots the registry holds.</summary>
+	public const int MaxMatches = 64; // TODO: Remove this limits
+
 	/// <summary>Gets a snapshot of every registered match session.</summary>
 	IReadOnlyList<MatchSession> All { get; }
 
@@ -35,7 +38,7 @@ public interface IMatchRegistry
 	/// </summary>
 	/// <remarks>
 	///     Finding the free slot and registering the session must happen as one step: if they were
-	///     separated, two concurrent creates could claim the same slot.
+	///     separated, two concurrent creations could claim the same slot.
 	/// </remarks>
 	/// <param name="factory">A factory that builds a match for a given slot id.</param>
 	/// <returns>The newly registered match, or null if all slots are occupied.</returns>

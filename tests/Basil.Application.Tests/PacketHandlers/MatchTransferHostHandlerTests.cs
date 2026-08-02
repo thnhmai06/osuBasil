@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Multiplayer;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
@@ -8,9 +8,9 @@ namespace Basil.Application.Tests.PacketHandlers;
 /// <summary>Ported from app/api/domains/cho.py's MatchTransferHost.</summary>
 public class MatchTransferHostHandlerTests
 {
-	private static BanchoPacketReader ReaderFor(int slotId)
+	private static PacketReader ReaderFor(int slotId)
 	{
-		return new BanchoPacketReader(PacketWriter.WriteInt32(slotId));
+		return new PacketReader(PacketWriter.WriteInt32(slotId));
 	}
 
 	[Fact]
@@ -23,7 +23,7 @@ public class MatchTransferHostHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
+			fixture.MatchRepository, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(guest, ReaderFor(1));
 
@@ -41,7 +41,7 @@ public class MatchTransferHostHandlerTests
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		guest.Dequeue();
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
+			fixture.MatchRepository, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(host, ReaderFor(1));
 
@@ -57,7 +57,7 @@ public class MatchTransferHostHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		var handler = new MatchTransferHostHandler(fixture.SessionRegistry, fixture.MatchMembership,
-			fixture.MatchPersistence, NullLogger<MatchTransferHostHandler>.Instance);
+			fixture.MatchRepository, NullLogger<MatchTransferHostHandler>.Instance);
 
 		await handler.HandleAsync(host, ReaderFor(4));
 

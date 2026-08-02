@@ -4,7 +4,7 @@ namespace Basil.Application.Sessions.Multiplayer;
 ///     Non-blocking pub/sub for the live event layer. Publishers, mostly packet handlers that
 ///     already hold <see cref="MatchSession.Lock" />, must never block on a slow or dead
 ///     subscriber: raising a plain C# event is itself non-blocking, and each subscriber writes what
-///     it receives into its own bounded channel. The actual response write happens later, entirely
+///     it receives into its own bounded channel. The actual response writing happens later, entirely
 ///     decoupled from whatever lock the publisher was holding.
 /// </summary>
 public interface IMatchLiveEvents
@@ -17,56 +17,56 @@ public interface IMatchLiveEvents
 	bool HasPlayerScoreSubscribers { get; }
 
 	/// <summary>
-	///     Occurs when the match's general state channel should be updated. Raised with the match's
+	///     Occurs when the match's general state channel should be updated. Rose with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> MainPublished;
 
 	/// <summary>
-	///     Occurs when one player's live score channel should be updated. Raised with the match's
-	///     database id, the player's name, and the payload bytes to broadcast.
+	///     Occurs when one userSession's live score channel should be updated. Rose with the match's
+	///     database id, the userSession's name, and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, string, byte[]> PlayerScorePublished;
 
 	/// <summary>
-	///     Occurs when a match's settings channel should be updated. Raised with the match's
+	///     Occurs when a match's settings channel should be updated. Rose with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> SettingsPublished;
 
 	/// <summary>
-	///     Occurs when one slot's state channel (the "slot" sub-event) should be updated. Raised
+	///     Occurs when one slot's state channel (the "slot" sub-event) should be updated. Rose
 	///     with the match's database id, the zero-based slot index, and the payload bytes to
 	///     broadcast.
 	/// </summary>
 	event Action<int, int, byte[]> SlotPublished;
 
 	/// <summary>
-	///     Occurs when a match's host channel should be updated. Raised with the match's database id
+	///     Occurs when a match's host channel should be updated. Rose with the match's database id
 	///     and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> HostPublished;
 
 	/// <summary>
-	///     Occurs when a match's referee-list channel should be updated. Raised with the match's
+	///     Occurs when a match's referee-list channel should be updated. Rose with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> RefsPublished;
 
 	/// <summary>
-	///     Occurs when a match's ban-list channel should be updated. Raised with the match's
+	///     Occurs when a match's banlist channel should be updated. Rose with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> BansPublished;
 
 	/// <summary>
-	///     Occurs when a match's countdown-timer channel should be updated. Raised with the match's
+	///     Occurs when a match's countdown-timer channel should be updated. Rose with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> TimerPublished;
 
 	/// <summary>
-	///     Occurs when a match's slots channel should be updated. Raised with the match's database
+	///     Occurs when a match's slot channel should be updated. Rose with the match's database
 	///     id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> SlotsPublished;
@@ -76,9 +76,9 @@ public interface IMatchLiveEvents
 	/// <param name="payload">The UTF-8 JSON bytes to broadcast to the channel's subscribers.</param>
 	void PublishMain(int matchDbId, byte[] payload);
 
-	/// <summary>Raises <see cref="PlayerScorePublished" /> with the given match database id, player name, and payload.</summary>
+	/// <summary>Raises <see cref="PlayerScorePublished" /> with the given match database id, userSession name, and payload.</summary>
 	/// <param name="matchDbId">The persistent database id of the match whose channel is being updated.</param>
-	/// <param name="playerName">The name of the player whose score channel is being updated.</param>
+	/// <param name="playerName">The name of the userSession whose score channel is being updated.</param>
 	/// <param name="payload">The UTF-8 JSON bytes to broadcast to the channel's subscribers.</param>
 	void PublishPlayer(int matchDbId, string playerName, byte[] payload);
 

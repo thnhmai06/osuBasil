@@ -1,5 +1,5 @@
-using Basil.Application.Abstractions.Social;
 using Basil.Domain.Login;
+using Basil.Domain.Social;
 using Basil.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
 

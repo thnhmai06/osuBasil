@@ -1,9 +1,12 @@
+using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Packets.Channels;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
@@ -17,8 +20,8 @@ namespace Basil.Application.Services.Chat;
 /// <remarks>
 ///     This is the single entry point for "a sender said <c>text</c> to <c>channelOrNick</c>", used
 ///     identically by the bancho packet handlers
-///     <see cref="Basil.Application.PacketHandlers.Channels.SendPublicMessageHandler" /> and
-///     <see cref="Basil.Application.PacketHandlers.Channels.SendPrivateMessageHandler" /> and by a
+///     <see cref="SendPublicMessageHandler" /> and
+///     <see cref="SendPrivateMessageHandler" /> and by a
 ///     real IRC connection's PRIVMSG. A leading <c>#</c> routes to the channel path, which broadcasts
 ///     and dispatches any <c>!</c> command; anything else resolves to a user, either the bot for a
 ///     command shortcut or a regular recipient whose message is checked against block, PM-privacy,
@@ -30,7 +33,7 @@ namespace Basil.Application.Services.Chat;
 /// </remarks>
 public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
-	IPlayerSessionRegistry sessionRegistry,
+	IUserSessionRegistry sessionRegistry,
 	ChannelMembershipService channelMembership,
 	IUserRepository users,
 	IRelationshipRepository relationships,
@@ -44,13 +47,13 @@ public sealed class ChatDispatchService(
 	///     Dispatches a chat message from <paramref name="sender" /> to either a channel or a private
 	///     recipient.
 	/// </summary>
-	/// <param name="sender">The player sending the message.</param>
+	/// <param name="sender">The userSession sending the message.</param>
 	/// <param name="channelOrNick">
 	///     The destination: a <c>#</c>-prefixed channel name, or the name of the receiving user.
 	/// </param>
 	/// <param name="text">The message body.</param>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
-	public async Task SendPrivmsgAsync(PlayerSession sender, string channelOrNick, string text,
+	public async Task SendPrivmsgAsync(UserSession sender, string channelOrNick, string text,
 		CancellationToken cancellationToken = default)
 	{
 		if (sender.Silenced)
@@ -86,26 +89,30 @@ public sealed class ChatDispatchService(
 	///     <see cref="IChannelRegistry.GetByName" /> actually indexes on. This mirrors the inverse
 	///     translation done for outbound messages in <c>BanchoIrcBridgeConnection.TranslateRecipient</c>.
 	/// </remarks>
-	/// <param name="sender">The player sending the message.</param>
+	/// <param name="sender">The userSession sending the message.</param>
 	/// <param name="channelName">The channel name as the client wrote it.</param>
 	/// <returns>
 	///     The internal channel name that indexes the registry, or the input unchanged when no
 	///     translation applies.
 	/// </returns>
-	private static string ResolveClientChannelName(PlayerSession sender, string channelName)
+	private static string ResolveClientChannelName(UserSession sender, string channelName)
 	{
-		if (channelName == "#multiplayer" && sender.Match is { } match) return match.ChatChannelName;
-
-		if (channelName == "#spectator")
+		switch (channelName)
 		{
-			var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : null);
-			if (hostId is { } id) return $"#spec_{id}";
+			case "#multiplayer" when sender.Match is { } match:
+				return match.ChatChannelName;
+			case "#spectator":
+			{
+				var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : null);
+				if (hostId is { } id) return $"#spec_{id}";
+				break;
+			}
 		}
 
 		return channelName;
 	}
 
-	private async Task SendChannelMessageAsync(PlayerSession sender, string channelName, string text,
+	private async Task SendChannelMessageAsync(UserSession sender, string channelName, string text,
 		CancellationToken cancellationToken)
 	{
 		var resolvedName = ResolveClientChannelName(sender, channelName);
@@ -133,14 +140,14 @@ public sealed class ChatDispatchService(
 			cancellationToken: cancellationToken);
 	}
 
-	private async Task SendBotCommandAsync(PlayerSession sender, PlayerSession bot, string text,
+	private async Task SendBotCommandAsync(UserSession sender, UserSession bot, string text,
 		CancellationToken cancellationToken)
 	{
 		var sink = new DmReplySink(sender, bot, channelMembership, channelRegistry, matchRegistry);
 		await commandDispatcher.DispatchAsync(sender, text, null, null, sink, true, cancellationToken);
 	}
 
-	private async Task DeliverPrivateMessageAsync(PlayerSession sender, string recipientName, PlayerSession? target,
+	private async Task DeliverPrivateMessageAsync(UserSession sender, string recipientName, UserSession? target,
 		string text, CancellationToken cancellationToken)
 	{
 		int targetId;
@@ -199,8 +206,8 @@ public sealed class ChatDispatchService(
 	private sealed class ChannelReplySink(
 		ChannelMembershipService membership,
 		ChannelSession channel,
-		PlayerSession bot,
-		PlayerSession sender) : ICommandReplySink
+		UserSession bot,
+		UserSession sender) : ICommandReplySink
 	{
 		/// <summary>Broadcasts a reply line into the source channel.</summary>
 		/// <param name="text">The reply text to send.</param>
@@ -236,8 +243,8 @@ public sealed class ChatDispatchService(
 	///     help, never prefixes or broadcasts.
 	/// </remarks>
 	private sealed class DmReplySink(
-		PlayerSession sender,
-		PlayerSession bot,
+		UserSession sender,
+		UserSession bot,
 		ChannelMembershipService membership,
 		IChannelRegistry channelRegistry,
 		IMatchRegistry matchRegistry) : ICommandReplySink

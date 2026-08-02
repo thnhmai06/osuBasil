@@ -92,11 +92,11 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 	[Fact]
 	public async Task Create_ThenFetchByName_RoundTrips()
 	{
-		var created = (await _repository.CreateAsync("Fresh Player", "some-hash", Country.Us))!;
+		var created = (await _repository.CreateAsync("Fresh User", "some-hash", Country.Us))!;
 
 		Assert.Equal("fresh_player", User.MakeSafeName(created.Name));
 
-		var fetched = await _repository.FetchByNameAsync("fresh player");
+		var fetched = await _repository.FetchByNameAsync("fresh userSession");
 		Assert.Equal(created.Id, fetched!.Id);
 	}
 

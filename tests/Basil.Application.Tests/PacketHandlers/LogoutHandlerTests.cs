@@ -1,7 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
@@ -22,20 +22,20 @@ namespace Basil.Application.Tests.PacketHandlers;
 public class LogoutHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private LogoutHandler MakeHandler()
 	{
 		return new LogoutHandler(new PlayerLogoutService(
 			_sessionRegistry, _channelRegistry,
 			new SpectatorService(Substitute.For<IChannelRegistry>(),
-				new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(),
+				new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(),
 					Substitute.For<IChannelRegistry>()), NullLogger<SpectatorService>.Instance),
 			new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-				Substitute.For<IPlayerSessionRegistry>(),
-				new ChannelMembershipService(Substitute.For<IPlayerSessionRegistry>(),
+				Substitute.For<IUserSessionRegistry>(),
+				new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(),
 					Substitute.For<IChannelRegistry>()),
-				Substitute.For<IMatchPersistenceRepository>(), Substitute.For<IMatchLiveEvents>(),
+				Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 				NullLogger<MatchMembershipService>.Instance),
 			NullLogger<PlayerLogoutService>.Instance), NullLogger<LogoutHandler>.Instance);
@@ -45,12 +45,12 @@ public class LogoutHandlerTests
 	public async Task Handle_WithinOneSecondOfLogin_Ignored()
 	{
 		var loginTime = DateTimeOffset.UtcNow;
-		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
-		var reader = new BanchoPacketReader(PacketWriter.WriteInt32(0));
+		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
+		var reader = new PacketReader(PacketWriter.WriteInt32(0));
 
 		await MakeHandler().HandleAsync(session, reader);
 
-		_sessionRegistry.DidNotReceive().Remove(Arg.Any<PlayerSession>());
+		_sessionRegistry.DidNotReceive().Remove(Arg.Any<UserSession>());
 		Assert.Equal("token", session.Token);
 	}
 
@@ -58,8 +58,8 @@ public class LogoutHandlerTests
 	public async Task Handle_AfterOneSecond_DelegatesToLogoutService()
 	{
 		var loginTime = DateTimeOffset.UtcNow.AddSeconds(-2);
-		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
-		var reader = new BanchoPacketReader(PacketWriter.WriteInt32(0));
+		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
+		var reader = new PacketReader(PacketWriter.WriteInt32(0));
 
 		await MakeHandler().HandleAsync(session, reader);
 

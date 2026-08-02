@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Services.Spectating;
 
 /// <summary>
-///     Manages the spectate channels that connect a player and their spectators.
+///     Manages the spectating channels that connect a userSession and their spectators.
 /// </summary>
 /// <remarks>
-///     Each spectated player gets a dedicated <c>#spec_{hostId}</c> instance channel. Its
+///     Each spectated userSession gets a dedicated <c>#spec_{hostId}</c> instance channel. Its
 ///     client-visible name is always <c>#spectator</c>, regardless of which host's instance a given
 ///     client is currently in (see <see cref="ChannelSession" />'s doc comment). The channel is
 ///     created when the first spectator joins and torn down once the last one leaves. The
@@ -22,23 +22,23 @@ public sealed class SpectatorService(
 	ChannelMembershipService channelMembership,
 	ILogger<SpectatorService> logger)
 {
-	/// <summary>Builds the instance channel name for a spectated player.</summary>
-	/// <param name="hostId">The spectated player's id.</param>
+	/// <summary>Builds the instance channel name for a spectated userSession.</summary>
+	/// <param name="hostId">The spectated userSession's id.</param>
 	/// <returns>The <c>#spec_{id}</c> channel name.</returns>
 	private static string ChannelNameFor(int hostId)
 	{
 		return $"#spec_{hostId}";
 	}
 
-	/// <summary>Joins a spectator to a host's spectate channel, notifying the host and fellow spectators.</summary>
+	/// <summary>Joins a spectator to a host's spectating channel, notifying the host and fellow spectators.</summary>
 	/// <remarks>
-	///     Creates the host's spectate channel and joins the host to it when this is the first
+	///     Creates the host's spectating channel and joins the host to it when this is the first
 	///     spectator. A stealth spectator is only given visibility into existing spectators; the host
-	///     and other spectators are never told the player joined.
+	///     and other spectators are never told the userSession joined.
 	/// </remarks>
-	/// <param name="host">The spectated player.</param>
-	/// <param name="spectator">The player starting to spectate.</param>
-	public void AddSpectator(PlayerSession host, PlayerSession spectator)
+	/// <param name="host">The spectated userSession.</param>
+	/// <param name="spectator">The userSession starting to spectate.</param>
+	public void AddSpectator(UserSession host, UserSession spectator)
 	{
 		var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
 		if (channel is null)
@@ -66,7 +66,7 @@ public sealed class SpectatorService(
 		else
 		{
 			// Stealth: only give the (admin) spectator visibility into existing spectators, not
-			// vice-versa: the host and other spectators are never told this player joined.
+			// vice versa: the host and other spectators are never told this userSession joined.
 			foreach (var existing in host.Spectators)
 				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
 		}
@@ -76,11 +76,11 @@ public sealed class SpectatorService(
 		logger.LogDebug("Spectator joined: HostId={HostId} SpectatorId={SpectatorId}", host.Id, spectator.Id);
 	}
 
-	/// <summary>Parts a spectator from a host's spectate channel, notifying the remaining spectators.</summary>
+	/// <summary>Parts a spectator from a host's spectating channel, notifying the remaining spectators.</summary>
 	/// <remarks>Tears the channel down (parting the host as well) when the last spectator leaves.</remarks>
-	/// <param name="host">The spectated player.</param>
-	/// <param name="spectator">The player stopping to spectate.</param>
-	public void RemoveSpectator(PlayerSession host, PlayerSession spectator)
+	/// <param name="host">The spectated userSession.</param>
+	/// <param name="spectator">The userSession stopping to spectate.</param>
+	public void RemoveSpectator(UserSession host, UserSession spectator)
 	{
 		host.RemoveSpectator(spectator);
 		spectator.Spectating = null;

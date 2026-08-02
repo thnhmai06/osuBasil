@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -24,8 +24,8 @@ namespace Basil.IntegrationTests;
 ///     Covers the `/matches/{matchId}/{hosts,refs,ban,kick,invite,slots,timer,abort,close}` routes
 ///     that replaced the old generic `POST /matches/{matchId}/{action}` dispatch. Matches are created
 ///     through the real `POST /matches` route (no chat "sender", host id 0), then seated with real
-///     <see cref="PlayerSession" />s registered directly against the app's actual DI-resolved
-///     <see cref="IPlayerSessionRegistry" />/<see cref="MatchMembershipService" /> — the same
+///     <see cref="UserSession" />s registered directly against the app's actual DI-resolved
+///     <see cref="IUserSessionRegistry" />/<see cref="MatchMembershipService" /> — the same
 ///     production singletons the routes themselves use.
 /// </summary>
 public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -49,7 +49,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton<IMatchPersistenceRepository>(new NoopMatchPersistenceRepository());
+				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});
 		});
@@ -62,7 +62,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		return request;
 	}
 
-	private async Task<int> CreateMatchAsync(HttpClient client)
+	private static async Task<int> CreateMatchAsync(HttpClient client)
 	{
 		var request = MakeRequest(HttpMethod.Post, "/matches");
 		request.Content = JsonContent.Create(new { });
@@ -71,13 +71,13 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		return created.GetProperty("data").GetProperty("id").GetInt32();
 	}
 
-	private async Task<PlayerSession> SeatNewPlayer(int id, string name, int matchId)
+	private async Task<UserSession> SeatNewPlayer(int id, string name, int matchId)
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 
-		var session = new PlayerSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new UserSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.Add(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
@@ -248,7 +248,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
 		var player = await SeatNewPlayer(2005, "elsewhere", matchId);
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		await matchMembership.LeaveAsync(player, matchRegistry.GetByDbId(matchId)!);
@@ -268,9 +268,9 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
-		var sessionRegistry = _factory.Services.GetRequiredService<IPlayerSessionRegistry>();
-		var banned = new PlayerSession(2006, "banned", "t2006", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var free = new PlayerSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var banned = new UserSession(2006, "banned", "t2006", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var free = new UserSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.Add(banned);
 		sessionRegistry.Add(free);
 
@@ -425,7 +425,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	}
 
 	/// <summary>Auto-incrementing in-memory stand-in for the Matches/Rounds tables — nothing persisted.</summary>
-	private sealed class NoopMatchPersistenceRepository : IMatchPersistenceRepository
+	private sealed class NoopMatchRepository : IMatchRepository
 	{
 		private int _nextId = 1;
 
@@ -453,20 +453,20 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			throw new NotSupportedException();
 		}
 
-		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<MatchRow?>(null);
+			return Task.FromResult<Match?>(null);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
 		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -474,26 +474,26 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			return Task.CompletedTask;
 		}
 
-		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+			return Task.FromResult<IReadOnlyList<MatchEvent>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 	}
 

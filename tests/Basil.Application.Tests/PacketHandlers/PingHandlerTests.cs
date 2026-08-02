@@ -1,4 +1,4 @@
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
@@ -23,8 +23,8 @@ public class PingHandlerTests
 	[Fact]
 	public async Task Handle_DoesNothing()
 	{
-		var session = new PlayerSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var reader = new BanchoPacketReader(Array.Empty<byte>());
+		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var reader = new PacketReader(Array.Empty<byte>());
 
 		await new PingHandler().HandleAsync(session, reader);
 

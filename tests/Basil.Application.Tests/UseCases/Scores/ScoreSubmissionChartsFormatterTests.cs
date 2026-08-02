@@ -8,7 +8,7 @@ public class ScoreSubmissionChartsFormatterTests
 {
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Mapset(50, "a", "b", "d",
+		var mapset = new Beatmapset(50, "a", "b", "d",
 			new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc),
 			new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc));
 		return new Beatmap(

@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>Ported from app/repositories/ingame_logins.py, scoped to what login needs: recording a login entry.</summary>
-public class SqliteIngameLoginRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
+public class SqliteLoginRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
-	private readonly SqliteIngameLoginRepository _repository = new(fixture.ConnectionString,
-		NullLogger<SqliteIngameLoginRepository>.Instance);
+	private readonly SqliteLoginRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteLoginRepository>.Instance);
 
 	[Fact]
 	public async Task Create_ReturnsPersistedEntryWithGeneratedId()
@@ -19,6 +19,6 @@ public class SqliteIngameLoginRepositoryTests(SqliteFixture fixture) : IClassFix
 		Assert.Equal(1, login.UserId);
 		Assert.Equal("127.0.0.1", login.Ip);
 		Assert.Equal("stable", login.OsuStream);
-		Assert.Equal(new DateOnly(2025, 1, 1), login.OsuVer);
+		Assert.Equal(new DateOnly(2025, 1, 1), login.OsuVersion);
 	}
 }

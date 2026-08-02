@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Basil.Domain.Login;
 
 /// <summary>
@@ -269,13 +271,47 @@ public enum Country : byte
 /// </summary>
 public static class CountryExtensions
 {
-	/// <summary>
-	///     Converts a country code to its lowercase two-letter acronym.
-	/// </summary>
 	/// <param name="code">The country code to convert.</param>
-	/// <returns>The two-letter acronym of the code, in lowercase.</returns>
-	public static string ToAcronym(this Country code)
+	extension(Country code)
 	{
-		return code.ToString().ToLowerInvariant();
+		/// <summary>
+		///     Converts a country code to its lowercase two-letter acronym.
+		/// </summary>
+		/// <returns>The two-letter acronym of the code, in lowercase.</returns>
+		public string ToAcronym()
+		{
+			return code.ToString().ToLowerInvariant();
+		}
+
+		/// <summary>Resolves country to its English region name.</summary>
+		/// <returns>
+		///     The English region name, or the bare code when cannot resolve.
+		/// </returns>
+		public string Describe()
+		{
+			return code switch
+			{
+				Country.Xx => "Unknown",
+				Country.A2 => "Satellite Provider",
+				Country.O1 => "Other Country",
+				Country.Eu => "Europe",
+				Country.Oc => "Oceania",
+				Country.An => "Netherlands Antilles",
+				Country.Fx => "Metropolitan France",
+				_ => GetRegionName(code)
+			};
+
+			static string GetRegionName(Country code)
+			{
+				try
+				{
+					return new RegionInfo(code.ToString().ToUpperInvariant()).EnglishName;
+				}
+				catch (ArgumentException)
+				{
+					return code.ToString().ToUpperInvariant();
+				}
+			}
+		}
 	}
 }

@@ -4,22 +4,22 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Sessions.Irc;
 
 /// <summary>
-///     The default <see cref="IIrcConnection" /> for a bancho <see cref="PlayerSession" />: it
+///     The default <see cref="IIrcConnection" /> for a bancho <see cref="UserSession" />: it
 ///     re-encodes chat text routed through the IRC core back into a bancho SEND_MESSAGE packet,
 ///     enqueued for the client's next HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN, PART,
 ///     QUIT, and numerics are IRC-only and ignored here, because bancho clients already receive
 ///     channel presence through ChannelInfo rather than per-user join and part events.
 /// </summary>
-public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnection
+public sealed class BanchoIrcBridgeConnection(UserSession userSession) : IIrcConnection
 {
-	/// <summary>Gets the player session this bridge sends chat on behalf of.</summary>
-	public PlayerSession Player { get; } = player;
+	/// <summary>Gets the userSession session this bridge sends chat on behalf of.</summary>
+	public UserSession User { get; } = userSession;
 
 	/// <summary>Gets a value that indicates whether the recipient is a real external IRC client; always false for this bridge.</summary>
 	public bool IsExternalIrcClient => false;
 
 	/// <summary>
-	///     Converts a PRIVMSG into a bancho SEND_MESSAGE packet and enqueues it for the player's
+	///     Converts a PRIVMSG into a bancho SEND_MESSAGE packet and enqueues it for the userSession's
 	///     next HTTP poll. Every other IRC command is ignored, as is any message whose prefix cannot
 	///     be parsed into a sender name and id.
 	/// </summary>
@@ -30,7 +30,7 @@ public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnec
 		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
 
 		var recipient = TranslateRecipient(message.Params[0]);
-		Player.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], recipient, senderId));
+		User.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], recipient, senderId));
 	}
 
 	/// <summary>
@@ -50,9 +50,9 @@ public sealed class BanchoIrcBridgeConnection(PlayerSession player) : IIrcConnec
 	/// </returns>
 	private string TranslateRecipient(string internalName)
 	{
-		if (internalName == Player.Match?.ChatChannelName) return "#multiplayer";
+		if (internalName == User.Match?.ChatChannelName) return "#multiplayer";
 
-		var spectatorHostId = Player.Spectating?.Id ?? (Player.Spectators.Count > 0 ? Player.Id : null);
+		var spectatorHostId = User.Spectating?.Id ?? (User.Spectators.Count > 0 ? User.Id : null);
 		if (spectatorHostId is { } hostId && internalName == $"#spec_{hostId}") return "#spectator";
 
 		return internalName;

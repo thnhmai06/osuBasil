@@ -19,17 +19,17 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.UseCases.Multiplayer;
 
-/// <summary>Ported from Player.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
+/// <summary>Ported from User.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
 public class MatchMembershipServiceTests
 {
 	/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
 	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();
 
 	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
-
-	private readonly FakeMatchPersistenceRepository _matchPersistence = new();
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
-	private readonly IPlayerSessionRegistry _sessionRegistry = Substitute.For<IPlayerSessionRegistry>();
+
+	private readonly FakeMatchRepository _matchRepository = new();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -42,7 +42,7 @@ public class MatchMembershipServiceTests
 	private MatchMembershipService MakeService()
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchRepository,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
 	}
@@ -51,26 +51,26 @@ public class MatchMembershipServiceTests
 	///     The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous
 	///     shape.
 	/// </summary>
-	private static MatchSession? Create(MatchMembershipService service, PlayerSession host, ReadMatchResult data)
+	private static MatchSession? Create(MatchMembershipService service, UserSession host, MatchState data)
 	{
 		return service.CreateAsync(host, data).GetAwaiter().GetResult();
 	}
 
-	private static PlayerSession MakePlayer(int id, string name)
+	private static UserSession MakePlayer(int id, string name)
 	{
-		return new PlayerSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	private void RegisterAll(params PlayerSession[] sessions)
+	private void RegisterAll(params UserSession[] sessions)
 	{
 		_sessionRegistry.All.Returns(sessions);
 		foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
 	}
 
-	private static ReadMatchResult MakeMatchData(int hostId, string name = "test match", string password = "",
+	private static MatchState MakeMatchData(int hostId, string name = "test match", string password = "",
 		bool freeMods = false)
 	{
-		return new ReadMatchResult(
+		return new MatchState(
 			0, false, 0, 0, name, password,
 			"Some Map", 100, new string('a', 32),
 			[], [], [], hostId, 0,
@@ -149,7 +149,7 @@ public class MatchMembershipServiceTests
 		Assert.True(joined);
 		Assert.Same(match, guest.Match);
 		Assert.Equal(1, match.GetSlotId(guest.Id));
-		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(MatchPacketDataMapper.ToPacketData(match)),
+		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()),
 			Chunk(guest.Dequeue()));
 	}
 
@@ -253,7 +253,7 @@ public class MatchMembershipServiceTests
 		Assert.Null(_channelRegistry.GetByName("#multi_0"));
 		Assert.Null(host.Match);
 		Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
-		Assert.Contains(match.DbId, _matchPersistence.EndedMatchIds);
+		Assert.Contains(match.DbId, _matchRepository.EndedMatchIds);
 	}
 
 	[Fact]
@@ -328,7 +328,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchPersistence, events,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchRepository, events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
@@ -480,7 +480,7 @@ public class MatchMembershipServiceTests
 		return chunks;
 	}
 
-	private sealed class FakeMatchPersistenceRepository : IMatchPersistenceRepository
+	private sealed class FakeMatchRepository : IMatchRepository
 	{
 		private int _nextMatchId = 1;
 		private int _nextRoundId = 1;
@@ -512,20 +512,20 @@ public class MatchMembershipServiceTests
 			return Task.CompletedTask;
 		}
 
-		public Task<MatchRow?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<MatchRow?>(null);
+			return Task.FromResult<Match?>(null);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
 		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
@@ -533,26 +533,26 @@ public class MatchMembershipServiceTests
 			return Task.CompletedTask;
 		}
 
-		public Task CreateEventAsync(MatchEventRow row, CancellationToken cancellationToken = default)
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<MatchEventRow>> FetchEventsAsync(int matchId,
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchEventRow>>([]);
+			return Task.FromResult<IReadOnlyList<MatchEvent>>([]);
 		}
 
-		public Task<IReadOnlyList<MatchRow>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<MatchRow>>([]);
+			return Task.FromResult<IReadOnlyList<Match>>([]);
 		}
 
-		public Task<IReadOnlyList<RoundRow>> FetchUnrecoveredRoundsAsync(int matchId,
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
 			CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<IReadOnlyList<RoundRow>>([]);
+			return Task.FromResult<IReadOnlyList<Round>>([]);
 		}
 	}
 }

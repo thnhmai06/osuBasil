@@ -4,12 +4,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Media;
-using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Configuration;
-using Basil.Application.PacketHandlers.Core;
+using Basil.Application.Configurations;
+using Basil.Application.Packets;
+using Basil.Application.Packets.Users;
 using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Beatmaps;
@@ -27,6 +27,7 @@ using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
 
 namespace Basil.Web.Routing;
 
@@ -106,7 +107,7 @@ public static class BanchoHostGroups
 	}
 
 	/// <summary>
-	///     Packages a locally-ingested mapset's whole storage folder (audio/images/video/.osu, as
+	///     Packages a locally-ingested beatmapset's whole storage folder (audio/images/video/.osu, as
 	///     extracted) into a fresh .osz on the fly (shared by /d/{setId} and the api. host's
 	///     /beatmapsets/{id}/download, see BeatmapsetRoutes.cs). <paramref name="noVideo" /> skips any
 	///     video file and appends " [no video]" to the returned filename. Returns null when the set
@@ -119,7 +120,7 @@ public static class BanchoHostGroups
 		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, cancellationToken: cancellationToken);
 		if (beatmaps.Count == 0) return null;
 
-		var mapset = beatmaps[0].Mapset;
+		var mapset = beatmaps[0].Beatmapset;
 		var folder = BeatmapIngestionService.FindMapsetFolder(storage, setId);
 		if (folder is null) return null;
 
@@ -180,33 +181,36 @@ public static class BanchoHostGroups
 		File.Move(tempPath, destinationPath, true);
 	}
 
-	/// <summary>Serves the 80x60 cover thumbnail for a mapset, resized on demand and cached.</summary>
-	private static Task<IResult> HandleThumbnailSmall(int setId, IMapsetRepository mapsets,
+	/// <summary>Serves the 80x60 cover thumbnail for a beatmapset, resized on demand and cached.</summary>
+	private static Task<IResult> HandleThumbnailSmall(int setId, IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
 		CancellationToken cancellationToken)
 	{
-		return HandleThumbnailAsync(setId, false, 80, 60, mapsets, storage, cache, resizer, cancellationToken);
+		return HandleThumbnailAsync(setId, false, 80, 60, beatmapsetRepository, storage, cache, resizer,
+			cancellationToken);
 	}
 
-	/// <summary>Serves the 160x120 list-icon thumbnail for a mapset, resized on demand and cached.</summary>
-	private static Task<IResult> HandleThumbnailLarge(int setId, IMapsetRepository mapsets,
+	/// <summary>Serves the 160x120 list-icon thumbnail for a beatmapset, resized on demand and cached.</summary>
+	private static Task<IResult> HandleThumbnailLarge(int setId, IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
 		CancellationToken cancellationToken)
 	{
-		return HandleThumbnailAsync(setId, true, 160, 120, mapsets, storage, cache, resizer, cancellationToken);
+		return HandleThumbnailAsync(setId, true, 160, 120, beatmapsetRepository, storage, cache, resizer,
+			cancellationToken);
 	}
 
 	/// <summary>
-	///     Resizes the mapset's background image to a fixed size and serves it directly, rather than
+	///     Resizes the beatmapset's background image to a fixed size and serves it directly, rather than
 	///     redirecting to the `api.` host's own (unresized) background route, because a real osu! client
 	///     expects a thumb-sized image at this exact URL. Cached under `Data/Cache/thumb/` (see
-	///     <see cref="IResponseCache" />) so the resize only ever runs once per mapset per size.
+	///     <see cref="IResponseCache" />) so the resize only ever runs once per beatmapset per size.
 	/// </summary>
 	private static async Task<IResult> HandleThumbnailAsync(int setId, bool large, int width, int height,
-		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache, IImageResizer resizer,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IResponseCache cache,
+		IImageResizer resizer,
 		CancellationToken cancellationToken)
 	{
-		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
+		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
 
 		var cacheKey = ResponseCacheKeys.Thumb(setId, large);
@@ -223,13 +227,13 @@ public static class BanchoHostGroups
 		return Results.File(resized, "image/jpeg");
 	}
 
-	/// <summary>Serves the mapset's audio preview clip as `audio/mpeg`, or 404 when no clip can be produced.</summary>
+	/// <summary>Serves the beatmapset's audio preview clip as `audio/mpeg`, or 404 when no clip can be produced.</summary>
 	private static async Task<IResult> HandleAudioPreview(int setId, IBeatmapRepository beatmaps,
-		IMapsetRepository mapsets,
+		IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, IResponseCache cache, IAudioPreviewExtractor extractor,
 		CancellationToken cancellationToken)
 	{
-		var clip = await GetOrGeneratePreviewClipAsync(setId, beatmaps, mapsets, storage, cache, extractor,
+		var clip = await GetOrGeneratePreviewClipAsync(setId, beatmaps, beatmapsetRepository, storage, cache, extractor,
 			cancellationToken);
 		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
 	}
@@ -239,14 +243,14 @@ public static class BanchoHostGroups
 	///     `/beatmapsets/{setId}/audiopreview`: the same 10s mp3 clip cut from the preview beatmap's
 	///     PreviewTime, under the same <see cref="IResponseCache" /> key (`preview/{setId}.mp3`), so a
 	///     request through either host benefits from a request already made through the other. Returns
-	///     null on any 404 condition (missing or private mapset, no audio file on disk); the caller
+	///     null on any 404 condition (missing or private beatmapset, no audio file on disk); the caller
 	///     decides the actual response shape.
 	/// </summary>
 	internal static async Task<byte[]?> GetOrGeneratePreviewClipAsync(int setId, IBeatmapRepository beatmapRepository,
-		IMapsetRepository mapsets, IOptions<StorageOptions> storage, IResponseCache cache,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IResponseCache cache,
 		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
 	{
-		var mapset = await mapsets.FetchByIdAsync(setId, cancellationToken);
+		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return null;
 
 		var cacheKey = ResponseCacheKeys.Preview(setId);
@@ -323,7 +327,7 @@ public static class BanchoHostGroups
 
 		// Plain JSON snapshot built at read time — events, rounds, per-round scores, and (if the match
 		// is still open) its live room state. The live "main" SSE channel (meta/map/state/slots, no
-		// per-player data) is a separate, SSE-only path — see MatchRoutes.cs's
+		// per-userSession data) is a separate, SSE-only path — see MatchRoutes.cs's
 		// GET /matches/{matchId}/live — so this route never branches on Accept.
 		group.MapGet("/matches/{matchId:int}", async (int matchId, MatchReportService reportService,
 				CancellationToken cancellationToken) =>
@@ -448,7 +452,7 @@ public static class BanchoHostGroups
 					}
 					else
 					{
-						var sessionRegistry = context.RequestServices.GetRequiredService<IPlayerSessionRegistry>();
+						var sessionRegistry = context.RequestServices.GetRequiredService<IUserSessionRegistry>();
 						var session = sessionRegistry.GetByToken(token);
 						if (session is null)
 						{
@@ -460,7 +464,7 @@ public static class BanchoHostGroups
 						}
 						else
 						{
-							var dispatcher = context.RequestServices.GetRequiredService<BanchoPacketDispatcher>();
+							var dispatcher = context.RequestServices.GetRequiredService<PacketDispatcher>();
 							await dispatcher.DispatchAsync(session, body, cancellationToken);
 							session.LastRecvTime = DateTimeOffset.UtcNow;
 							responseBody = session.Dequeue();
@@ -485,7 +489,7 @@ public static class BanchoHostGroups
 
 		/// <summary>
 		///     Registers the `osu.{domain}` host's `/web/*.php` endpoints: leaderboard status, osu!direct
-		///     search and set lookup, mapset download, .osu file fetch, score submission, replay download,
+		///     search and set lookup, beatmapset download, .osu file fetch, score submission, replay download,
 		///     anticheat flag receiver, seasonal backgrounds, client stubs, and in-game registration.
 		/// </summary>
 		private void MapOsuWebGroup()
@@ -503,7 +507,7 @@ public static class BanchoHostGroups
 			// osu!Direct. Matches the old BeatmapLeaderboardResultCode.NoLeaderboard wire format (see
 			// git history) minus the leaderboard rows themselves. `c` (md5) is also the one request
 			// osu! sends on every song-select map change carrying mode/mods (m/mods); that call's
-			// player-status side effect still needs to run so other players see an accurate status.
+			// userSession-status side effect still needs to run so other players see an accurate status.
 			group.MapGet("/web/osu-osz2-getscores.php", async (
 					[FromQuery(Name = "us")] string username,
 					[FromQuery(Name = "ha")] string ha,
@@ -526,7 +530,7 @@ public static class BanchoHostGroups
 
 						if (!player.Restricted)
 						{
-							var sessionRegistry = context.RequestServices.GetRequiredService<IPlayerSessionRegistry>();
+							var sessionRegistry = context.RequestServices.GetRequiredService<IUserSessionRegistry>();
 							var statsPacket = PacketBuilders.BuildUserStats(player);
 							foreach (var other in sessionRegistry.All) other.Enqueue(statsPacket);
 						}
@@ -539,14 +543,14 @@ public static class BanchoHostGroups
 						bmap = await maps.FetchOneAsync(md5: checksum, cancellationToken: cancellationToken);
 					}
 
-					var status = bmap is null ? BeatmapStatus.NotSubmitted : bmap.Mapset.Status;
+					var status = bmap is null ? BeatmapStatus.NotSubmitted : Beatmapset.Status;
 
 					return Results.Text($"{(int)status}|false", "text/html", Encoding.UTF8);
 				})
 				.WithGroupName("osuweb")
 				.WithSummary("Song-select leaderboard status check (no leaderboard browsing).")
 				.WithDescription("Called by the client on every song-select map change. Authenticates via `us`/`ha` " +
-				                 "(username/password MD5), updates and broadcasts the player's mode/mods status if `m`/`mods` " +
+				                 "(username/password MD5), updates and broadcasts the userSession's mode/mods status if `m`/`mods` " +
 				                 "changed, and replies with `{rankedStatus}|false` for the map identified by `c` (its MD5 " +
 				                 "checksum). This server has no online leaderboard browsing, so the score-rows portion of " +
 				                 "the real osu! response is always empty.")
@@ -610,14 +614,14 @@ public static class BanchoHostGroups
 				})
 				.WithGroupName("osuweb")
 				.WithSummary("Look up one beatmap set, by set id, map id, or checksum.")
-				.WithDescription("Exactly one of `s` (mapset id), `b` (a beatmap id within the set), or `c` " +
+				.WithDescription("Exactly one of `s` (beatmapset id), `b` (a beatmap id within the set), or `c` " +
 				                 "(a beatmap's MD5) is expected per request. Empty body if the set can't be resolved or none " +
 				                 "of the three parameters is present. Response is osu!'s pipe-delimited set-info line, not JSON.")
 				.WithTags("Beatmaps");
 
 			// Extended for this server's fully-offline scope: if the set was locally ingested
 			// (BeatmapIngestionService/BeatmapWatcherService), a fresh .osz is packaged on the fly
-			// from the mapset's own storage folder (the full original archive contents, i.e.
+			// from the beatmapset's own storage folder (the full original archive contents, i.e.
 			// audio/images/video/.osu, not just difficulty files). Only falls back to a configured
 			// mirror when the set has nothing local.
 			group.MapGet("/d/{mapSetId}",
@@ -649,7 +653,7 @@ public static class BanchoHostGroups
 						return Results.Redirect($"{mirrorOptions.DownloadEndpoint}/{query}", true);
 					})
 				.WithGroupName("osuweb")
-				.WithSummary("osu!direct-style mapset download (the client's in-game download button).")
+				.WithSummary("osu!direct-style beatmapset download (the client's in-game download button).")
 				.WithDescription("`{mapSetId}` may carry a trailing `n` to request a no-video archive. If the set " +
 				                 "was ingested locally, a fresh `.osz` (`application/x-osu-beatmap-archive`) is built on the fly " +
 				                 "from its storage folder. Otherwise, falls back to redirecting to a configured mirror " +
@@ -810,7 +814,7 @@ public static class BanchoHostGroups
 
 					var clientIntegrity = context.RequestServices.GetRequiredService<ClientIntegrityService>();
 					var result =
-						await clientIntegrity.HandleLastFmFlagsAsync(player, beatmapIdOrHiddenFlag, cancellationToken);
+						await clientIntegrity.HandleLastFmFlagsAsync(player, beatmapIdOrHiddenFlag);
 
 					return result == ClientIntegrityResult.StopSending
 						? Results.Text("-3", "text/html", Encoding.UTF8)
@@ -1118,31 +1122,31 @@ public static class BanchoHostGroups
 		private void MapBeatmapAssetGroup()
 		{
 			// No longer proxies osu.ppy.sh (this server is meant to run fully offline) — the cover
-			// (80x60) and list-icon ("l", 160x120) thumbnails are resized directly from the mapset's
+			// (80x60) and list-icon ("l", 160x120) thumbnails are resized directly from the beatmapset's
 			// locally-stored background on first request and cached under Data/Cache/thumb/ (see
 			// IResponseCache), instead of redirecting to the api. host's unresized background route.
 			group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnailLarge)
 				.WithGroupName("beatmapassets")
 				.WithSummary("Beatmapset list-icon thumbnail (160x160, resized and cached).")
-				.WithDescription("Resizes the mapset's locally-stored background to 160x120 (cropped to fill) " +
-				                 "and serves it directly, cached on disk after the first request. 404 if the mapset " +
+				.WithDescription("Resizes the beatmapset's locally-stored background to 160x120 (cropped to fill) " +
+				                 "and serves it directly, cached on disk after the first request. 404 if the beatmapset " +
 				                 "doesn't exist, is private, or has no background image on disk.")
 				.WithTags("Beatmap Assets");
 
 			group.MapGet("/thumb/{setId:int}.jpg", HandleThumbnailSmall)
 				.WithGroupName("beatmapassets")
 				.WithSummary("Beatmapset cover thumbnail (80x60, resized and cached).")
-				.WithDescription("Resizes the mapset's locally-stored background to 80x60 (cropped to fill) and " +
-				                 "serves it directly, cached on disk after the first request. 404 if the mapset " +
+				.WithDescription("Resizes the beatmapset's locally-stored background to 80x60 (cropped to fill) and " +
+				                 "serves it directly, cached on disk after the first request. 404 if the beatmapset " +
 				                 "doesn't exist, is private, or has no background image on disk.")
 				.WithTags("Beatmap Assets");
 
 			group.MapGet("/preview/{setId:int}.mp3", HandleAudioPreview)
 				.WithGroupName("beatmapassets")
 				.WithSummary("Beatmapset audio preview (10s mp3 clip, resized and cached).")
-				.WithDescription("Cuts a 10-second mp3 clip (128kbps) from the mapset's preview beatmap's audio " +
+				.WithDescription("Cuts a 10-second mp3 clip (128kbps) from the beatmapset's preview beatmap's audio " +
 				                 "file, starting at its recorded PreviewTime, and serves it directly — cached on disk " +
-				                 "after the first request. 404 if the mapset doesn't exist, is private, or has no " +
+				                 "after the first request. 404 if the beatmapset doesn't exist, is private, or has no " +
 				                 "audio file on disk.")
 				.WithTags("Beatmap Assets");
 		}
@@ -1191,7 +1195,7 @@ public static class BanchoHostGroups
 					return Results.NotFound();
 				})
 				.WithGroupName("avatar")
-				.WithSummary("Serve one player's avatar image, by user id.")
+				.WithSummary("Serve one userSession's avatar image, by user id.")
 				.WithDescription("`{userId}` is the numeric `Users.Id`. Serves a locally-uploaded avatar file if " +
 				                 "one exists (`{userId}.{ext}` under the avatars storage folder); otherwise falls back to a " +
 				                 "built-in image: BasilBot's own icon for user id 0, or a generic default avatar for every " +

@@ -7,8 +7,8 @@ namespace Basil.Application.Abstractions.Beatmaps;
 ///     difficulty record.
 /// </summary>
 /// <remarks>
-///     Privacy is enforced here at the query level. Every beatmap that sits under a private mapset
-///     (one whose <see cref="Mapset.IsPrivate" /> flag is set) is hidden from every lookup and
+///     Privacy is enforced here at the query level. Every beatmap that sits under a private beatmapset
+///     (one whose <see cref="Beatmapset.IsPrivate" /> flag is set) is hidden from every lookup and
 ///     discovery surface unless the caller explicitly opts in with
 ///     <c>includePrivate</c>; that flag is set-level, never per-beatmap. The upsert path is the
 ///     internal ingestion plumbing that must still see those rows to update them in place.
@@ -17,14 +17,14 @@ public interface IBeatmapRepository
 {
 	/// <summary>
 	///     Looks up a single beatmap by any combination of id, md5, filename, or setId, joined with
-	///     its owning mapset.
+	///     its owning beatmapset.
 	/// </summary>
 	/// <param name="id">The numeric id of the beatmap to find.</param>
 	/// <param name="md5">The content md5 of the beatmap to find.</param>
 	/// <param name="filename">The on-disk filename of the beatmap to find.</param>
 	/// <param name="setId">The id of the set that owns the beatmap to find.</param>
 	/// <param name="includePrivate">
-	///     <see langword="true" /> to allow matching a beatmap under a private mapset; otherwise,
+	///     <see langword="true" /> to allow matching a beatmap under a private beatmapset; otherwise,
 	///     <see langword="false" /> to return only public beatmaps.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
@@ -79,7 +79,7 @@ public interface IBeatmapRepository
 	/// </returns>
 	/// <remarks>
 	///     This is a fully offline search: the query is matched against stored beatmap metadata
-	///     rather than forwarded to a mirror API. Beatmaps under a private mapset are always
+	///     rather than forwarded to a mirror API. Beatmaps under a private beatmapset are always
 	///     excluded, since this is a discovery surface, not a specific-record lookup.
 	/// </remarks>
 	Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
@@ -107,11 +107,11 @@ public interface IBeatmapRepository
 	Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Fetches every beatmap belonging to the given set, joined with its owning mapset.
+	///     Fetches every beatmap belonging to the given set, joined with its owning beatmapset.
 	/// </summary>
 	/// <param name="setId">The id of the set to read.</param>
 	/// <param name="includePrivate">
-	///     <see langword="true" /> to include beatmaps under a private mapset; otherwise,
+	///     <see langword="true" /> to include beatmaps under a private beatmapset; otherwise,
 	///     <see langword="false" /> to exclude them.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
