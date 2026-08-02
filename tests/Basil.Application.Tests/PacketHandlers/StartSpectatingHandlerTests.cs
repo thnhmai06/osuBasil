@@ -7,6 +7,7 @@ using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -22,7 +23,7 @@ public class StartSpectatingHandlerTests
 
 	private static PacketReader TargetIdReader(int targetId)
 	{
-		return new PacketReader(PacketWriter.WriteInt32(targetId));
+		return new PacketReader(BinaryWriter.WriteInt32(targetId));
 	}
 
 	[Fact]

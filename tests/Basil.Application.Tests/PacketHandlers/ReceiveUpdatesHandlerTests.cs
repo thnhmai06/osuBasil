@@ -2,6 +2,7 @@ using Basil.Application.Packets.Users;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -20,7 +21,7 @@ public class ReceiveUpdatesHandlerTests
 	public async Task Handle_ValidValue_UpdatesPresenceFilter(int value, PresenceFilter expected)
 	{
 		var session = MakeSession();
-		var reader = new PacketReader(PacketWriter.WriteInt32(value));
+		var reader = new PacketReader(BinaryWriter.WriteInt32(value));
 
 		await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 
@@ -32,7 +33,7 @@ public class ReceiveUpdatesHandlerTests
 	{
 		var session = MakeSession();
 		session.PresenceFilter = PresenceFilter.Friends;
-		var reader = new PacketReader(PacketWriter.WriteInt32(99));
+		var reader = new PacketReader(BinaryWriter.WriteInt32(99));
 
 		await new ReceiveUpdatesHandler().HandleAsync(session, reader);
 

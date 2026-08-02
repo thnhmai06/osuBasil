@@ -7,7 +7,7 @@ namespace Basil.Protocol.Packets;
 /// <summary>
 ///     Reads Bancho packet primitives from a client request body. This is the read side of the
 ///     Bancho binary protocol; the packet-id driven iteration and dispatch loop is wired up in
-///     Basil.Web. All multi-byte integers are little-endian, per the osu! protocol.
+///     Basil.Web. All multibyte integers are little-endian, per the osu! protocol.
 /// </summary>
 /// <param name="buffer">The request body to read from.</param>
 public sealed class PacketReader(ReadOnlyMemory<byte> buffer)

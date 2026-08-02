@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Basil.Protocol.Multiplayer;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Protocol.Packets;
 
@@ -29,16 +30,16 @@ public static class ServerPacketWriter
 	private static byte[] WriteMessagePayload(string sender, string text, string recipient, int senderId)
 	{
 		return Concat(
-			PacketWriter.WriteString(sender),
-			PacketWriter.WriteString(text),
-			PacketWriter.WriteString(recipient),
-			PacketWriter.WriteInt32(senderId));
+			BinaryWriter.WriteString(sender),
+			BinaryWriter.WriteString(text),
+			BinaryWriter.WriteString(recipient),
+			BinaryWriter.WriteInt32(senderId));
 	}
 
 	private static byte[] WriteChannelPayload(string name, string topic, int playerCount)
 	{
-		var nameBytes = PacketWriter.WriteString(name);
-		var topicBytes = PacketWriter.WriteString(topic);
+		var nameBytes = BinaryWriter.WriteString(name);
+		var topicBytes = BinaryWriter.WriteString(topic);
 		var result = new byte[nameBytes.Length + topicBytes.Length + 2];
 		nameBytes.CopyTo(result, 0);
 		topicBytes.CopyTo(result, nameBytes.Length);
@@ -65,32 +66,32 @@ public static class ServerPacketWriter
 		BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(4), (uint)match.Mods);
 		parts.Add(header);
 
-		parts.Add(PacketWriter.WriteString(match.Name));
+		parts.Add(BinaryWriter.WriteString(match.Name));
 
 		if (!string.IsNullOrEmpty(match.Password))
-			parts.Add(sendPassword ? PacketWriter.WriteString(match.Password) : [0x0B, 0x00]);
+			parts.Add(sendPassword ? BinaryWriter.WriteString(match.Password) : [0x0B, 0x00]);
 		else
 			parts.Add([0x00]);
 
-		parts.Add(PacketWriter.WriteString(match.MapName));
-		parts.Add(PacketWriter.WriteInt32(match.MapId));
-		parts.Add(PacketWriter.WriteString(match.MapMd5));
+		parts.Add(BinaryWriter.WriteString(match.MapName));
+		parts.Add(BinaryWriter.WriteInt32(match.MapId));
+		parts.Add(BinaryWriter.WriteString(match.MapMd5));
 
 		parts.Add([.. match.Slots.Select(s => (byte)s.Status)]);
 		parts.Add([.. match.Slots.Select(s => (byte)s.Team)]);
 
 		foreach (var slot in match.Slots)
 			if (slot.HasPlayer)
-				parts.Add(PacketWriter.WriteUInt32((uint)slot.PlayerId!.Value));
+				parts.Add(BinaryWriter.WriteUInt32((uint)slot.PlayerId!.Value));
 
-		parts.Add(PacketWriter.WriteUInt32((uint)match.HostId));
+		parts.Add(BinaryWriter.WriteUInt32((uint)match.HostId));
 		parts.Add([(byte)match.Mode, (byte)match.WinCondition, (byte)match.TeamType, (byte)(match.FreeMods ? 1 : 0)]);
 
 		if (match.FreeMods)
 			foreach (var slot in match.Slots)
-				parts.Add(PacketWriter.WriteUInt32((uint)slot.Mods));
+				parts.Add(BinaryWriter.WriteUInt32((uint)slot.Mods));
 
-		parts.Add(PacketWriter.WriteUInt32((uint)match.Seed));
+		parts.Add(BinaryWriter.WriteUInt32((uint)match.Seed));
 
 		return Concat([.. parts]);
 	}
@@ -137,7 +138,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] LoginReply(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserId, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.UserId, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 7
@@ -168,7 +169,7 @@ public static class ServerPacketWriter
 	public static byte[] ChangeUsername(string oldName, string newName)
 	{
 		return PacketWriter.Wrap(ServerPackets.HandleIrcChangeUsername,
-			PacketWriter.WriteString($"{oldName}>>>>{newName}"));
+			BinaryWriter.WriteString($"{oldName}>>>>{newName}"));
 	}
 
 	// packet id: 11
@@ -213,18 +214,18 @@ public static class ServerPacketWriter
 		}
 
 		var payload = Concat(
-			PacketWriter.WriteInt32(userId),
+			BinaryWriter.WriteInt32(userId),
 			[(byte)action],
-			PacketWriter.WriteString(infoText),
-			PacketWriter.WriteString(mapMd5),
-			PacketWriter.WriteInt32(mods),
+			BinaryWriter.WriteString(infoText),
+			BinaryWriter.WriteString(mapMd5),
+			BinaryWriter.WriteInt32(mods),
 			[(byte)mode],
-			PacketWriter.WriteInt32(mapId),
+			BinaryWriter.WriteInt32(mapId),
 			WriteInt64(rankedScore),
 			WriteFloat32((float)(accuracy / 100.0)),
-			PacketWriter.WriteInt32(plays),
+			BinaryWriter.WriteInt32(plays),
 			WriteInt64(totalScore),
-			PacketWriter.WriteInt32(globalRank),
+			BinaryWriter.WriteInt32(globalRank),
 			WriteUInt16((ushort)pp));
 
 		return PacketWriter.Wrap(ServerPackets.UserStats, payload);
@@ -236,7 +237,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] Logout(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserLogout, Concat(PacketWriter.WriteInt32(userId), [0]));
+		return PacketWriter.Wrap(ServerPackets.UserLogout, Concat(BinaryWriter.WriteInt32(userId), [0]));
 	}
 
 	// packet id: 13
@@ -245,7 +246,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SpectatorJoined(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorJoined, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.SpectatorJoined, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 14
@@ -254,7 +255,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SpectatorLeft(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorLeft, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.SpectatorLeft, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 15
@@ -280,7 +281,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SpectatorCantSpectate(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorCantSpectate, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.SpectatorCantSpectate, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 23
@@ -297,7 +298,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] Notification(string msg)
 	{
-		return PacketWriter.Wrap(ServerPackets.Notification, PacketWriter.WriteString(msg));
+		return PacketWriter.Wrap(ServerPackets.Notification, BinaryWriter.WriteString(msg));
 	}
 
 	// packet id: 26
@@ -328,7 +329,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] DisposeMatch(int matchId)
 	{
-		return PacketWriter.Wrap(ServerPackets.DisposeMatch, PacketWriter.WriteInt32(matchId));
+		return PacketWriter.Wrap(ServerPackets.DisposeMatch, BinaryWriter.WriteInt32(matchId));
 	}
 
 	// packet id: 34
@@ -362,7 +363,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] FellowSpectatorJoined(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.FellowSpectatorJoined, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.FellowSpectatorJoined, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 43
@@ -371,7 +372,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] FellowSpectatorLeft(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.FellowSpectatorLeft, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.FellowSpectatorLeft, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 46
@@ -414,7 +415,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] MatchPlayerFailed(int slotId)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchPlayerFailed, PacketWriter.WriteInt32(slotId));
+		return PacketWriter.Wrap(ServerPackets.MatchPlayerFailed, BinaryWriter.WriteInt32(slotId));
 	}
 
 	// packet id: 58
@@ -439,7 +440,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] ChannelJoin(string name)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelJoinSuccess, PacketWriter.WriteString(name));
+		return PacketWriter.Wrap(ServerPackets.ChannelJoinSuccess, BinaryWriter.WriteString(name));
 	}
 
 	// packet id: 65
@@ -459,7 +460,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] ChannelKick(string name)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelKick, PacketWriter.WriteString(name));
+		return PacketWriter.Wrap(ServerPackets.ChannelKick, BinaryWriter.WriteString(name));
 	}
 
 	// packet id: 67
@@ -479,7 +480,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] BanchoPrivileges(int priv)
 	{
-		return PacketWriter.Wrap(ServerPackets.Privileges, PacketWriter.WriteInt32(priv));
+		return PacketWriter.Wrap(ServerPackets.Privileges, BinaryWriter.WriteInt32(priv));
 	}
 
 	// packet id: 72
@@ -488,7 +489,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] FriendsList(IReadOnlyList<int> friends)
 	{
-		return PacketWriter.Wrap(ServerPackets.FriendsList, PacketWriter.WriteI32List(friends));
+		return PacketWriter.Wrap(ServerPackets.FriendsList, BinaryWriter.WriteI32List(friends));
 	}
 
 	// packet id: 75
@@ -497,7 +498,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] ProtocolVersion(int version)
 	{
-		return PacketWriter.Wrap(ServerPackets.ProtocolVersion, PacketWriter.WriteInt32(version));
+		return PacketWriter.Wrap(ServerPackets.ProtocolVersion, BinaryWriter.WriteInt32(version));
 	}
 
 	// packet id: 76
@@ -507,7 +508,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] MainMenuIcon(string iconUrl, string onclickUrl)
 	{
-		return PacketWriter.Wrap(ServerPackets.MainMenuIcon, PacketWriter.WriteString($"{iconUrl}|{onclickUrl}"));
+		return PacketWriter.Wrap(ServerPackets.MainMenuIcon, BinaryWriter.WriteString($"{iconUrl}|{onclickUrl}"));
 	}
 
 	// packet id: 80 (deprecated)
@@ -524,7 +525,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] MatchPlayerSkipped(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchPlayerSkipped, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.MatchPlayerSkipped, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 83
@@ -551,14 +552,14 @@ public static class ServerPacketWriter
 		int globalRank)
 	{
 		var payload = Concat(
-			PacketWriter.WriteInt32(userId),
-			PacketWriter.WriteString(name),
+			BinaryWriter.WriteInt32(userId),
+			BinaryWriter.WriteString(name),
 			[(byte)(utcOffset + 24)],
 			[(byte)countryCode],
 			[(byte)(banchoPrivileges | (mode << 5))],
 			WriteFloat32((float)longitude),
 			WriteFloat32((float)latitude),
-			PacketWriter.WriteInt32(globalRank));
+			BinaryWriter.WriteInt32(globalRank));
 
 		return PacketWriter.Wrap(ServerPackets.UserPresence, payload);
 	}
@@ -569,7 +570,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] RestartServer(int ms)
 	{
-		return PacketWriter.Wrap(ServerPackets.Restart, PacketWriter.WriteInt32(ms));
+		return PacketWriter.Wrap(ServerPackets.Restart, BinaryWriter.WriteInt32(ms));
 	}
 
 	// packet id: 88
@@ -599,7 +600,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] MatchChangePassword(string newPassword)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchChangePassword, PacketWriter.WriteString(newPassword));
+		return PacketWriter.Wrap(ServerPackets.MatchChangePassword, BinaryWriter.WriteString(newPassword));
 	}
 
 	// packet id: 92
@@ -608,7 +609,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SilenceEnd(int delta)
 	{
-		return PacketWriter.Wrap(ServerPackets.SilenceEnd, PacketWriter.WriteInt32(delta));
+		return PacketWriter.Wrap(ServerPackets.SilenceEnd, BinaryWriter.WriteInt32(delta));
 	}
 
 	// packet id: 94
@@ -617,7 +618,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] UserSilenced(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserSilenced, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.UserSilenced, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 95 (unused, kept for parity)
@@ -626,7 +627,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] UserPresenceSingle(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserPresenceSingle, PacketWriter.WriteInt32(userId));
+		return PacketWriter.Wrap(ServerPackets.UserPresenceSingle, BinaryWriter.WriteInt32(userId));
 	}
 
 	// packet id: 96 (unused, kept for parity)
@@ -635,7 +636,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] UserPresenceBundle(IReadOnlyList<int> userIds)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserPresenceBundle, PacketWriter.WriteI32List(userIds));
+		return PacketWriter.Wrap(ServerPackets.UserPresenceBundle, BinaryWriter.WriteI32List(userIds));
 	}
 
 	// packet id: 100
@@ -670,7 +671,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SwitchServer(int t)
 	{
-		return PacketWriter.Wrap(ServerPackets.SwitchServer, PacketWriter.WriteInt32(t));
+		return PacketWriter.Wrap(ServerPackets.SwitchServer, BinaryWriter.WriteInt32(t));
 	}
 
 	// packet id: 104
@@ -687,7 +688,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] Rtx(string msg)
 	{
-		return PacketWriter.Wrap(ServerPackets.Rtx, PacketWriter.WriteString(msg));
+		return PacketWriter.Wrap(ServerPackets.Rtx, BinaryWriter.WriteString(msg));
 	}
 
 	// packet id: 106
@@ -704,7 +705,7 @@ public static class ServerPacketWriter
 	/// <returns>The complete packet.</returns>
 	public static byte[] SwitchTournamentServer(string ip)
 	{
-		return PacketWriter.Wrap(ServerPackets.SwitchTournamentServer, PacketWriter.WriteString(ip));
+		return PacketWriter.Wrap(ServerPackets.SwitchTournamentServer, BinaryWriter.WriteString(ip));
 	}
 
 	private static byte[] WriteInt64(long value)

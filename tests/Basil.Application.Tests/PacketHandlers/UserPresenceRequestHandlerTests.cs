@@ -3,6 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -18,7 +19,7 @@ public class UserPresenceRequestHandlerTests
 		var target = new UserSession(2, "target", "target-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		_sessionRegistry.GetById(2).Returns(target);
-		var reader = new PacketReader(PacketWriter.WriteI32List([2]));
+		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
@@ -33,7 +34,7 @@ public class UserPresenceRequestHandlerTests
 	{
 		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.GetById(2).Returns((UserSession?)null);
-		var reader = new PacketReader(PacketWriter.WriteI32List([2]));
+		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 

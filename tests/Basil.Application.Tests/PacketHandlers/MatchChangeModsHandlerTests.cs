@@ -2,6 +2,7 @@ using Basil.Application.Packets.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -10,7 +11,7 @@ public class MatchChangeModsHandlerTests
 {
 	private static PacketReader ReaderFor(Mods mods)
 	{
-		return new PacketReader(PacketWriter.WriteInt32((int)mods));
+		return new PacketReader(BinaryWriter.WriteInt32((int)mods));
 	}
 
 	[Fact]

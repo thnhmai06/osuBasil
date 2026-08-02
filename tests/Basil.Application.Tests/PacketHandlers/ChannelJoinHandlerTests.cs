@@ -4,6 +4,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -21,7 +22,7 @@ public class ChannelJoinHandlerTests
 
 	private static PacketReader ChannelNameReader(string name)
 	{
-		return new PacketReader(PacketWriter.WriteString(name));
+		return new PacketReader(BinaryWriter.WriteString(name));
 	}
 
 	[Fact]

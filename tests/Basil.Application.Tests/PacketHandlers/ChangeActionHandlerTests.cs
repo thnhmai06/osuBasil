@@ -5,6 +5,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -18,11 +19,11 @@ public class ChangeActionHandlerTests
 		return
 		[
 			(byte)action,
-			.. PacketWriter.WriteString(infoText),
-			.. PacketWriter.WriteString(mapMd5),
-			.. PacketWriter.WriteUInt32(mods),
+			.. BinaryWriter.WriteString(infoText),
+			.. BinaryWriter.WriteString(mapMd5),
+			.. BinaryWriter.WriteUInt32(mods),
 			mode,
-			.. PacketWriter.WriteInt32(mapId)
+			.. BinaryWriter.WriteInt32(mapId)
 		];
 	}
 

@@ -7,6 +7,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -67,7 +68,7 @@ public class PacketDispatcherTests
 			new PacketDispatcher([pingHandler, logoutHandler], NullLogger<PacketDispatcher>.Instance);
 		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var body = PacketBytes(ClientPackets.Ping, [])
-			.Concat(PacketBytes(ClientPackets.Logout, PacketWriter.WriteInt32(0))).ToArray();
+			.Concat(PacketBytes(ClientPackets.Logout, BinaryWriter.WriteInt32(0))).ToArray();
 
 		await dispatcher.DispatchAsync(session, body);
 

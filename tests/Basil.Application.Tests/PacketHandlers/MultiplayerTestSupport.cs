@@ -14,6 +14,7 @@ using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 using Channel = Basil.Domain.Channels.Channel;
 
 namespace Basil.Application.Tests.PacketHandlers;
@@ -55,26 +56,26 @@ internal static class MultiplayerTestSupport
 		parts.AddRange(BitConverter.GetBytes((short)id));
 		parts.Add(0); // in_progress
 		parts.Add(0); // powerplay
-		parts.AddRange(PacketWriter.WriteInt32(0)); // mods
-		parts.AddRange(PacketWriter.WriteString(name));
-		parts.AddRange(PacketWriter.WriteString(password));
-		parts.AddRange(PacketWriter.WriteString(mapName));
-		parts.AddRange(PacketWriter.WriteInt32(mapId));
-		parts.AddRange(PacketWriter.WriteString(mapMd5));
+		parts.AddRange(BinaryWriter.WriteInt32(0)); // mods
+		parts.AddRange(BinaryWriter.WriteString(name));
+		parts.AddRange(BinaryWriter.WriteString(password));
+		parts.AddRange(BinaryWriter.WriteString(mapName));
+		parts.AddRange(BinaryWriter.WriteInt32(mapId));
+		parts.AddRange(BinaryWriter.WriteString(mapMd5));
 		parts.AddRange(new byte[16]); // slot statuses — all 0 (no userSession)
 		parts.AddRange(new byte[16]); // slot teams
 		// no slot ids: no status has any userSession bits set
-		parts.AddRange(PacketWriter.WriteInt32(hostId));
+		parts.AddRange(BinaryWriter.WriteInt32(hostId));
 		parts.Add((byte)mode);
 		parts.Add((byte)winCondition);
 		parts.Add((byte)teamType);
 		parts.Add((byte)(freeMods ? 1 : 0));
 		if (freeMods)
 			for (var i = 0; i < 16; i++)
-				parts.AddRange(PacketWriter
+				parts.AddRange(BinaryWriter
 					.WriteInt32(
 						0)); // per-slot mods — PacketReader.ReadMatch always reads 16 when freeMods is set
-		parts.AddRange(PacketWriter.WriteInt32(seed));
+		parts.AddRange(BinaryWriter.WriteInt32(seed));
 		return new PacketReader(parts.ToArray());
 	}
 

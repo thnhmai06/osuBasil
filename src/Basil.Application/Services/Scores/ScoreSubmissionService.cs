@@ -5,9 +5,11 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Microsoft.Extensions.Logging;
+
 // ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Scores;
@@ -51,7 +53,7 @@ public enum ScoreSubmissionResultCode : byte
 /// </param>
 /// <param name="ScoreTime">The duration of a passed play, in milliseconds.</param>
 /// <param name="FailTime">The duration of a failed play, in milliseconds.</param>
-/// <param name="ReplayData">The raw replay bytes from the submission, or <see langword="null" /> for a failed play.</param>
+/// <param name="ReplayData">The raw LZMA replay bytes from the submission, or <see langword="null" /> for a failed play.</param>
 /// <remarks>
 ///     Decryption happens at the HTTP endpoint, which owns the encrypted form fields this use case
 ///     never sees.
@@ -238,7 +240,9 @@ public sealed class ScoreSubmissionService(
 
 			using (logger.BeginScope(new Dictionary<string, object> { ["ScoreId"] = scoreId }))
 			{
-				if (replayData is not null) await replayStorage.WriteAsync(scoreId, replayData, cancellationToken);
+				if (replayData is not null)
+					await replayStorage.WriteAsync(scoreId, score, player.Name, OsuVersion.From(request.OsuVersion),
+						replayData, cancellationToken);
 				logger.LogInformation(
 					"+ Score submitted: UserId={UserId} BeatmapMd5={BeatmapMd5} MatchId={MatchId} Score={Score}",
 					player.Id, beatmap.Md5, match?.DbId, score.Score);

@@ -5,6 +5,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -27,7 +28,7 @@ public class UserStatsRequestHandlerTests
 		};
 		_sessionRegistry.All.Returns([self, target]);
 		_sessionRegistry.GetById(2).Returns(target);
-		var reader = new PacketReader(PacketWriter.WriteI32List([2]));
+		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
@@ -46,7 +47,7 @@ public class UserStatsRequestHandlerTests
 			new UserSession(2, "target", "target-token", UserPrivileges.Verified,
 				DateTimeOffset.UnixEpoch); // restricted
 		_sessionRegistry.All.Returns([self, target]);
-		var reader = new PacketReader(PacketWriter.WriteI32List([2]));
+		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 
@@ -58,7 +59,7 @@ public class UserStatsRequestHandlerTests
 	{
 		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.All.Returns([self]);
-		var reader = new PacketReader(PacketWriter.WriteI32List([1]));
+		var reader = new PacketReader(BinaryWriter.WriteI32List([1]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
 

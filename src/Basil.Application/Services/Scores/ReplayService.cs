@@ -32,8 +32,8 @@ public sealed record ReplayFetchResult(ReplayFetchResultCode Code, byte[]? Data)
 /// </summary>
 /// <remarks>
 ///     This covers the raw-serving half of replay handling: given a score id it returns the stored
-///     replay bytes verbatim. Constructing the "full" replay header that a replay-download API
-///     would prepend is not part of Basil's scope.
+///     replay bytes verbatim. The bytes themselves are complete <c>.osr</c> files built at write
+///     time by <see cref="IReplayStorage" />, so no header is constructed here.
 /// </remarks>
 public sealed class ReplayService(
 	IScoreRepository scores,

@@ -33,14 +33,15 @@ public enum OsuStream : byte
 /// <param name="Stream">The release stream of the client.</param>
 public sealed partial record OsuVersion(DateOnly Date, int? Revision, OsuStream Stream)
 {
-	[GeneratedRegex(@"^b(?<date>\d{8})(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
+	[GeneratedRegex(
+		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
 	private static partial Regex VersionPattern();
 
 	/// <summary>
 	///     Parses an osu! version string into an <see cref="OsuVersion" />.
 	/// </summary>
 	/// <param name="osuVersionString">
-	///     The version string reported by the client, for example "b20240801.1beta".
+	///     The version string reported by the client, for example, "b20240801.1beta".
 	/// </param>
 	/// <returns>The parsed version.</returns>
 	/// <exception cref="ArgumentException">

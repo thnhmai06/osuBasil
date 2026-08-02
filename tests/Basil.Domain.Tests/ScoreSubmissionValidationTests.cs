@@ -53,7 +53,7 @@ public class ScoreSubmissionValidationTests
 		var hashes = Submission.ParseUniqueIdHashes("uid1value|uid2value");
 
 		Assert.Throws<ScoreSubmissionIntegrityException>(() =>
-			Submission.ValidateClientDetails(client, LoginVersionDate, "20200101", client.Hash(), hashes));
+			Submission.ValidateClientDetails(client, LoginVersionDate, "101", client.Hash(), hashes));
 	}
 
 	[Fact]

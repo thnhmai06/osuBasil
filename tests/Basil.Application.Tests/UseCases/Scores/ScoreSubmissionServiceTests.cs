@@ -6,6 +6,7 @@ using Basil.Application.Services.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -283,7 +284,8 @@ public class ScoreSubmissionServiceTests
 
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		await _replayStorage.DidNotReceive()
-			.WriteAsync(Arg.Any<long>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+			.WriteAsync(Arg.Any<long>(), Arg.Any<Submission>(), Arg.Any<string>(),
+				Arg.Any<OsuVersion>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -300,6 +302,8 @@ public class ScoreSubmissionServiceTests
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), replayBytes));
 
-		await _replayStorage.Received(1).WriteAsync(555L, replayBytes, Arg.Any<CancellationToken>());
+		await _replayStorage.Received(1)
+			.WriteAsync(555L, Arg.Any<Submission>(), "cookiezi", Arg.Any<OsuVersion>(),
+				replayBytes, Arg.Any<CancellationToken>());
 	}
 }

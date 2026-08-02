@@ -11,6 +11,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -46,7 +47,7 @@ public class LogoutHandlerTests
 	{
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
-		var reader = new PacketReader(PacketWriter.WriteInt32(0));
+		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
 
 		await MakeHandler().HandleAsync(session, reader);
 
@@ -59,7 +60,7 @@ public class LogoutHandlerTests
 	{
 		var loginTime = DateTimeOffset.UtcNow.AddSeconds(-2);
 		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
-		var reader = new PacketReader(PacketWriter.WriteInt32(0));
+		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
 
 		await MakeHandler().HandleAsync(session, reader);
 

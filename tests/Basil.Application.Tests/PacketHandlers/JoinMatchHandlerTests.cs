@@ -1,6 +1,7 @@
 using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -9,7 +10,7 @@ public class JoinMatchHandlerTests
 {
 	private static PacketReader ReaderFor(int matchId, string password)
 	{
-		byte[] body = [.. PacketWriter.WriteInt32(matchId), .. PacketWriter.WriteString(password)];
+		byte[] body = [.. BinaryWriter.WriteInt32(matchId), .. BinaryWriter.WriteString(password)];
 		return new PacketReader(body);
 	}
 

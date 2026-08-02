@@ -1,6 +1,7 @@
 using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -9,7 +10,7 @@ public class MatchInviteHandlerTests
 {
 	private static PacketReader ReaderFor(int userId)
 	{
-		return new PacketReader(PacketWriter.WriteInt32(userId));
+		return new PacketReader(BinaryWriter.WriteInt32(userId));
 	}
 
 	[Fact]

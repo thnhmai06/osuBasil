@@ -2,6 +2,7 @@ using Basil.Application.Packets.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -10,7 +11,7 @@ public class MatchTransferHostHandlerTests
 {
 	private static PacketReader ReaderFor(int slotId)
 	{
-		return new PacketReader(PacketWriter.WriteInt32(slotId));
+		return new PacketReader(BinaryWriter.WriteInt32(slotId));
 	}
 
 	[Fact]

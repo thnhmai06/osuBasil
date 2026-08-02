@@ -5,6 +5,7 @@ using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -20,7 +21,7 @@ public class FriendAddHandlerTests
 
 	private static PacketReader TargetReader(int targetId)
 	{
-		return new PacketReader(PacketWriter.WriteInt32(targetId));
+		return new PacketReader(BinaryWriter.WriteInt32(targetId));
 	}
 
 	[Fact]

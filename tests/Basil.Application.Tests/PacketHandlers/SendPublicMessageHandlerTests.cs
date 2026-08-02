@@ -11,6 +11,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -39,10 +40,10 @@ public class SendPublicMessageHandlerTests
 
 	private static PacketReader MessageReader(string sender, string text, string recipient, int senderId)
 	{
-		return new PacketReader(PacketWriter.WriteString(sender)
-			.Concat(PacketWriter.WriteString(text))
-			.Concat(PacketWriter.WriteString(recipient))
-			.Concat(PacketWriter.WriteInt32(senderId))
+		return new PacketReader(BinaryWriter.WriteString(sender)
+			.Concat(BinaryWriter.WriteString(text))
+			.Concat(BinaryWriter.WriteString(recipient))
+			.Concat(BinaryWriter.WriteInt32(senderId))
 			.ToArray());
 	}
 
