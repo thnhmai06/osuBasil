@@ -12,14 +12,15 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Irc;
 
 /// <summary>
-///     Embedded IRC gateway: accepts raw TCP connections on <see cref="IrcOptions.Port" /> and hands
-///     each one off to its own <see cref="TcpIrcConnection" />. Runs in-process as a
+///     The embedded IRC gateway. Accepts raw TCP connections on <see cref="IrcOptions.Port" /> and
+///     hands each one off to its own <see cref="TcpIrcConnection" />. Runs in-process as a
 ///     <see cref="BackgroundService" />, so no separate executable or container is required.
 /// </summary>
 /// <remarks>
-///     A listener that fails to bind its port logs the error and stops, rather than throwing out of
-///     <see cref="BackgroundService" />'s execution path and taking the host down with it. Each
-///     accepted connection is assigned a fresh per-process id and runs detached.
+///     If the listener can't bind its port (for example the port is already in use), it logs the
+///     error and stops rather than throwing out of <see cref="BackgroundService" />'s execution path
+///     and taking the host down with it. Each accepted connection gets a fresh per-process id and
+///     runs detached.
 /// </remarks>
 public sealed class TcpIrcListener(
 	IOptions<IrcOptions> options,
@@ -51,9 +52,9 @@ public sealed class TcpIrcListener(
 		}
 		catch (SocketException ex)
 		{
-			// A chat gateway failing to bind shouldn't take the whole server down (e.g. port already
-			// in use) — log and skip, rather than letting BackgroundService's unhandled-exception
-			// behaviour crash host startup entirely.
+			// A chat gateway failing to bind shouldn't take the whole server down (for example the port
+			// is already in use). Log and skip, instead of letting BackgroundService's
+			// unhandled-exception behaviour crash host startup entirely.
 			logger.LogError(ex, "IRC gateway failed to bind port {Port} — IRC will be unavailable.",
 				options.Value.Port);
 			return;
@@ -86,8 +87,9 @@ public sealed class TcpIrcListener(
 	}
 
 	/// <summary>
-	///     Runs a single connection to completion, swallowing socket and IO errors that mean the
-	///     client dropped mid-read/write, and always disposing the underlying <see cref="TcpClient" />.
+	///     Runs a single connection to completion. Socket and IO errors mean the client dropped
+	///     mid-read/write, so they are swallowed, and the underlying <see cref="TcpClient" /> is always
+	///     disposed.
 	/// </summary>
 	private async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client, long connectionId,
 		CancellationToken stoppingToken)

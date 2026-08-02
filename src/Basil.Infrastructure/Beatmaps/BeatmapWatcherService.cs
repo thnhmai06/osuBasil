@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any create,
+///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any creation,
 ///     change, delete, or rename under that folder is debounced (a dragged-in beatmapset fires many
 ///     rapid events for the same folder, so only the last one after a quiet period actually
 ///     reconciles) and handed to <see cref="BeatmapIngestionService" />'s per-folder methods. The
@@ -23,7 +23,7 @@ public sealed class BeatmapWatcherService(
 	/// <summary>Quiet period after the last filesystem event for a path before it reconciles.</summary>
 	private static readonly TimeSpan DebounceWindow = TimeSpan.FromSeconds(2);
 
-	/// <summary>Settles currently reconciling, tracked so shutdown waits for them.</summary>
+	/// <summary>Tracks reconciliation tasks still in flight, so shutdown waits for them.</summary>
 	private readonly ConcurrentDictionary<Task, byte> _inFlightSettles = new();
 
 	/// <summary>Per-path debounce timers, keyed by the affected top-level entry path.</summary>
@@ -31,9 +31,9 @@ public sealed class BeatmapWatcherService(
 
 	/// <summary>
 	///     Runs the filesystem watch loop until shutdown: installs a recursive
-	///     <see cref="FileSystemWatcher" /> on the beatmapsetRepository folder, then waits on an indefinite delay.
-	///     On shutdown, disposes any armed-but-not-yet-fired timers and awaits any reconciliation
-	///     still in flight so the DB is never mutated while the host is stopping.
+	///     <see cref="FileSystemWatcher" /> on the mapsets path, then waits indefinitely. On shutdown,
+	///     disposes any armed-but-not-yet-fired timers and awaits any reconciliation still in flight,
+	///     so the DB is never mutated while the host is stopping.
 	/// </summary>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
@@ -47,7 +47,7 @@ public sealed class BeatmapWatcherService(
 		watcher.Changed += (_, e) => Debounce(AffectedPath(path, e.FullPath));
 		watcher.Renamed += (_, e) => DebounceRenamed(path, e);
 		watcher.Deleted += (_, e) => Debounce(AffectedPath(path, e.FullPath));
-		watcher.Error += (_, e) => logger.LogWarning(e.GetException(), "Mapsets FileSystemWatcher error.");
+		watcher.Error += (_, e) => logger.LogWarning(e.GetException(), "Beatmapsets FileSystemWatcher error.");
 		watcher.EnableRaisingEvents = true;
 
 		try
@@ -59,9 +59,9 @@ public sealed class BeatmapWatcherService(
 			// expected on shutdown
 		}
 
-		// Disposing an armed-but-not-yet-fired timer is enough to stop it; a timer whose callback
-		// already fired is gone from _timers (Settle removes itself) but its reconciliation may
-		// still be running — those are tracked separately so shutdown actually waits for them
+		// Disposing an armed-but-not-yet-fired timer is enough to stop it. A timer whose callback
+		// already fired is gone from _timers (Settle removes itself), but its reconciliation may
+		// still be running; those are tracked separately, so shutdown actually waits for them
 		// instead of returning while a beatmap-ingestion pass is still mutating the DB.
 		foreach (var timer in _timers.Values) await timer.DisposeAsync();
 		await Task.WhenAll(_inFlightSettles.Keys);
@@ -84,7 +84,7 @@ public sealed class BeatmapWatcherService(
 	///     *old* path instead lets <see cref="Settle" />'s own Directory.Exists/File.Exists checks
 	///     naturally resolve it to <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />:
 	///     the old path no longer exists on disk, and its name (unlike the new one) still carries the
-	///     beatmapset's real leading id. Any other rename (e.g. a human renaming a beatmapset folder) still
+	///     beatmapset's real leading id. Any other rename (e.g., a human renaming a beatmapset folder) still
 	///     debounces on the new path as before.
 	/// </summary>
 	private void DebounceRenamed(string root, RenamedEventArgs e)
@@ -121,9 +121,9 @@ public sealed class BeatmapWatcherService(
 				{
 					// Settle already TryRemove'd this entry and is disposing the same Timer
 					// concurrently (ConcurrentDictionary.AddOrUpdate's update factory runs outside
-					// any lock, so this Change() call and Settle's DisposeAsync() can race) — the
-					// debounce that fired us is still real, so arm a fresh timer instead of re-
-					// arming a dead one.
+					// any lock, so this Change() call and Settle's DisposeAsync() can race). The
+					// debounce that fired us is still real, so arm a fresh timer instead of
+					// re-arming a dead one.
 					return NewTimer(affected);
 				}
 			});
@@ -161,7 +161,7 @@ public sealed class BeatmapWatcherService(
 		if (timer is not null) await timer.DisposeAsync();
 
 		// A `.deleted_` folder is mid-deletion (rename-in-place done, physical removal pending the
-		// GC pass) — never a live beatmapset, so no reconciliation pathway applies to it.
+		// GC pass), never a live beatmapset, so no reconciliation pathway applies to it.
 		if (Path.GetFileName(affected)
 		    .Contains(BeatmapIngestionService.DeletedFolderInfix, StringComparison.OrdinalIgnoreCase))
 			return;
@@ -175,9 +175,9 @@ public sealed class BeatmapWatcherService(
 				await ingestion.ReconcileOszAsync(affected);
 			else if (!File.Exists(affected) && !looksLikeOsz)
 				await ingestion.ReconcileDeletedFolderAsync(affected);
-			// else: a .osz that ReconcileOszAsync already extracted-then-deleted (its own Deleted
-			// event lands here too, and must NOT be treated as a live beatmapset folder disappearing —
-			// see BeatmapWatcherServiceTests' repro), or a stray non-.osz file — no pathway applies.
+			// Else: a .osz that ReconcileOszAsync already extracted then deleted (its own Deleted
+			// event lands here too, and must not be treated as a live beatmapset folder disappearing,
+			// see BeatmapWatcherServiceTests' repro), or a stray non-.osz file. No pathway applies.
 		}
 		catch (Exception ex)
 		{

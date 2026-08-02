@@ -16,8 +16,8 @@ namespace Basil.Infrastructure.Irc;
 /// <summary>
 ///     One real TCP IRC client. Owns the socket's read loop (handshake, then PRIVMSG/JOIN/PART/AWAY/
 ///     PING/QUIT dispatch) and a bounded-channel write pump. <see cref="Send" /> is a non-blocking
-///     <c>TryWrite</c>, so a slow or dead client can never stall a broadcast
-///     made while another lock is held elsewhere in the chat core.
+///     <c>TryWrite</c>, so a slow or dead client can never stall a broadcast made while another lock
+///     is held elsewhere in the chat core.
 /// </summary>
 /// <remarks>
 ///     Implements <see cref="IIrcConnection" /> for a real external IRC client. Outgoing messages
@@ -128,7 +128,7 @@ public sealed class TcpIrcConnection(
 		while (!cancellationToken.IsCancellationRequested)
 		{
 			var line = await reader.ReadLineAsync(cancellationToken);
-			if (line is null) return; // client closed the socket
+			if (line is null) return;
 
 			if (!IrcMessageParser.TryParse(line, out var message) || message is null) continue;
 
@@ -151,7 +151,7 @@ public sealed class TcpIrcConnection(
 				case "PING":
 					Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
 					break;
-				// USER's real-name/hostname fields carry nothing Basil needs — PASS+NICK are enough.
+				// USER's real-name and hostname fields carry nothing Basil needs; PASS+NICK are enough.
 			}
 
 			if (!_registered && nick is not null && pass is not null)
@@ -187,7 +187,7 @@ public sealed class TcpIrcConnection(
 				break;
 
 			case "NICK":
-				// "Can I use another username? No." (osu!Bancho IRC FAQ) — nick is fixed at login.
+				// "Can I use another username? No." (osu!Bancho IRC FAQ). Nick is fixed at login.
 				Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrUnknownCommand,
 					User.Name, "NICK", "Changing nickname is not supported"));
 				break;

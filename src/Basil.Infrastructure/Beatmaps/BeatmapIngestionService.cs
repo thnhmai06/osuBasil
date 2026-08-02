@@ -35,17 +35,14 @@ public sealed partial class BeatmapIngestionService(
 	IResponseCache cache,
 	ILogger<BeatmapIngestionService> logger)
 {
-	/// <summary>
-	///     Marker infix for a beatmapset folder mid-deletion (see <see cref="ReconcileDeletedFolderAsync" />'s
-	///     doc comment): a folder whose name carries this infix is never treated as a live beatmapset.
-	/// </summary>
-	public const string DeletedFolderInfix = ".deleted_";
-
-	// Platform-provided, not a hardcoded Windows list — on Linux (a supported deployment target, see
-	// CLAUDE.md's win-x64/linux-x64 publish commands) this is just { '\0', '/' }, so e.g. "|" in a
-	// beatmap's title is a perfectly valid path character there and is left alone.
 	private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
 	private static readonly Regex LeadingIdPattern = LeadingIdRegex();
+
+	/// <summary>
+	///     Marker infix for a beatmapset folder mid-deletion: a folder whose name carries this infix
+	///     is never treated as a live beatmapset.
+	/// </summary>
+	public const string DeletedFolderInfix = ".deleted_";
 
 	/// <summary>
 	///     Builds the conventional folder name for a beatmapset: <c>"{Id} {Artist} - {Title}"</c>, with
@@ -68,7 +65,7 @@ public sealed partial class BeatmapIngestionService(
 	/// <summary>
 	///     Resolves a beatmapset's actual folder on disk by leading-id prefix rather than recomputing
 	///     <see cref="MapsetFolderPath" /> from the beatmapset's current (mutable) Artist/Title: those can
-	///     drift from whatever the folder was actually named at ingestion time (e.g. a re-ingest that
+	///     drift from whatever the folder was actually named at ingestion time (e.g., a re-ingesting that
 	///     revised the parsed title, or a folder that arrived pre-extracted with different
 	///     illegal-character handling than <see cref="Sanitize" /> uses), which would otherwise make
 	///     an existing, perfectly good folder invisible to every read path. Null if no folder with
@@ -76,8 +73,9 @@ public sealed partial class BeatmapIngestionService(
 	/// </summary>
 	public static string? FindMapsetFolder(StorageOptions storage, int mapsetId)
 	{
-		if (!Directory.Exists(storage.MapsetsPath)) return null;
-		return Directory.EnumerateDirectories(storage.MapsetsPath, $"{mapsetId} *").FirstOrDefault();
+		return Directory.Exists(storage.MapsetsPath)
+			? Directory.EnumerateDirectories(storage.MapsetsPath, $"{mapsetId} *").FirstOrDefault()
+			: null;
 	}
 
 	/// <summary>
@@ -158,7 +156,7 @@ public sealed partial class BeatmapIngestionService(
 
 		var ingested = 0;
 		var seenSetIds = new HashSet<int>();
-		// Folders present before osz extraction — a folder extracted by ReconcileOszAsync below
+		// Folders present before osz extraction: a folder extracted by ReconcileOszAsync below
 		// is already reconciled internally, so the second loop must skip it to avoid double-counting.
 		var preExistingFolders = Directory.EnumerateDirectories(path).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -180,7 +178,7 @@ public sealed partial class BeatmapIngestionService(
 		}
 
 		// A loose .osu file has no set context on its own (no sibling assets, no folder name to
-		// derive Artist/Title from) — this pathway is deliberately not supported.
+		// derive Artist/Title from); this pathway is deliberately not supported.
 		foreach (var strayOsu in Directory.EnumerateFiles(path, "*.osu"))
 			logger.LogWarning(
 				"Ignoring stray .osu file at Mapsets root: {Path}. A single .osu has no set context — " +
@@ -215,7 +213,7 @@ public sealed partial class BeatmapIngestionService(
 				var parsed = TryDecode(osuBytes);
 				if (parsed is null) continue;
 
-				decoded.Add(new DecodedFile(entry.Name, osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
+				decoded.Add(new DecodedFile(entry.Name, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
 			}
 		}
 
@@ -275,8 +273,8 @@ public sealed partial class BeatmapIngestionService(
 			var parsed = TryDecode(osuBytes);
 			if (parsed is null) continue;
 
-			decoded.Add(new DecodedFile(Path.GetFileName(osuPath), osuBytes, osuCalculator.ComputeBeatmapMd5(osuBytes),
-				parsed));
+			decoded.Add(new DecodedFile(
+				Path.GetFileName(osuPath), osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
 		}
 
 		if (decoded.Count == 0) return (0, null);
@@ -294,9 +292,9 @@ public sealed partial class BeatmapIngestionService(
 			var mode = (GameMode)info.Ruleset.OnlineID;
 			// Content unchanged (same md5) and already has a cached analysis (matches the "Sr > 0
 			// means cached" convention /difficulty-rating already uses) -> skip recalculating on
-			// every reconcile pass (server startup, watcher); otherwise compute it, which also
+			// every reconciling pass (server startup, watcher); otherwise compute it, which also
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
-			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } existing && existing.Md5 == file.Md5;
+			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } && existingByPath.Md5 == file.Md5;
 			var analysis = cacheHit
 				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts)
 				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
@@ -346,7 +344,7 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     A beatmapset folder vanished from disk: drop its DB row (Beatmaps cascade via FK) if its
+	///     A beatmapset folder vanished from the disk: drop its DB row (Beatmaps cascade via FK) if its
 	///     leading id is still parseable and known.
 	/// </summary>
 	public async Task ReconcileDeletedFolderAsync(string folderPath, CancellationToken cancellationToken = default)
@@ -357,8 +355,8 @@ public sealed partial class BeatmapIngestionService(
 
 		if (await beatmapsetRepository.FetchByIdAsync(id, cancellationToken) is not null)
 			await DeleteMapsetAsync(id, cancellationToken);
-		// A manually-renamed-away-from-convention folder that's then deleted leaves an orphan row
-		// until the next ReconcileAllAsync pass reclaims it — acceptable for a human-admin server.
+		// A manually renamed-away-from-convention folder that's then deleted leaves an orphan row
+		// until the next ReconcileAllAsync pass reclaims it. Acceptable for a human-admin server.
 	}
 
 	/// <summary>
@@ -438,7 +436,7 @@ public sealed partial class BeatmapIngestionService(
 
 	/// <summary>
 	///     Runs <see cref="IOsuCalculator.Analyze" /> for a beatmap, falling back to an all-zero
-	///     difficulty and empty object counts when calculation fails so the beatmap still ingests.
+	///     difficulty, and the empty object counts when calculation fails, so the beatmap still ingests.
 	/// </summary>
 	private BeatmapAnalysis TryAnalyze(string osuFilePath, GameMode mode)
 	{
@@ -449,8 +447,8 @@ public sealed partial class BeatmapIngestionService(
 		catch (Exception e)
 		{
 			// A map whose difficulty can't be calculated (unsupported ruleset content, corrupt
-			// hitobjects) still gets ingested — it just keeps Sr at 0/no object counts instead of
-			// aborting.
+			// hitobjects) still gets ingested; it just keeps Sr at 0 and empty object counts instead
+			// of aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
 			var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
 			BeatmapObjectCounts emptyObjectCounts = mode switch
@@ -489,5 +487,5 @@ public sealed partial class BeatmapIngestionService(
 	[GeneratedRegex(@"^(\d+)")]
 	private static partial Regex LeadingIdRegex();
 
-	private sealed record DecodedFile(string OriginalFilename, byte[] Bytes, string Md5, LazerBeatmap Parsed);
+	private sealed record DecodedFile(string OriginalFilename, string Md5, LazerBeatmap Parsed);
 }

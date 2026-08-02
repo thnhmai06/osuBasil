@@ -9,18 +9,17 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IClientHashRepository" />
 /// <remarks>
 ///     Rows map through the private mutable <c>ClientHashRow</c> and <c>ClientHashWithPlayerRow</c>
-///     DTOs, since Dapper fills by property name rather than through a positional record
-///     constructor. Each method opens its own connection.
+///     DTOs: Dapper fills by property name, not through a positional record constructor. Each
+///     method opens its own connection.
 /// </remarks>
 public sealed class SqliteClientHashRepository(string connectionString, ILogger<SqliteClientHashRepository> logger)
 	: IClientHashRepository
 {
 	/// <inheritdoc />
 	/// <remarks>
-	///     An upsert keyed on the full fingerprint: the first insert creates a row with one
-	///     occurrence, and a later login with the same fingerprint bumps <c>Occurrences</c> and
-	///     refreshes <c>LastSeenAt</c>. The persisted row is then re-read by the same fingerprint
-	///     and returned.
+	///     An upsert keyed on the full fingerprint. The first insert creates a row with one
+	///     occurrence; a later login with the same fingerprint bumps <c>Occurrences</c> and
+	///     refreshes <c>LastSeenAt</c>. The row is then re-read by that fingerprint and returned.
 	/// </remarks>
 	public async Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default)
@@ -64,7 +63,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	/// <inheritdoc />
 	/// <remarks>
 	///     Under Wine only the uninstall id is compared, since adapter and disk fingerprints are
-	///     unreliable there; otherwise a match on adapters, uninstall id, or disk serial (when
+	///     unreliable there. Otherwise any match on adapters, uninstall id, or disk serial (when
 	///     supplied) counts as shared hardware. The query joins the Users table so each result
 	///     carries the other account's name and privileges, and always excludes
 	///     <paramref name="userId" /> itself.
@@ -155,7 +154,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		///     Builds a <see cref="PlayerClientHash" /> from this row, casting the stored
 		///     privilege column.
 		/// </summary>
-		/// <returns>The domain client hash-with-userSession record.</returns>
+		/// <returns>The domain client hash-with-player record.</returns>
 		public PlayerClientHash ToClientHashWithPlayer()
 		{
 			return new PlayerClientHash(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,

@@ -11,10 +11,10 @@ namespace Basil.Infrastructure.Security;
 /// <remarks>
 ///     Uses BouncyCastle's <see cref="RijndaelEngine" /> at a 256-bit block size in CBC mode with
 ///     PKCS7 padding, which the .NET <c>Aes</c> class cannot reproduce because it is hardcoded to
-///     128-bit blocks. The key is the UTF-8 encoding of <c>osu!-scoreburgr---------</c> followed by
-///     the submitting client's osu! version string and the same key and IV decrypt both the score
-///     data and the client hash. The decrypted score data is split on <c>:</c> into its fields
-///     before being returned.
+///     128-bit blocks. The key is the UTF-8 bytes of <c>osu!-scoreburgr---------</c> plus the
+///     submitting client's osu! version string. The same key and IV decrypt both the score data and
+///     the client hash, and the decrypted score data is split on <c>:</c> into its fields before
+///     being returned.
 /// </remarks>
 public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 {

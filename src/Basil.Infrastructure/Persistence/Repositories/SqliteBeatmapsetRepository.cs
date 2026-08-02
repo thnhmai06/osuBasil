@@ -8,9 +8,8 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IBeatmapsetRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>MapsetRow</c> DTO, since Dapper fills by property
-///     name rather than through a positional record constructor. Each method opens its own
-///     connection.
+///     Rows map through the private mutable <c>MapsetRow</c> DTO: Dapper fills by property name,
+///     not through a positional record constructor. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<SqliteBeatmapsetRepository> logger)
 	: IBeatmapsetRepository
@@ -29,10 +28,10 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	///     Uses <c>INSERT ... ON CONFLICT DO UPDATE</c>, not <c>REPLACE INTO</c>: a replace deletes
 	///     then reinserts on a primary-key conflict, and that delete cascades through the
 	///     Beatmaps-Beatmapsets foreign key, wiping every beatmap under the set on every re-upsert. The
-	///     update clause overwrites only the shared metadata columns; <see cref="Beatmapset.IsFrozen" />,
-	///     <see cref="Beatmapset.IsPrivate" />, and the media-file columns are deliberately left alone so
-	///     a re-ingestion pass never clears an admin-set freeze lock or privacy flag, and because the
-	///     pass's actual background and audio files are not known yet (those are set later via
+	///     update clause overwrites only the shared metadata columns. <see cref="Beatmapset.IsFrozen" />,
+	///     <see cref="Beatmapset.IsPrivate" />, and the media-file columns are deliberately left alone:
+	///     a re-ingestion pass must never clear an admin-set freeze lock or privacy flag, and the pass's
+	///     actual background and audio files are not known yet (they are set later via
 	///     <see cref="SetBackgroundFileAsync" /> and <see cref="SetAudioFileAsync" />). The persisted
 	///     row is re-read and returned.
 	/// </remarks>
@@ -110,7 +109,6 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		// Beatmaps rows cascade via Beatmaps_Beatmapsets_Id_fk (on delete cascade), so no manual cleanup is needed.
 		await connection.ExecuteAsync("DELETE FROM Beatmapsets WHERE Id = @Id", new { Id = id });
 		logger.LogDebug("Beatmapset deleted: Id={Id}", id);
 	}

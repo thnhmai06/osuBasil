@@ -31,8 +31,8 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.DependencyInjection;
 
 /// <summary>
-///     Composition root helper for the Infrastructure layer: binds Options, builds the SQLite
-///     connection string, and registers every port implementation.
+///     The Infrastructure layer's composition root: binds Options, builds the SQLite connection
+///     string, and registers every port implementation.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
@@ -40,7 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
 	///     Registers every Infrastructure service into the container: the port implementations
 	///     (SQLite repositories, caching decorators, media processors, the osu!lazer calculator, the
 	///     password hasher and score decryptor, session registries, and storage providers) plus the
-	///     background services that watch and garbage-collect the beatmapsetRepository folder.
+	///     background services that watch the mapsets folder and reclaim folders marked for deletion.
 	/// </summary>
 	/// <param name="services">The service collection to register into.</param>
 	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
@@ -52,7 +52,7 @@ public static class InfrastructureServiceCollectionExtensions
 		services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
 		services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
 
-		// Database path is fixed to Data/Basil.db next to the executable — not configurable.
+		// Database path is fixed to Data/Basil.db next to the executable; not configurable.
 		services.AddSingleton(Options.Create(new DatabaseOptions()));
 
 		// Storage folders are fixed under a Data/ subdirectory next to the executable.

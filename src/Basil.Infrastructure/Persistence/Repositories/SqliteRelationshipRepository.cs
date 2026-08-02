@@ -10,8 +10,8 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <remarks>
 ///     The relationship kind is stored as the text <c>"friend"</c> or <c>"block"</c> in the Type
 ///     column and mapped back to <see cref="RelationshipType" /> when read. Rows map through the
-///     private mutable <c>RelationshipRow</c> DTO, since Dapper fills by property name rather than
-///     through a positional record constructor.
+///     private mutable <c>RelationshipRow</c> DTO: Dapper fills by property name, not through a
+///     positional record constructor.
 /// </remarks>
 public sealed class SqliteRelationshipRepository(string connectionString, ILogger<SqliteRelationshipRepository> logger)
 	: IRelationshipRepository

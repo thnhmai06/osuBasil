@@ -6,8 +6,8 @@ namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
 ///     Applies the embedded SQL migration scripts (see Persistence/Migrations/) against the SQLite
-///     database file, in filename order, tracked via DbUp's own journal table so each script only
-///     ever runs once per database file.
+///     database file, in filename order. DbUp records each script in its own journal table, so a
+///     script runs exactly once per database file.
 /// </summary>
 public static class SqlMigrationRunner
 {
@@ -17,11 +17,9 @@ public static class SqlMigrationRunner
 	/// </summary>
 	/// <param name="connectionString">The SQLite connection string of the database file to migrate.</param>
 	/// <remarks>
-	///     Turns on WAL journal mode first. The mode persists in the database file header, so this
-	///     only needs to happen once per file, but running it every startup is harmless and keeps a
-	///     hand-copied or older database file in WAL mode too. Migration scripts are discovered as
-	///     embedded resources and applied in filename order through DbUp, tracked in DbUp's journal
-	///     so each script runs exactly once per database file.
+	///     Switches the database to WAL journal mode first. The mode lives in the database file
+	///     header, so it only needs setting once per file, but running it every startup is harmless
+	///     and keeps a hand-copied or older database file in WAL mode too.
 	/// </remarks>
 	/// <exception cref="InvalidOperationException">A migration script failed; the inner exception carries the cause.</exception>
 	public static void RunMigrations(string connectionString)

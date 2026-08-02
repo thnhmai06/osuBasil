@@ -10,8 +10,8 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IBeatmapRepository" />
 /// <remarks>
 ///     Reads join the Beatmaps and Beatmapsets tables and map through the private mutable row DTOs
-///     (<c>BeatmapRow</c> and <c>MapsetRow</c>), since Dapper materializes by property name rather
-///     than through a positional record constructor. Each method opens its own connection.
+///     (<c>BeatmapRow</c> and <c>MapsetRow</c>): Dapper materializes by property name, not through a
+///     positional record constructor. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteBeatmapRepository(string connectionString, ILogger<SqliteBeatmapRepository> logger)
 	: IBeatmapRepository
@@ -26,7 +26,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	/// <inheritdoc />
 	/// <remarks>
 	///     Dapper has no multi-map <c>QueryFirstOrDefaultAsync</c> overload, so the JOIN is queried
-	///     with <c>QueryAsync</c> and the first row taken. Id, md5, and filename each match at most
+	///     with <c>QueryAsync</c> and the first row is taken. Id, md5, and filename each match at most
 	///     one row because of their unique constraints, but setId can match several difficulties
 	///     within the same set, in which case any one of them satisfies the lookup. When
 	///     <paramref name="includePrivate" /> is <see langword="false" />, a beatmapset-level privacy
@@ -85,7 +85,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     id is kept regardless of the incoming id, so a re-ingested difficulty never changes
 	///     identity. Otherwise the incoming id is used when positive, or a fresh local id is
 	///     allocated from <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c>. The write is
-	///     a <c>REPLACE INTO</c> that overwrites every column, and
+	///     a <c>REPLACE INTO</c> that overwrites every column.
 	///     <see cref="BeatmapObjectCounts" /> is serialized to JSON before storage.
 	/// </remarks>
 	public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
@@ -147,8 +147,8 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	/// <remarks>
 	///     Runs in two passes: first the distinct matching set ids are collected, newest setId
 	///     first, with the page applied at the set level; then the full rows for those sets are
-	///     read back and grouped by set. Each set's difficulties come back ordered by star rating
-	///     ascending, and only sets whose id survived the first pass are included.
+	///     read back and grouped by set. Each set's difficulties come back ordered by ascending
+	///     star rating, and only sets whose id survived the first pass are included.
 	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
 		string? query, GameMode? mode, int offset, int amount,

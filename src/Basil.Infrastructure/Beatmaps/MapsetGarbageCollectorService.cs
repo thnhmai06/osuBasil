@@ -6,13 +6,11 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Physically deletes <see cref="BeatmapIngestionService.DeletedFolderInfix" />-marked beatmapset
-///     folders. The atomic in-place rename that marks a folder for deletion leaves the folder itself
-///     on disk until this pass reclaims it: <see cref="BeatmapWatcherService" /> and
-///     <see cref="BeatmapIngestionService" /> already treat such folders as gone for DB purposes.
-///     Runs on its own timer (not driven by the live <see cref="FileSystemWatcher" />) so a locked
-///     file (an in-flight read from another process) just gets retried next cycle instead of failing
-///     that cycle's pass.
+///     Physically deletes beatmapset folders whose name carries
+///     <see cref="BeatmapIngestionService.DeletedFolderInfix" />. The rename that marks a folder for
+///     deletion leaves it on disk until this pass reclaims it, and the DB already treats it as gone.
+///     The pass runs on its own timer rather than the live <see cref="FileSystemWatcher" />, so a
+///     locked file simply gets retried next cycle instead of failing the pass.
 /// </summary>
 public sealed class MapsetGarbageCollectorService(
 	IOptions<StorageOptions> options,
@@ -43,8 +41,8 @@ public sealed class MapsetGarbageCollectorService(
 
 	/// <summary>
 	///     Deletes every folder under <see cref="StorageOptions.MapsetsPath" /> whose name carries the
-	///     deletion marker, logging a warning for any that fail (typically a locked file) so they
-	///     retry next cycle.
+	///     deletion marker. A folder that fails to delete (typically a locked file) is logged and
+	///     retried on the next cycle.
 	/// </summary>
 	private void CollectOnce()
 	{

@@ -3,25 +3,25 @@ using System.Runtime.InteropServices;
 
 namespace Basil.Infrastructure.System;
 
-/// <summary>Cross-platform hard-Link creation.</summary>
+/// <summary>Creates hard links on Windows and Unix.</summary>
 /// <remarks>
-///     Dispatches to the Win32 <c>CreateHardLinkW</c> API on Windows and to libc's <c>link</c>
+///     Calls the Win32 <c>CreateHardLinkW</c> API on Windows and libc's <c>link</c> function
 ///     elsewhere, throwing <see cref="IOException" /> when the underlying call fails.
 /// </remarks>
 public static partial class HardLink
 {
 	/// <summary>
-	///     Creates a hard Link at <paramref name="linkPath" /> pointing to the existing file at
+	///     Creates a hard link at <paramref name="linkPath" /> pointing to the existing file at
 	///     <paramref name="targetPath" />. Both paths must reside on the same volume.
 	/// </summary>
-	/// <param name="linkPath">Path where the hard Link will be created.</param>
-	/// <param name="targetPath">Path to the existing file to Link to.</param>
+	/// <param name="linkPath">Path where the hard link will be created.</param>
+	/// <param name="targetPath">Path to the existing file to link to.</param>
 	/// <param name="force">
 	///     <see langword="true" /> to delete any existing file at <paramref name="linkPath" /> before creating
-	///     the Link (the default); <see langword="false" /> to throw <see cref="IOException" /> when the path is
+	///     the link (the default); <see langword="false" /> to throw <see cref="IOException" /> when the path is
 	///     already occupied.
 	/// </param>
-	/// <exception cref="IOException">The OS call failed or <paramref name="force" /> is false and the path exists.</exception>
+	/// <exception cref="IOException">The OS call failed, or <paramref name="force" /> is false and the path exists.</exception>
 	public static void Create(string linkPath, string targetPath, bool force = true)
 	{
 		if (force && File.Exists(linkPath)) File.Delete(linkPath);

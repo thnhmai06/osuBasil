@@ -87,12 +87,12 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     The safe form of the name is derived via <see cref="User.MakeSafeName" />, and the
-	///     default privilege set, when <paramref name="privilege" /> is <see langword="null" />, is
-	///     the unrestricted, verified, and supporter flags. A duplicate display or safe name
-	///     surfaces as a SQLite constraint violation (error code 19), which is swallowed and
-	///     reported as <see langword="null" />. The insert and the id read-back are one batched
-	///     statement, and the new row is then re-read and returned.
+	///     The safe form of the name comes from <see cref="User.MakeSafeName" />. When
+	///     <paramref name="privilege" /> is <see langword="null" />, the row defaults to the
+	///     unrestricted, verified, and supporter flags. A duplicate display or safe name trips a
+	///     SQLite constraint violation (error code 19), which is swallowed and reported as
+	///     <see langword="null" />. The insert and the id read-back are one batched statement, and
+	///     the new row is then re-read and returned.
 	/// </remarks>
 	public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country,
 		UserPrivileges? privilege = null,

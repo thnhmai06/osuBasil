@@ -47,29 +47,24 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 			var ruleset = CreateRuleset(mode);
 			var workingBeatmap = new StreamlessWorkingBeatmap(beatmap);
 
-			// 'Mode' already captures Relax/Autopilot — ppy's calculator only needs the
-			// difficulty-affecting mods (HR, DT, HT, EZ, HD, FL, ...).
+			// 'Mode' already captures Relax/Autopilot, so strip them before the mod conversion;
+			// ppy's calculator only needs the difficulty-affecting mods (HR, DT, HT, EZ, HD, FL, ...).
 			var strippedMods = mods & ~(Mods.Relax | Mods.Autopilot);
 			var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)strippedMods).ToArray();
 
 			var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
 			var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
 
-			// Ruleset.GetAdjustedDisplayDifficulty applies HR/EZ's CS/AR/OD/HP multiplier AND DT/HT/NC's
-			// rate-based AR/OD hit-window scaling itself, per ruleset — the same call osu!'s own song
-			// select uses for its displayed stats. No need to hand-roll either adjustment.
+			// GetAdjustedDisplayDifficulty applies HR/EZ's CS/AR/OD/HP multiplier and DT/HT/NC's
+			// rate-based AR/OD hit-window scaling itself, per ruleset. It's the same call osu!'s song
+			// select uses for its displayed stats, so neither adjustment needs hand-rolling here.
 			var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(beatmap.BeatmapInfo, legacyMods);
 
-			// The raw decoder (Decoder.GetDecoder<Beatmap>().Decode(...), used above) never populates
-			// BeatmapInfo.Length/MaxCombo/BPM — those fields only exist once the beatmap has been
-			// converted for a specific ruleset and its hit objects' timing resolved via ApplyDefaults
-			// (which GetPlayableBeatmap does), and even then they live on BeatmapExtensions'
-			// computed-on-demand helpers, not back on BeatmapInfo itself. Confirmed by direct
-			// inspection: BeatmapInfo.Length/MaxCombo/BPM are 0/null/0 both before AND after
-			// GetPlayableBeatmap; CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength are the
-			// only source of real values, and neither reflects DT/HT/NC's rate change on its own, so
-			// Bpm/TotalLength are scaled by hand using the same rate ModUtils.CalculateRateWithMods
-			// reports.
+			// The raw decode above never populates BeatmapInfo.Length/MaxCombo/BPM; they read 0/null
+			// even after GetPlayableBeatmap. The real values only come from the playable beatmap's
+			// computed-on-demand helpers (CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength),
+			// and none of those reflect DT/HT/NC's rate change on its own, so Bpm/TotalLength are
+			// scaled by hand with the rate ModUtils.CalculateRateWithMods reports.
 			var maxCombo = playable.GetMaxCombo();
 			var mostCommonBeatLength = playable.GetMostCommonBeatLength();
 			var rate = ModUtils.CalculateRateWithMods(legacyMods);
@@ -100,10 +95,10 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 		return stream.ComputeMD5Hash();
 	}
 
-	// Raw computed values can carry long floating-point tails (e.g. 5.00000001, or 7.7999997 from
-	// HR's 6 * 1.3) — round once here, at the single place every Difficulty gets built. Sr gets an
-	// extra decimal of precision (2 vs 1) since star rating differences below 0.1 are still
-	// meaningful for map selection.
+	// Raw computed values carry long floating-point tails (e.g. 5.00000001, or 7.7999997 from
+	// HR's 6 * 1.3), so rounding happens once here, the single place every Difficulty is built.
+	// Star rating keeps an extra decimal (2 vs 1) because differences below 0.1 still matter for
+	// map selection.
 	/// <summary>Rounds a computed difficulty value to the given number of digits, half away from zero.</summary>
 	private static double Round(double value, int digits)
 	{

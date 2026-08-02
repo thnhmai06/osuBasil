@@ -4,9 +4,8 @@ namespace Basil.Infrastructure.Persistence;
 
 /// <summary>Builds the SQLite connection string for the persistence layer from <see cref="DatabaseOptions" />.</summary>
 /// <remarks>
-///     A shared helper so every caller that opens a SQLite connection, such as a repository and the
-///     migration runner, uses the identical connection string for the same configured database
-///     file.
+///     Shared by every caller that opens a SQLite connection, so a repository and the migration
+///     runner get the identical connection string for the same configured database file.
 /// </remarks>
 public static class DatabaseConnectionStringBuilder
 {

@@ -7,16 +7,16 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="ILeaderboardStore" />
 /// <remarks>
-///     Ranks are computed live from the UserStats table on every read: a userSession's rank is the
-///     count of users with a higher ranked score in the mode, plus one. There is no separately
-///     maintained leaderboard index, so the add/remove methods are no-ops.
+///     Ranks are computed live from the UserStats table on every read: a user's rank is the count
+///     of users with a higher ranked score in the mode, plus one. There is no separately maintained
+///     leaderboard index, so the add/remove methods are no-ops.
 /// </remarks>
 public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboardStore
 {
 	/// <inheritdoc />
 	/// <remarks>
-	///     When the userSession has no UserStats row for the mode, the read returns
-	///     <see langword="null" /> before any count query runs.
+	///     When the player has no UserStats row for the mode, the read returns
+	///     <see langword="null" /> without running the count query.
 	/// </remarks>
 	public async Task<int?> FetchGlobalRankAsync(int playerId, GameMode mode,
 		CancellationToken cancellationToken = default)
@@ -36,8 +36,8 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 	/// <inheritdoc />
 	/// <remarks>
 	///     The count query joins UserStats to Users to restrict the ranking to the given country
-	///     acronym. When the userSession has no UserStats row for the mode, the read returns
-	///     <see langword="null" /> before any count query runs.
+	///     acronym. When the player has no UserStats row for the mode, the read returns
+	///     <see langword="null" /> without running the count query.
 	/// </remarks>
 	public async Task<int?> FetchCountryRankAsync(int playerId, GameMode mode, string country,
 		CancellationToken cancellationToken = default)
