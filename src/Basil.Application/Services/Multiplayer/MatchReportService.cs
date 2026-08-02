@@ -9,6 +9,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+
 // ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Multiplayer;
@@ -129,7 +130,9 @@ public sealed class MatchReportService(
 
 						if (sorted[0].Total == sorted[1].Total)
 							// A draw, so there is no winner, and the diff is 0
+						{
 							winDiff = 0;
+						}
 						else
 						{
 							winnerTeam = sorted[0].Team ?? MatchTeam.Neutral;
@@ -147,7 +150,9 @@ public sealed class MatchReportService(
 
 					if (sorted[0].Metric == sorted[1].Metric)
 						// A draw, so there is no winner, and the diff is 0
+					{
 						winDiff = 0;
+					}
 					else
 					{
 						winnerUserId = sorted[0].UserId;

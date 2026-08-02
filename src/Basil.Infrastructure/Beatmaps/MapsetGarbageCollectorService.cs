@@ -66,7 +66,8 @@ public sealed class MapsetGarbageCollectorService(
 			{
 				// A locked file (in-flight read elsewhere) just retries next cycle instead of
 				// aborting the whole pass.
-				logger.LogWarning(e, "Failed to garbage-collect deleted beatmapset folder {Path}; will retry next cycle.",
+				logger.LogWarning(e,
+					"Failed to garbage-collect deleted beatmapset folder {Path}; will retry next cycle.",
 					folder);
 			}
 		}

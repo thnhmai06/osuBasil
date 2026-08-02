@@ -29,6 +29,13 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 			cancellationToken);
 	}
 
+	/// <inheritdoc />
+	public async Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default)
+	{
+		var path = PathFor(scoreId);
+		return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
+	}
+
 	/// <summary>
 	///     Builds a complete <c>.osr</c> file: the header written around the client's raw LZMA replay
 	///     bytes.
@@ -71,13 +78,6 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 		if ((score.Mods & Mods.Target) != 0) result.AddRange(BinaryWriter.WriteDouble(0));
 
 		return [.. result];
-	}
-
-	/// <inheritdoc />
-	public async Task<byte[]?> ReadAsync(long scoreId, CancellationToken cancellationToken = default)
-	{
-		var path = PathFor(scoreId);
-		return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
 	}
 
 	/// <summary>Builds the absolute path of a score's replay file.</summary>

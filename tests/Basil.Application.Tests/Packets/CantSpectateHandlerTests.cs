@@ -1,0 +1,60 @@
+using Basil.Application.Packets.Spectating;
+using Basil.Application.Sessions;
+using Basil.Domain.Users;
+using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Basil.Application.Tests.Packets;
+
+/// <summary>Ported from app/api/domains/cho.py's CantSpectate.</summary>
+public class CantSpectateHandlerTests
+{
+	private static UserSession MakePlayer(int id, string name)
+	{
+		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+	}
+
+	[Fact]
+	public async Task Handle_NotSpectating_NoOp()
+	{
+		var player = MakePlayer(1, "alice");
+
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.Empty(player.Dequeue());
+	}
+
+	[Fact]
+	public async Task Handle_Spectating_NotifiesHostAndFellowSpectators()
+	{
+		var host = MakePlayer(1, "host");
+		var player = MakePlayer(2, "alice");
+		var fellow = MakePlayer(3, "bob");
+		host.AddSpectator(player);
+		host.AddSpectator(fellow);
+		player.Spectating = host;
+
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		var expected = ServerPacketWriter.SpectatorCantSpectate(player.Id);
+		Assert.Equal(expected, host.Dequeue());
+		Assert.Equal(expected, fellow.Dequeue());
+	}
+
+	[Fact]
+	public async Task Handle_Stealth_NoOp()
+	{
+		var host = MakePlayer(1, "host");
+		var player = MakePlayer(2, "alice");
+		host.AddSpectator(player);
+		player.Spectating = host;
+		player.Stealth = true;
+
+		await new CantSpectateHandler(NullLogger<CantSpectateHandler>.Instance).HandleAsync(player,
+			new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.Empty(host.Dequeue());
+	}
+}

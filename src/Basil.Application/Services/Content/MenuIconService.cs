@@ -19,7 +19,7 @@ public static class MenuIconService
 	///     Finds the current menu icon file.
 	/// </summary>
 	/// <returns>
-	///	The path of the first <c>MenuIcon.*</c> file in the data folder, or <see langword="null" /> when none exists.
+	///     The path of the first <c>MenuIcon.*</c> file in the data folder, or <see langword="null" /> when none exists.
 	/// </returns>
 	public static string? FindIconPath()
 	{

@@ -1,5 +1,5 @@
 using Basil.Application.Services.Multiplayer;
-using Basil.Application.Tests.PacketHandlers;
+using Basil.Application.Tests.Packets;
 using Basil.Domain.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
 

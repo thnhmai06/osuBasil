@@ -238,7 +238,7 @@ public static class ModsExtensions
 		{
 			// 3. mode-specific mod conflictions
 			case GameMode.Standard when (result & Mods.Autopilot) != Mods.NoMod
-			                              && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod:
+			                            && (result & (Mods.SpunOut | Mods.Relax)) != Mods.NoMod:
 				result &= ~Mods.Autopilot; // (SO|RX)AP
 				break;
 			case GameMode.Mania:

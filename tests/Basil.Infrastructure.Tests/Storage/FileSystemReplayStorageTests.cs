@@ -61,7 +61,7 @@ public class FileSystemReplayStorageTests
 		}
 		finally
 		{
-			if (Directory.Exists(replaysPath)) Directory.Delete(replaysPath, recursive: true);
+			if (Directory.Exists(replaysPath)) Directory.Delete(replaysPath, true);
 		}
 	}
 }

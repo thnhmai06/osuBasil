@@ -89,7 +89,9 @@ internal static class MenuIconRoutes
 		group.MapGet("/menuicon/url", () =>
 			{
 				var url = MenuIconService.ReadUrl()
-				          ?? (MenuIconService.FindIconPath() is not null ? "https://github.com/thnhmai06/osuBasil" : null);
+				          ?? (MenuIconService.FindIconPath() is not null
+					          ? "https://github.com/thnhmai06/osuBasil"
+					          : null);
 				return Results.Json(new MenuIconUrlView(url));
 			})
 			.WithGroupName("basilapi")

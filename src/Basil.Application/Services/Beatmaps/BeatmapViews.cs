@@ -150,7 +150,8 @@ public static class BeatmapViewMapper
 		/// <returns>A summary of the set.</returns>
 		public BeatmapsetSummary ToSummary(int beatmapCount)
 		{
-			return new BeatmapsetSummary(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator, beatmapset.LastUpdate,
+			return new BeatmapsetSummary(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator,
+				beatmapset.LastUpdate,
 				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status, beatmapCount);
 		}
 
@@ -161,7 +162,8 @@ public static class BeatmapViewMapper
 		/// <returns>A detail view of the set.</returns>
 		public BeatmapsetDetail ToDetail(IReadOnlyList<Beatmap> beatmaps)
 		{
-			return new BeatmapsetDetail(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator, beatmapset.LastUpdate,
+			return new BeatmapsetDetail(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator,
+				beatmapset.LastUpdate,
 				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status,
 				[.. beatmaps.Select(b => b.ToInSet())]);
 		}

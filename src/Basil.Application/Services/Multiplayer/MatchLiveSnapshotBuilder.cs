@@ -10,6 +10,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
+
 // ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Multiplayer;

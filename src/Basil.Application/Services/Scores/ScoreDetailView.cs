@@ -3,6 +3,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+
 // ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Scores;

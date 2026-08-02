@@ -9,7 +9,6 @@ using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Packets;
-using Basil.Application.Packets.Users;
 using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Beatmaps;

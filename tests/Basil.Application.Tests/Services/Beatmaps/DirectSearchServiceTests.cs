@@ -1,0 +1,157 @@
+using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Services.Beatmaps;
+using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+
+namespace Basil.Application.Tests.Services.Beatmaps;
+
+/// <summary>Ported from app/services/direct_search.py's DirectSearchService, DB-backed instead of mirror-backed.</summary>
+public class DirectSearchServiceTests
+{
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
+
+	[Theory]
+	[InlineData("Newest")]
+	// ASP.NET Core query-string binding decodes a literal "+" as a space before this service ever
+	// sees it — these must match that decoded form, not the raw "Top+Rated"/"Most+Played" a client
+	// puts on the wire, or the sentinel never matches and the filter/tab silently returns nothing.
+	[InlineData("Top Rated")]
+	[InlineData("Most Played")]
+	public async Task NonTextQuery_PassesNullQueryThrough(string query)
+	{
+		_beatmaps.SearchAsync(null, null, 0, 100).Returns([]);
+
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest(query, -1, 0));
+
+		await _beatmaps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task TextQuery_PassedThrough()
+	{
+		_beatmaps.SearchAsync("camellia", null, 0, 100).Returns([]);
+
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("camellia", -1, 0));
+
+		await _beatmaps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task ModeNotMinusOne_FiltersByMode()
+	{
+		_beatmaps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
+
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("Newest", 1, 0));
+
+		await _beatmaps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task PageNum_MultipliedByOneHundredForOffset()
+	{
+		_beatmaps.SearchAsync(null, null, 200, 100).Returns([]);
+
+		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
+			new DirectSearchRequest("Newest", -1, 2));
+
+		await _beatmaps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
+	}
+
+	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",
+		string title = "Title")
+	{
+		var mapset = new Beatmapset(setId, artist, title, "cmyui",
+			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc),
+			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc));
+		return new Beatmap(
+			new string('0', 32), id, mapset, version, "file.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+	}
+
+	[Fact]
+	public void Format_EmptyList_ReturnsZero()
+	{
+		Assert.Equal("0", DirectSearchService.Format([]));
+	}
+
+	[Fact]
+	public void Format_SingleSetSingleDiff_MatchesFormatString()
+	{
+		var set = new List<Beatmap> { MakeBeatmap(1, 100, "Hyper", 6.5) };
+
+		var response = DirectSearchService.Format([set]);
+
+		var expectedSetLine =
+			"100.osz|Artist|Title|cmyui|2|10.0|2020-03-15 10:30:00|100|0|0|0|0|0|[6.50⭐] Hyper {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0";
+		Assert.Equal("1\n" + expectedSetLine, response);
+	}
+
+	[Fact]
+	public void Format_MultipleDiffsInSet_JoinedByComma()
+	{
+		var set = new List<Beatmap>
+		{
+			MakeBeatmap(1, 100, "Easy", 2.0),
+			MakeBeatmap(2, 100, "Hard", 4.5)
+		};
+
+		var response = DirectSearchService.Format([set]);
+
+		Assert.Contains("[2.00⭐] Easy {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0,[4.50⭐] Hard {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0",
+			response);
+	}
+
+	[Fact]
+	public void Format_PipeInMetadata_ReplacedWithI()
+	{
+		var set = new List<Beatmap> { MakeBeatmap(1, 100, "Di|ff", 1.0, "Art|ist", "Ti|tle") };
+
+		var response = DirectSearchService.Format([set]);
+
+		Assert.Contains("100.osz|ArtIist|TiItle|cmyui|", response);
+		Assert.Contains("DiIff", response);
+	}
+
+	[Fact]
+	public void Format_100Sets_ReportsCountAs101()
+	{
+		var sets = Enumerable.Range(0, 100)
+			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+
+		var response = DirectSearchService.Format(sets);
+
+		Assert.StartsWith("101\n", response);
+	}
+
+	[Fact]
+	public void Format_99Sets_ReportsLiteralCount()
+	{
+		var sets = Enumerable.Range(0, 99)
+			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+
+		var response = DirectSearchService.Format(sets);
+
+		Assert.StartsWith("99\n", response);
+	}
+
+	[Fact]
+	public void FormatSet_Null_ReturnsEmptyString()
+	{
+		Assert.Equal("", DirectSearchService.FormatSet(null));
+	}
+
+	[Fact]
+	public void FormatSet_UsesRawStatusValue_NoDiffsField_NoPipeEscaping()
+	{
+		var bmap = MakeBeatmap(1, 100, "Hyper", 6.5, "Art|ist");
+
+		var response = DirectSearchService.FormatSet(bmap);
+
+		Assert.Equal("100.osz|Art|ist|Title|cmyui|3|10.0|2020-03-15 10:30:00|100|0|0|0|0|0", response);
+	}
+}

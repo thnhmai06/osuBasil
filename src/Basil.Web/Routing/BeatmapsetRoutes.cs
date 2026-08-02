@@ -418,7 +418,8 @@ internal static class BeatmapsetRoutes
 	{
 		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
 		if (mapset is null) return Results.NotFound();
-		if (mapset.IsFrozen) return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
+		if (mapset.IsFrozen)
+			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
 
 		var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
 		if (folder is null) return Results.NotFound();
@@ -430,7 +431,8 @@ internal static class BeatmapsetRoutes
 		}
 		catch (IOException)
 		{
-			return Results.Conflict(new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
+			return Results.Conflict(
+				new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
 		}
 
 		logger.LogInformation("Beatmapset delete accepted via admin API: MapsetId={MapsetId}", mapsetId);

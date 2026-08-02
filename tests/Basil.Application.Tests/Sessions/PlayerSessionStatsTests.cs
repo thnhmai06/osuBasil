@@ -15,13 +15,13 @@ public class PlayerSessionStatsTests
 	public void CurrentStats_IndexesByCurrentStatusMode()
 	{
 		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			ModeStats =
 			{
-				ModeStats =
-				{
-					[GameMode.Standard] = new CachedPlayerStats(100, 90, 10, 5),
-					[GameMode.Taiko] = new CachedPlayerStats(200, 180, 20, 12)
-				}
-			};
+				[GameMode.Standard] = new CachedPlayerStats(100, 90, 10, 5),
+				[GameMode.Taiko] = new CachedPlayerStats(200, 180, 20, 12)
+			}
+		};
 
 		Assert.Equal(5, session.CurrentStats!.Rank);
 

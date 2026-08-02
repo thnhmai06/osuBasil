@@ -145,7 +145,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Creates a match with nobody in it, persisting its row and recording the creation event.</summary>
 	/// <remarks>
 	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
-	///     is no <see cref="UserSession"/> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
+	///     is no <see cref="UserSession" /> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
 	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays 0 and the referee list stays empty
 	///     until a caller assigns them via <c>PATCH /match/{id}/settings</c>, the <c>host</c> action,
 	///     or the <c>addref</c> action. It is marked <see cref="MatchSession.CreatedViaMakeCommand" />
@@ -179,7 +179,7 @@ public sealed class MatchMembershipService(
 		return match;
 	}
 
-	/// <summary>Seats a <see cref="UserSession"/> in a match after applying every join gate.</summary>
+	/// <summary>Seats a <see cref="UserSession" /> in a match after applying every join gate.</summary>
 	/// <remarks>
 	///     Rejects the join, sending a <c>MatchJoinFail</c> packet, when the userSession is already in a
 	///     match, is a tourney client, is banned, or the room is locked; when the room is private and
@@ -481,8 +481,9 @@ public sealed class MatchMembershipService(
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
 				match.DbId, match.MapId);
 			var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-			if (bot is not null) EnqueueChat(match, bot.Name, bot.Id,
-				"Match cannot start because the beatmap does not exist on the server.");
+			if (bot is not null)
+				EnqueueChat(match, bot.Name, bot.Id,
+					"Match cannot start because the beatmap does not exist on the server.");
 			return false;
 		}
 

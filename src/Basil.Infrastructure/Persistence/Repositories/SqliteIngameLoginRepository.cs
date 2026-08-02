@@ -30,7 +30,10 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 			VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'));
 			SELECT last_insert_rowid();
 			""",
-			new { UserId = userId, Ip = ip, OsuVersion = osuVersion.ToDateTime(TimeOnly.MinValue), OsuStream = osuStream });
+			new
+			{
+				UserId = userId, Ip = ip, OsuVersion = osuVersion.ToDateTime(TimeOnly.MinValue), OsuStream = osuStream
+			});
 		logger.LogDebug("IngameLogin created for UserId={UserId}", userId);
 
 		var row = await connection.QuerySingleAsync<IngameLoginRow>(

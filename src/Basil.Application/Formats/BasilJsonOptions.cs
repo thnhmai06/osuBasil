@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Basil.Application.Services;
-using Basil.Application.Services.Multiplayer;
 
 namespace Basil.Application.Formats;
 

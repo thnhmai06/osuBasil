@@ -115,7 +115,7 @@ public sealed class MatchSession(
 	/// <summary>Gets or sets the room's password, used in its invitation url.</summary>
 	public string Password { get; set; } = password;
 
-	/// <summary>Gets or sets the id of the current host. <see cref="BotBootstrapService.BotId"/> means no host.</summary>
+	/// <summary>Gets or sets the id of the current host. <see cref="BotBootstrapService.BotId" /> means no host.</summary>
 	public int HostId { get; set; } = hostId;
 
 	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
@@ -254,7 +254,7 @@ public sealed class MatchSession(
 	public string Url => $"osump://{Id}/{Password}";
 
 	/// <summary>
-	///		Gets an osu! chat embed for this room, formatted as a clickable name linked to <see cref="Url" />.
+	///     Gets an osu! chat embed for this room, formatted as a clickable name linked to <see cref="Url" />.
 	/// </summary>
 	public string Embed => $"[{Url} {Name}]";
 

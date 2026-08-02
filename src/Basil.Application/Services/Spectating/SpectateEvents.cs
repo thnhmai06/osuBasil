@@ -1,5 +1,6 @@
 using Basil.Application.Services.Multiplayer;
 using Basil.Protocol.Multiplayer;
+
 // ReSharper disable NotAccessedPositionalProperty.Global
 
 namespace Basil.Application.Services.Spectating;

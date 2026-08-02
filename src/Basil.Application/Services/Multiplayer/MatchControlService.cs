@@ -32,13 +32,99 @@ public sealed class MatchControlService(
 	IUserSessionRegistry sessionRegistry,
 	ILogger<MatchControlService> logger)
 {
+	public enum AbortResult : byte
+	{
+		Ok,
+		NotInProgress
+	}
+
+	public enum AbortTimerResult : byte
+	{
+		Ok,
+		NoTimerRunning
+	}
+
+	public enum ForceInviteResult : byte
+	{
+		Ok,
+		NoFreeSlot,
+		TargetBanned,
+		TargetInAnotherMatch
+	}
+
+	public enum InviteResult : byte
+	{
+		Ok,
+		TargetAlreadyInRoom
+	}
+
+	public enum KickResult : byte
+	{
+		Ok,
+		TargetNotInMatch
+	}
+
+	public enum MoveResult : byte
+	{
+		Ok,
+		DestinationNotOpen,
+		TargetNotInMatch
+	}
+
+	public enum RemoveRefereeResult : byte
+	{
+		Ok,
+		NotAReferee,
+		WouldLeaveEmpty
+	}
+
+	public enum SetMapResult : byte
+	{
+		Ok,
+		BeatmapNotFound
+	}
+
+	public enum SetRefereesResult : byte
+	{
+		Ok,
+		WouldLeaveEmpty
+	}
+
+	public enum SetSlotsResult : byte
+	{
+		Ok,
+		PlayerCountMismatch,
+		UnknownUserId,
+		SlotOccupiedAndLocked
+	}
+
+	public enum StartResult : byte
+	{
+		AlreadyInProgress,
+		Started,
+		CountdownQueued,
+		BeatmapMissing
+	}
+
+	public enum TeamResult : byte
+	{
+		Ok,
+		TargetNotInMatch
+	}
+
+	public enum UnbanResult : byte
+	{
+		Ok,
+		NotBanned
+	}
+
 	public const int MaxMatchNameLength = 50;
 	private const int PeriodicReminderIntervalSeconds = 60;
 	private const int NearTotalIgnoreWindowSeconds = 5;
 
 	/// <summary>
 	///     Announcement seconds for a <c>!mp start</c> countdown, ticking down to 3 before going silent until
-	///		"Good luck, have fun!"
+	///     "Good luck, have fun!"
 	/// </summary>
 	private static readonly int[] StartCheckpoints = [60, 30, 10, 5, 4, 3];
 
@@ -149,8 +235,8 @@ public sealed class MatchControlService(
 	}
 
 	/// <summary>
-	///		Clears the host assignment (setting the host id to <see cref="BotBootstrapService.BotId"/>)
-	///		and republishes the host state.
+	///     Clears the host assignment (setting the host id to <see cref="BotBootstrapService.BotId" />)
+	///     and republishes the host state.
 	/// </summary>
 	/// <param name="match">The match whose host to clear.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
@@ -353,8 +439,8 @@ public sealed class MatchControlService(
 	}
 
 	/// <summary>
-	///		Reassigns every occupied slot's team to fit a new <see cref="MatchTeamType"/>
-	///		when it differs from the current one.
+	///     Reassigns every occupied slot's team to fit a new <see cref="MatchTeamType" />
+	///     when it differs from the current one.
 	/// </summary>
 	/// <param name="match">The match to update.</param>
 	/// <param name="newType">The team type to apply.</param>
@@ -1009,90 +1095,4 @@ public sealed class MatchControlService(
 	///     <see langword="null" /> to leave its status alone.
 	/// </param>
 	public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
-
-	public enum AbortResult : byte
-	{
-		Ok,
-		NotInProgress
-	}
-
-	public enum AbortTimerResult : byte
-	{
-		Ok,
-		NoTimerRunning
-	}
-
-	public enum ForceInviteResult : byte
-	{
-		Ok,
-		NoFreeSlot,
-		TargetBanned,
-		TargetInAnotherMatch
-	}
-
-	public enum InviteResult : byte
-	{
-		Ok,
-		TargetAlreadyInRoom
-	}
-
-	public enum KickResult : byte
-	{
-		Ok,
-		TargetNotInMatch
-	}
-
-	public enum MoveResult : byte
-	{
-		Ok,
-		DestinationNotOpen,
-		TargetNotInMatch
-	}
-
-	public enum RemoveRefereeResult : byte
-	{
-		Ok,
-		NotAReferee,
-		WouldLeaveEmpty
-	}
-
-	public enum SetMapResult : byte
-	{
-		Ok,
-		BeatmapNotFound
-	}
-
-	public enum SetRefereesResult : byte
-	{
-		Ok,
-		WouldLeaveEmpty
-	}
-
-	public enum SetSlotsResult : byte
-	{
-		Ok,
-		PlayerCountMismatch,
-		UnknownUserId,
-		SlotOccupiedAndLocked
-	}
-
-	public enum StartResult : byte
-	{
-		AlreadyInProgress,
-		Started,
-		CountdownQueued,
-		BeatmapMissing
-	}
-
-	public enum TeamResult : byte
-	{
-		Ok,
-		TargetNotInMatch
-	}
-
-	public enum UnbanResult : byte
-	{
-		Ok,
-		NotBanned
-	}
 }

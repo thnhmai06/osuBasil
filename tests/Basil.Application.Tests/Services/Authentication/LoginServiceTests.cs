@@ -1,0 +1,530 @@
+using System.Net;
+using System.Text;
+using Basil.Application.Abstractions.Login;
+using Basil.Application.Abstractions.Social;
+using Basil.Application.Abstractions.Users;
+using Basil.Application.Configurations;
+using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Bot;
+using Basil.Application.Services.Spectating;
+using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
+using Basil.Domain.Users;
+using Basil.Protocol;
+using Basil.Protocol.Packets;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
+
+namespace Basil.Application.Tests.Services.Authentication;
+
+/// <summary>
+///     Ported from app/api/domains/cho.py's handle_osu_login_request — the 14-step login flow.
+///     Each early-exit validation branch is tested in isolation with mocked ports; the happy path
+///     is exercised separately, verifying the assembled packet stream structure against ServerPacketWriter.
+/// </summary>
+public class LoginServiceTests
+{
+	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
+	private readonly ILoginRepository _loginRepository = Substitute.For<ILoginRepository>();
+	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
+	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+
+	private readonly SpectatorService _spectatorService;
+	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
+	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
+	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+
+	public LoginServiceTests()
+	{
+		_spectatorService = new SpectatorService(_channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
+	}
+
+	private LoginService MakeUseCase()
+	{
+		return new LoginService(
+			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService,
+			Options.Create(new ServerOptions
+			{
+				Domain = "test.local"
+			}), NullLogger<LoginService>.Instance);
+	}
+
+	private static UserSession MakeBot()
+	{
+		return new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IsBot = true };
+	}
+
+	private static byte[] LoginBody(
+		string username = "cmyui",
+		string passwordMd5 = "5f4dcc3b5aa765d61d8327deb882cf99",
+		string osuVersion = "b20231231",
+		string adapters = "001122334455.",
+		int utcOffset = 0,
+		bool displayCity = false,
+		bool pmPrivate = false)
+	{
+		var clientHashes =
+			$"osupathmd500000000000000000000000:{adapters}:adaptersmd5000000000000000000000:uninstallmd50000000000000000000:disksig00000000000000000000000000:";
+		return Encoding.UTF8.GetBytes(
+			$"{username}\n{passwordMd5}\n{osuVersion}|{utcOffset}|{(displayCity ? 1 : 0)}|{clientHashes}|{(pmPrivate ? 1 : 0)}\n");
+	}
+
+	[Fact]
+	public async Task MalformedVersionString_ReturnsInvalidRequest()
+	{
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(osuVersion: "not-a-version"), new Dictionary<string, string>(),
+			IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("invalid-request", result.OsuToken);
+		var expected = Concat(
+			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
+			ServerPacketWriter.Notification("Please restart your osu! and try again."));
+		Assert.Equal(expected, result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task MalformedAdaptersString_ReturnsInvalidAdapters()
+	{
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(adapters: "no-trailing-dot"), new Dictionary<string, string>(),
+			IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("invalid-adapters", result.OsuToken);
+		var expected = Concat(
+			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
+			ServerPacketWriter.Notification("Please restart your osu! and try again."));
+		Assert.Equal(expected, result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task EmptyAdaptersNotUnderWine_ReturnsEmptyAdapters()
+	{
+		var useCase = MakeUseCase();
+		var request =
+			new LoginRequest(LoginBody(adapters: "."), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("empty-adapters", result.OsuToken);
+	}
+
+	[Fact]
+	public async Task DuplicateActiveSession_NonTourney_ReturnsUserAlreadyLoggedIn()
+	{
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-5)
+		};
+		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("user-already-logged-in", result.OsuToken);
+		var expected = Concat(
+			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
+			ServerPacketWriter.Notification("User already logged in."));
+		Assert.Equal(expected, result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task DuplicateExpiredSession_LogsOutOldSession_AndProceeds()
+	{
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
+		};
+		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_users.FetchByNameAsync("cmyui").Returns((User?)null);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		_sessionRegistry.Received(1).Remove(existing);
+		Assert.Equal("incorrect-credentials", result.OsuToken);
+	}
+
+	[Fact]
+	public async Task DuplicateExpiredSession_RemovesOldSessionsBotSpectateRelationship()
+	{
+		// #spec_{userId} is keyed by the persistent user id, stable across relogins — without this
+		// cleanup, a relogin would pile a dead member reference onto the previous session's channel.
+		var bot = MakeBot();
+		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
+		};
+		existing.AddSpectator(bot);
+		bot.Spectating = existing;
+		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_users.FetchByNameAsync("cmyui").Returns((User?)null);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		await useCase.ExecuteAsync(request);
+
+		Assert.Empty(existing.Spectators);
+		Assert.Null(bot.Spectating);
+	}
+
+	[Fact]
+	public async Task UnknownUsername_ReturnsIncorrectCredentials()
+	{
+		_users.FetchByNameAsync("cmyui").Returns((User?)null);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("incorrect-credentials", result.OsuToken);
+		var expected = Concat(
+			ServerPacketWriter.Notification(
+				"Incorrect credentials. Please contact to the staffs if you don't know or forget the username/password."),
+			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
+		Assert.Equal(expected, result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task WrongPassword_ReturnsIncorrectCredentials()
+	{
+		var user = MakeUser(10, UserPrivileges.Unrestricted);
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("incorrect-credentials", result.OsuToken);
+	}
+
+	[Fact]
+	public async Task TourneyStream_InsufficientPrivileges_ReturnsNo()
+	{
+		var user = MakeUser(10, UserPrivileges.Unrestricted); // no Donator -> insufficient for tourney
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(osuVersion: "b20231231tourney"), new Dictionary<string, string>(),
+			IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("no", result.OsuToken);
+		Assert.Equal(ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed), result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task NoGeolocationHeaders_FallsBackToStoredCountry()
+	{
+		// No CF-IPCountry/X-Country-Code headers and no network geolocation lookup (offline
+		// server) — the session's geoloc comes from the user's already-stored country instead.
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "jp");
+
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		await useCase.ExecuteAsync(request);
+
+		Assert.NotNull(captured);
+		Assert.Equal("jp", captured!.Geoloc.Country.ToAcronym());
+		Assert.Equal(0.0, captured.Geoloc.Latitude);
+		Assert.Equal(0.0, captured.Geoloc.Longitude);
+	}
+
+	[Fact]
+	public async Task HardwareBan_UnverifiedUserWithRestrictedMatch_ReturnsContactStaff()
+	{
+		var user = MakeUser(10, UserPrivileges.Unrestricted); // no Verified
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+		_clientHashes.FetchAnyHardwareMatchesForUserAsync(10, false, Arg.Any<string>(), Arg.Any<string>(),
+				Arg.Any<string?>(), Arg.Any<CancellationToken>())
+			.Returns([
+				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "banned-user",
+					UserPrivileges.Verified)
+			]);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("contact-staff", result.OsuToken);
+		var expected = Concat(
+			ServerPacketWriter.Notification("Please contact staff directly to create an account."),
+			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
+		Assert.Equal(expected, result.ResponseBody);
+	}
+
+	[Fact]
+	public async Task HardwareMatch_VerifiedUser_AllowsLoginThrough()
+	{
+		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+		_clientHashes.FetchAnyHardwareMatchesForUserAsync(user.Id, false, Arg.Any<string>(), Arg.Any<string>(),
+				Arg.Any<string?>(), Arg.Any<CancellationToken>())
+			.Returns([
+				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "other-account",
+					UserPrivileges.Unrestricted)
+			]);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("generated-token", result.OsuToken);
+	}
+
+	[Fact]
+	public async Task HappyPath_UnrestrictedFirstLogin_GrantsVerifiedAndRegistersSession()
+	{
+		SetUpHappyPath(out var user, UserPrivileges.Unrestricted); // not Verified yet
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("generated-token", result.OsuToken);
+
+		var expectedHeader = Concat(
+			ServerPacketWriter.ProtocolVersion(19),
+			ServerPacketWriter.LoginReply(user.Id));
+		Assert.Equal(expectedHeader, result.ResponseBody.Take(expectedHeader.Length).ToArray());
+
+		// first login grants VERIFIED (user.Id=10 here, not FIRST_USER_ID=3, so no bonus staff privs)
+		await _users.Received(1).UpdatePrivilegesAsync(user.Id, UserPrivileges.Unrestricted | UserPrivileges.Verified,
+			Arg.Any<CancellationToken>());
+		_sessionRegistry.Received(1)
+			.Add(Arg.Is<UserSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
+	}
+
+	[Fact]
+	public async Task HappyPath_BotStartsSpectatingTheNewSession()
+	{
+		var bot = MakeBot();
+		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		await useCase.ExecuteAsync(request);
+
+		Assert.NotNull(captured);
+		Assert.Contains(bot, captured!.Spectators);
+	}
+
+	[Fact]
+	public async Task HappyPath_AlreadyVerifiedUser_DoesNotUpdatePrivileges()
+	{
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		await useCase.ExecuteAsync(request);
+
+		await _users.DidNotReceive()
+			.UpdatePrivilegesAsync(Arg.Any<int>(), Arg.Any<UserPrivileges>(), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task HappyPath_RestrictedUser_ResponseContainsAccountRestrictedPacket()
+	{
+		SetUpHappyPath(out _, UserPrivileges.Verified); // no Unrestricted -> restricted
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		// account_restricted has no payload -> its full wire bytes are a fixed constant, safe to search for.
+		var restrictedPacketBytes = ServerPacketWriter.AccountRestricted();
+		Assert.Contains(
+			Convert.ToHexString(restrictedPacketBytes),
+			Convert.ToHexString(result.ResponseBody));
+	}
+
+	[Fact]
+	public async Task HappyPath_CachesAllModeStatsAndGeolocOnSession()
+	{
+		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+		_userStatRepository.FetchAllForUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
+		[
+			new Stats(user.Id, GameMode.Standard, 100_000, 90_000, 50),
+			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80)
+		]);
+
+		UserSession? captured = null;
+		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		await useCase.ExecuteAsync(request);
+
+		Assert.NotNull(captured);
+		Assert.Equal("us", captured!.Geoloc.Country.ToAcronym());
+		Assert.Equal(2, captured.ModeStats.Count);
+		Assert.Equal(user.Id, captured.ModeStats[GameMode.Standard].Rank);
+		Assert.Equal(90_000, captured.ModeStats[GameMode.Standard].RankedScore);
+	}
+
+	[Fact]
+	public async Task DbCountryXx_HeaderGeolocationDiffers_TriggersCountryUpdate()
+	{
+		// Only a header-supplied geoloc (Cloudflare/nginx) can differ from the stored country now
+		// that there's no network geolocation fallback — the DB-fallback path (no headers) always
+		// resolves to the stored country itself, so it can never trigger this update.
+		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "xx");
+		var headers = new Dictionary<string, string>
+		{
+			["CF-IPCountry"] = "US",
+			["CF-IPLatitude"] = "37.7749",
+			["CF-IPLongitude"] = "-122.4194"
+		};
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), headers, IPAddress.Loopback);
+
+		await useCase.ExecuteAsync(request);
+
+		await _users.Received(1).UpdateCountryAsync(user.Id, Country.Us, Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task MotdFile_WhenFileExists_SendsNotification()
+	{
+		var motdPath = Path.Combine(AppContext.BaseDirectory, "Data", "MOTD.txt");
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(motdPath)!);
+			await File.WriteAllTextAsync(motdPath, "Test message of the day!");
+			SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+			var useCase = MakeUseCase();
+			var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+			var result = await useCase.ExecuteAsync(request);
+
+			var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
+			var bodyHex = Convert.ToHexString(result.ResponseBody);
+			Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
+		}
+		finally
+		{
+			File.Delete(motdPath);
+		}
+	}
+
+	[Fact]
+	public async Task MotdFile_WhenFileMissing_SendsNoNotification()
+	{
+		var motdPath = Path.Combine(AppContext.BaseDirectory, "Data", "MOTD.txt");
+		if (File.Exists(motdPath)) File.Delete(motdPath);
+
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
+
+		// No welcome notification: the response starts with ProtocolVersion + LoginReply directly.
+		var expectedHeader = Concat(
+			ServerPacketWriter.ProtocolVersion(19),
+			ServerPacketWriter.LoginReply(10));
+		Assert.Equal(expectedHeader, result.ResponseBody.Take(expectedHeader.Length).ToArray());
+	}
+
+	[Fact]
+	public async Task MenuIconFile_WhenExists_SendsMainMenuIconPacket()
+	{
+		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
+			await File.WriteAllBytesAsync(iconPath, [1]);
+			SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+			var useCase = MakeUseCase();
+			var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+			var result = await useCase.ExecuteAsync(request);
+
+			var expectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
+				"https://github.com/thnhmai06/osuBasil");
+			var bodyHex = Convert.ToHexString(result.ResponseBody);
+			Assert.Contains(Convert.ToHexString(expectedPacket), bodyHex);
+		}
+		finally
+		{
+			File.Delete(iconPath);
+		}
+	}
+
+	[Fact]
+	public async Task MenuIconFile_WhenMissing_SendsNoMainMenuIconPacket()
+	{
+		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
+		if (File.Exists(iconPath)) File.Delete(iconPath);
+
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
+
+		var unexpectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
+			"https://github.com/thnhmai06/osuBasil");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.DoesNotContain(Convert.ToHexString(unexpectedPacket), bodyHex);
+	}
+
+	private void SetUpHappyPath(out User user, UserPrivileges priv, int userId = 10, string country = "us")
+	{
+		user = MakeUser(userId, priv, country);
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(userId).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+		_clientHashes.FetchAnyHardwareMatchesForUserAsync(userId, false, Arg.Any<string>(), Arg.Any<string>(),
+				Arg.Any<string?>(), Arg.Any<CancellationToken>())
+			.Returns([]);
+		_channelRegistry.AutoJoinChannels.Returns([]);
+		_sessionRegistry.All.Returns([]);
+		_userStatRepository.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+		_relationships.FetchAllAsync(userId, null, Arg.Any<CancellationToken>()).Returns([]);
+		_tokenGenerator.GenerateToken().Returns("generated-token");
+	}
+
+	private static User MakeUser(int id, UserPrivileges priv, string country = "us")
+	{
+		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default);
+	}
+
+	private static byte[] Concat(params byte[][] parts)
+	{
+		return [.. parts.SelectMany(p => p)];
+	}
+}

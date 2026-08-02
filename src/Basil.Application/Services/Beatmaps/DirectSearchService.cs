@@ -77,7 +77,8 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 			select string.Join('|', $"{first.Beatmapset.Id}.osz", RemovePipes(first.Beatmapset.Artist),
 				RemovePipes(first.Beatmapset.Title), first.Beatmapset.Creator,
 				Beatmapset.Status.ToOsuApi().ToString(), "10.0",
-				first.Beatmapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Beatmapset.Id.ToString(), "0", "0", "0", "0",
+				first.Beatmapset.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss"), first.Beatmapset.Id.ToString(), "0", "0",
+				"0", "0",
 				"0", diffs));
 
 		return string.Join("\n", lines);
