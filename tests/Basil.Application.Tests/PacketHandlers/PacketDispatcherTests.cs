@@ -1,9 +1,12 @@
 using System.Buffers.Binary;
 using Basil.Application.Packets;
+using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using static Basil.Application.Tests.PacketHandlers.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.PacketHandlers;
 
@@ -89,6 +92,47 @@ public class PacketDispatcherTests
 
 		Assert.True(pingCalled);
 		Assert.False(chatCalled);
+	}
+
+	[Fact]
+	public async Task Dispatch_ScoreUpdateFollowedByMatchComplete_InvokesBothHandlers()
+	{
+		// Regression test for the "Waiting for other players to finish" hang: the osu! client
+		// batches the final MatchScoreUpdate and MatchComplete into one request body when a play
+		// ends. MatchScoreUpdateHandler relays its payload via reader.ReadRaw(reader.RemainingLength),
+		// so without per-packet reader scoping in the dispatcher it swallowed the trailing
+		// MatchComplete, the server never broadcast MatchComplete, and every client waited forever.
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var match = fixture.CreateMatch(host);
+		await fixture.MatchMembership.JoinAsync(guest, match, "");
+		match.Slots[0].Status = SlotStatus.Playing;
+		match.Slots[1].Status = SlotStatus.Playing;
+		match.InProgress = true;
+		host.Dequeue();
+		guest.Dequeue();
+
+		var dispatcher = new PacketDispatcher(
+			[
+				new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus),
+				new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
+					NullLogger<MatchCompleteHandler>.Instance)
+			],
+			NullLogger<PacketDispatcher>.Instance);
+
+		// 29-byte scoreframe (scoreV2 off) followed by an empty MatchComplete packet in one body.
+		var body = PacketBytes(ClientPackets.MatchScoreUpdate, new byte[29])
+			.Concat(PacketBytes(ClientPackets.MatchComplete, [])).ToArray();
+
+		await dispatcher.DispatchAsync(guest, body);
+
+		// The trailing MatchComplete must reach its handler and mark the slot complete rather than
+		// being swallowed by the score-update handler's whole-buffer read.
+		Assert.Equal(SlotStatus.Complete, match.Slots[1].Status);
+		// Host is still playing, so the round is not closed yet.
+		Assert.True(match.InProgress);
 	}
 
 	private sealed class FakeHandler(

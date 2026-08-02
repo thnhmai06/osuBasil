@@ -59,6 +59,23 @@ public sealed class PacketDispatcher
 		{
 			var (type, length) = reader.ReadHeader();
 
+			// Every packet carries a self-describing length, and this loop must hand each handler a
+			// reader scoped to exactly that length.
+			//
+			// The osu! client batches multiple packets into one request body (a play's final
+			// MatchScoreUpdate and MatchComplete are generated back-to-back), so a handler that
+			// reads "everything left" would swallow the packets following it:
+			// MatchScoreUpdateHandler/SpectateFramesHandler relay raw payloads via
+			// reader.ReadRaw(reader.RemainingLength), which consumed the trailing MatchComplete and
+			// left the server waiting forever for a completion that never arrived — every client hung
+			// on "Waiting for other players to finish".
+			//
+			// bancho.py never hits this because its packet reader is already bounded by the current
+			// packet's length. Slicing the payload here also makes the cursor advance by exactly
+			// `length` regardless of how the handler consumes its payload, so a handler that
+			// under-reads can no longer desynchronize the batch either.
+			var payload = reader.ReadRaw(length);
+
 			if (handlerMap.TryGetValue(type, out var handler))
 			{
 				var scopeProperties = new Dictionary<string, object>
@@ -71,7 +88,7 @@ public sealed class PacketDispatcher
 				using var _ = _logger.BeginScope(scopeProperties);
 				try
 				{
-					await handler.HandleAsync(userSession, reader, cancellationToken);
+					await handler.HandleAsync(userSession, new PacketReader(payload), cancellationToken);
 				}
 				catch (Exception ex) when (ex is not OperationCanceledException)
 				{
@@ -85,9 +102,9 @@ public sealed class PacketDispatcher
 			}
 			else
 			{
+				// Unknown packet type: `length` bytes were already sliced off above, nothing left to skip.
 				_logger.LogDebug("Unhandled packet type: UserId={UserId} PacketType={PacketType} Length={Length}",
 					userSession.Id, type, length);
-				reader.SkipRaw(length);
 			}
 		}
 	}
