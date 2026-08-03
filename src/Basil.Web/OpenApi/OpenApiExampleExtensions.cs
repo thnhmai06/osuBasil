@@ -14,17 +14,17 @@ namespace Basil.Web.OpenApi;
 
 /// <summary>
 ///     Attaches a fake-data example to a route's already-declared JSON response, keyed by status code,
-///     lets every documented case (<c>.Produces&lt;T&gt;</c>/<c>.Produces&lt;ErrorResponse&gt;</c>) carry a
+///     so every documented case (<c>.Produces&lt;T&gt;</c>/<c>.Produces&lt;ErrorResponse&gt;</c>) gets a
 ///     concrete illustration instead of just a schema. Must run after the status code's response entry
-///     already exists (i.e. after the matching <c>.Produces</c> call in the same fluent chain), a
-///     no-op otherwise. On the <c>basilapi</c> document, the raw <c>example</c> is wrapped
-///     in the Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
-///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> actually does to the response body at
-///     runtime, every other document's examples pass through unwrapped, since only basilapi routes are
-///     enveloped. A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped for its own
-///     2xx status only, that's its real raw, un-enveloped SSE event payload, matching
-///     <see cref="EnvelopeSchemaTransformer" />'s same per-status exception for the declared schema; any
-///     other status on that same route (a synchronous pre-stream error) is still wrapped like everywhere
+///     already exists, i.e. after the matching <c>.Produces</c> call in the same fluent chain; it's a
+///     no-op otherwise. On the <c>basilapi</c> document, the raw <c>example</c> is wrapped in the
+///     Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
+///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> does to the response body at runtime.
+///     Every other document's examples pass through unwrapped, since only basilapi routes are enveloped.
+///     A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped for its own 2xx status
+///     only: that's its real raw, un-enveloped SSE event payload, matching
+///     <see cref="EnvelopeSchemaTransformer" />'s same per-status exception for the declared schema. Any
+///     other status on that same route, a synchronous pre-stream error, is still wrapped like everywhere
 ///     else.
 /// </summary>
 internal static class OpenApiExampleExtensions
@@ -50,8 +50,8 @@ internal static class OpenApiExampleExtensions
 			    response?.Content?.TryGetValue("application/json", out var mediaType) == true)
 			{
 				// Only an SSE route's own 2xx is the raw, un-enveloped stream payload (see
-				// EnvelopeSchemaTransformer's matching per-status check) — any other status on that
-				// same route is a synchronous JSON error and still gets the envelope like every other
+				// EnvelopeSchemaTransformer's matching per-status check). Any other status on that same
+				// route is a synchronous JSON error and still gets the envelope like every other
 				// route's error response.
 				var isSseSuccessPayload = statusCode < 400 && context.Description.ActionDescriptor.EndpointMetadata
 					.OfType<SseEndpointMarker>().Any();
@@ -79,15 +79,16 @@ internal static class OpenApiExampleExtensions
 	}
 
 	/// <summary>
-	///     Only `GET /matches/{matchId}/live/{slotIndex}` needs this because its single 200 status genuinely
-	///     carries three different JSON shapes (one per SSE `event:` name), so a single `.WithExample`
-	///     doesn't fit. Rewrites the 200 schema to `oneOf` the three shapes and attaches one named example
-	///     per shape. The route's own `.Produces&lt;PlayerLiveScore&gt;()` is what makes the framework's
-	///     default per-operation schema generation register <c>PlayerLiveScore</c> as a named component in
-	///     the first place (this transformer runs after that, so it just re-wraps the already-registered
-	///     `$ref` rather than building `PlayerLiveScore`'s schema by hand), <c>MatchSlotView</c> and
-	///     <c>SpectateFramesEvent</c> are already registered components via their own routes
-	///     (`GET /matches/{matchId}/slots`, `GET /users/{idOrName}/live`), referenced here by name.
+	///     Only `GET /matches/{matchId}/live/{slotIndex}` needs this: its single 200 status genuinely
+	///     carries three different JSON shapes, one per SSE `event:` name, so a single `.WithExample`
+	///     doesn't fit. Rewrites the 200 schema to `oneOf` the three shapes and attaches one named
+	///     example per shape. The route's own `.Produces&lt;PlayerLiveScore&gt;()` is what makes the
+	///     framework's default per-operation schema generation register <c>PlayerLiveScore</c> as a
+	///     named component in the first place. This transformer runs after that, so it just re-wraps the
+	///     already-registered `$ref` rather than building `PlayerLiveScore`'s schema by hand.
+	///     <c>MatchSlotView</c> and <c>SpectateFramesEvent</c> are already registered components via
+	///     their own routes (`GET /matches/{matchId}/slots`, `GET /users/{idOrName}/live`), so they're
+	///     referenced here by name.
 	/// </summary>
 	/// <param name="builder">The route whose 200 response gets the three named examples.</param>
 	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>

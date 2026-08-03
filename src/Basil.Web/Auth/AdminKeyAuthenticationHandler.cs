@@ -7,15 +7,16 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Auth;
 
 /// <summary>
-///     Reads the <c>X-Admin-Key</c> header and, if it matches the configured
-///     <see cref="ServerOptions.AdminKey" />, authenticates the request with a <see cref="ClaimsPrincipal" />
-///     carrying the <see cref="AdminKeyDefaults.Role" /> role. A missing, empty, or wrong key returns
-///     <see cref="AuthenticateResult.NoResult" /> rather than <see cref="AuthenticateResult.Fail(string)" />.
-///     The request is simply left anonymous instead of being rejected outright, so routes with no
-///     <c>[Authorize]</c> requirement are unaffected and can still check <c>User.IsInRole(AdminKeyDefaults.Role)</c>
-///     to decide whether to reveal an otherwise-hidden resource (private matches, frozen beatmaps/beatmapsetRepository).
-///     Mutation routes instead require the role via <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>, letting
-///     the framework's own authorization middleware 401 automatically when the role is missing.
+///     Reads the <c>X-Admin-Key</c> header and, when it matches the configured
+///     <see cref="ServerOptions.AdminKey" />, authenticates the request with a
+///     <see cref="ClaimsPrincipal" /> carrying the <see cref="AdminKeyDefaults.Role" /> role. A
+///     missing, empty, or wrong key returns <see cref="AuthenticateResult.NoResult" /> rather than
+///     <see cref="AuthenticateResult.Fail(string)" />. The request is left anonymous instead of being
+///     rejected outright, so routes with no <c>[Authorize]</c> requirement are unaffected and can
+///     still check <c>User.IsInRole(AdminKeyDefaults.Role)</c> to decide whether to reveal an
+///     otherwise-hidden resource (private matches, frozen beatmaps or beatmapsets). Mutation routes
+///     instead require the role via <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>, so the
+///     framework's own authorization middleware 401s automatically when the role is missing.
 /// </summary>
 public sealed class AdminKeyAuthenticationHandler(
 	IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -36,7 +37,7 @@ public sealed class AdminKeyAuthenticationHandler(
 
 		if (string.IsNullOrEmpty(adminKey) || string.IsNullOrEmpty(provided) || provided != adminKey)
 		{
-			// Only log when a key was actually attempted — most requests to the api. host carry no
+			// Only log when a key was actually attempted. Most requests to the api. host carry no
 			// X-Admin-Key at all (the soft private/frozen-visibility check runs on every request),
 			// and logging that as a "failure" would be pure noise.
 			if (!string.IsNullOrEmpty(provided))

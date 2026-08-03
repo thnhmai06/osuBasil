@@ -4,12 +4,12 @@ using Basil.Domain.Users;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Caching;
+namespace Basil.Infrastructure.Cache;
 
 /// <summary>
 ///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IUserRepository" />:
 ///     eliminates the N+1 that embedding a full <c>{id, name, country}</c> user reference into every
-///     response that carries one would otherwise cause. Every write invalidates the affected entry
+///     response that carries one would otherwise cause. Every writes invalidates the affected entry
 ///     immediately; the TTL is only a safety net bounding staleness or memory use if an invalidation
 ///     path is ever missed, not a substitute for it.
 /// </summary>
@@ -25,7 +25,7 @@ public sealed class CachingUserRepository(
 
 	/// <inheritdoc cref="IUserRepository.FetchByIdAsync" />
 	/// <remarks>
-	///     Read-through: a hit returns immediately, a miss fetches from the underlying repository and
+	///     Read-through: a hit returns immediately, a miss fetches from the underlying repository, and
 	///     caches the non-null result.
 	/// </remarks>
 	public async Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)

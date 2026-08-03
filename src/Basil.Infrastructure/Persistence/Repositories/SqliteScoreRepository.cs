@@ -97,7 +97,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Joins the Users table so each score carries its submitter's name, and orders the round's
+	///     Joins the Users table so each score carries its submitter's name and orders the round's
 	///     scores by score descending.
 	/// </remarks>
 	public async Task<IReadOnlyList<ScoreReport>> FetchByRoundAsync(int roundId,

@@ -5,7 +5,7 @@ using FFMpegCore.Enums;
 namespace Basil.Infrastructure.Media;
 
 /// <summary>
-///     Implements <see cref="IAudioPreviewExtractor" /> by shelling out to the ffmpeg binary through
+///     Implements <see cref="IAudioExtractor" /> by shelling out to the ffmpeg binary through
 ///     FFMpegCore.
 /// </summary>
 /// <remarks>
@@ -14,9 +14,9 @@ namespace Basil.Infrastructure.Media;
 ///     goes to a uniquely named temp file which is read back as bytes and deleted in a
 ///     <c>finally</c> block. Requires a ffmpeg executable on PATH.
 /// </remarks>
-public sealed class FfmpegAudioPreviewExtractor : IAudioPreviewExtractor
+public sealed class FfmpegAudioExtractor : IAudioExtractor
 {
-	/// <inheritdoc cref="IAudioPreviewExtractor.ExtractAsync" />
+	/// <inheritdoc cref="IAudioExtractor.ExtractAsync" />
 	public async Task<byte[]> ExtractAsync(string audioFilePath, int startMs, TimeSpan duration,
 		CancellationToken cancellationToken = default)
 	{

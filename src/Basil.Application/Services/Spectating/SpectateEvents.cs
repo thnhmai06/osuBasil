@@ -5,12 +5,12 @@ using Basil.Protocol.Multiplayer;
 
 namespace Basil.Application.Services.Spectating;
 
-/// <summary>Defines the base shape for the live spectating event family.</summary>
+/// <summary>Base shape for the live spectating event family.</summary>
 /// <param name="User">The spectated userSession.</param>
 public abstract record SpectateEvent(UserBrief User);
 
 /// <summary>
-///     Represents one replay-frame bundle decoded off a <c>SpectateFrames</c> packet, emitted as the <c>frames</c>
+///     One replay-frame bundle decoded off a <c>SpectateFrames</c> packet, emitted as the <c>frames</c>
 ///     event.
 /// </summary>
 /// <remarks>
@@ -31,7 +31,7 @@ public sealed record SpectateFramesEvent(
 	IReadOnlyList<ReplayFrame> Frames,
 	ScoreFrame ScoreFrame) : SpectateEvent(User);
 
-/// <summary>Describes a spectate session lifecycle state, emitted as the <c>state</c> event.</summary>
+/// <summary>A spectate session lifecycle state, emitted as the <c>state</c> event.</summary>
 public enum SpectateState : byte
 {
 	/// <summary>The spectated userSession's session began.</summary>
@@ -47,7 +47,7 @@ public enum SpectateState : byte
 	FellowLeft
 }
 
-/// <summary>Represents a spectate session state change, emitted as the <c>state</c> event.</summary>
+/// <summary>A spectate session state change, emitted as the <c>state</c> event.</summary>
 /// <param name="User">The spectated userSession.</param>
 /// <param name="State">The state that changed.</param>
 public sealed record SpectateStateEvent(UserBrief User, SpectateState State) : SpectateEvent(User);

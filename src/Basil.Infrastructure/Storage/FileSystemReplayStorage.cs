@@ -25,8 +25,8 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 		byte[] replayData, CancellationToken cancellationToken = default)
 	{
 		Directory.CreateDirectory(options.Value.ReplaysPath);
-		await File.WriteAllBytesAsync(PathFor(scoreId), BuildOsr(scoreId, score, playerName, osuVersion, replayData),
-			cancellationToken);
+		await File.WriteAllBytesAsync(PathFor(scoreId),
+			BuildOsr(scoreId, score, playerName, osuVersion, replayData), cancellationToken);
 	}
 
 	/// <inheritdoc />

@@ -7,7 +7,7 @@ namespace Basil.Application.Abstractions.Media;
 ///     Backs the beatmap audio-preview routes, both the <c>b.&lt;domain&gt;</c> preview handler and
 ///     the <c>api.</c> host's audio-preview route.
 /// </remarks>
-public interface IAudioPreviewExtractor
+public interface IAudioExtractor
 {
 	/// <summary>
 	///     Extracts a clip from the given audio file and returns it as mp3 bytes.

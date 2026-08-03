@@ -33,7 +33,7 @@ public sealed class MatchReportService(
 {
 	/// <summary>Builds the full report for a match id.</summary>
 	/// <param name="matchId">The database match id.</param>
-	/// <param name="cancellationToken">A token that cancels the persistence lookups.</param>
+	/// <param name="cancellationToken">A token that cancels the database lookups.</param>
 	/// <returns>The <see cref="MatchReport" />, or <see langword="null" /> when no such match exists.</returns>
 	public async Task<MatchReport?> BuildAsync(int matchId, CancellationToken cancellationToken = default)
 	{
@@ -74,7 +74,7 @@ public sealed class MatchReportService(
 	}
 
 	/// <summary>Builds one round's report, deriving its winner and per-userSession scores from the stored rows.</summary>
-	/// <param name="round">Rowhe round row. </param>
+	/// <param name="round">The round row.</param>
 	/// <param name="roundScores">The round's stored scores.</param>
 	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
 	/// <returns>The <see cref="MatchReportRound" />.</returns>
@@ -129,7 +129,7 @@ public sealed class MatchReportService(
 							.ToList();
 
 						if (sorted[0].Total == sorted[1].Total)
-							// A draw, so there is no winner, and the diff is 0
+							// A draw, so no winner and a diff of 0
 						{
 							winDiff = 0;
 						}
@@ -149,7 +149,7 @@ public sealed class MatchReportService(
 						.ToList();
 
 					if (sorted[0].Metric == sorted[1].Metric)
-						// A draw, so there is no winner, and the diff is 0
+						// A draw, so no winner and a diff of 0
 					{
 						winDiff = 0;
 					}
@@ -187,7 +187,7 @@ public sealed class MatchReportService(
 			winner, winnerTeam, winMetric, winDiff, reportScores);
 	}
 
-	/// <summary>Normalizes a score row to the metric compared for a win condition.</summary>
+	/// <summary>Normalizes a score row to the metric a win condition compares.</summary>
 	/// <remarks>
 	///     Accuracy is scaled by 1000 to preserve 3 decimal places; combo compares max combo; everything else compares
 	///     raw score.
@@ -206,7 +206,7 @@ public sealed class MatchReportService(
 	}
 }
 
-/// <summary>Represents the tournament match report (TRT) for one match.</summary>
+/// <summary>The tournament match report (TRT) for one match.</summary>
 /// <param name="MatchId">The database match id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="CreatedAt">When the match was created.</param>
@@ -226,7 +226,7 @@ public sealed record MatchReport(
 	IReadOnlyList<MatchReportEvent> Events,
 	IReadOnlyList<MatchReportRound> Rounds);
 
-/// <summary>Represents one match lifecycle event.</summary>
+/// <summary>One match lifecycle event.</summary>
 /// <param name="EventType">The kind of event.</param>
 /// <param name="Actor">The acting user, or <see langword="null" /> for system events.</param>
 /// <param name="Target">The affected user, or <see langword="null" /> when the event has no target.</param>
@@ -239,12 +239,12 @@ public sealed record MatchReportEvent(
 	DateTime Timestamp,
 	string? Detail);
 
-/// <summary>Represents one beatmap played within a match.</summary>
+/// <summary>One beatmap played within a match.</summary>
 /// <remarks>
 ///     Only <c>MapMd5</c> is stored on the underlying round. <see cref="Beatmap" /> is resolved
-///     live at report-build time via <see cref="IBeatmapRepository" />, and is
-///     <see langword="null" /> once that md5 no longer resolves (the content changed or was removed
-///     since).
+///     live at report-build time via <see cref="IBeatmapRepository" />, and turns
+///     <see langword="null" /> once that md5 no longer resolves (the content changed or was
+///     removed).
 /// </remarks>
 /// <param name="RoundIndex">The 1-based round index within the match.</param>
 /// <param name="MapMd5">The stored md5 of the beatmap played.</param>
@@ -258,7 +258,7 @@ public sealed record MatchReportEvent(
 /// <param name="EndedAt">When the round ended, or <see langword="null" /> while it is still open.</param>
 /// <param name="Winner">The winning userSession, or <see langword="null" /> for a team win or a draw.</param>
 /// <param name="WinnerTeam">The winning team, or <see langword="null" /> for an individual win or a draw.</param>
-/// <param name="WinMetric">The win condition the winner was determined by, when a winner exists.</param>
+/// <param name="WinMetric">The win condition that determined the winner, when a winner exists.</param>
 /// <param name="WinDiff">
 ///     The margin between the winner and the runner-up, or <see langword="null" /> when no winner was
 ///     determined.
@@ -281,7 +281,7 @@ public sealed record MatchReportRound(
 	long? WinDiff,
 	IReadOnlyList<MatchReportScore> Scores);
 
-/// <summary>Represents one userSession's stored score within a round.</summary>
+/// <summary>One userSession's stored score within a round.</summary>
 /// <param name="User">The userSession who submitted the score.</param>
 /// <param name="Team">The team the userSession was on, or <see langword="null" /> for individual modes.</param>
 /// <param name="Mods">The mods applied for the play.</param>

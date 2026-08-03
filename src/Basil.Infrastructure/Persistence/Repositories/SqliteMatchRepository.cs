@@ -249,9 +249,9 @@ public sealed class SqliteMatchRepository(
 		/// <returns>The domain round row.</returns>
 		public Round ToRow()
 		{
-			return new Round(Id, MatchId, RoundIndex, MapMd5,
-				(GameMode)Mode, (MatchWinCondition)WinCondition, (MatchTeamType)TeamType,
-				Aborted, (Mods)Mods, StartedAt, EndedAt);
+			return new Round(
+				Id, MatchId, RoundIndex, MapMd5, (GameMode)Mode, (MatchWinCondition)WinCondition,
+				(MatchTeamType)TeamType, Aborted, (Mods)Mods, StartedAt, EndedAt);
 		}
 	}
 
@@ -275,9 +275,8 @@ public sealed class SqliteMatchRepository(
 		/// <returns>The domain match event row.</returns>
 		public MatchEvent ToRow()
 		{
-			return new MatchEvent(MatchId, EventType,
-				ActorUserId, ActorUserName, TargetUserId, TargetUserName,
-				Timestamp, Detail);
+			return new MatchEvent(
+				MatchId, EventType, ActorUserId, ActorUserName, TargetUserId, TargetUserName, Timestamp, Detail);
 		}
 	}
 }

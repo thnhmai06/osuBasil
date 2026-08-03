@@ -30,7 +30,7 @@ namespace Basil.Application.Services.Multiplayer;
 public static class MatchLiveSnapshotBuilder
 {
 	/// <summary>Builds the full live snapshot payload for the match's main live channel.</summary>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online players.</param>
 	/// <param name="users">The repository used to resolve offline players.</param>
 	/// <param name="beatmaps">The repository used to resolve the assigned beatmap.</param>
@@ -41,7 +41,7 @@ public static class MatchLiveSnapshotBuilder
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != BotBootstrapService.BotId // has host
+		var host = match.HostId != BotBootstrapService.BotId // a real host: id 0 means none
 			? await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken)
 			: null;
 
@@ -60,11 +60,11 @@ public static class MatchLiveSnapshotBuilder
 
 	/// <summary>Builds the room-configuration payload reused by match list items and the report's live field.</summary>
 	/// <remarks>
-	///     The room-core-plus-map-plus-in-progress shape used by both <c>GET /matches</c> list items
-	///     and <see cref="MatchReportService" />'s <c>Live</c> field. It omits host, referees, and
-	///     slots, since those are membership details, not room configuration.
+	///     Both <c>GET /matches</c> list items and <see cref="MatchReportService" />'s <c>Live</c>
+	///     field use this shape: room configuration plus the current map and in-progress flag. Host,
+	///     referees, and slots are left out, since they are membership details, not configuration.
 	/// </remarks>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="beatmaps">The repository used to resolve the assigned beatmap.</param>
 	/// <param name="cancellationToken">A token that cancels the beatmap lookup.</param>
 	/// <returns>The <see cref="MatchRoomLive" /> payload.</returns>
@@ -99,7 +99,7 @@ public static class MatchLiveSnapshotBuilder
 	///     the raw <see cref="MatchSession.Password" />, only whether one is set, even for an
 	///     admin-elevated caller; a public, unauthenticated SSE channel is not the place to leak it.
 	/// </remarks>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online players.</param>
 	/// <param name="users">The repository used to resolve offline players.</param>
 	/// <param name="beatmaps">The repository used to resolve the assigned beatmap.</param>
@@ -110,7 +110,7 @@ public static class MatchLiveSnapshotBuilder
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != BotBootstrapService.BotId // has host
+		var host = match.HostId != BotBootstrapService.BotId // a real host: id 0 means none
 			? await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken)
 			: null;
 
@@ -127,11 +127,14 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the host payload for <c>GET /matches/{matchId}/hosts</c>.</summary>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve an online host.</param>
 	/// <param name="users">The repository used to resolve an offline host.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookup.</param>
-	/// <returns>The <see cref="MatchHostView" /> payload, wrapping <see langword="null" /> when the room has no host.</returns>
+	/// <returns>
+	///     The <see cref="MatchHostView" /> payload, whose <c>Host</c> is <see langword="null" /> when the room has no
+	///     host.
+	/// </returns>
 	public static async Task<MatchHostView> BuildHost(MatchSession match, IUserSessionRegistry sessionRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
@@ -142,7 +145,7 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the referee list payload for <c>GET /matches/{matchId}/refs</c>.</summary>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online referees.</param>
 	/// <param name="users">The repository used to resolve offline referees.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
@@ -158,7 +161,7 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the banlist payload for <c>GET /matches/{matchId}/ban</c>.</summary>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online banned players.</param>
 	/// <param name="users">The repository used to resolve offline banned players.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
@@ -174,8 +177,8 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the countdown timer payload for <c>GET /matches/{matchId}/timer</c>.</summary>
-	/// <param name="match">The match whose timer to snapshoot.</param>
-	/// <returns>The <see cref="MatchTimerView" /> payload, which reports not running when no countdown is pending.</returns>
+	/// <param name="match">The match whose timer to read.</param>
+	/// <returns>The <see cref="MatchTimerView" /> payload, with <c>Running</c> false when no countdown is pending.</returns>
 	public static MatchTimerView BuildTimer(MatchSession match)
 	{
 		if (match.PendingTimer is null || match.TimerStartedAt is null || match.TimerTotalSeconds is null)
@@ -187,7 +190,7 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>.</summary>
-	/// <param name="match">The match to snapshoot.</param>
+	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online occupants.</param>
 	/// <param name="users">The repository used to resolve offline occupants.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
@@ -199,7 +202,7 @@ public static class MatchLiveSnapshotBuilder
 	}
 
 	/// <summary>Builds the per-slot view list shared by the main snapshot and the slots view.</summary>
-	/// <param name="match">The match whose slots to view.</param>
+	/// <param name="match">The match to build slot views for.</param>
 	/// <param name="sessionRegistry">The registry used to resolve online occupants.</param>
 	/// <param name="users">The repository used to resolve offline occupants.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
@@ -221,7 +224,10 @@ public static class MatchLiveSnapshotBuilder
 		return slots;
 	}
 
-	/// <summary>Resolves a beatmap md5 into the embedded beatmap detail used by every beatmap reference in this plan.</summary>
+	/// <summary>
+	///     Resolves a beatmap md5 into the <see cref="BeatmapDetail" /> embed used by every beatmap reference in these
+	///     payloads.
+	/// </summary>
 	/// <remarks>
 	///     A blank md5 means "no beatmap assigned yet" (a freshly created empty room), which never
 	///     warrants a repository round-trip and must not be confused with a stale or unresolvable md5.
@@ -251,7 +257,7 @@ public static class MatchLiveSnapshotBuilder
 
 	/// <summary>Resolves a user id to a brief, substituting a placeholder when the id is unknown.</summary>
 	/// <remarks>
-	///     Every host, referee, ban, and slot-occupant id embedded by this plan is, by definition,
+	///     Every host, referee, ban, and slot-occupant id embedded in these payloads is, by definition,
 	///     actually assigned or referenced. Unlike <see cref="UserBriefResolver.ResolveAsync" />'s
 	///     plain <see langword="null" /> (which the caller uses for genuine structural absence, for
 	///     example, host id 0 or an empty slot), a resolution failure here must never silently shrink
@@ -272,15 +278,15 @@ public static class MatchLiveSnapshotBuilder
 }
 
 /// <summary>
-///     Represents a user reference embedded in this plan's routes and SSE payloads.
+///     A user reference embedded in the match routes and SSE payloads.
 /// </summary>
 /// <remarks>
-///     This is the one reused <c>{id, name, country}</c> embed for every user reference across this
-///     plan's routes and SSE payloads (settings host and referees, hosts/refs/bans views, slot
-///     occupants, TRT actor/target/winner/scorer, and per-userSession live streams), resolved via
-///     <see cref="UserBriefResolver" />. <see cref="Country" /> stays enum-typed here, which keeps it
-///     type-safe in C#; <see cref="CountryJsonConverter" /> owns converting it
-///     to the wire's lowercase 2-letter acronym.
+///     This <c>{id, name, country}</c> embed is reused for every user reference across these routes
+///     and SSE payloads (settings host and referees, hosts/refs/bans views, slot occupants, TRT
+///     actor/target/winner/scorer, and per-userSession live streams), resolved via
+///     <see cref="UserBriefResolver" />. <see cref="Country" /> stays enum-typed so it remains
+///     type-safe in C#; <see cref="CountryJsonConverter" /> owns converting it to the wire's
+///     lowercase 2-letter acronym.
 /// </remarks>
 /// <param name="Id">The user's id.</param>
 /// <param name="Name">The user's name.</param>
@@ -288,7 +294,7 @@ public static class MatchLiveSnapshotBuilder
 public sealed record UserBrief(int Id, string Name, Country Country);
 
 /// <summary>
-///     Defines the configuration fields shared by every match room shape.
+///     Configuration fields shared by every match room shape.
 /// </summary>
 /// <remarks>
 ///     The shape carries no membership (host, referees, or slots) and no rounds. <see cref="MapId" />
@@ -322,7 +328,7 @@ public abstract record MatchRoomCore(
 	MatchWinCondition WinCondition,
 	GameMode Mode);
 
-/// <summary>Represents the <c>live</c> object embedded in a <c>GET /matches</c> list item and in a match report.</summary>
+/// <summary>The <c>live</c> object embedded in a <c>GET /matches</c> list item and in a match report.</summary>
 /// <remarks>
 ///     Carries room configuration plus the current map and in-progress flag, with no slots, host,
 ///     referees, or rounds.
@@ -363,10 +369,10 @@ public sealed record MatchRoomLive(
 		Mode);
 
 /// <summary>
-///     Represents the payload for the SSE <c>/match/{id}/settings</c> channel and the response of all settings
-///     write.
+///     The payload for the SSE <c>/match/{id}/settings</c> channel and the response body for
+///     settings writes.
 /// </summary>
-/// <remarks>Carries host and referees since this resource manages membership control, not just configuration.</remarks>
+/// <remarks>Carries host and referees because this resource controls membership, not just configuration.</remarks>
 /// <param name="Id">The match's in-memory registry id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
@@ -404,7 +410,7 @@ public sealed record MatchSettingsView(
 	: MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
 		Mode);
 
-/// <summary>Represents the payload for the SSE <c>/match/{id}</c> main channel: the full live snapshot, including slots.</summary>
+/// <summary>The payload for the SSE <c>/match/{id}</c> main channel: the full live snapshot, including slots.</summary>
 /// <param name="Id">The match's in-memory registry id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
@@ -446,19 +452,19 @@ public sealed record MatchLiveSnapshot(
 	: MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
 		Mode);
 
-/// <summary>Represents the payload for <c>GET /matches/{matchId}/hosts</c>.</summary>
+/// <summary>The payload for <c>GET /matches/{matchId}/hosts</c>.</summary>
 /// <param name="Host">The resolved host, or <see langword="null" /> when the room has no host (id 0).</param>
 public sealed record MatchHostView(UserBrief? Host);
 
-/// <summary>Represents the payload for <c>GET /matches/{matchId}/refs</c>.</summary>
+/// <summary>The payload for <c>GET /matches/{matchId}/refs</c>.</summary>
 /// <param name="Referees">The resolved referee list.</param>
 public sealed record MatchRefereesView(IReadOnlyList<UserBrief> Referees);
 
-/// <summary>Represents the payload for <c>GET /matches/{matchId}/ban</c>.</summary>
+/// <summary>The payload for <c>GET /matches/{matchId}/ban</c>.</summary>
 /// <param name="BannedUsers">The resolved banlist.</param>
 public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 
-/// <summary>Represents the payload for <c>GET /matches/{matchId}/timer</c>.</summary>
+/// <summary>The payload for <c>GET /matches/{matchId}/timer</c>.</summary>
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="SecondsRemaining">The whole seconds remaining, or <see langword="null" /> when no countdown is running.</param>
 /// <param name="AutoStart">
@@ -467,7 +473,7 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 /// </param>
 public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
 
-/// <summary>Represents one slot in <c>GET /matches/{matchId}/slots</c>.</summary>
+/// <summary>One slot in <c>GET /matches/{matchId}/slots</c>.</summary>
 /// <remarks>
 ///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> stay enum-typed, never a
 ///     <c>.ToString()</c> name. <see cref="Ready" /> mirrors <see cref="Status" /> being
@@ -491,13 +497,13 @@ public sealed record MatchSlotView(
 	bool Loaded);
 
 /// <summary>
-///     Represents the payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
+///     The payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
 ///     15.
 /// </summary>
 /// <param name="Slots">The slot views, index-aligned with the match's slots.</param>
 public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 
-/// <summary>Represents one <c>GET /matches</c> list item.</summary>
+/// <summary>One <c>GET /matches</c> list item.</summary>
 /// <remarks>
 ///     Carries bare match metadata plus <see cref="Live" />, which is non-null while the room is
 ///     currently tracked in memory. This replaces the old flat <c>IsOpen</c> boolean.
@@ -512,13 +518,13 @@ public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 /// </param>
 public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
 
-/// <summary>Represents the response body for <c>POST /matches/{matchId}/close</c>.</summary>
+/// <summary>The response body for <c>POST /matches/{matchId}/close</c>.</summary>
 /// <remarks>Net-new; not wired into any route yet (Phase 3).</remarks>
 /// <param name="MatchId">The closed match's database id.</param>
 /// <param name="EndedAt">When the match was closed.</param>
 public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
 
-/// <summary>Represents one userSession's live score broadcast on the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
+/// <summary>One userSession's live score broadcast on the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
 /// <param name="User">The userSession the score belongs to.</param>
 /// <param name="Time">The score frame's time.</param>
 /// <param name="Num300">The number of 300 judgments.</param>

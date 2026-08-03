@@ -3,13 +3,13 @@ using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Caching;
+namespace Basil.Infrastructure.Cache;
 
 /// <summary>
 ///     Read-through <see cref="IMemoryCache" /> decorator over the real
 ///     <see cref="IBeatmapsetRepository" />, same pattern as <see cref="CachingBeatmapRepository" /> and
 ///     <see cref="CachingUserRepository" />, keyed by <c>Id</c> only (a beatmapset has no md5 concept).
-///     Every write invalidates the affected entry immediately; the TTL is only a safety net.
+///     Every writes invalidates the affected entry immediately; the TTL is only a safety net.
 /// </summary>
 public sealed class CachingBeatmapsetRepository(
 	IBeatmapsetRepository inner,
@@ -23,7 +23,7 @@ public sealed class CachingBeatmapsetRepository(
 
 	/// <inheritdoc cref="IBeatmapsetRepository.FetchByIdAsync" />
 	/// <remarks>
-	///     Read-through: a hit returns immediately, a miss fetches from the underlying repository and
+	///     Read-through: a hit returns immediately, a miss fetches from the underlying repository, and
 	///     caches the non-null result.
 	/// </remarks>
 	public async Task<Beatmapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)

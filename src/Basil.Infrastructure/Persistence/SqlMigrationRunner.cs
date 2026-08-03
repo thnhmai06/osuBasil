@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
-///     Applies the embedded SQL migration scripts (see Persistence/Migrations/) against the SQLite
+///     Applies the embedded SQL migration scripts (see <c>Persistence/Migrations/</c>) against the SQLite
 ///     database file, in filename order. DbUp records each script in its own journal table, so a
 ///     script runs exactly once per database file.
 /// </summary>

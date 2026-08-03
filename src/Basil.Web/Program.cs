@@ -7,8 +7,8 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Channels;
+using Basil.Infrastructure;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.DependencyInjection;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
 using Basil.Web.Logging;
@@ -29,11 +29,11 @@ public sealed class Program
 	private const string CorsPolicyName = "ApiCors";
 
 	/// <summary>
-	///     One `.WithTags(...)` string per row, one line of description each, grouped into the Scalar
-	///     sidebar's collapsible sections in this exact order: every route under one resource (e.g.
-	///     every `/matches/...` tag) stays adjacent regardless of whether it happens to also support
-	///     SSE, since SSE-vs-plain-JSON is no longer a tag of its own (content negotiation is called out
-	///     in each route's own `.WithDescription` instead). Wired into the `basilapi` document as both
+	///     One `.WithTags(...)` string per row, one line of description each. Rows are grouped into the
+	///     Scalar sidebar's collapsible sections in this exact order, so every route under one resource
+	///     (e.g. every `/matches/...` tag) stays adjacent whether or not it also supports SSE.
+	///     SSE-vs-plain-JSON is no longer a tag of its own; content negotiation is called out in each
+	///     route's own `.WithDescription` instead. Wired into the `basilapi` document as both
 	///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
 	///     group order (see <see cref="AddOpenApiDocument" />).
 	/// </summary>
@@ -42,15 +42,15 @@ public sealed class Program
 		("Matches",
 		[
 			("Matches", "List and create matches."),
-			("Match Report", "The tournament match report (TRT): a one-shot JSON snapshot (the live SSE " +
-			                 "equivalent is under Match Live)."),
+			("Match Report", "The tournament match report (TRT): a one-shot JSON snapshot. The live SSE " +
+			                 "equivalent is under Match Live."),
 			("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
 			("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
 			("Match Hosts", "Get/set/clear the match host."),
 			("Match Referees", "List/replace/add/remove the match's referees."),
 			("Match Bans", "List/replace/add players banned from the match, and unban."),
-			("Match Slots", "Read or reassign/re-team/lock the match's 16 slots (index-addressed list), " +
-			                "invite players onto them, and kick a seated userSession."),
+			("Match Slots", "Read, reassign, re-team, or lock the match's 16 slots, each addressed by " +
+			                "index; invite players onto them, and kick a seated userSession."),
 			("Match Timer", "Read, start, or abort the match's countdown timer."),
 			("Match Abort", "Abort the match currently in progress."),
 			("Match Close", "Close the match immediately.")
@@ -79,7 +79,7 @@ public sealed class Program
 		("Menu Icon",
 		[
 			("Menu Icon Image", "The in-game main menu icon image file."),
-			("Menu Icon URL", "The click-through URL opened when a userSession clicks the main menu icon.")
+			("Menu Icon URL", "The URL opened when a userSession clicks the main menu icon.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -96,10 +96,10 @@ public sealed class Program
 	///     groups, initializes startup data, and runs the application.
 	/// </summary>
 	/// <remarks>
-	///     The pipeline registers RequestIdLoggingMiddleware, Serilog request logging,
+	///     In order, the pipeline registers RequestIdLoggingMiddleware, Serilog request logging,
 	///     ExceptionLoggingMiddleware, WebSockets, CORS, authentication/authorization, and finally
-	///     EnvelopeMiddleware, in that order. Host groups are mapped from the configured domain
-	///     (defaulting to localhost), a shutdown log line is registered against the host lifetime, and
+	///     EnvelopeMiddleware. Host groups are mapped from the configured domain (localhost by default),
+	///     a shutdown log line is registered against the host lifetime, and
 	///     <see cref="InitializeDataAsync" /> runs before the application starts serving.
 	/// </remarks>
 	/// <param name="args">The command-line arguments passed to the host.</param>
@@ -174,8 +174,8 @@ public sealed class Program
 			.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
 			// Anything the CategoryEnricher couldn't place in a curated scope (Mapsets/Matches/Scores/
 			// Online/IRC/Host/Database/Cache) is generic framework/library chatter, not a domain event
-			// worth Information-level noise — only Warning+ from it shows by default. Curated
-			// categories, and anything at Warning+ regardless of category, are never touched here.
+			// worth Information-level noise; only Warning+ from it shows by default. Curated categories,
+			// and anything at Warning+ regardless of category, are never touched here.
 			.Filter.ByExcluding(e =>
 				e.Level < LogEventLevel.Warning &&
 				e.Properties.TryGetValue("Category", out var category) &&
@@ -253,10 +253,10 @@ public sealed class Program
 			}
 			catch (Exception ex)
 			{
-				// UseHttps(path, password) loads the certificate synchronously — a bad path/password
+				// UseHttps(path, password) loads the certificate synchronously: a bad path or password
 				// throws right here, previously with no clear log line before the generic host's own
-				// crash handling took over. Fatal + explicit exit instead of letting that propagate
-				// unclearly (never logs the password).
+				// crash handling took over. Log at Critical and exit explicitly instead of letting
+				// that propagate unclearly (never logs the password).
 				options.ApplicationServices.GetService<ILoggerFactory>()
 					?.CreateLogger("Basil.Web.Program")
 					.LogCritical(ex, "Failed to load TLS certificate from {CertPath} — server cannot start.", certPath);
@@ -408,7 +408,7 @@ public sealed class Program
 					document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
 
 					// Scalar's sidebar buckets each tag's operations by their position in the document,
-					// not alphabetically — reorder Paths (shortest/most general route first per tag
+					// not alphabetically. Reorder Paths (shortest/most general route first per tag
 					// section) without touching the actual C# route-registration order in Routing/*.cs.
 					var reordered = new OpenApiPaths();
 					foreach (var (path, item) in document.Paths
@@ -422,11 +422,11 @@ public sealed class Program
 				return Task.CompletedTask;
 			});
 
-			// Applies to every document — a generator-default artifact of how .NET's OpenAPI schema
+			// Applies to every document: a generator-default artifact of how .NET's OpenAPI schema
 			// builder represents integers/numbers, not specific to basilapi's own types.
 			options.AddNumericSchemaSimplificationTransformer();
 
-			// Only the basilapi document is enveloped/admin-key-gated — every other document (bancho/
+			// Only the basilapi document is enveloped/admin-key-gated. Every other document (bancho/
 			// osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
 			if (tagGroups is not null)
 			{
@@ -474,8 +474,8 @@ public sealed class Program
 
 		if (hasDatabase)
 		{
-			var connectionString = DatabaseConnectionStringBuilder.Build(dbOptions);
-			Directory.CreateDirectory(Path.GetDirectoryName(DatabaseConnectionStringBuilder.ResolvePath(dbOptions))!);
+			var connectionString = dbOptions.Build();
+			Directory.CreateDirectory(Path.GetDirectoryName(dbOptions.ResolvePath())!);
 			logger.LogInformation("Running database migrations");
 			SqlMigrationRunner.RunMigrations(connectionString);
 			logger.LogInformation("Database migrations complete");

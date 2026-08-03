@@ -1,7 +1,7 @@
 using Basil.Application.Abstractions.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Caching;
+using Basil.Infrastructure.Cache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 

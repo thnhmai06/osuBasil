@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Storage;
 /// <remarks>
 ///     Stores entries on disk under <see cref="StorageOptions.CachePath" /> as
 ///     <c>{endpoint}/{relativePath}</c>. A read of a key with no stored file returns null rather
-///     than throwing; a delete of a missing key is a no-op.
+///     than throwing; a deleted of a missing key is a no-op.
 /// </remarks>
 public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : IResponseCache
 {

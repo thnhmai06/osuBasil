@@ -21,7 +21,9 @@ public static partial class HardLink
 	///     the link (the default); <see langword="false" /> to throw <see cref="IOException" /> when the path is
 	///     already occupied.
 	/// </param>
-	/// <exception cref="IOException">The OS call failed, or <paramref name="force" /> is false and the path exists.</exception>
+	/// <exception cref="IOException">
+	///     The OS call failed, or <paramref name="force" /> is <see langword="false" />, and the path exists.
+	/// </exception>
 	public static void Create(string linkPath, string targetPath, bool force = true)
 	{
 		if (force && File.Exists(linkPath)) File.Delete(linkPath);
@@ -60,8 +62,7 @@ public static partial class HardLink
 	{
 		if (Link(targetPath, linkPath) != 0)
 			throw new IOException(
-				new Win32Exception(Marshal.GetLastWin32Error()).Message +
-				$" Link({targetPath}, {linkPath})");
+				new Win32Exception(Marshal.GetLastWin32Error()).Message + $" Link({targetPath}, {linkPath})");
 	}
 
 	#endregion

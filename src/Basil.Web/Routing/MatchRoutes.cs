@@ -25,8 +25,8 @@ namespace Basil.Web.Routing;
 ///     the bare TRT report/SSE routes. Reads (list/report/live channels) are public, with a soft
 ///     admin-only elevation for private-match visibility; every write (create/settings/actions) is
 ///     admin-key gated. Settings/action mutation logic lives in <see cref="MatchControlService" />,
-///     shared with `!mp`'s chat commands; this file only resolves HTTP-specific input (numeric
-///     `userId` targets, JSON bodies) and beatmaps results to HTTP responses.
+///     shared with `!mp`'s chat commands; this file only handles HTTP-specific input (numeric
+///     `userId` targets, JSON bodies) and turns beatmap results into HTTP responses.
 /// </summary>
 internal static class MatchRoutes
 {
@@ -49,8 +49,8 @@ internal static class MatchRoutes
 			.WithName("listMatches")
 			.WithSummary("List Matches")
 			.WithDescription("Query params: `status` (`online` (default) | `offline` | `all`), `page` " +
-			                 "(default 1), `pageSize` (default 50). `online` is currently-live matches (tracked in " +
-			                 "memory); `offline` is closed matches (persisted with `endedAt` set); `all` is both, " +
+			                 "(default 1), `pageSize` (default 50). `online` lists matches that are live right now (tracked in " +
+			                 "memory); `offline` lists closed matches (persisted with `endedAt` set); `all` returns both, " +
 			                 "newest first. A private live match is excluded from the list entirely unless the caller " +
 			                 "carries a valid `X-Admin-Key`. Response: `{ page, pageSize, totalRecords, items }`, wrapped " +
 			                 "in the enveloped `meta` object at the top level like every other paginated route. Public.")
@@ -382,11 +382,11 @@ internal static class MatchRoutes
 	///     Shared by <see cref="HandleCreate" /> and <see cref="HandleSettingsReplace" />: both apply every
 	///     field unconditionally (PUT-style, no "was this given" check), unlike
 	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `-1` is the established
-	///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids auto-
-	///     increment from 1 in this schema (see CLAUDE.md), so 0 (JSON's default for an omitted field)
-	///     can never be a real beatmap either; both are skipped entirely rather than attempted as a
-	///     lookup (which would otherwise fail with a confusing "beatmap not found" error for a caller
-	///     correctly signalling "no map").
+	///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids in this
+	///     schema auto-increment from 1 (see CLAUDE.md), so 0 (JSON's default for an omitted field) can
+	///     never be a real beatmap either. Both are skipped entirely rather than attempted as a lookup,
+	///     which would otherwise fail with a confusing "beatmap not found" error for a caller correctly
+	///     signalling "no map".
 	/// </summary>
 	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int mapId,
 		MatchControlService matchControl, CancellationToken cancellationToken)

@@ -10,14 +10,14 @@ namespace Basil.Application.Services.Beatmaps;
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
 /// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
-/// <param name="IsLocallyIngested">A value that indicates whether the beatmap was ingested without a real osu! online id.</param>
+/// <param name="IsLocallyIngested">Whether the beatmap was ingested without a real osu! online id.</param>
 /// <remarks>
-///     Never carries <see cref="Beatmap.Filename" />, which is internal and marked
-///     <c>[JsonIgnore]</c> on the domain record, nor a parent beatmapset reference. The split
-///     between <see cref="BeatmapInSet" /> and <see cref="BeatmapDetail" /> avoids a beatmap
+///     Never carries <see cref="Beatmap.Filename" /> (internal, marked <c>[JsonIgnore]</c> on the
+///     domain record) or a parent beatmapset reference. The split between
+///     <see cref="BeatmapInSet" /> and <see cref="BeatmapDetail" /> keeps a beatmap from
 ///     referencing its set, which references the beatmap again.
-///     <see cref="Difficulty.TotalLength" /> carries its own whole-seconds wire converter directly
-///     on the domain record, described in its own doc comment.
+///     <see cref="Difficulty.TotalLength" /> has its own whole-seconds wire converter directly on
+///     the domain record, described in its own doc comment.
 /// </remarks>
 public abstract record BeatmapView(
 	string Md5,
@@ -51,7 +51,7 @@ public sealed record BeatmapInSet(
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
 /// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
-/// <param name="IsLocallyIngested">A value that indicates whether the beatmap was ingested without a real osu! online id.</param>
+/// <param name="IsLocallyIngested">Whether the beatmap was ingested without a real osu! online id.</param>
 /// <param name="Beatmapset">The beatmapset summary the beatmap belongs to.</param>
 /// <remarks>
 ///     Used everywhere a beatmap appears outside a beatmapset's own <c>Beatmaps</c> list, such as a
@@ -77,10 +77,9 @@ public sealed record BeatmapDetail(
 /// <param name="Creator">The username of the set's creator.</param>
 /// <param name="LastUpdate">The time of the latest re-ingestion or content change, in UTC.</param>
 /// <param name="CreatedAt">The time the set was first ingested, in UTC.</param>
-/// <param name="IsFrozen">A value that indicates whether the set is write-locked by an admin.</param>
+/// <param name="IsFrozen">Whether the set is write-locked by an admin.</param>
 /// <param name="IsPrivate">
-///     A value that indicates whether the set is hidden from non-admin listings and the public beatmap
-///     endpoints.
+///     Whether the set is hidden from non-admin listings and the public beatmap endpoints.
 /// </param>
 /// <param name="Status">The ranked status of the set.</param>
 /// <param name="BeatmapCount">The number of difficulties in the set.</param>
@@ -110,10 +109,9 @@ public sealed record BeatmapsetSummary(
 /// <param name="Creator">The username of the set's creator.</param>
 /// <param name="LastUpdate">The time of the latest re-ingestion or content change, in UTC.</param>
 /// <param name="CreatedAt">The time the set was first ingested, in UTC.</param>
-/// <param name="IsFrozen">A value that indicates whether the set is write-locked by an admin.</param>
+/// <param name="IsFrozen">Whether the set is write-locked by an admin.</param>
 /// <param name="IsPrivate">
-///     A value that indicates whether the set is hidden from non-admin listings and the public beatmap
-///     endpoints.
+///     Whether the set is hidden from non-admin listings and the public beatmap endpoints.
 /// </param>
 /// <param name="Status">The ranked status of the set.</param>
 /// <param name="Beatmaps">Every difficulty under the set, each as a <see cref="BeatmapInSet" />.</param>

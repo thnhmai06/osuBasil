@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="ILeaderboardStore" />
 /// <remarks>
 ///     Ranks are computed live from the UserStats table on every read: a user's rank is the count
-///     of users with a higher ranked score in the mode, plus one. There is no separately maintained
+///     of users with a higher-ranked score in the mode, plus one. There is no separately maintained
 ///     leaderboard index, so the add/remove methods are no-ops.
 /// </remarks>
 public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboardStore

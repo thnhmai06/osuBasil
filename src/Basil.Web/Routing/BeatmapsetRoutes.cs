@@ -169,7 +169,7 @@ internal static class BeatmapsetRoutes
 			                 "AR/OD time-window shift is osu!std-only (AR/OD pass through unadjusted in " +
 			                 "taiko/catch/mania, since each ruleset defines its own hit-window formula, not " +
 			                 "implemented here). Invalid mod combinations (e.g. `EZ+HR`) are silently resolved the " +
-			                 "same way multiplayer room mods are — the response's `mods` field echoes what was " +
+			                 "same way multiplayer room mods are, and the response's `mods` field echoes what was " +
 			                 "actually applied. 400 if `mode` is out of range or the beatmap can't be analyzed " +
 			                 "under the requested ruleset. 404 if the beatmap doesn't exist, doesn't belong to " +
 			                 "this beatmapset, its file is missing on disk, or the parent beatmapset is private and the " +
@@ -243,7 +243,7 @@ internal static class BeatmapsetRoutes
 			.WithSummary("Download Beatmap Video")
 			.WithDescription("Serves the video file declared in the beatmap's `.osu` `[Events]` section " +
 			                 "(found via osu!'s own storyboard decoder, the same module background-finding relies " +
-			                 "on — not a stored column, decoded fresh on every request). 404 if the beatmap doesn't " +
+			                 "on; it's not a stored column, it's decoded fresh on every request). 404 if the beatmap doesn't " +
 			                 "exist, doesn't belong to this beatmapset, its `.osu` declares no video, the video file is " +
 			                 "missing on disk, or the parent beatmapset is private and the caller isn't admin. " +
 			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
@@ -255,7 +255,7 @@ internal static class BeatmapsetRoutes
 			.WithName("getBeatmapsetAudioPreview")
 			.WithSummary("Get Beatmapset Audio Preview")
 			.WithDescription("Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's " +
-			                 "audio file, starting at its recorded PreviewTime — the same clip and cache entry as " +
+			                 "audio file, starting at its recorded PreviewTime, the same clip and cache entry as " +
 			                 "the `b.` host's `/preview/{mapsetId}.mp3`. 404 if the beatmapset doesn't exist, is private, " +
 			                 "or has no audio file on disk.")
 			.WithTags("Beatmapsets")
@@ -626,7 +626,7 @@ internal static class BeatmapsetRoutes
 
 	private static async Task<IResult> HandleAudioPreview(int mapsetId, IBeatmapRepository beatmaps,
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IResponseCache cache,
-		IAudioPreviewExtractor extractor, CancellationToken cancellationToken)
+		IAudioExtractor extractor, CancellationToken cancellationToken)
 	{
 		var clip = await BanchoHostGroups.GetOrGeneratePreviewClipAsync(mapsetId, beatmaps, beatmapsetRepository,
 			storage, cache,

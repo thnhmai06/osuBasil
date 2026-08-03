@@ -41,8 +41,8 @@ internal static class FaqRoutes
 			.WithGroupName("basilapi")
 			.WithName("createFaq")
 			.WithSummary("Create FAQ")
-			.WithDescription("Multipart upload, field name `file`, must be a `.txt` file — its name (minus " +
-			                 "the extension) becomes the entry's id. 409 if an entry with that name already exists — use " +
+			.WithDescription("Multipart upload, field name `file`, must be a `.txt` file: its name (minus " +
+			                 "the extension) becomes the entry's id. 409 if an entry with that name already exists; use " +
 			                 "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
 			.WithTags("FAQ")
 			.WithMultipartFileUpload()
@@ -71,8 +71,8 @@ internal static class FaqRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceFaq")
 			.WithSummary("Replace FAQ")
-			.WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet " +
-			                 "— use `POST /faqs/` to create one." + AdminKeyNote)
+			.WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet. " +
+			                 "Use `POST /faqs/` to create one." + AdminKeyNote)
 			.WithTags("FAQ")
 			.WithMultipartFileUpload()
 			.Produces<FaqReplacedView>()

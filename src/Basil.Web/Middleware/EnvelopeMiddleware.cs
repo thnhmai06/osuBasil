@@ -5,17 +5,17 @@ using Basil.Web.OpenApi;
 namespace Basil.Web.Middleware;
 
 /// <summary>
-///     Wraps every JSON body on the `basilapi` OpenAPI group in the Enveloped Response Standard
-///     (see <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Program.cs</c>.
+///     Wraps every JSON body on the `basilapi` OpenAPI group in the Enveloped Response Standard (see
+///     <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Program.cs</c>.
 ///     Skips a request entirely (no buffering, no rewriting) when the matched endpoint isn't tagged
 ///     `basilapi` (every other host group: bancho/osu-web/beatmap-assets/avatar) or carries
-///     <see cref="SseEndpointMarker" /> (an always-SSE route, e.g. `GET /matches/{id}/live`, that never
-///     produces a plain-JSON body regardless of the request). Every SSE route on this host is now a
+///     <see cref="SseEndpointMarker" /> (an always-SSE route like `GET /matches/{id}/live`, which never
+///     produces a plain-JSON body regardless of the request). Every SSE route on this host is a
 ///     dedicated, unconditionally-SSE `.../live` path, so no route branches on the `Accept` header
-///     anymore, and the marker check alone is sufficient to decide skip-vs-wrap. Buffering a live push
-///     stream until the handler completes would silently turn it into one that never delivers a single
-///     event until the connection closes. A file download's `Content-Type` is never "json" and is
-///     passed through unwrapped for the same structural reason, with no separate marker needed.
+///     anymore; the marker check alone decides skip-vs-wrap. Buffering a live push stream until the
+///     handler completes would silently turn it into one that never delivers a single event until the
+///     connection closes. A file download's `Content-Type` is never "json", so it passes through
+///     unwrapped for the same structural reason, with no separate marker needed.
 /// </summary>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {

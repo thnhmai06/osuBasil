@@ -48,9 +48,9 @@ internal static class MatchSubResourceRoutes
 	}
 
 	/// <summary>
-	///     Converts a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
-	///     consumes, translating a <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it keys on
-	///     (or null for a neutral team).
+	///     Turns a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
+	///     consumes, translating each <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it
+	///     expects (null for a neutral team).
 	/// </summary>
 	/// <param name="slots">The slot assignments from the request body.</param>
 	private static IReadOnlyDictionary<int, MatchControlService.SlotPatchEntry> ToPatchEntries(
@@ -1010,8 +1010,8 @@ internal static class MatchSubResourceRoutes
 	}
 
 	/// <summary>
-	///     Resolves a list of numeric user ids into their online <see cref="UserSession" />s, returning a
-	///     400 <c>IResult</c> as the error half as soon as any id is missing or offline.
+	///     Resolves a list of numeric user ids into their online <see cref="UserSession" />s. The moment
+	///     any id is missing or offline, it bails out with a 400 <c>IResult</c> as the error half.
 	/// </summary>
 	private static (IReadOnlyCollection<UserSession> Targets, IResult? Error) ResolveOnlineTargets(
 		IReadOnlyList<int> userIds, IUserSessionRegistry sessionRegistry)

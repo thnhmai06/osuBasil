@@ -1,7 +1,7 @@
 namespace Basil.Web.Routing;
 
 /// <summary>
-///     Non-generic marker <see cref="PagedResult{T}" /> implements, so the enveloping layer (both the
+///     Non-generic interface implemented by <see cref="PagedResult{T}" />, so the enveloping layer (both the
 ///     runtime <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> and the OpenAPI example wrapper
 ///     in <see cref="Basil.Web.OpenApi.OpenApiExampleExtensions" />) can recognize a paginated body and
 ///     split it into `data`/`meta` without needing to know the item type <c>T</c>.
@@ -25,8 +25,8 @@ public interface IPagedResult
 ///     Response shape for every paginated list route on the `api.` host. <see cref="TotalRecords" />
 ///     backs the Enveloped Response Standard's `meta.totalRecords`/`meta.totalPages`: for `GET /scores`
 ///     and `GET /beatmapsets` it comes from the cached `Counters` table (see each repository's
-///     `FetchCountAsync`); for `GET /matches` (no counter table, see that route) it's simply the
-///     count of the already-fully-materialized, already-filtered in-memory list before paging.
+///     `FetchCountAsync`); for `GET /matches` (no counter table, see that route) it's just the
+///     count of the in-memory list, already fully materialized and filtered, taken before paging.
 /// </summary>
 public sealed record PagedResult<T>(int Page, int PageSize, int TotalRecords, IReadOnlyList<T> Items) : IPagedResult
 {
@@ -51,7 +51,7 @@ public static class Pagination
 	/// <summary>
 	///     Trims an "overqueried by one" source (fetched with <c>LIMIT pageSize + 1</c>) down to at
 	///     most <paramref name="pageSize" /> items: the extra row is discarded now that
-	///     <paramref name="totalRecords" /> (a real count) makes it unnecessary for anything.
+	///     <paramref name="totalRecords" /> (a real count) makes it unnecessary.
 	/// </summary>
 	public static PagedResult<T> Trim<T>(IReadOnlyList<T> overqueried, int page, int pageSize, int totalRecords)
 	{

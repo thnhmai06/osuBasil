@@ -35,14 +35,14 @@ public sealed partial class BeatmapIngestionService(
 	IResponseCache cache,
 	ILogger<BeatmapIngestionService> logger)
 {
-	private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
-	private static readonly Regex LeadingIdPattern = LeadingIdRegex();
-
 	/// <summary>
 	///     Marker infix for a beatmapset folder mid-deletion: a folder whose name carries this infix
 	///     is never treated as a live beatmapset.
 	/// </summary>
 	public const string DeletedFolderInfix = ".deleted_";
+
+	private static readonly char[] IllegalFilenameChars = Path.GetInvalidFileNameChars();
+	private static readonly Regex LeadingIdPattern = LeadingIdRegex();
 
 	/// <summary>
 	///     Builds the conventional folder name for a beatmapset: <c>"{Id} {Artist} - {Title}"</c>, with

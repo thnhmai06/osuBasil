@@ -6,10 +6,10 @@ namespace Basil.Web.Logging;
 
 /// <summary>
 ///     Recreates a fixed "latest" hardlink pointing at whichever file Serilog's rolling file sink
-///     just opened. Runs once per file-open (daily rollover or process start), not per log line;
-///     a hardlink can't be updated in place, only deleted and recreated, which
-///     <see cref="Infrastructure.System.HardLink.Create" />
-///     already does via its default <c>force: true</c>.
+///     just opened. Runs once per file-open (daily rollover or process start), not per log line. A
+///     hardlink can't be updated in place, only deleted and recreated, which
+///     <see cref="Infrastructure.System.HardLink.Create" /> already does via its default
+///     <c>force: true</c>.
 /// </summary>
 /// <param name="latestLinkPath">The fixed path of the "latest" hardlink to recreate on each file open.</param>
 public sealed class HardLinkFileLifecycleHooks(string latestLinkPath) : FileLifecycleHooks

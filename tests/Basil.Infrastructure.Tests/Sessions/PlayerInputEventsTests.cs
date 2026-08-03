@@ -42,16 +42,17 @@ public class PlayerInputEventsTests
 		var events = new PlayerInputEvents();
 		var received = new List<byte[]>();
 
-		void Handler(int id, byte[] payload)
-		{
-			received.Add(payload);
-		}
-
 		events.InputPublished += Handler;
 		events.InputPublished -= Handler;
 
 		events.PublishInput(1, [.. "payload"u8]);
 
 		Assert.Empty(received);
+		return;
+
+		void Handler(int id, byte[] payload)
+		{
+			received.Add(payload);
+		}
 	}
 }

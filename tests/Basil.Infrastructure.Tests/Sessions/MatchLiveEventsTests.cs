@@ -41,17 +41,18 @@ public class MatchLiveEventsTests
 		var events = new MatchLiveEvents();
 		var received = new List<byte[]>();
 
-		void Handler(int id, byte[] payload)
-		{
-			received.Add(payload);
-		}
-
 		events.MainPublished += Handler;
 		events.MainPublished -= Handler;
 
 		events.PublishMain(1, [.. "payload"u8]);
 
 		Assert.Empty(received);
+		return;
+
+		void Handler(int id, byte[] payload)
+		{
+			received.Add(payload);
+		}
 	}
 
 	[Fact]

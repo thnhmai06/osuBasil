@@ -6,11 +6,12 @@ using Microsoft.OpenApi;
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Declares the `X-Admin-Key` header as a real OpenAPI security scheme on the `basilapi` document
-///     (it was previously undocumented beyond prose in each route's own `.WithDescription`, per
-///     <see cref="Basil.Web.Routing.RouteDocs.AdminKeyNote" />) and attaches it to every operation that
-///     actually enforces <see cref="AdminKeyDefaults.Policy" /> via `.RequireAuthorization(...)`, so
-///     Scalar's "Authorize" button and any generated client SDK pick it up automatically.
+///     Declares the `X-Admin-Key` header as a real OpenAPI security scheme on the `basilapi` document.
+///     It was previously undocumented beyond prose in each route's own `.WithDescription` (per
+///     <see cref="Basil.Web.Routing.RouteDocs.AdminKeyNote" />). The scheme is attached to every
+///     operation that actually enforces <see cref="AdminKeyDefaults.Policy" /> via
+///     `.RequireAuthorization(...)`, so Scalar's "Authorize" button and any generated client SDK pick
+///     it up automatically.
 /// </summary>
 internal static class SecuritySchemeTransformers
 {

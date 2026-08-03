@@ -4,20 +4,19 @@ using Serilog.Events;
 namespace Basil.Web.Logging;
 
 /// <summary>
-///     Tags each log event with a fixed "Category" property inferred from its SourceContext (the
-///     full class name <c>ILogger&lt;T&gt;</c> attaches automatically), a static subsystem label, not
-///     a per-operation correlation id. Exact matches are checked before prefix matches so a specific
+///     Tags each log event with a fixed "Category" property inferred from its SourceContext, the full
+///     class name <c>ILogger&lt;T&gt;</c> attaches automatically. It's a static subsystem label, not a
+///     per-operation correlation id. Exact matches are checked before prefix matches, so a specific
 ///     class never falls through to a broader namespace rule. Anything matching none of these rules
-///     falls back to <see cref="FallbackCategory" />, always set, never left blank, so
-///     <c>[{Category}]</c> in the output template never renders as an empty bracket pair.
+///     falls back to <see cref="FallbackCategory" />. That fallback is always set, never left blank,
+///     so <c>[{Category}]</c> in the output template never renders as an empty bracket pair.
 /// </summary>
 public sealed class CategoryEnricher : ILogEventEnricher
 {
 	/// <summary>
-	///     Category for every SourceContext that matches no rule below, also the marker
-	///     <c>Program.ConfigureSerilog</c>'s noise filter uses to demote unclassified chatter to
-	///     Warning+ only, since it isn't one of the domain scopes worth showing at Information by
-	///     default.
+	///     The category for every SourceContext that matches no rule below. It also marks the noise
+	///     <c>Program.ConfigureSerilog</c>'s filter demotes to Warning+ only: unclassified chatter
+	///     isn't one of the domain scopes worth showing at Information by default.
 	/// </summary>
 	public const string FallbackCategory = "App";
 

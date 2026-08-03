@@ -4,8 +4,9 @@ namespace Basil.Web.OpenApi;
 
 /// <summary>
 ///     Declares a `multipart/form-data` request body for routes that read the upload by hand via
-///     <c>HttpContext.Request.ReadFormAsync</c> (no bound `IFormFile` parameter for the default OpenAPI
-///     generator to pick up), so the shape is more than prose in `.WithDescription`.
+///     <c>HttpContext.Request.ReadFormAsync</c>. There's no bound `IFormFile` parameter for the default
+///     OpenAPI generator to pick up, so this declares the shape explicitly rather than leaving it as
+///     prose in `.WithDescription`.
 /// </summary>
 internal static class MultipartRequestBodyExtensions
 {

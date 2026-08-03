@@ -1,6 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Caching;
+using Basil.Infrastructure.Cache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 

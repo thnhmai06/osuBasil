@@ -13,7 +13,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Caching;
+using Basil.Infrastructure.Cache;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Media;
 using Basil.Infrastructure.Performance;
@@ -28,13 +28,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.DependencyInjection;
+namespace Basil.Infrastructure;
 
 /// <summary>
 ///     The Infrastructure layer's composition root: binds Options, builds the SQLite connection
 ///     string, and registers every port implementation.
 /// </summary>
-public static class InfrastructureServiceCollectionExtensions
+public static class DependencyInjection
 {
 	/// <summary>
 	///     Registers every Infrastructure service into the container: the port implementations
@@ -65,11 +65,6 @@ public static class InfrastructureServiceCollectionExtensions
 			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
 			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));
-
-		static string BuildConnectionString(IServiceProvider sp)
-		{
-			return DatabaseConnectionStringBuilder.Build(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value);
-		}
 
 		services.AddMemoryCache();
 
@@ -115,7 +110,7 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
 		services.AddSingleton<IImageResizer, ImageSharpResizer>();
-		services.AddSingleton<IAudioPreviewExtractor, FfmpegAudioPreviewExtractor>();
+		services.AddSingleton<IAudioExtractor, FfmpegAudioExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
@@ -131,5 +126,10 @@ public static class InfrastructureServiceCollectionExtensions
 		services.AddHostedService<MapsetGarbageCollectorService>();
 
 		return services;
+
+		static string BuildConnectionString(IServiceProvider sp)
+		{
+			return sp.GetRequiredService<IOptions<DatabaseOptions>>().Value.Build();
+		}
 	}
 }

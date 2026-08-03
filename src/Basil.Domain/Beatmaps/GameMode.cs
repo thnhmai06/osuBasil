@@ -5,7 +5,7 @@ namespace Basil.Domain.Beatmaps;
 /// </summary>
 public enum GameMode : byte
 {
-	/// <summary>The standard osu! mode.</summary>
+	/// <summary>The osu!standard mode.</summary>
 	Standard = 0,
 
 	/// <summary>The osu!taiko mode.</summary>

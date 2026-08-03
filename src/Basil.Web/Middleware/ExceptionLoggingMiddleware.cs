@@ -2,15 +2,16 @@ namespace Basil.Web.Middleware;
 
 /// <summary>
 ///     Logs every unhandled exception across all host groups at Error level, then rethrows.
-///     Behavior-neutral (the exception propagates exactly as it did with no middleware here), so
+///     Behavior-neutral: the exception propagates exactly as it would with no middleware here, so
 ///     <see cref="EnvelopeMiddleware" />'s response contract is never bypassed. This is the single
 ///     insertion point covering unhandled faults on every host group, feeding `errors_latest.log`.
 /// </summary>
 /// <remarks>
-///     A client dropping the connection mid-response (bancho long-poll clients disconnect constantly,
-///     e.g. game exit, network hiccup) surfaces here as an <see cref="OperationCanceledException" />
-///     from writing to the aborted response stream. That is expected traffic noise, not a bug, so it
-///     is swallowed at Debug instead of logged as Error and rethrown.
+///     A client dropping the connection mid-response surfaces here as an
+///     <see cref="OperationCanceledException" /> from writing to the aborted response stream. Bancho
+///     long-poll clients disconnect constantly, e.g. on game exit or a network hiccup. That's
+///     expected traffic noise, not a bug, so it's logged at Debug and swallowed, not logged as Error
+///     and rethrown.
 /// </remarks>
 public sealed class ExceptionLoggingMiddleware(RequestDelegate next, ILogger<ExceptionLoggingMiddleware> logger)
 {

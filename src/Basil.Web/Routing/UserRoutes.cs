@@ -38,7 +38,7 @@ internal static class UserRoutes
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
 	// BotBootstrapService.BotId lives in Basil.Application.Services.Bot, which would pull an
-	// otherwise-unneeded using into this file for a single constant — inlined instead.
+	// otherwise-unneeded using into this file for a single constant, so the value is inlined instead.
 	private const int BotBootstrapServiceBotId = 0;
 
 	/// <summary>
@@ -270,7 +270,7 @@ internal static class UserRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		// Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
-		// history referencing this user's id stays intact — matches how restriction/ban already
+		// history referencing this user's id stays intact. It matches how restriction/ban already
 		// works in this server (a privilege bit, never a hard delete).
 		admin.MapDelete("/{userId:int}",
 				async (int userId, IUserRepository users, ILogger<UserRoutesLog> logger,

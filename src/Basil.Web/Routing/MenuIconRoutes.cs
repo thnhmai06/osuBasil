@@ -49,7 +49,7 @@ internal static class MenuIconRoutes
 			.WithName("getMenuIcon")
 			.WithSummary("Get Menu Icon")
 			.WithDescription("Serves the in-game main menu icon image. 404 if none is set. Content-Type is " +
-			                 "inferred from the file extension. Public.")
+			                 "taken from the file extension. Public.")
 			.WithTags("Menu Icon Image")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -59,7 +59,7 @@ internal static class MenuIconRoutes
 			.WithName("setMenuIcon")
 			.WithSummary("Set Menu Icon")
 			.WithDescription("Multipart upload, field name `file`. Upsert: replaces whatever icon (of any " +
-			                 "extension) is currently set, or creates one if none was." + LoginEffectNote +
+			                 "extension) is currently set, or creates one if none is set." + LoginEffectNote +
 			                 AdminKeyNote)
 			.WithTags("Menu Icon Image")
 			.WithMultipartFileUpload()
@@ -116,7 +116,7 @@ internal static class MenuIconRoutes
 			.WithName("setMenuIconUrl")
 			.WithSummary("Set Menu Icon URL")
 			.WithDescription("Body: `{ url }`. Upsert: replaces whatever URL is currently set, or creates one " +
-			                 "if none was. No `DELETE`: to fall back to the hardcoded default, set the URL to it " +
+			                 "if none is set. No `DELETE`: to fall back to the hardcoded default, set the URL to it " +
 			                 "explicitly." + LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon URL")
 			.Produces<MenuIconChangedView>()

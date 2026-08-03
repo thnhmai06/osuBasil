@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Users;
 
 /// <summary>
-///     Represents the wire shape of a user in the <c>GET /users</c> and
+///     The wire shape of a user in the <c>GET /users</c> and
 ///     <c>GET /users/{idOrName}</c> API responses.
 /// </summary>
 /// <remarks>

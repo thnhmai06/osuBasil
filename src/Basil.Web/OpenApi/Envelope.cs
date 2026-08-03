@@ -1,10 +1,10 @@
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     The Enveloped Response Standard every JSON body on the `api.` host is wrapped in by
-///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" />, file downloads and SSE streams are the
-///     only exceptions (their `Content-Type` never contains "json", so the middleware leaves them
-///     untouched). <see cref="Meta" /> is populated only for a paginated list route (see
+///     The Enveloped Response Standard wrapping every JSON body on the `api.` host, applied by
+///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" />. File downloads and SSE streams are the
+///     only exceptions: their `Content-Type` never contains "json", so the middleware leaves them
+///     untouched. <see cref="Meta" /> is populated only for a paginated list route (see
 ///     <see cref="Basil.Web.Routing.PagedResult{T}" />); every other route leaves it null.
 /// </summary>
 /// <typeparam name="T">The type of the response payload carried in <see cref="Data" />.</typeparam>

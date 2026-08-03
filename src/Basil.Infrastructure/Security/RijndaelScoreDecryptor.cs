@@ -23,10 +23,7 @@ public sealed class RijndaelScoreDecryptor : IScoreDecryptor
 
 	/// <inheritdoc />
 	public (string[] ScoreDataFields, string ClientHash) Decrypt(
-		string scoreDataBase64,
-		string clientHashBase64,
-		string ivBase64,
-		string osuVersion)
+		string scoreDataBase64, string clientHashBase64, string ivBase64, string osuVersion)
 	{
 		var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");
 		var iv = Convert.FromBase64String(ivBase64);

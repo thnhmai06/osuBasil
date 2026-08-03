@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Shared logic for building the Enveloped Response Standard body (see <see cref="Envelope{T}" />),
-///     used identically by <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> (wrapping the real
-///     response body at runtime) and <see cref="OpenApiExampleExtensions" /> (wrapping a
-///     <c>.WithExample</c> payload for the generated OpenAPI docs), previously two independent copies
-///     of the same four methods that had to be kept in sync by hand.
+///     Shared logic for building the Enveloped Response Standard body (see <see cref="Envelope{T}" />).
+///     Both callers use it identically: <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> wraps the
+///     real response body at runtime, and <see cref="OpenApiExampleExtensions" /> wraps a
+///     <c>.WithExample</c> payload for the generated OpenAPI docs. Before this, the same four methods
+///     lived in two independent copies that had to be kept in sync by hand.
 /// </summary>
 internal static class EnvelopeBuilder
 {

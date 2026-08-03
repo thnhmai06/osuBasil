@@ -25,7 +25,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Dapper has no multi-map <c>QueryFirstOrDefaultAsync</c> overload, so the JOIN is queried
+	///     Dapper has no multimap <c>QueryFirstOrDefaultAsync</c> overload, so the JOIN is queried
 	///     with <c>QueryAsync</c> and the first row is taken. Id, md5, and filename each match at most
 	///     one row because of their unique constraints, but setId can match several difficulties
 	///     within the same set, in which case any one of them satisfies the lookup. When
@@ -81,10 +81,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     The row is matched by <see cref="Beatmap.Md5" /> first: when that md5 already exists its
+	///     The row is matched by <see cref="Beatmap.Md5" /> first: when that md5 already exists, its
 	///     id is kept regardless of the incoming id, so a re-ingested difficulty never changes
-	///     identity. Otherwise the incoming id is used when positive, or a fresh local id is
-	///     allocated from <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c>. The write is
+	///     identity. Otherwise, the incoming id is used when positive, or a fresh local id is
+	///     allocated from <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c>. The writer is
 	///     a <c>REPLACE INTO</c> that overwrites every column.
 	///     <see cref="BeatmapObjectCounts" /> is serialized to JSON before storage.
 	/// </remarks>

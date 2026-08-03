@@ -17,7 +17,7 @@ namespace Basil.Infrastructure.Irc;
 ///     <see cref="BackgroundService" />, so no separate executable or container is required.
 /// </summary>
 /// <remarks>
-///     If the listener can't bind its port (for example the port is already in use), it logs the
+///     If the listener can't bind its port (for example, the port is already in use), it logs the
 ///     error and stops rather than throwing out of <see cref="BackgroundService" />'s execution path
 ///     and taking the host down with it. Each accepted connection gets a fresh per-process id and
 ///     runs detached.
@@ -40,8 +40,8 @@ public sealed class TcpIrcListener(
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     When the listener cannot bind (for example the port is already in use), an error is logged
-	///     and the method returns so the rest of the host keeps running with chat unavailable.
+	///     When the listener cannot bind (for example, the port is already in use), an error is logged
+	///     and the method returns, so the rest of the host keeps running with chat unavailable.
 	/// </remarks>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
@@ -52,9 +52,6 @@ public sealed class TcpIrcListener(
 		}
 		catch (SocketException ex)
 		{
-			// A chat gateway failing to bind shouldn't take the whole server down (for example the port
-			// is already in use). Log and skip, instead of letting BackgroundService's
-			// unhandled-exception behaviour crash host startup entirely.
 			logger.LogError(ex, "IRC gateway failed to bind port {Port} — IRC will be unavailable.",
 				options.Value.Port);
 			return;
@@ -89,7 +86,7 @@ public sealed class TcpIrcListener(
 	/// <summary>
 	///     Runs a single connection to completion. Socket and IO errors mean the client dropped
 	///     mid-read/write, so they are swallowed, and the underlying <see cref="TcpClient" /> is always
-	///     disposed.
+	///     disposed of.
 	/// </summary>
 	private async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client, long connectionId,
 		CancellationToken stoppingToken)

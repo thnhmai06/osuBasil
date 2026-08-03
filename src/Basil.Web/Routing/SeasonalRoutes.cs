@@ -45,7 +45,7 @@ internal static class SeasonalRoutes
 			.WithName("createSeasonalBackground")
 			.WithSummary("Create Seasonal Background")
 			.WithDescription("Multipart upload, field name `file`, saved under its own uploaded filename " +
-			                 "(path-traversal-filtered). 409 if a file with that name already exists — use " +
+			                 "(path-traversal-filtered). 409 if a file with that name already exists. Use " +
 			                 "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.WithMultipartFileUpload()
@@ -74,7 +74,7 @@ internal static class SeasonalRoutes
 			.WithName("downloadSeasonalBackground")
 			.WithSummary("Download Seasonal Background")
 			.WithDescription("`{fileName}` is the full filename including extension. 404 if it doesn't exist. " +
-			                 "Content-Type is inferred from the file extension. Public.")
+			                 "Content-Type is taken from the file extension. Public.")
 			.WithTags("Seasonal Backgrounds")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -83,8 +83,8 @@ internal static class SeasonalRoutes
 			.WithGroupName("basilapi")
 			.WithName("replaceSeasonalBackground")
 			.WithSummary("Replace Seasonal Background")
-			.WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet " +
-			                 "— use `POST /seasonals/` to create one." + AdminKeyNote)
+			.WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet. " +
+			                 "Use `POST /seasonals/` to create one." + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.WithMultipartFileUpload()
 			.Produces<SeasonalReplacedView>()

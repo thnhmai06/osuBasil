@@ -22,7 +22,7 @@ namespace Basil.Infrastructure.Irc;
 /// <remarks>
 ///     Implements <see cref="IIrcConnection" /> for a real external IRC client. Outgoing messages
 ///     queue on a bounded outbox that drops the oldest entry when full, honoring the port's
-///     non-blocking send contract. The connection id scopes this connection's log events.
+///     non-blocking sending contract. The connection id scopes this connection's log events.
 /// </remarks>
 /// <param name="client">The accepted TCP socket to read from and write to.</param>
 /// <param name="authService">Authenticates the PASS/NICK handshake and builds the session on success.</param>
@@ -48,7 +48,7 @@ public sealed class TcpIrcConnection(
 	private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(60);
 
 	/// <summary>
-	///     The bounded outbox drained by the write pump. When full, the oldest queued message is
+	///     The bounded outbox drained by the writing pump. When full, the oldest queued message is
 	///     dropped so a slow client can never block a sender.
 	/// </summary>
 	private readonly Channel<IrcMessage> _outbox = Channel.CreateBounded<IrcMessage>(
@@ -67,7 +67,7 @@ public sealed class TcpIrcConnection(
 
 	/// <summary>
 	///     Enqueues to the bounded outbox with a non-blocking <c>TryWrite</c>.
-	///     When the outbox is full the oldest queued message is dropped rather than this call stalling.
+	///     When the outbox is full, the oldest queued message is dropped rather than this call stalling.
 	/// </summary>
 	public void Send(IrcMessage message)
 	{
@@ -76,8 +76,8 @@ public sealed class TcpIrcConnection(
 
 	/// <summary>
 	///     Runs the connection until the client closes the socket or <paramref name="cancellationToken" />
-	///     is cancelled. Starts the write pump and ping loop, drives the read loop, then on teardown
-	///     quits the session's channels and removes it from the session registry.
+	///     is canceled. Starts the writing pump and ping loop, drives the read loop, then on teardown
+	///     quits the session channels, and removes it from the session registry.
 	/// </summary>
 	/// <param name="cancellationToken">A token that stops the connection and triggers teardown.</param>
 	/// <returns>A task that completes when the connection has finished its teardown.</returns>

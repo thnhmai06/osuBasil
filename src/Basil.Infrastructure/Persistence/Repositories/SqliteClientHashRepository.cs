@@ -63,9 +63,9 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	/// <inheritdoc />
 	/// <remarks>
 	///     Under Wine only the uninstall id is compared, since adapter and disk fingerprints are
-	///     unreliable there. Otherwise any match on adapters, uninstall id, or disk serial (when
-	///     supplied) counts as shared hardware. The query joins the Users table so each result
-	///     carries the other account's name and privileges, and always excludes
+	///     unreliable there. Otherwise, any match on adapters, uninstall id, or disk serial (when
+	///     supplied) counts as shared hardware. The query joins the Users table, so each result
+	///     carries the other account's name and privileges and always excludes
 	///     <paramref name="userId" /> itself.
 	/// </remarks>
 	public async Task<IReadOnlyList<PlayerClientHash>> FetchAnyHardwareMatchesForUserAsync(
@@ -157,7 +157,8 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		/// <returns>The domain client hash-with-player record.</returns>
 		public PlayerClientHash ToClientHashWithPlayer()
 		{
-			return new PlayerClientHash(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
+			return new PlayerClientHash(
+				UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
 				Occurrences, Name, (UserPrivileges)Privilege);
 		}
 	}

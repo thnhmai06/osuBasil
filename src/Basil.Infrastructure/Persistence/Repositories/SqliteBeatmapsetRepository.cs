@@ -25,7 +25,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Uses <c>INSERT ... ON CONFLICT DO UPDATE</c>, not <c>REPLACE INTO</c>: a replace deletes
+	///     Uses <c>INSERT ... ON CONFLICT DO UPDATE</c>, not <c>REPLACE INTO</c>: a replacement deletes
 	///     then reinserts on a primary-key conflict, and that delete cascades through the
 	///     Beatmaps-Beatmapsets foreign key, wiping every beatmap under the set on every re-upsert. The
 	///     update clause overwrites only the shared metadata columns. <see cref="Beatmapset.IsFrozen" />,
