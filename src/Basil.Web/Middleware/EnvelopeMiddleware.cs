@@ -66,6 +66,8 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 		buffer.Seek(0, SeekOrigin.Begin);
 		if (context.Response.StatusCode is StatusCodes.Status304NotModified or StatusCodes.Status205ResetContent)
 		{
+			// Safe: Results.File() writes no body for 304 responses, leaving the buffer empty.
+			// CopyToAsync() therefore performs no writes to the original response stream.
 			await buffer.CopyToAsync(originalBody);
 			return;
 		}
