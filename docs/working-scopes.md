@@ -25,7 +25,7 @@ Both are in scope — general commands, `!mp` tournament control, and an embedde
 | ⚠️ `osu-getfavourites.php`/`osu-addfavourite.php` | Favourite beatmap list | Stub — returns empty |
 | ⚠️ `osu-rate.php` | Beatmap star rating | Stub — returns `"not ranked"` (real Bancho response code) |
 | ⚠️ `osu-comment.php` | In-game comments | Stub — returns empty |
-| ✅ `POST /users` (in-game registration) | Create account via game client — Email field must match `Server:AdminKey` | Active — accepts registration when AdminKey is configured |
+| ✅ `POST /users` (in-game registration) | Create account via game client — Email field must match the server's admin key | Active — always accepts registration in bypass mode (no admin key configured), otherwise requires a matching key |
 | ❌ pp calculation | Performance points for scoring/leaderboard/win conditions | Deliberately absent — star rating is display-only, computed via ppy's osu!lazer ruleset |
 
 ## Lessons from reversed decisions

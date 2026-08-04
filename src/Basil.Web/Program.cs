@@ -5,6 +5,7 @@ using Basil.Application;
 using Basil.Application.Abstractions.Channels;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
+using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
@@ -299,7 +300,7 @@ public sealed class Program
 	///     Registers the admin-key authentication scheme and the admin-role authorization policy.
 	/// </summary>
 	/// <remarks>
-	///     The scheme reads the <c>X-Admin-Key</c> header (see
+	///     The scheme reads the <c>Authorization: Bearer</c> header (see
 	///     <see cref="AdminKeyAuthenticationHandler" />). One mechanism serves both the hard
 	///     admin-only gate (<c>RequireAuthorization</c>) and the soft private/frozen-visibility
 	///     elevation (<c>User.IsInRole</c>).
@@ -342,8 +343,8 @@ public sealed class Program
 	/// <remarks>
 	///     Permissive by design: the api. host is meant to be called directly from arbitrary
 	///     browser-based tooling (tournament overlays, dashboards, OBS browser sources). No
-	///     credentials are ever sent (<c>X-Admin-Key</c> is a plain header, not a cookie), so
-	///     <c>AllowAnyOrigin</c> is safe here.
+	///     credentials are ever sent (the admin key is a plain <c>Authorization</c> header, not a
+	///     cookie), so <c>AllowAnyOrigin</c> is safe here.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose CORS policy is registered.</param>
 	private static void ConfigureCors(WebApplicationBuilder builder)
@@ -516,6 +517,13 @@ public sealed class Program
 
 			var recoveryService = scope.ServiceProvider.GetRequiredService<MatchRecoveryService>();
 			await recoveryService.RecoverAsync();
+
+			var adminKeyService = scope.ServiceProvider.GetRequiredService<AdminKeyService>();
+			await adminKeyService.EnsureSeededAsync();
+			if (await adminKeyService.IsBypassAsync())
+				logger.LogWarning("No admin key is configured — the server is running in bypass mode. " +
+				                   "Every management action and in-game registration succeeds without a key. " +
+				                   "Set one via PUT /adminkey.");
 		}
 	}
 }

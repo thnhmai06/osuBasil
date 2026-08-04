@@ -299,6 +299,24 @@ begin
 	update Counters set Value = Value + 1 where Name = 'Scores:Total';
 end;
 
+-- Generic runtime-configurable key/value store, for settings an operator changes without a
+-- restart (unlike appsettings.json values, bound once at startup). Value is wide (2048 chars) since
+-- it holds both short values (a bcrypt hash, an ISO 8601 timestamp) and longer ones (an external
+-- URL). AdminKey:Hash/AdminKey:LastChanged back AdminKeyService; MenuIcon:Path/MenuIcon:Url back
+-- MenuIconService. Seeded null: application code fills in the real values on first use (a bcrypt
+-- hash can't be produced in plain SQL).
+create table Settings
+(
+	Key   varchar(64)   not null primary key,
+	Value varchar(2048) null
+);
+
+insert into Settings (Key, Value)
+values ('AdminKey:Hash', null),
+       ('AdminKey:LastChanged', null),
+       ('MenuIcon:Path', null),
+       ('MenuIcon:Url', null);
+
 -- Privilege 8211 = Unrestricted (1) | Verified (2) | Supporter (16) | Administrator (8192) —
 -- see Basil.Domain.Users.UserPrivileges.
 insert into Users (Id, Name, SafeName, Privilege, Country, PwBcrypt)

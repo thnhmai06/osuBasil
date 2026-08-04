@@ -45,6 +45,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				// A stub avoids needing a real SQLite file for these plumbing tests (IMatchRepository
 				// is still resolved by other services in the DI graph even though the main SSE route itself
 				// no longer touches it — see RegisterLiveMatch, which registers matches directly against

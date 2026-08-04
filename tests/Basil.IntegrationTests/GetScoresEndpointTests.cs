@@ -71,6 +71,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(users);
 				services.AddSingleton(TestDoubles.FixedPasswordHasher());

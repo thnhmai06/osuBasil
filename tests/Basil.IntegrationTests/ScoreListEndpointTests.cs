@@ -47,6 +47,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(scores);
 				services.AddSingleton(TestDoubles.NullUserRepository());
 				services.AddSingleton(TestDoubles.NullMapRepository());

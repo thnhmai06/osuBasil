@@ -53,6 +53,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(scores);
 				services.AddSingleton(replayStorage);
 				services.AddSingleton(TestDoubles.NullUserRepository());

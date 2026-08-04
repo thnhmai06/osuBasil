@@ -26,13 +26,4 @@ public sealed class ServerOptions
 
 	/// <summary>Gets or sets the password that decrypts the HTTPS certificate.</summary>
 	public string? CertPassword { get; init; }
-
-	/// <summary>Gets or sets the secret that gates management actions and in-game registration.</summary>
-	/// <remarks>
-	///     Management actions (beatmap, user, replay, match, and seasonal CRUD) require callers to
-	///     present it. The in-game registration flow also uses it as the secret a client must send
-	///     in the Email field to self-register. Leave it unset to reject all management actions and
-	///     to disable in-game registration.
-	/// </remarks>
-	public string? AdminKey { get; init; }
 }

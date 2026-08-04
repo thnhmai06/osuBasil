@@ -7,23 +7,24 @@ namespace Basil.Infrastructure.Security;
 
 /// <inheritdoc cref="IPasswordHasher" />
 /// <remarks>
-///     Uses BCrypt.Net to hash and verify. Both inputs are the UTF-8 bytes of a password md5
-///     digest's 32-character lowercase-hex string. Successful verifications are cached per stored
-///     hash, so the expensive bcrypt work runs only once per account per process; repeat logins for
-///     the same account compare the candidate bytes directly against the cached match.
+///     Uses BCrypt.Net to hash and verify. Both inputs are the UTF-8 bytes of the secret being
+///     hashed (a password's md5 digest, or the server's admin key). Successful verifications are
+///     cached per stored hash, so the expensive bcrypt work runs only once per secret per process;
+///     repeat calls for the same stored hash compare the candidate bytes directly against the
+///     cached match.
 /// </remarks>
 public sealed class BCryptPasswordHasher : IPasswordHasher
 {
 	/// <summary>
-	///     Caches the password md5 bytes that verified against each stored bcrypt hash, keyed by the
+	///     Caches the secret bytes that verified against each stored bcrypt hash, keyed by the
 	///     stored hash string.
 	/// </summary>
 	private readonly ConcurrentDictionary<string, byte[]> _cache = new();
 
 	/// <inheritdoc />
-	public string Hash(byte[] passwordMd5Hex)
+	public string Hash(byte[] secretBytes)
 	{
-		return BC.HashPassword(Encoding.UTF8.GetString(passwordMd5Hex));
+		return BC.HashPassword(Encoding.UTF8.GetString(secretBytes));
 	}
 
 	/// <inheritdoc />
@@ -32,14 +33,14 @@ public sealed class BCryptPasswordHasher : IPasswordHasher
 	///     against it; later calls short-circuit on <see cref="_cache" /> before invoking bcrypt.
 	///     Failed verifications never populate the cache.
 	/// </remarks>
-	public bool Verify(byte[] untrustedPasswordMd5Hex, string trustedBcryptHash)
+	public bool Verify(byte[] untrustedSecretBytes, string trustedBcryptHash)
 	{
-		if (_cache.TryGetValue(trustedBcryptHash, out var cachedMd5))
-			return cachedMd5.AsSpan().SequenceEqual(untrustedPasswordMd5Hex);
+		if (_cache.TryGetValue(trustedBcryptHash, out var cachedSecret))
+			return cachedSecret.AsSpan().SequenceEqual(untrustedSecretBytes);
 
-		if (!BC.Verify(Encoding.UTF8.GetString(untrustedPasswordMd5Hex), trustedBcryptHash)) return false;
+		if (!BC.Verify(Encoding.UTF8.GetString(untrustedSecretBytes), trustedBcryptHash)) return false;
 
-		_cache[trustedBcryptHash] = untrustedPasswordMd5Hex;
+		_cache[trustedBcryptHash] = untrustedSecretBytes;
 		return true;
 	}
 }

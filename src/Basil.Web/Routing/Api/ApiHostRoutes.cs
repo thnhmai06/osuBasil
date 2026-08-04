@@ -70,6 +70,8 @@ internal static class ApiHostRoutes
 
 		group.MapMenuIconRoutes();
 
+		group.MapAdminKeyRoutes();
+
 		group.MapAbbreviationRedirects();
 	}
 

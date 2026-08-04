@@ -42,6 +42,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<LoginService>();
 		services.AddSingleton<AuthenticationService>();
+		services.AddSingleton<AdminKeyService>();
 		services.AddSingleton<PlayerLogoutService>();
 		services.AddSingleton<DirectSearchService>();
 		services.AddSingleton<ScoreSubmissionService>();

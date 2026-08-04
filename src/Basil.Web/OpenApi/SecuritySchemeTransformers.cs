@@ -7,8 +7,8 @@ using Microsoft.OpenApi;
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Declares the `X-Admin-Key` header as a real OpenAPI security scheme on the `basilapi` document,
-///     attached to every operation that enforces the admin key policy.
+///     Declares the `Authorization: Bearer` header as a real OpenAPI security scheme on the
+///     `basilapi` document, attached to every operation that enforces the admin key policy.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -36,11 +36,11 @@ internal static class SecuritySchemeTransformers
 			document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
 			document.Components.SecuritySchemes[SchemeId] = new OpenApiSecurityScheme
 			{
-				Type = SecuritySchemeType.ApiKey,
-				In = ParameterLocation.Header,
-				Name = "X-Admin-Key",
-				Description = "Admin key matching the server's configured `Basil:Server:AdminKey`. Required for " +
-				              "every management/mutation route on this host."
+				Type = SecuritySchemeType.Http,
+				Scheme = "bearer",
+				Description = "The server's admin key, managed via `GET`/`PUT`/`DELETE /adminkey`. Required for " +
+				              "every management/mutation route on this host, unless the server is in bypass mode " +
+				              "(no key configured)."
 			};
 
 			return Task.CompletedTask;
@@ -61,7 +61,8 @@ internal static class SecuritySchemeTransformers
 			});
 
 			operation.Responses ??= new OpenApiResponses();
-			operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing or invalid X-Admin-Key." });
+			operation.Responses.TryAdd("401",
+				new OpenApiResponse { Description = "Missing or invalid admin key bearer token." });
 
 			return Task.CompletedTask;
 		});

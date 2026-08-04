@@ -34,6 +34,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				if (downloadEndpoint is not null)
 					services.AddSingleton(Options.Create(
 						new MirrorOptions { DownloadEndpoint = downloadEndpoint }));

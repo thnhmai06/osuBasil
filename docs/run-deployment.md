@@ -25,7 +25,6 @@ recreate the container).
 | `Server:Domain` | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this. |
 | `Server:Port` | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here. |
 | `Server:CertPath` / `Server:CertPassword` | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
-| `Server:AdminKey` | Gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
 | `Bot:Name` | BasilBot's display name. Changing this after first boot renames the seeded `id=0` user in-place. |
 | `Bot:CommandPrefix` | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`). |
 | `Bot:Country` | BasilBot's country code (default `"vn"`). Overrides seed migration value. |
@@ -33,6 +32,12 @@ recreate the container).
 | `Irc:Port` | TCP port for the embedded IRC gateway (default 6667). |
 | `Mirror:DownloadEndpoint` | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
 | `Logging:MinimumLevel` | Minimum Serilog level for stdout and the full log file (default `"Information"`) — see "Logging" further down this page. |
+
+### Admin key (not in `appsettings.json`)
+
+The admin key gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) and acts as the secret for in-game registration (osu! client's Email field). It is **not** a file setting — it's stored as a bcrypt hash in the database, managed at runtime via `GET`/`PUT`/`DELETE /adminkey` on the `api.` host, and sent by callers as `Authorization: Bearer <key>` (not the old `X-Admin-Key` header). A fresh database seeds the key `ThisIsAdminKey` on first startup; change it immediately with `PUT /adminkey`.
+
+Deleting the key (`DELETE /adminkey`) puts the server in **bypass mode**: every admin-gated action and in-game registration succeeds without a key, and the server logs a warning on every startup while in this state. Set a new key with `PUT /adminkey` to leave bypass mode — no restart required, it takes effect on the very next request.
 
 ### Data (always fixed, never configurable)
 
@@ -90,9 +95,11 @@ A `Dockerfile` + `docker-compose.yml` at the repo root build a self-contained `l
 [`beatmap-ingestion.md`](beatmap-ingestion.md)) — no .NET runtime or ffmpeg install needed on the
 host machine at all, only Docker itself.
 
-1. Edit `src/Basil.Web/appsettings.json` (`Domain`, `AdminKey`, `CertPath`, `CertPassword` under
+1. Edit `src/Basil.Web/appsettings.json` (`Domain`, `CertPath`, `CertPassword` under
    `Basil:Server` — see Configuration surface above); it's bind-mounted into the container, so this
    is the only place to set it — there's no environment-variable override, in Docker or otherwise.
+   The admin key is set separately via `PUT /adminkey` once the container is running (see "Admin
+   key" above), not through this file.
    Everything else in this doc (TLS cert requirements, DNS/hosts entries, firewall, account creation)
    is identical to the manual deployment path below — Docker only changes how the process itself
    gets built and run.
@@ -131,8 +138,10 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see the osu! Client API docs
      (`api.<domain>/docs/osu-client`) for exactly how.
-   - `Basil:Server:AdminKey` — set this to a real secret. Without it the management API (used to create
-     user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
+   - Admin key — the fresh database ships with the default key `ThisIsAdminKey`; set a real one via
+     `PUT /adminkey` before opening the server up (see "Admin key" above). Without any key configured
+     the server runs in bypass mode — every management action and in-game registration is open to
+     anyone.
    - `Basil:Bot:Name` / `Basil:Bot:CommandPrefix`, `Basil:Irc:Name`/`Basil:Irc:Port` — cosmetic, optional.
 
 3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects
@@ -180,15 +189,15 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
 8. **Create the first account.** Two ways:
 
    **a) In-game registration** — launch the osu! client pointed at this server (see Client setup
-   below). On the login screen, click "Register". In the **Email** field, enter the value of
-   `Basil:Server:AdminKey` from `appsettings.json`. Choose a username and password. The client will
-   create the account with default privileges (`Unrestricted | Verified | Supporter`).
+   below). On the login screen, click "Register". In the **Email** field, enter the server's admin
+   key (see "Admin key" above). Choose a username and password. The client will create the account
+   with default privileges (`Unrestricted | Verified | Supporter`).
 
    **b) Admin API** — use `curl` (or any HTTP client) against the `api.` host:
 
    ```bash
    curl -X POST https://api.<domain>/users \
-     -H "X-Admin-Key: <your Basil:Server:AdminKey>" \
+     -H "Authorization: Bearer <your admin key>" \
      -H "Content-Type: application/json" \
      -d '{"name":"Player1","password":"hunter2","country":"vn","privilege":19}'
    ```
@@ -320,10 +329,9 @@ cares about the domain, the cert, and the account.
    the same machine.) For a real public domain, this step is unnecessary — normal DNS resolves it.
 
 4. **Get an account.** In-game registration is available — launch osu! with `-devserver`, click
-   "Register", and enter the server's `Basil:Server:AdminKey` in the **Email** field (see Deployment
-   step 8 above). Alternatively, someone with the server's `AdminKey` can create the account via
-   the admin API. Every account is auto-verified on its own first successful login — no extra step
-   after that.
+   "Register", and enter the server's admin key in the **Email** field (see "Admin key" above).
+   Alternatively, someone holding the admin key can create the account via the admin API. Every
+   account is auto-verified on its own first successful login — no extra step after that.
 
 5. **Launch the client pointed at the server:**
 

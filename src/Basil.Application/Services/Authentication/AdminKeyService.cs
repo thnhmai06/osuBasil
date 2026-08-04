@@ -1,0 +1,89 @@
+using System.Globalization;
+using System.Text;
+using Basil.Application.Abstractions.Settings;
+using Basil.Application.Abstractions.Users;
+
+namespace Basil.Application.Services.Authentication;
+
+/// <summary>
+///     Manages the server's admin key: the secret that gates management actions and in-game
+///     registration, stored as a bcrypt hash rather than a config-file plaintext value.
+/// </summary>
+/// <remarks>
+///     An unset hash puts the server in bypass mode: every admin-gated action succeeds without a
+///     key. <see cref="EnsureSeededAsync" /> tells a never-configured install (no
+///     <c>AdminKey:LastChanged</c> row value yet) apart from one an operator deliberately put into
+///     bypass mode via <see cref="ClearAsync" /> (which still stamps <c>LastChanged</c>), so a
+///     restart after a deliberate clear does not silently reseed the default key.
+/// </remarks>
+public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHasher hasher)
+{
+	/// <summary>The key an install starts with before an operator sets one explicitly.</summary>
+	public const string DefaultKey = "ThisIsAdminKey";
+
+	/// <summary>The longest key bcrypt hashes without silently truncating it.</summary>
+	public const int MaxKeyLengthBytes = 72;
+
+	private const string HashSettingKey = "AdminKey:Hash";
+	private const string LastChangedSettingKey = "AdminKey:LastChanged";
+
+	/// <summary>Seeds the default key on a never-configured install; a no-op otherwise.</summary>
+	/// <param name="cancellationToken">A token that cancels the check and, if needed, the seed write.</param>
+	public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
+	{
+		var lastChanged = await settings.GetAsync(LastChangedSettingKey, cancellationToken);
+		if (lastChanged is not null) return;
+
+		await SetKeyAsync(DefaultKey, cancellationToken);
+	}
+
+	/// <summary>Gets whether the server is in bypass mode (no admin key hash configured).</summary>
+	/// <param name="cancellationToken">A token that cancels the read.</param>
+	/// <returns><see langword="true" /> if no admin key hash is stored; otherwise, <see langword="false" />.</returns>
+	public async Task<bool> IsBypassAsync(CancellationToken cancellationToken = default)
+	{
+		var hash = await settings.GetAsync(HashSettingKey, cancellationToken);
+		return string.IsNullOrEmpty(hash);
+	}
+
+	/// <summary>Verifies a candidate key against the stored hash.</summary>
+	/// <param name="candidateKey">The key to verify.</param>
+	/// <param name="cancellationToken">A token that cancels the read and verification.</param>
+	/// <returns>
+	///     <see langword="true" /> if the key matches the stored hash; otherwise <see langword="false" />
+	///     (including when the server is in bypass mode, since there is nothing to verify against).
+	/// </returns>
+	public async Task<bool> VerifyAsync(string candidateKey, CancellationToken cancellationToken = default)
+	{
+		var hash = await settings.GetAsync(HashSettingKey, cancellationToken);
+		if (string.IsNullOrEmpty(hash)) return false;
+
+		return hasher.Verify(Encoding.UTF8.GetBytes(candidateKey), hash);
+	}
+
+	/// <summary>Gets when the admin key was last set or cleared, or <see langword="null" /> if never.</summary>
+	/// <param name="cancellationToken">A token that cancels the read.</param>
+	public async Task<DateTimeOffset?> GetLastChangedAsync(CancellationToken cancellationToken = default)
+	{
+		var raw = await settings.GetAsync(LastChangedSettingKey, cancellationToken);
+		return raw is null ? null : DateTimeOffset.Parse(raw, CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>Hashes and stores a new admin key, taking the server out of bypass mode.</summary>
+	/// <param name="newKey">The plaintext key to hash and store.</param>
+	/// <param name="cancellationToken">A token that cancels the writes.</param>
+	public async Task SetKeyAsync(string newKey, CancellationToken cancellationToken = default)
+	{
+		var hash = hasher.Hash(Encoding.UTF8.GetBytes(newKey));
+		await settings.SetAsync(HashSettingKey, hash, cancellationToken);
+		await settings.SetAsync(LastChangedSettingKey, DateTimeOffset.UtcNow.ToString("O"), cancellationToken);
+	}
+
+	/// <summary>Clears the stored hash, putting the server into bypass mode immediately.</summary>
+	/// <param name="cancellationToken">A token that cancels the writes.</param>
+	public async Task ClearAsync(CancellationToken cancellationToken = default)
+	{
+		await settings.SetAsync(HashSettingKey, null, cancellationToken);
+		await settings.SetAsync(LastChangedSettingKey, DateTimeOffset.UtcNow.ToString("O"), cancellationToken);
+	}
+}

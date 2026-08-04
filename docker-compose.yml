@@ -9,7 +9,8 @@ services:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
       # Edit src/Basil.Web/appsettings.json (or override via Basil__Server__... env vars below)
-      # before first run — Domain/AdminKey/CertPath/CertPassword all need real values.
+      # before first run — Domain/CertPath/CertPassword all need real values. The admin key is set
+      # separately at runtime via PUT /adminkey, not through this file (see run-deployment.md).
       - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
       # A TLS cert covering the domain + 9 subdomains is required — see run-deployment.md's
       # "Get a TLS certificate" step. Point CertPath below at wherever this is mounted.

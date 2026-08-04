@@ -4,8 +4,8 @@ namespace Basil.Web.Routing.Api;
 internal static class RouteDocs
 {
 	/// <summary>
-	///     Suffix fragment appended to admin-key-gated route descriptions, stating the `X-Admin-Key`
-	///     request-header requirement.
+	///     Suffix fragment appended to admin-key-gated route descriptions, stating the
+	///     `Authorization: Bearer` request-header requirement.
 	/// </summary>
-	public const string AdminKeyNote = " Requires a valid `X-Admin-Key` request header.";
+	public const string AdminKeyNote = " Requires a valid `Authorization: Bearer <admin-key>` request header.";
 }

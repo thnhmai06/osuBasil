@@ -58,13 +58,13 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = AdminKey
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
 				services.AddSingleton(mapsets);
 				services.AddSingleton(TestDoubles.NullMapRepository());
 				services.AddSingleton(Options.Create(new StorageOptions
@@ -88,7 +88,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
 	{
 		var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
-		if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+		if (adminKey is not null) request.Headers.Add("Authorization", $"Bearer {adminKey}");
 		return request;
 	}
 

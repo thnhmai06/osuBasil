@@ -1,10 +1,12 @@
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Security;
 using NSubstitute;
 
 namespace Basil.IntegrationTests;
@@ -74,6 +76,33 @@ internal static class TestDoubles
 		repo.FetchPasswordHashAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<string?>(null));
 		repo.FetchAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<User>>([]));
+		return repo;
+	}
+
+	/// <summary>
+	///     A stored admin key hash of <paramref name="correctKey" />, standing in for the real
+	///     Settings-table-backed repository in tests that run without a database
+	///     (<c>DatabaseOptions.Path == ""</c>) — used wherever a route only needs the admin-key gate
+	///     to work deterministically against one fixed key.
+	/// </summary>
+	public static ISettingsRepository FixedAdminKeySettingsRepository(string correctKey = "correct-key")
+	{
+		var repo = Substitute.For<ISettingsRepository>();
+		var hash = new BCryptPasswordHasher().Hash(Encoding.UTF8.GetBytes(correctKey));
+		repo.GetAsync("AdminKey:Hash", Arg.Any<CancellationToken>()).Returns(Task.FromResult<string?>(hash));
+		repo.GetAsync("AdminKey:LastChanged", Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<string?>(DateTimeOffset.UtcNow.ToString("O")));
+		return repo;
+	}
+
+	/// <summary>
+	///     No admin key hash stored — puts the server in bypass mode, where every admin-gated action
+	///     and in-game registration succeeds without a key.
+	/// </summary>
+	public static ISettingsRepository BypassAdminKeySettingsRepository()
+	{
+		var repo = Substitute.For<ISettingsRepository>();
+		repo.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<string?>(null));
 		return repo;
 	}
 }

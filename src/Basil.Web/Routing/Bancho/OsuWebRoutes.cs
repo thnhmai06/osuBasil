@@ -35,7 +35,6 @@ internal sealed class OsuWebRoutesLog;
 internal static class OsuWebRoutes
 {
 	private static readonly string[] MissingUsernamePasswordMsg = ["Username and password are required."];
-	private static readonly string[] RegisterDisabledMsg = ["In-game registration is disabled."];
 
 	private static readonly string[] InvalidAdminKeyMsg =
 		["Invalid AdminKey. Please enter the AdminKey in the Email field to continue."];
@@ -502,11 +501,11 @@ internal static class OsuWebRoutes
 		// Only "0" may create the account. Other values run every validation below and report errors
 		// the same way, but stop short of CreateAsync, so filling in earlier fields doesn't already
 		// register the account before the user reaches submittion.
-		// The Email field must contain the AdminKey configured in the [Server] section. If AdminKey is
-		// unset, registration is disabled entirely. Registered users get default privileges
-		// (Unrestricted | Verified | Supporter).
+		// The Email field must contain the server's admin key (see AdminKeyService), unless the
+		// server is in bypass mode (no key configured), in which case registration is open to
+		// anyone. Registered users get default privileges (Unrestricted | Verified | Supporter).
 		group.MapPost("/users", async (HttpContext context, IUserRepository users,
-				IPasswordHasher passwordHasher, IOptions<ServerOptions> serverOptions,
+				IPasswordHasher passwordHasher, AdminKeyService adminKeyService,
 				ILogger<OsuWebRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				var username = context.Request.Form["user[username]"].FirstOrDefault();
@@ -522,13 +521,9 @@ internal static class OsuWebRoutes
 					return Results.Json(new { form_error = new { user = new { username = new[] { usernameError } } } },
 						statusCode: StatusCodes.Status400BadRequest);
 
-				var adminKey = serverOptions.Value.AdminKey;
+				var isBypass = await adminKeyService.IsBypassAsync(cancellationToken);
 
-				if (string.IsNullOrEmpty(adminKey))
-					return Results.Json(new { form_error = new { user = new { email = RegisterDisabledMsg } } },
-						statusCode: StatusCodes.Status400BadRequest);
-
-				if (string.IsNullOrEmpty(email) || email != adminKey)
+				if (!isBypass && (string.IsNullOrEmpty(email) || !await adminKeyService.VerifyAsync(email, cancellationToken)))
 				{
 					// Only log on the real submittion (check=="0"). Per-field live-validation POSTs fire on
 					// every blur while the form is still being filled in, and would otherwise log this
@@ -564,9 +559,9 @@ internal static class OsuWebRoutes
 			                 "`check` is `\"0\"` for the real submit. Any other value is a live per-field " +
 			                 "validation POST the client fires while the form is still being filled in; it runs the " +
 			                 "same validation but does not create the account.\n\n" +
-			                 "The `user_email` field must exactly match the server's configured `Basil:Server:AdminKey`, " +
-			                 "which gates registration. Registration is disabled entirely when `Basil:Server:AdminKey` " +
-			                 "is unset.\n\n" +
+			                 "The `user_email` field must match the server's admin key, which gates registration. " +
+			                 "Registration is open to anyone while the server is in bypass mode (no admin key " +
+			                 "configured).\n\n" +
 			                 "New accounts get default privileges (Unrestricted | Verified | Supporter).")
 			.WithTags("Registration");
 

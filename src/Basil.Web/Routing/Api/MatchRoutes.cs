@@ -54,7 +54,7 @@ internal static class MatchRoutes
 			.WithDescription("""
 			                 Lists matches by status.
 
-			                 `online` (default) returns matches that are live right now, `offline` returns closed matches, and `all` returns both, newest first. A private live match appears only for callers with a valid `X-Admin-Key`.
+			                 `online` (default) returns matches that are live right now, `offline` returns closed matches, and `all` returns both, newest first. A private live match appears only for callers with a valid admin key.
 
 			                 Results are paginated with `page` (default 1) and `pageSize` (default 50).
 			                 """)

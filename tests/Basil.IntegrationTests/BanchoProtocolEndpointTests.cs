@@ -35,6 +35,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 			});
 		});

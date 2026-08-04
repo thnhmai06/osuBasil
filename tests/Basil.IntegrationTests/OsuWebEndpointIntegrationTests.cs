@@ -31,15 +31,16 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = ""
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullMapRepository());
 				services.AddSingleton(TestDoubles.NullMapsetRepository());
+				services.AddSingleton(TestDoubles.NullUserRepository());
 			});
 		});
 	}
@@ -161,7 +162,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 	}
 
 	[Fact]
-	public async Task Register_NoAdminKey_ReturnsInGameRegistrationDisabled()
+	public async Task Register_BypassMode_SkipsAdminKeyCheck()
 	{
 		var client = _factory.CreateClient();
 
@@ -174,8 +175,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 		var response = await client.SendAsync(request);
 		var body = await response.Content.ReadAsStringAsync();
 
-		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-		Assert.Contains("In-game registration is disabled", body);
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal("", body);
 	}
 
 	[Fact]

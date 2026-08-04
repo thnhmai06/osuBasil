@@ -29,7 +29,7 @@ internal sealed class BeatmapsetRoutesLog;
 /// </summary>
 /// <remarks>
 ///     Reads are public, though a private beatmapset is only visible to callers with a valid
-///     `X-Admin-Key`. Creating, replacing, updating, and deleting beatmapsets require administrator
+///     admin key. Creating, replacing, updating, and deleting beatmapsets require administrator
 ///     authorization. Replacing and deleting are asynchronous: they return `202 Accepted` and the
 ///     change becomes observable shortly after.
 /// </remarks>
@@ -50,7 +50,7 @@ internal static class BeatmapsetRoutes
 			.WithDescription("""
 			                 Returns a page of beatmapsets, each with its difficulty count.
 
-			                 Query params: `page` (default 1) and `pageSize` (default 50). A private beatmapset is excluded entirely unless the caller carries a valid `X-Admin-Key`.
+			                 Query params: `page` (default 1) and `pageSize` (default 50). A private beatmapset is excluded entirely unless the caller carries a valid admin key.
 			                 """)
 			.WithTags("Beatmapsets")
 			.Produces<PagedResult<BeatmapsetSummary>>()

@@ -29,7 +29,10 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 				});
 			});
 			builder.ConfigureServices(services =>
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" })));
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+			});
 		});
 	}
 

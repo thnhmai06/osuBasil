@@ -32,13 +32,13 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = AdminKey
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
 				services.AddSingleton(Options.Create(new StorageOptions
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -63,7 +63,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = null)
 	{
 		var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
-		if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+		if (adminKey is not null) request.Headers.Add("Authorization", $"Bearer {adminKey}");
 		return request;
 	}
 

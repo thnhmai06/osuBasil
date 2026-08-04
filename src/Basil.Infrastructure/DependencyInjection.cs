@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Abstractions.Users;
@@ -104,6 +105,10 @@ public static class DependencyInjection
 			new SqliteMatchRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteMatchRepository>>()));
 		services.AddSingleton<ILeaderboardStore>(sp => new SqliteLeaderboardStore(BuildConnectionString(sp)));
+		services.AddSingleton<ISettingsRepository>(sp =>
+			new CachingSettingsRepository(
+				new SqliteSettingsRepository(BuildConnectionString(sp)),
+				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingSettingsRepository>>()));
 
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();

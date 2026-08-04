@@ -35,7 +35,10 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 				});
 			});
 			builder.ConfigureServices(services =>
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" })));
+			{
+				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+			});
 		});
 	}
 
@@ -200,9 +203,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
 
 		var scheme = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminKey");
-		Assert.Equal("apiKey", scheme.GetProperty("type").GetString());
-		Assert.Equal("X-Admin-Key", scheme.GetProperty("name").GetString());
-		Assert.Equal("header", scheme.GetProperty("in").GetString());
+		Assert.Equal("http", scheme.GetProperty("type").GetString());
+		Assert.Equal("bearer", scheme.GetProperty("scheme").GetString());
 
 		var adminOp = document.GetProperty("paths").GetProperty("/users/{userId}").GetProperty("put");
 		Assert.True(adminOp.GetProperty("security")[0].TryGetProperty("AdminKey", out _));

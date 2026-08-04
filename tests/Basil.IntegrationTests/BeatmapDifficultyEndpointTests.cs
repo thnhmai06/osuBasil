@@ -197,13 +197,13 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = "correct-key"
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
 				services.AddSingleton(mapsets);
 				services.AddSingleton(Options.Create(new StorageOptions

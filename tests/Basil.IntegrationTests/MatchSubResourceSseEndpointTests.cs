@@ -43,13 +43,13 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = AdminKey
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
 				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});
@@ -59,7 +59,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
 	{
 		var request = new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
-		if (adminKey is not null) request.Headers.Add("X-Admin-Key", adminKey);
+		if (adminKey is not null) request.Headers.Add("Authorization", $"Bearer {adminKey}");
 		return request;
 	}
 

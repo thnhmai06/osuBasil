@@ -83,6 +83,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(scores);
 				services.AddSingleton(matchRegistry);

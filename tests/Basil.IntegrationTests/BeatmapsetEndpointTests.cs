@@ -71,13 +71,13 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = "correct-key"
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
 				services.AddSingleton(mapsets);
 				services.AddSingleton(scores);
@@ -400,7 +400,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	public async Task OldAdminBeatmapLookup_GetNoLongerSupported()
 	{
 		var request = MakeRequest(HttpMethod.Get, "/beatmaps/1");
-		request.Headers.Add("X-Admin-Key", "correct-key");
+		request.Headers.Add("Authorization", "Bearer correct-key");
 
 		var response = await _factory.CreateClient().SendAsync(request);
 

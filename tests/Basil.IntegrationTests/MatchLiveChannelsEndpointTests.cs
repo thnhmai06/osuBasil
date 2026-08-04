@@ -34,13 +34,13 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 				config.AddInMemoryCollection(new Dictionary<string, string?>
 				{
 					["Basil:Server:Domain"] = "test.local",
-					["Basil:Bot:CommandPrefix"] = "!",
-					["Basil:Server:AdminKey"] = AdminKey
+					["Basil:Bot:CommandPrefix"] = "!"
 				});
 			});
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
 				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});
@@ -85,7 +85,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var client = _factory.CreateClient();
 		var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches")
 			{ Headers = { Host = "api.test.local" } };
-		createRequest.Headers.Add("X-Admin-Key", AdminKey);
+		createRequest.Headers.Add("Authorization", $"Bearer {AdminKey}");
 		createRequest.Content = JsonContent.Create(new { });
 		var createResponse = await client.SendAsync(createRequest);
 		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -111,7 +111,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var client = _factory.CreateClient();
 		var createRequest = new HttpRequestMessage(HttpMethod.Post, "/matches")
 			{ Headers = { Host = "api.test.local" } };
-		createRequest.Headers.Add("X-Admin-Key", AdminKey);
+		createRequest.Headers.Add("Authorization", $"Bearer {AdminKey}");
 		createRequest.Content = JsonContent.Create(new { });
 		var createResponse = await client.SendAsync(createRequest);
 		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();

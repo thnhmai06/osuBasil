@@ -52,6 +52,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(users);
 				services.AddSingleton(TestDoubles.FixedPasswordHasher());
