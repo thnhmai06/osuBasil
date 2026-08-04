@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
@@ -15,6 +16,7 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Cache;
+using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Media;
 using Basil.Infrastructure.Performance;
@@ -109,6 +111,10 @@ public static class DependencyInjection
 			new CachingSettingsRepository(
 				new SqliteSettingsRepository(BuildConnectionString(sp)),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingSettingsRepository>>()));
+
+		services.AddSingleton<IMotdProvider>(sp =>
+			new FileMotdProvider(Path.Combine(AppContext.BaseDirectory, "Data"),
+				sp.GetRequiredService<ILogger<FileMotdProvider>>()));
 
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();

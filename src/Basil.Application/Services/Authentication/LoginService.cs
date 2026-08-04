@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
@@ -45,11 +46,10 @@ public sealed class LoginService(
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
 	MenuIconService menuIconService,
+	IMotdProvider motdProvider,
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
-	private static readonly string MotdPath = Path.Combine("Data", "MOTD.txt");
-
 	private static readonly string InactionableDiskSignatureMd5 =
 		Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
 
@@ -304,12 +304,10 @@ public sealed class LoginService(
 	/// <returns>
 	///     The notification packet to append to the login bundle, or <see langword="null" /> for none.
 	/// </returns>
-	private static byte[]? WelcomeNotification()
+	private byte[]? WelcomeNotification()
 	{
-		var motdPath = Path.Combine(AppContext.BaseDirectory, MotdPath);
-		if (!File.Exists(motdPath)) return null;
-		var text = File.ReadAllText(motdPath).TrimEnd();
-		return !string.IsNullOrEmpty(text) ? ServerPacketWriter.Notification(text) : null;
+		var text = motdProvider.GetText();
+		return text is not null ? ServerPacketWriter.Notification(text) : null;
 	}
 
 	/// <summary>

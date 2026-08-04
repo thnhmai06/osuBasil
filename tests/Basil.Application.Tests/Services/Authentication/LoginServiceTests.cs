@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
@@ -43,19 +44,23 @@ public class LoginServiceTests
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 	private readonly MenuIconService _menuIconService;
+	private readonly IMotdProvider _motdProvider = Substitute.For<IMotdProvider>();
 
 	public LoginServiceTests()
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
+		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
+		// this explicitly so every test's happy path matches "no MOTD configured" unless overridden.
+		_motdProvider.GetText().Returns((string?)null);
 	}
 
 	private LoginService MakeUseCase()
 	{
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService, _motdProvider,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -422,35 +427,23 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task MotdFile_WhenFileExists_SendsNotification()
+	public async Task MotdText_WhenSet_SendsNotification()
 	{
-		var motdPath = Path.Combine(AppContext.BaseDirectory, "Data", "MOTD.txt");
-		try
-		{
-			Directory.CreateDirectory(Path.GetDirectoryName(motdPath)!);
-			await File.WriteAllTextAsync(motdPath, "Test message of the day!");
-			SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+		_motdProvider.GetText().Returns("Test message of the day!");
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
-			var useCase = MakeUseCase();
-			var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
-			var result = await useCase.ExecuteAsync(request);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
 
-			var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
-			var bodyHex = Convert.ToHexString(result.ResponseBody);
-			Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
-		}
-		finally
-		{
-			File.Delete(motdPath);
-		}
+		var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
 	}
 
 	[Fact]
-	public async Task MotdFile_WhenFileMissing_SendsNoNotification()
+	public async Task MotdText_WhenUnset_SendsNoNotification()
 	{
-		var motdPath = Path.Combine(AppContext.BaseDirectory, "Data", "MOTD.txt");
-		if (File.Exists(motdPath)) File.Delete(motdPath);
-
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
@@ -503,6 +496,11 @@ public class LoginServiceTests
 	[Fact]
 	public async Task MenuIconPath_WhenUnset_SendsNoMainMenuIconPacket()
 	{
+		// NSubstitute's default for an unconfigured Task<string?>-returning member is a completed
+		// Task wrapping "", not null — stub both keys explicitly so "unset" here matches what the
+		// real Settings-table-backed repository returns for a row whose Value is SQL NULL.
+		_settings.GetAsync("MenuIcon:Path", Arg.Any<CancellationToken>()).Returns((string?)null);
+		_settings.GetAsync("MenuIcon:Url", Arg.Any<CancellationToken>()).Returns((string?)null);
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
