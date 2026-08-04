@@ -21,6 +21,8 @@ internal sealed class MenuIconRoutesLog;
 /// <remarks>
 ///     The icon and its URL are publicly readable, while setting or deleting them require
 ///     administrator authorization. Both are singletons: setting one replaces whatever was set before.
+///     The icon is either an uploaded image file or an external URL — never both at once; setting one
+///     form replaces the other.
 /// </remarks>
 internal static class MenuIconRoutes
 {
@@ -35,10 +37,11 @@ internal static class MenuIconRoutes
 	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMenuIconRoutes(this RouteGroupBuilder group)
 	{
-		group.MapGet("/menuicon/icon", () =>
+		group.MapGet("/menuicon/icon", async (MenuIconService menuIcon, CancellationToken cancellationToken) =>
 			{
-				var path = MenuIconService.FindIconPath();
-				return path is null ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
+				var path = await menuIcon.GetPathAsync(cancellationToken);
+				if (path is null || MenuIconService.IsExternalUrl(path)) return Results.NotFound();
+				return File.Exists(path) ? Results.File(path, ContentTypes.Resolve(path)) : Results.NotFound();
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMenuIcon")
@@ -46,7 +49,8 @@ internal static class MenuIconRoutes
 			.WithDescription("""
 			                 Serves the in-game main menu icon image. Content-Type is taken from the file extension.
 
-			                 Returns `404 Not Found` if none is set.
+			                 Returns `404 Not Found` if none is set, or if the icon is currently an external URL —
+			                 in that case the login packet embeds the URL directly and clients never call this route.
 			                 """)
 			.WithTags("Menu Icon Image")
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -55,9 +59,9 @@ internal static class MenuIconRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("setMenuIcon")
-			.WithSummary("Set menu icon.")
+			.WithSummary("Set menu icon from an upload.")
 			.WithDescription("Multipart upload, field name `file`, must be `.png`, `.jpg`, `.jpeg`, or `.gif`. " +
-			                 "Replaces whatever icon is currently set, or sets one if none is set." +
+			                 "Replaces whatever icon is currently set (uploaded file or external URL)." +
 			                 LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon Image")
 			.WithMultipartFileUpload()
@@ -66,9 +70,24 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-		group.MapDelete("/menuicon/icon", (ILogger<MenuIconRoutesLog> logger) =>
+		group.MapPatch("/menuicon/icon", HandleSetExternalIcon)
+			.RequireAuthorization(AdminKeyDefaults.Policy)
+			.WithGroupName("basilapi")
+			.WithName("setMenuIconExternalUrl")
+			.WithSummary("Set menu icon to an external image URL.")
+			.WithDescription("Body: `{ url }`. Replaces whatever icon is currently set (uploaded file or external " +
+			                 "URL) with a reference to an externally hosted image; nothing is uploaded to this " +
+			                 "server." + LoginEffectNote + AdminKeyNote)
+			.WithTags("Menu Icon Image")
+			.Produces<MenuIconChangedView>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("URL must start with http:// or https://."));
+
+		group.MapDelete("/menuicon/icon", async (MenuIconService menuIcon, ILogger<MenuIconRoutesLog> logger,
+				CancellationToken cancellationToken) =>
 			{
-				MenuIconService.DeleteIcon();
+				await menuIcon.DeleteIconAsync(cancellationToken);
 				logger.LogInformation("Menu icon deleted via admin API");
 				return Results.Json(new MenuIconChangedView(true,
 					$"Menu icon removed.{LoginEffectNote}"));
@@ -84,10 +103,10 @@ internal static class MenuIconRoutes
 			.WithExample(StatusCodes.Status200OK,
 				new MenuIconChangedView(true, $"Menu icon removed.{LoginEffectNote}"));
 
-		group.MapGet("/menuicon/url", () =>
+		group.MapGet("/menuicon/url", async (MenuIconService menuIcon, CancellationToken cancellationToken) =>
 			{
-				var url = MenuIconService.ReadUrl()
-				          ?? (MenuIconService.FindIconPath() is not null
+				var url = await menuIcon.ReadUrlAsync(cancellationToken)
+				          ?? (await menuIcon.GetPathAsync(cancellationToken) is not null
 					          ? "https://github.com/thnhmai06/osuBasil"
 					          : null);
 				return Results.Json(new MenuIconUrlView(url));
@@ -104,10 +123,10 @@ internal static class MenuIconRoutes
 			.Produces<MenuIconUrlView>()
 			.WithExample(StatusCodes.Status200OK, new MenuIconUrlView("https://github.com/thnhmai06/osuBasil"));
 
-		group.MapPut("/menuicon/url", async (MenuIconUrlBody body,
+		group.MapPut("/menuicon/url", async (MenuIconUrlBody body, MenuIconService menuIcon,
 				ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
-				await MenuIconService.SaveUrlAsync(body.Url, cancellationToken);
+				await menuIcon.SaveUrlAsync(body.Url, cancellationToken);
 				logger.LogInformation("Menu icon URL updated via admin API");
 				return Results.Json(new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));
 			})
@@ -124,7 +143,7 @@ internal static class MenuIconRoutes
 				new MenuIconChangedView(true, $"Menu icon URL updated.{LoginEffectNote}"));
 	}
 
-	private static async Task<IResult> HandleReplaceIcon(HttpContext context,
+	private static async Task<IResult> HandleReplaceIcon(HttpContext context, MenuIconService menuIcon,
 		ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
@@ -139,8 +158,19 @@ internal static class MenuIconRoutes
 			return Results.BadRequest(new ErrorResponse("Only .png/.jpg/.jpeg/.gif uploads are accepted."));
 
 		await using var stream = file.OpenReadStream();
-		await MenuIconService.SaveIconAsync(stream, extension, cancellationToken);
+		await menuIcon.SaveIconAsync(stream, extension, cancellationToken);
 		logger.LogInformation("Menu icon updated via admin API");
+		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));
+	}
+
+	private static async Task<IResult> HandleSetExternalIcon(MenuIconUrlBody body, MenuIconService menuIcon,
+		ILogger<MenuIconRoutesLog> logger, CancellationToken cancellationToken)
+	{
+		if (!MenuIconService.IsExternalUrl(body.Url))
+			return Results.BadRequest(new ErrorResponse("URL must start with http:// or https://."));
+
+		await menuIcon.SetExternalIconAsync(body.Url, cancellationToken);
+		logger.LogInformation("Menu icon set to external URL via admin API");
 		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));
 	}
 
@@ -150,6 +180,6 @@ internal static class MenuIconRoutes
 	/// <summary>Response body for `GET /menuicon/url`.</summary>
 	public sealed record MenuIconUrlView(string? Url);
 
-	/// <summary>Request body for `PUT /menuicon/url`.</summary>
+	/// <summary>Request body for `PUT /menuicon/url` and `PATCH /menuicon/icon`.</summary>
 	public sealed record MenuIconUrlBody(string Url);
 }

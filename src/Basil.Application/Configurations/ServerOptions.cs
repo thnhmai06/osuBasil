@@ -7,7 +7,7 @@ namespace Basil.Application.Configurations;
 ///     <see cref="Domain" /> is the apex domain this server's subdomains respond under. There is no
 ///     static menu-icon or menu-click URL setting here; see
 ///     <see cref="Basil.Application.Services.Content.MenuIconService" /> for the
-///     runtime-configurable, file-backed replacement.
+///     runtime-configurable, database-backed replacement.
 /// </remarks>
 public sealed class ServerOptions
 {

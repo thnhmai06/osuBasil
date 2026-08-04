@@ -1,11 +1,13 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Abstractions.Login;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -39,18 +41,21 @@ public class LoginServiceTests
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
+	private readonly MenuIconService _menuIconService;
 
 	public LoginServiceTests()
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
+		_menuIconService = new MenuIconService(_settings);
 	}
 
 	private LoginService MakeUseCase()
 	{
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _tokenGenerator, _spectatorService,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -460,36 +465,44 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task MenuIconFile_WhenExists_SendsMainMenuIconPacket()
+	public async Task MenuIconLocalPath_WhenSet_SendsMainMenuIconPacket()
 	{
-		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
-		try
-		{
-			Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
-			await File.WriteAllBytesAsync(iconPath, [1]);
-			SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+		_settings.GetAsync("MenuIcon:Path", Arg.Any<CancellationToken>())
+			.Returns((string?)Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png"));
+		_settings.GetAsync("MenuIcon:Url", Arg.Any<CancellationToken>()).Returns((string?)null);
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
-			var useCase = MakeUseCase();
-			var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
-			var result = await useCase.ExecuteAsync(request);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
 
-			var expectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
-				"https://github.com/thnhmai06/osuBasil");
-			var bodyHex = Convert.ToHexString(result.ResponseBody);
-			Assert.Contains(Convert.ToHexString(expectedPacket), bodyHex);
-		}
-		finally
-		{
-			File.Delete(iconPath);
-		}
+		var expectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
+			"https://github.com/thnhmai06/osuBasil");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.Contains(Convert.ToHexString(expectedPacket), bodyHex);
 	}
 
 	[Fact]
-	public async Task MenuIconFile_WhenMissing_SendsNoMainMenuIconPacket()
+	public async Task MenuIconExternalUrl_WhenSet_SendsMainMenuIconPacketWithThatUrl()
 	{
-		var iconPath = Path.Combine(AppContext.BaseDirectory, "Data", "MenuIcon.png");
-		if (File.Exists(iconPath)) File.Delete(iconPath);
+		_settings.GetAsync("MenuIcon:Path", Arg.Any<CancellationToken>())
+			.Returns((string?)"https://example.test/icon.png");
+		_settings.GetAsync("MenuIcon:Url", Arg.Any<CancellationToken>()).Returns((string?)null);
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
+
+		var expectedPacket = ServerPacketWriter.MainMenuIcon("https://example.test/icon.png",
+			"https://github.com/thnhmai06/osuBasil");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.Contains(Convert.ToHexString(expectedPacket), bodyHex);
+	}
+
+	[Fact]
+	public async Task MenuIconPath_WhenUnset_SendsNoMainMenuIconPacket()
+	{
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();

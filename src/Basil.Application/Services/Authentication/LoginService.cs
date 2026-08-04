@@ -44,6 +44,7 @@ public sealed class LoginService(
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
+	MenuIconService menuIconService,
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
@@ -206,10 +207,13 @@ public sealed class LoginService(
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
 		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
 
-		if (MenuIconService.FindIconPath() is not null)
+		var menuIconPath = await menuIconService.GetPathAsync(cancellationToken);
+		if (menuIconPath is not null)
 		{
-			var menuIconUrl = $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
-			var onclickUrl = MenuIconService.ReadUrl() ?? "https://github.com/thnhmai06/osuBasil";
+			var menuIconUrl = MenuIconService.IsExternalUrl(menuIconPath)
+				? menuIconPath
+				: $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
+			var onclickUrl = await menuIconService.ReadUrlAsync(cancellationToken) ?? "https://github.com/thnhmai06/osuBasil";
 			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
 

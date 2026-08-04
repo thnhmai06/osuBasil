@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
+using Basil.Infrastructure.Security;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -10,11 +12,13 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers `/menuicon/icon` (`GET`/`PUT`/`DELETE`) and `/menuicon/url` (`GET`/`PUT` — no `DELETE`,
-///     the icon file's presence is the only on/off switch). Both are singletons backed by
-///     `Data/MenuIcon.{ext}`/`Data/MenuIconUrl.txt` under the running executable's directory (not a
-///     `StorageOptions` path, so — unlike avatar/seasonal tests — these tests share that fixed
-///     location and must clean it up themselves).
+///     Covers `/menuicon/icon` (`GET`/`PUT`/`PATCH`/`DELETE`) and `/menuicon/url` (`GET`/`PUT` — no
+///     `DELETE`, the icon's presence is the only on/off switch). Backed by a real, stateful
+///     <see cref="InMemorySettingsRepository" /> (not a canned substitute), since these tests need
+///     read-your-writes across `PUT`/`PATCH`/`DELETE` then `GET`. An uploaded icon's bytes still land
+///     on disk under `Data/MenuIcon.{ext}` (not a `StorageOptions` path, so — unlike avatar/seasonal
+///     tests — these tests share that fixed location and must clean it up themselves), even though
+///     the pointer to it now lives in the (in-memory, per-test) Settings repository.
 /// </summary>
 public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
@@ -38,7 +42,10 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				var settings = new InMemorySettingsRepository()
+					.Seed("AdminKey:Hash", new BCryptPasswordHasher().Hash(Encoding.UTF8.GetBytes(AdminKey)))
+					.Seed("AdminKey:LastChanged", DateTimeOffset.UtcNow.ToString("O"));
+				services.AddSingleton<ISettingsRepository>(settings);
 			});
 		});
 	}
@@ -52,8 +59,6 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		if (!Directory.Exists(DataDir)) return;
 		foreach (var file in Directory.EnumerateFiles(DataDir, "MenuIcon.*")) File.Delete(file);
-		var urlPath = Path.Combine(DataDir, "MenuIconUrl.txt");
-		if (File.Exists(urlPath)) File.Delete(urlPath);
 	}
 
 	private static HttpRequestMessage MakeRequest(HttpMethod method, string path, string? adminKey = AdminKey)
@@ -128,6 +133,48 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var request = MakeRequest(HttpMethod.Put, "/menuicon/icon", null);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "icon.png" } };
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task PatchIcon_ExternalUrl_ReplacesUploadAndIsNotServedByGet()
+	{
+		var client = _factory.CreateClient();
+		await client.SendAsync(MakeUploadRequest());
+
+		var patchRequest = MakeRequest(HttpMethod.Patch, "/menuicon/icon");
+		patchRequest.Content = new StringContent("""{"url":"https://example.test/icon.png"}""", Encoding.UTF8,
+			"application/json");
+		var patchResponse = await client.SendAsync(patchRequest);
+
+		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+		Assert.Empty(Directory.EnumerateFiles(DataDir, "MenuIcon.*"));
+
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menuicon/icon"));
+		Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+	}
+
+	[Fact]
+	public async Task PatchIcon_NotAUrl_ReturnsBadRequest()
+	{
+		var client = _factory.CreateClient();
+
+		var request = MakeRequest(HttpMethod.Patch, "/menuicon/icon");
+		request.Content = new StringContent("""{"url":"not-a-url"}""", Encoding.UTF8, "application/json");
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task PatchIcon_MissingAdminKey_ReturnsUnauthorized()
+	{
+		var request = MakeRequest(HttpMethod.Patch, "/menuicon/icon", null);
+		request.Content = new StringContent("""{"url":"https://example.test/icon.png"}""", Encoding.UTF8,
+			"application/json");
 
 		var response = await _factory.CreateClient().SendAsync(request);
 
