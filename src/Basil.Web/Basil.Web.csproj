@@ -3,6 +3,13 @@
 	<PropertyGroup>
 		<SelfContained>true</SelfContained>
 		<Version>1.0.0</Version>
+		<FileVersion>1.0.0</FileVersion>
+		<Product>Basil</Product>
+		<Authors>Mai Thành (thnhmai06)</Authors>
+		<Description>A lightweight, high-performance osu! server for tournaments and multiplayer.</Description>
+		<Copyright>Copyright © 2026 Mai Thành. Licensed under the MIT License.</Copyright>
+		<ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -14,10 +21,12 @@
 	<ItemGroup>
 		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
 		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
+		<EmbeddedResource Include="..\..\assets\menuicon.jpg" Link="Data\MenuIcon.jpg"/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<Content Include="Data\MOTD.txt" CopyToOutputDirectory="PreserveNewest"/>
+		<Content Include="Data\MenuIconUrl.txt" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Include="docs-site\**" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 

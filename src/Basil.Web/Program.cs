@@ -35,7 +35,7 @@ public sealed class Program
 	private const string BasilDescription =
 		"A lightweight, high-performance osu! server for tournaments and multiplayer.";
 
-	private const string BasilLicense = "Licensed under the MIT License.";
+	private const string BasilLicense = "Copyright © 2026 Mai Thành. Licensed under the MIT License.";
 
 	private const string BasilArt =
 		"""
