@@ -130,11 +130,12 @@ public class PlayerLogoutServiceTests
 	public async Task Logout_WhileInAMatch_LeavesTheMatchSoItDoesNotAccumulateAGhostSlot()
 	{
 		var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
-		var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry();
+		var matchRepository = new MultiplayerTestSupport.FakeMatchRepository();
+		var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(channelRegistry, matchRepository);
 		var sessionRegistry = Substitute.For<IUserSessionRegistry>();
 		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
 			new ChannelMembershipService(sessionRegistry, channelRegistry),
-			new MultiplayerTestSupport.FakeMatchRepository(),
+			matchRepository,
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
 			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);

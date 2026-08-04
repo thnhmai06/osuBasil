@@ -37,7 +37,6 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
-
 		if (!MatchMembershipService.ValidateMatchData(matchData, userSession.Id)) return;
 
 		if (userSession.Restricted)
@@ -59,12 +58,6 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
 		}
 
 		var match = await matchMembership.CreateAsync(userSession, matchData, cancellationToken: cancellationToken);
-		if (match is null)
-		{
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
-			return;
-		}
-
 		match.AddReferee(userSession.Id);
 	}
 }

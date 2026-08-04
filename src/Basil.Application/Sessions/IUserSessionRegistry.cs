@@ -8,7 +8,7 @@ namespace Basil.Application.Sessions;
 public interface IUserSessionRegistry
 {
 	/// <summary>Gets a snapshot of every currently registered userSession session.</summary>
-	IReadOnlyList<UserSession> All { get; }
+	IReadOnlyCollection<UserSession> All { get; }
 
 	/// <summary>
 	///     Adds <paramref name="session" /> to the registry so the userSession becomes discoverable to

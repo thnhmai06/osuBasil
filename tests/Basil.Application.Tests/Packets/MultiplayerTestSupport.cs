@@ -130,13 +130,14 @@ internal static class MultiplayerTestSupport
 
 		public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
 
-		public IReadOnlyList<ChannelSession> All => [.. _byName.Values];
+		public IReadOnlyCollection<ChannelSession> All => [.. _byName.Values];
 	}
 
-	public sealed class FakeMatchRegistry : IMatchRegistry
+	public sealed class FakeMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
+		: IMatchRegistry
 	{
 		private readonly Dictionary<int, MatchSession> _byId = new();
-		private int _nextId;
+		private int _nextDbId = 1;
 
 		public MatchSession? GetById(int id)
 		{
@@ -148,20 +149,34 @@ internal static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public MatchSession TryCreate(Func<int, MatchSession> factory)
+		public Task<MatchSession> CreateAsync(MatchState data, int hostId, bool createdViaMakeCommand = false,
+			CancellationToken cancellationToken = default)
 		{
-			var match = factory(_nextId);
-			_byId[_nextId] = match;
-			_nextId++;
-			return match;
+			var id = 0;
+			while (_byId.ContainsKey(id)) id++;
+
+			var match = new MatchSession(
+				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
+				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#multi_{id}", createdViaMakeCommand)
+			{
+				DbId = _nextDbId++
+			};
+			_byId[id] = match;
+			channelRegistry.Add(new ChannelSession(
+				0, match.ChatChannelName, $"MID {match.Id}'s multiplayer channel.",
+				0, 0, false, "#multiplayer", true));
+			return Task.FromResult(match);
 		}
 
 		public void Remove(int id)
 		{
-			_byId.Remove(id);
+			if (!_byId.Remove(id, out var match)) return;
+			channelRegistry.Remove(match.ChatChannelName);
+			_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
 		}
 
-		public IReadOnlyList<MatchSession> All => [.. _byId.Values];
+		public IReadOnlyCollection<MatchSession> All => [.. _byId.Values];
 	}
 
 	/// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
@@ -351,6 +366,8 @@ internal static class MultiplayerTestSupport
 	{
 		public Fixture()
 		{
+			MatchRegistry = new FakeMatchRegistry(ChannelRegistry, MatchRepository);
+
 			BeatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
@@ -360,7 +377,7 @@ internal static class MultiplayerTestSupport
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
-		public FakeMatchRegistry MatchRegistry { get; } = new();
+		public FakeMatchRegistry MatchRegistry { get; }
 		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
 		public IUserSessionRegistry SessionRegistry { get; } = Substitute.For<IUserSessionRegistry>();

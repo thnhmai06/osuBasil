@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Abstractions.Bot;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
@@ -11,8 +12,11 @@ using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
@@ -52,7 +56,8 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), new InMemoryMatchRegistry(),
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
@@ -120,7 +125,8 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
-			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), new InMemoryMatchRegistry(),
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
@@ -306,6 +312,76 @@ public class TcpIrcConnectionTests
 			CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult(false);
+		}
+	}
+
+	/// <summary>Unused by this test — no match is ever created, just chat login/privmsg.</summary>
+	private sealed class NotSupportedMatchRepository : IMatchRepository
+	{
+		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5, GameMode mode,
+			MatchWinCondition winCondition, MatchTeamType teamType, Mods mods, DateTime startedAt,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<Match?> FetchMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<Round>> FetchRoundsAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<Match>> FetchAllMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task DeleteMatchAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task CreateEventAsync(MatchEvent row, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<MatchEvent>> FetchEventsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<Match>> FetchUnrecoveredMatchesAsync(CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<Round>> FetchUnrecoveredRoundsAsync(int matchId,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
 		}
 	}
 }

@@ -1,3 +1,5 @@
+using Basil.Protocol.Multiplayer;
+
 namespace Basil.Application.Sessions.Multiplayer;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Basil.Application.Sessions.Multiplayer;
 public interface IMatchRegistry
 {
 	/// <summary>Gets a snapshot of every registered match session.</summary>
-	IReadOnlyList<MatchSession> All { get; }
+	IReadOnlyCollection<MatchSession> All { get; }
 
 	/// <summary>
 	///     Gets the match registered under the wire-protocol id <paramref name="id" />, or null if
@@ -27,16 +29,22 @@ public interface IMatchRegistry
 	MatchSession? GetByDbId(int dbId);
 
 	/// <summary>
-	///     Atomically allocates the lowest free wire-protocol id and registers the session that
-	///     <paramref name="factory" /> builds for that id.
+	///     Atomically allocates the lowest free wire-protocol id and registers the session.
 	/// </summary>
 	/// <remarks>
 	///     Finding the free id and registering the session must happen as one step: if they were
 	///     separated, two concurrent creations could claim the same id.
 	/// </remarks>
-	/// <param name="factory">A factory that builds a match for a given id.</param>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="hostId">The id of the userSession who created the room.</param>
+	/// <param name="createdViaMakeCommand">
+	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
+	///     <see langword="false" />.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the create operations.</param>
 	/// <returns>The newly registered match.</returns>
-	MatchSession TryCreate(Func<int, MatchSession> factory);
+	Task<MatchSession> CreateAsync(MatchState data, int hostId, bool createdViaMakeCommand = false,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Unregisters the match with the wire-protocol id <paramref name="id" />, called when a

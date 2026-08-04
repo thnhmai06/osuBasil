@@ -26,7 +26,7 @@ public class MatchMembershipServiceTests
 	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();
 
 	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
-	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = new();
+	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry;
 
 	private readonly FakeMatchRepository _matchRepository = new();
 	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
@@ -35,6 +35,8 @@ public class MatchMembershipServiceTests
 
 	public MatchMembershipServiceTests()
 	{
+		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
+
 		_beatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
 	}

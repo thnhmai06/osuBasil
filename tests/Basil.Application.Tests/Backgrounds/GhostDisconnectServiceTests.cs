@@ -225,6 +225,6 @@ public class GhostDisconnectServiceTests
 			return _byToken.Values.FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
 		}
 
-		public IReadOnlyList<UserSession> All => [.. _byToken.Values];
+		public IReadOnlyCollection<UserSession> All => [.. _byToken.Values];
 	}
 }

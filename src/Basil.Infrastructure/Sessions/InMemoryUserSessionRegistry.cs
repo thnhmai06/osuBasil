@@ -54,5 +54,5 @@ public sealed class InMemoryUserSessionRegistry : IUserSessionRegistry
 	}
 
 	/// <inheritdoc />
-	public IReadOnlyList<UserSession> All => [.. _byToken.Values];
+	public IReadOnlyCollection<UserSession> All => (IReadOnlyCollection<UserSession>)_byToken.Values;
 }

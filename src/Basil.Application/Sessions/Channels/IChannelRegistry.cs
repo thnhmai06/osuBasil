@@ -13,7 +13,7 @@ public interface IChannelRegistry
 	IReadOnlyList<ChannelSession> AutoJoinChannels { get; }
 
 	/// <summary>Gets a snapshot of every registered channel.</summary>
-	IReadOnlyList<ChannelSession> All { get; }
+	IReadOnlyCollection<ChannelSession> All { get; }
 
 	/// <summary>
 	///     Replaces the registry contents with the DB-backed channels in <paramref name="channels" />,

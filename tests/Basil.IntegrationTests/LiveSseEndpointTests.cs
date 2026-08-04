@@ -46,10 +46,9 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
-				// A stub avoids needing a real SQLite file for these plumbing tests (IMatchRepository
-				// is still resolved by other services in the DI graph even though the main SSE route itself
-				// no longer touches it — see RegisterLiveMatch, which registers matches directly against
-				// IMatchRegistry instead of going through the real persistence-backed creation flow).
+				// A stub avoids needing a real SQLite file for these plumbing tests. IMatchRegistry.CreateAsync
+				// persists a row for every match it registers, so this stub must actually complete
+				// (not throw) for RegisterLiveMatch to work — it just never returns anything durable.
 				services.AddSingleton<IMatchRepository>(new NeverPersistedMatchRepository());
 			});
 		});
@@ -58,7 +57,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	[Fact]
 	public async Task MainChannel_ReceivesWhateverIsPublishedForThatMatchId()
 	{
-		var matchId = RegisterLiveMatch(5);
+		var matchId = await RegisterLiveMatch();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
 		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
@@ -97,7 +96,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	[Fact]
 	public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
 	{
-		var matchId = RegisterLiveMatch(11);
+		var matchId = await RegisterLiveMatch();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
 		var (_, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
@@ -114,15 +113,16 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	///     <see cref="IMatchRegistry" /> — this test file has no admin key configured (it only cares
 	///     about the SSE plumbing, not the write routes), so matches can't be created through
 	///     `POST /matches`, but `GET /matches/{matchId}/live` now 409s unless the match is actually
-	///     tracked in memory. Returns the assigned <see cref="MatchSession.DbId" /> (== <paramref name="dbId" />).
+	///     tracked in memory. Returns the real <see cref="MatchSession.DbId" /> the registry assigned
+	///     — it can't be overridden to an arbitrary value without desyncing the registry's own
+	///     DbId-to-wire-id lookup.
 	/// </summary>
-	private int RegisterLiveMatch(int dbId)
+	private async Task<int> RegisterLiveMatch()
 	{
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var data = new MatchState(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
 			0);
-		var match = matchRegistry.TryCreate(id => MatchMembershipService.BuildNew(id, data, 0))!;
-		match.DbId = dbId;
+		var match = await matchRegistry.CreateAsync(data, 0);
 		return match.DbId;
 	}
 
@@ -181,18 +181,20 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		}
 	}
 
-	/// <summary>Every id is reported as never-persisted — exactly what these tests need, without a real SQLite file.</summary>
+	/// <summary>Completes every call trivially — nothing is actually durable, exactly what these tests need.</summary>
 	private sealed class NeverPersistedMatchRepository : IMatchRepository
 	{
+		private int _nextId = 1;
+
 		public Task<int> CreateMatchAsync(string name, DateTime createdAt,
 			CancellationToken cancellationToken = default)
 		{
-			throw new NotSupportedException();
+			return Task.FromResult(_nextId++);
 		}
 
 		public Task SetMatchEndedAsync(int matchId, DateTime endedAt, CancellationToken cancellationToken = default)
 		{
-			throw new NotSupportedException();
+			return Task.CompletedTask;
 		}
 
 		public Task<int> CreateRoundAsync(int matchId, int roundIndex, string mapMd5,

@@ -5,9 +5,7 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Multiplayer;
@@ -51,52 +49,6 @@ public sealed class MatchMembershipService(
 		return data.HostId == expectedHostId && data.Name.Length <= MaxMatchNameLength;
 	}
 
-	/// <summary>Builds the chat channel name for a match.</summary>
-	/// <param name="matchId">The match's in-memory registry id.</param>
-	/// <returns>The <c>#multi_{id}</c> channel name.</returns>
-	public static string ChannelNameFor(int matchId)
-	{
-		return $"#multi_{matchId}";
-	}
-
-	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
-	/// <param name="id">The in-memory registry slot id.</param>
-	/// <param name="data">The parsed match-create data.</param>
-	/// <param name="hostId">The id of the userSession who created the room.</param>
-	/// <param name="createdViaMakeCommand">
-	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
-	///     <see langword="false" />.
-	/// </param>
-	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	public static MatchSession BuildNew(int id, MatchState data, int hostId, bool createdViaMakeCommand = false)
-	{
-		return new MatchSession(
-			id,
-			data.Name,
-			data.Password,
-			data.MapName,
-			data.MapId,
-			data.MapMd5,
-			hostId,
-			(GameMode)data.Mode,
-			(Mods)data.Mods,
-			(MatchWinCondition)data.WinCondition,
-			(MatchTeamType)data.TeamType,
-			data.FreeMods,
-			data.Seed,
-			ChannelNameFor(id),
-			createdViaMakeCommand);
-	}
-
-	/// <summary>Registers the match's chat channel in the channel registry.</summary>
-	/// <param name="match">The match whose channel to register.</param>
-	public void RegisterChannel(MatchSession match)
-	{
-		channelRegistry.Add(new ChannelSession(
-			0, match.ChatChannelName, $"MID {match.Id}'s multiplayer channel.",
-			0, 0, false, "#multiplayer", true));
-	}
-
 	/// <summary>Creates a match, persists its row, records the creation event, and seats the host in slot 0.</summary>
 	/// <param name="host">The userSession creating the room.</param>
 	/// <param name="data">The parsed match-create data.</param>
@@ -106,21 +58,12 @@ public sealed class MatchMembershipService(
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
 	/// <returns>The new <see cref="MatchSession" />.</returns>
-	public async Task<MatchSession?> CreateAsync(UserSession host, MatchState data,
-		bool createdViaMakeCommand = false,
-		CancellationToken cancellationToken = default)
+	public async Task<MatchSession> CreateAsync(UserSession host, MatchState data,
+		bool createdViaMakeCommand = false, CancellationToken cancellationToken = default)
 	{
-		var match = matchRegistry.TryCreate(id =>
-		{
-			var created = BuildNew(id, data, host.Id, createdViaMakeCommand);
-			RegisterChannel(created);
-			return created;
-		});
-
-		match.DbId = await matchRepository.CreateMatchAsync(
-			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
-		logger.LogInformation("+ Match created: MatchId={MatchId} HostId={HostId} Name={Name}",
-			match.DbId, host.Id, match.Name);
+		var match = await matchRegistry.CreateAsync(data, host.Id, createdViaMakeCommand, cancellationToken);
+		logger.LogInformation(
+			"+ Match created: MatchId={MatchId} HostId={HostId} Name={Name}", match.DbId, host.Id, match.Name);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Created,
@@ -153,18 +96,11 @@ public sealed class MatchMembershipService(
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
 	/// <returns>The new <see cref="MatchSession" />.</returns>
-	public async Task<MatchSession?> CreateEmptyAsync(MatchState data,
+	public async Task<MatchSession> CreateEmptyAsync(MatchState data,
 		CancellationToken cancellationToken = default)
 	{
-		var match = matchRegistry.TryCreate(id =>
-		{
-			var created = BuildNew(id, data, 0, true);
-			RegisterChannel(created);
-			return created;
-		});
+		var match = await matchRegistry.CreateAsync(data, BotBootstrapService.BotId, true, cancellationToken);
 
-		match.DbId = await matchRepository.CreateMatchAsync(
-			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=0 Name={Name} (via HTTP)",
 			match.DbId, match.Name);
 
@@ -341,8 +277,8 @@ public sealed class MatchMembershipService(
 
 		if (match.Slots.All(s => s.Empty) && !match.CreatedViaMakeCommand)
 		{
+			TeardownMatch(match);
 			logger.LogInformation("- Match auto-torn-down (empty): MatchId={MatchId}", match.DbId);
-			TeardownMatch(match, channel);
 		}
 		else
 		{
@@ -412,7 +348,7 @@ public sealed class MatchMembershipService(
 			player.Enqueue(ServerPacketWriter.MatchJoinFail());
 		}
 
-		TeardownMatch(match, channel);
+		TeardownMatch(match);
 		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -439,24 +375,6 @@ public sealed class MatchMembershipService(
 		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
 		if (bot is not null)
 			EnqueueChat(match, bot.Name, bot.Id, "Match start cancelled — room settings changed.");
-	}
-
-	/// <summary>Removes a match and its channel from the registries and marks it ended in the database.</summary>
-	/// <param name="match">The match to tear down.</param>
-	/// <param name="channel">The match's chat channel, or <see langword="null" /> when it was never registered.</param>
-	private void TeardownMatch(MatchSession match, ChannelSession? channel)
-	{
-		match.PendingTimer?.Cancel();
-		match.PendingTimer = null;
-
-		matchRegistry.Remove(match.Id);
-		if (channel is not null) channelRegistry.Remove(channel.Name);
-
-		_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
-
-		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null)
-			channelMembership.BroadcastToMembers(lobby, ServerPacketWriter.DisposeMatch(match.Id));
 	}
 
 	/// <summary>Starts the match: validates the beatmap, marks players as playing, creates the round, and broadcasts.</summary>
@@ -616,6 +534,17 @@ public sealed class MatchMembershipService(
 		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo, cancellationToken);
 		var delta = match.SlotsSnapshot.Publish(slots);
 		eventBus.PublishSlots(match.DbId, delta);
+	}
+
+	private void TeardownMatch(MatchSession match)
+	{
+		match.PendingTimer?.Cancel();
+		match.PendingTimer = null;
+
+		matchRegistry.Remove(match.Id);
+
+		var lobby = channelRegistry.GetByName("#lobby");
+		if (lobby is not null) channelMembership.BroadcastToMembers(lobby, ServerPacketWriter.DisposeMatch(match.Id));
 	}
 
 	/// <summary>Broadcasts a packet to the lobby channel, but only when it is non-empty.</summary>
