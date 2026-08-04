@@ -6,7 +6,6 @@ using Basil.Infrastructure.Sessions;
 
 namespace Basil.Infrastructure.Tests.Sessions;
 
-/// <summary>Ported from app/objects/collections.py's Matches — a fixed 64-slot table, not an unbounded list.</summary>
 public class InMemoryMatchRegistryTests
 {
 	private static MatchSession MakeMatch(int id)
@@ -25,7 +24,6 @@ public class InMemoryMatchRegistryTests
 
 		var match = registry.TryCreate(id => MakeMatch(id));
 
-		Assert.NotNull(match);
 		Assert.Equal(0, match.Id);
 	}
 
@@ -37,18 +35,19 @@ public class InMemoryMatchRegistryTests
 
 		var second = registry.TryCreate(id => MakeMatch(id));
 
-		Assert.Equal(1, second!.Id);
+		Assert.Equal(1, second.Id);
 	}
 
 	[Fact]
-	public void TryCreate_ReturnsNullWhenAllSixtyFourSlotsAreTaken()
+	public void TryCreate_MoreThanSixtyFourMatches_AllSucceedWithDistinctIds()
 	{
 		var registry = new InMemoryMatchRegistry();
-		for (var i = 0; i < 64; i++) Assert.NotNull(registry.TryCreate(id => MakeMatch(id)));
 
-		var overflow = registry.TryCreate(id => MakeMatch(id));
+		var ids = new List<int>();
+		for (var i = 0; i < 100; i++) ids.Add(registry.TryCreate(id => MakeMatch(id)).Id);
 
-		Assert.Null(overflow);
+		Assert.Equal(100, ids.Distinct().Count());
+		Assert.Equal(100, registry.All.Count);
 	}
 
 	[Fact]
@@ -57,11 +56,11 @@ public class InMemoryMatchRegistryTests
 		var registry = new InMemoryMatchRegistry();
 		var created = registry.TryCreate(id => MakeMatch(id));
 
-		Assert.Same(created, registry.GetById(created!.Id));
+		Assert.Same(created, registry.GetById(created.Id));
 	}
 
 	[Fact]
-	public void GetById_OutOfRange_ReturnsNull()
+	public void GetById_UnknownId_ReturnsNull()
 	{
 		var registry = new InMemoryMatchRegistry();
 
@@ -70,20 +69,20 @@ public class InMemoryMatchRegistryTests
 	}
 
 	[Fact]
-	public void Remove_FreesTheSlotForReuse()
+	public void Remove_FreesTheIdForReuse()
 	{
 		var registry = new InMemoryMatchRegistry();
 		var created = registry.TryCreate(id => MakeMatch(id));
 
-		registry.Remove(created!.Id);
+		registry.Remove(created.Id);
 
 		Assert.Null(registry.GetById(created.Id));
 		var reused = registry.TryCreate(id => MakeMatch(id));
-		Assert.Equal(created.Id, reused!.Id);
+		Assert.Equal(created.Id, reused.Id);
 	}
 
 	[Fact]
-	public void All_ReturnsOnlyOccupiedSlots()
+	public void All_ReturnsOnlyRegisteredMatches()
 	{
 		var registry = new InMemoryMatchRegistry();
 		registry.TryCreate(id => MakeMatch(id));

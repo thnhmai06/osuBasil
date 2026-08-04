@@ -118,23 +118,6 @@ public class MatchMembershipServiceTests
 	}
 
 	[Fact]
-	public void Create_RegistryFull_ReturnsNull()
-	{
-		var service = MakeService();
-		for (var i = 0; i < 64; i++)
-		{
-			var host = MakePlayer(i + 1, $"host{i}");
-			RegisterAll(host);
-			Assert.NotNull(Create(service, host, MakeMatchData(host.Id)));
-		}
-
-		var overflowHost = MakePlayer(1000, "overflow");
-		RegisterAll(overflowHost);
-
-		Assert.Null(Create(service, overflowHost, MakeMatchData(overflowHost.Id)));
-	}
-
-	[Fact]
 	public async Task Join_CorrectPassword_OccupiesFreeSlotAndSendsMatchJoinSuccess()
 	{
 		var host = MakePlayer(1, "host");

@@ -148,10 +148,8 @@ internal static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public MatchSession? TryCreate(Func<int, MatchSession> factory)
+		public MatchSession TryCreate(Func<int, MatchSession> factory)
 		{
-			if (_nextId >= IMatchRegistry.MaxMatches) return null;
-
 			var match = factory(_nextId);
 			_byId[_nextId] = match;
 			_nextId++;

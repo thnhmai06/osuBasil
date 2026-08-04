@@ -105,7 +105,7 @@ public sealed class MatchMembershipService(
 	///     <see langword="false" />.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
-	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
+	/// <returns>The new <see cref="MatchSession" />.</returns>
 	public async Task<MatchSession?> CreateAsync(UserSession host, MatchState data,
 		bool createdViaMakeCommand = false,
 		CancellationToken cancellationToken = default)
@@ -116,8 +116,6 @@ public sealed class MatchMembershipService(
 			RegisterChannel(created);
 			return created;
 		});
-
-		if (match is null) return null;
 
 		match.DbId = await matchRepository.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
@@ -154,7 +152,7 @@ public sealed class MatchMembershipService(
 	/// </remarks>
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
-	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when no registry slot was free.</returns>
+	/// <returns>The new <see cref="MatchSession" />.</returns>
 	public async Task<MatchSession?> CreateEmptyAsync(MatchState data,
 		CancellationToken cancellationToken = default)
 	{
@@ -164,8 +162,6 @@ public sealed class MatchMembershipService(
 			RegisterChannel(created);
 			return created;
 		});
-
-		if (match is null) return null;
 
 		match.DbId = await matchRepository.CreateMatchAsync(
 			match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);

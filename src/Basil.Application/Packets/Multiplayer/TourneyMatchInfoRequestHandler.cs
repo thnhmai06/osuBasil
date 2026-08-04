@@ -9,8 +9,7 @@ namespace Basil.Application.Packets.Multiplayer;
 
 /// <summary>Handles a tournament client's request for the current state of a match.</summary>
 /// <remarks>
-///     Serves only donator-privileged players and only match ids in the tournament client's id space
-///     (0 through 63). The match is looked up in the registry, and an <c>UpdateMatch</c> packet is
+///     Serves only donator-privileged players. The match is looked up in the registry, and an <c>UpdateMatch</c> packet is
 ///     enqueued for the userSession, built from a read-only snapshot of the match with the password omitted
 ///     (see <see cref="ServerPacketWriter.UpdateMatch" />). A logger correlation scope keyed on the
 ///     match's database id is opened for the call. Nothing is mutated, so the match's
@@ -39,8 +38,7 @@ public sealed class TourneyMatchInfoRequestHandler(
 	{
 		var matchId = reader.ReadI32();
 
-		if (matchId is < 0 or >= IMatchRegistry.MaxMatches
-		    || (userSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
+		if (matchId < 0 || (userSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
 		var match = matchRegistry.GetById(matchId);
 		if (match is null) return Task.CompletedTask;
