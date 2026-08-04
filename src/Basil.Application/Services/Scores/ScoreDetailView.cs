@@ -36,10 +36,8 @@ namespace Basil.Application.Services.Scores;
 /// </param>
 /// <remarks>
 ///     Every user and beatmap reference is embedded as a full view record (<see cref="UserBrief" />
-///     and <see cref="BeatmapDetail" />), never a bare id or MD5. <see cref="Grade" /> keeps its
-///     enum type rather than the raw storage string. <see cref="Beatmap" /> is always non-null,
-///     because a submitted score is always recorded against a beatmap that existed in this server's
-///     database at submission time.
+///     and <see cref="BeatmapDetail" />), never a bare id or MD5. <see cref="Grade" /> serializes as
+///     its numeric enum value.
 /// </remarks>
 public sealed record ScoreDetailView(
 	long Id,

@@ -7,32 +7,43 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
-using Basil.Web.Middleware;
+using Basil.Web.Routing.Api;
 using Microsoft.OpenApi;
 
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Attaches a fake-data example to a route's already-declared JSON response, keyed by status code,
-///     so every documented case (<c>.Produces&lt;T&gt;</c>/<c>.Produces&lt;ErrorResponse&gt;</c>) gets a
-///     concrete illustration instead of just a schema. Must run after the status code's response entry
-///     already exists, i.e. after the matching <c>.Produces</c> call in the same fluent chain; it's a
-///     no-op otherwise. On the <c>basilapi</c> document, the raw <c>example</c> is wrapped in the
-///     Enveloped Response Standard (see <see cref="Envelope{T}" />) to mirror what
-///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> does to the response body at runtime.
-///     Every other document's examples pass through unwrapped, since only basilapi routes are enveloped.
-///     A route carrying <see cref="SseEndpointMarker" /> is also left unwrapped for its own 2xx status
-///     only: that's its real raw, un-enveloped SSE event payload, matching
-///     <see cref="EnvelopeSchemaTransformer" />'s same per-status exception for the declared schema. Any
-///     other status on that same route, a synchronous pre-stream error, is still wrapped like everywhere
-///     else.
+///     Attaches serialized examples to already-declared OpenAPI responses, optionally wrapping
+///     them in the standard <see cref="Envelope{T}" /> shape so the documented payload matches
+///     the runtime response body.
 /// </summary>
+/// <remarks>
+///     <para>
+///         The attached examples are what Scalar and generated client SDKs display as sample
+///         request and response bodies for the route.
+///     </para>
+///     <para>
+///         Each example is attached to an existing response entry identified by its HTTP status
+///         code. The matching <c>.Produces(...)</c> call must therefore appear earlier in the
+///         same endpoint configuration; otherwise this extension has nothing to modify.
+///     </para>
+///     <para>
+///         In the <c>basilapi</c> document, examples are wrapped in the Enveloped Response
+///         Standard (see <see cref="Envelope{T}" />) to mirror the output produced by
+///         <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> at runtime. Examples in every
+///         other OpenAPI document remain unchanged.
+///     </para>
+///     <para>
+///         The only exception is a Server-Sent Events endpoint's successful 2xx response
+///         (every route whose path contains a literal <c>live</c> segment), whose payload is
+///         intentionally documented as the raw SSE event body rather than an envelope. Any
+///         synchronous error returned before the stream opens is still wrapped like every other
+///         JSON response, matching <see cref="EnvelopeSchemaTransformer" />.
+///     </para>
+/// </remarks>
 internal static class OpenApiExampleExtensions
 {
-	private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web)
-	{
-		Converters = { new CountryJsonConverter() }
-	};
+	private static readonly JsonSerializerOptions JsonWebOptions = BasilJsonOptions.Instance;
 
 	/// <summary>
 	///     Attaches a serialized example to the route's already-declared JSON response for
@@ -47,14 +58,14 @@ internal static class OpenApiExampleExtensions
 		return builder.AddOpenApiOperationTransformer((operation, context, _) =>
 		{
 			if (operation.Responses?.TryGetValue(statusCode.ToString(), out var response) == true &&
-			    response?.Content?.TryGetValue("application/json", out var mediaType) == true)
+			    response.Content?.TryGetValue("application/json", out var mediaType) == true)
 			{
-				// Only an SSE route's own 2xx is the raw, un-enveloped stream payload (see
+				// Only an SSE route's own 2xx is the raw, unenveloped stream payload (see
 				// EnvelopeSchemaTransformer's matching per-status check). Any other status on that same
 				// route is a synchronous JSON error and still gets the envelope like every other
 				// route's error response.
-				var isSseSuccessPayload = statusCode < 400 && context.Description.ActionDescriptor.EndpointMetadata
-					.OfType<SseEndpointMarker>().Any();
+				var isSseSuccessPayload = statusCode < 400 &&
+				                          LiveSseRoutes.IsSseRoute(context.Description.RelativePath);
 
 				mediaType.Example = context.DocumentName == "basilapi" && !isSseSuccessPayload
 					? BuildEnvelope(statusCode, context.Description.HttpMethod, example)
@@ -72,24 +83,35 @@ internal static class OpenApiExampleExtensions
 	/// <param name="httpMethod">The HTTP method of the operation.</param>
 	/// <param name="example">The example payload to wrap.</param>
 	/// <returns>The envelope-wrapped example as a JSON node.</returns>
-	private static JsonNode BuildEnvelope(int statusCode, string? httpMethod, object example)
+	private static JsonObject BuildEnvelope(int statusCode, string? httpMethod, object example)
 	{
 		var body = JsonSerializer.SerializeToNode(example, JsonWebOptions);
 		return EnvelopeBuilder.Build(statusCode, httpMethod, body, JsonWebOptions);
 	}
 
 	/// <summary>
-	///     Only `GET /matches/{matchId}/live/{slotIndex}` needs this: its single 200 status genuinely
-	///     carries three different JSON shapes, one per SSE `event:` name, so a single `.WithExample`
-	///     doesn't fit. Rewrites the 200 schema to `oneOf` the three shapes and attaches one named
-	///     example per shape. The route's own `.Produces&lt;PlayerLiveScore&gt;()` is what makes the
-	///     framework's default per-operation schema generation register <c>PlayerLiveScore</c> as a
-	///     named component in the first place. This transformer runs after that, so it just re-wraps the
-	///     already-registered `$ref` rather than building `PlayerLiveScore`'s schema by hand.
-	///     <c>MatchSlotView</c> and <c>SpectateFramesEvent</c> are already registered components via
-	///     their own routes (`GET /matches/{matchId}/slots`, `GET /users/{idOrName}/live`), so they're
-	///     referenced here by name.
+	///     Documents the multiple event payloads produced by the slot-live SSE endpoint by replacing
+	///     its single 200-response schema with a <c>oneOf</c> union and attaching one named example
+	///     for each SSE event type.
 	/// </summary>
+	/// <remarks>
+	///     <para>
+	///         This customization is only required for
+	///         <c>GET /matches/{matchId}/live/{slotIndex}</c>, whose successful response can carry
+	///         three distinct JSON payloads depending on the emitted SSE <c>event:</c> name:
+	///         <c>slot</c>, <c>score</c>, or <c>input</c>.
+	///     </para>
+	///     <para>
+	///         The endpoint's existing <c>.Produces&lt;PlayerLiveScore&gt;()</c> declaration
+	///         ensures the framework has already generated and registered the <c>PlayerLiveScore</c>
+	///         component. This transformer therefore reuses that generated schema instead of rebuilding it.
+	///     </para>
+	///     <para>
+	///         <c>MatchSlotView</c> and <c>SpectateFramesEvent</c> are likewise reused through their
+	///         existing component registrations created by their own endpoints, so the resulting
+	///         schema references shared components rather than duplicating object definitions.
+	///     </para>
+	/// </remarks>
 	/// <param name="builder">The route whose 200 response gets the three named examples.</param>
 	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
 	public static RouteHandlerBuilder WithSlotLiveExamples(this RouteHandlerBuilder builder)

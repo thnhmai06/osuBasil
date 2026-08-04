@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Basil.Application.Configurations;
 using Basil.Web;
@@ -129,9 +130,9 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	[Fact]
 	public async Task PostFaq_NewEntry_CreatesFileAndReturnsCreated()
 	{
+		var file = new ByteArrayContent([.. "hello"u8]) { Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
-		request.Content = new MultipartFormDataContent
-			{ { new ByteArrayContent([.. "hello"u8]), "file", "rules.txt" } };
+		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
 
@@ -145,9 +146,9 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Directory.CreateDirectory(FaqsDir);
 		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "original");
 
+		var file = new ByteArrayContent([.. "new"u8]) { Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
-		request.Content = new MultipartFormDataContent
-			{ { new ByteArrayContent([.. "new"u8]), "file", "rules.txt" } };
+		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
 

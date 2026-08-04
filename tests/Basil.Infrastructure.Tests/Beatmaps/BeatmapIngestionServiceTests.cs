@@ -263,7 +263,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		WriteVariant(secondPath, 3000);
 		// A distinct background on the second difficulty lets the assertion tell which one actually
 		// won, instead of assuming file-enumeration order.
-		File.WriteAllText(secondPath, File.ReadAllText(secondPath).Replace("Chocobos.jpg", "Moogle.jpg"));
+		await File.WriteAllTextAsync(secondPath, (await File.ReadAllTextAsync(secondPath)).Replace("Chocobos.jpg", "Moogle.jpg"));
 
 		var (ingestedInFolder, setId) = await _service.ReconcileFolderAsync(folder);
 		Assert.Equal(2, ingestedInFolder);
@@ -284,7 +284,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 		var secondPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
 		WriteVariant(secondPath, 3000);
-		File.WriteAllText(secondPath, File.ReadAllText(secondPath).Replace("Chocobos.jpg", "Moogle.jpg"));
+		await File.WriteAllTextAsync(secondPath, (await File.ReadAllTextAsync(secondPath)).Replace("Chocobos.jpg", "Moogle.jpg"));
 
 		var (_, setId) = await _service.ReconcileFolderAsync(folder);
 		Assert.NotNull(setId);

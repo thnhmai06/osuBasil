@@ -1,16 +1,18 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Web.Routing.Api;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Basil.Web.OpenApi;
 
-/// <summary>
-///     Shared logic for building the Enveloped Response Standard body (see <see cref="Envelope{T}" />).
-///     Both callers use it identically: <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> wraps the
-///     real response body at runtime, and <see cref="OpenApiExampleExtensions" /> wraps a
-///     <c>.WithExample</c> payload for the generated OpenAPI docs. Before this, the same four methods
-///     lived in two independent copies that had to be kept in sync by hand.
-/// </summary>
+/// <summary>Shared logic for building the Enveloped Response Standard body (see <see cref="Envelope{T}" />).</summary>
+/// <remarks>
+///     <para>
+///         Both callers use it identically: <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> wraps
+///         the real response body at runtime, and <see cref="OpenApiExampleExtensions" /> wraps a
+///         <c>.WithExample</c> payload for the generated OpenAPI docs.
+///     </para>
+/// </remarks>
 internal static class EnvelopeBuilder
 {
 	/// <summary>
@@ -99,8 +101,8 @@ internal static class EnvelopeBuilder
 	}
 
 	/// <summary>
-	///     Structurally detects the internal paged shape (see <see cref="Basil.Web.Routing.IPagedResult" />/
-	///     <see cref="Basil.Web.Routing.PagedResult{T}" />) by an exact 4-key match, no per-route marker needed.
+	///     Structurally detects the internal paged shape (see <see cref="IPagedResult" />/
+	///     <see cref="PagedResult{T}" />) by an exact 4-key match, no per-route marker needed.
 	/// </summary>
 	/// <param name="body">The serialized response body to inspect, or <see langword="null" />.</param>
 	/// <param name="paged">

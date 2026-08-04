@@ -68,11 +68,11 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	[InlineData("osu.ppy.sh")]
 	public async Task OsuSubdomain_RoutesToOsuWebGroup(string host)
 	{
-		var client = _factory.CreateClient();
+		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 		var response = await SendWithHost(client, host);
 
-		response.EnsureSuccessStatusCode();
-		Assert.Equal("osu", await response.Content.ReadAsStringAsync());
+		Assert.Equal(HttpStatusCode.Found, response.StatusCode);
+		Assert.Equal("https://github.com/thnhmai06/osuBasil", response.Headers.Location?.ToString());
 	}
 
 	[Theory]

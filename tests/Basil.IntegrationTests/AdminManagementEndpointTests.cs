@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using Basil.Application.Configurations;
 using Basil.Domain.Users;
 using Basil.Web;
-using Basil.Web.Routing;
+using Basil.Web.Routing.Api;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

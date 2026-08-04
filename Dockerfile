@@ -14,7 +14,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Data/, Logs/, and Settings.toml are all created/read next to the executable at runtime — see
+# Data/, Logs/, and appsettings.json are all created/read next to the executable at runtime — see
 # docs/run-deployment.md. Mount volumes over them (docker-compose.yml does this) so they survive
 # a container recreate.
 EXPOSE 443

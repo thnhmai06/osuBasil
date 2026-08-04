@@ -41,7 +41,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 	}
 
 	[Fact]
-	public async Task UnknownToken_ReturnsServerRestartedNotification()
+	public async Task UnknownToken_ReturnsRestartServerPacket()
 	{
 		var client = _factory.CreateClient();
 		var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };
@@ -51,10 +51,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 		var response = await client.SendAsync(request);
 		var body = await response.Content.ReadAsByteArrayAsync();
 
-		var expected = ServerPacketWriter.Notification("Server has restarted.")
-			.Concat(ServerPacketWriter.RestartServer(0))
-			.ToArray();
-		Assert.Equal(expected, body);
+		Assert.Equal(ServerPacketWriter.RestartServer(0), body);
 	}
 
 	[Fact]

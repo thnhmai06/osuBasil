@@ -5,7 +5,7 @@ namespace Basil.Application.Configurations;
 /// </summary>
 /// <remarks>
 ///     Chat arriving over IRC is routed through the same channel and dispatch services as the osu!
-///     binary protocol, so both transports share a single chat core (see docs/architecture.md).
+///     binary protocol, so both transports share a single chat core (see docs/chat.md).
 /// </remarks>
 public sealed class IrcOptions
 {

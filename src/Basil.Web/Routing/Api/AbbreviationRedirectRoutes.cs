@@ -1,10 +1,12 @@
-namespace Basil.Web.Routing;
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
-///     Short-prefix 302 redirects to the canonical plural resource paths: `b` for beatmapsets, `m`
-///     for matches, `u` for users, `s` for scores, `ss` for seasonals. Preserves whatever path segment
-///     and query string followed the prefix.
+///     Registers the REST endpoints that redirect short resource prefixes to their canonical paths.
 /// </summary>
+/// <remarks>
+///     Each short prefix (`b`, `m`, `u`, `s`, `ss`) issues a 302 redirect to its canonical plural
+///     resource path, preserving the remaining path and query string.
+/// </remarks>
 internal static class AbbreviationRedirectRoutes
 {
 	/// <summary>The prefix-to-target table the registered redirects are generated from.</summary>
@@ -33,13 +35,13 @@ internal static class AbbreviationRedirectRoutes
 				.ExcludeFromDescription();
 
 			var targetTitle = char.ToUpperInvariant(target[0]) + target[1..];
+			// ReSharper disable once RouteTemplates.SyntaxError
 			group.MapGet($"/{prefix}/{{**rest}}", (string rest, HttpContext context) =>
 					Results.Redirect($"/{target}/{rest}{context.Request.QueryString}"))
 				.WithGroupName("basilapi")
 				.WithName($"redirectTo{targetTitle}")
-				.WithSummary($"Redirect To {targetTitle}")
-				.WithDescription($"302 redirect to `/{target}/...`, preserving the remaining path and query " +
-				                 "string. Public.")
+				.WithSummary($"Redirect to /{target}.")
+				.WithDescription($"Redirects to `/{target}/...`, preserving the remaining path and query string.")
 				.WithTags("Abbreviation Redirects")
 				.Produces(StatusCodes.Status302Found);
 		}

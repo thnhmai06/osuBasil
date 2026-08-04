@@ -8,7 +8,7 @@ namespace Basil.Web.Middleware;
 ///     Pushes the current request's <see cref="HttpContext.TraceIdentifier" /> and resolved client IP
 ///     onto Serilog's ambient LogContext for the entire downstream pipeline. Every log line emitted
 ///     while handling this request carries it, not just Serilog.AspNetCore's own per-request summary
-///     line. Registered first in Program.cs's pipeline (before UseSerilogRequestLogging) so the pushed
+///     line. Registered first in Program.cs's pipeline (before UseSerilogRequestLogging), so the pushed
 ///     scope also wraps that summary line's own emission.
 /// </summary>
 public sealed class RequestIdLoggingMiddleware(RequestDelegate next)

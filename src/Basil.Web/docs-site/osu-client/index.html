@@ -134,7 +134,7 @@
 <p class="subtitle">A side-by-side comparison of every osu! client-facing endpoint bancho.py exposes, against
 	osuBasil's own implementation. Scoped to the non-<code>api.</code> hosts (<code>c./ce./c4./c5./c6.</code>,
 	<code>osu.</code>, <code>b.</code>, <code>a.</code>) — <code>api.</code> is Basil's own tournament API, with no
-	real bancho.py counterpart, so it's out of scope here. Current as of 2026-07-29.</p>
+	real bancho.py counterpart, so it's out of scope here. Current as of 2026-08-03.</p>
 
 <div class="legend">
 	<dl>
@@ -220,7 +220,9 @@
 		<td><code>GET /</code></td>
 		<td>Health-check stub.</td>
 		<td>❌ No root route registered.</td>
-		<td>✅ Returns the literal string <code>"osu"</code> (osuBasil-only addition).</td>
+		<td>✅ Redirects to the project's GitHub repository (osuBasil-only addition, not called by the
+			real client).
+		</td>
 	</tr>
 	<tr>
 		<td><code>GET /web/osu-osz2-getscores.php</code></td>
@@ -370,7 +372,7 @@
 		<td><code>GET /thumb/{setId}l.jpg</code> / <code>{setId}.jpg</code></td>
 		<td>Beatmapset thumbnail/preview image.</td>
 		<td>✅ Redirects to <code>b.ppy.sh</code>'s real CDN, on the request path as-is.</td>
-		<td>✅ Redirects to the <code>api.</code> host's own locally-stored preview image — no
+		<td>✅ Resized from local storage and served directly (cached after the first request) — no
 			internet dependency, but narrower: any path other than these two 404s locally instead of
 			passing through.
 		</td>

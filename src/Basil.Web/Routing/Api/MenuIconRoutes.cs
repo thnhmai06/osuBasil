@@ -2,7 +2,11 @@ using Basil.Application.Services.Content;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
 
-namespace Basil.Web.Routing;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
 ///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="MenuIconRoutes" /> is static and can't be
@@ -11,13 +15,13 @@ namespace Basil.Web.Routing;
 internal sealed class MenuIconRoutesLog;
 
 /// <summary>
-///     `/menuicon`: the in-game main menu icon, split into its image (`/menuicon/icon`) and its
-///     click-through URL (`/menuicon/url`), replacing the old hardcoded
-///     `ServerOptions.MenuIconPath`/`MenuOnclickUrl` config and the `osu.` host's `GET /web/menuicon`
-///     route. Reads are public; writes are admin-key gated. Both files are singletons (no
-///     `{name}`/`{entry}` segment, unlike `/faqs`/`/seasonals`), so `PUT` is an upsert, not
-///     create-only. Backed by <see cref="MenuIconService" />.
+///     Registers the REST endpoints for querying and managing the in-game menu icon and its
+///     click-through URL.
 /// </summary>
+/// <remarks>
+///     The icon and its URL are publicly readable, while setting or deleting them require
+///     administrator authorization. Both are singletons: setting one replaces whatever was set before.
+/// </remarks>
 internal static class MenuIconRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -34,22 +38,16 @@ internal static class MenuIconRoutes
 		group.MapGet("/menuicon/icon", () =>
 			{
 				var path = MenuIconService.FindIconPath();
-				if (path is null) return Results.NotFound();
-
-				var contentType = Path.GetExtension(path).ToLowerInvariant() switch
-				{
-					".png" => "image/png",
-					".jpg" or ".jpeg" => "image/jpeg",
-					".gif" => "image/gif",
-					_ => "application/octet-stream"
-				};
-				return Results.File(path, contentType);
+				return path is null ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMenuIcon")
-			.WithSummary("Get Menu Icon")
-			.WithDescription("Serves the in-game main menu icon image. 404 if none is set. Content-Type is " +
-			                 "taken from the file extension. Public.")
+			.WithSummary("Get menu icon.")
+			.WithDescription("""
+			                 Serves the in-game main menu icon image. Content-Type is taken from the file extension.
+
+			                 Returns `404 Not Found` if none is set.
+			                 """)
 			.WithTags("Menu Icon Image")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -57,10 +55,10 @@ internal static class MenuIconRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("setMenuIcon")
-			.WithSummary("Set Menu Icon")
-			.WithDescription("Multipart upload, field name `file`. Upsert: replaces whatever icon (of any " +
-			                 "extension) is currently set, or creates one if none is set." + LoginEffectNote +
-			                 AdminKeyNote)
+			.WithSummary("Set menu icon.")
+			.WithDescription("Multipart upload, field name `file`, must be `.png`, `.jpg`, `.jpeg`, or `.gif`. " +
+			                 "Replaces whatever icon is currently set, or sets one if none is set." +
+			                 LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon Image")
 			.WithMultipartFileUpload()
 			.Produces<MenuIconChangedView>()
@@ -78,9 +76,9 @@ internal static class MenuIconRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteMenuIcon")
-			.WithSummary("Delete Menu Icon")
-			.WithDescription("Turns the menu icon off entirely (idempotent: returns 200 whether or not one was set)." +
-			                 LoginEffectNote + AdminKeyNote)
+			.WithSummary("Delete menu icon.")
+			.WithDescription("Turns the menu icon off entirely. Always returns `200 OK`, whether or not one was " +
+			                 "set." + LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon Image")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,
@@ -96,10 +94,12 @@ internal static class MenuIconRoutes
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMenuIconUrl")
-			.WithSummary("Get Menu Icon URL")
-			.WithDescription("The menu icon's click-through URL. `null` if no menu icon is set. If one is set " +
-			                 "but no URL was explicitly configured, this is a hardcoded default " +
-			                 "(`https://github.com/thnhmai06/osuBasil`). Public.")
+			.WithSummary("Get menu icon URL.")
+			.WithDescription("""
+			                 Returns the menu icon's click-through URL, or `null` if no menu icon is set.
+
+			                 If one is set but no URL was explicitly configured, this returns a default (`https://github.com/thnhmai06/osuBasil`).
+			                 """)
 			.WithTags("Menu Icon URL")
 			.Produces<MenuIconUrlView>()
 			.WithExample(StatusCodes.Status200OK, new MenuIconUrlView("https://github.com/thnhmai06/osuBasil"));
@@ -114,10 +114,10 @@ internal static class MenuIconRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("setMenuIconUrl")
-			.WithSummary("Set Menu Icon URL")
-			.WithDescription("Body: `{ url }`. Upsert: replaces whatever URL is currently set, or creates one " +
-			                 "if none is set. No `DELETE`: to fall back to the hardcoded default, set the URL to it " +
-			                 "explicitly." + LoginEffectNote + AdminKeyNote)
+			.WithSummary("Set menu icon URL.")
+			.WithDescription("Body: `{ url }`. Replaces whatever URL is currently set, or sets one if none is " +
+			                 "set. There is no DELETE; to fall back to the default, set the URL to it explicitly " +
+			                 "(`https://github.com/thnhmai06/osuBasil`)." + LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon URL")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,

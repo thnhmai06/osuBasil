@@ -15,11 +15,7 @@ services:
       # "Get a TLS certificate" step. Point CertPath below at wherever this is mounted.
       - ./basil-cert.pfx:/app/basil-cert.pfx:ro
     environment:
-      # Uncomment and set instead of (or in addition to) editing appsettings.json — nested config
-      # keys use a double underscore (Basil:Server:CertPath -> Basil__Server__CertPath).
-      # - Basil__Server__Domain=basil.local
-      # - Basil__Server__CertPath=/app/basil-cert.pfx
-      # - Basil__Server__CertPassword=changeme
-      # - Basil__Server__AdminKey=changeme
+      # There is no environment-variable override for Basil's own settings (Server/Mirror/Bot/Irc/
+      # Logging) — edit the bind-mounted src/Basil.Web/appsettings.json above instead.
       ASPNETCORE_ENVIRONMENT: Production
     restart: unless-stopped

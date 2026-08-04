@@ -3,18 +3,30 @@ using Microsoft.OpenApi;
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Attaches an OpenAPI `links` entry to a route's already-declared response, tying its output to
-///     another operation an API consumer or generated client would naturally call next, e.g. a create
-///     response's id feeding straight into that resource's own read/update/delete operations. Purely
-///     descriptive: Scalar and most codegen tools use it to wire up a "try this next" affordance, and
-///     it changes no runtime behavior. Must run after the target status code's response entry already
-///     exists, i.e. after the matching `.Produces`/`.WithExample` call in the same fluent chain.
+///     Attaches OpenAPI links to an already-declared response, documenting the operations that
+///     naturally follow from its result without affecting runtime behavior.
 /// </summary>
+/// <remarks>
+///     <para>
+///         Links describe relationships between operations, such as a newly created resource's
+///         identifier feeding directly into its corresponding read, update, or delete endpoint.
+///         They exist solely for documentation and client tooling.
+///     </para>
+///     <para>
+///         Tools such as Scalar and some OpenAPI code generators use these links to surface
+///         "try this next" workflows or otherwise connect related operations. The generated
+///         document changes only its metadata; no runtime behavior is modified.
+///     </para>
+///     <para>
+///         This extension must run after the target response entry has already been created,
+///         meaning the matching <c>.Produces(...)</c> or <c>.WithExample(...)</c> call must
+///         appear earlier in the same endpoint configuration.
+///     </para>
+/// </remarks>
 internal static class LinkExtensions
 {
 	/// <summary>
-	///     Attaches an OpenAPI link to the route's already-declared response for
-	///     <paramref name="statusCode" />.
+	///     Attaches an OpenAPI link to the route's already-declared response for <paramref name="statusCode" />.
 	/// </summary>
 	/// <param name="builder">The route whose already-declared response gets the link entry.</param>
 	/// <param name="statusCode">The response status this link is attached to (the operation's own success status).</param>

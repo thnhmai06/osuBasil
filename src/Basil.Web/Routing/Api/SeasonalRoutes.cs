@@ -2,7 +2,11 @@ using Basil.Application.Services.Content;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
 
-namespace Basil.Web.Routing;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
 ///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="SeasonalRoutes" /> is static and can't be
@@ -11,13 +15,13 @@ namespace Basil.Web.Routing;
 internal sealed class SeasonalRoutesLog;
 
 /// <summary>
-///     `/seasonals`: public read access to seasonal background images (already public via the osu!
-///     client's own `GET osu.&lt;domain&gt;/web/osu-getseasonal.php`/`GET /seasonal/{fileName}` pair),
-///     plus admin-key-gated writes with the same "no silent override" rule as `/faq`: `POST` only
-///     creates a brand-new file (409 if the name is taken), `PUT` only replaces an existing one (404 if
-///     it isn't). Backed by <see cref="SeasonalService" />, replacing the old admin-only `/seasonals`
-///     surface.
+///     Registers the REST endpoints for listing, querying, and managing seasonal backgrounds.
 /// </summary>
+/// <remarks>
+///     Seasonal backgrounds are publicly readable, while creating, replacing, and deleting them
+///     require administrator authorization. Creating a file never overwrites an existing one, and
+///     replacing one requires it to already exist.
+/// </remarks>
 internal static class SeasonalRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -31,10 +35,10 @@ internal static class SeasonalRoutes
 		group.MapGet("/seasonals/", (SeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))
 			.WithGroupName("basilapi")
 			.WithName("listSeasonalBackgrounds")
-			.WithSummary("List Seasonal Backgrounds")
-			.WithDescription("Bare filenames (unlike the osu! client-facing " +
-			                 "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same folder). " +
-			                 "Public.")
+			.WithSummary("List seasonal backgrounds.")
+			.WithDescription("Returns the bare filenames, unlike the osu! client-facing " +
+			                 "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same " +
+			                 "files.")
 			.WithTags("Seasonal Backgrounds")
 			.Produces<IReadOnlyList<string>>()
 			.WithExample(StatusCodes.Status200OK, new List<string> { "winter-2026.png", "summer-2026.jpg" });
@@ -43,10 +47,12 @@ internal static class SeasonalRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("createSeasonalBackground")
-			.WithSummary("Create Seasonal Background")
-			.WithDescription("Multipart upload, field name `file`, saved under its own uploaded filename " +
-			                 "(path-traversal-filtered). 409 if a file with that name already exists. Use " +
-			                 "`PUT /seasonals/{fileName}` to replace one." + AdminKeyNote)
+			.WithSummary("Create a seasonal background.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`, saved under its own uploaded filename.
+
+			                 Returns `409 Conflict` if a file with that name already exists; use `PUT /seasonals/{fileName}` to replace one.
+			                 """ + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.WithMultipartFileUpload()
 			.Produces<SeasonalCreatedView>(StatusCodes.Status201Created)
@@ -59,22 +65,16 @@ internal static class SeasonalRoutes
 		group.MapGet("/seasonals/{fileName}", (string fileName, SeasonalService seasonal) =>
 			{
 				var path = seasonal.FindFilePath(fileName);
-				if (path is null) return Results.NotFound();
-
-				var contentType = Path.GetExtension(path).ToLowerInvariant() switch
-				{
-					".png" => "image/png",
-					".jpg" or ".jpeg" => "image/jpeg",
-					".gif" => "image/gif",
-					_ => "application/octet-stream"
-				};
-				return Results.File(path, contentType);
+				return path is null ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
 			})
 			.WithGroupName("basilapi")
 			.WithName("downloadSeasonalBackground")
-			.WithSummary("Download Seasonal Background")
-			.WithDescription("`{fileName}` is the full filename including extension. 404 if it doesn't exist. " +
-			                 "Content-Type is taken from the file extension. Public.")
+			.WithSummary("Download a seasonal background.")
+			.WithDescription("""
+			                 Serves the image file. `{fileName}` is the full filename including extension. Content-Type is taken from the file extension.
+
+			                 Returns `404 Not Found` if the file doesn't exist.
+			                 """)
 			.WithTags("Seasonal Backgrounds")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -82,9 +82,12 @@ internal static class SeasonalRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceSeasonalBackground")
-			.WithSummary("Replace Seasonal Background")
-			.WithDescription("Multipart upload, field name `file`. 404 if no file with this name exists yet. " +
-			                 "Use `POST /seasonals/` to create one." + AdminKeyNote)
+			.WithSummary("Replace a seasonal background.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`. Replaces the file's contents; the filename is fixed by the URL.
+
+			                 Returns `404 Not Found` if no file with this name exists yet; use `POST /seasonals/` to create one.
+			                 """ + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.WithMultipartFileUpload()
 			.Produces<SeasonalReplacedView>()
@@ -103,8 +106,12 @@ internal static class SeasonalRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteSeasonalBackground")
-			.WithSummary("Delete Seasonal Background")
-			.WithDescription("Returns a confirmation body. 404 if the file doesn't exist." + AdminKeyNote)
+			.WithSummary("Delete a seasonal background.")
+			.WithDescription("""
+			                 Deletes the file and returns a confirmation body.
+
+			                 Returns `404 Not Found` if the file doesn't exist.
+			                 """ + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.Produces<SeasonalDeletedView>()
 			.WithExample(StatusCodes.Status200OK, new SeasonalDeletedView("winter-2026.png", true))

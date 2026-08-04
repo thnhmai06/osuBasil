@@ -1,22 +1,26 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Web.OpenApi;
+using Basil.Web.Routing.Api;
 
 namespace Basil.Web.Middleware;
 
 /// <summary>
-///     Wraps every JSON body on the `basilapi` OpenAPI group in the Enveloped Response Standard (see
+///     Wraps every JSON body on the <c>basilapi</c> OpenAPI group in the Enveloped Response Standard (see
 ///     <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Program.cs</c>.
-///     Skips a request entirely (no buffering, no rewriting) when the matched endpoint isn't tagged
-///     `basilapi` (every other host group: bancho/osu-web/beatmap-assets/avatar) or carries
-///     <see cref="SseEndpointMarker" /> (an always-SSE route like `GET /matches/{id}/live`, which never
-///     produces a plain-JSON body regardless of the request). Every SSE route on this host is a
-///     dedicated, unconditionally-SSE `.../live` path, so no route branches on the `Accept` header
-///     anymore; the marker check alone decides skip-vs-wrap. Buffering a live push stream until the
-///     handler completes would silently turn it into one that never delivers a single event until the
-///     connection closes. A file download's `Content-Type` is never "json", so it passes through
-///     unwrapped for the same structural reason, with no separate marker needed.
 /// </summary>
+/// <remarks>
+///     Skips a request entirely (no buffering, no rewriting) when the matched endpoint isn't tagged
+///     `basilapi` (every other host group: bancho/osu-web/beatmap-assets/avatar) or is a live SSE route
+///     (any route whose path carries a literal `live` segment, e.g. `GET /matches/{id}/live`), which
+///     never produces a plain-JSON body regardless of the request.
+///     Every SSE route on this host is a dedicated, unconditionally-SSE `.../live` path, so no route
+///     branches on the `Accept` header anymore; the route pattern's `live` segment alone decides
+///     skip-vs.-wrap (see <see cref="LiveSseRoutes.IsSseRoute" />). Buffering a live push stream until
+///     the handler completes would silently turn it into one that never delivers a single event until
+///     the connection closes. A file download's `Content-Type` is never "json", so it passes through
+///     unwrapped for the same structural reason, with no separate marker needed.
+/// </remarks>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
 	/// <summary>JSON options using web defaults, used to parse and reserialize the buffered envelope.</summary>
@@ -34,7 +38,8 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 	{
 		var endpoint = context.GetEndpoint();
 		var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
-		var isAlwaysSse = endpoint?.Metadata.GetMetadata<SseEndpointMarker>() is not null;
+		var isAlwaysSse = endpoint is RouteEndpoint { RoutePattern.RawText: { } raw } &&
+		                  LiveSseRoutes.IsSseRoute(raw);
 		if (groupName != "basilapi" || isAlwaysSse)
 		{
 			await next(context);
@@ -69,7 +74,7 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 			context.Response.StatusCode = StatusCodes.Status200OK;
 
 		var statusCode = context.Response.StatusCode;
-		var body = buffer.Length == 0 ? null : JsonNode.Parse(buffer);
+		var body = buffer.Length == 0 ? null : await JsonNode.ParseAsync(buffer);
 		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
 
 		context.Response.ContentType = "application/json; charset=utf-8";

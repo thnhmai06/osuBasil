@@ -8,10 +8,15 @@ using Basil.Domain.Scores;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
+using Basil.Web.Routing.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Web.Routing;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
 ///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="BeatmapsetRoutes" /> is static and
@@ -20,15 +25,14 @@ namespace Basil.Web.Routing;
 internal sealed class BeatmapsetRoutesLog;
 
 /// <summary>
-///     `/beatmapsets`: resource-oriented routes replacing the admin-only `/beatmaps` search/upload
-///     surface plus the old bare `GET /beatmapset/{id}`. Reads are public, with a soft admin-only
-///     elevation (a private beatmapset's beatmaps become visible); every write is admin-key gated.
-///     `PUT`/`DELETE` are filesystem-first and asynchronous (202 Accepted, never touch the database
-///     directly): the live <see cref="BeatmapWatcherService" /> reconciles the database from the
-///     resulting filesystem change within its own debounce window. See
-///     <see cref="BeatmapIngestionService.DeletedFolderInfix" /> for how delete's atomic rename-in-place
-///     is recognized as "gone" before the physical folder is actually reclaimed.
+///     Registers the REST endpoints for listing, querying, uploading, and downloading beatmapsets.
 /// </summary>
+/// <remarks>
+///     Reads are public, though a private beatmapset is only visible to callers with a valid
+///     `X-Admin-Key`. Creating, replacing, updating, and deleting beatmapsets require administrator
+///     authorization. Replacing and deleting are asynchronous: they return `202 Accepted` and the
+///     change becomes observable shortly after.
+/// </remarks>
 internal static class BeatmapsetRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -42,11 +46,12 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets", HandleList)
 			.WithGroupName("basilapi")
 			.WithName("listBeatmapsets")
-			.WithSummary("List Beatmapsets")
-			.WithDescription("Query params: `page` (default 1), `pageSize` (default 50). A private beatmapset " +
-			                 "is excluded entirely unless the caller carries a valid `X-Admin-Key`. Response: " +
-			                 "`{ page, pageSize, totalRecords, items }`, wrapped in the enveloped `meta` object at the " +
-			                 "top level. Public.")
+			.WithSummary("List beatmapsets.")
+			.WithDescription("""
+			                 Returns a page of beatmapsets, each with its difficulty count.
+
+			                 Query params: `page` (default 1) and `pageSize` (default 50). A private beatmapset is excluded entirely unless the caller carries a valid `X-Admin-Key`.
+			                 """)
 			.WithTags("Beatmapsets")
 			.Produces<PagedResult<BeatmapsetSummary>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, [SampleSummary()]));
@@ -55,11 +60,12 @@ internal static class BeatmapsetRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("createBeatmapset")
-			.WithSummary("Create Beatmapset")
-			.WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. A lone `.osu` " +
-			                 "file has no set context under this server's folder-per-beatmapset storage model. Runs a full " +
-			                 "ingestion reconciliation pass synchronously and returns `{ ingested }` (the number of " +
-			                 "beatmaps added/updated)." + AdminKeyNote)
+			.WithSummary("Create a beatmapset.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`, must be a `.osz` archive (a lone `.osu` file has no set context).
+
+			                 Adds the archive's beatmaps to the server and returns `{ ingested }`, the number of beatmaps added or updated.
+			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.WithMultipartFileUpload()
 			.Produces<IngestResult>(StatusCodes.Status201Created)
@@ -71,13 +77,14 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapset")
-			.WithSummary("Get Beatmapset Details")
-			.WithDescription("Returns `{ id, artist, title, creator, lastUpdate, createdAt, isFrozen, " +
-			                 "isPrivate, status, beatmaps }`. `beatmaps` is the full list of difficulties under this " +
-			                 "set, each a `BeatmapInSet` (no parent beatmapset embed, unlike `GET " +
-			                 "/beatmapsets/{mapsetId}/{beatmapId}`'s `BeatmapDetail`, to avoid the cycle). 404 if the " +
-			                 "beatmapset doesn't exist, or (for a non-admin caller) it's private. Public, with a soft admin " +
-			                 "elevation.")
+			.WithSummary("Get beatmapset details.")
+			.WithDescription("""
+			                 Returns the beatmapset's metadata plus `beatmaps`, the full list of difficulties under it.
+
+			                 For a single difficulty's full detail, use `GET /beatmapsets/{mapsetId}/{beatmapId}`.
+
+			                 Returns `404 Not Found` if the beatmapset doesn't exist, or it's private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmapsets")
 			.Produces<BeatmapsetDetail>()
 			.WithExample(StatusCodes.Status200OK, SampleDetail())
@@ -87,14 +94,14 @@ internal static class BeatmapsetRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceBeatmapset")
-			.WithSummary("Replace Beatmapset")
-			.WithDescription("Multipart upload, field name `file`, must be a `.osz` archive. Filesystem-only " +
-			                 "and asynchronous: extracts the new archive's contents directly into the beatmapset's existing " +
-			                 "storage folder (overwriting files), then returns `202 Accepted` with a small body describing " +
-			                 "what was accepted immediately. The database catches up shortly after via the same live " +
-			                 "reconciliation the filesystem watcher already runs, not synchronously in this request. 404 " +
-			                 "if the beatmapset doesn't exist; 409 if it's frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
-			                 AdminKeyNote)
+			.WithSummary("Replace a beatmapset.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`, must be a `.osz` archive. Replaces the beatmapset's files with the archive's contents.
+
+			                 Asynchronous: returns `202 Accepted` immediately, and the change becomes visible shortly after.
+
+			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{mapsetId}`), or `404 Not Found` if the beatmapset doesn't exist.
+			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.WithMultipartFileUpload()
 			.Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
@@ -110,15 +117,12 @@ internal static class BeatmapsetRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteBeatmapset")
-			.WithSummary("Delete Beatmapset")
-			.WithDescription("Filesystem-only and asynchronous: atomically renames the beatmapset's storage " +
-			                 "folder in place (a TOCTOU-safe marker the live reconciliation and a background garbage " +
-			                 "collector both recognize as \"gone\"), then returns `202 Accepted` with a small body " +
-			                 "describing what was accepted. The database row and the physical folder are both cleaned " +
-			                 "up shortly after, not synchronously in this request. 404 if the beatmapset doesn't exist; 409 " +
-			                 "(folder left untouched) if the rename itself fails (e.g. a locked file) or if the beatmapset is " +
-			                 "frozen (see `PATCH /beatmapsets/{mapsetId}`)." +
-			                 AdminKeyNote)
+			.WithSummary("Delete a beatmapset.")
+			.WithDescription("""
+			                 Asynchronous: returns `202 Accepted` immediately, and the beatmapset disappears shortly after.
+
+			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{mapsetId}`) or its files are currently in use, or `404 Not Found` if the beatmapset doesn't exist.
+			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -131,13 +135,14 @@ internal static class BeatmapsetRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateBeatmapset")
-			.WithSummary("Update Beatmapset")
-			.WithDescription("Body: `{ frozen?, private? }`. Each field is applied only if present. " +
-			                 "`frozen` is a write-lock: while set, `PUT`/`DELETE /beatmapsets/{mapsetId}` are " +
-			                 "rejected with 409 regardless of admin role (this route itself is exempt, so unfreezing is " +
-			                 "always possible). `private` hides the beatmapset (and every beatmap under it) from non-admin " +
-			                 "listings/lookups. Returns the updated beatmapset info (same shape as `GET`). 404 if the " +
-			                 "beatmapset doesn't exist." + AdminKeyNote)
+			.WithSummary("Update a beatmapset.")
+			.WithDescription("""
+			                 Body: `{ frozen?, private? }`. Each field is applied only if present, and the updated beatmapset info is returned.
+
+			                 `frozen` is a write-lock: while set, `PUT` and `DELETE /beatmapsets/{mapsetId}` are rejected with `409 Conflict` (this route itself is exempt, so unfreezing is always possible). `private` hides the beatmapset and every beatmap under it from non-admin listings and lookups.
+
+			                 Returns `404 Not Found` if the beatmapset doesn't exist.
+			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.Produces<BeatmapsetDetail>()
 			.WithExample(StatusCodes.Status200OK, SampleDetail() with { IsFrozen = true })
@@ -146,13 +151,14 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}", HandleBeatmapInfo)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmap")
-			.WithSummary("Get Beatmap Details")
-			.WithDescription("Returns a `BeatmapDetail` (difficulty/object-count metadata plus the parent " +
-			                 "`beatmapset` embed), unlike each entry of `GET /beatmapsets/{mapsetId}`'s `beatmaps` list " +
-			                 "(a `BeatmapInSet`, no parent embed, to avoid the beatmap-in-set-in-beatmap cycle). Never " +
-			                 "includes the internal filename/background-image filename (see `GET .../background` " +
-			                 "instead). 404 if the beatmap doesn't exist, doesn't belong to this beatmapset, or the parent " +
-			                 "beatmapset is private and the caller isn't admin. Public, with a soft admin elevation.")
+			.WithSummary("Get beatmap details.")
+			.WithDescription("""
+			                 Returns the beatmap's difficulty and object-count metadata plus its parent beatmapset.
+
+			                 For the background image, use `GET /beatmapsets/{mapsetId}/{beatmapId}/background`.
+
+			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.Produces<BeatmapDetail>()
 			.WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
@@ -161,19 +167,16 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/difficulty", HandleBeatmapDifficulty)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapDifficulty")
-			.WithSummary("Get Beatmap Difficulty (with mods)")
-			.WithDescription("Recomputes star rating, BPM, length, and CS/AR/OD/HP for the given `mods` " +
-			                 "bitflag query param (default `0`, no mods) and `mode` query param (default: the " +
-			                 "beatmap's own mode; `0`=osu!, `1`=taiko, `2`=catch, `3`=mania). HR/EZ's CS/AR/OD/HP " +
-			                 "multiplier and DT/HT/NC's BPM/length rate scaling apply in every mode; DT/HT/NC's " +
-			                 "AR/OD time-window shift is osu!std-only (AR/OD pass through unadjusted in " +
-			                 "taiko/catch/mania, since each ruleset defines its own hit-window formula, not " +
-			                 "implemented here). Invalid mod combinations (e.g. `EZ+HR`) are silently resolved the " +
-			                 "same way multiplayer room mods are, and the response's `mods` field echoes what was " +
-			                 "actually applied. 400 if `mode` is out of range or the beatmap can't be analyzed " +
-			                 "under the requested ruleset. 404 if the beatmap doesn't exist, doesn't belong to " +
-			                 "this beatmapset, its file is missing on disk, or the parent beatmapset is private and the " +
-			                 "caller isn't admin. Public, with a soft admin elevation.")
+			.WithSummary("Get beatmap difficulty with mods.")
+			.WithDescription("""
+			                 Recomputes star rating, BPM, length, and CS/AR/OD/HP for the given `mods` bitflag query param (default 0, no mods) and `mode` query param (default: the beatmap's own mode; 0 = osu!, 1 = taiko, 2 = catch, 3 = mania).
+
+			                 HR/EZ's CS/AR/OD/HP multiplier and DT/HT/NC's BPM/length rate scaling apply in every mode. DT/HT/NC's AR/OD time-window shift is osu!std-only; AR/OD pass through unadjusted in taiko/catch/mania.
+
+			                 Invalid mod combinations (e.g. `EZ+HR`) are silently resolved the same way multiplayer room mods are, and the response's `mods` field echoes what was actually applied.
+
+			                 Returns `400 Bad Request` if `mode` is out of range or the beatmap can't be analyzed under the requested ruleset, or `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, its file is missing, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.Produces<BeatmapDifficultyResult>()
 			.WithExample(StatusCodes.Status200OK,
@@ -184,102 +187,109 @@ internal static class BeatmapsetRoutes
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmap")
-			.WithSummary("Download Beatmap")
-			.WithDescription("Serves the raw `.osu` difficulty file. 404 if the beatmap doesn't exist, " +
-			                 "doesn't belong to this beatmapset, its file is missing on disk, or the parent beatmapset is " +
-			                 "private and the caller isn't admin. Content-Type `application/x-osu-beatmap`. Public, " +
-			                 "with a soft admin elevation.")
+			.WithSummary("Download a beatmap.")
+			.WithDescription("""
+			                 Serves the raw `.osu` difficulty file, as `application/x-osu-beatmap`.
+
+			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, its file is missing, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/background", HandleDownloadBackground)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapBackground")
-			.WithSummary("Download Beatmap Background")
-			.WithDescription("Serves the beatmap's background image file. 404 if the beatmap doesn't exist, " +
-			                 "doesn't belong to this beatmapset, has no recorded background image, its file is missing on " +
-			                 "disk, or the parent beatmapset is private and the caller isn't admin. Content-Type inferred " +
-			                 "from the file extension. Public, with a soft admin elevation.")
+			.WithSummary("Download a beatmap background.")
+			.WithDescription("""
+			                 Serves the beatmap's background image. Content-Type is inferred from the file extension.
+
+			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no recorded background image, its file is missing, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/background", HandleDownloadMapsetBackground)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetBackground")
-			.WithSummary("Download Beatmapset Background")
-			.WithDescription("Serves the preview background image for this set (the lowest-id " +
-			                 "beatmap's background), kept in sync by ingestion. 404 if the beatmapset doesn't exist, has no " +
-			                 "recorded preview background, its file is missing on disk, or the beatmapset is private and the " +
-			                 "caller isn't admin. Content-Type inferred from the file extension. Public, with a soft " +
-			                 "admin elevation.")
+			.WithSummary("Download beatmapset background.")
+			.WithDescription("""
+			                 Serves the preview background image for this set: the lowest-id beatmap's background. Content-Type is inferred from the file extension.
+
+			                 Returns `404 Not Found` if the beatmapset doesn't exist, has no recorded preview background, its file is missing, or the beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/audio", HandleDownloadAudio)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapAudio")
-			.WithSummary("Download Beatmap Audio")
-			.WithDescription("Serves the beatmap's audio file. 404 if the beatmap doesn't exist, doesn't " +
-			                 "belong to this beatmapset, has no recorded audio file, its file is missing on disk, or the " +
-			                 "parent beatmapset is private and the caller isn't admin. Content-Type inferred from the file " +
-			                 "extension. Public, with a soft admin elevation.")
+			.WithSummary("Download beatmap audio.")
+			.WithDescription("""
+			                 Serves the beatmap's audio file. Content-Type is inferred from the file extension.
+
+			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no recorded audio file, its file is missing, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/audio", HandleDownloadMapsetAudio)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetAudio")
-			.WithSummary("Download Beatmapset Audio")
-			.WithDescription("Serves the preview audio file for this set (the lowest-id beatmap's audio " +
-			                 "file), kept in sync by ingestion. 404 if the beatmapset doesn't exist, has no recorded audio " +
-			                 "file, its file is missing on disk, or the beatmapset is private and the caller isn't admin. " +
-			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
+			.WithSummary("Download beatmapset audio.")
+			.WithDescription("""
+			                 Serves the preview audio file for this set: the lowest-id beatmap's audio. Content-Type is inferred from the file extension.
+
+			                 Returns `404 Not Found` if the beatmapset doesn't exist, has no recorded audio file, its file is missing, or the beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/video", HandleDownloadVideo)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapVideo")
-			.WithSummary("Download Beatmap Video")
-			.WithDescription("Serves the video file declared in the beatmap's `.osu` `[Events]` section " +
-			                 "(found via osu!'s own storyboard decoder, the same module background-finding relies " +
-			                 "on; it's not a stored column, it's decoded fresh on every request). 404 if the beatmap doesn't " +
-			                 "exist, doesn't belong to this beatmapset, its `.osu` declares no video, the video file is " +
-			                 "missing on disk, or the parent beatmapset is private and the caller isn't admin. " +
-			                 "Content-Type inferred from the file extension. Public, with a soft admin elevation.")
+			.WithSummary("Download beatmap video.")
+			.WithDescription("""
+			                 Serves the beatmap's video file. Content-Type is inferred from the file extension.
+
+			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no video, the video file is missing, or the parent beatmapset is private and the caller isn't admin.
+			                 """)
 			.WithTags("Beatmaps")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/audiopreview", HandleAudioPreview)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapsetAudioPreview")
-			.WithSummary("Get Beatmapset Audio Preview")
-			.WithDescription("Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's " +
-			                 "audio file, starting at its recorded PreviewTime, the same clip and cache entry as " +
-			                 "the `b.` host's `/preview/{mapsetId}.mp3`. 404 if the beatmapset doesn't exist, is private, " +
-			                 "or has no audio file on disk.")
+			.WithSummary("Get beatmapset audio preview.")
+			.WithDescription("""
+			                 Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's audio file, starting at its recorded preview time. This is the same clip the `b.` host serves at `/preview/{mapsetId}.mp3`.
+
+			                 Returns `404 Not Found` if the beatmapset doesn't exist, is private, or has no audio file, or `503 Service Unavailable` if audio extraction is temporarily unavailable.
+			                 """)
 			.WithTags("Beatmapsets")
-			.ProducesProblem(StatusCodes.Status404NotFound);
+			.ProducesProblem(StatusCodes.Status404NotFound)
+			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetStoryboard")
-			.WithSummary("Download Beatmapset Storyboard")
-			.WithDescription("Serves the beatmapset folder's `.osb` storyboard file. A beatmapset is expected to " +
-			                 "carry at most one; if more than one is somehow present, the first in filename order is " +
-			                 "served. 404 if the beatmapset has no local folder, or the folder has no `.osb` file at all. " +
-			                 "Content-Type `application/x-osu-storyboard`. Public, no admin key.")
+			.WithSummary("Download beatmapset storyboard.")
+			.WithDescription("""
+			                 Serves the beatmapset's `.osb` storyboard file, as `application/x-osu-storyboard`. A beatmapset is expected to carry at most one; if more than one is present, the first in filename order is served.
+
+			                 Returns `404 Not Found` if the beatmapset has no `.osb` file.
+			                 """)
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/beatmapsets/{mapsetId:int}/download", HandleDownloadArchive)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapset")
-			.WithSummary("Download Beatmapset")
-			.WithDescription("Builds a fresh `.osz` on the fly from the beatmapset's local storage folder (every " +
-			                 "file in the folder: audio, images, video, every `.osu`/`.osb`) and serves it. 404 if the " +
-			                 "beatmapset has no local folder, or the folder is empty. Content-Type " +
-			                 "`application/x-osu-beatmap-archive`. Public, no admin key.")
+			.WithSummary("Download a beatmapset.")
+			.WithDescription("""
+			                 Serves a `.osz` archive containing every file in the beatmapset: audio, images, video, and every `.osu`/`.osb`. Served as `application/x-osu-beatmap-archive`.
+
+			                 Returns `404 Not Found` if the beatmapset has no files.
+			                 """)
 			.WithTags("Beatmapsets")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
@@ -288,7 +298,7 @@ internal static class BeatmapsetRoutes
 	{
 		var created = DateTime.Parse("2026-06-01T10:00:00Z");
 		return new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created,
-			false, false, BeatmapStatus.Loved, 1);
+			false, false, BeatmapStatus.Approved, 1);
 	}
 
 	private static BeatmapsetDetail SampleDetail()
@@ -498,7 +508,7 @@ internal static class BeatmapsetRoutes
 		catch (InvalidOperationException)
 		{
 			return Results.BadRequest(new ErrorResponse(
-				$"Beatmap can't be analyzed as mode {resolvedMode} — likely an unsupported ruleset conversion."));
+				$"Beatmap can't be analyzed as mode {resolvedMode}: likely an unsupported ruleset conversion."));
 		}
 
 		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
@@ -518,7 +528,7 @@ internal static class BeatmapsetRoutes
 		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
 
 		var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
-		return File.Exists(osuPath) ? Results.File(osuPath, "application/x-osu-beatmap") : Results.NotFound();
+		return File.Exists(osuPath) ? Results.File(osuPath, ContentTypes.Resolve(osuPath)) : Results.NotFound();
 	}
 
 	private static async Task<IResult> HandleDownloadBackground(int mapsetId, int beatmapId, HttpContext context,
@@ -537,13 +547,7 @@ internal static class BeatmapsetRoutes
 
 	private static string BackgroundContentType(string path)
 	{
-		return Path.GetExtension(path).ToLowerInvariant() switch
-		{
-			".png" => "image/png",
-			".gif" => "image/gif",
-			".bmp" => "image/bmp",
-			_ => "image/jpeg"
-		};
+		return ContentTypes.Resolve(path, "image/jpeg");
 	}
 
 	private static async Task<IResult> HandleDownloadMapsetBackground(int mapsetId, HttpContext context,
@@ -576,12 +580,7 @@ internal static class BeatmapsetRoutes
 
 	private static string AudioContentType(string path)
 	{
-		return Path.GetExtension(path).ToLowerInvariant() switch
-		{
-			".ogg" => "audio/ogg",
-			".wav" => "audio/wav",
-			_ => "audio/mpeg"
-		};
+		return ContentTypes.Resolve(path, "audio/mpeg");
 	}
 
 	private static async Task<IResult> HandleDownloadMapsetAudio(int mapsetId, HttpContext context,
@@ -614,23 +613,16 @@ internal static class BeatmapsetRoutes
 
 	private static string VideoContentType(string path)
 	{
-		return Path.GetExtension(path).ToLowerInvariant() switch
-		{
-			".avi" => "video/x-msvideo",
-			".flv" => "video/x-flv",
-			".webm" => "video/webm",
-			".mp4" => "video/mp4",
-			_ => "application/octet-stream"
-		};
+		return ContentTypes.Resolve(path);
 	}
 
 	private static async Task<IResult> HandleAudioPreview(int mapsetId, IBeatmapRepository beatmaps,
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IResponseCache cache,
-		IAudioExtractor extractor, CancellationToken cancellationToken)
+		IAudioExtractor extractor, ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
-		var clip = await BanchoHostGroups.GetOrGeneratePreviewClipAsync(mapsetId, beatmaps, beatmapsetRepository,
-			storage, cache,
-			extractor, cancellationToken);
+		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(mapsetId, beatmaps, beatmapsetRepository,
+			storage, cache, extractor, logger, cancellationToken);
+		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		return clip is null ? Results.NotFound() : Results.File(clip, "audio/mpeg");
 	}
 
@@ -640,31 +632,31 @@ internal static class BeatmapsetRoutes
 		if (folder is null) return Results.NotFound();
 
 		var osbPath = Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault();
-		return osbPath is null ? Results.NotFound() : Results.File(osbPath, "application/x-osu-storyboard");
+		return osbPath is null ? Results.NotFound() : Results.File(osbPath, ContentTypes.Resolve(osbPath));
 	}
 
 	private static async Task<IResult> HandleDownloadArchive(int mapsetId, IBeatmapRepository beatmaps,
 		IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
-		var osz = await BanchoHostGroups.BuildOszArchiveAsync(beatmaps, storage.Value, mapsetId, false,
+		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, mapsetId, false,
 			cancellationToken);
 		return osz is null
 			? Results.NotFound()
-			: Results.File(osz.Value.Bytes, "application/x-osu-beatmap-archive", osz.Value.FileName);
+			: Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName), osz.Value.FileName);
 	}
 
-	/// <summary>Body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
+	/// <summary>Request body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
 	public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
 
 	private sealed record IngestResult(int Ingested);
 
-	/// <summary>Body for the async, filesystem-first `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
+	/// <summary>Response body for the asynchronous `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
 	public sealed record MapsetOperationAccepted(int MapsetId, string Operation);
 
 	/// <summary>
-	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty`: <see cref="Mods" /> echoes the
-	///     actually-applied mod combination (after <see cref="ModsExtensions.FilterInvalidCombos" /> resolves any
-	///     conflicting pair like `EZ+HR`), since it can differ from the raw `mods` query param the caller sent.
+	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty`. The `mods` field echoes the
+	///     actually applied mod combination, which can differ from the raw `mods` query param the caller sent
+	///     because conflicting pairs like `EZ+HR` are silently resolved.
 	/// </summary>
 	public sealed record BeatmapDifficultyResult(Mods Mods, BeatmapDetail Beatmap);
 }

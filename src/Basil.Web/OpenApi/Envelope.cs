@@ -1,12 +1,24 @@
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+using Basil.Web.Routing.Api;
+
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     The Enveloped Response Standard wrapping every JSON body on the `api.` host, applied by
-///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" />. File downloads and SSE streams are the
-///     only exceptions: their `Content-Type` never contains "json", so the middleware leaves them
-///     untouched. <see cref="Meta" /> is populated only for a paginated list route (see
-///     <see cref="Basil.Web.Routing.PagedResult{T}" />); every other route leaves it null.
+///     The Enveloped Response Standard wrapping every JSON body on the api host, applied by
+///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" />.
 /// </summary>
+/// <remarks>
+///     <para>
+///         File downloads and SSE streams are the only exceptions: their `Content-Type` never
+///         contains "json", so the middleware leaves them untouched.
+///     </para>
+///     <para>
+///         <see cref="Meta" /> is populated only for a paginated list route (see
+///         <see cref="PagedResult{T}" />); every other route leaves it null.
+///     </para>
+/// </remarks>
 /// <typeparam name="T">The type of the response payload carried in <see cref="Data" />.</typeparam>
 /// <param name="Success">A value that indicates whether the response status indicates success.</param>
 /// <param name="Code">The HTTP status code of the response.</param>

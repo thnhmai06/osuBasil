@@ -24,7 +24,7 @@ public sealed class CategoryEnricher : ILogEventEnricher
 	[
 		("Basil.Infrastructure.Beatmaps.", true, "Mapsets"),
 		("Basil.Application.Services.Multiplayer.", true, "Matches"),
-		("Basil.Application.PacketHandlers.Multiplayer.", true, "Matches"),
+		("Basil.Application.Packets.Multiplayer.", true, "Matches"),
 		("Basil.Application.Services.Scores.", true, "Scores"),
 		("Basil.Application.Services.Authentication.LoginService", false, "Online"),
 		("Basil.Application.Sessions.PlayerLogoutService", false, "Online"),
@@ -34,7 +34,8 @@ public sealed class CategoryEnricher : ILogEventEnricher
 		("Basil.Infrastructure.Persistence.Repositories.", true, "Database"),
 		("Basil.Infrastructure.Caching.", true, "Cache"),
 		("Microsoft.Hosting.Lifetime", false, "Host"),
-		("Basil.Web.Program", false, "Host")
+		("Basil.Web.Program", false, "Host"),
+		("Basil.Web.Middleware.ApiRequestLoggingMiddleware", false, "Api")
 	];
 
 	/// <summary>

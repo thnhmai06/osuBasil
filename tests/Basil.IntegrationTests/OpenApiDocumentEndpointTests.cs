@@ -98,7 +98,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	[InlineData("/docs/")]
 	[InlineData("/docs/osu-client/")]
 	[InlineData("/docs/basil-api/")]
-	[InlineData("/docs/basilbot/")]
+	[InlineData("/docs/basil-bot/")]
 	public async Task DocsPage_ReturnsOk(string path)
 	{
 		var client = _factory.CreateClient();
@@ -183,8 +183,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 			.GetProperty("$ref").GetString());
 
 		// The example must also stay unwrapped (no top-level "success"/"data" envelope keys) —
-		// this route is marked SseEndpointMarker, so OpenApiExampleExtensions.WithExample must skip
-		// the same envelope-wrapping it applies to every other basilapi route.
+		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions.WithExample
+		// must skip the same envelope-wrapping it applies to every other basilapi route.
 		var examplePropertyNames = responseNode.GetProperty("example").EnumerateObject()
 			.Select(p => p.Name).ToHashSet();
 		Assert.DoesNotContain("success", examplePropertyNames);

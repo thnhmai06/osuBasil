@@ -105,7 +105,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
 		{
 			var entry = archive.CreateEntry("replacement.osu");
-			await using var entryStream = entry.Open();
+			await using var entryStream = await entry.OpenAsync();
 			await entryStream.WriteAsync("osu file format v14"u8.ToArray());
 		}
 

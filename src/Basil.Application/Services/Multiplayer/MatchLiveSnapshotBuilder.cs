@@ -1,6 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Formats;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
@@ -282,11 +281,9 @@ public static class MatchLiveSnapshotBuilder
 /// </summary>
 /// <remarks>
 ///     This <c>{id, name, country}</c> embed is reused for every user reference across these routes
-///     and SSE payloads (settings host and referees, hosts/refs/bans views, slot occupants, TRT
-///     actor/target/winner/scorer, and per-userSession live streams), resolved via
-///     <see cref="UserBriefResolver" />. <see cref="Country" /> stays enum-typed so it remains
-///     type-safe in C#; <see cref="CountryJsonConverter" /> owns converting it to the wire's
-///     lowercase 2-letter acronym.
+///     and SSE payloads (settings host and referees, hosts/refs/bans views, slot occupants, match
+///     report actors, and spectate streams). <see cref="Country" /> serializes to its lowercase
+///     2-letter acronym on the wire.
 /// </remarks>
 /// <param name="Id">The user's id.</param>
 /// <param name="Name">The user's name.</param>
@@ -302,7 +299,7 @@ public sealed record UserBrief(int Id, string Name, Country Country);
 ///     rather than going nullable; <see cref="Beatmap" /> (on each derived record) is
 ///     <see langword="null" /> in both of those cases.
 /// </remarks>
-/// <param name="Id">The match's in-memory registry id.</param>
+/// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
@@ -333,7 +330,7 @@ public abstract record MatchRoomCore(
 ///     Carries room configuration plus the current map and in-progress flag, with no slots, host,
 ///     referees, or rounds.
 /// </remarks>
-/// <param name="Id">The match's in-memory registry id.</param>
+/// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
@@ -373,7 +370,7 @@ public sealed record MatchRoomLive(
 ///     settings writes.
 /// </summary>
 /// <remarks>Carries host and referees because this resource controls membership, not just configuration.</remarks>
-/// <param name="Id">The match's in-memory registry id.</param>
+/// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
@@ -411,7 +408,7 @@ public sealed record MatchSettingsView(
 		Mode);
 
 /// <summary>The payload for the SSE <c>/match/{id}</c> main channel: the full live snapshot, including slots.</summary>
-/// <param name="Id">The match's in-memory registry id.</param>
+/// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
@@ -467,18 +464,14 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 /// <summary>The payload for <c>GET /matches/{matchId}/timer</c>.</summary>
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="SecondsRemaining">The whole seconds remaining, or <see langword="null" /> when no countdown is running.</param>
-/// <param name="AutoStart">
-///     Whether the pending countdown will start the match at zero; mirrors
-///     <see cref="MatchSession.PendingTimerIsAutoStart" />.
-/// </param>
+/// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
 public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
 
 /// <summary>One slot in <c>GET /matches/{matchId}/slots</c>.</summary>
 /// <remarks>
-///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> stay enum-typed, never a
-///     <c>.ToString()</c> name. <see cref="Ready" /> mirrors <see cref="Status" /> being
-///     <see cref="SlotStatus.Ready" />, kept as its own boolean, so a consumer checking readiness does
-///     not have to know the full <see cref="SlotStatus" /> flag set.
+///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> serialize as their numeric
+///     enum values. <see cref="Ready" /> is true exactly when <see cref="Status" /> is
+///     <see cref="SlotStatus.Ready" />.
 /// </remarks>
 /// <param name="Index">The 0-based slot index.</param>
 /// <param name="User">The occupant, or <see langword="null" /> for an empty slot.</param>
@@ -506,26 +499,24 @@ public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 /// <summary>One <c>GET /matches</c> list item.</summary>
 /// <remarks>
 ///     Carries bare match metadata plus <see cref="Live" />, which is non-null while the room is
-///     currently tracked in memory. This replaces the old flat <c>IsOpen</c> boolean.
+///     currently live.
 /// </remarks>
-/// <param name="Id">The database match id.</param>
+/// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
 /// <param name="CreatedAt">When the match was created.</param>
 /// <param name="EndedAt">When the match was closed, or <see langword="null" /> while it is still open.</param>
 /// <param name="Live">
-///     The current room configuration, or <see langword="null" /> when the room is no longer tracked in
-///     memory.
+///     The current room configuration, or <see langword="null" /> once the room is no longer live.
 /// </param>
 public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
 
 /// <summary>The response body for <c>POST /matches/{matchId}/close</c>.</summary>
-/// <remarks>Net-new; not wired into any route yet (Phase 3).</remarks>
-/// <param name="MatchId">The closed match's database id.</param>
+/// <param name="MatchId">The closed match's id.</param>
 /// <param name="EndedAt">When the match was closed.</param>
 public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
 
-/// <summary>One userSession's live score broadcast on the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
-/// <param name="User">The userSession the score belongs to.</param>
+/// <summary>One player's live score frame on the SSE <c>/matches/{matchId}/live/{slotIndex}</c> channel.</summary>
+/// <param name="User">The player the score belongs to.</param>
 /// <param name="Time">The score frame's time.</param>
 /// <param name="Num300">The number of 300 judgments.</param>
 /// <param name="Num100">The number of 100 judgments.</param>

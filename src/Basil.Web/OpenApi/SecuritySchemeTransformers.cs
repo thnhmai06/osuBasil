@@ -1,4 +1,5 @@
 using Basil.Web.Auth;
+using Basil.Web.Routing.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -6,13 +7,18 @@ using Microsoft.OpenApi;
 namespace Basil.Web.OpenApi;
 
 /// <summary>
-///     Declares the `X-Admin-Key` header as a real OpenAPI security scheme on the `basilapi` document.
-///     It was previously undocumented beyond prose in each route's own `.WithDescription` (per
-///     <see cref="Basil.Web.Routing.RouteDocs.AdminKeyNote" />). The scheme is attached to every
-///     operation that actually enforces <see cref="AdminKeyDefaults.Policy" /> via
-///     `.RequireAuthorization(...)`, so Scalar's "Authorize" button and any generated client SDK pick
-///     it up automatically.
+///     Declares the `X-Admin-Key` header as a real OpenAPI security scheme on the `basilapi` document,
+///     attached to every operation that enforces the admin key policy.
 /// </summary>
+/// <remarks>
+///     <para>
+///         The header was previously undocumented beyond prose in each route's own `.WithDescription`
+///         (see <see cref="RouteDocs.AdminKeyNote" />). Because the scheme is
+///         attached to every operation that actually enforces
+///         <see cref="AdminKeyDefaults.Policy" /> via `.RequireAuthorization(...)`, Scalar's
+///         "Authorize" button and any generated client SDK pick it up automatically.
+///     </para>
+/// </remarks>
 internal static class SecuritySchemeTransformers
 {
 	private const string SchemeId = "AdminKey";
@@ -33,7 +39,7 @@ internal static class SecuritySchemeTransformers
 				Type = SecuritySchemeType.ApiKey,
 				In = ParameterLocation.Header,
 				Name = "X-Admin-Key",
-				Description = "Admin key matching the server's configured `Server:AdminKey`. Required for " +
+				Description = "Admin key matching the server's configured `Basil:Server:AdminKey`. Required for " +
 				              "every management/mutation route on this host."
 			};
 

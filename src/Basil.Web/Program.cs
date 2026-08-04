@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
@@ -14,7 +16,7 @@ using Basil.Web.Auth;
 using Basil.Web.Logging;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
-using Basil.Web.Routing;
+using Basil.Web.Routing.Bancho;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -22,21 +24,39 @@ using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 
+// ReSharper disable ClassNeverInstantiated.Global
+
 namespace Basil.Web;
 
 public sealed class Program
 {
 	private const string CorsPolicyName = "ApiCors";
 
+	private const string BasilDescription =
+		"A lightweight, high-performance osu! server for tournaments and multiplayer.";
+
+	private const string BasilLicense = "Licensed under the MIT License.";
+
+	private const string BasilArt =
+		"""
+
+		                    _
+		                  _(_)_          ____            _wW̲w   _
+		      @@@@       (_)@(_)   vVVVv| __ )  __ _ ___(_) |) _(_)_
+		     @@()@@ wWWWw  (_)\    (___)|  _ \ / _` / __| | | (_)@(_)
+		      @@@@  (___)     `|/    Y  | |_) | (_| \__ \ | |   (_)\
+		       /      Y       \|    \|/ |____/ \__,_|___/_|_|      |
+		    \ |     \ |/       | / \ | /  \|/       |/    \|      \|/
+		    \\|//   \\|///  \\\|//\\\|/// \|///  \\\|//  \\|//  \\\|//
+		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		"""; // original art by Joan G. Stark (Spunk), edited by Mai Thành (thnhmai06)
+
 	/// <summary>
-	///     One `.WithTags(...)` string per row, one line of description each. Rows are grouped into the
-	///     Scalar sidebar's collapsible sections in this exact order, so every route under one resource
-	///     (e.g. every `/matches/...` tag) stays adjacent whether or not it also supports SSE.
-	///     SSE-vs-plain-JSON is no longer a tag of its own; content negotiation is called out in each
-	///     route's own `.WithDescription` instead. Wired into the `basilapi` document as both
-	///     `document.Tags` (descriptions) and the `x-tagGroups` extension Scalar reads for the sidebar's
-	///     group order (see <see cref="AddOpenApiDocument" />).
+	///     Defines the tags used by the Basil API documentation, grouped by resource.
 	/// </summary>
+	/// <remarks>
+	///     The declaration order determines how tag groups appear in the generated API documentation.
+	/// </remarks>
 	private static readonly (string Group, (string Tag, string Description)[] Tags)[] BasilApiTagGroups =
 	[
 		("Matches",
@@ -50,7 +70,7 @@ public sealed class Program
 			("Match Referees", "List/replace/add/remove the match's referees."),
 			("Match Bans", "List/replace/add players banned from the match, and unban."),
 			("Match Slots", "Read, reassign, re-team, or lock the match's 16 slots, each addressed by " +
-			                "index; invite players onto them, and kick a seated userSession."),
+			                "index; invite players onto them, and kick a seated player."),
 			("Match Timer", "Read, start, or abort the match's countdown timer."),
 			("Match Abort", "Abort the match currently in progress."),
 			("Match Close", "Close the match immediately.")
@@ -79,7 +99,7 @@ public sealed class Program
 		("Menu Icon",
 		[
 			("Menu Icon Image", "The in-game main menu icon image file."),
-			("Menu Icon URL", "The URL opened when a userSession clicks the main menu icon.")
+			("Menu Icon URL", "The URL opened when a player clicks the main menu icon.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -95,13 +115,6 @@ public sealed class Program
 	///     The host entry point: builds the web application, wires the middleware pipeline and host
 	///     groups, initializes startup data, and runs the application.
 	/// </summary>
-	/// <remarks>
-	///     In order, the pipeline registers RequestIdLoggingMiddleware, Serilog request logging,
-	///     ExceptionLoggingMiddleware, WebSockets, CORS, authentication/authorization, and finally
-	///     EnvelopeMiddleware. Host groups are mapped from the configured domain (localhost by default),
-	///     a shutdown log line is registered against the host lifetime, and
-	///     <see cref="InitializeDataAsync" /> runs before the application starts serving.
-	/// </remarks>
 	/// <param name="args">The command-line arguments passed to the host.</param>
 	public static async Task Main(string[] args)
 	{
@@ -120,6 +133,11 @@ public sealed class Program
 		ConfigureCors(builder);
 
 		var app = builder.Build();
+		LogStartupBanner(app);
+
+		// Order matters: authentication/authorization must run before EnvelopeMiddleware (which
+		// needs the resolved role to decide what a response reveals), which must run before
+		// ApiRequestLoggingMiddleware (which logs the final status code).
 		app.UseMiddleware<RequestIdLoggingMiddleware>();
 		app.UseSerilogRequestLogging();
 		app.UseMiddleware<ExceptionLoggingMiddleware>();
@@ -128,6 +146,7 @@ public sealed class Program
 		app.UseAuthentication();
 		app.UseAuthorization();
 		app.UseMiddleware<EnvelopeMiddleware>();
+		app.UseMiddleware<ApiRequestLoggingMiddleware>();
 
 		var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
 		BanchoHostGroups.MapAll(app, domain);
@@ -140,20 +159,37 @@ public sealed class Program
 		await app.RunAsync();
 	}
 
+	/// <summary>Logs the startup banner: ASCII art, version, and host machine/hardware info.</summary>
+	/// <param name="app">The built application whose logger is used.</param>
+	private static void LogStartupBanner(WebApplication app)
+	{
+		var logger = app.Services.GetRequiredService<ILogger<Program>>();
+		var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+			              ?.InformationalVersion
+		              ?? typeof(Program).Assembly.GetName().Version?.ToString()
+		              ?? "unknown";
+
+		logger.LogInformation("{Art}", BasilArt);
+		logger.LogInformation("Basil v{Version}", version);
+		logger.LogInformation(BasilDescription);
+		logger.LogInformation(BasilLicense);
+		logger.LogInformation("Current time: {Date}", DateTime.Now.ToString("O"));
+		logger.LogInformation(
+			"Machine: {MachineName} | OS: {Os} ({OsArch}) | Runtime: {Runtime} | CPU: {Cpu} cores | Memory: {MemoryGb:F1} GB",
+			Environment.MachineName,
+			RuntimeInformation.OSDescription,
+			RuntimeInformation.OSArchitecture,
+			RuntimeInformation.FrameworkDescription,
+			Environment.ProcessorCount,
+			GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024d / 1024 / 1024);
+	}
+
 	/// <summary>
-	///     Configures Serilog for the host, writing to the console and two daily-rolling file sinks.
+	///     Configures Serilog for the host, writing to the console and two daily rolling file sinks.
 	/// </summary>
 	/// <remarks>
-	///     Files are fixed at <c>Logs/</c> next to the executable (not under <c>Data/</c>: logs are
-	///     operational output, not application data), and are not bound from appsettings or
-	///     configurable. <c>Serilog.Sinks.File</c> creates <c>Logs/full</c> and <c>Logs/errors</c>
-	///     (and therefore their parent <c>Logs/</c>, which the hardlink pointer files also live
-	///     directly under) itself on first write, so no explicit <c>Directory.CreateDirectory</c>
-	///     call is needed here. The minimum level (stdout plus the full file; the errors file always
-	///     stays Error-only regardless) reads from <c>Basil:Logging:MinimumLevel</c>, defaulting to
-	///     Information. <c>WebApplication.CreateBuilder</c> already loads appsettings.json before this
-	///     runs, so the value is available here even though <see cref="ConfigureConfiguration" />
-	///     (which re-layers it plus command-line args) has not run yet.
+	///     Console and full-file output honor <c>Basil:Logging:MinimumLevel</c> (default
+	///     Information); the error file always stays Error-only regardless of that setting.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose logging configuration is set up.</param>
 	private static void ConfigureSerilog(WebApplicationBuilder builder)
@@ -179,8 +215,7 @@ public sealed class Program
 			.Filter.ByExcluding(e =>
 				e.Level < LogEventLevel.Warning &&
 				e.Properties.TryGetValue("Category", out var category) &&
-				category is ScalarValue { Value: string categoryName } &&
-				categoryName == CategoryEnricher.FallbackCategory)
+				category is ScalarValue { Value: CategoryEnricher.FallbackCategory })
 			.WriteTo.Console(outputTemplate: template)
 			.WriteTo.File(
 				Path.Combine(logsPath, "full", "basil-.log"),
@@ -220,13 +255,10 @@ public sealed class Program
 	///     Configures the Kestrel endpoint and HTTPS certificate from the <c>Basil:Server</c> section.
 	/// </summary>
 	/// <remarks>
-	///     The section supplies <c>Port</c> (default 443), <c>CertPath</c>, and <c>CertPassword</c>.
-	///     Auto port selection is disabled, so the server binds exclusively on the configured port.
-	///     Leaving <c>CertPath</c>/<c>CertPassword</c> unset uses the dev cert or OS-level TLS.
-	///     <c>Http1AndHttp2</c> lets a browser multiplex several SSE connections over one connection
-	///     instead of hitting HTTP/1.1's ~6-per-origin ceiling; it only takes effect over TLS, which
-	///     every listener here already uses. A bad cert path or password is logged at Critical (path
-	///     only, never the password) before the process exits with code 1.
+	///     The section supplies <c>Port</c> (default 443), <c>CertPath</c>, and <c>CertPassword</c>;
+	///     the server binds exclusively on that port. Leaving <c>CertPath</c>/<c>CertPassword</c>
+	///     unset uses the dev cert or OS-level TLS. A bad cert path or password is logged at Critical
+	///     (path only, never the password) before the process exits with code 1.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose Kestrel options are configured.</param>
 	private static void ConfigureKestrel(WebApplicationBuilder builder)
@@ -238,6 +270,9 @@ public sealed class Program
 			var certPath = serverSection["CertPath"];
 			var certPassword = serverSection["CertPassword"];
 
+			// Lets a browser multiplex several SSE connections over one connection instead of
+			// hitting HTTP/1.1's ~6-per-origin ceiling; only takes effect over TLS, which every
+			// listener here already uses.
 			options.ConfigureEndpointDefaults(listenOptions =>
 				listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
 
@@ -253,10 +288,6 @@ public sealed class Program
 			}
 			catch (Exception ex)
 			{
-				// UseHttps(path, password) loads the certificate synchronously: a bad path or password
-				// throws right here, previously with no clear log line before the generic host's own
-				// crash handling took over. Log at Critical and exit explicitly instead of letting
-				// that propagate unclearly (never logs the password).
 				options.ApplicationServices.GetService<ILoggerFactory>()
 					?.CreateLogger("Basil.Web.Program")
 					.LogCritical(ex, "Failed to load TLS certificate from {CertPath} — server cannot start.", certPath);
@@ -270,10 +301,9 @@ public sealed class Program
 	/// </summary>
 	/// <remarks>
 	///     The scheme reads the <c>X-Admin-Key</c> header (see
-	///     <see cref="AdminKeyAuthenticationHandler" />) instead of the old AdminKeyFilter endpoint
-	///     filter. One mechanism serves both the hard admin-only gate
-	///     (<c>RequireAuthorization</c>) and the soft private/frozen-visibility elevation
-	///     (<c>User.IsInRole</c>).
+	///     <see cref="AdminKeyAuthenticationHandler" />). One mechanism serves both the hard
+	///     admin-only gate (<c>RequireAuthorization</c>) and the soft private/frozen-visibility
+	///     elevation (<c>User.IsInRole</c>).
 	/// </remarks>
 	/// <param name="builder">The web application builder whose authentication services are registered.</param>
 	private static void ConfigureAuth(WebApplicationBuilder builder)
@@ -290,21 +320,16 @@ public sealed class Program
 	///     Registers <see cref="CountryJsonConverter" /> globally for every JSON response using the host defaults.
 	/// </summary>
 	/// <remarks>
-	///     <see cref="CountryJsonConverter" /> is the only enum with a non-default wire form (see its
-	///     own doc comment), and it applies to every <c>Results.Json(...)</c> call that does not pass
-	///     its own <c>JsonSerializerOptions</c>. Every other enum keeps System.Text.Json's default
-	///     numeric serialization, so there is no <c>JsonStringEnumConverter</c> anywhere. The
-	///     converters are copied from <see cref="BasilJsonOptions.Instance" /> (the shared options
-	///     every live SSE payload serializes with, see <c>SnapshotChannel</c>/<c>JsonMergePatch</c>)
-	///     rather than constructing a fresh <see cref="CountryJsonConverter" />, so regular JSON
-	///     responses and the live channel payloads never drift apart.
-	///     <c>Microsoft.AspNetCore.Http.Json.JsonOptions.SerializerOptions</c> has no public setter,
-	///     so the instance itself cannot be swapped for <see cref="BasilJsonOptions.Instance" />;
-	///     copying its converters is the closest equivalent.
+	///     <see cref="CountryJsonConverter" /> is the only enum with a non-default wire form; every
+	///     other enum keeps System.Text.Json's default numeric serialization. Regular JSON responses
+	///     and live SSE payloads always agree on this, since both serialize with the same converter set.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose HTTP JSON options are configured.</param>
 	private static void ConfigureJson(WebApplicationBuilder builder)
 	{
+		// The framework's JsonOptions.SerializerOptions has no public setter, so the instance itself
+		// can't be swapped for BasilJsonOptions.Instance (the shared options every live SSE payload
+		// serializes with); copying its converters is the closest equivalent.
 		builder.Services.ConfigureHttpJsonOptions(options =>
 		{
 			foreach (var converter in BasilJsonOptions.Instance.Converters)
@@ -332,18 +357,14 @@ public sealed class Program
 	}
 
 	/// <summary>
-	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapassets/avatar/basilapi).
+	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapasets/avatar/basilapi).
 	/// </summary>
-	/// <remarks>
-	///     One document per group rather than one for the whole app: routing here is host-based
-	///     (<c>RequireHost</c>), and several groups register the same literal path template (both the
-	///     bancho and osu-web groups have their own <c>GET /</c>), which OpenAPI cannot represent
-	///     twice in one document. Routes opt into a document via <c>.WithGroupName(...)</c>, matching
-	///     <c>AddOpenApi</c>'s default <c>ShouldInclude</c> filter.
-	/// </remarks>
 	/// <param name="builder">The web application builder whose OpenAPI documents are added.</param>
 	private static void ConfigureOpenApi(WebApplicationBuilder builder)
 	{
+		// One document per group rather than one for the whole app: several groups register the
+		// same literal path template (both the bancho and osu-web groups have their own GET /),
+		// which OpenAPI cannot represent twice in one document.
 		AddOpenApiDocument(builder, "bancho", "osu! Client API: Bancho Protocol",
 			"The osu! stable client's binary bancho protocol: login and the packet-multiplexed " +
 			"connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
@@ -366,13 +387,9 @@ public sealed class Program
 	///     Adds a single OpenAPI document for the given host group with the given title and description.
 	/// </summary>
 	/// <remarks>
-	///     Applies the shared title, description, and version, plus the numeric schema simplification
-	///     transformer, to every document. When <paramref name="tagGroups" /> is provided, also writes
-	///     <c>document.Tags</c> and the <c>x-tagGroups</c> extension, reorders the documented paths for
-	///     Scalar's sidebar (shortest/most general route first per tag section, without touching the
-	///     actual route-registration order in Routing/*.cs), and registers the admin-key, converter,
-	///     enum-values, polymorphic-one-of, and envelope schema transformers that only apply to the
-	///     basilapi document.
+	///     When <paramref name="tagGroups" /> is provided, the document's sidebar is grouped by tag
+	///     (the shortest/most general route first per group), and the document is enveloped and
+	///     admin-key-gated; every other document describes the raw osu! client protocol as-is.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose OpenAPI options are configured.</param>
 	/// <param name="documentName">The document name, matching routes' <c>.WithGroupName(...)</c> values.</param>
@@ -390,34 +407,33 @@ public sealed class Program
 				document.Info.Description = description;
 				document.Info.Version = "v1";
 
-				if (tagGroups is not null)
-				{
-					document.Tags = tagGroups
-						.SelectMany(g => g.Tags)
-						.Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
-						.ToHashSet();
+				if (tagGroups is null) return Task.CompletedTask;
 
-					var tagGroupsJson = new JsonArray(tagGroups.Select(JsonNode (g) =>
-						new JsonObject
-						{
-							["name"] = g.Group,
-							["tags"] = new JsonArray(
-								g.Tags.Select(t => (JsonNode)t.Tag).ToArray())
-						}).ToArray());
-					document.Extensions ??= new Dictionary<string, IOpenApiExtension>();
-					document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
+				document.Tags = tagGroups
+					.SelectMany(g => g.Tags)
+					.Select(t => new OpenApiTag { Name = t.Tag, Description = t.Description })
+					.ToHashSet();
 
-					// Scalar's sidebar buckets each tag's operations by their position in the document,
-					// not alphabetically. Reorder Paths (shortest/most general route first per tag
-					// section) without touching the actual C# route-registration order in Routing/*.cs.
-					var reordered = new OpenApiPaths();
-					foreach (var (path, item) in document.Paths
-						         .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
-						         .ThenBy(kvp => kvp.Key.Length)
-						         .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
-						reordered[path] = item;
-					document.Paths = reordered;
-				}
+				var tagGroupsJson = new JsonArray(tagGroups.Select(JsonNode (g) =>
+					new JsonObject
+					{
+						["name"] = g.Group,
+						["tags"] = new JsonArray(
+							g.Tags.Select(t => (JsonNode)t.Tag).ToArray())
+					}).ToArray());
+				document.Extensions ??= new Dictionary<string, IOpenApiExtension>();
+				document.Extensions["x-tagGroups"] = new JsonNodeExtension(tagGroupsJson);
+
+				// Scalar's sidebar buckets each tag's operations by their position in the document,
+				// not alphabetically. Reorder Paths (the shortest/most general route first per tag
+				// section) without touching the actual C# route-registration order in Routing/*.cs.
+				var reordered = new OpenApiPaths();
+				foreach (var (path, item) in document.Paths
+					         .OrderBy(kvp => kvp.Key.Count(c => c == '/'))
+					         .ThenBy(kvp => kvp.Key.Length)
+					         .ThenBy(kvp => kvp.Key, StringComparer.Ordinal))
+					reordered[path] = item;
+				document.Paths = reordered;
 
 				return Task.CompletedTask;
 			});
@@ -428,14 +444,13 @@ public sealed class Program
 
 			// Only the basilapi document is enveloped/admin-key-gated. Every other document (bancho/
 			// osu-web/beatmap-assets/avatar) documents the raw osu! client protocol as-is.
-			if (tagGroups is not null)
-			{
-				options.AddAdminKeyDocumentTransformer();
-				options.AddCustomConverterSchemaTransformer();
-				options.AddEnumValuesSchemaTransformer();
-				options.AddPolymorphicOneOfSchemaTransformer();
-				options.AddEnvelopeSchemaTransformer();
-			}
+			if (tagGroups is null) return;
+
+			options.AddAdminKeyDocumentTransformer();
+			options.AddCustomConverterSchemaTransformer();
+			options.AddEnumValuesSchemaTransformer();
+			options.AddPolymorphicOneOfSchemaTransformer();
+			options.AddEnvelopeSchemaTransformer();
 		});
 	}
 
@@ -443,12 +458,9 @@ public sealed class Program
 	///     Creates the storage folders, runs database migrations, and bootstraps runtime data on startup.
 	/// </summary>
 	/// <remarks>
-	///     Test hosts (<c>WebApplicationFactory</c>) explicitly set <c>Database:Path</c> to "" so there
-	///     is no real file to migrate/query against: migration, channel fetch, beatmap ingestion, and
-	///     bot bootstrap are skipped rather than failing startup. A real deployment always has a
-	///     non-empty <c>Path</c> (<see cref="DatabaseOptions" /> defaults it to "basil.db" next to the
-	///     executable). <c>channelRegistry.Seed</c> is still always called (with an empty list when
-	///     there is no database), so the registry is never left unseeded.
+	///     When no database path is configured, migration, channel fetch, beatmap ingestion, and bot
+	///     bootstrap are skipped rather than failing startup; the channel registry is still always
+	///     seeded, with an empty list in that case.
 	/// </remarks>
 	/// <param name="app">The built application whose scoped services perform the initialization.</param>
 	private static async Task InitializeDataAsync(WebApplication app)

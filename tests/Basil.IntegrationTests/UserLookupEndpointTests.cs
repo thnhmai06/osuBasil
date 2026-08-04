@@ -4,6 +4,7 @@ using Basil.Application.Configurations;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Web;
+using Basil.Web.Routing.Api;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,7 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers <see cref="Basil.Web.Routing.UserLookup" />: every public `GET /users/{idOrName}...`
+///     Covers <see cref="UserLookup" />: every public `GET /users/{idOrName}...`
 ///     route accepts a username in place of the numeric id, resolving via
 ///     <see cref="IUserRepository.FetchByNameAsync" /> and 302-redirecting to the canonical numeric
 ///     path. A numeric segment is served directly (not redirected); an unknown username 404s.

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ namespace Basil.Application.Services.Beatmaps;
 /// </summary>
 /// <remarks>
 ///     Queries the local beatmap database instead of proxying a mirror API, since this server runs
-///     fully offline, and folds in the response formatting that both serving paths need. There is
+///     fully offline and folds in the response formatting that both serving paths need. There is
 ///     no mirror-error result because this server never talks to a mirror. The metadata
 ///     pipe-replacement quirk is kept: it is not mirror-specific, it protects the pipe-delimited
 ///     wire format from any locally stored artist, title, or difficulty name that happens to
@@ -32,7 +33,7 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 	// ASP.NET Core model binding decodes a query string's literal "+" as a space (matching
 	// x-www-form-urlencoded rules) before this ever sees it, so the sentinel here must be the
 	// decoded form ("Top Rated"): a literal "+" would never match what the client actually sent.
-	private static readonly string[] NonTextQueries = ["Newest", "Top Rated", "Most Played"];
+	private static readonly FrozenSet<string> NonTextQueries = ["Newest", "Top Rated", "Most Played"];
 
 	/// <summary>
 	///     Runs a single osu!direct search against the local beatmap database.

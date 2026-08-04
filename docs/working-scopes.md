@@ -4,13 +4,9 @@
 
 This page lists what is *in scope*, what is not, and the rationale for each exclusion.
 
-## Chat commands
+## Chat commands and IRC
 
-Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `MpCommandService` (`!mp` subcommands), both under `UseCases/Bot/`. The full command list and usage is on the BasilBot Commands page (`api.<domain>/docs/basilbot`, or the same page on GitHub Pages) — not duplicated here to avoid drift between two sources.
-
-## IRC Gateway
-
-**In scope**: Basil runs an embedded IRC gateway (port 6667, `TcpIrcListener`/`TcpIrcConnection`) allowing real IRC clients (or tournament tools like osu-ahr) to connect and chat/`!mp` alongside osu! clients. A unified chat core through `ChatDispatchService` + `ChannelMembershipService.BroadcastPrivmsg` — messages from IRC clients reach osu! clients and vice versa, since every `PlayerSession` has an `IIrcConnection` (`BanchoIrcBridgeConnection` for osu! clients, `TcpIrcConnection` for IRC clients).
+Both are in scope — general commands, `!mp` tournament control, and an embedded IRC gateway real IRC clients (or tools like osu-ahr) can connect to alongside osu! clients. See [`chat.md`](chat.md) for how the dispatch layer works, and the BasilBot Commands page (`api.<domain>/docs/basil-bot/`) for the full command list.
 
 ## Out of scope
 
@@ -38,4 +34,9 @@ Dispatched by `ICommandDispatcher`/`CommandDispatcher` (general commands) and `M
 | --- | --- | --- |
 | Removed `BanchoBot` + entire chat command layer (including full 25 `!mp` subcommands) when pivoting to "multiplayer + tournaments only" | Tournaments still need chat-based match control (`!mp start`, map change, slot management...) — removing everything was overcorrection | `BanchoBot` re-bootstrapped as a real session (`BotBootstrapService`); fresh dispatch layer (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) wraps existing `MatchSession`/`MatchMembershipService` mutations, narrower than the original command set |
 | Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, SSE) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/SSE, replay/beatmap downloads, and admin-key-gated management CRUD — narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
-| Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut — nothing left to compare in parallel | Manual single-thread multiplayer/tournament testing with two real osu! clients — see [`getting-started.md`](getting-started.md) |
+| Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut — nothing left to compare in parallel | Manual multiplayer/tournament testing with two real osu! clients — see [`run-deployment.md`](run-deployment.md) |
+
+## See also
+
+- [`architecture.md`](architecture.md) — how the in-scope pieces are actually built
+- [`chat.md`](chat.md) — the dispatch layer behind every in-scope chat command

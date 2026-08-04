@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<SelfContained>true</SelfContained>
+		<Version>1.0.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -11,8 +12,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\icon.png"/>
-		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\default.png"/>
+		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
+		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
 	</ItemGroup>
 
 	<ItemGroup>

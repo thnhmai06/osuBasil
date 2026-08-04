@@ -4,9 +4,10 @@
 
 # Basil
 
-<sub><i>If [Akatsuki](https://github.com/osuAkatsuki) means "dawn", then Basil is the sunflower always facing the Sun.</i></sub>
+<sub><i>If [Akatsuki](https://github.com/osuAkatsuki) means dawn, then Basil is the sunflower that always facing to the
+sun.</i></sub>
 
-**A lightweight [osu!](https://osu.ppy.sh/) (stable) server for multiplayer/tournament play over LAN — no osu.ppy.sh/mirror dependency for gameplay, no singleplayer ranking.**
+**A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) server for tournaments and multiplayer.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
@@ -17,32 +18,58 @@
 
 > [!IMPORTANT]
 > **Disclaimer.**
-> This project is not affiliated with, endorsed by, or connected to [osu!](https://osu.ppy.sh/) ([ppy Pty Ltd](https://ppy.sh/)) or [bancho.py](https://github.com/osuAkatsuki/bancho.py) ([Akatsuki](https://github.com/osuAkatsuki)). "Basil" is a reference name only. The mascot art depicts the character Basil from [OMORI](https://www.omori-game.com/) — this project is not affiliated with, endorsed by, or connected to OMORI or its developer, [OMOCAT](https://omocat.com/). All character rights belong to their respective owners.
+> This project is not affiliated with, endorsed by, or connected to [osu!](https://osu.ppy.sh/)
+([ppy Pty Ltd](https://ppy.sh/)) or [bancho.py](https://github.com/osuAkatsuki/bancho.py)
+([Akatsuki](https://github.com/osuAkatsuki)). The project name **"Basil"** was inspired by the character Basil
+from [OMORI](https://www.omori-game.com/), and the mascot artwork depicts the same character. This project is not
+affiliated with, endorsed by, or connected to OMORI or its developer, [OMOCAT](https://omocat.com/). All character
+rights belong to their respective owners.
 
-## Key features
+## ✨ Key features
 
-- Provides a [**multiplayer environment**](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer) matching [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29), with singleplayer processing and unrelated features **removed**.
-- Supports [**osu!direct**](https://osu.ppy.sh/community/forums/topics/1433039), [**osu!tourney**](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney), [**BanchoBot**](https://osu.ppy.sh/wiki/en/BanchoBot), [**IRC**](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat), and **basic social features**.
-- Manages **Users, Beatmaps, Scores, Matches, Replays, Seasonal Backgrounds, FAQs** directly via database/filesystem.
-- **No dependency on [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or a mirror for gameplay.** Parameters (such as Star Rating, length, BPM, max combo) are computed locally and stored in the database, beatmap search/downloads are served from the local `Mapsets` folder, and beatmap thumbnails/audio previews (`b.<domain>`) are resized/trimmed on demand from that same local storage and cached — instead of hitting osu.ppy.sh's CDN. An operator can optionally point `Basil:Mirror:DownloadEndpoint` at their own mirror for `.osz` downloads, otherwise that endpoint just reports unavailable.
-- **A full tournament-management HTTP API** (`api.<domain>`) alongside the osu! client protocol: CRUD for matches/beatmapsets/users, admin-key-gated management routes, live match/spectator/player-input state pushed over Server-Sent Events, and a runtime-generated tournament match report — all documented as OpenAPI, rendered with [Scalar](https://scalar.com/) at `api.<domain>/docs/`.
+- **Replicates the full multiplayer experience of [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29)**, while
+  intentionally omitting singleplayer ranking and other unrelated features.
+- **Supports [osu!direct](https://osu.ppy.sh/community/forums/topics/1433039),
+  [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
+  [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot) (as BasilBot),
+  and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat)**.
+- **Stores all data locally**, requiring no external services or database server.
+- **Runs entirely offline**, with no dependency on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or beatmap
+  mirrors for core gameplay.
+- **Provides a comprehensive HTTP API** for tournament management, spectating, and real-time multiplayer data,
+  documented with OpenAPI and browsable through [Scalar](https://scalar.com/).
 
-## Tech stack
+## 🛠️ Tech stack
 
-| Layer | Choice |
-| --- | --- |
-| Runtime | [.NET](https://dot.net/) 10 with [ASP.NET](https://asp.net/), runs as a standalone executable — Docker optional (a `Dockerfile`/`docker-compose.yml` are provided, bundling `ffmpeg`) |
-| Database | [SQLite](https://www.sqlite.org/) (1 file next to the executable), accessed via [Dapper](https://github.com/DapperLib/Dapper), schema managed by [DbUp](https://dbup.readthedocs.io/) |
-| Star rating | References [osu!lazer](https://github.com/ppy/osu)'s own calculation algorithms directly |
-| Logging | [Serilog](https://serilog.net/) — console + rolling file sinks (`Logs/full`, `Logs/errors`, each with a `latest.log`/`errors_latest.log` hardlink to the current file), structured scopes (`RequestId`, `MatchId`, `UserId`, `ScoreId`, IRC `ConnectionId`, ...) |
-| Test | [xUnit](https://xunit.net/), [NetArchTest](https://github.com/BenMorris/NetArchTest) to enforce layer boundaries |
+| Layer          | Choice                                                                                                                                                                                         |
+|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as a standalone executable. Support Docker.                                                                     |
+| Database       | [SQLite](https://www.sqlite.org/), accessed via [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/).                                         |
+| API            | Build-time [OpenAPI](https://www.openapis.org/) generation with interactive documentation powered by [Scalar](https://scalar.com/).                                                            |
+| Star rating    | Uses the official difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu).                                                                              |
+| Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore).                      |
+| Security       | Passwords hashed using [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net).                                                                                                                  |
+| Logging        | Structured logging with [Serilog](https://serilog.net/).                                                                                                                                       |
+| Testing        | [xUnit](https://xunit.net/) with [NSubstitute](https://nsubstitute.github.io/) for unit tests and [NetArchTest](https://github.com/BenMorris/NetArchTest) to enforce architectural boundaries. |
 
-## Credits
+## 📖 Getting Started
 
-**Basil** is built on top of [**bancho.py**](https://github.com/osuAkatsuki/bancho.py) by [Akatsuki](https://github.com/osuAkatsuki).
+- **API & Bot Commands** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
+  the same docs on [GitHub Pages](https://thnhmai06.github.io/osuBasil/) without running a server.
+- **Run a Server** – See [`docs/run-deployment.md`](docs/run-deployment.md) for deployment, local development, and
+  connecting an osu! client.
+- **Architecture** – See [`docs/architecture.md`](docs/architecture.md) for the system architecture and links to every
+  subsystem.
+- **Project Scope** – See [`docs/working-scopes.md`](docs/working-scopes.md) for the project's goals, supported
+  features, and intentional limitations.
+
+## ❤️ Credits
+
+**Basil** is built on top of [**bancho.py**](https://github.com/osuAkatsuki/bancho.py)
+by [Akatsuki](https://github.com/osuAkatsuki).
 
 Many thanks to the [Akatsuki](https://github.com/osuAkatsuki) team for their dedicated work on that project!
 
-## Star History
+## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/chart?repos=thnhmai06/osuBasil&type=date&legend=top-left&sealed_token=wPQ_eLQYxDpC8IxGbg3aO7Pj4XQ1Pxr5Y16JLxzXZkGFuytVDcgJBdCUlsx9wbZzySsHPkAAj3L9OO5nOCpSebEGkL8fFpPoUwZSSgEHqj1RSWZgLn_G2Vuqc0itECn1WFYXPG74tJN9U1OzQoMcvyLnW8NBycp-yaxWQmDu-rlmTRVhvMpW3LGys9r1)](https://www.star-history.com/?repos=thnhmai06%2FosuBasil&type=date&legend=top-left)

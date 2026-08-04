@@ -14,7 +14,7 @@ namespace Basil.Web.Auth;
 ///     <see cref="AuthenticateResult.Fail(string)" />. The request is left anonymous instead of being
 ///     rejected outright, so routes with no <c>[Authorize]</c> requirement are unaffected and can
 ///     still check <c>User.IsInRole(AdminKeyDefaults.Role)</c> to decide whether to reveal an
-///     otherwise-hidden resource (private matches, frozen beatmaps or beatmapsets). Mutation routes
+///     otherwise-hidden resource (private matches, frozen beatmaps, or beatmapsets). Mutation routes
 ///     instead require the role via <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>, so the
 ///     framework's own authorization middleware 401s automatically when the role is missing.
 /// </summary>
@@ -37,11 +37,10 @@ public sealed class AdminKeyAuthenticationHandler(
 
 		if (string.IsNullOrEmpty(adminKey) || string.IsNullOrEmpty(provided) || provided != adminKey)
 		{
-			// Only log when a key was actually attempted. Most requests to the api. host carry no
+			// Only log when a key was actually attempted. Most requests to the api host carry no
 			// X-Admin-Key at all (the soft private/frozen-visibility check runs on every request),
 			// and logging that as a "failure" would be pure noise.
-			if (!string.IsNullOrEmpty(provided))
-				Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
+			if (!string.IsNullOrEmpty(provided)) Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
 			return Task.FromResult(AuthenticateResult.NoResult());
 		}
 

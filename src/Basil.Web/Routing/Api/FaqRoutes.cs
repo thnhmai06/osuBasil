@@ -2,7 +2,11 @@ using Basil.Application.Services.Content;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
 
-namespace Basil.Web.Routing;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
 ///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="FaqRoutes" /> is static and can't be a
@@ -11,11 +15,13 @@ namespace Basil.Web.Routing;
 internal sealed class FaqRoutesLog;
 
 /// <summary>
-///     `/faqs`: public read access to the same FAQ entries `!faq` serves in chat, plus admin-key-gated
-///     writes with a "no silent override" rule: `POST` only creates a brand-new entry (409 if the name
-///     is already taken), `PUT` only replaces an existing one (404 if it isn't). Backed by
-///     <see cref="FaqService" />, shared with <see cref="Basil.Application.Services.Bot.CommandDispatcher" />.
+///     Registers the REST endpoints for querying and managing FAQ entries.
 /// </summary>
+/// <remarks>
+///     FAQ entries are publicly readable, while creating, updating, and deleting entries require
+///     administrator authorization. Creating an entry never overwrites an existing one, and
+///     updating an entry requires it to already exist.
+/// </remarks>
 internal static class FaqRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
@@ -29,9 +35,8 @@ internal static class FaqRoutes
 		group.MapGet("/faqs/", (FaqService faq) => Results.Json(faq.ListEntries()))
 			.WithGroupName("basilapi")
 			.WithName("listFaqs")
-			.WithSummary("List FAQs")
-			.WithDescription("Bare entry names (no `.txt` suffix), matching `!faq list`'s own identifier " +
-			                 "space. Public.")
+			.WithSummary("List FAQs.")
+			.WithDescription("Returns the bare entry names, matching the same identifiers `!faq` uses in chat.")
 			.WithTags("FAQ")
 			.Produces<IReadOnlyList<string>>()
 			.WithExample(StatusCodes.Status200OK, new List<string> { "rules", "schedule", "how-to-join" });
@@ -40,10 +45,12 @@ internal static class FaqRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("createFaq")
-			.WithSummary("Create FAQ")
-			.WithDescription("Multipart upload, field name `file`, must be a `.txt` file: its name (minus " +
-			                 "the extension) becomes the entry's id. 409 if an entry with that name already exists; use " +
-			                 "`PUT /faqs/{entry}` to replace one." + AdminKeyNote)
+			.WithSummary("Create an FAQ.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`, must be a `text/plain*` file. The uploaded filename, minus its extension, becomes the entry's id.
+
+			                 Returns `409 Conflict` if an entry with that name already exists; use `PUT /faqs/{entry}` to replace one.
+			                 """ + AdminKeyNote)
 			.WithTags("FAQ")
 			.WithMultipartFileUpload()
 			.Produces<FaqCreatedView>(StatusCodes.Status201Created)
@@ -60,9 +67,12 @@ internal static class FaqRoutes
 			})
 			.WithGroupName("basilapi")
 			.WithName("getFaq")
-			.WithSummary("Get FAQ")
-			.WithDescription("`{entry}` is the bare name used by `!faq <entry>` (no `.txt` suffix). 404 if no " +
-			                 "entry with this name exists. Public.")
+			.WithSummary("Get an FAQ.")
+			.WithDescription("""
+			                 Returns the entry's text. `{entry}` is the bare name used by `!faq <entry>`.
+
+			                 Returns `404 Not Found` if no entry with this name exists.
+			                 """)
 			.WithTags("FAQ")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -70,9 +80,12 @@ internal static class FaqRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceFaq")
-			.WithSummary("Replace FAQ")
-			.WithDescription("Multipart upload, field name `file`. 404 if no entry with this name exists yet. " +
-			                 "Use `POST /faqs/` to create one." + AdminKeyNote)
+			.WithSummary("Replace an FAQ.")
+			.WithDescription("""
+			                 Multipart upload, field name `file`. Replaces the entry's text; the entry's name is fixed by the URL.
+
+			                 Returns `404 Not Found` if no entry with this name exists yet; use `POST /faqs/` to create one.
+			                 """ + AdminKeyNote)
 			.WithTags("FAQ")
 			.WithMultipartFileUpload()
 			.Produces<FaqReplacedView>()
@@ -90,8 +103,12 @@ internal static class FaqRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteFaq")
-			.WithSummary("Delete FAQ")
-			.WithDescription("Returns a confirmation body. 404 if no entry with this name exists." + AdminKeyNote)
+			.WithSummary("Delete an FAQ.")
+			.WithDescription("""
+			                 Deletes the entry and returns a confirmation body.
+
+			                 Returns `404 Not Found` if no entry with this name exists.
+			                 """ + AdminKeyNote)
 			.WithTags("FAQ")
 			.Produces<FaqDeletedView>()
 			.WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules", true))
@@ -107,8 +124,8 @@ internal static class FaqRoutes
 		var form = await context.Request.ReadFormAsync(cancellationToken);
 		var file = form.Files.GetFile("file");
 		if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
-		if (!string.Equals(Path.GetExtension(file.FileName), ".txt", StringComparison.OrdinalIgnoreCase))
-			return Results.BadRequest(new ErrorResponse("Only .txt uploads are accepted."));
+		if (!file.ContentType.StartsWith("text/plain", StringComparison.OrdinalIgnoreCase))
+			return Results.BadRequest(new ErrorResponse("Only `text/plains*` uploads are accepted."));
 
 		var entry = Path.GetFileNameWithoutExtension(file.FileName);
 		await using var stream = file.OpenReadStream();

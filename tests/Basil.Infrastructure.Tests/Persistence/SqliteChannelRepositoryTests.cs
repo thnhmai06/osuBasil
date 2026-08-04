@@ -15,8 +15,8 @@ public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture
 	{
 		var channels = await _repository.FetchAllAsync();
 
-		Assert.Contains(channels, c => c.Name == "#osu" && c.AutoJoin);
-		Assert.Contains(channels, c => c.Name == "#lobby" && !c.AutoJoin);
+		Assert.Contains(channels, c => c is { Name: "#osu", AutoJoin: true });
+		Assert.Contains(channels, c => c is { Name: "#lobby", AutoJoin: false });
 	}
 
 	[Fact]

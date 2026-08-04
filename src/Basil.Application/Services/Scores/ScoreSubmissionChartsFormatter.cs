@@ -91,9 +91,9 @@ public static class ScoreSubmissionChartsFormatter
 		return value switch
 		{
 			null => "",
-			int and 0 => "",
+			0 => "",
 			long and 0 => "",
-			double and 0.0 => "",
+			0.0 => "",
 			IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
 			_ => value.ToString() ?? ""
 		};

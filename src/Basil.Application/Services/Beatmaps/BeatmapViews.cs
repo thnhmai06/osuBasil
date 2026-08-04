@@ -12,12 +12,10 @@ namespace Basil.Application.Services.Beatmaps;
 /// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="IsLocallyIngested">Whether the beatmap was ingested without a real osu! online id.</param>
 /// <remarks>
-///     Never carries <see cref="Beatmap.Filename" /> (internal, marked <c>[JsonIgnore]</c> on the
-///     domain record) or a parent beatmapset reference. The split between
-///     <see cref="BeatmapInSet" /> and <see cref="BeatmapDetail" /> keeps a beatmap from
+///     Never carries the beatmap's internal filename or a parent beatmapset reference. The split
+///     between <see cref="BeatmapInSet" /> and <see cref="BeatmapDetail" /> keeps a beatmap from
 ///     referencing its set, which references the beatmap again.
-///     <see cref="Difficulty.TotalLength" /> has its own whole-seconds wire converter directly on
-///     the domain record, described in its own doc comment.
+///     <see cref="Domain.Beatmaps.Difficulty.TotalLength" /> serializes as a whole number of seconds.
 /// </remarks>
 public abstract record BeatmapView(
 	string Md5,
@@ -85,8 +83,7 @@ public sealed record BeatmapDetail(
 /// <param name="BeatmapCount">The number of difficulties in the set.</param>
 /// <remarks>
 ///     Used both as a list item for the beatmapset list endpoint and as the parent embed on
-///     <see cref="BeatmapDetail" />. The domain/internal type stays <see cref="Beatmapset" /> and is
-///     not renamed.
+///     <see cref="BeatmapDetail" />.
 /// </remarks>
 public sealed record BeatmapsetSummary(
 	int Id,

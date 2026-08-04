@@ -1,55 +1,55 @@
 # Run & Deployment
 
-Basil is one ASP.NET Core process, no separate DB/cache service — SQLite is a single file, and
-everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text, logs) is a plain folder
-next to the executable, auto-created on first startup. Docker is optional, not required — see the
-[Docker section](#docker-alternative-to-the-manual-publish-below) below for the containerized path, or
-skip straight to the manual publish steps if you'd rather not use it. This doc has three parts:
-**Deployment** (a real LAN tournament server other machines connect to), **Development** (working on
-Basil itself), and **Client** (pointing an actual osu! stable install at either of the above).
+Basil is one process, with no separate database or cache service to stand up: SQLite is a single file, and everything else (replays, avatars, beatmaps, seasonal backgrounds, FAQ text, logs) is a plain folder next to the executable, created automatically on first startup.
+
+Docker is optional, not required. See the [Docker section](#docker-alternative-to-the-manual-publish-below) below for the containerized path, or skip straight to the manual publish steps if you'd rather not use it.
+
+This doc has three parts: **Deployment** (a real LAN tournament server other machines connect to), **Development** (working on Basil itself), and **Client** (pointing an actual osu! stable install at either of the above).
 
 ## Configuration surface
 
-Two files, both plain text, both live next to the executable (or in `src/Basil.Web/` in a dev
-checkout) — no rebuild needed after editing either, just restart the process:
+One file, `appsettings.json`, lives next to the executable (or in `src/Basil.Web/` in a dev
+checkout) — no rebuild needed after editing it, just restart the process. Everything Basil itself
+reads is nested under a single `Basil` key (`Server`, `Mirror`, `Bot`, `Irc`, `Logging`);
+`AllowedHosts` at the top level is the one plain ASP.NET Core framework setting alongside it. There
+is no standard `Logging` section — Serilog is wired in code (`Program.cs`'s `ConfigureSerilog`).
 
-| File                | Owns                                                                                                      |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `appsettings.json`  | Framework config only — `AllowedHosts`. No standard ASP.NET Core `Logging` section — Serilog is wired in code (`Program.cs`'s `ConfigureSerilog`); the only logging setting is `Basil:Logging:MinimumLevel` (default `"Information"`), see "Logging" further down this page. |
-| `Settings.toml`     | Everything Basil itself reads — `Server`, `Mirror`, `Bot`, `Irc`, `Database`. Same file for development and deployment; edit it and restart. |
+There is **no environment-variable override layer** — `appsettings.json` is the single source of
+truth for every setting, including inside the Docker image. Edit the file directly and restart (or
+recreate the container).
 
-There is **no environment-variable override layer** — `Settings.toml` is the single source of
-truth for every setting. Edit the file directly and restart the process.
+`appsettings.json` keys, as shipped (all nested under `Basil:`, shown here as their full config path):
 
-`Settings.toml` sections, as shipped:
-
-| Section          | Key(s)                              | Meaning                                                                                                             |
-| ----------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `[Server]`        | `Domain`                             | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this.        |
-|                    | `Port`                               | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here.       |
-|                    | `CertPath` / `CertPassword`          | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
-| `[Bot]`            | `Name`                               | BasilBot's display name. Changing this after first boot renames the seeded `id=0` user in-place.                   |
-|                    | `CommandPrefix`                      | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`).                                                 |
-|                    | `Country`                            | BasilBot's country code (default `"vn"`). Overrides seed migration value.                                          |
-| `[Irc]`            | `Name`                               | IRC server name.                                                                                                   |
-|                    | `Port`                               | TCP port for the embedded IRC gateway (default 6667).                                                              |
-| `[Server]`         | `AdminKey`                           | Gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
-| `[Database]`       | `Path`                               | SQLite file path. Relative paths resolve next to the executable. Default `basil.db`, rarely needs changing.        |
-| `[Mirror]`         | `DownloadEndpoint`                   | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
+| Key | Meaning |
+| --- | --- |
+| `Server:Domain` | Public hostname clients connect to — every subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) hangs off this. |
+| `Server:Port` | Kestrel HTTPS listen port (default 443). Disables automatic port selection — server binds exclusively here. |
+| `Server:CertPath` / `Server:CertPassword` | Path to HTTPS cert (PFX) and its password. Leave both unset to use the ASP.NET Core dev cert or OS-level reverse proxy TLS. |
+| `Server:AdminKey` | Gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) via `X-Admin-Key` **and** acts as the secret for in-game registration (osu! client's Email field). Unset = management API locked down + registration disabled. **Configure this to allow account creation.** |
+| `Bot:Name` | BasilBot's display name. Changing this after first boot renames the seeded `id=0` user in-place. |
+| `Bot:CommandPrefix` | Prefix chat commands must start with (`!help`, `!roll`, `!mp ...`). |
+| `Bot:Country` | BasilBot's country code (default `"vn"`). Overrides seed migration value. |
+| `Irc:Name` | IRC server name. |
+| `Irc:Port` | TCP port for the embedded IRC gateway (default 6667). |
+| `Mirror:DownloadEndpoint` | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
+| `Logging:MinimumLevel` | Minimum Serilog level for stdout and the full log file (default `"Information"`) — see "Logging" further down this page. |
 
 ### Data (always fixed, never configurable)
 
-Created automatically next to the executable on startup if missing — no manual setup:
+Created automatically under a `Data/` folder next to the executable on startup if missing — no
+manual setup, and no config key controls any of these paths (including the database file, which is
+no longer configurable — it always lives at `Data/Basil.db`):
 
-| Path         | Contents                                                                 |
-| ------------- | --------------------------------------------------------------------------- |
-| `basil.db`    | SQLite database (+ `basil.db-wal`/`basil.db-shm` while running). Migrations run automatically on every startup. |
-| `Replays/`    | Score replay files.                                                      |
-| `Avatars/`    | User avatar files (`{userId}.{ext}`).                                    |
-| `Mapsets/`    | One folder per beatmapset (`"{id} Artist - Title"`, full original `.osz` contents — audio/images/video/`.osu`). A loose `.osz` dropped at the root is auto-extracted into its own folder. A loose `.osu` file alone is **not** ingested (a single difficulty has no set context). Sync is live — a `FileSystemWatcher`-backed background service picks up any add/change/delete within ~2 seconds, plus a full reconciliation pass at every startup to catch drift while the server was offline. Admin uploads via `POST /beatmaps` on `api.` (admin-key) accept `.osz` only. |
-| `Seasonals/`  | Seasonal background images shown in the client's main menu.              |
-| `Faqs/`       | `!faq <entry>` text files (`<entry>.txt`).                               |
-| `MenuIcon.{ext}` / `MenuIconUrl.txt` | The in-game main menu icon and its click-through URL — not config, managed at runtime via `PUT`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url` on the `api.` host. Deleting the icon file (or `DELETE /menuicon/icon`) turns the menu icon off entirely. |
+| Path                | Contents                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `Data/Basil.db`      | SQLite database (+ `-wal`/`-shm` files while running). Migrations run automatically on every startup. |
+| `Data/Replays/`      | Score replay files.                                                      |
+| `Data/Avatars/`      | User avatar files (`{userId}.{ext}`).                                    |
+| `Data/Mapsets/`      | One folder per beatmapset (`"{id} Artist - Title"`, full original `.osz` contents — audio/images/video/`.osu`). A loose `.osz` dropped at the root is auto-extracted into its own folder. A loose `.osu` file alone is **not** ingested (a single difficulty has no set context). Sync is live — a `FileSystemWatcher`-backed background service picks up any add/change/delete within ~2 seconds, plus a full reconciliation pass at every startup to catch drift while the server was offline. Admin uploads via `POST /beatmaps` on `api.` (admin-key) accept `.osz` only. |
+| `Data/Seasonals/`    | Seasonal background images shown in the client's main menu.              |
+| `Data/Faqs/`         | `!faq <entry>` text files (`<entry>.txt`).                               |
+| `Data/Cache/`        | Resized thumbnails and transcoded audio previews, regenerated on demand — safe to delete at any time. |
+| `Data/MenuIcon.{ext}` / `Data/MenuIconUrl.txt` | The in-game main menu icon and its click-through URL — not config, managed at runtime via `PUT`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url` on the `api.` host. Deleting the icon file (or `DELETE /menuicon/icon`) turns the menu icon off entirely. |
 
 ### Logging
 
@@ -74,31 +74,32 @@ Any [`Serilog.Events.LogEventLevel`](https://github.com/serilog/serilog/wiki/Con
 Every line also goes to stdout. Every request carries a `RequestId`; bancho packets additionally
 carry `UserId`/`PacketType`/`MatchId` (when in a match); a real IRC TCP connection carries its own
 `ConnectionId` instead (the bancho binary protocol is HTTP long-poll, not a held connection, so it
-has no `ConnectionId` of its own). See `docs/architecture.md`'s Logging section for the full scope
+has no `ConnectionId` of its own). See [`logging.md`](logging.md) for the full scope
 list and `Basil.Web/Program.cs`'s `ConfigureSerilog` for the sink configuration itself.
 
 To move a deployment to another machine: stop the server, copy the whole executable directory
-(including `basil.db*` and the five data folders above — `Logs/` doesn't need to move, it's
-operational history, not state) to the target, start it there.
+(including `appsettings.json` and `Data/` — `Logs/` doesn't need to move, it's operational history,
+not state) to the target, start it there.
 
 ---
 
 ## Docker (alternative to the manual publish below)
 
 A `Dockerfile` + `docker-compose.yml` at the repo root build a self-contained `linux-x64` image with
-`ffmpeg` preinstalled (needed for `/preview/{id}.mp3` audio previews — see the beatmap-assets docs) —
-no .NET runtime or ffmpeg install needed on the host machine at all, only Docker itself.
+`ffmpeg` preinstalled (required for `/preview/{id}.mp3` audio previews — see
+[`beatmap-ingestion.md`](beatmap-ingestion.md)) — no .NET runtime or ffmpeg install needed on the
+host machine at all, only Docker itself.
 
 1. Edit `src/Basil.Web/appsettings.json` (`Domain`, `AdminKey`, `CertPath`, `CertPassword` under
-   `Basil:Server` — see Configuration surface above) — or override any of those via
-   `Basil__Server__...` environment variables in `docker-compose.yml` instead, without touching the
-   file. Everything else in this doc (TLS cert requirements, DNS/hosts entries, firewall, account
-   creation) is identical to the manual deployment path below — Docker only changes how the process
-   itself gets built and run.
+   `Basil:Server` — see Configuration surface above); it's bind-mounted into the container, so this
+   is the only place to set it — there's no environment-variable override, in Docker or otherwise.
+   Everything else in this doc (TLS cert requirements, DNS/hosts entries, firewall, account creation)
+   is identical to the manual deployment path below — Docker only changes how the process itself
+   gets built and run.
 2. Place the TLS cert file wherever `docker-compose.yml`'s volume mount expects it (`./basil-cert.pfx`
    by default, mounted read-only into the container).
-3. `docker compose up --build -d`. `basil.db`, `Logs/`, and the storage folders persist under
-   `./docker-data/` on the host (bind-mounted, not a named volume, so they're easy to find/back up).
+3. `docker compose up --build -d`. `Data/` and `Logs/` persist under `./docker-data/` on the host
+   (bind-mounted, not a named volume, so they're easy to find/back up).
 4. `docker compose logs -f` to follow output; `docker compose down` to stop.
 
 The manual publish path below (no Docker) still works exactly as documented — pick whichever fits;
@@ -111,7 +112,11 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
 ### Steps
 
 1. **Publish** a framework-dependent build for the target OS. The target machine needs the
-   [.NET 10 ASP.NET Core Runtime](https://dotnet.microsoft.com/) installed (not the SDK):
+   [.NET 10 ASP.NET Core Runtime](https://dotnet.microsoft.com/) installed (not the SDK), plus an
+   [`ffmpeg`](https://ffmpeg.org/) binary on `PATH` — required for beatmapset audio previews (see
+   [`beatmap-ingestion.md`](beatmap-ingestion.md)). Without it, the audio preview endpoints return
+   `503 Service Unavailable` and log the failure instead of crashing the server; nothing else on the
+   server depends on it.
 
    ```bash
    dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
@@ -121,14 +126,14 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
 
    Copy the `publish/<rid>/` folder to the target machine (or publish directly on it).
 
-2. **Edit `Settings.toml`** next to the published executable:
-   - `Server.Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
+2. **Edit `appsettings.json`** next to the published executable:
+   - `Basil:Server:Domain` — the real domain (or LAN hostname) clients will connect to, e.g.
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see the osu! Client API docs
      (`api.<domain>/docs/osu-client`) for exactly how.
-    - `Server.AdminKey` — set this to a real secret. Without it the management API (used to create
-       user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
-   - `Bot.Name` / `Bot.CommandPrefix`, `Irc.Name`/`Irc.Port` — cosmetic, optional.
+   - `Basil:Server:AdminKey` — set this to a real secret. Without it the management API (used to create
+     user accounts, since in-game registration requires an AdminKey — see Client setup) stays 401-locked.
+   - `Basil:Bot:Name` / `Basil:Bot:CommandPrefix`, `Basil:Irc:Name`/`Basil:Irc:Port` — cosmetic, optional.
 
 3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects
    over **HTTPS on port 443** — plain HTTP is silently rejected before it reaches Kestrel, and the
@@ -140,7 +145,7 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
 
    > [!NOTE]
    > The IRC gateway (`irc.<domain>`) listens on a separate TCP port (6667 by default, configurable
-   > via `Irc.Port`) and is **not** served through ASP.NET Core/Kestrel — it binds a raw
+   > via `Basil:Irc:Port`) and is **not** served through ASP.NET Core/Kestrel — it binds a raw
    > `TcpListener` from `TcpIrcListener` (`BackgroundService`). It does not need TLS; a real IRC
    > client connects over plain TCP. No cert SAN entry is required for `irc.<domain>`.
 
@@ -150,18 +155,18 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
    (same process, just swap `basil.local` for your real domain); every client machine will then need
    that cert installed as trusted (see Client setup).
 
-4. **Point Kestrel at the cert** by setting `CertPath` and `CertPassword` in `Settings.toml`
-   `[Server]` section (see Configuration surface above). The server binds exclusively to the
-   port specified in `Server.Port` (default 443) — no `--urls` needed.
+4. **Point Kestrel at the cert** by setting `Basil:Server:CertPath` and `Basil:Server:CertPassword`
+   in `appsettings.json` (see Configuration surface above). The server binds exclusively to the
+   port specified in `Basil:Server:Port` (default 443) — no `--urls` needed.
 
 5. **DNS or hosts entries**: every machine that connects (the server itself, and every client) needs
    all 9 subdomains resolving to the server's address — either real DNS records for a public domain,
    or a `hosts` file entry per machine for a LAN-only setup (see Client setup below for the exact
    entries).
 
-6. **Run it**. The port is read from `Settings.toml` `Server.Port` (default 443); no `--urls`
-   argument needed. Binding a port below 1024 needs elevated privileges (Administrator on Windows,
-   root or `setcap` on Linux):
+6. **Run it**. The port is read from `Basil:Server:Port` in `appsettings.json` (default 443); no
+   `--urls` argument needed. Binding a port below 1024 needs elevated privileges (Administrator on
+   Windows, root or `setcap` on Linux):
 
    ```bash
    ./Basil.Web
@@ -176,14 +181,14 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
 
    **a) In-game registration** — launch the osu! client pointed at this server (see Client setup
    below). On the login screen, click "Register". In the **Email** field, enter the value of
-   `Server:AdminKey` from `Settings.toml`. Choose a username and password. The client will create
-   the account with default privileges (`Unrestricted | Verified | Supporter`).
+   `Basil:Server:AdminKey` from `appsettings.json`. Choose a username and password. The client will
+   create the account with default privileges (`Unrestricted | Verified | Supporter`).
 
    **b) Admin API** — use `curl` (or any HTTP client) against the `api.` host:
 
    ```bash
    curl -X POST https://api.<domain>/users \
-     -H "X-Admin-Key: <your Server.AdminKey>" \
+     -H "X-Admin-Key: <your Basil:Server:AdminKey>" \
      -H "Content-Type: application/json" \
      -d '{"name":"Player1","password":"hunter2","country":"vn","privilege":19}'
    ```
@@ -207,15 +212,18 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
    dotnet run --project src/Basil.Web
    ```
 
-   No external services to start — `basil.db` and the five storage folders are created next to the
-   build output (`src/Basil.Web/bin/Debug/net10.0/`) on first run, migrations run automatically.
+   No external services to start — the `Data/` folder is created next to the build output
+   (`src/Basil.Web/bin/Debug/net10.0/`) on first run, migrations run automatically. Everything works
+   without any local install beyond the .NET SDK, except beatmapset audio previews, which need
+   `ffmpeg` on `PATH` (see step 1 of Deployment above).
 
-2. **`Settings.toml` is the same file used in production** — there's no separate dev-only config
-   file. For local testing against a real osu! client, set `Server.Domain = "basil.local"`
-   (or whatever local domain you're using) directly in `src/Basil.Web/Settings.toml`.
+2. **`appsettings.json` is the same file used in production** — there's no separate dev-only config
+   file. For local testing against a real osu! client, set `Basil:Server:Domain` to `"basil.local"`
+   (or whatever local domain you're using) directly in `src/Basil.Web/appsettings.json`.
 
-   The IRC gateway listens on port 6667 by default (configurable via `[Irc]` section in Settings.toml).
-   Connect with any IRC client: `/server basil.local 6667` and authenticate with your account password.
+   The IRC gateway listens on port 6667 by default (configurable via `Basil:Irc:Port` in
+   `appsettings.json`). Connect with any IRC client: `/server basil.local 6667` and authenticate with
+   your account password.
 
 3. **To connect an actual osu! client to your dev server**, you need a trusted cert and hosts
    entries, same requirement as Deployment above (the client itself doesn't know or care whether
@@ -242,9 +250,9 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
    # Linux: install into your distro's trust store
    ```
 
-   Point Kestrel at it by setting `CertPath`/`CertPassword` in `src/Basil.Web/Settings.toml`
-   under `[Server]`. The server binds exclusively to the port specified in `Server.Port` (default
-   443 — elevated terminal needed). Run normally:
+   Point Kestrel at it by setting `Basil:Server:CertPath`/`Basil:Server:CertPassword` in
+   `src/Basil.Web/appsettings.json`. The server binds exclusively to the port specified in
+   `Basil:Server:Port` (default 443 — elevated terminal needed). Run normally:
 
    ```bash
    dotnet run --project src/Basil.Web
@@ -256,7 +264,7 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
    > [!IMPORTANT]
    > Without a reverse proxy in front locally, the server synthesizes `X-Forwarded-For`/`X-Real-IP`
    > from the raw connection's remote address when neither header is present — otherwise
-   > `Basil.Domain.ClientIpResolver.Resolve` throws, since it assumes (like bancho.py) that a proxy
+   > `Basil.Domain.Login.Geolocation.PhraseIpAddress` throws, since it assumes (like bancho.py) that a proxy
    > always sets these headers in production.
 
 4. **Run tests:**
@@ -312,7 +320,7 @@ cares about the domain, the cert, and the account.
    the same machine.) For a real public domain, this step is unnecessary — normal DNS resolves it.
 
 4. **Get an account.** In-game registration is available — launch osu! with `-devserver`, click
-   "Register", and enter the server's `Server:AdminKey` in the **Email** field (see Deployment
+   "Register", and enter the server's `Basil:Server:AdminKey` in the **Email** field (see Deployment
    step 8 above). Alternatively, someone with the server's `AdminKey` can create the account via
    the admin API. Every account is auto-verified on its own first successful login — no extra step
    after that.
@@ -329,3 +337,9 @@ cares about the domain, the cert, and the account.
 Every client version is accepted — Basil doesn't check for a minimum/maximum client build (that
 check proxied through osu!'s changelog API in bancho.py, which doesn't apply to a fully offline
 server).
+
+## See also
+
+- [`privileges.md`](privileges.md) — the privilege flags an account gets on creation
+- [`logging.md`](logging.md) — full scope/category reference for the log files this doc points at
+- [`architecture.md`](architecture.md) — how the server itself is put together

@@ -9,7 +9,7 @@ namespace Basil.Web.Middleware;
 /// <remarks>
 ///     A client dropping the connection mid-response surfaces here as an
 ///     <see cref="OperationCanceledException" /> from writing to the aborted response stream. Bancho
-///     long-poll clients disconnect constantly, e.g. on game exit or a network hiccup. That's
+///     long-poll clients disconnect constantly, e.g., on game exit or network hiccup. That's
 ///     expected traffic noise, not a bug, so it's logged at Debug and swallowed, not logged as Error
 ///     and rethrown.
 /// </remarks>

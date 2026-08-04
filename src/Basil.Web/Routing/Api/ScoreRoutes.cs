@@ -12,13 +12,19 @@ using Basil.Domain.Scores;
 using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Basil.Web.Routing;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
-///     `/scores`: public read surface for individual score rows, plus a rename of the old bare
-///     `GET /replays/{scoreId}` download. No POST/PUT/DELETE: scores only ever come from the existing
-///     in-game score-submission pipeline, never through this API.
+///     Registers the REST endpoints for listing, querying, and downloading scores.
 /// </summary>
+/// <remarks>
+///     Score endpoints are publicly readable. Scores are only created by the in-game
+///     score-submission pipeline, so there are no write endpoints.
+/// </remarks>
 internal static class ScoreRoutes
 {
 	/// <summary>
@@ -43,11 +49,12 @@ internal static class ScoreRoutes
 			})
 			.WithGroupName("basilapi")
 			.WithName("listScores")
-			.WithSummary("List Scores")
-			.WithDescription("Query params: `page` (default 1), `pageSize` (default 50). Response: " +
-			                 "`{ page, pageSize, totalRecords, items }` (wrapped in the enveloped `meta` object at the " +
-			                 "top level), each item the same shape as " +
-			                 "`GET /scores/{scoreId}`. Public, no authentication.")
+			.WithSummary("List scores.")
+			.WithDescription("""
+			                 Returns a page of scores, newest first, each item the same shape as `GET /scores/{scoreId}`.
+
+			                 Query params: `page` (default 1) and `pageSize` (default 50).
+			                 """)
 			.WithTags("Scores")
 			.Produces<PagedResult<ScoreDetailView>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
@@ -63,11 +70,14 @@ internal static class ScoreRoutes
 			})
 			.WithGroupName("basilapi")
 			.WithName("getScore")
-			.WithSummary("Get Score")
-			.WithDescription("Returns the score's full row: mode-specific hit counts, combo, total score, " +
-			                 "mods, the submitting `user` embed, and the played `beatmap` (null once its stored `mapMd5` " +
-			                 "no longer resolves, because the content changed or the beatmap was removed since). 404 if no score with " +
-			                 "this id exists. Public, no authentication.")
+			.WithSummary("Get a score.")
+			.WithDescription("""
+			                 Returns the score's mode-specific hit counts, combo, total score, mods, the submitting `user`, and the played `beatmap`.
+
+			                 `beatmap` is null when the played beatmap is no longer available on the server.
+
+			                 Returns `404 Not Found` if no score with this id exists.
+			                 """)
 			.WithTags("Scores")
 			.Produces<ScoreDetailView>()
 			.WithExample(StatusCodes.Status200OK, SampleScoreDetail())
@@ -83,11 +93,14 @@ internal static class ScoreRoutes
 			})
 			.WithGroupName("basilapi")
 			.WithName("downloadScoreReplay")
-			.WithSummary("Download Score Replay")
-			.WithDescription("Serves the `.osr` replay for the given score id. 404 if the score doesn't exist " +
-			                 "or has no stored replay. Content-Type `application/x-osu-replay`. Public, no authentication, " +
-			                 "unlike the osu! client's own `GET /web/osu-getreplay.php`, which requires client-style login " +
-			                 "credentials.")
+			.WithSummary("Download a score replay.")
+			.WithDescription("""
+			                 Serves the `.osr` replay file for the given score id, as `application/x-osu-replay`.
+
+			                 This is the admin-friendly equivalent of the osu! client's own `GET /web/osu-getreplay.php`, which instead requires client-style login credentials.
+
+			                 Returns `404 Not Found` if the score doesn't exist or has no stored replay.
+			                 """)
 			.WithTags("Scores")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}

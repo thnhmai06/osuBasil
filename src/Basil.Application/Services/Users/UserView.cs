@@ -10,8 +10,7 @@ namespace Basil.Application.Services.Users;
 ///     <c>GET /users/{idOrName}</c> API responses.
 /// </summary>
 /// <remarks>
-///     Carries the same fields as the domain <see cref="User" /> record, kept separate so the API
-///     layer never serializes a domain type directly.
+///     Carries the same fields as the domain <see cref="User" /> record.
 /// </remarks>
 public sealed record UserView(
 	int Id,

@@ -3,43 +3,49 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 using Basil.Application.Formats;
-using Basil.Application.Services;
-using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Web.OpenApi;
 
-namespace Basil.Web.Routing;
+namespace Basil.Web.Routing.Api;
 
 /// <summary>
-///     ASP.NET Core's native SSE support (<c>TypedResults.ServerSentEvents</c>) for the api. host's
-///     live TRT channels. These are server-to-client push only: no client message is ever expected,
-///     so each connection subscribes a C# event (<see cref="IMatchLiveEvents" />/
-///     <see cref="IPlayerInputEvents" />) into its own <see cref="Channel{T}" /> and hands that
-///     straight to the framework. <see cref="Channel{T}" />'s reader is already an
-///     <see cref="IAsyncEnumerable{T}" />, so the raw-frame channels don't need a hand-written
-///     iterator. Publishing is a non-blocking event raise plus a non-blocking
-///     <c>ChannelWriter.TryWrite</c>, so a slow or dead subscriber can never stall the publisher,
-///     which is often still holding <c>MatchSession.Lock</c>. <c>EventType</c> tags each stream
-///     ("main"/"playerScore"/"input") so a client can <c>EventSource.addEventListener</c> per feed.
-///     <c>EventId</c>/resumption is deliberately unused: these feeds have no backlog to resume from
-///     after a reconnect, so a fresh full snapshot (see <see cref="SubscribeWithSnapshot" />) takes
-///     its place for the channels that carry one.
+///     Registers the Server-Sent Events (SSE) endpoints for live multiplayer and spectating
+///     updates.
 /// </summary>
+/// <remarks>
+///     These endpoints provide server-to-client event streams for real-time updates. Some streams
+///     begin with a snapshot of the current state, while others deliver only newly published
+///     events.
+/// </remarks>
 internal static class LiveSseRoutes
 {
 	/// <summary>
-	///     The "main" channel carries deltas (see <see cref="SnapshotChannel{T}" />/
-	///     <see cref="MatchMembershipService.EnqueueStateAsync" />) instead of a full re-snapshot on every
-	///     change: a fresh connection reads <see cref="MatchSession.MainSnapshot" /> directly for its
-	///     first event, then this subscription forwards every delta published after that.
+	///     Determines whether a route template represents a live SSE endpoint.
 	/// </summary>
+	/// <param name="routePattern">The route template to examine.</param>
+	/// <returns>
+	///     <see langword="true" /> if the template contains a literal <c>live</c>
+	///     path segment; otherwise <see langword="false" />.
+	/// </returns>
+	internal static bool IsSseRoute(string? routePattern)
+	{
+		return routePattern is not null &&
+		       routePattern.Split('/', StringSplitOptions.RemoveEmptyEntries).Contains("live");
+	}
+
+	/// <summary>
+	///     Streams live match updates for the main match state.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current state first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleMain(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "main",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("main",
 			publish =>
 			{
 				events.MainPublished += Handler;
@@ -50,15 +56,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to the settings field set.</summary>
+	/// <summary>
+	///     Streams live match settings updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current settings first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleSettings(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "settings",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("settings",
 			publish =>
 			{
 				events.SettingsPublished += Handler;
@@ -69,15 +80,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/hosts`.</summary>
+	/// <summary>
+	///     Streams live host updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current host list first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleHost(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "hosts",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("hosts",
 			publish =>
 			{
 				events.HostPublished += Handler;
@@ -88,15 +104,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/refs`.</summary>
+	/// <summary>
+	///     Streams live referee updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current referee list first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleRefs(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "refs",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("refs",
 			publish =>
 			{
 				events.RefsPublished += Handler;
@@ -107,15 +128,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/ban`.</summary>
+	/// <summary>
+	///     Streams live player restriction updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current restrictions first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleBans(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "ban",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("ban",
 			publish =>
 			{
 				events.BansPublished += Handler;
@@ -126,15 +152,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/timer`.</summary>
+	/// <summary>
+	///     Streams live match timer updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current timer first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleTimer(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "timer",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("timer",
 			publish =>
 			{
 				events.TimerPublished += Handler;
@@ -145,15 +176,20 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Same full-then-delta convention as <see cref="HandleMain" />, scoped to `GET /matches/{matchId}/slots`.</summary>
+	/// <summary>
+	///     Streams live slot updates.
+	/// </summary>
+	/// <remarks>
+	///     Clients receive the current slot state first, followed by incremental updates.
+	/// </remarks>
 	public static IResult HandleSlots(HttpContext context, int matchId, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot(cancellationToken, "slots",
+		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("slots",
 			publish =>
 			{
 				events.SlotsPublished += Handler;
@@ -164,24 +200,22 @@ internal static class LiveSseRoutes
 					if (id == matchId) publish(payload);
 				}
 			},
-			readLatestSnapshot));
+			readLatestSnapshot, cancellationToken));
 	}
 
 	/// <summary>
-	///     Merges three feeds that live separately elsewhere into one stream, tagged by event name: the
-	///     slot's own state (full-then-delta, "slot"), the current occupant's live score frames
-	///     ("score", forwarded as-is), and their raw spectator input frames ("input", forwarded as-is).
-	///     Score/input are matched against whoever currently occupies the slot when each frame arrives
-	///     (read fresh off <paramref name="match" /> per event). If the occupant changes, later frames
-	///     just start matching the new occupant instead, with no separate re-subscribe step.
+	///     Streams all live updates for a match slot.
 	/// </summary>
+	/// <remarks>
+	///     The stream combines slot state, player score, and player input events into a
+	///     single Server-Sent Events stream.
+	/// </remarks>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
 		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, IUserSessionRegistry sessionRegistry,
 		Func<byte[]?> readLatestSlotSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeMultiWithSnapshot(cancellationToken,
-			publish =>
+		return TypedResults.ServerSentEvents(SubscribeMultiWithSnapshot(publish =>
 			{
 				matchEvents.SlotPublished += SlotHandler;
 				matchEvents.PlayerScorePublished += ScoreHandler;
@@ -212,14 +246,17 @@ internal static class LiveSseRoutes
 					if (match.Slots[slotIndex].PlayerId == playerId) publish("input", payload);
 				}
 			},
-			"slot", readLatestSlotSnapshot));
+			"slot", readLatestSlotSnapshot, cancellationToken));
 	}
 
+	/// <summary>
+	///     Streams live spectator input for a player.
+	/// </summary>
 	public static IResult HandleInput(HttpContext context, int playerId, IPlayerInputEvents events,
 		CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(Subscribe(cancellationToken, "input", publish =>
+		return TypedResults.ServerSentEvents(Subscribe("input", publish =>
 		{
 			events.InputPublished += Handler;
 			return () => events.InputPublished -= Handler;
@@ -228,10 +265,12 @@ internal static class LiveSseRoutes
 			{
 				if (id == playerId) publish(payload);
 			}
-		}));
+		}, cancellationToken));
 	}
 
-	/// <summary>Stops reverse-proxy response buffering (nginx's X-Accel-Buffering header) and any caching of a live stream.</summary>
+	/// <summary>
+	///     Configures the response for Server-Sent Events.
+	/// </summary>
 	private static void SetSseHeaders(HttpContext context)
 	{
 		context.Response.Headers.CacheControl = "no-cache";
@@ -239,12 +278,7 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Every `.../live` route is <see cref="Middleware.SseEndpointMarker" />-tagged, so
-	///     <see cref="Middleware.EnvelopeMiddleware" /> unconditionally skips buffering it (buffering
-	///     would silently turn a real live stream into one that never delivers a single event). That
-	///     means a genuine synchronous JSON error returned before any stream opens has to envelope
-	///     itself by hand instead. Used when the requested match/resource isn't currently live, so
-	///     there's nothing to stream.
+	///     Returns a standard SSE error response indicating that no live stream is available.
 	/// </summary>
 	public static IResult NotLive(string message = "Match is not live")
 	{
@@ -252,8 +286,7 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Same hand-envelope requirement as <see cref="NotLive" />, for the other pre-stream error
-	///     statuses an SSE route can return (e.g. 404 out-of-range slot, 400 no-stream-to-expose).
+	///     Returns an error response for an SSE endpoint.
 	/// </summary>
 	public static IResult SseError(int statusCode, string message)
 	{
@@ -261,8 +294,11 @@ internal static class LiveSseRoutes
 		return Results.Json(envelope, BasilJsonOptions.Instance, statusCode: statusCode);
 	}
 
-	private static IAsyncEnumerable<SseItem<string>> Subscribe(
-		CancellationToken cancellationToken, string eventType, Func<Action<byte[]>, Action> subscribe)
+	/// <summary>
+	///     Converts an event source into an SSE stream.
+	/// </summary>
+	private static IAsyncEnumerable<SseItem<string>> Subscribe(string eventType, Func<Action<byte[]>, Action> subscribe,
+		CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateBounded<SseItem<string>>(
 			new BoundedChannelOptions(32) { FullMode = BoundedChannelFullMode.DropOldest });
@@ -274,18 +310,17 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Lock-free full-then-delta subscribe sequence. Subscribe first so no publish in the gap is
-	///     missed, then drain and discard anything already queued (non-blocking). Discarding is safe
-	///     because the publisher always writes its <see cref="SnapshotChannel{T}" /> before raising the
-	///     event, so anything sitting in the channel here is already reflected in the fresh read that
-	///     follows. Read the latest full snapshot and yield it, then resume the normal blocking drain
-	///     loop, forwarding every subsequent publish as a delta. Uses an unbounded channel (unlike
-	///     <see cref="Subscribe" />'s bounded/drop-oldest one) because a dropped delta permanently
-	///     desyncs a client: there's no full re-snapshot fallback once deltas start.
+	///     Creates an SSE stream that begins with the latest snapshot before forwarding
+	///     the following updates.
 	/// </summary>
-	private static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot(
-		[EnumeratorCancellation] CancellationToken cancellationToken,
-		string eventType, Func<Action<byte[]>, Action> subscribe, Func<byte[]?> readLatestSnapshot)
+	/// <remarks>
+	///     The subscription is established before reading the snapshot so that no updates
+	///     published during initialization are missed. Any queued updates older than the
+	///     snapshot are discarded because they are already reflected in that snapshot.
+	/// </remarks>
+	private static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot(string eventType,
+		Func<Action<byte[]>, Action> subscribe, Func<byte[]?> readLatestSnapshot,
+		[EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateUnbounded<SseItem<string>>();
 		var unsubscribe = subscribe(payload =>
@@ -305,13 +340,12 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Same subscribe-drain-read-resume sequence as <see cref="SubscribeWithSnapshot" />, but for a
-	///     stream fed by more than one event source at once (each publish carries its own event-type
-	///     tag). Only <paramref name="snapshotEventType" />'s source gets the initial full-state read.
+	///     Creates an SSE stream backed by multiple event sources, beginning with an
+	///     initial snapshot for one of them.
 	/// </summary>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(
-		[EnumeratorCancellation] CancellationToken cancellationToken,
-		Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType, Func<byte[]?> readLatestSnapshot)
+		Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType, Func<byte[]?> readLatestSnapshot,
+		[EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateUnbounded<SseItem<string>>();
 		var unsubscribe = subscribe((eventType, payload) =>

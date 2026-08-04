@@ -1,13 +1,15 @@
 # User Privileges
 
-This document describes the server-side privilege system (`Basil.Domain.Users.Privileges`) — what each flag means and how it affects runtime behaviour.
+## Overview
+
+Basil grants access as a single bitfield (`Basil.Domain.Users.Privileges`) rather than a role name, so a user can hold any combination of flags at once — a moderator who's also a tournament manager is just two bits set on the same field, not a separate role to define.
 
 ## Flag reference
 
 | Flag | Bit | Value | Consumer(s) | Notes |
 |------|-----|-------|-------------|-------|
 | `Unrestricted` | 0 | 1 | Login, match join, chat, score submission | **Core flag.** A user without this is "restricted" — cannot play multiplayer, send chat, or submit scores. |
-| `Verified` | 1 | 2 | Login | Auto-granted on first successful login (`OsuLoginUseCase`). Gates no specific feature by itself but is expected to be present for normal operation. |
+| `Verified` | 1 | 2 | Login | Auto-granted on first successful login (`LoginService`). Gates no specific feature by itself but is expected to be present for normal operation. |
 | `Whitelighted` | 2 | 4 | — | Legacy bancho.py port. No consumer in this codebase (no-op). |
 | `Supporter` | 4 | 16 | Login (via `Donator`) | osu! supporter badge shown in client. Combined with `Premium` → `Donator`. |
 | `Premium` | 5 | 32 | Login (via `Donator`) | Legacy, no direct consumer. |
@@ -57,3 +59,8 @@ The server's `Privileges` flags map to client-facing `ClientPrivileges` (sent in
 | `Moderator` | `Moderator` |
 | `Administrator` | `Developer` |
 | `Developer` | `Owner` |
+
+## See also
+
+- [`authentication.md`](authentication.md) — where `Verified` gets auto-granted
+- [`run-deployment.md`](run-deployment.md) — creating the first account and granting staff privileges

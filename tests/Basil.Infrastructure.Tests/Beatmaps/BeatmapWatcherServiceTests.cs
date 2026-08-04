@@ -173,9 +173,9 @@ public class BeatmapWatcherServiceTests : IDisposable
 			// whatever path it's given) would parse an id that happens not to match any row, and the
 			// bug this test exists to catch — deleting the just-ingested beatmapset — would go unnoticed.
 			var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
-			using (var archive = ZipFile.Open(oszPath, ZipArchiveMode.Create))
+			using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
 			{
-				archive.CreateEntryFromFile(
+				await archive.CreateEntryFromFileAsync(
 					Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu"),
 					"vivid_with_setid.osu");
 			}

@@ -5,7 +5,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Web;
 using Basil.Web.OpenApi;
-using Basil.Web.Routing;
+using Basil.Web.Routing.Api;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

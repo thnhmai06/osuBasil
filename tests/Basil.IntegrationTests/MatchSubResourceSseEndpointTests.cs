@@ -32,6 +32,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 {
 	private const string AdminKey = "correct-key";
 	private readonly WebApplicationFactory<Program> _factory;
+	private static readonly int[] inputValue = [111];
 
 	public MatchSubResourceSseEndpointTests(WebApplicationFactory<Program> factory)
 	{
@@ -184,7 +185,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var matchId = await CreateMatchAsync(client);
 
 		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
-		warmRequest.Content = JsonContent.Create(new { userIds = new[] { 111 } });
+		warmRequest.Content = JsonContent.Create(new { userIds = inputValue });
 		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/ban/live", async () =>
