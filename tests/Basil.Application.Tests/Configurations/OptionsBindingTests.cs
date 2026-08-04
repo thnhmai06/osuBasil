@@ -48,6 +48,25 @@ public class OptionsBindingTests
 	}
 
 	[Fact]
+	public void MirrorOptions_IsOnlineMode_FalseWhenDownloadEndpointUnset()
+	{
+		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
+
+		Assert.False(options.IsOnlineMode);
+	}
+
+	[Fact]
+	public void MirrorOptions_IsOnlineMode_TrueWhenDownloadEndpointSet()
+	{
+		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>
+		{
+			[$"{MirrorOptions.SectionName}:DownloadEndpoint"] = "https://catboy.best/d"
+		});
+
+		Assert.True(options.IsOnlineMode);
+	}
+
+	[Fact]
 	public void ServerOptions_Binds_AllFields()
 	{
 		var options = BindOptions<ServerOptions>(ServerOptions.SectionName,

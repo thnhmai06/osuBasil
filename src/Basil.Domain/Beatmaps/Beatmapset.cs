@@ -53,4 +53,13 @@ public sealed record Beatmapset(
 	///     treated as loved; Basil does not track per-map ranked-status curation.
 	/// </value>
 	public static BeatmapStatus Status => BeatmapStatus.Approved;
+
+	/// <summary>
+	///     Gets a value that indicates whether the set was ingested without a real osu! online id.
+	/// </summary>
+	/// <value>
+	///     <see langword="true" /> if the set's id is at or above <see cref="Beatmap.LocalIdFloor" />;
+	///     otherwise, <see langword="false" />.
+	/// </value>
+	public bool IsLocallyIngested => Id >= Beatmap.LocalIdFloor;
 }

@@ -197,9 +197,16 @@ internal static class OsuWebRoutes
 					}
 
 					var mirrorOptions = context.RequestServices.GetRequiredService<IOptions<MirrorOptions>>().Value;
-					if (string.IsNullOrEmpty(mirrorOptions.DownloadEndpoint))
+					if (!mirrorOptions.IsOnlineMode)
 						return Results.Text("Beatmap downloads are not available on this server.", "text/html",
 							Encoding.UTF8);
+
+					// A locally-synthesized id (no genuine ppy id) can never resolve on a ppy-id-keyed
+					// mirror, regardless of whether Basil itself has ever seen this exact id before.
+					if (int.TryParse(rawSetId, out var parsedSetId) && parsedSetId >= Beatmap.LocalIdFloor)
+						return Results.Problem(
+							"This endpoint is not available while the server runs in online mirror mode.",
+							statusCode: StatusCodes.Status503ServiceUnavailable);
 
 					const int noVideoQueryValue = 0;
 					const int withVideoQueryValue = 1;
@@ -212,9 +219,10 @@ internal static class OsuWebRoutes
 			.WithDescription("The in-game download button. `{mapSetId}` may carry a trailing `n` to request " +
 			                 "a no-video archive.\n\n" +
 			                 "If the set is available on this server, a fresh `.osz` is built and returned as " +
-			                 "`application/x-osu-beatmap-archive`. Otherwise the request redirects to the configured " +
-			                 "mirror, or returns a plain-text \"not available\" message when no mirror is " +
-			                 "configured.\n\n" +
+			                 "`application/x-osu-beatmap-archive`. Otherwise, when the server runs in online " +
+			                 "mirror mode, the request redirects to the configured mirror (`503` for a " +
+			                 "locally-authored set with no genuine ppy id to redirect with), or returns a " +
+			                 "plain-text \"not available\" message when no mirror is configured.\n\n" +
 			                 "Prefer `GET /beatmapsets/{id}/download` on the Basil API for external tooling; this " +
 			                 "route exists for the in-game client.")
 			.WithTags("Beatmaps");

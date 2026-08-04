@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Application.Configurations;
+using Basil.Domain.Beatmaps;
 using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -82,6 +83,17 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
 		var response = await client.SendAsync(MakeRequest("/d/12345n"));
 
 		Assert.Equal("https://mirror.local/d/12345?n=0", response.Headers.Location!.ToString());
+	}
+
+	[Fact]
+	public async Task Download_LocallySynthesizedId_ReturnsServiceUnavailable_NoRedirect()
+	{
+		var client = Configure(factory, "https://mirror.local/d")
+			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+		var response = await client.SendAsync(MakeRequest($"/d/{Beatmap.LocalIdFloor}"));
+
+		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
 
 	[Fact]

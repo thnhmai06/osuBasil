@@ -1,14 +1,14 @@
 namespace Basil.Application.Configurations;
 
 /// <summary>
-///     Configuration for the optional beatmap set download mirror.
+///     Configuration for the optional beatmap mirror, controlling assets/downloads that are missing
+///     from local storage.
 /// </summary>
 /// <remarks>
-///     This server stores no local .osz files, so <c>/d/{set_id}</c> only works when an operator
-///     points <see cref="DownloadEndpoint" /> at a mirror (local or otherwise); when it is unset,
-///     the download is reported as unavailable rather than reaching out to the internet. Beatmap
-///     search is never mirrored: it queries the local beatmap database instead of proxying a
-///     mirror, since this server runs fully offline.
+///     Local storage is always tried first, regardless of whether a mirror is configured. When
+///     <see cref="DownloadEndpoint" /> is unset (the default), a beatmapset missing locally is
+///     reported as unavailable rather than reaching out to the internet. When it is set, a missing
+///     beatmapset with a genuine ppy id falls back to the mirror instead.
 /// </remarks>
 public sealed class MirrorOptions
 {
@@ -16,4 +16,11 @@ public sealed class MirrorOptions
 
 	/// <summary>Gets or sets the URL of the mirror that serves .osz downloads for the <c>/d/{set_id}</c> endpoint.</summary>
 	public string? DownloadEndpoint { get; init; }
+
+	/// <summary>
+	///     Gets a value that indicates whether the server runs in online mirror mode: local storage
+	///     is still tried first everywhere, but a beatmapset missing locally falls back to the
+	///     mirror instead of reporting unavailable.
+	/// </summary>
+	public bool IsOnlineMode => !string.IsNullOrEmpty(DownloadEndpoint);
 }
