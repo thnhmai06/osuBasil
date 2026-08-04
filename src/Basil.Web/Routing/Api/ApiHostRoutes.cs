@@ -72,6 +72,8 @@ internal static class ApiHostRoutes
 
 		group.MapAdminKeyRoutes();
 
+		group.MapAnnounceRoutes();
+
 		group.MapAbbreviationRedirects();
 	}
 

@@ -101,6 +101,14 @@ public sealed class Program
 			("Menu Icon Image", "The in-game main menu icon image."),
 			("Menu Icon URL", "The URL opened when the main menu icon is clicked.")
 		]),
+		("Admin Key",
+		[
+			("Admin Key", "The server's admin key: status, rotation, and bypass mode.")
+		]),
+		("Announce",
+		[
+			("Announce", "Pushing an in-game notification to online players.")
+		]),
 		("Abbreviation Redirects",
 		[
 			("Abbreviation Redirects", "302 redirects from abbreviated paths to their canonical resource paths.")
