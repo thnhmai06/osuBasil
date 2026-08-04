@@ -19,7 +19,10 @@ namespace Basil.Web.Middleware;
 ///     skip-vs.-wrap (see <see cref="LiveSseRoutes.IsSseRoute" />). Buffering a live push stream until
 ///     the handler completes would silently turn it into one that never delivers a single event until
 ///     the connection closes. A file download's `Content-Type` is never "json", so it passes through
-///     unwrapped for the same structural reason, with no separate marker needed.
+///     unwrapped for the same structural reason, with no separate marker needed. `HEAD` requests and
+///     responses that must never carry a body under the HTTP spec (`304 Not Modified`,
+///     `205 Reset Content`) are also passed through unwrapped rather than enveloped, regardless of
+///     their (absent) `Content-Type`.
 /// </remarks>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
@@ -30,8 +33,9 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 	/// <remarks>
 	///     The response is buffered in memory, then parsed and wrapped in an
 	///     <see cref="Envelope{T}" /> built from the status code, request method, and body. A
-	///     <c>204 No Content</c> status becomes <c>200 OK</c> with a real envelope body, and non-JSON
-	///     content types (file downloads) are passed through unwrapped.
+	///     <c>204 No Content</c> status becomes <c>200 OK</c> with a real envelope body. Non-JSON
+	///     content types (file downloads) and responses that must not carry a body (<c>304</c>,
+	///     <c>205</c>) are passed through unwrapped.
 	/// </remarks>
 	/// <param name="context">The HTTP context whose response is buffered, inspected, and rewritten.</param>
 	public async Task InvokeAsync(HttpContext context)
@@ -40,7 +44,7 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 		var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
 		var isAlwaysSse = endpoint is RouteEndpoint { RoutePattern.RawText: { } raw } &&
 		                  LiveSseRoutes.IsSseRoute(raw);
-		if (groupName != "basilapi" || isAlwaysSse)
+		if (groupName != "basilapi" || isAlwaysSse || HttpMethods.IsHead(context.Request.Method))
 		{
 			await next(context);
 			return;
@@ -59,11 +63,17 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 			context.Response.Body = originalBody;
 		}
 
+		buffer.Seek(0, SeekOrigin.Begin);
+		if (context.Response.StatusCode is StatusCodes.Status304NotModified or StatusCodes.Status205ResetContent)
+		{
+			await buffer.CopyToAsync(originalBody);
+			return;
+		}
+
 		var contentType = context.Response.ContentType;
 		var isJsonOrEmpty = string.IsNullOrEmpty(contentType) ||
 		                    contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
 
-		buffer.Seek(0, SeekOrigin.Begin);
 		if (!isJsonOrEmpty)
 		{
 			await buffer.CopyToAsync(originalBody);

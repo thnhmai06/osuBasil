@@ -93,6 +93,24 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	}
 
 	[Fact]
+	public async Task GetIcon_ConditionalRequestMatchingLastModified_ReturnsNotModifiedWithEmptyBody()
+	{
+		var client = _factory.CreateClient();
+		await client.SendAsync(MakeUploadRequest());
+
+		var firstResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menuicon/icon"));
+		var lastModified = firstResponse.Content.Headers.LastModified;
+		Assert.NotNull(lastModified);
+
+		var conditionalRequest = MakeRequest(HttpMethod.Get, "/menuicon/icon");
+		conditionalRequest.Headers.IfModifiedSince = lastModified;
+		var conditionalResponse = await client.SendAsync(conditionalRequest);
+
+		Assert.Equal(HttpStatusCode.NotModified, conditionalResponse.StatusCode);
+		Assert.Empty(await conditionalResponse.Content.ReadAsByteArrayAsync());
+	}
+
+	[Fact]
 	public async Task PutIcon_SecondUploadWithDifferentExtension_ReplacesFirstUpload_Upsert()
 	{
 		var client = _factory.CreateClient();
