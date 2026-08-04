@@ -126,14 +126,15 @@ internal static class OsuWebRoutes
 
 				var searchService = context.RequestServices.GetRequiredService<DirectSearchService>();
 				var request = new DirectSearchRequest(query, mode, pageNum);
-				var beatmapSets = await searchService.SearchAsync(request, cancellationToken);
+				var response = await searchService.SearchFormattedAsync(request, cancellationToken);
 
-				return Results.Text(DirectSearchService.Format(beatmapSets), "text/html", Encoding.UTF8);
+				return Results.Text(response, "text/html", Encoding.UTF8);
 			})
 			.WithGroupName("osuweb")
 			.WithSummary("Search beatmaps (osu!direct)")
-			.WithDescription("Backs the in-game osu!direct search panel. Only beatmaps available on this " +
-			                 "server are searchable; there is no external mirror.\n\n" +
+			.WithDescription("Backs the in-game osu!direct search panel. Searches the configured mirror catalog " +
+			                 "instead of local storage when a search mirror is configured, falling back to local " +
+			                 "search if the mirror is unreachable; otherwise searches local storage only.\n\n" +
 			                 "Query parameters:\n" +
 			                 "* `q` — free-text query\n" +
 			                 "* `m` — game-mode filter\n" +

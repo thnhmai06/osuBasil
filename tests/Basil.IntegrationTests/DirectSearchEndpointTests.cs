@@ -102,6 +102,67 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	}
 
 	[Fact]
+	public async Task Search_MirrorConfiguredAndSucceeds_ReturnsMirrorResultsNotLocal()
+	{
+		var mirrorClient = Substitute.For<IMirrorSearchClient>();
+		mirrorClient.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<int>(),
+				Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns([new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4, "2020-01-01 00:00:00",
+				200, false, [])]);
+
+		var mirrorFactory = _factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton(Options.Create(
+					new MirrorOptions { SearchEndpoint = "https://mirror.local/search" }));
+				services.AddSingleton(mirrorClient);
+			});
+		});
+
+		var sessionRegistry = mirrorFactory.Services.GetRequiredService<IUserSessionRegistry>();
+		sessionRegistry.Add(new UserSession(63, "mirror-user", "tok4", UserPrivileges.Unrestricted,
+			DateTimeOffset.UnixEpoch));
+		_searchResult = [[MakeBeatmap(1, 100)]];
+		var request = MakeRequest("/web/osu-search.php", "u=mirror-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
+
+		var response = await mirrorFactory.CreateClient().SendAsync(request);
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.StartsWith("1\n200.osz|MirrorArtist|MirrorTitle|MirrorCreator|", body);
+	}
+
+	[Fact]
+	public async Task Search_MirrorConfiguredButFails_FallsBackToLocalResults()
+	{
+		var mirrorClient = Substitute.For<IMirrorSearchClient>();
+		mirrorClient.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<int>(),
+				Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MirrorSearchSet>?)null);
+
+		var mirrorFactory = _factory.WithWebHostBuilder(builder =>
+		{
+			builder.ConfigureServices(services =>
+			{
+				services.AddSingleton(Options.Create(
+					new MirrorOptions { SearchEndpoint = "https://mirror.local/search" }));
+				services.AddSingleton(mirrorClient);
+			});
+		});
+
+		var sessionRegistry = mirrorFactory.Services.GetRequiredService<IUserSessionRegistry>();
+		sessionRegistry.Add(new UserSession(64, "mirror-fail-user", "tok5", UserPrivileges.Unrestricted,
+			DateTimeOffset.UnixEpoch));
+		_searchResult = [[MakeBeatmap(1, 100)]];
+		var request = MakeRequest("/web/osu-search.php", "u=mirror-fail-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
+
+		var response = await mirrorFactory.CreateClient().SendAsync(request);
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.StartsWith("1\n100.osz|Artist|Title|cmyui|", body);
+	}
+
+	[Fact]
 	public async Task SearchSet_PlayerNotOnline_ReturnsUnauthorized()
 	{
 		var request = MakeRequest("/web/osu-search-set.php", "u=nobody&h=x&s=100");

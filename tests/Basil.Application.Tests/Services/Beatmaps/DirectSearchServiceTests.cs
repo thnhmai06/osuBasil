@@ -1,7 +1,9 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Beatmaps;
@@ -10,6 +12,14 @@ namespace Basil.Application.Tests.Services.Beatmaps;
 public class DirectSearchServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
+	private readonly IMirrorSearchClient _mirrorClient = Substitute.For<IMirrorSearchClient>();
+	private MirrorOptions _mirrorOptions = new();
+
+	private DirectSearchService MakeService()
+	{
+		return new DirectSearchService(_beatmaps, _mirrorClient, Options.Create(_mirrorOptions),
+			NullLogger<DirectSearchService>.Instance);
+	}
 
 	[Theory]
 	[InlineData("Newest")]
@@ -22,8 +32,7 @@ public class DirectSearchServiceTests
 	{
 		_beatmaps.SearchAsync(null, null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
-			new DirectSearchRequest(query, -1, 0));
+		await MakeService().SearchAsync(new DirectSearchRequest(query, -1, 0));
 
 		await _beatmaps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -33,8 +42,7 @@ public class DirectSearchServiceTests
 	{
 		_beatmaps.SearchAsync("camellia", null, 0, 100).Returns([]);
 
-		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
-			new DirectSearchRequest("camellia", -1, 0));
+		await MakeService().SearchAsync(new DirectSearchRequest("camellia", -1, 0));
 
 		await _beatmaps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -44,8 +52,7 @@ public class DirectSearchServiceTests
 	{
 		_beatmaps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
 
-		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
-			new DirectSearchRequest("Newest", 1, 0));
+		await MakeService().SearchAsync(new DirectSearchRequest("Newest", 1, 0));
 
 		await _beatmaps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
 	}
@@ -55,10 +62,55 @@ public class DirectSearchServiceTests
 	{
 		_beatmaps.SearchAsync(null, null, 200, 100).Returns([]);
 
-		await new DirectSearchService(_beatmaps, NullLogger<DirectSearchService>.Instance).SearchAsync(
-			new DirectSearchRequest("Newest", -1, 2));
+		await MakeService().SearchAsync(new DirectSearchRequest("Newest", -1, 2));
 
 		await _beatmaps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
+	}
+
+	// ---- SearchFormattedAsync: orchestrates local vs. mirror ----
+
+	[Fact]
+	public async Task SearchFormattedAsync_NoSearchMirrorConfigured_UsesLocal()
+	{
+		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+
+		var response = await MakeService().SearchFormattedAsync(new DirectSearchRequest("Newest", -1, 0));
+
+		Assert.Contains("100.osz|Artist|Title|cmyui|", response);
+		await _mirrorClient.DidNotReceiveWithAnyArgs()
+			.SearchAsync(default!, default, default, default, default);
+	}
+
+	[Fact]
+	public async Task SearchFormattedAsync_MirrorConfiguredAndSucceeds_UsesMirrorNotLocal()
+	{
+		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
+		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		var mirrorSet = new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4,
+			"2020-01-01 00:00:00", 200, true, [new MirrorSearchBeatmap(5.5, "Insane", 4, 8, 9, 5, 0)]);
+		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
+			.Returns([mirrorSet]);
+
+		var response = await MakeService().SearchFormattedAsync(new DirectSearchRequest("Newest", -1, 0));
+
+		Assert.Contains("200.osz|MirrorArtist|MirrorTitle|MirrorCreator|4|10.0|2020-01-01 00:00:00|200|1|",
+			response);
+		Assert.DoesNotContain("Artist|Title|cmyui", response);
+		await _beatmaps.DidNotReceiveWithAnyArgs()
+			.SearchAsync(default, default, default, default, Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task SearchFormattedAsync_MirrorConfiguredButFails_FallsBackToLocal()
+	{
+		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
+		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MirrorSearchSet>?)null);
+
+		var response = await MakeService().SearchFormattedAsync(new DirectSearchRequest("Newest", -1, 0));
+
+		Assert.Contains("100.osz|Artist|Title|cmyui|", response);
 	}
 
 	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",
@@ -153,5 +205,58 @@ public class DirectSearchServiceTests
 		var response = DirectSearchService.FormatSet(bmap);
 
 		Assert.Equal("100.osz|Art|ist|Title|cmyui|3|10.0|2020-03-15 10:30:00|100|0|0|0|0|0", response);
+	}
+
+	// ---- FormatMirror ----
+
+	[Fact]
+	public void FormatMirror_EmptyList_ReturnsZero()
+	{
+		Assert.Equal("0", DirectSearchService.FormatMirror([]));
+	}
+
+	[Fact]
+	public void FormatMirror_SingleSet_MatchesFormatString()
+	{
+		var set = new MirrorSearchSet("Artist", "Title", "cmyui", 2, "2020-03-15 10:30:00", 100, false,
+			[new MirrorSearchBeatmap(6.5, "Hyper", 4, 8, 9, 5, 0)]);
+
+		var response = DirectSearchService.FormatMirror([set]);
+
+		var expectedLine =
+			"100.osz|Artist|Title|cmyui|2|10.0|2020-03-15 10:30:00|100|0|0|0|0|0|[6.50⭐] Hyper {CS: 4 / OD: 8 / AR: 9 / HP: 5}@0";
+		Assert.Equal("1\n" + expectedLine, response);
+	}
+
+	[Fact]
+	public void FormatMirror_HasVideoTrue_SetsFlagToOne()
+	{
+		var set = new MirrorSearchSet("Artist", "Title", "cmyui", 2, "2020-03-15 10:30:00", 100, true, []);
+
+		var response = DirectSearchService.FormatMirror([set]);
+
+		Assert.Contains("100|1|0|0|0|0|", response);
+	}
+
+	[Fact]
+	public void FormatMirror_PipeInMetadata_ReplacedWithI()
+	{
+		var set = new MirrorSearchSet("Art|ist", "Ti|tle", "cmyui", 2, "2020-03-15 10:30:00", 100, false,
+			[new MirrorSearchBeatmap(1.0, "Di|ff", 4, 8, 9, 5, 0)]);
+
+		var response = DirectSearchService.FormatMirror([set]);
+
+		Assert.Contains("100.osz|ArtIist|TiItle|cmyui|", response);
+		Assert.Contains("DiIff", response);
+	}
+
+	[Fact]
+	public void FormatMirror_NullBeatmaps_EmptyDiffsField()
+	{
+		var set = new MirrorSearchSet("Artist", "Title", "cmyui", 2, "2020-03-15 10:30:00", 100, false, null);
+
+		var response = DirectSearchService.FormatMirror([set]);
+
+		Assert.EndsWith("|100|0|0|0|0|0|", response);
 	}
 }

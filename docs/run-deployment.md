@@ -30,7 +30,8 @@ recreate the container).
 | `Bot:Country` | BasilBot's country code (default `"vn"`). Overrides seed migration value. |
 | `Irc:Name` | IRC server name. |
 | `Irc:Port` | TCP port for the embedded IRC gateway (default 6667). |
-| `Mirror:DownloadEndpoint` | Optional external `.osz` mirror for `/d/{set_id}`. Unset by default — Basil runs fully offline, downloads report "unavailable" instead of reaching the internet. |
+| `Mirror:DownloadEndpoint` | Optional external `.osz` mirror. Unset by default — local storage is always tried first regardless; when set, a beatmapset missing locally (with a genuine ppy id) redirects here (or to `b.ppy.sh` for thumbnails/previews) instead of reporting unavailable. |
+| `Mirror:SearchEndpoint` | Optional osu!direct mirror search API, independent of `DownloadEndpoint`. Unset by default — search queries local storage only. When set, search queries the mirror instead of local storage (falling back to local only if the mirror is unreachable). |
 | `Logging:MinimumLevel` | Minimum Serilog level for stdout and the full log file (default `"Information"`) — see "Logging" further down this page. |
 
 ### Admin key (not in `appsettings.json`)

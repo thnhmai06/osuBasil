@@ -1,22 +1,30 @@
 using System.Collections.Frozen;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Beatmaps;
 
 /// <summary>
-///     Queries the local beatmap database for the osu!direct panel and formats the results.
+///     Queries the local beatmap database or a configured mirror for the osu!direct panel and
+///     formats the results.
 /// </summary>
 /// <remarks>
-///     Queries the local beatmap database instead of proxying a mirror API, since this server runs
-///     fully offline and folds in the response formatting that both serving paths need. There is
-///     no mirror-error result because this server never talks to a mirror. The metadata
-///     pipe-replacement quirk is kept: it is not mirror-specific, it protects the pipe-delimited
-///     wire format from any locally stored artist, title, or difficulty name that happens to
-///     contain a literal <c>|</c>.
+///     <see cref="SearchAsync" />/<see cref="Format" /> query the local beatmap database only, kept
+///     exactly as before mirror search existed. <see cref="SearchFormattedAsync" /> is the
+///     orchestrator every route should call instead: it queries the mirror when
+///     <see cref="MirrorOptions.HasSearchMirror" /> is set (falling back to local on mirror
+///     failure), or local otherwise. The metadata pipe-replacement quirk applies to both sources: it
+///     protects the pipe-delimited wire format from any artist, title, or difficulty name that
+///     happens to contain a literal <c>|</c>.
 /// </remarks>
-public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<DirectSearchService> logger)
+public sealed class DirectSearchService(
+	IBeatmapRepository beatmaps,
+	IMirrorSearchClient mirrorSearchClient,
+	IOptions<MirrorOptions> mirrorOptions,
+	ILogger<DirectSearchService> logger)
 {
 	/// <summary>
 	///     The number of results per page.
@@ -56,6 +64,46 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 		logger.LogDebug("osu!direct search: Query={Query} Mode={Mode} PageNum={PageNum} ResultCount={ResultCount}",
 			queryText, mode, request.PageNum, results.Count);
 		return results;
+	}
+
+	/// <summary>
+	///     Runs a single osu!direct search and formats the response, querying the configured mirror
+	///     instead of local storage when one is set.
+	/// </summary>
+	/// <param name="request">The search parameters.</param>
+	/// <param name="cancellationToken">A token that cancels the search.</param>
+	/// <returns>The newline- and pipe-delimited response string.</returns>
+	/// <remarks>
+	///     When a search mirror is configured, it replaces local search entirely rather than only
+	///     filling in when local search returns nothing: a search result list isn't a single resource
+	///     like a thumbnail, so a local match would otherwise silently hide the rest of the mirror's
+	///     catalog. A mirror that errors or is unreachable falls back to local search for that call,
+	///     so a temporary mirror outage doesn't take search down entirely.
+	/// </remarks>
+	public async Task<string> SearchFormattedAsync(DirectSearchRequest request,
+		CancellationToken cancellationToken = default)
+	{
+		var mirror = mirrorOptions.Value;
+		if (mirror.HasSearchMirror)
+		{
+			var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;
+			GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
+
+			var mirrorResults = await mirrorSearchClient.SearchAsync(mirror.SearchEndpoint!, queryText, (int?)mode,
+				PageSize, request.PageNum * PageSize, cancellationToken);
+			if (mirrorResults is not null)
+			{
+				logger.LogDebug(
+					"osu!direct mirror search: Query={Query} Mode={Mode} PageNum={PageNum} ResultCount={ResultCount}",
+					queryText, mode, request.PageNum, mirrorResults.Count);
+				return FormatMirror(mirrorResults);
+			}
+
+			logger.LogWarning("osu!direct mirror search failed, falling back to local search: Endpoint={Endpoint}",
+				mirror.SearchEndpoint);
+		}
+
+		return Format(await SearchAsync(request, cancellationToken));
 	}
 
 	/// <summary>
@@ -120,6 +168,34 @@ public sealed class DirectSearchService(IBeatmapRepository beatmaps, ILogger<Dir
 		return $"[{beatmap.Difficulty.Sr:0.00}⭐] {RemovePipes(beatmap.Version)} " +
 		       $"{{CS: {beatmap.Difficulty.Cs} / OD: {beatmap.Difficulty.Od} / AR: {beatmap.Difficulty.Ar} / " +
 		       $"HP: {beatmap.Difficulty.Hp}}}@{(int)beatmap.Difficulty.Mode}";
+	}
+
+	/// <summary>
+	///     Formats a set of mirror search results into the osu!direct response format, matching
+	///     <see cref="Format" />'s layout but reading directly from the mirror's own DTOs (which don't
+	///     carry every field a local <see cref="Beatmap" /> does, e.g. star rating source or filenames).
+	/// </summary>
+	/// <param name="sets">The mirror's search results.</param>
+	/// <returns>The newline- and pipe-delimited response string.</returns>
+	public static string FormatMirror(IReadOnlyList<MirrorSearchSet> sets)
+	{
+		var resultCount = sets.Count == PageSize ? 101 : sets.Count;
+		var lines = new List<string> { resultCount.ToString() };
+		lines.AddRange(sets.Select(set =>
+		{
+			var diffs = set.Beatmaps is null ? "" : string.Join(",", set.Beatmaps.Select(FormatMirrorDiff));
+			return string.Join('|', $"{set.SetId}.osz", RemovePipes(set.Artist), RemovePipes(set.Title),
+				set.Creator, set.RankedStatus.ToString(), "10.0", set.LastUpdate, set.SetId.ToString(),
+				set.HasVideo ? "1" : "0", "0", "0", "0", "0", diffs);
+		}));
+
+		return string.Join("\n", lines);
+	}
+
+	private static string FormatMirrorDiff(MirrorSearchBeatmap beatmap)
+	{
+		return $"[{beatmap.DifficultyRating:0.00}⭐] {RemovePipes(beatmap.DiffName)} " +
+		       $"{{CS: {beatmap.Cs} / OD: {beatmap.Od} / AR: {beatmap.Ar} / HP: {beatmap.Hp}}}@{beatmap.Mode}";
 	}
 
 	// "|" is the field delimiter in this response format, so any literal "|" in metadata would corrupt it.

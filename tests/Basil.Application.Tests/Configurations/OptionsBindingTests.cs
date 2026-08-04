@@ -67,6 +67,25 @@ public class OptionsBindingTests
 	}
 
 	[Fact]
+	public void MirrorOptions_HasSearchMirror_FalseWhenSearchEndpointUnset()
+	{
+		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
+
+		Assert.False(options.HasSearchMirror);
+	}
+
+	[Fact]
+	public void MirrorOptions_HasSearchMirror_TrueWhenSearchEndpointSet()
+	{
+		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>
+		{
+			[$"{MirrorOptions.SectionName}:SearchEndpoint"] = "https://catboy.best/api/v2/search"
+		});
+
+		Assert.True(options.HasSearchMirror);
+	}
+
+	[Fact]
 	public void ServerOptions_Binds_AllFields()
 	{
 		var options = BindOptions<ServerOptions>(ServerOptions.SectionName,

@@ -116,6 +116,8 @@ public static class DependencyInjection
 			new FileMotdProvider(Path.Combine(AppContext.BaseDirectory, "Data"),
 				sp.GetRequiredService<ILogger<FileMotdProvider>>()));
 
+		services.AddHttpClient<IMirrorSearchClient, HttpMirrorSearchClient>();
+
 		services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
