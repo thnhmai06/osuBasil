@@ -51,8 +51,7 @@ internal static class SchemaTypeTransformers
 					var acronyms = Enum.GetValues<Country>().Select(c => c.ToAcronym()).Order().ToList();
 					schema.Type = JsonSchemaType.String;
 					schema.Description =
-						"2-letter lowercase ISO 3166-1 country/region acronym, or \"xx\" if unknown. " +
-						$"Accepted values: {string.Join(", ", acronyms.Select(a => $"\"{a}\""))}.";
+						"2-letter lowercase ISO 3166-1 country/region acronym, or `xx` if unknown.\n\n";
 					schema.Enum = [.. acronyms.Select(JsonNode (a) => JsonValue.Create(a))];
 				}
 				else if (context.JsonTypeInfo.Type == typeof(TimeSpan))
@@ -95,8 +94,8 @@ internal static class SchemaTypeTransformers
 		}
 
 		/// <summary>
-		///     Declares `enum:` values plus a name-to-value mapping on closed-enum schemas, and bitmask
-		///     prose on genuinely combinable `[Flags]` enums.
+		///     Declares `enum:` values plus a name-to-value table on closed-enum schemas, and a
+		///     bitmask table on genuinely combinable `[Flags]` enums.
 		/// </summary>
 		/// <remarks>
 		///     <para>
@@ -104,14 +103,16 @@ internal static class SchemaTypeTransformers
 		///         enum-wire-convention bullet in <c>CLAUDE.md</c>, no <c>JsonStringEnumConverter</c>
 		///         anywhere), but its valid values are a closed set, unlike an arbitrary integer field.
 		///         Declaring it via `enum:` lets Scalar/generated clients offer a fixed value list
-		///         instead of a bare "integer" input. The name-to-value mapping is spelled out in the
-		///         description, since OpenAPI's `enum:` carries no built-in slot for member names.
+		///         instead of a bare "integer" input. The name-to-value table is spelled out in the
+		///         description as Markdown, since OpenAPI's `enum:` carries no built-in slot for member
+		///         names, and Scalar renders a table far more legibly than a comma-joined sentence.
 		///     </para>
 		///     <para>
 		///         A genuinely combinable <c>[Flags]</c> enum (see <see cref="CombinableFlagsNouns" />)
-		///         gets bitmask prose instead, since `enum:` can't represent "any OR-combination of
-		///         these bits": the prose lists each single-bit flag's value, notes that flags combine
-		///         via bitwise OR, and shows a worked example. Any other `[Flags]` enum (currently just
+		///         gets a bitmask table instead, since `enum:` can't represent "any OR-combination of
+		///         these bits": the table lists each single-bit flag's value, a following line notes
+		///         that flags combine via bitwise OR, and a worked example closes it out. Any other
+		///         `[Flags]` enum (currently just
 		///         <c>SlotStatus</c>) is treated as a regular closed enum, since its wire value is
 		///         never actually a combination despite the C# attribute. <see cref="Country" /> is
 		///         excluded entirely: it already gets its own string shape from
@@ -192,7 +193,7 @@ internal static class SchemaTypeTransformers
 	}
 
 	/// <summary>
-	///     Populates the schema's enum values and a name-to-value mapping in its description.
+	///     Populates the schema's enum values and a name-to-value table in its description.
 	/// </summary>
 	/// <param name="schema">The OpenAPI schema to populate.</param>
 	/// <param name="type">The closed enum type the schema represents.</param>
@@ -203,24 +204,28 @@ internal static class SchemaTypeTransformers
 			.ToList();
 
 		schema.Enum = [.. members.Select(JsonNode (m) => JsonValue.Create(m.Value))];
-		var mapping = string.Join(", ", members.Select(m => $"{m.Value} = {m.Name}"));
-		schema.Description = schema.Description is { Length: > 0 } ? $"{schema.Description} ({mapping})" : mapping;
+
+		var table = "| Name | Value |\n|---|---:|\n" +
+		            string.Join("\n", members.Select(m => $"| `{m.Name}` | `{m.Value}` |"));
+		schema.Description = schema.Description is { Length: > 0 } ? $"{schema.Description}\n\n{table}" : table;
 	}
 
 	/// <summary>
-	///     Documents a combinable flags schema as a bitmask: flag values, the OR-combination rule, and
-	///     a worked example.
+	///     Documents a combinable flags schema as a bitmask: a flag/value table, the OR-combination
+	///     rule, and a worked example.
 	/// </summary>
 	/// <remarks>
 	///     A combinable flags field has no `enum:` array, because its valid values are every
 	///     OR-combination of its single-bit members, not a closed list. Only single-bit members are
-	///     listed as "flag values": a combo alias like `UserPrivileges.Donator = Supporter | Premium`
+	///     listed in the table: a combo alias like `UserPrivileges.Donator = Supporter | Premium`
 	///     is expressible as the OR of its parts, so it isn't a distinct flag value worth listing
 	///     separately. Each is written as `1 &lt;&lt; N`, matching how every one of these enums is
 	///     declared in the source (see `Mods.cs`/`Privileges.cs`), rather than the decimal value, which
-	///     hides which bit it is. The worked example combines the first two single-bit flags in
-	///     ascending value order. It's deliberately generic rather than hand-picked per type, so it
-	///     can't go stale if a type's members change.
+	///     hides which bit it is. A Markdown table renders far more legibly in Scalar than the
+	///     equivalent comma-joined sentence, especially for `Mods`/`UserPrivileges`, each with more
+	///     than a dozen flags. The worked example combines the first two single-bit flags in ascending
+	///     value order. It's deliberately generic rather than hand-picked per type, so it can't go
+	///     stale if a type's members change.
 	/// </remarks>
 	private static void ApplyBitmaskDescription(OpenApiSchema schema, Type type, string noun)
 	{
@@ -231,13 +236,16 @@ internal static class SchemaTypeTransformers
 			.OrderBy(m => m.Value)
 			.ToList();
 
-		var flagLines = string.Join(", ", singleBitFlags.Select(m => $"1 << {m.Shift} = {m.Name}"));
+		var flagRows = string.Join("\n", singleBitFlags.Select(m => $"| `{m.Name}` | `1 << {m.Shift}` |"));
 		var (a, b) = (singleBitFlags[0], singleBitFlags[1]);
 
 		schema.Description =
 			$"Bitmask of enabled {noun}.\n\n" +
-			$"Flag values: {flagLines}.\n\n" +
+			"| Flag | Value |\n" +
+			"|---|---:|\n" +
+			$"{flagRows}\n\n" +
 			$"Multiple {noun} are combined using bitwise OR.\n\n" +
-			$"For example:\n{a.Name} (1 << {a.Shift}) + {b.Name} (1 << {b.Shift}) = {a.Value + b.Value}.";
+			"**Example**\n\n" +
+			$"`{a.Name} (1 << {a.Shift}) | {b.Name} (1 << {b.Shift}) = {a.Value + b.Value}`";
 	}
 }

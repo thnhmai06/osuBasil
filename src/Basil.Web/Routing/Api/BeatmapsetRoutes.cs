@@ -646,7 +646,7 @@ internal static class BeatmapsetRoutes
 	}
 
 	/// <summary>Request body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
-	public sealed record BeatmapsetPatchBody(bool? Frozen, bool? Private);
+	public sealed record BeatmapsetPatchBody(bool? Frozen = null, bool? Private = null);
 
 	private sealed record IngestResult(int Ingested);
 

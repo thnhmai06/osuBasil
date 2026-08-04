@@ -61,53 +61,52 @@ public sealed class Program
 	[
 		("Matches",
 		[
-			("Matches", "List and create matches."),
-			("Match Report", "The tournament match report (TRT): a one-shot JSON snapshot. The live SSE " +
-			                 "equivalent is under Match Live."),
-			("Match Settings", "Read/update a match's room configuration (name, password, map, mods, ...)."),
-			("Match Live", "Room-wide \"currently playing\" status and the merged per-slot live stream."),
-			("Match Hosts", "Get/set/clear the match host."),
-			("Match Referees", "List/replace/add/remove the match's referees."),
-			("Match Bans", "List/replace/add players banned from the match, and unban."),
-			("Match Slots", "Read, reassign, re-team, or lock the match's 16 slots, each addressed by " +
-			                "index; invite players onto them, and kick a seated player."),
-			("Match Timer", "Read, start, or abort the match's countdown timer."),
+			("Matches", "Match listing and creation."),
+			("Match Report", "Tournament match reports (TRT)."),
+			("Match Settings", "Match room configuration."),
+			("Match Live", "Room-wide realtime playing status and merged per-slot live streams."),
+			("Match Hosts", "Match host management."),
+			("Match Referees", "Match referee management."),
+			("Match Bans", "Management of players banned from a match."),
+			("Match Slots",
+				"Management of the match's 16 slots, including assignments, teams, locking, invitations, and kicking players."),
+			("Match Timer", "Match countdown timer."),
 			("Match Abort", "Abort the match currently in progress."),
 			("Match Close", "Close the match immediately.")
 		]),
 		("Users",
 		[
-			("Users", "User CRUD, avatar management, and live spectator-input streams.")
+			("Users", "User CRUD, avatar management, and live spectator input streams.")
 		]),
 		("Beatmapsets",
 		[
-			("Beatmapsets", "Beatmapset CRUD, archive/storyboard downloads, and freeze/private management."),
-			("Beatmaps", "Individual beatmap lookups and file/background downloads within a beatmapset.")
+			("Beatmapsets", "Beatmapset CRUD, archive and storyboard downloads, and freeze/private management."),
+			("Beatmaps", "Individual beatmap lookups and beatmap file/background downloads.")
 		]),
 		("Scores",
 		[
-			("Scores", "Individual score lookups, replay downloads, and the paginated score list.")
+			("Scores", "Score lookups, replay downloads, and paginated score listings.")
 		]),
 		("FAQ",
 		[
-			("FAQ", "Public FAQ entry storage.")
+			("FAQ", "Public FAQ entries.")
 		]),
 		("Seasonal Backgrounds",
 		[
-			("Seasonal Backgrounds", "Public seasonal background image storage.")
+			("Seasonal Backgrounds", "Public seasonal background images.")
 		]),
 		("Menu Icon",
 		[
-			("Menu Icon Image", "The in-game main menu icon image file."),
-			("Menu Icon URL", "The URL opened when a player clicks the main menu icon.")
+			("Menu Icon Image", "The in-game main menu icon image."),
+			("Menu Icon URL", "The URL opened when the main menu icon is clicked.")
 		]),
 		("Abbreviation Redirects",
 		[
-			("Abbreviation Redirects", "Short-prefix 302 redirects to the canonical plural resource paths.")
+			("Abbreviation Redirects", "302 redirects from abbreviated paths to their canonical resource paths.")
 		]),
 		("Health",
 		[
-			("Health", "Liveness check.")
+			("Health", "Health and liveness checks.")
 		])
 	];
 
@@ -365,21 +364,31 @@ public sealed class Program
 		// One document per group rather than one for the whole app: several groups register the
 		// same literal path template (both the bancho and osu-web groups have their own GET /),
 		// which OpenAPI cannot represent twice in one document.
-		AddOpenApiDocument(builder, "bancho", "osu! Client API: Bancho Protocol",
-			"The osu! stable client's binary bancho protocol: login and the packet-multiplexed " +
-			"connection that follows it. Served identically from the c./ce./c4./c5./c6. subdomains.");
-		AddOpenApiDocument(builder, "osuweb", "osu! Client API: osu! Web",
-			"The osu! stable client's HTTP `/web/*.php`-style endpoints (osu!web), plus beatmap/replay " +
-			"downloads and in-game registration. Served from the osu. subdomain.");
-		AddOpenApiDocument(builder, "beatmapassets", "osu! Client API: Beatmap Assets",
-			"Beatmapset thumbnail/preview asset requests, redirected to the api. host's own locally-" +
-			"stored background image (self-hosted, no osu.ppy.sh dependency). Served from the b. subdomain.");
-		AddOpenApiDocument(builder, "avatar", "osu! Client API: Avatar Files",
-			"Locally-stored userSession avatar images. Served from the a. subdomain.");
-		AddOpenApiDocument(builder, "basilapi", "Basil API",
-			"Basil's tournament-facing HTTP API: the tournament match report, live SSE channels, " +
-			"beatmap/replay file downloads, and admin-key-gated management CRUD. Served from the " +
-			"api. subdomain.",
+		AddOpenApiDocument(
+			builder,
+			"bancho",
+			"osu! Client API: Bancho Protocol",
+			"The osu! stable client's binary Bancho protocol, including login and the packet-based session that follows.");
+		AddOpenApiDocument(
+			builder,
+			"osuweb",
+			"osu! Client API: osu! Web",
+			"The osu! stable client's HTTP `web/*.php` endpoints, along with beatmap and replay downloads and in-game account registration.");
+		AddOpenApiDocument(
+			builder,
+			"beatmapassets",
+			"osu! Client API: Beatmap Assets",
+			"Beatmapset thumbnail and preview image requests, served from locally stored assets with no dependency on osu.ppy.sh.");
+		AddOpenApiDocument(
+			builder,
+			"avatar",
+			"osu! Client API: Avatar Files",
+			"Locally hosted user avatar images.");
+		AddOpenApiDocument(
+			builder,
+			"basilapi",
+			"Basil API",
+			"Basil's tournament-facing HTTP API, including tournament match reports, live SSE streams, beatmap and replay downloads, and admin-key-protected management endpoints.",
 			BasilApiTagGroups);
 	}
 

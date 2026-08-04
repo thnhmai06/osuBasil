@@ -46,14 +46,9 @@ internal static class ApiHostRoutes
 				() => Results.File(Path.Combine(docsSiteRoot, "basil-bot", "index.html"), "text/html"))
 			.ExcludeFromDescription();
 
-		docs.MapScalarApiReference("/osu-client/", options =>
-		{
-			options.Title = "osu! Client API";
-			options.AddDocument("bancho", "Bancho Protocol");
-			options.AddDocument("osuweb", "osu! Web");
-			options.AddDocument("beatmapassets", "Beatmap Assets");
-			options.AddDocument("avatar", "Avatar Files");
-		}).ExcludeFromDescription();
+		docs.MapGet("/osu-client/",
+				() => Results.File(Path.Combine(docsSiteRoot, "osu-client", "index.html"), "text/html"))
+			.ExcludeFromDescription();
 
 		docs.MapScalarApiReference("/basil-api/", options =>
 		{
