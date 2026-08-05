@@ -314,7 +314,7 @@ create table Settings
 insert into Settings (Key, Value)
 values ('AdminKey:Hash', null),
        ('AdminKey:LastChanged', null),
-       ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/menuicon.jpg'),
+       ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/icon.png'),
        ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil'),
        ('Motd', 'Welcome to Basil, the osu! server for tournaments and multiplayer');
 

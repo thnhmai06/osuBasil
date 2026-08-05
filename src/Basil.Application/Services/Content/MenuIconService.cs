@@ -5,14 +5,6 @@ namespace Basil.Application.Services.Content;
 /// <summary>
 ///     Stores the in-game main menu icon and its click-through URL.
 /// </summary>
-/// <remarks>
-///     The icon's reference — either a path to a locally uploaded image file
-///     (<c>Data/MenuIcon.{ext}</c>) or an external URL — and the click-through URL are both stored
-///     as Settings-table rows, replacing the previous file-based storage
-///     (<c>Data/MenuIcon.{ext}</c>'s presence as its own on/off switch, <c>Data/MenuIconUrl.txt</c>).
-///     An uploaded image's bytes still live on disk; only the pointer to them (or to an external URL)
-///     lives in the database.
-/// </remarks>
 public sealed class MenuIconService(ISettingsRepository settings)
 {
 	private const string PathKey = "MenuIcon:Path";

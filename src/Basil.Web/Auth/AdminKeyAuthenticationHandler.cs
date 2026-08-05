@@ -7,18 +7,24 @@ using Microsoft.Extensions.Options;
 namespace Basil.Web.Auth;
 
 /// <summary>
-///     Reads the <c>Authorization: Bearer &lt;key&gt;</c> header and authenticates the request with a
-///     <see cref="ClaimsPrincipal" /> carrying the <see cref="AdminKeyDefaults.Role" /> role, either
-///     because the key matches the hash <see cref="AdminKeyService" /> has stored, or because the
-///     server has no hash configured at all (bypass mode). A missing, empty, or wrong key returns
-///     <see cref="AuthenticateResult.NoResult" /> rather than <see cref="AuthenticateResult.Fail(string)" />.
-///     The request is left anonymous instead of being rejected outright, so routes with no
-///     <c>[Authorize]</c> requirement are unaffected and can still check
-///     <c>User.IsInRole(AdminKeyDefaults.Role)</c> to decide whether to reveal an otherwise-hidden
-///     resource (private matches, frozen beatmaps, or beatmapsets). Mutation routes instead require
-///     the role via <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>, so the framework's own
-///     authorization middleware 401s automatically when the role is missing.
+///     Authenticates requests using the <c>Authorization: Bearer &lt;key&gt;</c> header,
+///     granting the <see cref="AdminKeyDefaults.Role" /> role when the supplied key is
+///     valid or the server is running in bypass mode.
 /// </summary>
+/// <remarks>
+///     A request that carries no <c>Authorization</c> header returns
+///     <see cref="AuthenticateResult.NoResult" />, leaving it anonymous rather
+///     than rejecting it outright. A request that carries one but the key is
+///     malformed or wrong returns <see cref="AuthenticateResult.Fail(string)" />
+///     instead, since an authentication attempt was actually made.
+///
+///     Endpoints can optionally check
+///     <c>User.IsInRole(AdminKeyDefaults.Role)</c> to reveal privileged
+///     resources, while administrative endpoints should require
+///     <c>RequireAuthorization(AdminKeyDefaults.Policy)</c>. The authorization
+///     middleware will then return <c>401 Unauthorized</c> automatically when
+///     the role is absent.
+/// </remarks>
 public sealed class AdminKeyAuthenticationHandler(
 	IOptionsMonitor<AuthenticationSchemeOptions> options,
 	ILoggerFactory logger,
@@ -28,27 +34,27 @@ public sealed class AdminKeyAuthenticationHandler(
 {
 	private const string BearerPrefix = "Bearer ";
 
-	/// <summary>Authenticates the current request against the stored admin key hash, or bypass mode.</summary>
+	/// <summary>Authenticates the current request against the stored admin key hash or bypass mode.</summary>
 	/// <returns>
 	///     An authenticated ticket with the admin role when the key matches or bypass mode is active,
-	///     or <see cref="AuthenticateResult.NoResult" /> when the key is missing or wrong.
+	///     <see cref="AuthenticateResult.NoResult" /> when no key was supplied, or
+	///     <see cref="AuthenticateResult.Fail(string)" /> when a supplied key is malformed or wrong.
 	/// </returns>
 	protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
 	{
 		if (await adminKeyService.IsBypassAsync(Context.RequestAborted)) return Success();
 
 		var authorization = Request.Headers.Authorization.FirstOrDefault();
-		var provided = authorization is not null && authorization.StartsWith(BearerPrefix, StringComparison.Ordinal)
+		if (authorization is null) return AuthenticateResult.NoResult();
+
+		var provided = authorization.StartsWith(BearerPrefix, StringComparison.Ordinal)
 			? authorization[BearerPrefix.Length..]
 			: null;
 
 		if (string.IsNullOrEmpty(provided) || !await adminKeyService.VerifyAsync(provided, Context.RequestAborted))
 		{
-			// Only log when a key was actually attempted. Most requests to the api host carry no
-			// Authorization header at all (the soft private/frozen-visibility check runs on every
-			// request), and logging that as a "failure" would be pure noise.
-			if (!string.IsNullOrEmpty(provided)) Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
-			return AuthenticateResult.NoResult();
+			Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
+			return AuthenticateResult.Fail("Invalid admin key");
 		}
 
 		Logger.LogInformation("Admin auth succeeded: Path={Path}", Request.Path);

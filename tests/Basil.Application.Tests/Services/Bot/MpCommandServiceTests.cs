@@ -45,10 +45,11 @@ public class MpCommandServiceTests
 		return sink.Last;
 	}
 
-	private static async Task<string?> RunMake(MpCommandService svc, UserSession sender, IReadOnlyList<string> args)
+	private static async Task<string?> RunMake(MpCommandService svc, UserSession sender, IReadOnlyList<string> args,
+		bool isPrivate = false)
 	{
 		var sink = new RecordingReplySink();
-		await svc.MakeAsync(sender, args, sink);
+		await svc.MakeAsync(sender, args, sink, isPrivate);
 		return sink.Last;
 	}
 
@@ -993,22 +994,26 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task MakeAsync_Makeprivate_BehavesIdenticallyToMake()
+	public async Task MakeAsync_IsPrivateTrue_CreatesPrivateMatch()
 	{
-		var makeSender = MultiplayerTestSupport.MakePlayer(1, "make_creator");
-		var makePrivateSender = MultiplayerTestSupport.MakePlayer(2, "makeprivate_creator");
-		_fixture.RegisterAll(makeSender, makePrivateSender);
+		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
+		_fixture.RegisterAll(sender);
 
-		// `make` and `makeprivate` both route to MakeAsync with the exact same arguments — the
-		// dispatcher-level alias is what's under test elsewhere; this asserts MakeAsync itself has no
-		// hidden branch that would make the two behave differently.
-		await RunMake(MakeService(), makeSender, ["Room"]);
-		await RunMake(MakeService(), makePrivateSender, ["Room"]);
+		var reply = await RunMake(MakeService(), sender, ["Room"], isPrivate: true);
 
-		var first = makeSender.Match!;
-		var second = makePrivateSender.Match!;
-		Assert.Equal(first.Name, second.Name);
-		Assert.Equal(first.Password, second.Password);
+		Assert.True(sender.Match!.IsPrivate);
+		Assert.Contains("(private)", reply);
+	}
+
+	[Fact]
+	public async Task MakeAsync_IsPrivateFalse_CreatesPublicMatch()
+	{
+		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
+		_fixture.RegisterAll(sender);
+
+		await RunMake(MakeService(), sender, ["Room"]);
+
+		Assert.False(sender.Match!.IsPrivate);
 	}
 
 	[Fact]
@@ -1186,19 +1191,6 @@ public class MpCommandServiceTests
 
 		Assert.False(match.IsPrivate);
 		Assert.Contains("now public", reply);
-	}
-
-	[Fact]
-	public async Task HandleAsync_Makeprivate_SetsPrivate()
-	{
-		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		_fixture.RegisterAll(host);
-		var match = _fixture.CreateMatch(host);
-
-		var reply = await Run(MakeService(), host, match, "makeprivate", []);
-
-		Assert.True(match.IsPrivate);
-		Assert.Contains("now private", reply);
 	}
 
 	[Fact]

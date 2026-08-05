@@ -21,11 +21,10 @@
 	<ItemGroup>
 		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
 		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
-		<EmbeddedResource Include="..\..\assets\menuicon.jpg" Link="Data\MenuIcon.jpg"/>
+		<EmbeddedResource Include="..\..\assets\icon.png" Link="docs-site\icon.png"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Data\MenuIconUrl.txt" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Include="docs-site\**" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 

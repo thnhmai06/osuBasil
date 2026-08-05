@@ -158,16 +158,14 @@ public sealed class CommandDispatcher(
 
 		switch (subcommand)
 		{
-			// `make` creates a match, `join` targets any match by persistent room id, and `in` targets
-			// one the sender may not be in at all — all three run with no channel-derived match scope
-			// (reachable via PM to the bot), unlike every other !mp subcommand — see
-			// MpCommandService.MakeAsync/JoinAsync/SetScopeAsync. `makeprivate` is NOT an alias of
-			// `make` (see MpCommandService's own doc comment) — it sets privacy on an EXISTING match,
-			// so it falls through to the normal ResolveScope path below like any other subcommand; its
-			// presence in the #lobby allowlist above is harmless since #lobby never carries a resolvable
-			// scope for it to act on.
+			// `make`/`makeprivate` create a match, `join` targets any match by persistent room id, and
+			// `in` targets one the sender may not be in at all — all four run with no channel-derived
+			// match scope (reachable via PM to the bot), unlike every other !mp subcommand — see
+			// MpCommandService.MakeAsync/JoinAsync/SetScopeAsync.
 			case "make":
-				return await mpCommands.MakeAsync(sender, subArgs, sink, cancellationToken);
+				return await mpCommands.MakeAsync(sender, subArgs, sink, cancellationToken: cancellationToken);
+			case "makeprivate":
+				return await mpCommands.MakeAsync(sender, subArgs, sink, true, cancellationToken);
 			case "join":
 				return await mpCommands.JoinAsync(sender, subArgs, sink, cancellationToken);
 			case "in":

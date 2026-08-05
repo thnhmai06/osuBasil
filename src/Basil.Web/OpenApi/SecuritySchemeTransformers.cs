@@ -38,9 +38,12 @@ internal static class SecuritySchemeTransformers
 			{
 				Type = SecuritySchemeType.Http,
 				Scheme = "bearer",
-				Description = "The server's admin key, managed via `GET`/`PUT`/`DELETE /adminkey`. Required for " +
-				              "every management/mutation route on this host, unless the server is in bypass mode " +
-				              "(no key configured)."
+				BearerFormat = "Token",
+				Description =
+					"The server's admin key. " +
+					"Provide it as `Authorization: Bearer <admin-key>`. " +
+					"The key can be managed through the `GET`, `PUT`, and `DELETE /adminkey` endpoints. " +
+					"Required for all management and mutation endpoints unless the server is running in bypass mode (no admin key configured)."
 			};
 
 			return Task.CompletedTask;

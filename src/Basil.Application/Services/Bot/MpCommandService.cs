@@ -20,10 +20,11 @@ namespace Basil.Application.Services.Bot;
 /// <remarks>
 ///     The subcommand set is matched against the official osu! multiplayer server's own chat
 ///     behavior; see docs/working-scopes.md for what is a deliberate Basil-only addition versus a
-///     real Bancho command. <c>makeprivate</c> is not an alias of <c>make</c>: it redirects to
-///     <see cref="SetPrivate" /> to make the existing room private, and <c>!mp private [0|1]</c> is
-///     the canonical way to view or change privacy. <c>!mp join &lt;id&gt;</c> bypasses the referee
-///     gate because it is routed directly from <see cref="CommandDispatcher" />. Every other
+///     real Bancho command. <c>makeprivate</c> is a Basil-only variant of <c>make</c> (see
+///     <see cref="MakeAsync" />) that creates the room already private; <c>!mp private [0|1]</c> is
+///     the way to view or change privacy on a room that already exists. <c>!mp join &lt;id&gt;</c>
+///     bypasses the referee gate because it is routed directly from <see cref="CommandDispatcher" />.
+///     Every other
 ///     subcommand requires <see cref="MatchSession.IsReferee" />, and unmet permission is a silent
 ///     no-op with no error reply. Referee is a pure permission flag that does not require physical
 ///     presence in the room, and the host is not automatically a referee: hosting only grants direct
@@ -54,10 +55,9 @@ public sealed class MpCommandService(
 	/// </summary>
 	/// <remarks>
 	///     Add a subcommand here and it appears in <c>!mp help</c> with no separate help string to
-	///     keep in sync. <c>make</c>, <c>join</c>, and <c>in</c> are not listed here because they run
-	///     outside this class's subcommand switch, routed directly from
-	///     <see cref="CommandDispatcher" />, which lists them in its own <c>!help</c>. The legacy
-	///     <c>makeprivate</c> alias is not listed either; <c>!mp private</c> is the canonical form.
+	///     keep in sync. <c>make</c>, <c>join</c>, <c>in</c>, and <c>makeprivate</c> are not listed here
+	///     because they run outside this class's subcommand switch, routed directly from
+	///     <see cref="CommandDispatcher" />, which lists them in its own <c>!help</c>.
 	/// </remarks>
 	private static readonly CommandInfo[] Commands =
 	[
@@ -145,7 +145,6 @@ public sealed class MpCommandService(
 			"lock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, true, sink))),
 			"unlock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, false, sink))),
 			"private" => await SetPrivate(match, args, sink),
-			"makeprivate" => await SetPrivate(match, ["1"], sink),
 			"size" => await RunLockedAsync(match, () => SetSize(match, args, sink)),
 			"move" => await RunLockedAsync(match, () => MoveSlot(match, args, sink)),
 			"host" => await RunLockedAsync(match, () => SetHost(match, args, sink)),
@@ -176,7 +175,8 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>
-	///     Backs <c>!mp make</c>, creating a tournament room and scoping the creator to it.
+	///     Backs <c>!mp make</c> and <c>!mp makeprivate</c>, creating a tournament room and scoping the
+	///     creator to it.
 	/// </summary>
 	/// <remarks>
 	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet, since there
@@ -187,10 +187,20 @@ public sealed class MpCommandService(
 	///     <see cref="MatchSession.IsReferee" /> gate. The match is marked
 	///     <see cref="MatchSession.CreatedViaMakeCommand" /> so it persists until <c>!mp close</c> or
 	///     until the referee list empties, instead of auto-tearing down once every slot empties like a
-	///     normal client-created room.
+	///     normal client-created room. <paramref name="isPrivate" /> marks the room private
+	///     (<see cref="MatchSession.IsPrivate" />) at creation, distinct from <c>!mp private</c>, which
+	///     toggles it on an existing room.
 	/// </remarks>
+	/// <param name="sender">The userSession creating the room.</param>
+	/// <param name="args">The argument tokens forming the room name.</param>
+	/// <param name="sink">The destination for the creation reply.</param>
+	/// <param name="isPrivate">
+	///     <see langword="true" /> to create the room already hidden from the lobby and invite-only
+	///     (backs <c>!mp makeprivate</c>); otherwise, <see langword="false" />.
+	/// </param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	public async Task<bool> MakeAsync(UserSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
-		CancellationToken cancellationToken = default)
+		bool isPrivate = false, CancellationToken cancellationToken = default)
 	{
 		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.Name}'s match";
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
@@ -209,9 +219,10 @@ public sealed class MpCommandService(
 		}
 
 		match.AddReferee(sender.Id);
+		if (isPrivate) await _matchControl.SetPrivateAsync(match, true, cancellationToken);
 		sender.MpScopeMatchId = match.DbId;
 		sink.Reply(
-			$"Created the match #{match.DbId} {match.Name}. You are now scoped to this match, and added as a referee.");
+			$"Created the match #{match.DbId} {match.Name}{(isPrivate ? " (private)" : "")}. You are now scoped to this match, and added as a referee.");
 		return true;
 	}
 

@@ -56,8 +56,24 @@ jobs:
           set -e
           SITE=site
           rm -rf "$SITE"
-          cp -r src/Basil.Web/docs-site "$SITE"
-          cp src/Basil.Web/obj/Basil.Web_basilapi.json "$SITE/basil-api/basilapi.json"
+          # docs-site is served from /docs on a running instance, so nest it under docs/
+          # and make the site root a redirect there.
+          cp -r src/Basil.Web/docs-site "$SITE/docs"
+          cp src/Basil.Web/obj/Basil.Web_basilapi.json "$SITE/docs/basil-api/basilapi.json"
+          cat > "$SITE/index.html" <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          	<meta charset="utf-8">
+          	<meta http-equiv="refresh" content="0; url=docs/">
+          	<title>Basil API Documentation</title>
+          	<link rel="canonical" href="docs/">
+          </head>
+          <body>
+          	<p><a href="docs/">Basil API Documentation</a></p>
+          </body>
+          </html>
+          EOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

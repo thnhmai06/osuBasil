@@ -55,7 +55,7 @@ no longer configurable — it always lives at `Data/Basil.db`):
 | `Data/Seasonals/`    | Seasonal background images shown in the client's main menu.              |
 | `Data/Faqs/`         | `!faq <entry>` text files (`<entry>.txt`).                               |
 | `Data/Cache/`        | Resized thumbnails and transcoded audio previews, regenerated on demand — safe to delete at any time. |
-| `Data/MenuIcon.{ext}` / `Data/MenuIconUrl.txt` | The in-game main menu icon and its click-through URL — not config, managed at runtime via `PUT`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url` on the `api.` host. Deleting the icon file (or `DELETE /menuicon/icon`) turns the menu icon off entirely. |
+| `Data/MenuIcon.{ext}` | An uploaded in-game main menu icon's image bytes, present only after `PUT /menuicon/icon` on the `api.` host with a file upload (an external URL instead leaves this unused). Whether an icon is shown at all, and its click-through URL, are stored in the database rather than the filesystem, managed via `GET`/`PUT`/`PATCH`/`DELETE /menuicon/icon` and `GET`/`PUT /menuicon/url`. |
 
 ### Logging
 

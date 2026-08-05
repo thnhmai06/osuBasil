@@ -42,6 +42,11 @@ internal static class ApiHostRoutes
 		docs.MapGet("/", () => Results.File(Path.Combine(docsSiteRoot, "index.html"), "text/html"))
 			.ExcludeFromDescription();
 
+		docs.MapGet("/icon.png", () => Results.File(Path.Combine(docsSiteRoot, "icon.png"), "image/png"))
+			.ExcludeFromDescription();
+
+		group.MapGet("/favicon.ico", () => Results.Redirect("/docs/icon.png")).ExcludeFromDescription();
+
 		docs.MapGet("/basil-bot/",
 				() => Results.File(Path.Combine(docsSiteRoot, "basil-bot", "index.html"), "text/html"))
 			.ExcludeFromDescription();
@@ -53,6 +58,7 @@ internal static class ApiHostRoutes
 		docs.MapScalarApiReference("/basil-api/", options =>
 		{
 			options.Title = "Basil API";
+			options.Favicon = "/docs/icon.png";
 			options.AddDocument("basilapi", "Basil API");
 		}).ExcludeFromDescription();
 

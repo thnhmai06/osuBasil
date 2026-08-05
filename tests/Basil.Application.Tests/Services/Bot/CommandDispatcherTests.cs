@@ -197,7 +197,7 @@ public class CommandDispatcherTests
 	}
 
 	[Fact]
-	public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_RepliesNotScoped()
+	public async Task DispatchAsync_MpMakeprivateWithoutMatchScope_CreatesPrivateMatch()
 	{
 		var fixture = new MultiplayerTestSupport.Fixture();
 		var dispatcher = MakeDispatcher(fixture: fixture);
@@ -206,22 +206,31 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!mp makeprivate Room", null);
 
-		Assert.Contains("not scoped to a match", reply);
+		Assert.NotNull(reply);
+		Assert.Contains("Created the match", reply);
+		Assert.NotNull(sender.Match);
+		Assert.True(sender.Match!.IsPrivate);
 	}
 
 	[Fact]
-	public async Task DispatchAsync_MpMakeprivateWithMatchScope_SetsPrivate()
+	public async Task DispatchAsync_MpMakeprivateWithMatchScope_CreatesNewPrivateMatchIgnoringScope()
 	{
 		var fixture = new MultiplayerTestSupport.Fixture();
 		var dispatcher = MakeDispatcher(fixture: fixture);
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var match = fixture.CreateMatch(host);
+		var existing = fixture.CreateMatch(host);
 
-		var reply = await Run(dispatcher, host, "!mp makeprivate", match);
+		var reply = await Run(dispatcher, host, "!mp makeprivate", existing);
 
-		Assert.True(match.IsPrivate);
-		Assert.Contains("now private", reply);
+		Assert.Contains("Created the match", reply);
+		var created = fixture.MatchRegistry.GetByDbId(host.MpScopeMatchId!.Value);
+		Assert.NotNull(created);
+		Assert.NotEqual(existing.DbId, created!.DbId);
+		Assert.True(created.IsPrivate);
+		Assert.False(existing.IsPrivate);
+		// Already seated in `existing`, so creating another room doesn't move the physical seat.
+		Assert.Same(existing, host.Match);
 	}
 
 	[Fact]
