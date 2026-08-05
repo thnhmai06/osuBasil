@@ -314,8 +314,8 @@ create table Settings
 insert into Settings (Key, Value)
 values ('AdminKey:Hash', null),
        ('AdminKey:LastChanged', null),
-       ('MenuIcon:Path', null),
-       ('MenuIcon:Url', null);
+       ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/menuicon.jpg'),
+       ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil');
 
 -- Privilege 8211 = Unrestricted (1) | Verified (2) | Supporter (16) | Administrator (8192) —
 -- see Basil.Domain.Users.UserPrivileges.

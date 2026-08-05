@@ -110,27 +110,6 @@ public class AdminKeyServiceTests
 	}
 
 	[Fact]
-	public async Task EnsureSeededAsync_NeverInitialized_SeedsDefaultKey()
-	{
-		_settings.GetAsync("AdminKey:LastChanged", Arg.Any<CancellationToken>()).Returns((string?)null);
-		_hasher.Hash(Arg.Any<byte[]>()).Returns("default-hash");
-
-		await MakeService().EnsureSeededAsync();
-
-		await _settings.Received(1).SetAsync("AdminKey:Hash", "default-hash", Arg.Any<CancellationToken>());
-	}
-
-	[Fact]
-	public async Task EnsureSeededAsync_AlreadyInitialized_DoesNothing()
-	{
-		_settings.GetAsync("AdminKey:LastChanged", Arg.Any<CancellationToken>()).Returns(DateTimeOffset.UtcNow.ToString("O"));
-
-		await MakeService().EnsureSeededAsync();
-
-		await _settings.DidNotReceive().SetAsync("AdminKey:Hash", Arg.Any<string?>(), Arg.Any<CancellationToken>());
-	}
-
-	[Fact]
 	public void MaxKeyLengthBytes_Is72_BCryptTruncationLimit()
 	{
 		Assert.Equal(72, AdminKeyService.MaxKeyLengthBytes);

@@ -36,9 +36,9 @@ recreate the container).
 
 ### Admin key (not in `appsettings.json`)
 
-The admin key gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) and acts as the secret for in-game registration (osu! client's Email field). It is **not** a file setting — it's stored as a bcrypt hash in the database, managed at runtime via `GET`/`PUT`/`DELETE /adminkey` on the `api.` host, and sent by callers as `Authorization: Bearer <key>` (not the old `X-Admin-Key` header). A fresh database seeds the key `ThisIsAdminKey` on first startup; change it immediately with `PUT /adminkey`.
+The admin key gates every write route on the `api.<domain>` host (beatmapsets/users/matches/faqs/seasonals CRUD) and acts as the secret for in-game registration (osu! client's Email field). It is **not** a file setting — it's stored as a bcrypt hash in the database, managed at runtime via `GET`/`PUT`/`DELETE /adminkey` on the `api.` host, and sent by callers as `Authorization: Bearer <key>` (not the old `X-Admin-Key` header). A fresh database has no key set; set one with `PUT /adminkey` before opening the server up.
 
-Deleting the key (`DELETE /adminkey`) puts the server in **bypass mode**: every admin-gated action and in-game registration succeeds without a key, and the server logs a warning on every startup while in this state. Set a new key with `PUT /adminkey` to leave bypass mode — no restart required, it takes effect on the very next request.
+A server with no key set (a fresh database, or after `DELETE /adminkey`) runs in **bypass mode**: every admin-gated action and in-game registration succeeds without a key, and the server logs a warning on every startup while in this state. Set a key with `PUT /adminkey` to leave bypass mode — no restart required, it takes effect on the very next request.
 
 ### Data (always fixed, never configurable)
 
@@ -139,10 +139,9 @@ Docker just bundles the ffmpeg dependency so there's nothing extra to install by
      `tourney.example` or a plain LAN name like `basil.lan`. This single value drives every
      subdomain (`c./ce./c4./c5./c6./osu./a./b./api.`) — see the osu! Client API docs
      (`api.<domain>/docs/osu-client`) for exactly how.
-   - Admin key — the fresh database ships with the default key `ThisIsAdminKey`; set a real one via
-     `PUT /adminkey` before opening the server up (see "Admin key" above). Without any key configured
-     the server runs in bypass mode — every management action and in-game registration is open to
-     anyone.
+   - Admin key — a fresh database starts with no key set, so the server runs in bypass mode: every
+     management action and in-game registration is open to anyone. Set a real key via `PUT /adminkey`
+     before opening the server up (see "Admin key" above).
    - `Basil:Bot:Name` / `Basil:Bot:CommandPrefix`, `Basil:Irc:Name`/`Basil:Irc:Port` — cosmetic, optional.
 
 3. **Get a TLS certificate covering the domain and all 9 subdomains.** osu! stable only connects

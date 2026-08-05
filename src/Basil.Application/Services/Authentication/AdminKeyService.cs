@@ -11,31 +11,15 @@ namespace Basil.Application.Services.Authentication;
 /// </summary>
 /// <remarks>
 ///     An unset hash puts the server in bypass mode: every admin-gated action succeeds without a
-///     key. <see cref="EnsureSeededAsync" /> tells a never-configured install (no
-///     <c>AdminKey:LastChanged</c> row value yet) apart from one an operator deliberately put into
-///     bypass mode via <see cref="ClearAsync" /> (which still stamps <c>LastChanged</c>), so a
-///     restart after a deliberate clear does not silently reseed the default key.
+///     key, until an operator sets one explicitly via <see cref="SetKeyAsync" />.
 /// </remarks>
 public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHasher hasher)
 {
-	/// <summary>The key an install starts with before an operator sets one explicitly.</summary>
-	public const string DefaultKey = "ThisIsAdminKey";
-
 	/// <summary>The longest key bcrypt hashes without silently truncating it.</summary>
 	public const int MaxKeyLengthBytes = 72;
 
 	private const string HashSettingKey = "AdminKey:Hash";
 	private const string LastChangedSettingKey = "AdminKey:LastChanged";
-
-	/// <summary>Seeds the default key on a never-configured install; a no-op otherwise.</summary>
-	/// <param name="cancellationToken">A token that cancels the check and, if needed, the seed write.</param>
-	public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
-	{
-		var lastChanged = await settings.GetAsync(LastChangedSettingKey, cancellationToken);
-		if (lastChanged is not null) return;
-
-		await SetKeyAsync(DefaultKey, cancellationToken);
-	}
 
 	/// <summary>Gets whether the server is in bypass mode (no admin key hash configured).</summary>
 	/// <param name="cancellationToken">A token that cancels the read.</param>
@@ -56,9 +40,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task<bool> VerifyAsync(string candidateKey, CancellationToken cancellationToken = default)
 	{
 		var hash = await settings.GetAsync(HashSettingKey, cancellationToken);
-		if (string.IsNullOrEmpty(hash)) return false;
-
-		return hasher.Verify(Encoding.UTF8.GetBytes(candidateKey), hash);
+		return !string.IsNullOrEmpty(hash) && hasher.Verify(Encoding.UTF8.GetBytes(candidateKey), hash);
 	}
 
 	/// <summary>Gets when the admin key was last set or cleared, or <see langword="null" /> if never.</summary>

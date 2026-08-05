@@ -320,8 +320,9 @@ public sealed class Program
 			.AddAuthentication(AdminKeyDefaults.Scheme)
 			.AddScheme<AuthenticationSchemeOptions, AdminKeyAuthenticationHandler>(AdminKeyDefaults.Scheme, null);
 
-		builder.Services.AddAuthorization(options =>
-			options.AddPolicy(AdminKeyDefaults.Policy, policy => policy.RequireRole(AdminKeyDefaults.Role)));
+		builder.Services.AddAuthorizationBuilder()
+			.AddPolicy(AdminKeyDefaults.Policy,
+				policy => policy.RequireRole(AdminKeyDefaults.Role));
 	}
 
 	/// <summary>
@@ -536,11 +537,12 @@ public sealed class Program
 			await recoveryService.RecoverAsync();
 
 			var adminKeyService = scope.ServiceProvider.GetRequiredService<AdminKeyService>();
-			await adminKeyService.EnsureSeededAsync();
 			if (await adminKeyService.IsBypassAsync())
-				logger.LogWarning("No admin key is configured — the server is running in bypass mode. " +
-				                   "Every management action and in-game registration succeeds without a key. " +
-				                   "Set one via PUT /adminkey.");
+				logger.LogWarning(
+					"⚠NO ADMIN KEY IS CONFIGURED — THE SERVER IS RUNNING IN BYPASS MODE. " +
+					"ALL MANAGEMENT ACTIONS AND IN-GAME REGISTRATIONS ARE ACCEPTED WITHOUT AUTHENTICATION. " +
+					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
+					"Configure an admin key immediately via PUT /adminkey.");
 		}
 	}
 }
