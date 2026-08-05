@@ -539,7 +539,7 @@ public sealed class Program
 			var adminKeyService = scope.ServiceProvider.GetRequiredService<AdminKeyService>();
 			if (await adminKeyService.IsBypassAsync())
 				logger.LogWarning(
-					"⚠NO ADMIN KEY IS CONFIGURED — THE SERVER IS RUNNING IN BYPASS MODE. " +
+					"NO ADMIN KEY IS CONFIGURED — THE SERVER IS RUNNING IN BYPASS MODE. " +
 					"ALL MANAGEMENT ACTIONS AND IN-GAME REGISTRATIONS ARE ACCEPTED WITHOUT AUTHENTICATION. " +
 					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
 					"Configure an admin key immediately via PUT /adminkey.");

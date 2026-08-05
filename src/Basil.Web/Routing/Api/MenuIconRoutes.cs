@@ -40,7 +40,9 @@ internal static class MenuIconRoutes
 		group.MapGet("/menuicon/icon", async (MenuIconService menuIcon, CancellationToken cancellationToken) =>
 			{
 				var path = await menuIcon.GetPathAsync(cancellationToken);
-				if (path is null || MenuIconService.IsExternalUrl(path)) return Results.NotFound();
+				if (path is null) return Results.NotFound();
+
+				if (MenuIconService.IsExternalUrl(path)) return Results.Redirect(path);
 				return File.Exists(path) ? Results.File(path, ContentTypes.Resolve(path)) : Results.NotFound();
 			})
 			.WithGroupName("basilapi")
@@ -49,10 +51,11 @@ internal static class MenuIconRoutes
 			.WithDescription("""
 			                 Serves the in-game main menu icon image. Content-Type is taken from the file extension.
 
-			                 Returns `404 Not Found` if none is set, or if the icon is currently an external URL —
-			                 in that case the login packet embeds the URL directly and clients never call this route.
+			                 If the icon is currently set to an external URL, redirects there instead of serving
+			                 a file. Returns `404 Not Found` if no icon is set.
 			                 """)
 			.WithTags("Menu Icon Image")
+			.Produces(StatusCodes.Status302Found)
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapPut("/menuicon/icon", HandleReplaceIcon)
