@@ -26,6 +26,14 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
 
+      # Building the solution already regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
+      # into src/Basil.Web/obj/Basil.Web_{documentName}.json — upload them so deploy-docs doesn't need to rebuild.
+      - name: Upload OpenAPI documents
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-documents
+          path: src/Basil.Web/obj/Basil.Web_*.json
+
   deploy-docs:
     needs: build-and-test
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -40,38 +48,32 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-
-      - name: Restore
-        run: dotnet restore
-
-      # Building src/Basil.Web alone regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
-      # into src/Basil.Web/obj/Basil.Web_{documentName}.json.
-      - name: Build (generates OpenAPI documents)
-        run: dotnet build src/Basil.Web --no-restore --configuration Release
+      - name: Download OpenAPI documents
+        uses: actions/download-artifact@v4
+        with:
+          name: openapi-documents
+          path: openapi
 
       - name: Assemble static docs site
         run: |
           set -e
           SITE=site
           rm -rf "$SITE"
+          mkdir -p "$SITE"
           # docs-site is served from /docs on a running instance, so nest it under docs/
           # and make the site root a redirect there.
           cp -r src/Basil.Web/docs-site "$SITE/docs"
-          cp src/Basil.Web/obj/Basil.Web_basilapi.json "$SITE/docs/basil-api/basilapi.json"
+          cp openapi/Basil.Web_basilapi.json "$SITE/docs/basil-api/basilapi.json"
           cat > "$SITE/index.html" <<'EOF'
           <!doctype html>
           <html lang="en">
           <head>
           	<meta charset="utf-8">
           	<meta http-equiv="refresh" content="0; url=docs/">
-          	<title>Basil API Documentation</title>
+          	<title>Basil Documentation</title>
           	<link rel="canonical" href="docs/">
           </head>
-          <body>
-          	<p><a href="docs/">Basil API Documentation</a></p>
-          </body>
+          <body/>
           </html>
           EOF
 
