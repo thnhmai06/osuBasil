@@ -44,7 +44,7 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 		try
 		{
 			var bundle = new PacketReader(rawData).ReadReplayFrameBundle();
-			var user = new UserBrief(userSession.Id, userSession.Name, userSession.Geoloc.Country);
+			var user = new UserBrief(userSession.Id, userSession.Name, userSession.Country);
 			var payload = JsonSerializer.SerializeToUtf8Bytes(
 				new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
 				BasilJsonOptions.Instance);

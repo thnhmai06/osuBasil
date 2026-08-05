@@ -93,7 +93,7 @@ public class LoginServiceTests
 	public async Task MalformedVersionString_ReturnsInvalidRequest()
 	{
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(osuVersion: "not-a-version"), new Dictionary<string, string>(),
+		var request = new LoginRequest(LoginBody(osuVersion: "not-a-version"),
 			IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
@@ -109,7 +109,7 @@ public class LoginServiceTests
 	public async Task MalformedAdaptersString_ReturnsInvalidAdapters()
 	{
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(adapters: "no-trailing-dot"), new Dictionary<string, string>(),
+		var request = new LoginRequest(LoginBody(adapters: "no-trailing-dot"),
 			IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
@@ -126,7 +126,7 @@ public class LoginServiceTests
 	{
 		var useCase = MakeUseCase();
 		var request =
-			new LoginRequest(LoginBody(adapters: "."), new Dictionary<string, string>(), IPAddress.Loopback);
+			new LoginRequest(LoginBody(adapters: "."), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -142,7 +142,7 @@ public class LoginServiceTests
 		};
 		_sessionRegistry.GetByName("cmyui").Returns(existing);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -163,7 +163,7 @@ public class LoginServiceTests
 		_sessionRegistry.GetByName("cmyui").Returns(existing);
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -187,7 +187,7 @@ public class LoginServiceTests
 		_sessionRegistry.GetByName("cmyui").Returns(existing);
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		await useCase.ExecuteAsync(request);
 
@@ -200,7 +200,7 @@ public class LoginServiceTests
 	{
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -220,7 +220,7 @@ public class LoginServiceTests
 		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -235,7 +235,7 @@ public class LoginServiceTests
 		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(osuVersion: "b20231231tourney"), new Dictionary<string, string>(),
+		var request = new LoginRequest(LoginBody(osuVersion: "b20231231tourney"),
 			IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
@@ -245,23 +245,21 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task NoGeolocationHeaders_FallsBackToStoredCountry()
+	public async Task NoGeolocationHeaders_SessionCountryComesFromStoredUserRecord()
 	{
-		// No CF-IPCountry/X-Country-Code headers and no network geolocation lookup (offline
-		// server) — the session's geoloc comes from the user's already-stored country instead.
+		// Country never comes from request headers — the session's country is the user's
+		// already-stored country, regardless of which (if any) geolocation headers arrive.
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "jp");
 
 		UserSession? captured = null;
 		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		await useCase.ExecuteAsync(request);
 
 		Assert.NotNull(captured);
-		Assert.Equal("jp", captured!.Geoloc.Country.ToAcronym());
-		Assert.Equal(0.0, captured.Geoloc.Latitude);
-		Assert.Equal(0.0, captured.Geoloc.Longitude);
+		Assert.Equal("jp", captured!.Country.ToAcronym());
 	}
 
 	[Fact]
@@ -278,7 +276,7 @@ public class LoginServiceTests
 					UserPrivileges.Verified)
 			]);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -300,7 +298,7 @@ public class LoginServiceTests
 					UserPrivileges.Unrestricted)
 			]);
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -313,7 +311,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out var user, UserPrivileges.Unrestricted); // not Verified yet
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -342,7 +340,7 @@ public class LoginServiceTests
 		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		await useCase.ExecuteAsync(request);
 
 		Assert.NotNull(captured);
@@ -355,7 +353,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		await useCase.ExecuteAsync(request);
 
@@ -369,7 +367,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Verified); // no Unrestricted -> restricted
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
 		var result = await useCase.ExecuteAsync(request);
 
@@ -381,7 +379,7 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task HappyPath_CachesAllModeStatsAndGeolocOnSession()
+	public async Task HappyPath_CachesAllModeStatsAndCountryOnSession()
 	{
 		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 		_userStatRepository.FetchAllForUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
@@ -394,36 +392,14 @@ public class LoginServiceTests
 		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		await useCase.ExecuteAsync(request);
 
 		Assert.NotNull(captured);
-		Assert.Equal("us", captured!.Geoloc.Country.ToAcronym());
+		Assert.Equal("us", captured!.Country.ToAcronym());
 		Assert.Equal(2, captured.ModeStats.Count);
 		Assert.Equal(user.Id, captured.ModeStats[GameMode.Standard].Rank);
 		Assert.Equal(90_000, captured.ModeStats[GameMode.Standard].RankedScore);
-	}
-
-	[Fact]
-	public async Task DbCountryXx_HeaderGeolocationDiffers_TriggersCountryUpdate()
-	{
-		// Only a header-supplied geoloc (Cloudflare/nginx) can differ from the stored country now
-		// that there's no network geolocation fallback — the DB-fallback path (no headers) always
-		// resolves to the stored country itself, so it can never trigger this update.
-		SetUpHappyPath(out var user, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "xx");
-		var headers = new Dictionary<string, string>
-		{
-			["CF-IPCountry"] = "US",
-			["CF-IPLatitude"] = "37.7749",
-			["CF-IPLongitude"] = "-122.4194"
-		};
-
-		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), headers, IPAddress.Loopback);
-
-		await useCase.ExecuteAsync(request);
-
-		await _users.Received(1).UpdateCountryAsync(user.Id, Country.Us, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -433,7 +409,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		var result = await useCase.ExecuteAsync(request);
 
 		var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
@@ -447,7 +423,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		var result = await useCase.ExecuteAsync(request);
 
 		// No welcome notification: the response starts with ProtocolVersion + LoginReply directly.
@@ -466,7 +442,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		var result = await useCase.ExecuteAsync(request);
 
 		var expectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",
@@ -484,7 +460,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		var result = await useCase.ExecuteAsync(request);
 
 		var expectedPacket = ServerPacketWriter.MainMenuIcon("https://example.test/icon.png",
@@ -504,7 +480,7 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), new Dictionary<string, string>(), IPAddress.Loopback);
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 		var result = await useCase.ExecuteAsync(request);
 
 		var unexpectedPacket = ServerPacketWriter.MainMenuIcon("https://api.test.local/menuicon/icon",

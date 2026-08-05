@@ -11,7 +11,7 @@ namespace Basil.Application.Sessions;
 /// <summary>
 ///     Represents the server-side runtime state of a single online userSession, created at login and
 ///     discarded at logout. Holds the outgoing packet queue, joined channels, the spectator
-///     relationship, the current multiplayer match, per-mode cached stats, geolocation, and the
+///     relationship, the current multiplayer match, per-mode cached stats, and the
 ///     IRC-shaped chat transport bound to the session.
 /// </summary>
 /// <param name="id">The persistent id of the userSession.</param>
@@ -101,10 +101,9 @@ public sealed class UserSession(int id, string name, string token, UserPrivilege
 	public bool InLobby { get; set; }
 
 	/// <summary>
-	///     Gets or sets the userSession's geolocation, captured at login and defaulting to
-	///     <see cref="Country.Xx" /> with zero coordinates when the client does not report one.
+	///     Gets the user's country, captured from the stored user record at login.
 	/// </summary>
-	public Geolocation Geoloc { get; set; } = new(0.0, 0.0, Country.Xx);
+	public Country Country { get; init; } = Country.Xx;
 
 	/// <summary>
 	///     Gets or sets the hardware and client fingerprint captured at login, re-checked against

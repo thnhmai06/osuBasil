@@ -33,7 +33,6 @@ Client                         Server
   |                                | evict existing session (unless tourney spectator)
   |                                | verify username + password
   |                                | hardware-ban check (unverified accounts only)
-  |                                | resolve geolocation
   |                                | build the session + packet bundle
   |  cho-token header + packets    |
   |<-------------------------------|
@@ -46,6 +45,7 @@ A rejected login (bad credentials, empty hardware adapters, a hardware-ban match
 - **Why reject empty adapters?** A client reporting no network adapters at all (and not running under Wine) is a strong signal of a doctored client rather than a real install, so it's rejected before any database lookup happens.
 - **Why does hardware banning skip verified accounts?** A shared IP or shared hardware (LAN tournament venues are the common case) can plausibly match a banned fingerprint without any wrongdoing. Blocking every match would lock out real players at every event; skipping already-verified accounts keeps the check aimed at fresh signups instead.
 - **Why "one session per account, except tourney spectators"?** Tourney spectator clients are meant to run several at once, alongside the player's real client, to watch a match from multiple angles. Every other client type closes its older session on relogin, so nothing accumulates.
+- **Why not derive the country from the request?** Basil runs fully offline with no geolocation provider, and tournament variables shouldn't depend on a proxy's guess. The country shown on a player's presence — and on BasilBot — is the one stored on the user record, never one resolved from request headers at login.
 
 ## Examples
 

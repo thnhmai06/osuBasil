@@ -149,7 +149,7 @@ internal static class BanchoProtocolRoutes
 					var ip = Geolocation.PhraseIpAddress(headers);
 					var loginUseCase = context.RequestServices.GetRequiredService<LoginService>();
 					var loginResult =
-						await loginUseCase.ExecuteAsync(new LoginRequest(body, headers, ip), cancellationToken);
+						await loginUseCase.ExecuteAsync(new LoginRequest(body, ip), cancellationToken);
 					response.Headers["cho-token"] = loginResult.OsuToken;
 					responseBody = loginResult.ResponseBody;
 				}

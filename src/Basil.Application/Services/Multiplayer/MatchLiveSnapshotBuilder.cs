@@ -86,7 +86,7 @@ public static class MatchLiveSnapshotBuilder
 	public static PlayerLiveScore BuildPlayerScore(UserSession userSession, ScoreFrame frame)
 	{
 		return new PlayerLiveScore(
-			new UserBrief(userSession.Id, userSession.Name, userSession.Geoloc.Country),
+			new UserBrief(userSession.Id, userSession.Name, userSession.Country),
 			frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
 			frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp,
 			frame.ScoreV2);

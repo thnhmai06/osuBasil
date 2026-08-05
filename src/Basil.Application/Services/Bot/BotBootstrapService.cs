@@ -50,18 +50,17 @@ public sealed class BotBootstrapService(
 			await users.UpdateNameAsync(BotId, configuredName, User.MakeSafeName(configuredName), cancellationToken);
 
 		var configuredCountry = botOptions.Value.Country;
-		if (!string.Equals(user.Country.ToAcronym(), configuredCountry, StringComparison.OrdinalIgnoreCase))
-		{
-			var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)
-				? parsedCountry
-				: Country.Xx;
+		var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)
+			? parsedCountry
+			: Country.Xx;
+		if (user.Country != country)
 			await users.UpdateCountryAsync(BotId, country, cancellationToken);
-		}
 
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new UserSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
 		{
-			IsBot = true
+			IsBot = true,
+			Country = country
 		};
 
 		foreach (var channel in channelRegistry.AutoJoinChannels)

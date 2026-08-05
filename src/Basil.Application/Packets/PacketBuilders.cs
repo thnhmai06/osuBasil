@@ -8,7 +8,7 @@ namespace Basil.Application.Packets;
 /// </summary>
 /// <remarks>
 ///     These helpers read only <see cref="UserSession" /> state kept in memory, such as
-///     geolocation, privilege, and the current mode's stats, so they can be called freely by login
+///     country, privilege, and the current mode's stats, so they can be called freely by login
 ///     and packet-handling code that needs to send or re-send a userSession's presence and stats without
 ///     touching the database.
 /// </remarks>
@@ -20,9 +20,9 @@ public static class PacketBuilders
 	public static byte[] BuildUserPresence(UserSession session)
 	{
 		return ServerPacketWriter.UserPresence(
-			session.Id, session.Name, session.UtcOffset, (int)session.Geoloc.Country,
+			session.Id, session.Name, session.UtcOffset, (int)session.Country,
 			(int)session.BanchoPrivilege, (int)session.Status.Mode,
-			session.Geoloc.Longitude, session.Geoloc.Latitude, session.CurrentStats?.Rank ?? 0);
+			0.0, 0.0, session.CurrentStats?.Rank ?? 0);
 	}
 
 	/// <summary>Builds a user-stats packet describing the given session's status and current-mode stats.</summary>

@@ -153,18 +153,14 @@ public sealed class LoginService(
 
 		/* all checks passed, userSession is safe to login */
 
-		var geolocation = Geolocation.From(request.Headers) ?? GeolocationFromCountry(user.Country);
-
-		if (user.Country == Country.Xx)
-			await users.UpdateCountryAsync(user.Id, geolocation.Country, cancellationToken);
-
 		var session = new UserSession(user.Id, user.Name, tokenGenerator.GenerateToken(), user.Privilege, loginTime)
 		{
 			UtcOffset = loginForm.UtcOffset,
 			PmPrivate = loginForm.PmPrivate,
 			SilenceEnd = user.SilenceEnd,
 			Client = clientDetails,
-			OsuVersion = loginForm.OsuVersion
+			OsuVersion = loginForm.OsuVersion,
+			Country = user.Country
 		};
 
 		var data = new List<byte[]>
@@ -190,8 +186,6 @@ public sealed class LoginService(
 		}
 
 		data.Add(ServerPacketWriter.ChannelInfoEnd());
-
-		session.Geoloc = geolocation;
 
 		// cache stats+rank for all 8 modes in memory (User.stats_from_sql_full) — later packet
 		// handlers (REQUEST_STATUS_UPDATE, USER_STATS_REQUEST, CHANGE_ACTION broadcast) read this
@@ -268,7 +262,7 @@ public sealed class LoginService(
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
 
 		logger.LogInformation("+ User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
-			session.Id, session.Name, request.Ip, geolocation.Country);
+			session.Id, session.Name, request.Ip, session.Country);
 		return new LoginResult(session.Token, Concat([.. data]));
 	}
 
@@ -282,20 +276,6 @@ public sealed class LoginService(
 	private static bool HasPrivileges(UserPrivileges privileges, UserPrivileges required1, UserPrivileges required2)
 	{
 		return (privileges & required1) != 0 && (privileges & required2) != 0;
-	}
-
-	// No network geolocation lookup — this server runs fully offline, so the fallback (when no
-	// Cloudflare/nginx headers are present) is the country already stored at registration, with
-	// lat/long left at 0.0 (matching Geolocation's own unresolved default).
-	/// <summary>
-	///     Builds a <see cref="Geolocation" /> from a stored country when the request carries no
-	///     geolocation headers.
-	/// </summary>
-	/// <param name="country">The country to use.</param>
-	/// <returns>A <see cref="Geolocation" /> at the origin with the given country.</returns>
-	private static Geolocation GeolocationFromCountry(Country country)
-	{
-		return new Geolocation(0.0, 0.0, country);
 	}
 
 	/// <summary>
@@ -359,10 +339,9 @@ public sealed class LoginService(
 /// </summary>
 /// <remarks>
 ///     The <see cref="Body" /> is the request's raw payload, decoded by
-///     <see cref="LoginForm.From" />; <see cref="Headers" /> are inspected for
-///     geolocation hints; <see cref="Ip" /> identifies the connecting client.
+///     <see cref="LoginForm.From" />; <see cref="Ip" /> identifies the connecting client.
 /// </remarks>
-public sealed record LoginRequest(byte[] Body, IReadOnlyDictionary<string, string> Headers, IPAddress Ip);
+public sealed record LoginRequest(byte[] Body, IPAddress Ip);
 
 /// <summary>
 ///     Represents the outcome of a login attempt: the token to issue the client and the packet

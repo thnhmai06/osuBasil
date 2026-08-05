@@ -79,4 +79,18 @@ public class BotBootstrapServiceTests
 		Assert.True(result!.InChannel("#osu"));
 		Assert.True(osu.Contains(0));
 	}
+
+	[Fact]
+	public async Task BootstrapAsync_ConfiguredCountry_SetsCountryOnSession()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			Options.Create(new BotOptions { Name = "BasilBot", Country = "jp", CommandPrefix = "!" }),
+			NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.NotNull(result);
+		Assert.Equal(Country.Jp, result!.Country);
+	}
 }

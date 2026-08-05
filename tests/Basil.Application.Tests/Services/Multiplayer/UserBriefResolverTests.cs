@@ -17,7 +17,7 @@ public class UserBriefResolverTests
 	{
 		var session = new UserSession(7, "Alice", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Geoloc = new Geolocation(0, 0, Country.Vn)
+			Country = Country.Vn
 		};
 		_sessionRegistry.GetById(7).Returns(session);
 
