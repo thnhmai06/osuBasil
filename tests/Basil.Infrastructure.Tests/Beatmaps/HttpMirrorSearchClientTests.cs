@@ -28,15 +28,15 @@ public class HttpMirrorSearchClientTests
 	public async Task SearchAsync_ValidPayload_MapsFieldsCorrectly()
 	{
 		const string json = """
-		                     [{
-		                         "Artist": "Camellia", "Title": "Exit This Earth's Atmosphere", "Creator": "RLC",
-		                         "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 321,
-		                         "HasVideo": true,
-		                         "ChildrenBeatmaps": [
-		                             {"DifficultyRating": 6.42, "DiffName": "Extreme", "CS": 4, "OD": 8, "AR": 9, "HP": 6, "Mode": 0}
-		                         ]
-		                     }]
-		                     """;
+		                    [{
+		                        "Artist": "Camellia", "Title": "Exit This Earth's Atmosphere", "Creator": "RLC",
+		                        "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 321,
+		                        "HasVideo": true,
+		                        "ChildrenBeatmaps": [
+		                            {"DifficultyRating": 6.42, "DiffName": "Extreme", "CS": 4, "OD": 8, "AR": 9, "HP": 6, "Mode": 0}
+		                        ]
+		                    }]
+		                    """;
 		var client = MakeClient(HttpStatusCode.OK, json);
 
 		var result = await client.SearchAsync("https://mirror.local/search", null, null, 100, 0);
@@ -55,12 +55,12 @@ public class HttpMirrorSearchClientTests
 	public async Task SearchAsync_HasVideoAsIntegerOne_ParsesAsTrue()
 	{
 		const string json = """
-		                     [{
-		                         "Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4,
-		                         "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": 1,
-		                         "ChildrenBeatmaps": []
-		                     }]
-		                     """;
+		                    [{
+		                        "Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4,
+		                        "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": 1,
+		                        "ChildrenBeatmaps": []
+		                    }]
+		                    """;
 		var client = MakeClient(HttpStatusCode.OK, json);
 
 		var result = await client.SearchAsync("https://mirror.local/search", null, null, 100, 0);
@@ -72,12 +72,12 @@ public class HttpMirrorSearchClientTests
 	public async Task SearchAsync_HasVideoAsIntegerZero_ParsesAsFalse()
 	{
 		const string json = """
-		                     [{
-		                         "Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4,
-		                         "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": 0,
-		                         "ChildrenBeatmaps": []
-		                     }]
-		                     """;
+		                    [{
+		                        "Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4,
+		                        "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": 0,
+		                        "ChildrenBeatmaps": []
+		                    }]
+		                    """;
 		var client = MakeClient(HttpStatusCode.OK, json);
 
 		var result = await client.SearchAsync("https://mirror.local/search", null, null, 100, 0);
@@ -89,11 +89,11 @@ public class HttpMirrorSearchClientTests
 	public async Task SearchAsync_SetWithNullChildrenBeatmaps_ExcludedFromResults()
 	{
 		const string json = """
-		                     [
-		                         {"Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": false, "ChildrenBeatmaps": null},
-		                         {"Artist": "B", "Title": "T2", "Creator": "C2", "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 2, "HasVideo": false, "ChildrenBeatmaps": []}
-		                     ]
-		                     """;
+		                    [
+		                        {"Artist": "A", "Title": "T", "Creator": "C", "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 1, "HasVideo": false, "ChildrenBeatmaps": null},
+		                        {"Artist": "B", "Title": "T2", "Creator": "C2", "RankedStatus": 4, "LastUpdate": "2020-01-01 00:00:00", "SetID": 2, "HasVideo": false, "ChildrenBeatmaps": []}
+		                    ]
+		                    """;
 		var client = MakeClient(HttpStatusCode.OK, json);
 
 		var result = await client.SearchAsync("https://mirror.local/search", null, null, 100, 0);

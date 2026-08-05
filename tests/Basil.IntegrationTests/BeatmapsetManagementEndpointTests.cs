@@ -63,8 +63,8 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(mapsets);
 				services.AddSingleton(TestDoubles.NullMapRepository());
 				services.AddSingleton(Options.Create(new StorageOptions

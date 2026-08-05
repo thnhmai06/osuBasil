@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Encodings.Web;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Services.Authentication;
 using Basil.Infrastructure.Security;
 using Basil.Web.Auth;
@@ -22,7 +24,7 @@ public class AdminKeyAuthenticationHandlerTests
 
 	private static async Task<AuthenticateResult> AuthenticateAsync(string? providedKey, string? storedHash)
 	{
-		var settings = Substitute.For<Basil.Application.Abstractions.Settings.ISettingsRepository>();
+		var settings = Substitute.For<ISettingsRepository>();
 		settings.GetAsync("AdminKey:Hash", Arg.Any<CancellationToken>()).Returns(storedHash);
 		var adminKeyService = new AdminKeyService(settings, new BCryptPasswordHasher());
 
@@ -43,7 +45,7 @@ public class AdminKeyAuthenticationHandlerTests
 
 	private static string HashOf(string key)
 	{
-		return new BCryptPasswordHasher().Hash(System.Text.Encoding.UTF8.GetBytes(key));
+		return new BCryptPasswordHasher().Hash(Encoding.UTF8.GetBytes(key));
 	}
 
 	[Fact]

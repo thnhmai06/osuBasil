@@ -647,7 +647,8 @@ internal static class BeatmapsetRoutes
 		return mapset is null ? Results.NotFound() : LocalOnlyFallback(mirror.Value);
 	}
 
-	private static async Task<IResult> HandleDownloadStoryboard(int mapsetId, IBeatmapsetRepository beatmapsetRepository,
+	private static async Task<IResult> HandleDownloadStoryboard(int mapsetId,
+		IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror, CancellationToken cancellationToken)
 	{
 		var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);

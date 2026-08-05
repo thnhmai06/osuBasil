@@ -61,7 +61,8 @@ public class InMemoryMatchRegistryTests
 	{
 		var registry = MakeRegistry();
 
-		var matches = await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => registry.CreateAsync(MakeMatchState(), 1)));
+		var matches =
+			await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => registry.CreateAsync(MakeMatchState(), 1)));
 
 		Assert.Equal(50, matches.Select(m => m.Id).Distinct().Count());
 	}

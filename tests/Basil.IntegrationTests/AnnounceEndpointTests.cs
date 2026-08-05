@@ -36,8 +36,8 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 			});
 		});
 	}

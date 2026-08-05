@@ -34,17 +34,17 @@ public class LoginServiceTests
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
 	private readonly ILoginRepository _loginRepository = Substitute.For<ILoginRepository>();
+	private readonly MenuIconService _menuIconService;
+	private readonly IMotdProvider _motdProvider = Substitute.For<IMotdProvider>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 
 	private readonly SpectatorService _spectatorService;
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
-	private readonly MenuIconService _menuIconService;
-	private readonly IMotdProvider _motdProvider = Substitute.For<IMotdProvider>();
 
 	public LoginServiceTests()
 	{

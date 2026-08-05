@@ -18,8 +18,8 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
-	private readonly InMemorySettingsRepository _settings = new();
 	private readonly WebApplicationFactory<Program> _factory;
+	private readonly InMemorySettingsRepository _settings = new();
 
 	public AdminKeyManagementEndpointTests(WebApplicationFactory<Program> factory)
 	{

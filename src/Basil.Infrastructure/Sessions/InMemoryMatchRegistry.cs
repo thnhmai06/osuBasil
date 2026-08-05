@@ -20,8 +20,8 @@ namespace Basil.Infrastructure.Sessions;
 public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
 	: IMatchRegistry
 {
-	private readonly ConcurrentDictionary<int, MatchSession> _matches = new();
 	private readonly ConcurrentDictionary<int, int> _dbIdtoId = new();
+	private readonly ConcurrentDictionary<int, MatchSession> _matches = new();
 
 	/// <inheritdoc />
 	public MatchSession? GetById(int id)

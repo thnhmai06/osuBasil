@@ -9,7 +9,8 @@ namespace Basil.Application.Packets.Multiplayer;
 
 /// <summary>Handles a tournament client's request to join a match's chat channel.</summary>
 /// <remarks>
-///     Serves only donator-privileged players. A userSession who already occupies a slot in the match is left alone rather than
+///     Serves only donator-privileged players. A userSession who already occupies a slot in the match is left alone rather
+///     than
 ///     treated as a tourney client. Otherwise, the userSession joins the match's chat channel through
 ///     <see cref="ChannelMembershipService.Join" />, and when the join succeeds, the userSession is registered
 ///     as a tourney client of the match via

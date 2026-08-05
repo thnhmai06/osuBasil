@@ -12,13 +12,13 @@ public class FileMotdProviderTests : IDisposable
 	private readonly string _dataDir = Path.Combine(Path.GetTempPath(), $"basil-motd-test-{Guid.NewGuid():N}");
 	private FileMotdProvider? _provider;
 
+	private string MotdPath => Path.Combine(_dataDir, "MOTD.txt");
+
 	public void Dispose()
 	{
 		_provider?.Dispose();
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
 	}
-
-	private string MotdPath => Path.Combine(_dataDir, "MOTD.txt");
 
 	[Fact]
 	public void GetText_NoFileAtStartup_ReturnsNull()

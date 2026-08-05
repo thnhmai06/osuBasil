@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Application.Services.Authentication;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
@@ -65,7 +66,8 @@ internal static class AdminKeyRoutes
 			{
 				await adminKey.ClearAsync(cancellationToken);
 				logger.LogInformation("Admin key cleared via admin API — server is now in bypass mode");
-				return Results.Json(new AdminKeyChangedView(true, "Admin key cleared. The server is now in bypass mode."));
+				return Results.Json(new AdminKeyChangedView(true,
+					"Admin key cleared. The server is now in bypass mode."));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -84,7 +86,7 @@ internal static class AdminKeyRoutes
 	private static async Task<IResult> HandleSetKey(AdminKeyBody body, AdminKeyService adminKey,
 		ILogger<AdminKeyRoutesLog> logger, CancellationToken cancellationToken)
 	{
-		var keyLength = System.Text.Encoding.UTF8.GetByteCount(body.Key);
+		var keyLength = Encoding.UTF8.GetByteCount(body.Key);
 		if (keyLength is 0 or > AdminKeyService.MaxKeyLengthBytes)
 			return Results.BadRequest(new ErrorResponse(
 				$"Key must be 1 to {AdminKeyService.MaxKeyLengthBytes} bytes long."));

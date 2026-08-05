@@ -38,7 +38,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(Options.Create(new StorageOptions
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
@@ -130,7 +130,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	[Fact]
 	public async Task PostFaq_NewEntry_CreatesFileAndReturnsCreated()
 	{
-		var file = new ByteArrayContent([.. "hello"u8]) { Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
+		var file = new ByteArrayContent([.. "hello"u8])
+			{ Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
 		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 
@@ -146,7 +147,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Directory.CreateDirectory(FaqsDir);
 		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "original");
 
-		var file = new ByteArrayContent([.. "new"u8]) { Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
+		var file = new ByteArrayContent([.. "new"u8])
+			{ Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
 		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 

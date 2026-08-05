@@ -49,16 +49,19 @@ public sealed class FileMotdProvider : IMotdProvider, IDisposable
 	}
 
 	/// <inheritdoc />
-	public string? GetText()
-	{
-		return _cachedText;
-	}
-
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		_watcher.Dispose();
-		lock (_timerLock) _debounceTimer?.Dispose();
+		lock (_timerLock)
+		{
+			_debounceTimer?.Dispose();
+		}
+	}
+
+	/// <inheritdoc />
+	public string? GetText()
+	{
+		return _cachedText;
 	}
 
 	private void Debounce()

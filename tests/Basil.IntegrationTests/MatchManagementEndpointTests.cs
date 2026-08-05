@@ -85,7 +85,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(TestDoubles.NullUserRepository());
 			});

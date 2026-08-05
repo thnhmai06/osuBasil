@@ -49,7 +49,9 @@ public sealed class MenuIconService(ISettingsRepository settings)
 		Directory.CreateDirectory(DataDirectory);
 		var path = Path.Combine(DataDirectory, $"MenuIcon{extension}");
 		await using (var fileStream = File.Create(path))
+		{
 			await content.CopyToAsync(fileStream, cancellationToken);
+		}
 
 		await settings.SetAsync(PathKey, path, cancellationToken);
 	}

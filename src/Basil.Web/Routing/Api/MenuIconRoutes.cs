@@ -82,7 +82,8 @@ internal static class MenuIconRoutes
 			.Produces<MenuIconChangedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
-			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("URL must start with http:// or https://."));
+			.WithExample(StatusCodes.Status400BadRequest,
+				new ErrorResponse("URL must start with http:// or https://."));
 
 		group.MapDelete("/menuicon/icon", async (MenuIconService menuIcon, ILogger<MenuIconRoutesLog> logger,
 				CancellationToken cancellationToken) =>

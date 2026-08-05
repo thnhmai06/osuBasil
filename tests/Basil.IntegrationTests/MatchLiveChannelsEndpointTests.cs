@@ -39,8 +39,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});

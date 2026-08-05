@@ -107,8 +107,10 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 		var mirrorClient = Substitute.For<IMirrorSearchClient>();
 		mirrorClient.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<int>(),
 				Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns([new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4, "2020-01-01 00:00:00",
-				200, false, [])]);
+			.Returns([
+				new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4, "2020-01-01 00:00:00",
+					200, false, [])
+			]);
 
 		var mirrorFactory = _factory.WithWebHostBuilder(builder =>
 		{

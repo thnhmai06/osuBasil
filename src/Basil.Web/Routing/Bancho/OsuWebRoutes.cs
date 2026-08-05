@@ -47,7 +47,7 @@ internal static class OsuWebRoutes
 	/// <param name="group">The `osu.{domain}` route group.</param>
 	public static void MapOsuWebGroup(this RouteGroupBuilder group)
 	{
-		group.MapGet("/", () => Results.Redirect("https://github.com/thnhmai06/osuBasil", false))
+		group.MapGet("/", () => Results.Redirect("https://github.com/thnhmai06/osuBasil"))
 			.WithGroupName("osuweb")
 			.WithSummary("Homepage")
 			.WithDescription("Redirects to the project's GitHub repository.")
@@ -532,7 +532,8 @@ internal static class OsuWebRoutes
 
 				var isBypass = await adminKeyService.IsBypassAsync(cancellationToken);
 
-				if (!isBypass && (string.IsNullOrEmpty(email) || !await adminKeyService.VerifyAsync(email, cancellationToken)))
+				if (!isBypass && (string.IsNullOrEmpty(email) ||
+				                  !await adminKeyService.VerifyAsync(email, cancellationToken)))
 				{
 					// Only log on the real submittion (check=="0"). Per-field live-validation POSTs fire on
 					// every blur while the form is still being filled in, and would otherwise log this

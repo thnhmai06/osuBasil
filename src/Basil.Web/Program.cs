@@ -502,11 +502,11 @@ public sealed class Program
 		var mirrorOptions = scope.ServiceProvider.GetRequiredService<IOptions<MirrorOptions>>().Value;
 		if (mirrorOptions.IsOnlineMode)
 			logger.LogInformation("Beatmap serving mode: ONLINE — Basil:Mirror:DownloadEndpoint is set. " +
-			                       "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
-			                       "mirror, local-only asset routes report 503, all when missing locally.");
+			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
+			                      "mirror, local-only asset routes report 503, all when missing locally.");
 		else
 			logger.LogInformation("Beatmap serving mode: OFFLINE — Basil:Mirror:DownloadEndpoint is unset. " +
-			                       "All beatmap assets are served from local storage only.");
+			                      "All beatmap assets are served from local storage only.");
 
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
 		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();

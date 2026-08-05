@@ -9,7 +9,8 @@ namespace Basil.Application.Packets.Multiplayer;
 
 /// <summary>Handles a tournament client's request to leave a match's chat channel.</summary>
 /// <remarks>
-///     Serves only donator-privileged players. The userSession must currently be registered as a tourney client of the match; actual
+///     Serves only donator-privileged players. The userSession must currently be registered as a tourney client of the
+///     match; actual
 ///     match participants are not handled here. The userSession is removed from the match's chat channel
 ///     through <see cref="ChannelMembershipService.Part" /> and unregistered as a tourney client via
 ///     <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.RemoveTourneyClient" />. A logger

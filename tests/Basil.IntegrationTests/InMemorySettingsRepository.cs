@@ -12,12 +12,6 @@ public sealed class InMemorySettingsRepository : ISettingsRepository
 {
 	private readonly ConcurrentDictionary<string, string?> _values = new();
 
-	public InMemorySettingsRepository Seed(string key, string? value)
-	{
-		_values[key] = value;
-		return this;
-	}
-
 	public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_values.GetValueOrDefault(key));
@@ -27,5 +21,11 @@ public sealed class InMemorySettingsRepository : ISettingsRepository
 	{
 		_values[key] = value;
 		return Task.CompletedTask;
+	}
+
+	public InMemorySettingsRepository Seed(string key, string? value)
+	{
+		_values[key] = value;
+		return this;
 	}
 }

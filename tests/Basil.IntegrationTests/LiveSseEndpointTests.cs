@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Configurations;
-using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;

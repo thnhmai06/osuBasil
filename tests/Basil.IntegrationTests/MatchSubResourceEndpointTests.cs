@@ -31,8 +31,8 @@ namespace Basil.IntegrationTests;
 public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
 	private const string AdminKey = "correct-key";
+	private static readonly int[] InputValue = [555];
 	private readonly WebApplicationFactory<Program> _factory;
-	private static readonly int[] inputValue = [555];
 
 	public MatchSubResourceEndpointTests(WebApplicationFactory<Program> factory)
 	{
@@ -48,8 +48,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository(AdminKey));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
 			});
@@ -209,7 +209,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var matchId = await CreateMatchAsync(client);
 
 		var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
-		patchRequest.Content = JsonContent.Create(new { userIds = inputValue });
+		patchRequest.Content = JsonContent.Create(new { userIds = InputValue });
 		(await client.SendAsync(patchRequest)).EnsureSuccessStatusCode();
 
 		var afterBan = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/ban"));

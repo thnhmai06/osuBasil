@@ -213,7 +213,8 @@ public sealed class LoginService(
 			var menuIconUrl = MenuIconService.IsExternalUrl(menuIconPath)
 				? menuIconPath
 				: $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
-			var onclickUrl = await menuIconService.ReadUrlAsync(cancellationToken) ?? "https://github.com/thnhmai06/osuBasil";
+			var onclickUrl = await menuIconService.ReadUrlAsync(cancellationToken) ??
+			                 "https://github.com/thnhmai06/osuBasil";
 			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
 
