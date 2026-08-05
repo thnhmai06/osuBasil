@@ -68,23 +68,23 @@ public class AdminKeyServiceTests
 	}
 
 	[Fact]
-	public async Task SetKeyAsync_HashesAndStoresBothKeysWithTimestamp()
+	public async Task SetKeyAsync_HashesAndStoresHash()
 	{
 		_hasher.Hash(Arg.Any<byte[]>()).Returns("new-hash");
 
 		await MakeService().SetKeyAsync("new-key");
 
+		// AdminKey:LastChanged is stamped by a DB trigger on AdminKey:Hash changes, not app code.
 		await _settings.Received(1).SetAsync("AdminKey:Hash", "new-hash", Arg.Any<CancellationToken>());
-		await _settings.Received(1).SetAsync("AdminKey:LastChanged", Arg.Any<string>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
-	public async Task ClearAsync_WritesNullHashAndUpdatesTimestamp()
+	public async Task ClearAsync_WritesNullHash()
 	{
 		await MakeService().ClearAsync();
 
+		// AdminKey:LastChanged is stamped by a DB trigger on AdminKey:Hash changes, not app code.
 		await _settings.Received(1).SetAsync("AdminKey:Hash", null, Arg.Any<CancellationToken>());
-		await _settings.Received(1).SetAsync("AdminKey:LastChanged", Arg.Any<string>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]

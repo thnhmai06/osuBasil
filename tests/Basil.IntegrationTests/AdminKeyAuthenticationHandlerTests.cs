@@ -14,9 +14,11 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Exercises <see cref="AdminKeyAuthenticationHandler" /> directly (no HTTP host needed — just an
-///     <see cref="HttpContext" />), confirming the "soft" contract: a missing/wrong key never fails the
-///     request outright (<see cref="AuthenticateResult.NoResult" />, not <c>Fail</c>) — only a
-///     correct key, or bypass mode, produces a <see cref="AdminKeyDefaults.Role" />-carrying principal.
+///     <see cref="HttpContext" />), confirming the "soft" contract: a request with no
+///     <c>Authorization</c> header at all is anonymous (<see cref="AuthenticateResult.NoResult" />),
+///     while a request that supplies a wrong key actually failed to authenticate
+///     (<see cref="AuthenticateResult.Fail(string)" />) — only a correct key, or bypass mode, produces
+///     a <see cref="AdminKeyDefaults.Role" />-carrying principal.
 /// </summary>
 public class AdminKeyAuthenticationHandlerTests
 {
@@ -67,22 +69,24 @@ public class AdminKeyAuthenticationHandlerTests
 	}
 
 	[Fact]
-	public async Task AuthenticateAsync_WrongKey_NoResultNotFail()
+	public async Task AuthenticateAsync_WrongKey_FailsNotNoResult()
 	{
 		var result = await AuthenticateAsync("wrong-key", HashOf(ConfiguredKey));
 
 		Assert.False(result.Succeeded);
-		Assert.Null(result.Failure);
+		Assert.NotNull(result.Failure);
 	}
 
 	[Fact]
-	public async Task AuthenticateAsync_WrongKey_BehavesIdenticallyToMissingKey()
+	public async Task AuthenticateAsync_WrongKey_DiffersFromMissingKey()
 	{
 		var missing = await AuthenticateAsync(null, HashOf(ConfiguredKey));
 		var wrong = await AuthenticateAsync("wrong-key", HashOf(ConfiguredKey));
 
-		Assert.Equal(missing.Succeeded, wrong.Succeeded);
-		Assert.Equal(missing.Failure, wrong.Failure);
+		Assert.False(missing.Succeeded);
+		Assert.Null(missing.Failure);
+		Assert.False(wrong.Succeeded);
+		Assert.NotNull(wrong.Failure);
 	}
 
 	[Fact]

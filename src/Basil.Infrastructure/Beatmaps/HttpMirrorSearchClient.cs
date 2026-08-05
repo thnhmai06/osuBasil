@@ -2,6 +2,10 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Microsoft.Extensions.Logging;
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
+// ReSharper disable UnusedAutoPropertyAccessor.Local
+// ReSharper disable ClassNeverInstantiated.Local
+// ReSharper disable CollectionNeverUpdated.Local
 
 namespace Basil.Infrastructure.Beatmaps;
 
@@ -72,11 +76,11 @@ public sealed class HttpMirrorSearchClient(HttpClient httpClient, ILogger<HttpMi
 
 	private sealed class RawSet
 	{
-		public string Artist { get; } = "";
-		public string Title { get; } = "";
-		public string Creator { get; } = "";
+		public string Artist { get; init; } = "";
+		public string Title { get; init; } = "";
+		public string Creator { get; init; } = "";
 		public int RankedStatus { get; init; }
-		public string LastUpdate { get; } = "";
+		public string LastUpdate { get; init; } = "";
 		public int SetId { get; init; }
 		public JsonElement HasVideo { get; init; }
 		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
@@ -85,7 +89,7 @@ public sealed class HttpMirrorSearchClient(HttpClient httpClient, ILogger<HttpMi
 	private sealed class RawBeatmap
 	{
 		public double DifficultyRating { get; init; }
-		public string DiffName { get; } = "";
+		public string DiffName { get; init; } = "";
 		public double Cs { get; init; }
 		public double Od { get; init; }
 		public double Ar { get; init; }

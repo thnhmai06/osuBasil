@@ -53,7 +53,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 
 	/// <summary>Hashes and stores a new admin key, taking the server out of bypass mode.</summary>
 	/// <param name="newKey">The plaintext key to hash and store.</param>
-	/// <param name="cancellationToken">A token that cancels the writes.</param>
+	/// <param name="cancellationToken">A token that cancels the write.</param>
 	public async Task SetKeyAsync(string newKey, CancellationToken cancellationToken = default)
 	{
 		var hash = hasher.Hash(Encoding.UTF8.GetBytes(newKey));
@@ -61,7 +61,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	}
 
 	/// <summary>Clears the stored hash, putting the server into bypass mode immediately.</summary>
-	/// <param name="cancellationToken">A token that cancels the writes.</param>
+	/// <param name="cancellationToken">A token that cancels the write.</param>
 	public async Task ClearAsync(CancellationToken cancellationToken = default)
 	{
 		await settings.SetAsync(HashSettingKey, null, cancellationToken);

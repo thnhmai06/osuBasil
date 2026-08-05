@@ -121,7 +121,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 
 		response.EnsureSuccessStatusCode();
 		// "/" now serves the generated OpenAPI/Scalar docs site landing page instead of a bare stub.
-		Assert.Contains("Basil API Documentation", await response.Content.ReadAsStringAsync());
+		Assert.Contains("Basil Documentation", await response.Content.ReadAsStringAsync());
 	}
 
 	[Fact]
