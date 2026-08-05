@@ -1,7 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
@@ -46,7 +45,7 @@ public sealed class LoginService(
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
 	MenuIconService menuIconService,
-	IMotdProvider motdProvider,
+	MotdService motdService,
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
@@ -175,7 +174,7 @@ public sealed class LoginService(
 			ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter))
 		};
 
-		if (WelcomeNotification() is { } notification)
+		if (await WelcomeNotification(cancellationToken) is { } notification)
 			data.Add(notification);
 
 		// send auto-join channel info; the client will attempt to join them.
@@ -217,6 +216,7 @@ public sealed class LoginService(
 			                 "https://github.com/thnhmai06/osuBasil";
 			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
+		else data.Add(ServerPacketWriter.MainMenuIcon(string.Empty, string.Empty));
 
 		data.Add(ServerPacketWriter.FriendsList(friendIds));
 		data.Add(ServerPacketWriter.SilenceEnd((int)session.RemainingSilence.TotalSeconds));
@@ -299,15 +299,16 @@ public sealed class LoginService(
 	}
 
 	/// <summary>
-	///     Reads the optional MOTD file and returns its trimmed contents as a notification packet,
-	///     or <see langword="null" /> when the file is absent or empty.
+	///     Reads the configured MOTD text and returns it as a notification packet, or
+	///     <see langword="null" /> when none is configured.
 	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the read.</param>
 	/// <returns>
 	///     The notification packet to append to the login bundle, or <see langword="null" /> for none.
 	/// </returns>
-	private byte[]? WelcomeNotification()
+	private async Task<byte[]?> WelcomeNotification(CancellationToken cancellationToken)
 	{
-		var text = motdProvider.GetText();
+		var text = await motdService.GetTextAsync(cancellationToken);
 		return text is not null ? ServerPacketWriter.Notification(text) : null;
 	}
 

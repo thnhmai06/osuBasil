@@ -62,6 +62,7 @@ public static class DependencyInjection
 		services.AddSingleton<FaqService>();
 		services.AddSingleton<SeasonalService>();
 		services.AddSingleton<MenuIconService>();
+		services.AddSingleton<MotdService>();
 
 		services.AddSingleton<IPacketHandler, PingHandler>();
 		services.AddSingleton<IPacketHandler, LogoutHandler>();

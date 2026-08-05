@@ -25,7 +25,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Data\MOTD.txt" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Include="Data\MenuIconUrl.txt" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Include="docs-site\**" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>

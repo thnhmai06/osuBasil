@@ -303,8 +303,8 @@ end;
 -- restart (unlike appsettings.json values, bound once at startup). Value is wide (2048 chars) since
 -- it holds both short values (a bcrypt hash, an ISO 8601 timestamp) and longer ones (an external
 -- URL). AdminKey:Hash/AdminKey:LastChanged back AdminKeyService; MenuIcon:Path/MenuIcon:Url back
--- MenuIconService. Seeded null: application code fills in the real values on first use (a bcrypt
--- hash can't be produced in plain SQL).
+-- MenuIconService; Motd backs MotdService. Seeded null: application code fills in the real values on
+-- first use (a bcrypt hash can't be produced in plain SQL).
 create table Settings
 (
 	Key   varchar(64)   not null primary key,
@@ -315,7 +315,18 @@ insert into Settings (Key, Value)
 values ('AdminKey:Hash', null),
        ('AdminKey:LastChanged', null),
        ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/menuicon.jpg'),
-       ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil');
+       ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil'),
+       ('Motd', 'Welcome to Basil, the osu! server for tournaments and multiplayer');
+
+create trigger Settings_AdminKeyHash_AfterUpdate
+	after update of Value
+	on Settings
+	when NEW.Key = 'AdminKey:Hash' and NEW.Value is not OLD.Value
+begin
+	update Settings
+	set Value = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+	where Key = 'AdminKey:LastChanged';
+end;
 
 -- Privilege 8211 = Unrestricted (1) | Verified (2) | Supporter (16) | Administrator (8192) —
 -- see Basil.Domain.Users.UserPrivileges.

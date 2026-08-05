@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
@@ -35,7 +34,7 @@ public class LoginServiceTests
 	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
 	private readonly ILoginRepository _loginRepository = Substitute.For<ILoginRepository>();
 	private readonly MenuIconService _menuIconService;
-	private readonly IMotdProvider _motdProvider = Substitute.For<IMotdProvider>();
+	private readonly MotdService _motdService;
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
@@ -51,16 +50,17 @@ public class LoginServiceTests
 		_spectatorService = new SpectatorService(_channelRegistry,
 			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
+		_motdService = new MotdService(_settings);
 		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
 		// this explicitly so every test's happy path matches "no MOTD configured" unless overridden.
-		_motdProvider.GetText().Returns((string?)null);
+		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns((string?)null);
 	}
 
 	private LoginService MakeUseCase()
 	{
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService, _motdProvider,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService, _motdService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -429,7 +429,7 @@ public class LoginServiceTests
 	[Fact]
 	public async Task MotdText_WhenSet_SendsNotification()
 	{
-		_motdProvider.GetText().Returns("Test message of the day!");
+		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns("Test message of the day!");
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();

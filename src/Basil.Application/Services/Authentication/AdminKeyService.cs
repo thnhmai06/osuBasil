@@ -27,7 +27,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task<bool> IsBypassAsync(CancellationToken cancellationToken = default)
 	{
 		var hash = await settings.GetAsync(HashSettingKey, cancellationToken);
-		return string.IsNullOrEmpty(hash);
+		return string.IsNullOrWhiteSpace(hash);
 	}
 
 	/// <summary>Verifies a candidate key against the stored hash.</summary>
@@ -40,7 +40,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task<bool> VerifyAsync(string candidateKey, CancellationToken cancellationToken = default)
 	{
 		var hash = await settings.GetAsync(HashSettingKey, cancellationToken);
-		return !string.IsNullOrEmpty(hash) && hasher.Verify(Encoding.UTF8.GetBytes(candidateKey), hash);
+		return !string.IsNullOrWhiteSpace(hash) && hasher.Verify(Encoding.UTF8.GetBytes(candidateKey), hash);
 	}
 
 	/// <summary>Gets when the admin key was last set or cleared, or <see langword="null" /> if never.</summary>
@@ -48,7 +48,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task<DateTimeOffset?> GetLastChangedAsync(CancellationToken cancellationToken = default)
 	{
 		var raw = await settings.GetAsync(LastChangedSettingKey, cancellationToken);
-		return raw is null ? null : DateTimeOffset.Parse(raw, CultureInfo.InvariantCulture);
+		return string.IsNullOrWhiteSpace(raw) ? null : DateTimeOffset.Parse(raw, CultureInfo.InvariantCulture);
 	}
 
 	/// <summary>Hashes and stores a new admin key, taking the server out of bypass mode.</summary>
@@ -58,7 +58,6 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	{
 		var hash = hasher.Hash(Encoding.UTF8.GetBytes(newKey));
 		await settings.SetAsync(HashSettingKey, hash, cancellationToken);
-		await settings.SetAsync(LastChangedSettingKey, DateTimeOffset.UtcNow.ToString("O"), cancellationToken);
 	}
 
 	/// <summary>Clears the stored hash, putting the server into bypass mode immediately.</summary>
@@ -66,6 +65,5 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task ClearAsync(CancellationToken cancellationToken = default)
 	{
 		await settings.SetAsync(HashSettingKey, null, cancellationToken);
-		await settings.SetAsync(LastChangedSettingKey, DateTimeOffset.UtcNow.ToString("O"), cancellationToken);
 	}
 }

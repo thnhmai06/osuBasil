@@ -1,4 +1,5 @@
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
 using Basil.Web.Auth;
@@ -49,6 +50,40 @@ internal static class AnnounceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(true, 3))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Message must not be empty."));
+
+		group.MapGet("/announce/motd", async (MotdService motd, CancellationToken cancellationToken) =>
+			{
+				var text = await motd.GetTextAsync(cancellationToken);
+				return Results.Json(new MotdView(text));
+			})
+			.WithGroupName("basilapi")
+			.WithName("getMotd")
+			.WithSummary("Get the message-of-the-day.")
+			.WithDescription("Returns the message currently shown to a player on login, or `null` if none is set.")
+			.WithTags("Motd")
+			.Produces<MotdView>()
+			.WithExample(StatusCodes.Status200OK, new MotdView("Welcome to Basil!"));
+
+		group.MapPut("/announce/motd", async (MotdBody body, MotdService motd, ILogger<AnnounceRoutesLog> logger,
+				CancellationToken cancellationToken) =>
+			{
+				await motd.SetTextAsync(body.Text, cancellationToken);
+				logger.LogInformation("MOTD updated via admin API");
+				return Results.Json(new MotdChangedView(true, "MOTD updated."));
+			})
+			.RequireAuthorization(AdminKeyDefaults.Policy)
+			.WithGroupName("basilapi")
+			.WithName("setMotd")
+			.WithSummary("Set the message-of-the-day.")
+			.WithDescription("""
+			                 Body: `{ text }`. Replaces whatever message is currently set. A null, empty, or
+			                 blank `text` clears it, so no notification is shown on login.
+
+			                 Takes effect for players who log in after this change.
+			                 """ + AdminKeyNote)
+			.WithTags("Motd")
+			.Produces<MotdChangedView>()
+			.WithExample(StatusCodes.Status200OK, new MotdChangedView(true, "MOTD updated."));
 	}
 
 	private static IResult HandleAnnounce(AnnounceBody body, IUserSessionRegistry sessionRegistry,
@@ -80,4 +115,13 @@ internal static class AnnounceRoutes
 
 	/// <summary>Confirmation body for `POST /announce`.</summary>
 	public sealed record AnnounceResultView(bool Success, int DeliveredCount);
+
+	/// <summary>Response body for `GET /announce/motd`.</summary>
+	public sealed record MotdView(string? Text);
+
+	/// <summary>Request body for `PUT /announce/motd`.</summary>
+	public sealed record MotdBody(string? Text);
+
+	/// <summary>Confirmation body for `PUT /announce/motd`.</summary>
+	public sealed record MotdChangedView(bool Success, string Message);
 }
