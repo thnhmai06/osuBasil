@@ -6,7 +6,7 @@ This page lists what is *in scope*, what is not, and the rationale for each excl
 
 ## Chat commands and IRC
 
-Both are in scope — general commands, `!mp` tournament control, and an embedded IRC gateway real IRC clients (or tools like osu-ahr) can connect to alongside osu! clients. See [`chat.md`](chat.md) for how the dispatch layer works, and the BasilBot Commands page (`api.<domain>/docs/basil-bot/`) for the full command list.
+Both are in scope: general commands, `!mp` tournament control, and an embedded IRC gateway real IRC clients (or tools like osu-ahr) can connect to alongside osu! clients. See [`chat.md`](chat.md) for how the dispatch layer works, and the BasilBot Commands page (`api.<domain>/docs/basil-bot/`) for the full command list.
 
 ## Out of scope
 
@@ -16,27 +16,27 @@ Both are in scope — general commands, `!mp` tournament control, and an embedde
 | ❌ Scrim engine (`!mp scrim`/`autoref`/`endscrim`/`rematch`) | Race-safe match-point tallying for auto-refereed scrims | Engine (`MatchScoringService`) was removed along with the old command layer; not requested for rebuild |
 | ❌ `!mp force` | Admin force player into match | Not implemented |
 | ❌ `!block`/`!unblock`/`!reconnect`/`!changename`/`!apikey` | Personal chat commands (block user, rename, manage API key...) | Outside multiplayer/tournament scope |
-| ❌ ApiKey (User field + `UpdateApiKeyAsync`) | `ApiKey` field on User and corresponding repository method — dead code (IRC uses osu! password directly, no separate key needed) | Removed — never used |
+| ❌ ApiKey (User field + `UpdateApiKeyAsync`) | `ApiKey` field on User and corresponding repository method, dead code (IRC uses osu! password directly, no separate key needed) | Removed, never used |
 | ❌ Friends (`osu-getfriends.php`, `FriendAddHandler`/`FriendRemoveHandler`) | HTTP endpoint + packet handlers for friend relationships | Social feature, outside multiplayer/tournament scope |
 | ❌ General-purpose public JSON API v1/v2 | REST API like osu-web (OAuth, rate limiting, versioning) for external tools | No concrete demand; users expected to build their own later |
 | ❌ Moderation/clan/metrics (`!clan`, admin commands, Discord webhook, Datadog) | Clan/moderator commands, audit-log webhook, `bancho.online_players`/`bancho.login_time` metrics | Depends on removed command layer; project doesn't use Datadog so nothing to port |
 | ❌ Debug HTML pages (`/matches`, `/online`) | Admin-facing debug views from Bancho | Never called by game client, explicitly dropped |
-| ⚠️ `osu-screenshot.php` | Screenshot upload | Stub — returns 400 "not available" |
-| ⚠️ `osu-getfavourites.php`/`osu-addfavourite.php` | Favourite beatmap list | Stub — returns empty |
-| ⚠️ `osu-rate.php` | Beatmap star rating | Stub — returns `"not ranked"` (real Bancho response code) |
-| ⚠️ `osu-comment.php` | In-game comments | Stub — returns empty |
-| ✅ `POST /users` (in-game registration) | Create account via game client — Email field must match the server's admin key | Active — always accepts registration in bypass mode (no admin key configured), otherwise requires a matching key |
-| ❌ pp calculation | Performance points for scoring/leaderboard/win conditions | Deliberately absent — star rating is display-only, computed via ppy's osu!lazer ruleset |
+| ⚠️ `osu-screenshot.php` | Screenshot upload | Stub: returns 400 "not available" |
+| ⚠️ `osu-getfavourites.php`/`osu-addfavourite.php` | Favourite beatmap list | Stub: returns empty |
+| ⚠️ `osu-rate.php` | Beatmap star rating | Stub: returns `"not ranked"` (real Bancho response code) |
+| ⚠️ `osu-comment.php` | In-game comments | Stub: returns empty |
+| ✅ `POST /users` (in-game registration) | Create account via game client; Email field must match the server's admin key | Active: always accepts registration in bypass mode (no admin key configured), otherwise requires a matching key |
+| ❌ pp calculation | Performance points for scoring/leaderboard/win conditions | Deliberately absent: star rating is display-only, computed via ppy's osu!lazer ruleset |
 
 ## Lessons from reversed decisions
 
 | Decision | Problem | Resolution |
 | --- | --- | --- |
-| Removed `BanchoBot` + entire chat command layer (including full 25 `!mp` subcommands) when pivoting to "multiplayer + tournaments only" | Tournaments still need chat-based match control (`!mp start`, map change, slot management...) — removing everything was overcorrection | `BanchoBot` re-bootstrapped as a real session (`BotBootstrapService`); fresh dispatch layer (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) wraps existing `MatchSession`/`MatchMembershipService` mutations, narrower than the original command set |
-| Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, SSE) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/SSE, replay/beatmap downloads, and admin-key-gated management CRUD — narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
-| Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut — nothing left to compare in parallel | Manual multiplayer/tournament testing with two real osu! clients — see [`run-deployment.md`](run-deployment.md) |
+| Removed `BanchoBot` + entire chat command layer (including full 25 `!mp` subcommands) when pivoting to "multiplayer + tournaments only" | Tournaments still need chat-based match control (`!mp start`, map change, slot management...). Removing everything was overcorrection | `BanchoBot` re-bootstrapped as a real session (`BotBootstrapService`); fresh dispatch layer (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`) wraps existing `MatchSession`/`MatchMembershipService` mutations, narrower than the original command set |
+| Deferred "API v1/v2 later" indefinitely | Tournaments need live match tracking (reports, SSE) even without a full public API | `api.<domain>` host built for tournament match reports (TRT) via `GET`/SSE, replay/beatmap downloads, and admin-key-gated management CRUD, narrower than public v1/v2 (no OAuth, no rate limiting, no versioning); general API not yet built |
+| Automatic test-parity plan ("run Bancho and Basil in parallel, compare results") | No longer viable once most of Bancho's feature surface was deliberately cut; nothing left to compare in parallel | Manual multiplayer/tournament testing with two real osu! clients; see [`run-deployment.md`](run-deployment.md) |
 
 ## See also
 
-- [`architecture.md`](architecture.md) — how the in-scope pieces are actually built
-- [`chat.md`](chat.md) — the dispatch layer behind every in-scope chat command
+- [`architecture.md`](architecture.md): how the in-scope pieces are actually built
+- [`chat.md`](chat.md): the dispatch layer behind every in-scope chat command

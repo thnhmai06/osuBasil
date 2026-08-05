@@ -6,9 +6,9 @@ Basil is one deployable process split into layers with a strictly enforced depen
 
 ## Why Clean Architecture for a single-process server?
 
-Basil runs as a single process, but Clean Architecture keeps the core application independent of infrastructure concerns. Business rules never depend directly on SQLite, the filesystem, Bancho transport, or any other external technology, making those components replaceable without affecting the rest of the codebase.
+Basil runs as a single process, but Clean Architecture keeps the core application independent of infrastructure concerns. Business rules never depend directly on SQLite, the filesystem, Bancho transport, or any other external technology, so those components stay replaceable without touching the rest of the codebase.
 
-This separation makes infrastructure changes straightforward—whether that means switching to a different database engine, replacing the beatmap storage backend, or introducing new transport protocols. More importantly, it provides a solid foundation for future support of **osu!lazer**, whose APIs and networking model differ significantly from the legacy client. By isolating infrastructure behind well-defined boundaries, most of the application logic can remain unchanged while only the integration layer evolves.
+That separation pays off when infrastructure changes: swapping the database engine, replacing the beatmap storage backend, or adding a new transport protocol only touches the layer that owns it. It also gives Basil a path to supporting **osu!lazer** later, whose APIs and networking model differ from the legacy client: the application logic can stay put while only the integration layer changes.
 
 ## Layers
 
@@ -22,13 +22,13 @@ This separation makes infrastructure changes straightforward—whether that mean
 | `Basil.Infrastructure` | Application, Domain | SQLite, filesystem, and osu!lazer-ruleset-library implementations |
 | `Basil.Web` | Application, Infrastructure, Protocol | The ASP.NET Core host: subdomain routing and the dependency-injection composition root |
 
-**Dependency rule:** Domain and Protocol depend on nothing else in the solution. Application depends on Domain and Protocol only — never on Infrastructure or Web. Infrastructure implements Application's interfaces but is never referenced by Application. Web is the only project that sees all four others, since it's the one place concrete implementations get wired to their interfaces.
+**Dependency rule:** Domain and Protocol depend on nothing else in the solution. Application depends on Domain and Protocol only, never on Infrastructure or Web. Infrastructure implements Application's interfaces but is never referenced by Application. Web is the only project that sees all four others, since it's the one place concrete implementations get wired to their interfaces.
 
-This isn't a convention that can quietly slip — `tests/Basil.ArchitectureTests` (using [NetArchTest](https://github.com/BenMorris/NetArchTest)) checks the dependency direction on every CI run, and fails the build if it's violated.
+This isn't a convention that can quietly slip: `tests/Basil.ArchitectureTests` (using [NetArchTest](https://github.com/BenMorris/NetArchTest)) checks the dependency direction on every CI run and fails the build if it's violated.
 
 ## Layout
 
-The largest directories are organized by feature, not by kind — the namespace matches the folder path, so an import tells you exactly where a file lives:
+The largest directories are organized by feature, not by kind. The namespace matches the folder path, so an import tells you exactly where a file lives:
 
 | Directory | Purpose |
 | --- | --- |
@@ -62,5 +62,5 @@ The largest directories are organized by feature, not by kind — the namespace 
 | A new piece of persisted state | A new method on an existing (or new) interface under `Abstractions/*`, implemented in `Basil.Infrastructure/Persistence/Repositories/` |
 | A new HTTP endpoint | A new route under the applicable host group file in `Basil.Web/Routing/Bancho/` or `Basil.Web/Routing/Api/` |
 | A new IRC command | Dispatched in `TcpIrcConnection.HandleRegisteredCommandAsync`, calling existing Application-layer services |
-| New chat routing logic | Added to `ChatDispatchService.SendPrivmsgAsync` — see [`chat.md`](chat.md) |
-| A new chat transport | Implement `IIrcConnection` — the new class receives an `IrcMessage` and encodes it into its own format |
+| New chat routing logic | Added to `ChatDispatchService.SendPrivmsgAsync` (see [`chat.md`](chat.md)) |
+| A new chat transport | Implement `IIrcConnection`; the new class receives an `IrcMessage` and encodes it into its own format |
