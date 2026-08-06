@@ -34,7 +34,7 @@ The largest directories are organized by feature, not by kind. The namespace mat
 | --- | --- |
 | `Packets/` | One class per bancho client packet, grouped by feature (`Users/`, `Channels/`, `Spectating/`, `Multiplayer/`) |
 | `Abstractions/` | The ports Infrastructure implements, grouped by domain concept |
-| `Sessions/` | In-memory runtime state (`PlayerSession`, `ChannelSession`, `MatchSession`) and the registries tracking it |
+| `Sessions/` | In-memory runtime state (`UserSession` and its `GameSession`/`IrcSession` siblings, `ChannelSession`, `MatchSession`) and the registries tracking it |
 | `Services/` | The actual business logic a packet handler or HTTP route delegates to, one directory per feature |
 
 ## Where to go from here
@@ -49,6 +49,7 @@ The largest directories are organized by feature, not by kind. The namespace mat
 | Schema, and SQLite/Dapper implementation notes | [`database.md`](database.md) |
 | How a beatmap gets from a folder into the database | [`beatmap-ingestion.md`](beatmap-ingestion.md) |
 | Chat, IRC, and BanchoBot's commands | [`chat.md`](chat.md) |
+| Why IRC and game sessions are separate types, and their dual-session lifecycle | [`irc.md`](irc.md) |
 | Log sinks, scopes, and categories | [`logging.md`](logging.md) |
 | Privilege flags | [`privileges.md`](privileges.md) |
 | Running and deploying a server | [`run-deployment.md`](run-deployment.md) |

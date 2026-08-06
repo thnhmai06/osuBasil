@@ -176,10 +176,12 @@ the ffmpeg dependency so there's nothing extra to install by hand.
    `a.<domain>`, `api.<domain>`
 
    > [!NOTE]
-   > The IRC gateway (`irc.<domain>`) listens on a separate TCP port (6667 by default, configurable
-   > via `Basil:Irc:Port`) and is **not** served through ASP.NET Core/Kestrel. It binds a raw
-   > `TcpListener` from `TcpIrcListener` (`BackgroundService`). It does not need TLS; a real IRC
-   > client connects over plain TCP. No cert SAN entry is required for `irc.<domain>`.
+   > The IRC gateway listens on a separate TCP port (6667 by default, configurable via
+   > `Basil:Irc:Port`) and is **not** served through ASP.NET Core/Kestrel. It binds a raw
+   > `TcpListener` to `IPAddress.Any` (`TcpIrcListener`, a `BackgroundService`) with no hostname or
+   > SNI routing at all — there is no `irc.<domain>` subdomain, and none of the 9 SAN entries above
+   > matter to it. It does not need TLS; a real IRC client connects over plain TCP to the bare
+   > `<domain>` (or any hostname/IP that resolves to the server) on that port.
 
    For a real public domain, any standard ACME/wildcard cert covering `*.<domain>` and `<domain>` works. For a LAN-only
    deployment without public DNS, generate a self-signed cert with those SANs, see the Development section below for the
@@ -256,8 +258,8 @@ the ffmpeg dependency so there's nothing extra to install by hand.
 
 3. **To connect an actual osu! client to your dev server**, you need a trusted cert and hosts entries, same requirement
    as Deployment above (the client itself doesn't know or care whether it's talking to a dev or production build).
-   Generate a self-signed cert covering all 9 subdomains (note: the IRC gateway uses a separate TCP port, no TLS, no
-   cert needed):
+   Generate a self-signed cert covering all 9 subdomains (note: the IRC gateway uses a separate TCP port with no
+   hostname routing at all, so it needs neither a SAN entry nor TLS):
 
    **PowerShell (Windows):**
 

@@ -20,13 +20,15 @@ A tournament organizer needs to look back at a match after it's over: who played
 - **A match ID is not a slot index.** `Matches.Id` is the stable, external id every API route and chat command uses. The in-memory 0-63 slot the bancho wire protocol itself assigns is a separate, short-lived number. See [`database.md`](database.md) for how the two relate in storage.
 - **A round is created per beatmap played**, at `!mp start` / `MATCH_START`, not per match. A best-of-9 tournament match produces up to nine rounds, each with its own mode, win condition, mods, and scores.
 - **`MatchSession.Lock`** guards every mutation to a live match's slots (see [`bancho.md`](bancho.md) for the concurrency reasoning). Every HTTP route that mutates match state acquires the same lock a packet handler would, so a `!mp` chat command and an admin API call can never race each other.
+- **A room with zero seated players auto-closes after 5 minutes**, whether it was created by a game client, an IRC referee, or via the API — there's no separate "temporary" or "permanent" room concept. A 60-second warning is announced to the room and DM'd to any referee not already in it; a player joining after the warning cancels the close with its own announcement. See [`irc.md`](irc.md) for why an IRC-created or already-elsewhere-seated creator's room can start with nobody in it at all.
 
 ## Lifecycle
 
 ```
 !mp make / CREATE_MATCH
         |
-match created, host in slot 0 (see bancho.md)
+match created; a game-client creator not already seated elsewhere is
+placed in slot 0 and becomes host (see bancho.md and irc.md)
         |
 !mp start -> a Round is created, CurrentRoundId recorded
         |
@@ -61,3 +63,4 @@ GET /matches/{id} now builds its report purely from Rounds + Scores
 - [`bancho.md`](bancho.md): the packet-level flow that creates and mutates a match
 - [`sse.md`](sse.md): the live half of every match sub-resource
 - [`database.md`](database.md): the `Matches`/`Rounds`/`Scores` tables the report reads from
+- [`irc.md`](irc.md): why a room can start with nobody seated, and the empty-room auto-close timer
