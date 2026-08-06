@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
@@ -184,13 +185,15 @@ public sealed class Program
 		logger.LogInformation(BasilLicense);
 		logger.LogInformation("Current time: {Date}", DateTime.Now.ToString("O"));
 		logger.LogInformation(
-			"Machine: {MachineName} | OS: {Os} ({OsArch}) | Runtime: {Runtime} | CPU: {Cpu} cores | Memory: {MemoryGb:F1} GB",
+			"Machine: {MachineName} | OS: {Os} ({OsArch}) | Runtime: {Runtime} ({RuntimeArch}) | Logical CPUs: {Cpu} | GC Memory limit: {MemoryGb:F1} GB",
 			Environment.MachineName,
 			RuntimeInformation.OSDescription,
 			RuntimeInformation.OSArchitecture,
 			RuntimeInformation.FrameworkDescription,
+			RuntimeInformation.ProcessArchitecture,
 			Environment.ProcessorCount,
 			GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024d / 1024 / 1024);
+		logger.LogInformation("Working directory: {Directory}", Environment.CurrentDirectory);
 	}
 
 	/// <summary>
@@ -274,10 +277,32 @@ public sealed class Program
 	{
 		builder.WebHost.ConfigureKestrel((context, options) =>
 		{
+			var logger = options.ApplicationServices.GetService<ILoggerFactory>()?
+				.CreateLogger(typeof(Program).FullName ?? "Program");
+
 			var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);
+			var domain = serverSection.GetValue<string>("Domain");
 			var port = serverSection.GetValue<int?>("Port") ?? 443;
 			var certPath = serverSection["CertPath"];
 			var certPassword = serverSection["CertPassword"];
+
+			try
+			{
+				if (string.IsNullOrWhiteSpace(domain))
+					throw new ValidationException("Domain is required.");
+				if (Uri.CheckHostName(domain) != UriHostNameType.Dns)
+					throw new ValidationException("Domain must be a valid DNS hostname.");
+				if (string.Equals(domain, "localhost", StringComparison.OrdinalIgnoreCase))
+					throw new ValidationException("'localhost' is not allowed.");
+				if (!domain.Contains('.'))
+					throw new ValidationException(
+						"Domain must be a fully qualified domain name (for example, 'example.com').");
+			}
+			catch (ValidationException ex)
+			{
+				logger?.LogCritical(ex, "Domain is not valid");
+				Environment.Exit(1);
+			}
 
 			// Lets a browser multiplex several SSE connections over one connection instead of
 			// hitting HTTP/1.1's ~6-per-origin ceiling; only takes effect over TLS, which every
@@ -297,9 +322,7 @@ public sealed class Program
 			}
 			catch (Exception ex)
 			{
-				options.ApplicationServices.GetService<ILoggerFactory>()
-					?.CreateLogger("Basil.Web.Program")
-					.LogCritical(ex, "Failed to load TLS certificate from {CertPath} — server cannot start.", certPath);
+				logger?.LogCritical(ex, "Failed to load TLS certificate from {CertPath}.", certPath);
 				Environment.Exit(1);
 			}
 		});
