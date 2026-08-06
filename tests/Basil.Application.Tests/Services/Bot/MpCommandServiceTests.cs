@@ -1,9 +1,13 @@
+using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Beatmaps;
@@ -11,8 +15,10 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Bot;
@@ -33,7 +39,8 @@ public class MpCommandServiceTests
 	{
 		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchRepository,
 			_beatmaps,
-			_fixture.SessionRegistry, _users, NullLogger<MpCommandService>.Instance,
+			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
+			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 	}
 
@@ -106,7 +113,7 @@ public class MpCommandServiceTests
 
 		Assert.True(match.IsLocked);
 		Assert.Equal("Locked the match", reply);
-		Assert.False(await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		Assert.Null(other.Match);
 	}
 
@@ -123,7 +130,7 @@ public class MpCommandServiceTests
 
 		Assert.False(match.IsLocked);
 		Assert.Equal("Unlocked the match", reply);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 	}
 
 	[Fact]
@@ -269,13 +276,28 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_HostNotAddedAsReferee_CommandsSilentlyIgnored()
+	public async Task HandleAsync_HostNotAddedAsReferee_ReadOnlyCommandsStillWork()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		// "settings" is a read-only subcommand, open to anyone the match resolves for — not gated on
+		// referee status (see MpCommandService.ReadOnlySubcommands).
+		Assert.NotNull(reply);
+		Assert.DoesNotContain(host.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task HandleAsync_NonReadOnlySubcommand_NonReferee_SilentlyIgnored()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host, hostIsReferee: false);
+
+		var reply = await Run(MakeService(), host, match, "lock", []);
 
 		Assert.Null(reply);
 		Assert.DoesNotContain(host.Id, match.Referees);
@@ -306,6 +328,100 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
 		Assert.Contains("Beatmap: Not found", reply);
+	}
+
+	private static IrcSession MakeIrc(int id, string name)
+	{
+		return new IrcSession(id, name, $"irc-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			IrcConnection = new RecordingIrcConnection()
+		};
+	}
+
+	/// <summary>Joins a session into a match's own chat channel, using the fixture's shared registries.</summary>
+	private void JoinMatchChannel(UserSession session)
+	{
+		var channelMembership =
+			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
+				_fixture.ChannelRegistry, Options.Create(new IrcOptions()));
+		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#multi_"));
+		channelMembership.Join(session, channel);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_RefereeAlsoConnectedViaIrc_AppearsInIrcList()
+	{
+		// !mp settings no longer lists referees at all (that's !mp listrefs' job now) — a referee
+		// with a separate live IrcSession in the match's own channel still shows up in the IRC list.
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var refereeIrc = MakeIrc(2, "refonirc");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(2);
+		JoinMatchChannel(refereeIrc);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.DoesNotContain("Refs:", reply);
+		Assert.Contains("IRC: (1)", reply);
+		Assert.Contains("#2 refonirc", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_SeatedPlayerAlsoOnIrc_AppearsInBothPlayersAndIrcLists()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var hostIrc = MakeIrc(1, "host");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(1).Returns(hostIrc);
+		var match = _fixture.CreateMatch(host);
+		JoinMatchChannel(hostIrc);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("Players: (1)", reply);
+		Assert.Contains("host", reply); // slot line
+		Assert.Contains("IRC: (1)", reply);
+		Assert.Contains("#1 host", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_LongUnicodeIrcList_WrapsWithinIrcWireLimit()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		// Vietnamese names (multibyte UTF-8) — enough of them to force at least one wrap. Referees
+		// don't appear in !mp settings anymore, so this exercises the IRC list's own WrapCsv instead.
+		for (var i = 0; i < 20; i++)
+		{
+			var id = 100 + i;
+			var irc = MakeIrc(id, $"Người_chơi_số_{i}");
+			_fixture.IrcSessionRegistry.GetByUserId(id).Returns(irc);
+			JoinMatchChannel(irc);
+		}
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		foreach (var line in reply!.Split('\n'))
+		{
+			var wireLine = IrcMessageWriter.Format(
+				IrcMessageWriter.Privmsg("BasilBot", 0, match.ChatChannelName, line));
+			Assert.True(Encoding.UTF8.GetByteCount(wireLine) <= 512,
+				$"Line exceeds the 512-byte IRC wire limit once framed: {wireLine}");
+		}
+	}
+
+	private sealed class RecordingIrcConnection : IIrcConnection
+	{
+		public List<IrcMessage> Received { get; } = [];
+		public UserSession User => throw new NotImplementedException();
+
+		public void Send(IrcMessage message)
+		{
+			Received.Add(message);
+		}
 	}
 
 	[Fact]
@@ -644,7 +760,7 @@ public class MpCommandServiceTests
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var guest = MultiplayerTestSupport.MakePlayer(2, "guest");
-		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, guest, bot);
@@ -670,7 +786,7 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_MapChange_CancelsQueuedAutoStart()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);
@@ -714,7 +830,7 @@ public class MpCommandServiceTests
 	public async Task HandleAsync_Timer_AnnouncesQueuedAndFinishedMessagesToMatchChannel()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);
@@ -770,6 +886,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 		match.AddReferee(referee.Id);
+		_users.FetchByNameAsync("host", Arg.Any<CancellationToken>()).Returns(MakeUser(host.Id, "host"));
 
 		var reply = await Run(MakeService(), referee, match, "kick", ["host"]);
 
@@ -778,20 +895,23 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_Kick_RefereeTarget_RemovesFromRoomButKeepsRefereeAuthority()
+	public async Task HandleAsync_Kick_RefereeTarget_Rejected()
 	{
+		// Referees are protected from kick/ban outright — remove referee status first with
+		// !mp removeref (see MatchControlService.KickResult.TargetIsReferee).
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
 		match.AddReferee(referee.Id);
+		_users.FetchByNameAsync("referee", Arg.Any<CancellationToken>()).Returns(MakeUser(referee.Id, "referee"));
 
 		var reply = await Run(MakeService(), host, match, "kick", ["referee"]);
 
-		Assert.Null(referee.Match);
+		Assert.Same(match, referee.Match);
 		Assert.Contains(referee.Id, match.Referees);
-		Assert.Equal("Kicked referee from the match", reply);
+		Assert.Contains("Remove referee status first", reply);
 	}
 
 	[Fact]
@@ -802,6 +922,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
+		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
 		var reply = await Run(MakeService(), host, match, "kick", ["other"]);
 
@@ -817,6 +938,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(other, match, "");
+		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
@@ -825,40 +947,60 @@ public class MpCommandServiceTests
 		Assert.Equal("Banned other from the match", reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
-		Assert.False(rejoined);
+		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]
-	public async Task HandleAsync_Ban_NotInMatch_Rejected()
+	public async Task HandleAsync_Ban_NotInMatch_StillBansByUserId()
 	{
-		// Ban only ever applies to physical room presence — an absent userSession can't be targeted.
+		// Ban applies to a UserId regardless of physical presence — no online/in-match requirement.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
+		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
-		Assert.DoesNotContain(other.Id, match.BannedIds);
-		Assert.Equal("User is not in this match or not registered.", reply);
+		Assert.Contains(other.Id, match.BannedIds);
+		Assert.Equal("Banned other from the match", reply);
+
+		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
+		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]
-	public async Task HandleAsync_Ban_RefereeTarget_RemovesFromRoomButKeepsRefereeAuthority()
+	public async Task HandleAsync_Ban_UnknownUser_Rejected()
 	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		_users.FetchByNameAsync("nobody", Arg.Any<CancellationToken>()).Returns((User?)null);
+
+		var reply = await Run(MakeService(), host, match, "ban", ["nobody"]);
+
+		Assert.Equal("User is not registered.", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Ban_RefereeTarget_Rejected()
+	{
+		// Referees are protected from kick/ban outright — remove referee status first with
+		// !mp removeref (see MatchControlService.BanResult.TargetIsReferee).
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
 		match.AddReferee(referee.Id);
+		_users.FetchByNameAsync("referee", Arg.Any<CancellationToken>()).Returns(MakeUser(referee.Id, "referee"));
 
 		var reply = await Run(MakeService(), host, match, "ban", ["referee"]);
 
-		Assert.Contains(referee.Id, match.BannedIds);
+		Assert.DoesNotContain(referee.Id, match.BannedIds);
 		Assert.Contains(referee.Id, match.Referees);
-		Assert.Null(referee.Match);
-		Assert.Equal("Banned referee from the match", reply);
+		Assert.Same(match, referee.Match);
+		Assert.Contains("Remove referee status first", reply);
 	}
 
 	[Fact]
@@ -889,7 +1031,7 @@ public class MpCommandServiceTests
 		await Run(MakeService(), host, match, "unban", ["other"]);
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		Assert.True(rejoined);
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]
@@ -988,7 +1130,6 @@ public class MpCommandServiceTests
 		Assert.Same(sender.Match, _fixture.MatchRegistry.All.Single());
 		Assert.Equal(sender.Id, sender.Match!.HostId);
 		Assert.Contains(sender.Id, sender.Match.Referees);
-		Assert.True(sender.Match.CreatedViaMakeCommand);
 		Assert.Equal("My Tournament", sender.Match.Name);
 		Assert.Contains("Created the match", reply);
 	}
@@ -1142,14 +1283,29 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_Private_NonReferee_SilentlyIgnored()
+	public async Task HandleAsync_Private_NoArgsNonReferee_StillReportsStatus()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 
+		// "!mp private" with no argument only reports status — read-only, so open to non-referees too.
 		var reply = await Run(MakeService(), other, match, "private", []);
+
+		Assert.Contains("not private", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Private_WithArgNonReferee_SilentlyIgnored()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var other = MultiplayerTestSupport.MakePlayer(2, "other");
+		_fixture.RegisterAll(host, other);
+		var match = _fixture.CreateMatch(host);
+
+		// "!mp private 1" mutates state — still referee-gated.
+		var reply = await Run(MakeService(), other, match, "private", ["1"]);
 
 		Assert.Null(reply);
 	}

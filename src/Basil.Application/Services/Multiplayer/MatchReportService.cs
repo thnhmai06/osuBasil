@@ -27,7 +27,8 @@ public sealed class MatchReportService(
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
 	IScoreRepository scores,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps)
 {
@@ -53,11 +54,11 @@ public sealed class MatchReportService(
 		foreach (var e in events)
 		{
 			var actor = e.ActorUserId is { } actorId
-				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, sessionRegistry, users,
+				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, gameRegistry, ircRegistry, users,
 					cancellationToken)
 				: null;
 			var target = e.TargetUserId is { } targetId
-				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, sessionRegistry, users,
+				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, gameRegistry, ircRegistry, users,
 					cancellationToken)
 				: null;
 			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target, e.Timestamp, e.Detail));
@@ -165,13 +166,15 @@ public sealed class MatchReportService(
 		}
 
 		var winner = winnerUserId is { } wid
-			? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(wid, sessionRegistry, users, cancellationToken)
+			? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(wid, gameRegistry, ircRegistry, users,
+				cancellationToken)
 			: null;
 
 		var reportScores = new List<MatchReportScore>(roundScores.Count);
 		foreach (var s in roundScores)
 		{
-			var user = await UserBriefResolver.ResolveAsync(s.UserId, sessionRegistry, users, cancellationToken)
+			var user = await UserBriefResolver.ResolveAsync(s.UserId, gameRegistry, ircRegistry, users,
+				           cancellationToken)
 			           ?? new UserBrief(s.UserId, s.UserName, Country.Xx);
 			reportScores.Add(new MatchReportScore(
 				user, s.Team, s.Mods, s.Score, s.Accuracy, s.MaxCombo,

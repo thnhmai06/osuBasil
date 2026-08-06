@@ -30,25 +30,27 @@ public static class MatchLiveSnapshotBuilder
 {
 	/// <summary>Builds the full live snapshot payload for the match's main live channel.</summary>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online players.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> players.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> players.</param>
 	/// <param name="users">The repository used to resolve offline players.</param>
 	/// <param name="beatmaps">The repository used to resolve the assigned beatmap.</param>
 	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
-	/// <returns>The complete <see cref="MatchLiveSnapshot" />, including host, referees, beatmap, and slots.</returns>
-	public static async Task<MatchLiveSnapshot> BuildMain(MatchSession match, IUserSessionRegistry sessionRegistry,
+	/// <returns>The <see cref="MatchLiveSnapshot" />, including host, referees, beatmap, and slots.</returns>
+	public static async Task<MatchLiveSnapshot> BuildMain(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken = default)
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != BotBootstrapService.BotId // a real host: id 0 means none
-			? await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken)
+		var host = match.HostId != MatchSession.NoHostId // has real host
+			? await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
 		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
+			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
 
-		var slots = await BuildSlotViews(match, sessionRegistry, users, cancellationToken);
+		var slots = await BuildSlotViews(match, gameRegistry, ircRegistry, users, cancellationToken);
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
 		return new MatchLiveSnapshot(
@@ -99,23 +101,25 @@ public static class MatchLiveSnapshotBuilder
 	///     admin-elevated caller; a public, unauthenticated SSE channel is not the place to leak it.
 	/// </remarks>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online players.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> players.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> players.</param>
 	/// <param name="users">The repository used to resolve offline players.</param>
 	/// <param name="beatmaps">The repository used to resolve the assigned beatmap.</param>
 	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
 	/// <returns>The <see cref="MatchSettingsView" /> payload, including host and referees.</returns>
-	public static async Task<MatchSettingsView> BuildSettings(MatchSession match, IUserSessionRegistry sessionRegistry,
+	public static async Task<MatchSettingsView> BuildSettings(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken = default)
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
 		var host = match.HostId != BotBootstrapService.BotId // a real host: id 0 means none
-			? await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken)
+			? await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
 		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
+			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
@@ -127,50 +131,56 @@ public static class MatchLiveSnapshotBuilder
 
 	/// <summary>Builds the host payload for <c>GET /matches/{matchId}/hosts</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve an online host.</param>
+	/// <param name="gameRegistry">The registry used to resolve an online <see cref="GameSession" /> host.</param>
+	/// <param name="ircRegistry">The registry used to resolve an online <see cref="IrcSession" /> host.</param>
 	/// <param name="users">The repository used to resolve an offline host.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookup.</param>
 	/// <returns>
 	///     The <see cref="MatchHostView" /> payload, whose <c>Host</c> is <see langword="null" /> when the room has no
 	///     host.
 	/// </returns>
-	public static async Task<MatchHostView> BuildHost(MatchSession match, IUserSessionRegistry sessionRegistry,
+	public static async Task<MatchHostView> BuildHost(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
 		if (match.HostId == 0) return new MatchHostView(null);
 
-		var host = await ResolveOrPlaceholder(match.HostId, sessionRegistry, users, cancellationToken);
+		var host = await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken);
 		return new MatchHostView(host);
 	}
 
 	/// <summary>Builds the referee list payload for <c>GET /matches/{matchId}/refs</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online referees.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> referees.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> referees.</param>
 	/// <param name="users">The repository used to resolve offline referees.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
 	/// <returns>The <see cref="MatchRefereesView" /> payload.</returns>
-	public static async Task<MatchRefereesView> BuildRefs(MatchSession match, IUserSessionRegistry sessionRegistry,
+	public static async Task<MatchRefereesView> BuildRefs(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
 		var referees = new List<UserBrief>();
 		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
+			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		return new MatchRefereesView(referees);
 	}
 
 	/// <summary>Builds the banlist payload for <c>GET /matches/{matchId}/ban</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online banned players.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> banned players.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> banned players.</param>
 	/// <param name="users">The repository used to resolve offline banned players.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
 	/// <returns>The <see cref="MatchBansView" /> payload.</returns>
-	public static async Task<MatchBansView> BuildBans(MatchSession match, IUserSessionRegistry sessionRegistry,
+	public static async Task<MatchBansView> BuildBans(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
 		var banned = new List<UserBrief>();
 		foreach (var id in match.BannedIds)
-			banned.Add(await ResolveOrPlaceholder(id, sessionRegistry, users, cancellationToken));
+			banned.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		return new MatchBansView(banned);
 	}
@@ -190,31 +200,35 @@ public static class MatchLiveSnapshotBuilder
 
 	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online occupants.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> occupants.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> occupants.</param>
 	/// <param name="users">The repository used to resolve offline occupants.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
 	/// <returns>The <see cref="MatchSlotsView" /> payload.</returns>
-	public static async Task<MatchSlotsView> BuildSlots(MatchSession match, IUserSessionRegistry sessionRegistry,
+	public static async Task<MatchSlotsView> BuildSlots(MatchSession match,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
-		return new MatchSlotsView(await BuildSlotViews(match, sessionRegistry, users, cancellationToken));
+		return new MatchSlotsView(await BuildSlotViews(match, gameRegistry, ircRegistry, users, cancellationToken));
 	}
 
 	/// <summary>Builds the per-slot view list shared by the main snapshot and the slots view.</summary>
 	/// <param name="match">The match to build slot views for.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online occupants.</param>
+	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> occupants.</param>
+	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> occupants.</param>
 	/// <param name="users">The repository used to resolve offline occupants.</param>
 	/// <param name="cancellationToken">A token that cancels the user lookups.</param>
 	/// <returns>One <see cref="MatchSlotView" /> per slot, index-aligned with <see cref="MatchSession.Slots" />.</returns>
 	private static async Task<IReadOnlyList<MatchSlotView>> BuildSlotViews(MatchSession match,
-		IUserSessionRegistry sessionRegistry, IUserRepository users, CancellationToken cancellationToken)
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
+		IUserRepository users, CancellationToken cancellationToken)
 	{
 		var slots = new List<MatchSlotView>(match.Slots.Count);
 		for (var i = 0; i < match.Slots.Count; i++)
 		{
 			var slot = match.Slots[i];
 			var user = slot.PlayerId is { } pid
-				? await ResolveOrPlaceholder(pid, sessionRegistry, users, cancellationToken)
+				? await ResolveOrPlaceholder(pid, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
 			slots.Add(new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
 				slot.Status == SlotStatus.Ready, slot.Loaded));
@@ -264,14 +278,16 @@ public static class MatchLiveSnapshotBuilder
 	///     still carries the real id.
 	/// </remarks>
 	/// <param name="userId">The user id to resolve.</param>
-	/// <param name="sessionRegistry">The registry used to resolve online players.</param>
+	/// <param name="gameRegistry">The registry used to resolve an online <see cref="GameSession" />.</param>
+	/// <param name="ircRegistry">The registry used to resolve an online <see cref="IrcSession" />.</param>
 	/// <param name="users">The repository used to resolve offline players.</param>
 	/// <param name="cancellationToken">A token that cancels the offline lookup.</param>
 	/// <returns>A <see cref="UserBrief" /> for the id, or a placeholder carrying the id when neither source knows it.</returns>
-	public static async Task<UserBrief> ResolveOrPlaceholder(int userId, IUserSessionRegistry sessionRegistry,
+	public static async Task<UserBrief> ResolveOrPlaceholder(int userId,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken)
 	{
-		return await UserBriefResolver.ResolveAsync(userId, sessionRegistry, users, cancellationToken)
+		return await UserBriefResolver.ResolveAsync(userId, gameRegistry, ircRegistry, users, cancellationToken)
 		       ?? new UserBrief(userId, "Unknown", Country.Xx);
 	}
 }

@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -13,6 +14,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 using Channel = Basil.Domain.Channels.Channel;
@@ -25,9 +27,9 @@ namespace Basil.Application.Tests.Packets;
 /// </summary>
 internal static class MultiplayerTestSupport
 {
-	public static UserSession MakePlayer(int id, string name)
+	public static GameSession MakePlayer(int id, string name)
 	{
-		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	public static MatchState MakeMatchData(
@@ -130,7 +132,7 @@ internal static class MultiplayerTestSupport
 
 		public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
 
-		public IReadOnlyCollection<ChannelSession> All => [.. _byName.Values];
+		public IReadOnlyCollection<ChannelSession> All => _byName.Values;
 	}
 
 	public sealed class FakeMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
@@ -149,7 +151,7 @@ internal static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public Task<MatchSession> CreateAsync(MatchState data, int hostId, bool createdViaMakeCommand = false,
+		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
 			CancellationToken cancellationToken = default)
 		{
 			var id = 0;
@@ -158,7 +160,7 @@ internal static class MultiplayerTestSupport
 			var match = new MatchSession(
 				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
 				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#multi_{id}", createdViaMakeCommand)
+				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#multi_{id}")
 			{
 				DbId = _nextDbId++
 			};
@@ -176,7 +178,7 @@ internal static class MultiplayerTestSupport
 			_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
 		}
 
-		public IReadOnlyCollection<MatchSession> All => [.. _byId.Values];
+		public IReadOnlyCollection<MatchSession> All => _byId.Values;
 	}
 
 	/// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>
@@ -372,7 +374,10 @@ internal static class MultiplayerTestSupport
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				new ChannelMembershipService(SessionRegistry, ChannelRegistry), MatchRepository, EventBus,
+				IrcSessionRegistry,
+				new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
+					Options.Create(new IrcOptions())),
+				MatchRepository, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
@@ -380,7 +385,8 @@ internal static class MultiplayerTestSupport
 		public FakeMatchRegistry MatchRegistry { get; }
 		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
-		public IUserSessionRegistry SessionRegistry { get; } = Substitute.For<IUserSessionRegistry>();
+		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
+		public ISessionRegistry<IrcSession> IrcSessionRegistry { get; } = Substitute.For<ISessionRegistry<IrcSession>>();
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
@@ -388,12 +394,12 @@ internal static class MultiplayerTestSupport
 
 		public MatchMembershipService MatchMembership { get; }
 
-		public void RegisterAll(params UserSession[] sessions)
+		public void RegisterAll(params GameSession[] sessions)
 		{
 			SessionRegistry.All.Returns(sessions);
 			foreach (var session in sessions)
 			{
-				SessionRegistry.GetById(session.Id).Returns(session);
+				SessionRegistry.GetByUserId(session.Id).Returns(session);
 				SessionRegistry.GetByName(session.Name).Returns(session);
 			}
 		}

@@ -1,9 +1,10 @@
+using System.Collections.Concurrent;
 using Basil.Application.Services;
-using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions.Multiplayer;
 
@@ -35,10 +36,6 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// <param name="freemods">A value that indicates whether freemod mode is enabled.</param>
 /// <param name="seed">The room's random seed, broadcast to clients as part of the match's data.</param>
 /// <param name="chatChannelName">The name of the chat channel bound to this room.</param>
-/// <param name="createdViaMakeCommand">
-///     A value that indicates whether the room was created by the <c>!mp make</c> command
-///     rather than the client's MATCH_CREATE packet.
-/// </param>
 public sealed class MatchSession(
 	int id,
 	string name,
@@ -53,13 +50,15 @@ public sealed class MatchSession(
 	MatchTeamType teamType,
 	bool freemods,
 	int seed,
-	string chatChannelName,
-	bool createdViaMakeCommand = false)
+	string chatChannelName)
 {
-	private readonly HashSet<int> _bannedIds = [];
-	private readonly HashSet<int> _invitedIds = [];
-	private readonly HashSet<int> _referees = [];
+	private readonly ConcurrentDictionary<int, byte> _bannedIds = new();
+	private readonly ConcurrentDictionary<int, byte> _invitedIds = new();
+	private readonly ConcurrentDictionary<int, byte> _referees = new();
 	private readonly HashSet<int> _tourneyClients = [];
+
+	/// <summary>The host id a match carries while nobody holds gameplay host.</summary>
+	public static int NoHostId => SystemUserIds.BasilBot;
 
 	/// <summary>
 	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
@@ -115,8 +114,11 @@ public sealed class MatchSession(
 	/// <summary>Gets or sets the room's password, used in its invitation url.</summary>
 	public string Password { get; set; } = password;
 
-	/// <summary>Gets or sets the id of the current host. <see cref="BotBootstrapService.BotId" /> means no host.</summary>
+	/// <summary>Gets or sets the id of the current host. <see cref="NoHostId" /> means no host.</summary>
 	public int HostId { get; set; } = hostId;
+
+	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
+	public bool HasGameplayHost => HostId != NoHostId;
 
 	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
 	public int MapId { get; set; } = mapId;
@@ -192,13 +194,18 @@ public sealed class MatchSession(
 	public bool IsPrivate { get; set; }
 
 	/// <summary>
-	///     Gets a value that indicates whether the room was made via <c>!mp make</c>. This is a
-	///     teardown-strategy marker rather than a privacy or history flag: such rooms persist until
-	///     <c>!mp close</c> or until <see cref="Referees" /> empties out, instead of following
-	///     MatchMembershipService.Leave's normal all-slots-empty auto-teardown (which still applies
-	///     unchanged to rooms created the normal way, via the client's MATCH_CREATE packet).
+	///     Cancels the pending empty-room auto-close, or null when the room currently has at least one
+	///     occupied slot. Set whenever the room becomes fully empty and canceled the moment any slot
+	///     is occupied again, matching the <see cref="PendingTimer" /> lifecycle pattern.
 	/// </summary>
-	public bool CreatedViaMakeCommand { get; } = createdViaMakeCommand;
+	public CancellationTokenSource? EmptyRoomTimer { get; set; }
+
+	/// <summary>
+	///     Gets or sets a value that indicates whether the 60-second warning for the pending
+	///     empty-room auto-close has already been announced, so a player joining after that point gets
+	///     a "canceled" notice instead of silence.
+	/// </summary>
+	public bool EmptyRoomWarningSent { get; set; }
 
 	/// <summary>
 	///     Gets or sets a non-null source while a <c>!mp start &lt;seconds&gt;</c> or <c>!mp timer</c>
@@ -262,16 +269,16 @@ public sealed class MatchSession(
 	public IReadOnlyList<MatchSlot> Slots { get; } = [.. Enumerable.Range(0, 16).Select(_ => new MatchSlot())];
 
 	/// <summary>Gets the ids of the players granted referee authority for this match.</summary>
-	public IReadOnlyCollection<int> Referees => _referees;
+	public IReadOnlyCollection<int> Referees => (IReadOnlyCollection<int>)_referees.Keys;
 
 	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
 	public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
 
 	/// <summary>Gets the ids of the players banned from this match.</summary>
-	public IReadOnlyCollection<int> BannedIds => _bannedIds;
+	public IReadOnlyCollection<int> BannedIds => (IReadOnlyCollection<int>)_bannedIds.Keys;
 
 	/// <summary>Gets the ids of the players a referee has invited via <c>!mp invite</c>, see <see cref="IsPrivate" />.</summary>
-	public IReadOnlyCollection<int> InvitedIds => _invitedIds;
+	public IReadOnlyCollection<int> InvitedIds => (IReadOnlyCollection<int>)_invitedIds.Keys;
 
 	/// <summary>
 	///     Grants referee authority on this match to a userSession.
@@ -279,7 +286,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession being granted referee authority.</param>
 	public void AddReferee(int playerId)
 	{
-		_referees.Add(playerId);
+		_referees[playerId] = 0;
 	}
 
 	/// <summary>
@@ -288,7 +295,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession whose referee authority is being revoked.</param>
 	public void RemoveReferee(int playerId)
 	{
-		_referees.Remove(playerId);
+		_referees.TryRemove(playerId, out _);
 	}
 
 	/// <summary>
@@ -297,7 +304,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession being banned.</param>
 	public void AddBan(int playerId)
 	{
-		_bannedIds.Add(playerId);
+		_bannedIds[playerId] = 0;
 	}
 
 	/// <summary>
@@ -306,7 +313,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession being unbanned.</param>
 	public void RemoveBan(int playerId)
 	{
-		_bannedIds.Remove(playerId);
+		_bannedIds.TryRemove(playerId, out _);
 	}
 
 	/// <summary>
@@ -315,7 +322,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession being invited.</param>
 	public void AddInvite(int playerId)
 	{
-		_invitedIds.Add(playerId);
+		_invitedIds[playerId] = 0;
 	}
 
 	/// <summary>
@@ -332,7 +339,7 @@ public sealed class MatchSession(
 	/// <returns><see langword="true" /> if the userSession is a referee; otherwise, <see langword="false" />.</returns>
 	public bool IsReferee(int playerId)
 	{
-		return _referees.Contains(playerId);
+		return _referees.ContainsKey(playerId);
 	}
 
 	/// <summary>
@@ -376,7 +383,6 @@ public sealed class MatchSession(
 		for (var i = 0; i < Slots.Count; i++)
 			if (Slots[i].PlayerId == playerId)
 				return i;
-
 		return null;
 	}
 
@@ -394,7 +400,6 @@ public sealed class MatchSession(
 		for (var i = 0; i < Slots.Count; i++)
 			if (Slots[i].Status == SlotStatus.Open)
 				return i;
-
 		return null;
 	}
 

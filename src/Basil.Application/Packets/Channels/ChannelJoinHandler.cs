@@ -23,7 +23,7 @@ public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, Channel
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var name = reader.ReadString();
@@ -31,7 +31,7 @@ public sealed class ChannelJoinHandler(IChannelRegistry channelRegistry, Channel
 		if (name is "#highlight" or "#userlog") return Task.CompletedTask; // Local client channel
 
 		var channel = channelRegistry.GetByName(name);
-		if (channel is not null) channelMembership.Join(userSession, channel);
+		if (channel is not null) channelMembership.Join(gameSession, channel);
 
 		return Task.CompletedTask;
 	}

@@ -13,16 +13,16 @@ namespace Basil.Application.Tests.Packets;
 /// </summary>
 public class UserPresenceRequestAllHandlerTests
 {
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 
 	[Fact]
 	public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var unrestrictedOther = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var unrestrictedOther = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		var restrictedOther =
-			new UserSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
+			new GameSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
 		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
 

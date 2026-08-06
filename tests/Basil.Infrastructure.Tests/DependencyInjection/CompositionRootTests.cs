@@ -56,9 +56,13 @@ public class CompositionRootTests
 	[Fact]
 	public void ResolvesSessionRegistriesAsSharedSingletons()
 	{
-		var registry1 = _provider.GetRequiredService<IUserSessionRegistry>();
-		var registry2 = _provider.GetRequiredService<IUserSessionRegistry>();
-		Assert.Same(registry1, registry2);
+		var gameRegistry1 = _provider.GetRequiredService<ISessionRegistry<GameSession>>();
+		var gameRegistry2 = _provider.GetRequiredService<ISessionRegistry<GameSession>>();
+		Assert.Same(gameRegistry1, gameRegistry2);
+
+		var ircRegistry1 = _provider.GetRequiredService<ISessionRegistry<IrcSession>>();
+		var ircRegistry2 = _provider.GetRequiredService<ISessionRegistry<IrcSession>>();
+		Assert.Same(ircRegistry1, ircRegistry2);
 	}
 
 	[Fact]

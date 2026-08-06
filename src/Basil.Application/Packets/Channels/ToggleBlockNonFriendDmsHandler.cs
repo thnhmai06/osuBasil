@@ -14,10 +14,10 @@ public sealed class ToggleBlockNonFriendDmsHandler : IPacketHandler
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		userSession.PmPrivate = reader.ReadI32() == 1;
+		gameSession.PmPrivate = reader.ReadI32() == 1;
 		return Task.CompletedTask;
 	}
 }

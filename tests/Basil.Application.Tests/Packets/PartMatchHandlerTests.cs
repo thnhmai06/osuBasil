@@ -31,6 +31,9 @@ public class PartMatchHandlerTests
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.Null(host.Match);
-		Assert.Null(fixture.MatchRegistry.GetById(match.Id));
+		// The room no longer tears down the instant it's empty — it starts a 5-minute
+		// auto-close timer instead (see MatchMembershipService.SyncEmptyRoomTimer).
+		Assert.NotNull(fixture.MatchRegistry.GetById(match.Id));
+		Assert.NotNull(match.EmptyRoomTimer);
 	}
 }

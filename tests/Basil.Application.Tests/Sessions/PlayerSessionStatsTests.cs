@@ -14,7 +14,7 @@ public class PlayerSessionStatsTests
 	[Fact]
 	public void CurrentStats_IndexesByCurrentStatusMode()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			ModeStats =
 			{
@@ -32,7 +32,7 @@ public class PlayerSessionStatsTests
 	[Fact]
 	public void CurrentStats_NoEntryForMode_ReturnsNull()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		Assert.Null(session.CurrentStats);
 	}

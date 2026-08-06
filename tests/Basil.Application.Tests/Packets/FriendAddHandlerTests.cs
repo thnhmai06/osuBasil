@@ -27,7 +27,7 @@ public class FriendAddHandlerTests
 	[Fact]
 	public async Task HandleAsync_NoExistingRelationship_CreatesFriendRelationship()
 	{
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_relationships.FetchOneAsync(1, 2).Returns((Relationship?)null);
 
 		await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -38,7 +38,7 @@ public class FriendAddHandlerTests
 	[Fact]
 	public async Task HandleAsync_RelationshipAlreadyExists_DoesNotCreateAgain()
 	{
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_relationships.FetchOneAsync(1, 2).Returns(new Relationship(1, 2, RelationshipType.Block));
 
 		await MakeHandler().HandleAsync(player, TargetReader(2));
@@ -49,7 +49,7 @@ public class FriendAddHandlerTests
 	[Fact]
 	public async Task HandleAsync_TargetIsSelf_DoesNothing()
 	{
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, TargetReader(1));
 

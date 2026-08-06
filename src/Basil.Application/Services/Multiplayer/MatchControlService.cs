@@ -18,8 +18,8 @@ namespace Basil.Application.Services.Multiplayer;
 /// <remarks>
 ///     Extracted so both surfaces call the identical state-mutation and broadcast code instead of
 ///     duplicating it. Callers own everything surface-specific: resolving a target userSession (chat
-///     resolves by name via <see cref="IUserSessionRegistry.GetByName" />, HTTP resolves by
-///     numeric id via <see cref="IUserSessionRegistry.GetById" />), parsing and validating raw
+///     resolves by name via <see cref="ISessionRegistry{TSession}.GetByName" />, HTTP resolves by
+///     numeric id via <see cref="ISessionRegistry{TSession}.GetByUserId" />), parsing and validating raw
 ///     input, and formatting a reply or response from the result. Every method here assumes the
 ///     caller already holds the match's <see cref="MatchSession.Lock" /> for the whole
 ///     read-mutate-broadcast sequence, exactly like every packet handler and <c>MpCommandService</c>'s
@@ -29,9 +29,16 @@ public sealed class MatchControlService(
 	MatchMembershipService matchMembership,
 	IMatchRepository matchRepository,
 	IBeatmapRepository beatmapRepository,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	ILogger<MatchControlService> logger)
 {
+	public enum AddRefereeResult : byte
+	{
+		Ok,
+		TargetIsBot
+	}
+
 	public enum AbortResult : byte
 	{
 		Ok,
@@ -49,19 +56,30 @@ public sealed class MatchControlService(
 		Ok,
 		NoFreeSlot,
 		TargetBanned,
-		TargetInAnotherMatch
+		TargetInAnotherMatch,
+		TargetIsBot
 	}
 
 	public enum InviteResult : byte
 	{
 		Ok,
-		TargetAlreadyInRoom
+		TargetAlreadyInRoom,
+		TargetIsBot
 	}
 
 	public enum KickResult : byte
 	{
 		Ok,
-		TargetNotInMatch
+		TargetNotInMatch,
+		TargetIsReferee,
+		TargetIsBot
+	}
+
+	public enum BanResult : byte
+	{
+		Ok,
+		TargetIsReferee,
+		TargetIsBot
 	}
 
 	public enum MoveResult : byte
@@ -215,7 +233,7 @@ public sealed class MatchControlService(
 	/// <param name="match">The match whose host changes.</param>
 	/// <param name="target">The userSession who becomes the host.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
-	public async Task SetHostAsync(MatchSession match, UserSession target,
+	public async Task SetHostAsync(MatchSession match, GameSession target,
 		CancellationToken cancellationToken = default)
 	{
 		var prevHostId = match.HostId;
@@ -225,7 +243,7 @@ public sealed class MatchControlService(
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
-		var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
+		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
 		_ = matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.HostGranted,
 			prevHostId, prevHostName, target.Id, target.Name,
@@ -242,7 +260,7 @@ public sealed class MatchControlService(
 	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
 	public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		match.HostId = BotBootstrapService.BotId;
+		match.HostId = MatchSession.NoHostId;
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		await matchMembership.PublishHostAsync(match, cancellationToken);
 	}
@@ -279,8 +297,9 @@ public sealed class MatchControlService(
 	///     <see cref="InviteResult.Ok" /> when the invite was sent, or
 	///     <see cref="InviteResult.TargetAlreadyInRoom" /> when the target is already in the match.
 	/// </returns>
-	public static InviteResult Invite(UserSession sender, MatchSession match, UserSession target)
+	public static InviteResult Invite(UserSession sender, MatchSession match, GameSession target)
 	{
+		if (target.IsBot) return InviteResult.TargetIsBot;
 		if (target.Match == match) return InviteResult.TargetAlreadyInRoom;
 
 		match.AddInvite(target.Id);
@@ -294,9 +313,11 @@ public sealed class MatchControlService(
 	/// <param name="match">The match to update.</param>
 	/// <param name="target">The userSession to grant referee status.</param>
 	/// <param name="cancellationToken">A token that cancels the event writes and referee publication.</param>
-	public async Task AddRefereeAsync(int? actorId, string? actorName, MatchSession match, UserSession target,
-		CancellationToken cancellationToken = default)
+	public async Task<AddRefereeResult> AddRefereeAsync(int? actorId, string? actorName, MatchSession match,
+		UserSession target, CancellationToken cancellationToken = default)
 	{
+		if (target.IsBot) return AddRefereeResult.TargetIsBot;
+
 		match.AddReferee(target.Id);
 		logger.LogInformation("Referee added: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
 			match.DbId, actorId, target.Id);
@@ -307,6 +328,7 @@ public sealed class MatchControlService(
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		await matchMembership.PublishRefsAsync(match, cancellationToken);
+		return AddRefereeResult.Ok;
 	}
 
 	/// <summary>Replaces the full referee list and records the resulting add and remove events.</summary>
@@ -335,7 +357,7 @@ public sealed class MatchControlService(
 
 		foreach (var id in toRemove)
 		{
-			var removedName = sessionRegistry.GetById(id)?.Name;
+			var removedName = ((UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))?.Name;
 			match.RemoveReferee(id);
 			await matchRepository.CreateEventAsync(new MatchEvent(
 					match.DbId, (int)MatchEventType.RefRemoved,
@@ -761,7 +783,7 @@ public sealed class MatchControlService(
 	/// <param name="text">The message to post.</param>
 	private void Announce(MatchSession match, string text)
 	{
-		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
@@ -816,65 +838,115 @@ public sealed class MatchControlService(
 		return AbortResult.Ok;
 	}
 
-	/// <summary>Removes a userSession from the match and records the kick as a match event.</summary>
+	/// <summary>
+	///     Removes every session (game and IRC alike) a userSession currently has in the match and
+	///     records the kick as a match event.
+	/// </summary>
+	/// <remarks>
+	///     A referee can never be kicked — remove referee status first. BasilBot can never be kicked.
+	///     Unlike <see cref="BanAsync" />, the target must actually be present (seated, or an IRC
+	///     session in the match's chat/scoped to it) — there is nothing to kick otherwise.
+	/// </remarks>
 	/// <param name="actorId">The acting userSession's id, or <see langword="null" /> for a system or HTTP action.</param>
 	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
 	/// <param name="match">The match to update.</param>
-	/// <param name="target">The userSession to kick.</param>
+	/// <param name="targetUserId">The id of the userSession to kick.</param>
+	/// <param name="targetName">The name of the userSession to kick, recorded on the match event.</param>
 	/// <param name="cancellationToken">A token that cancels the leave and event writes.</param>
 	/// <returns>
-	///     <see cref="KickResult.Ok" /> on success, or <see cref="KickResult.TargetNotInMatch" /> when
-	///     the target is not in the match.
+	///     <see cref="KickResult.Ok" /> on success, <see cref="KickResult.TargetNotInMatch" /> when the
+	///     target has no session present in this match, <see cref="KickResult.TargetIsReferee" />, or
+	///     <see cref="KickResult.TargetIsBot" />.
 	/// </returns>
-	public async Task<KickResult> KickAsync(int? actorId, string? actorName, MatchSession match, UserSession target,
-		CancellationToken cancellationToken = default)
+	public async Task<KickResult> KickAsync(int? actorId, string? actorName, MatchSession match, int targetUserId,
+		string? targetName, CancellationToken cancellationToken = default)
 	{
-		if (target.Match != match) return KickResult.TargetNotInMatch;
+		if (targetUserId == BotBootstrapService.BotId) return KickResult.TargetIsBot;
+		if (match.IsReferee(targetUserId)) return KickResult.TargetIsReferee;
 
-		await matchMembership.LeaveAsync(target, match, cancellationToken);
-		target.Enqueue(ServerPacketWriter.MatchJoinFail());
+		var removedAny = false;
+		foreach (var session in OnlineSessions(targetUserId))
+		{
+			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
+			{
+				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
+				gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+				removedAny = true;
+			}
+			else if (session.InChannel(match.ChatChannelName))
+			{
+				matchMembership.LeaveMatchChat(session, match);
+				removedAny = true;
+			}
+		}
+
+		if (!removedAny) return KickResult.TargetNotInMatch;
+
 		logger.LogInformation(
 			"User kicked: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId} Reason=Kicked",
-			match.DbId, actorId, target.Id);
+			match.DbId, actorId, targetUserId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Kicked,
-			actorId, actorName, target.Id, target.Name,
+			actorId, actorName, targetUserId, targetName,
 			DateTimeOffset.UtcNow.UtcDateTime, "Kicked"), cancellationToken);
 
 		return KickResult.Ok;
 	}
 
-	/// <summary>Adds a userSession to the banlist, kicks them from the match, and records the ban as a match event.</summary>
+	/// <summary>
+	///     Adds a userSession to the banlist and evicts every live session they currently have in the
+	///     match, regardless of whether they were online or seated at all.
+	/// </summary>
+	/// <remarks>
+	///     Unlike <see cref="KickAsync" />, this always adds the ban — the target does not need to be
+	///     present, online, or ever have joined. <see cref="MatchMembershipService.JoinAsync" />'s
+	///     existing ban gate blocks any later join attempt (game or otherwise) by this UserId, so
+	///     banning an IRC-only or fully offline participant still blocks a future real-client login.
+	///     A referee and BasilBot can never be banned.
+	/// </remarks>
 	/// <param name="actorId">The acting userSession's id, or <see langword="null" /> for a system or HTTP action.</param>
 	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
 	/// <param name="match">The match to update.</param>
-	/// <param name="target">The userSession to ban.</param>
+	/// <param name="targetUserId">The id of the userSession to ban.</param>
+	/// <param name="targetName">The name of the userSession to ban, recorded on the match event.</param>
 	/// <param name="cancellationToken">A token that cancels the leave, event write, and banlist publish.</param>
 	/// <returns>
-	///     <see cref="KickResult.Ok" /> on success, or <see cref="KickResult.TargetNotInMatch" /> when
-	///     the target is not in the match.
+	///     <see cref="BanResult.Ok" />, <see cref="BanResult.TargetIsReferee" />, or
+	///     <see cref="BanResult.TargetIsBot" />.
 	/// </returns>
-	public async Task<KickResult> BanAsync(int? actorId, string? actorName, MatchSession match, UserSession target,
-		CancellationToken cancellationToken = default)
+	public async Task<BanResult> BanAsync(int? actorId, string? actorName, MatchSession match, int targetUserId,
+		string? targetName, CancellationToken cancellationToken = default)
 	{
-		// TODO: Cho phép Ban ngay cả khi offline
-		if (target.Match != match) return KickResult.TargetNotInMatch;
+		if (targetUserId == BotBootstrapService.BotId) return BanResult.TargetIsBot;
+		if (match.IsReferee(targetUserId)) return BanResult.TargetIsReferee;
 
-		match.AddBan(target.Id);
-		await matchMembership.LeaveAsync(target, match, cancellationToken);
-		target.Enqueue(ServerPacketWriter.MatchJoinFail());
+		match.AddBan(targetUserId);
+
+		foreach (var session in OnlineSessions(targetUserId))
+		{
+			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
+			{
+				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
+				gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			}
+			else if (session.InChannel(match.ChatChannelName))
+			{
+				matchMembership.LeaveMatchChat(session, match);
+			}
+		}
+
 		logger.LogInformation(
 			"User kicked: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId} Reason=Banned",
-			match.DbId, actorId, target.Id);
+			match.DbId, actorId, targetUserId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.Kicked,
-			actorId, actorName, target.Id, target.Name,
+			actorId, actorName, targetUserId, targetName,
 			DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
 		await matchMembership.PublishBansAsync(match, cancellationToken);
-		return KickResult.Ok;
+		return BanResult.Ok;
 	}
 
 	/// <summary>Removes a userSession from the banlist and republishes the banlist.</summary>
@@ -942,7 +1014,7 @@ public sealed class MatchControlService(
 	{
 		match.AddBan(userId);
 
-		var seated = sessionRegistry.GetById(userId);
+		var seated = gameRegistry.GetByUserId(userId);
 		if (seated is null || seated.Match != match) return;
 
 		await matchMembership.LeaveAsync(seated, match, cancellationToken);
@@ -963,16 +1035,21 @@ public sealed class MatchControlService(
 	///     <see cref="ForceInviteResult.TargetBanned" /> when the target is banned, or
 	///     <see cref="ForceInviteResult.TargetInAnotherMatch" /> when the target is already elsewhere.
 	/// </returns>
-	public async Task<ForceInviteResult> ForceInviteAsync(MatchSession match, UserSession target,
+	public async Task<ForceInviteResult> ForceInviteAsync(MatchSession match, GameSession target,
 		CancellationToken cancellationToken = default)
 	{
+		if (target.IsBot) return ForceInviteResult.TargetIsBot;
 		if (match.BannedIds.Contains(target.Id)) return ForceInviteResult.TargetBanned;
 		if (target.Match == match) return ForceInviteResult.Ok;
 		if (target.Match is not null) return ForceInviteResult.TargetInAnotherMatch;
 
-		return await matchMembership.ForceJoinAsync(target, match, cancellationToken)
-			? ForceInviteResult.Ok
-			: ForceInviteResult.NoFreeSlot;
+		var joined = await matchMembership.ForceJoinAsync(target, match, cancellationToken);
+		return joined switch
+		{
+			MatchMembershipService.JoinResult.Ok => ForceInviteResult.Ok,
+			MatchMembershipService.JoinResult.BotCannotSeat => ForceInviteResult.TargetIsBot,
+			_ => ForceInviteResult.NoFreeSlot
+		};
 	}
 
 	/// <summary>Reassigns, re-teams, and locks slots in one atomic pass, then republishes the slot views.</summary>
@@ -1078,6 +1155,17 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		await matchMembership.CloseAsync(match, actorId, actorName, cancellationToken);
+	}
+
+	/// <summary>
+	///     Enumerates the online sessions of a user id, a <see cref="GameSession" /> first then an
+	///     <see cref="IrcSession" />, so kick/ban cleanup reaches both live connections an account may hold.
+	/// </summary>
+	/// <param name="userId">The user id whose live sessions to enumerate.</param>
+	private IEnumerable<UserSession> OnlineSessions(int userId)
+	{
+		if (gameRegistry.GetByUserId(userId) is { } game) yield return game;
+		if (ircRegistry.GetByUserId(userId) is { } irc) yield return irc;
 	}
 
 	/// <summary>Represents one entry in a <c>PUT</c> or <c>PATCH /matches/{matchId}/slots</c> request.</summary>

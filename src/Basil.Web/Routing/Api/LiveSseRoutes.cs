@@ -211,7 +211,7 @@ internal static class LiveSseRoutes
 	///     single Server-Sent Events stream.
 	/// </remarks>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
-		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, IUserSessionRegistry sessionRegistry,
+		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, ISessionRegistry<GameSession> sessionRegistry,
 		Func<byte[]?> readLatestSlotSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
@@ -236,7 +236,7 @@ internal static class LiveSseRoutes
 				{
 					if (id != match.DbId) return;
 					var occupantName = match.Slots[slotIndex].PlayerId is { } occupantId
-						? sessionRegistry.GetById(occupantId)?.Name
+						? sessionRegistry.GetByUserId(occupantId)?.Name
 						: null;
 					if (occupantName is not null && occupantName == playerName) publish("score", payload);
 				}

@@ -38,7 +38,7 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 
 	/// <inheritdoc />
 	/// <remarks>Claims the lowest-numbered id not currently in use.</remarks>
-	public async Task<MatchSession> CreateAsync(MatchState data, int hostId, bool createdViaMakeCommand = false,
+	public async Task<MatchSession> CreateAsync(MatchState data, int hostId,
 		CancellationToken cancellationToken = default)
 	{
 		MatchSession match;
@@ -46,7 +46,7 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 		do
 		{
 			while (_matches.ContainsKey(id)) id++;
-			match = BuildNew(id, data, hostId, createdViaMakeCommand);
+			match = BuildNew(id, data, hostId);
 		} while (!_matches.TryAdd(id, match));
 
 		match.DbId =
@@ -74,17 +74,13 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	/// <param name="id">The in-memory registry slot id.</param>
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="hostId">The id of the userSession who created the room.</param>
-	/// <param name="createdViaMakeCommand">
-	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
-	///     <see langword="false" />.
-	/// </param>
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	private static MatchSession BuildNew(int id, MatchState data, int hostId, bool createdViaMakeCommand = false)
+	private static MatchSession BuildNew(int id, MatchState data, int hostId)
 	{
 		return new MatchSession(
 			id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
 			hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(id), createdViaMakeCommand);
+			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(id));
 	}
 
 	/// <summary>Get the chat channel name of a match.</summary>

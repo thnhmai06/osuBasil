@@ -21,9 +21,9 @@ public class SpectateFramesHandlerTests
 	private static readonly byte[] ValidBundleBytes =
 		Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000000000000");
 
-	private static UserSession MakePlayer(int id, string name)
+	private static GameSession MakePlayer(int id, string name)
 	{
-		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Fact]

@@ -19,45 +19,35 @@ namespace Basil.Application.Packets.Multiplayer;
 /// </remarks>
 public sealed class CreateMatchHandler(MatchMembershipService matchMembership) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.CreateMatch;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: match creation is not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the create-match packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the match data.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
-		if (!MatchMembershipService.ValidateMatchData(matchData, userSession.Id)) return;
+		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id)) return;
 
-		if (userSession.Restricted)
+		if (gameSession.Restricted)
 		{
-			userSession.Enqueue([
+			gameSession.Enqueue([
 				.. ServerPacketWriter.MatchJoinFail(),
 				.. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
 			]);
 			return;
 		}
 
-		if (userSession.Silenced)
+		if (gameSession.Silenced)
 		{
-			userSession.Enqueue([
+			gameSession.Enqueue([
 				.. ServerPacketWriter.MatchJoinFail(),
 				.. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
 			]);
 			return;
 		}
 
-		var match = await matchMembership.CreateAsync(userSession, matchData, cancellationToken: cancellationToken);
-		match.AddReferee(userSession.Id);
+		var match = await matchMembership.CreateAsync(gameSession, matchData, cancellationToken: cancellationToken);
+		match?.AddReferee(gameSession.Id);
 	}
 }

@@ -122,7 +122,8 @@ public static class DependencyInjection
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
-		services.AddSingleton<IUserSessionRegistry, InMemoryUserSessionRegistry>();
+		services.AddSingleton<ISessionRegistry<GameSession>, GameSessionRegistry>();
+		services.AddSingleton<ISessionRegistry<IrcSession>, IrcSessionRegistry>();
 		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
 		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();

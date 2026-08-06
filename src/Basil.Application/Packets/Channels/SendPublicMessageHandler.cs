@@ -20,10 +20,10 @@ public sealed class SendPublicMessageHandler(ChatDispatchService chatDispatch) :
 
 	public bool AllowedWhenRestricted => true;
 
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var message = reader.ReadMessage();
-		await chatDispatch.SendPrivmsgAsync(userSession, message.Recipient, message.Text, cancellationToken);
+		await chatDispatch.SendPrivmsgAsync(gameSession, message.Recipient, message.Text, cancellationToken);
 	}
 }

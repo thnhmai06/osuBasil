@@ -29,13 +29,13 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var rawData = reader.ReadRaw(reader.RemainingLength);
 		var packet = ServerPacketWriter.SpectateFrames(rawData);
 
-		foreach (var spectator in userSession.Spectators)
+		foreach (var spectator in gameSession.Spectators)
 			spectator.Enqueue(packet);
 
 		if (!playerInputEvents.HasSubscribers)
@@ -44,11 +44,11 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 		try
 		{
 			var bundle = new PacketReader(rawData).ReadReplayFrameBundle();
-			var user = new UserBrief(userSession.Id, userSession.Name, userSession.Country);
+			var user = new UserBrief(gameSession.Id, gameSession.Name, gameSession.Country);
 			var payload = JsonSerializer.SerializeToUtf8Bytes(
 				new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
 				BasilJsonOptions.Instance);
-			playerInputEvents.PublishInput(userSession.Id, payload);
+			playerInputEvents.PublishInput(gameSession.Id, payload);
 		}
 		catch (Exception)
 		{

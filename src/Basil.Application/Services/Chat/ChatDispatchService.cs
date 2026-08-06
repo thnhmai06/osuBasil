@@ -33,7 +33,7 @@ namespace Basil.Application.Services.Chat;
 /// </remarks>
 public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	ChannelMembershipService channelMembership,
 	IUserRepository users,
 	IRelationshipRepository relationships,
@@ -92,18 +92,22 @@ public sealed class ChatDispatchService(
 	/// <param name="sender">The userSession sending the message.</param>
 	/// <param name="channelName">The channel name as the client wrote it.</param>
 	/// <returns>
-	///     The internal channel name that indexes the registry, or the input unchanged when no
+	///     The internal channel name that indexes the registry or the input unchanged when no
 	///     translation applies.
 	/// </returns>
 	private static string ResolveClientChannelName(UserSession sender, string channelName)
 	{
+		// The #multiplayer/#spectator aliases only exist for a real bancho client; an IrcSession
+		// always names the underlying channel directly.
+		if (sender is not GameSession game) return channelName;
+
 		switch (channelName)
 		{
-			case "#multiplayer" when sender.Match is { } match:
+			case "#multiplayer" when game.Match is { } match:
 				return match.ChatChannelName;
 			case "#spectator":
 			{
-				var hostId = sender.Spectating?.Id ?? (sender.Spectators.Count > 0 ? sender.Id : null);
+				var hostId = game.Spectating?.Id ?? (game.Spectators.Count > 0 ? game.Id : null);
 				if (hostId is { } id) return $"#spec_{id}";
 				break;
 			}
@@ -129,11 +133,12 @@ public sealed class ChatDispatchService(
 			channel, IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
 			sender.Id);
 
-		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+		var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
-		var matchScope = sender.Match is not null && sender.Match.ChatChannelName == channel.Name
-			? sender.Match
+		var senderMatch = (sender as GameSession)?.Match;
+		var matchScope = senderMatch is not null && senderMatch.ChatChannelName == channel.Name
+			? senderMatch
 			: null;
 		var sink = new ChannelReplySink(channelMembership, channel, bot, sender);
 		await commandDispatcher.DispatchAsync(sender, truncated, matchScope, channel.Name, sink,
@@ -147,7 +152,7 @@ public sealed class ChatDispatchService(
 		await commandDispatcher.DispatchAsync(sender, text, null, null, sink, true, cancellationToken);
 	}
 
-	private async Task DeliverPrivateMessageAsync(UserSession sender, string recipientName, UserSession? target,
+	private async Task DeliverPrivateMessageAsync(UserSession sender, string recipientName, GameSession? target,
 		string text, CancellationToken cancellationToken)
 	{
 		int targetId;
@@ -167,7 +172,7 @@ public sealed class ChatDispatchService(
 		if (relationship?.Type == RelationshipType.Block)
 		{
 			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=Blocked", sender.Id);
-			sender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
+			if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
 			return;
 		}
 
@@ -176,14 +181,14 @@ public sealed class ChatDispatchService(
 			if (target.PmPrivate && relationship?.Type != RelationshipType.Friend)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=PmPrivate", sender.Id);
-				sender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
+				if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
 				return;
 			}
 
 			if (target.Silenced)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=TargetSilenced", sender.Id);
-				sender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
+				if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
 				return;
 			}
 
@@ -292,7 +297,7 @@ public sealed class ChatDispatchService(
 				if (scoped is not null) return scoped;
 			}
 
-			return sender.Match;
+			return (sender as GameSession)?.Match;
 		}
 	}
 }

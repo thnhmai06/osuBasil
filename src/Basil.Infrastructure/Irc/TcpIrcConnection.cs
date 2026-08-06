@@ -27,9 +27,9 @@ namespace Basil.Infrastructure.Irc;
 /// <param name="client">The accepted TCP socket to read from and write to.</param>
 /// <param name="authService">Authenticates the PASS/NICK handshake and builds the session on success.</param>
 /// <param name="chatDispatch">Routes registered PRIVMSG traffic into the shared chat core.</param>
-/// <param name="channelMembership">Handles JOIN/PART commands and the quit performed at teardown.</param>
+/// <param name="channelMembership">Handles JOIN/PART commands.</param>
 /// <param name="channelRegistry">Resolves JOIN/PART channel names to their live sessions.</param>
-/// <param name="sessionRegistry">The registry the authenticated session is added to and later removed from.</param>
+/// <param name="playerLogout">Performs the shared teardown when this connection disconnects.</param>
 /// <param name="options">Provides the gateway's display name used in numerics and PINGs.</param>
 /// <param name="logger">Logs this connection's lifecycle events.</param>
 /// <param name="connectionId">The per-process-unique id assigned to this connection by the listener.</param>
@@ -39,7 +39,7 @@ public sealed class TcpIrcConnection(
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
-	IUserSessionRegistry sessionRegistry,
+	PlayerLogoutService playerLogout,
 	IOptions<IrcOptions> options,
 	ILogger<TcpIrcConnection> logger,
 	long connectionId) : IIrcConnection
@@ -57,13 +57,11 @@ public sealed class TcpIrcConnection(
 	/// <summary>Indicates whether the PASS/NICK handshake has completed and <see cref="User" /> is set.</summary>
 	private bool _registered;
 
-	/// <inheritdoc />
-	/// <remarks>Null until authentication succeeds.</remarks>
-	public UserSession User { get; private set; } = null!;
+	/// <summary>Gets the authenticated session, or null until authentication succeeds.</summary>
+	public IrcSession User { get; private set; } = null!;
 
 	/// <inheritdoc />
-	/// <remarks>Always <see langword="true" />: this type is the real external IRC transport.</remarks>
-	public bool IsExternalIrcClient => true;
+	UserSession IIrcConnection.User => User;
 
 	/// <summary>
 	///     Enqueues to the bounded outbox with a non-blocking <c>TryWrite</c>.
@@ -108,8 +106,9 @@ public sealed class TcpIrcConnection(
 			if (_registered)
 			{
 				logger.LogInformation("IRC client disconnected: UserId={UserId} Nick={Nick}", User.Id, User.Name);
-				channelMembership.Quit(User, "Connection closed");
-				sessionRegistry.Remove(User);
+				// CancellationToken.None: teardown must run to completion even though the connection's
+				// own lifetime token is what triggered this disconnect in the first place.
+				await playerLogout.LogoutAsync(User, CancellationToken.None);
 			}
 		}
 	}

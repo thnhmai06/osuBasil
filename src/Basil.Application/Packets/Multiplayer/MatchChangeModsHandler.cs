@@ -17,26 +17,16 @@ namespace Basil.Application.Packets.Multiplayer;
 /// </remarks>
 public sealed class MatchChangeModsHandler(MatchMembershipService matchMembership) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchChangeMods;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: mod changes are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the change-mods packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the new mods as an integer.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var mods = (Mods)reader.ReadI32();
 
-		var match = userSession.Match;
+		var match = gameSession.Match;
 		if (match is null) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
@@ -44,17 +34,17 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
 		{
 			if (match.Freemods)
 			{
-				if (userSession.Id == match.HostId)
+				if (gameSession.Id == match.HostId)
 					match.Mods = mods & Mods.SpeedChangingMods;
 
-				var slot = match.GetSlot(userSession.Id);
+				var slot = match.GetSlot(gameSession.Id);
 				if (slot is null) return;
 
 				slot.Mods = mods & ~Mods.SpeedChangingMods;
 			}
 			else
 			{
-				if (userSession.Id != match.HostId) return;
+				if (gameSession.Id != match.HostId) return;
 
 				match.Mods = mods;
 			}

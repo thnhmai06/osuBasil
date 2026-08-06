@@ -6,9 +6,9 @@ namespace Basil.Application.Tests.Sessions;
 /// <summary>Ported from app/objects/userSession.py's User — session state for online players.</summary>
 public class UserSessionTests
 {
-	private static UserSession MakeSession(UserPrivileges priv)
+	private static GameSession MakeSession(UserPrivileges priv)
 	{
-		return new UserSession(1000, "cmyui", "some-token", priv, DateTimeOffset.UnixEpoch.AddSeconds(1000));
+		return new GameSession(1000, "cmyui", "some-token", priv, DateTimeOffset.UnixEpoch.AddSeconds(1000));
 	}
 
 	[Fact]
@@ -58,7 +58,7 @@ public class UserSessionTests
 	[Fact]
 	public void SafeName_NormalizesViaSafeNameMake()
 	{
-		var session = new UserSession(1, "Cool Guy", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "Cool Guy", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		Assert.Equal("cool_guy", session.SafeName);
 	}

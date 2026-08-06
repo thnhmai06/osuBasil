@@ -155,7 +155,7 @@ internal static class BanchoProtocolRoutes
 				}
 				else
 				{
-					var sessionRegistry = context.RequestServices.GetRequiredService<IUserSessionRegistry>();
+					var sessionRegistry = context.RequestServices.GetRequiredService<ISessionRegistry<GameSession>>();
 					var session = sessionRegistry.GetByToken(token);
 					if (session is null)
 					{

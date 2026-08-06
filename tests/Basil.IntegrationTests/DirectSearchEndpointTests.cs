@@ -89,8 +89,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task Search_Authenticated_ReturnsFormattedResults()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.Add(new UserSession(60, "search-user", "tok", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(60, "search-user", "tok", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=search-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
@@ -122,8 +122,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 			});
 		});
 
-		var sessionRegistry = mirrorFactory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.Add(new UserSession(63, "mirror-user", "tok4", UserPrivileges.Unrestricted,
+		var sessionRegistry = mirrorFactory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(63, "mirror-user", "tok4", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=mirror-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
@@ -152,8 +152,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 			});
 		});
 
-		var sessionRegistry = mirrorFactory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.Add(new UserSession(64, "mirror-fail-user", "tok5", UserPrivileges.Unrestricted,
+		var sessionRegistry = mirrorFactory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(64, "mirror-fail-user", "tok5", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=mirror-fail-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
@@ -177,8 +177,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task SearchSet_UnknownSet_ReturnsEmptyBody()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.Add(new UserSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(61, "searchset-unknown", "tok2", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_setInfo = null;
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-unknown&h=correct-md5&s=999");
@@ -192,8 +192,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	[Fact]
 	public async Task SearchSet_KnownSet_ReturnsFormattedSetLine()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.Add(new UserSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(62, "searchset-known", "tok3", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		_setInfo = MakeBeatmap(1, 100);
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-known&h=correct-md5&s=100");

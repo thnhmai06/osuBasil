@@ -17,7 +17,7 @@ public static class PacketBuilders
 	/// <summary>Builds a user-presence packet describing the given session.</summary>
 	/// <param name="session">The session whose presence data is serialized.</param>
 	/// <returns>A byte array containing the wrapped presence packet.</returns>
-	public static byte[] BuildUserPresence(UserSession session)
+	public static byte[] BuildUserPresence(GameSession session)
 	{
 		return ServerPacketWriter.UserPresence(
 			session.Id, session.Name, session.UtcOffset, (int)session.Country,
@@ -28,12 +28,12 @@ public static class PacketBuilders
 	/// <summary>Builds a user-stats packet describing the given session's status and current-mode stats.</summary>
 	/// <param name="session">The session whose status and stats are serialized.</param>
 	/// <returns>A byte array containing the wrapped user-stats packet.</returns>
-	public static byte[] BuildUserStats(UserSession session)
+	public static byte[] BuildUserStats(GameSession session)
 	{
 		return ServerPacketWriter.UserStats(
 			session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
 			(int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
 			session.CurrentStats?.RankedScore ?? 0, 100.0, session.CurrentStats?.Plays ?? 0,
-			session.CurrentStats?.TotalScore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
+			session.CurrentStats?.TotalScore ?? 0, session.CurrentStats?.Rank ?? 0, 727);
 	}
 }

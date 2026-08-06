@@ -20,13 +20,13 @@ public sealed class LobbyPartHandler(IChannelRegistry channelRegistry, ChannelMe
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		userSession.InLobby = false;
+		gameSession.InLobby = false;
 
 		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null) channelMembership.Part(userSession, lobby, false);
+		if (lobby is not null) channelMembership.Part(gameSession, lobby, false);
 
 		return Task.CompletedTask;
 	}

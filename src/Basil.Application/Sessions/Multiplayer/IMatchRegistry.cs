@@ -37,14 +37,9 @@ public interface IMatchRegistry
 	/// </remarks>
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="hostId">The id of the userSession who created the room.</param>
-	/// <param name="createdViaMakeCommand">
-	///     <see langword="true" /> when created via <c>!mp make</c>; otherwise,
-	///     <see langword="false" />.
-	/// </param>
 	/// <param name="cancellationToken">A token that cancels the create operations.</param>
 	/// <returns>The newly registered match.</returns>
-	Task<MatchSession> CreateAsync(MatchState data, int hostId, bool createdViaMakeCommand = false,
-		CancellationToken cancellationToken = default);
+	Task<MatchSession> CreateAsync(MatchState data, int hostId, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Unregisters the match with the wire-protocol id <paramref name="id" />, called when a

@@ -30,7 +30,8 @@ public enum ClientIntegrityResult : byte
 ///     server would apply, because Basil has no restrict system.
 /// </remarks>
 public sealed class ClientIntegrityService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	MatchMembershipService matchMembership,
 	ILogger<ClientIntegrityService> logger)
 {
@@ -47,7 +48,7 @@ public sealed class ClientIntegrityService(
 	///     other flags are ignored.
 	/// </remarks>
 	public Task<ClientIntegrityResult> HandleLastFmFlagsAsync(
-		UserSession userSession, string beatmapIdOrHiddenFlag)
+		GameSession userSession, string beatmapIdOrHiddenFlag)
 	{
 		if (string.IsNullOrEmpty(beatmapIdOrHiddenFlag) || beatmapIdOrHiddenFlag[0] != 'a')
 			return Task.FromResult(ClientIntegrityResult.StopSending);
@@ -78,7 +79,7 @@ public sealed class ClientIntegrityService(
 		return Task.FromResult(ClientIntegrityResult.Empty);
 	}
 
-	private void ReportFlag(UserSession userSession, string reason)
+	private void ReportFlag(GameSession userSession, string reason)
 	{
 		var match = userSession.Match;
 		if (match is null)
@@ -88,7 +89,7 @@ public sealed class ClientIntegrityService(
 			return;
 		}
 
-		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
@@ -98,8 +99,10 @@ public sealed class ClientIntegrityService(
 			match.DbId, match.Referees);
 		foreach (var refereeId in match.Referees)
 		{
-			var referee = sessionRegistry.GetById(refereeId);
-			referee?.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
+			if (gameRegistry.GetByUserId(refereeId) is { } referee)
+				referee.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
+			if (ircRegistry.GetByUserId(refereeId) is { } irc)
+				irc.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, irc.Name, dm));
 		}
 	}
 }

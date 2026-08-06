@@ -8,41 +8,60 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Application.Sessions;
 
 /// <summary>
-///     Performs the coordinated cleanup that runs when a userSession goes offline: leaving the current
-///     multiplayer match, tearing down spectator relationships, parting every joined channel with
-///     the appropriate broadcast, and removing the session from the registry. Shared by the LOGOUT
-///     packet handler and the <c>!reconnect</c> command, both of which force the same cleanup on a
-///     session outside the normal logout flow. The LOGOUT packet's one-second login-grace-period
-///     check is deliberately absent here because it is specific to that packet rather than part of
-///     logout semantics.
+///     Performs the coordinated cleanup that runs when a session goes offline. Shared by the LOGOUT
+///     packet handler, the <c>!reconnect</c> command, and a real IRC connection's disconnect, both of
+///     which force the same cleanup on a session outside the normal logout flow. The LOGOUT packet's
+///     one-second login-grace-period check is deliberately absent here because it is specific to that
+///     packet rather than part of logout semantics.
 /// </summary>
+/// <remarks>
+///     Game and IRC sessions get different treatment: a <see cref="GameSession" /> leaves its match,
+///     tears down spectator relationships, and (if unrestricted) has its logout broadcast to every
+///     other <see cref="GameSession" />, since it is the only kind osu! clients ever saw as an online
+///     "player" in the first place. An <see cref="IrcSession" /> disconnect never touches match or
+///     spectator state and never sends a game presence-offline notification — both would be
+///     meaningless for a connection that was chat/commands only. Both kinds part every joined channel
+///     through <see cref="ChannelMembershipService.DisconnectFromChannels" />, which applies the
+///     shared PART/QUIT rules based on whether the same UserId is still present elsewhere.
+/// </remarks>
 public sealed class PlayerLogoutService(
-	IUserSessionRegistry sessionRegistry,
-	IChannelRegistry channelRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
+	ChannelMembershipService channelMembership,
 	SpectatorService spectatorService,
 	MatchMembershipService matchMembership,
 	ILogger<PlayerLogoutService> logger)
 {
 	/// <summary>
-	///     Logs <paramref name="userSession" /> out, running each teardown step in order: leaving the
-	///     current match under its lock, removing spectator relationships (including BasilBot's own
-	///     watch on this userSession), parting all joined channels with membership broadcasts, removing
-	///     the session from the registry, and notifying every remaining userSession of the logout.
+	///     Logs <paramref name="userSession" /> out, dispatching to the game or IRC teardown path.
 	/// </summary>
-	/// <param name="userSession">The session of the userSession being logged out.</param>
+	/// <param name="userSession">The session being logged out.</param>
 	/// <param name="cancellationToken">A token that cancels the wait on the match lock when the userSession is in a match.</param>
 	/// <returns>A task that completes when the logout cleanup has finished.</returns>
 	public async Task LogoutAsync(UserSession userSession, CancellationToken cancellationToken = default)
 	{
-		logger.LogInformation("- User logged out: UserId={UserId} Username={Username}", userSession.Id,
-			userSession.Name);
+		logger.LogInformation(
+			"- User logged out: UserId={UserId} Username={Username}", userSession.Id, userSession.Name);
 
-		if (userSession.Match is { } match)
+		switch (userSession)
+		{
+			case GameSession game:
+				await LogoutGameSessionAsync(game, cancellationToken);
+				break;
+			case IrcSession irc:
+				LogoutIrcSession(irc);
+				break;
+		}
+	}
+
+	private async Task LogoutGameSessionAsync(GameSession game, CancellationToken cancellationToken)
+	{
+		if (game.Match is { } match)
 		{
 			await match.Lock.WaitAsync(cancellationToken);
 			try
 			{
-				await matchMembership.LeaveAsync(userSession, match, cancellationToken);
+				await matchMembership.LeaveAsync(game, match, cancellationToken);
 			}
 			finally
 			{
@@ -50,31 +69,25 @@ public sealed class PlayerLogoutService(
 			}
 		}
 
-		if (userSession.Spectating is { } host) spectatorService.RemoveSpectator(host, userSession);
+		if (game.Spectating is { } host) spectatorService.RemoveSpectator(host, game);
 
 		// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
 		// BasilBot's own watch of this departing userSession now, or the channel would be left with a
 		// dead member reference until this same user logs back in and re-triggers AddSpectator.
-		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
-		if (bot is not null) spectatorService.RemoveSpectator(userSession, bot);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
+		if (bot is not null) spectatorService.RemoveSpectator(game, bot);
 
-		foreach (var channelName in userSession.Channels.ToArray())
-		{
-			var channel = channelRegistry.GetByName(channelName);
-			if (channel is null) continue;
+		channelMembership.DisconnectFromChannels(game, "Logged out");
+		gameRegistry.Remove(game);
 
-			channel.Part(userSession.Id);
-			userSession.LeaveChannel(channelName);
+		if (!game.Restricted)
+			foreach (var other in gameRegistry.All)
+				other.Enqueue(ServerPacketWriter.Logout(game.Id));
+	}
 
-			foreach (var session in sessionRegistry.All)
-				if (channel.CanRead(session.Privilege))
-					session.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
-		}
-
-		sessionRegistry.Remove(userSession);
-
-		if (!userSession.Restricted)
-			foreach (var other in sessionRegistry.All)
-				other.Enqueue(ServerPacketWriter.Logout(userSession.Id));
+	private void LogoutIrcSession(IrcSession irc)
+	{
+		channelMembership.DisconnectFromChannels(irc, "Connection closed");
+		ircRegistry.Remove(irc);
 	}
 }

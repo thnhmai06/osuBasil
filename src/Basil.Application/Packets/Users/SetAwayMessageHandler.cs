@@ -12,22 +12,15 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class SetAwayMessageHandler : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.SetAwayMessage" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.SetAwayMessage;
 
-	/// <summary>Restricted players may not set an away message, so this handler is unavailable to them.</summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Reads the message and stores its text as the userSession's away message.</summary>
-	/// <param name="userSession">The userSession session whose away message is being set.</param>
-	/// <param name="reader">The packet reader positioned at the SetAwayMessage body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var message = reader.ReadMessage();
-		userSession.AwayMessage = message.Text;
+		gameSession.AwayMessage = message.Text;
 		return Task.CompletedTask;
 	}
 }

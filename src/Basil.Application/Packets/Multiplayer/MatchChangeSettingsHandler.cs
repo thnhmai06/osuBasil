@@ -14,7 +14,7 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     speed-changing mods on the match and strips them from every occupied slot; turning it off
 ///     restores the host slot's mods to the match and clears the mods of every other occupied slot. The
 ///     beatmap selection is handled through a clear-and-resolve handshake: a snapshot with MapId -1
-///     clears the current selection (unreadying all players, remembering the previous map, and
+///     clears the current selection (unready all players, remembering the previous map, and
 ///     cancelling a queued auto-start), while a match that currently has no map re-attempts resolution
 ///     of the snapshot's md5 against the local repository, applying the resolved beatmap and updating
 ///     the game mode from the host's current status, or warning once through a bot chat message when
@@ -26,31 +26,21 @@ namespace Basil.Application.Packets.Multiplayer;
 /// </remarks>
 public sealed class MatchChangeSettingsHandler(
 	IBeatmapRepository beatmapRepository,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	MatchMembershipService matchMembership) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchChangeSettings;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: settings changes are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the change-settings packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the full settings snapshot.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
 
-		var match = userSession.Match;
-		if (!MatchMembershipService.ValidateMatchData(matchData, userSession.Id) || match is null ||
-		    userSession.Id != match.HostId) return;
+		var match = gameSession.Match;
+		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
+		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -103,7 +93,7 @@ public sealed class MatchChangeSettingsHandler(
 					match.MapName = beatmap.FullName;
 					match.UnresolvedMapMd5 = null;
 
-					var host = sessionRegistry.GetById(match.HostId);
+					var host = sessionRegistry.GetByUserId(match.HostId);
 					if (host is not null) match.Mode = host.Status.Mode;
 					matchMembership.CancelQueuedAutoStart(match);
 				}
@@ -116,7 +106,7 @@ public sealed class MatchChangeSettingsHandler(
 					// UnresolvedMapMd5 this warning would re-fire on every one of those instead of just
 					// the first.
 					match.UnresolvedMapMd5 = matchData.MapMd5;
-					var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+					var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 					if (bot is not null)
 						matchMembership.EnqueueChat(match, bot.Name, bot.Id,
 							"Beatmap not found on the server — map selection ignored.");

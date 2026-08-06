@@ -23,7 +23,7 @@ public class PingHandlerTests
 	[Fact]
 	public async Task Handle_DoesNothing()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader = new PacketReader(Array.Empty<byte>());
 
 		await new PingHandler().HandleAsync(session, reader);

@@ -10,7 +10,7 @@ Without a shared layer, "who can see this message" and "does this start with `!`
 
 ## Contract
 
-- **Every `PlayerSession` has an `IIrcConnection`**, regardless of how it connected. A real osu! client gets a bridge implementation that only forwards `PRIVMSG`; a real IRC client gets a full implementation that also handles presence numerics (`JOIN`/`PART`/`QUIT`).
+- **Every session has an `IIrcConnection`**, regardless of which of the two session types it is. A `GameSession` (a real osu! client) gets a bridge implementation that only forwards `PRIVMSG`; an `IrcSession` (a real IRC client) gets a full implementation that also handles presence numerics (`JOIN`/`PART`/`QUIT`). See [`irc.md`](irc.md) for why the two are separate types.
 - **IRC login uses the account password**, the same one used for the osu! client, not a separate IRC-only password.
 - **A message starting with the configured command prefix (`!` by default) is a command**, not a chat message, whether it arrived as a bancho `SEND_MESSAGE` packet or an IRC `PRIVMSG`.
 - **A direct DM to BasilBot never needs the prefix:** every DM to the bot is already unambiguously a command.
@@ -19,7 +19,7 @@ Without a shared layer, "who can see this message" and "does this start with `!`
 
 - **`ChatDispatchService`** is the one entry point every chat message passes through, whichever transport it arrived on. It decides three things: is this a channel message, a DM to the bot, or a regular DM; then routes accordingly.
 - **The IRC gateway is embedded:** no separate process, no Docker container. `TcpIrcListener` binds a raw TCP port (6667 by default) directly inside the same server process.
-- **BasilBot is a real session**, bootstrapped at startup with no client connection behind it. It's exempt from the idle-disconnect sweep that would otherwise reap a session that never sends a ping.
+- **BasilBot is a synthetic `GameSession`**, bootstrapped at startup with no client connection behind it. It's exempt from the idle-disconnect sweep that would otherwise reap a session that never sends a ping.
 - **Referee and host are separate roles** for `!mp` purposes. See the BasilBot Commands reference (`api.<domain>/docs/basil-bot/`) for the full command list and the referee/host distinction in detail.
 
 ## Lifecycle
@@ -51,7 +51,7 @@ IrcAuthenticationService.AuthenticateAsync
         |
 verify password (same check as osu! client login)
         |
-create a virtual PlayerSession (no bancho socket)
+create an IrcSession (no bancho socket, chat/commands only)
         |
 join auto-join channels, send welcome numerics
 ```

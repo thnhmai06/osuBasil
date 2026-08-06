@@ -16,7 +16,7 @@ namespace Basil.Application.Services.Authentication;
 ///     repeat checks against the same account's hash cost almost nothing.
 /// </remarks>
 public sealed class AuthenticationService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	IUserRepository users,
 	IPasswordHasher passwordHasher,
 	ILogger<AuthenticationService> logger)
@@ -29,10 +29,10 @@ public sealed class AuthenticationService(
 	/// <param name="passwordMd5">The hex-encoded MD5 digest of the userSession's password.</param>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	/// <returns>
-	///     The online <see cref="UserSession" /> when the userSession is online and the password verifies;
-	///     otherwise, <see langword="null" />.
+	///     The online <see cref="GameSession" /> when the userSession is online with a real osu! client
+	///     and the password verifies; otherwise, <see langword="null" />.
 	/// </returns>
-	public async Task<UserSession?> AuthenticateOnlinePlayerAsync(
+	public async Task<GameSession?> AuthenticateOnlinePlayerAsync(
 		string username, string passwordMd5, CancellationToken cancellationToken = default)
 	{
 		var session = sessionRegistry.GetByName(username);

@@ -72,17 +72,17 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		return created.GetProperty("data").GetProperty("id").GetInt32();
 	}
 
-	private async Task<UserSession> SeatNewPlayer(int id, string name, int matchId)
+	private async Task<GameSession> SeatNewPlayer(int id, string name, int matchId)
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 
-		var session = new UserSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.Add(session);
+		var session = new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		sessionRegistry.TryAdd(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
-		Assert.True(await matchMembership.JoinAsync(session, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));
 		return session;
 	}
 

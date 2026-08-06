@@ -25,16 +25,16 @@ public sealed class LobbyJoinHandler(
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		userSession.InLobby = true;
+		gameSession.InLobby = true;
 
 		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null) channelMembership.Join(userSession, lobby);
+		if (lobby is not null) channelMembership.Join(gameSession, lobby);
 
 		foreach (var match in matchRegistry.All)
-			userSession.Enqueue(ServerPacketWriter.NewMatch(match.ToPacket()));
+			gameSession.Enqueue(ServerPacketWriter.NewMatch(match.ToPacket()));
 
 		return Task.CompletedTask;
 	}

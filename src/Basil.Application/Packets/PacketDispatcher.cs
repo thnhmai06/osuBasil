@@ -50,7 +50,7 @@ public sealed class PacketDispatcher
 	/// <param name="body">The raw request body containing one or more Bancho packets.</param>
 	/// <param name="cancellationToken">The token used to cancel the dispatch.</param>
 	/// <returns>A task that completes once every packet in the body has been dispatched.</returns>
-	public async Task DispatchAsync(UserSession userSession, byte[] body, CancellationToken cancellationToken = default)
+	public async Task DispatchAsync(GameSession userSession, byte[] body, CancellationToken cancellationToken = default)
 	{
 		var reader = new PacketReader(body);
 		var handlerMap = userSession.Restricted ? _restrictedAllowed : _all;
