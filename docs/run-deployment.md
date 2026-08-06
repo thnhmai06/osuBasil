@@ -176,12 +176,14 @@ the ffmpeg dependency so there's nothing extra to install by hand.
    `a.<domain>`, `api.<domain>`
 
    > [!NOTE]
-   > The IRC gateway listens on a separate TCP port (6667 by default, configurable via
-   > `Basil:Irc:Port`) and is **not** served through ASP.NET Core/Kestrel. It binds a raw
-   > `TcpListener` to `IPAddress.Any` (`TcpIrcListener`, a `BackgroundService`) with no hostname or
-   > SNI routing at all — there is no `irc.<domain>` subdomain, and none of the 9 SAN entries above
-   > matter to it. It does not need TLS; a real IRC client connects over plain TCP to the bare
-   > `<domain>` (or any hostname/IP that resolves to the server) on that port.
+   > The IRC gateway runs independently of ASP.NET Core/Kestrel on its own TCP port (`6667` by
+   > default, configurable via `Basil:Irc:Port`). It is hosted by `TcpIrcListener` (a
+   > `BackgroundService`) using a raw `TcpListener` bound to `IPAddress.Any`, so it has no concept of
+   > hostnames, virtual hosts, or SNI. Consequently, no dedicated `irc.<domain>` subdomain or TLS
+   > certificate is required.
+   >
+   > IRC clients simply connect over plain TCP to `<domain>` (or any stname/IP that resolves to the server) on the
+   configured port.
 
    For a real public domain, any standard ACME/wildcard cert covering `*.<domain>` and `<domain>` works. For a LAN-only
    deployment without public DNS, generate a self-signed cert with those SANs, see the Development section below for the
