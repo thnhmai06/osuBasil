@@ -349,10 +349,10 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_Settings_RefereeAlsoConnectedViaIrc_AppearsInBothRefsAndIrcLists()
+	public async Task HandleAsync_Settings_RefereeAlsoConnectedViaIrc_AppearsInIrcList()
 	{
-		// Three independent questions, not deduplicated: a referee with a separate live IrcSession
-		// in the match's own channel shows up in both the Refs and the IRC lists.
+		// !mp settings no longer lists referees at all (that's !mp listrefs' job now) — a referee
+		// with a separate live IrcSession in the match's own channel still shows up in the IRC list.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var refereeIrc = MakeIrc(2, "refonirc");
 		_fixture.RegisterAll(host);
@@ -360,51 +360,12 @@ public class MpCommandServiceTests
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(2);
 		JoinMatchChannel(refereeIrc);
-		_users.FetchByIdAsync(2, Arg.Any<CancellationToken>())
-			.Returns(new User(2, "refonirc", Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		// CreateMatch's default hostIsReferee also makes host a referee, so 2 referees total.
-		Assert.Contains("Refs: 2", reply);
+		Assert.DoesNotContain("Refs:", reply);
+		Assert.Contains("IRC: (1)", reply);
 		Assert.Contains("#2 refonirc", reply);
-		Assert.Contains("IRC: 1", reply);
-		var refsIndex = reply!.IndexOf("Refs:", StringComparison.Ordinal);
-		var ircIndex = reply.IndexOf("IRC:", StringComparison.Ordinal);
-		// "#2 refonirc" must appear once under Refs and once more under IRC — not deduplicated away.
-		Assert.Equal(2, reply.Split("#2 refonirc").Length - 1);
-		Assert.True(refsIndex < ircIndex);
-	}
-
-	[Fact]
-	public async Task HandleAsync_Settings_OfflineReferee_ResolvesNameFromUserRepository()
-	{
-		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		_fixture.RegisterAll(host);
-		var match = _fixture.CreateMatch(host);
-		match.AddReferee(99); // never online this session — no GameSession/IrcSession for id 99
-		_users.FetchByIdAsync(99, Arg.Any<CancellationToken>())
-			.Returns(new User(99, "offlineref", Country.Xx, UserPrivileges.Unrestricted, default));
-
-		var reply = await Run(MakeService(), host, match, "settings", []);
-
-		Assert.Contains("#99 offlineref", reply);
-		Assert.DoesNotContain("#99 \n", reply);
-	}
-
-	[Fact]
-	public async Task HandleAsync_Settings_RefereeUnknownToUserRepository_FallsBackToBareId()
-	{
-		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		_fixture.RegisterAll(host);
-		var match = _fixture.CreateMatch(host);
-		match.AddReferee(999);
-		_users.FetchByIdAsync(999, Arg.Any<CancellationToken>()).Returns((User?)null);
-
-		var reply = await Run(MakeService(), host, match, "settings", []);
-
-		Assert.Contains("#999", reply);
-		Assert.DoesNotContain("#999 ", reply);
 	}
 
 	[Fact]
@@ -419,25 +380,26 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains("Players: 1", reply);
+		Assert.Contains("Players: (1)", reply);
 		Assert.Contains("host", reply); // slot line
-		Assert.Contains("IRC: 1", reply);
+		Assert.Contains("IRC: (1)", reply);
 		Assert.Contains("#1 host", reply);
 	}
 
 	[Fact]
-	public async Task HandleAsync_Settings_LongUnicodeRefereeList_WrapsWithinIrcWireLimit()
+	public async Task HandleAsync_Settings_LongUnicodeIrcList_WrapsWithinIrcWireLimit()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		// Vietnamese names (multi-byte UTF-8) — enough of them to force at least one wrap.
+		// Vietnamese names (multibyte UTF-8) — enough of them to force at least one wrap. Referees
+		// don't appear in !mp settings anymore, so this exercises the IRC list's own WrapCsv instead.
 		for (var i = 0; i < 20; i++)
 		{
 			var id = 100 + i;
-			match.AddReferee(id);
-			_users.FetchByIdAsync(id, Arg.Any<CancellationToken>())
-				.Returns(new User(id, $"Người_chơi_số_{i}", Country.Vn, UserPrivileges.Unrestricted, default));
+			var irc = MakeIrc(id, $"Người_chơi_số_{i}");
+			_fixture.IrcSessionRegistry.GetByUserId(id).Returns(irc);
+			JoinMatchChannel(irc);
 		}
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
