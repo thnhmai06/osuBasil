@@ -30,7 +30,8 @@ public enum ClientIntegrityResult : byte
 ///     server would apply, because Basil has no restrict system.
 /// </remarks>
 public sealed class ClientIntegrityService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	MatchMembershipService matchMembership,
 	ILogger<ClientIntegrityService> logger)
 {
@@ -88,7 +89,7 @@ public sealed class ClientIntegrityService(
 			return;
 		}
 
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
@@ -97,7 +98,11 @@ public sealed class ClientIntegrityService(
 		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",
 			match.DbId, match.Referees);
 		foreach (var refereeId in match.Referees)
-		foreach (var referee in sessionRegistry.GetSessionsByUserId(refereeId))
-			referee.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
+		{
+			if (gameRegistry.GetByUserId(refereeId) is { } referee)
+				referee.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
+			if (ircRegistry.GetByUserId(refereeId) is { } irc)
+				irc.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, irc.Name, dm));
+		}
 	}
 }

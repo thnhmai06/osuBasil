@@ -26,7 +26,7 @@ namespace Basil.Application.Packets.Multiplayer;
 /// </remarks>
 public sealed class MatchChangeSettingsHandler(
 	IBeatmapRepository beatmapRepository,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	MatchMembershipService matchMembership) : IPacketHandler
 {
 	/// <summary>Gets the client packet this handler processes.</summary>
@@ -39,18 +39,18 @@ public sealed class MatchChangeSettingsHandler(
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the change-settings packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the full settings snapshot.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
 
-		var match = userSession.Match;
-		if (!MatchMembershipService.ValidateMatchData(matchData, userSession.Id) || match is null ||
-		    userSession.Id != match.HostId) return;
+		var match = gameSession.Match;
+		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
+		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -103,7 +103,7 @@ public sealed class MatchChangeSettingsHandler(
 					match.MapName = beatmap.FullName;
 					match.UnresolvedMapMd5 = null;
 
-					var host = sessionRegistry.GetGameByUserId(match.HostId);
+					var host = sessionRegistry.GetByUserId(match.HostId);
 					if (host is not null) match.Mode = host.Status.Mode;
 					matchMembership.CancelQueuedAutoStart(match);
 				}
@@ -116,7 +116,7 @@ public sealed class MatchChangeSettingsHandler(
 					// UnresolvedMapMd5 this warning would re-fire on every one of those instead of just
 					// the first.
 					match.UnresolvedMapMd5 = matchData.MapMd5;
-					var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+					var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 					if (bot is not null)
 						matchMembership.EnqueueChat(match, bot.Name, bot.Id,
 							"Beatmap not found on the server — map selection ignored.");

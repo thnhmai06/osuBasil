@@ -58,11 +58,11 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 	[Fact]
 	public async Task KnownToken_DispatchesAndReturnsQueuedPackets()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var session = new GameSession(1, "cmyui", "known-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		session.Enqueue(ServerPacketWriter.Notification("hello"));
-		sessionRegistry.TryAddGameSession(session);
+		sessionRegistry.TryAdd(session);
 
 		var client = _factory.CreateClient();
 		var request = new HttpRequestMessage(HttpMethod.Post, "/") { Content = new ByteArrayContent([]) };

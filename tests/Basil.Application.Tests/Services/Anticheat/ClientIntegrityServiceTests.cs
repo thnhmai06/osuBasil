@@ -22,7 +22,7 @@ public class ClientIntegrityServiceTests
 
 	private ClientIntegrityService MakeService()
 	{
-		return new ClientIntegrityService(_fixture.SessionRegistry, _fixture.MatchMembership,
+		return new ClientIntegrityService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _fixture.MatchMembership,
 			NullLogger<ClientIntegrityService>.Instance);
 	}
 

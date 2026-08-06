@@ -25,20 +25,25 @@ namespace Basil.Application.Tests.Packets;
 public class LogoutHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private LogoutHandler MakeHandler()
 	{
 		return new LogoutHandler(new PlayerLogoutService(
-			_sessionRegistry, new ChannelMembershipService(_sessionRegistry, _channelRegistry,
+			_gameRegistry, _ircRegistry,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Options.Create(new IrcOptions())),
 			new SpectatorService(Substitute.For<IChannelRegistry>(),
-				new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(),
+				new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+					Substitute.For<ISessionRegistry<IrcSession>>(),
 					Substitute.For<IChannelRegistry>(), Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
 			new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-				Substitute.For<IUserSessionRegistry>(),
-				new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(),
+				Substitute.For<ISessionRegistry<GameSession>>(),
+				Substitute.For<ISessionRegistry<IrcSession>>(),
+				new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+					Substitute.For<ISessionRegistry<IrcSession>>(),
 					Substitute.For<IChannelRegistry>(), Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
@@ -55,7 +60,7 @@ public class LogoutHandlerTests
 
 		await MakeHandler().HandleAsync(session, reader);
 
-		_sessionRegistry.DidNotReceive().Remove(Arg.Any<UserSession>());
+		_gameRegistry.DidNotReceive().Remove(Arg.Any<GameSession>());
 		Assert.Equal("token", session.Token);
 	}
 
@@ -68,6 +73,6 @@ public class LogoutHandlerTests
 
 		await MakeHandler().HandleAsync(session, reader);
 
-		_sessionRegistry.Received(1).Remove(session);
+		_gameRegistry.Received(1).Remove(session);
 	}
 }

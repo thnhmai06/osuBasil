@@ -374,7 +374,8 @@ internal static class MultiplayerTestSupport
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				new ChannelMembershipService(SessionRegistry, ChannelRegistry,
+				IrcSessionRegistry,
+				new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
 					Options.Create(new IrcOptions())),
 				MatchRepository, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
@@ -384,7 +385,8 @@ internal static class MultiplayerTestSupport
 		public FakeMatchRegistry MatchRegistry { get; }
 		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
-		public IUserSessionRegistry SessionRegistry { get; } = Substitute.For<IUserSessionRegistry>();
+		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
+		public ISessionRegistry<IrcSession> IrcSessionRegistry { get; } = Substitute.For<ISessionRegistry<IrcSession>>();
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
@@ -395,12 +397,10 @@ internal static class MultiplayerTestSupport
 		public void RegisterAll(params GameSession[] sessions)
 		{
 			SessionRegistry.All.Returns(sessions);
-			SessionRegistry.GameSessions.Returns(sessions);
 			foreach (var session in sessions)
 			{
-				SessionRegistry.GetGameByUserId(session.Id).Returns(session);
-				SessionRegistry.GetGameByName(session.Name).Returns(session);
-				SessionRegistry.GetSessionsByUserId(session.Id).Returns([session]);
+				SessionRegistry.GetByUserId(session.Id).Returns(session);
+				SessionRegistry.GetByName(session.Name).Returns(session);
 			}
 		}
 

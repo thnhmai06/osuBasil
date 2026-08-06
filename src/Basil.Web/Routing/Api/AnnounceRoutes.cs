@@ -86,17 +86,17 @@ internal static class AnnounceRoutes
 			.WithExample(StatusCodes.Status200OK, new MotdChangedView(true, "MOTD updated."));
 	}
 
-	private static IResult HandleAnnounce(AnnounceBody body, IUserSessionRegistry sessionRegistry,
+	private static IResult HandleAnnounce(AnnounceBody body, ISessionRegistry<GameSession> sessionRegistry,
 		ILogger<AnnounceRoutesLog> logger)
 	{
 		if (string.IsNullOrWhiteSpace(body.Message))
 			return Results.BadRequest(new ErrorResponse("Message must not be empty."));
 
 		var targets = body.UserIds is null
-			? sessionRegistry.GameSessions.Where(s => s.Id != BotBootstrapService.BotId)
+			? sessionRegistry.All.Where(s => s.Id != BotBootstrapService.BotId)
 			: body.UserIds.Where(id => id != BotBootstrapService.BotId)
-				.Select(sessionRegistry.GetGameByUserId)
-				.Where(s => s is not null)!;
+				.Select(sessionRegistry.GetByUserId)
+				.Where(s => s is not null);
 
 		var packet = ServerPacketWriter.Notification(body.Message);
 		var deliveredCount = 0;

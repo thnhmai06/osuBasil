@@ -20,7 +20,8 @@ public class MatchReportServiceTests
 	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 	private readonly IMatchRepository _matchRepository = Substitute.For<IMatchRepository>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	public MatchReportServiceTests()
@@ -34,7 +35,8 @@ public class MatchReportServiceTests
 
 	private MatchReportService MakeService()
 	{
-		return new MatchReportService(_matchRegistry, _matchRepository, _scores, _sessionRegistry, _users, _beatmaps);
+		return new MatchReportService(_matchRegistry, _matchRepository, _scores, _gameRegistry, _ircRegistry, _users,
+			_beatmaps);
 	}
 
 	private static Match MakeMatchRow(int id = 5)

@@ -23,17 +23,17 @@ public sealed class FriendAddHandler(IRelationshipRepository relationships) : IP
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Reads the target user id and adds them as a friend when the relationship does not exist.</summary>
-	/// <param name="userSession">The userSession session that is adding a friend.</param>
+	/// <param name="gameSession">The userSession session that is adding a friend.</param>
 	/// <param name="reader">The packet reader positioned at the FriendAdd body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes once the relationship lookup and optional creation finish.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var targetId = reader.ReadI32();
-		if (targetId == userSession.Id) return;
+		if (targetId == gameSession.Id) return;
 
-		if (await relationships.FetchOneAsync(userSession.Id, targetId, cancellationToken) is null)
-			await relationships.CreateAsync(userSession.Id, targetId, RelationshipType.Friend, cancellationToken);
+		if (await relationships.FetchOneAsync(gameSession.Id, targetId, cancellationToken) is null)
+			await relationships.CreateAsync(gameSession.Id, targetId, RelationshipType.Friend, cancellationToken);
 	}
 }

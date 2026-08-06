@@ -27,9 +27,9 @@ public interface IPacketHandler
 	bool AllowedWhenRestricted { get; }
 
 	/// <summary>Reads and processes one packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The game session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the body of this handler's packet type.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes when the packet has been fully handled.</returns>
-	Task HandleAsync(GameSession userSession, PacketReader reader, CancellationToken cancellationToken = default);
+	Task HandleAsync(GameSession gameSession, PacketReader reader, CancellationToken cancellationToken = default);
 }

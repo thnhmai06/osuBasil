@@ -83,9 +83,9 @@ internal static class OsuWebRoutes
 
 					if (!player.Restricted)
 					{
-						var sessionRegistry = context.RequestServices.GetRequiredService<IUserSessionRegistry>();
+						var sessionRegistry = context.RequestServices.GetRequiredService<ISessionRegistry<GameSession>>();
 						var statsPacket = PacketBuilders.BuildUserStats(player);
-						foreach (var other in sessionRegistry.GameSessions) other.Enqueue(statsPacket);
+						foreach (var other in sessionRegistry.All) other.Enqueue(statsPacket);
 					}
 				}
 

@@ -63,7 +63,7 @@ public class CommandDispatcherTests
 		fixture ??= new MultiplayerTestSupport.Fixture();
 		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchRepository,
 			_beatmaps,
-			fixture.SessionRegistry, Substitute.For<IUserRepository>(), fixture.ChannelRegistry,
+			fixture.SessionRegistry, fixture.IrcSessionRegistry, Substitute.For<IUserRepository>(), fixture.ChannelRegistry,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 		return new CommandDispatcher(options, mpCommands, _users,
@@ -227,7 +227,7 @@ public class CommandDispatcherTests
 		Assert.Contains("Created the match", reply);
 		var created = fixture.MatchRegistry.GetByDbId(host.MpScopeMatchId!.Value);
 		Assert.NotNull(created);
-		Assert.NotEqual(existing.DbId, created!.DbId);
+		Assert.NotEqual(existing.DbId, created.DbId);
 		Assert.True(created.IsPrivate);
 		Assert.False(existing.IsPrivate);
 		// Already seated in `existing`, so creating another room doesn't move the physical seat.

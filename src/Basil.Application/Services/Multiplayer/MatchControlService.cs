@@ -18,8 +18,8 @@ namespace Basil.Application.Services.Multiplayer;
 /// <remarks>
 ///     Extracted so both surfaces call the identical state-mutation and broadcast code instead of
 ///     duplicating it. Callers own everything surface-specific: resolving a target userSession (chat
-///     resolves by name via <see cref="IUserSessionRegistry.GetByName" />, HTTP resolves by
-///     numeric id via <see cref="IUserSessionRegistry.GetById" />), parsing and validating raw
+///     resolves by name via <see cref="ISessionRegistry{TSession}.GetByName" />, HTTP resolves by
+///     numeric id via <see cref="ISessionRegistry{TSession}.GetByUserId" />), parsing and validating raw
 ///     input, and formatting a reply or response from the result. Every method here assumes the
 ///     caller already holds the match's <see cref="MatchSession.Lock" /> for the whole
 ///     read-mutate-broadcast sequence, exactly like every packet handler and <c>MpCommandService</c>'s
@@ -29,7 +29,8 @@ public sealed class MatchControlService(
 	MatchMembershipService matchMembership,
 	IMatchRepository matchRepository,
 	IBeatmapRepository beatmapRepository,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	ILogger<MatchControlService> logger)
 {
 	public enum AddRefereeResult : byte
@@ -242,7 +243,7 @@ public sealed class MatchControlService(
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
-		var prevHostName = sessionRegistry.GetGameByUserId(prevHostId)?.Name;
+		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
 		_ = matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.HostGranted,
 			prevHostId, prevHostName, target.Id, target.Name,
@@ -356,7 +357,7 @@ public sealed class MatchControlService(
 
 		foreach (var id in toRemove)
 		{
-			var removedName = sessionRegistry.GetSessionsByUserId(id).FirstOrDefault()?.Name;
+			var removedName = ((UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))?.Name;
 			match.RemoveReferee(id);
 			await matchRepository.CreateEventAsync(new MatchEvent(
 					match.DbId, (int)MatchEventType.RefRemoved,
@@ -782,7 +783,7 @@ public sealed class MatchControlService(
 	/// <param name="text">The message to post.</param>
 	private void Announce(MatchSession match, string text)
 	{
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
@@ -864,7 +865,7 @@ public sealed class MatchControlService(
 		if (match.IsReferee(targetUserId)) return KickResult.TargetIsReferee;
 
 		var removedAny = false;
-		foreach (var session in sessionRegistry.GetSessionsByUserId(targetUserId))
+		foreach (var session in OnlineSessions(targetUserId))
 		{
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
@@ -922,7 +923,7 @@ public sealed class MatchControlService(
 
 		match.AddBan(targetUserId);
 
-		foreach (var session in sessionRegistry.GetSessionsByUserId(targetUserId))
+		foreach (var session in OnlineSessions(targetUserId))
 		{
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
@@ -1013,7 +1014,7 @@ public sealed class MatchControlService(
 	{
 		match.AddBan(userId);
 
-		var seated = sessionRegistry.GetGameByUserId(userId);
+		var seated = gameRegistry.GetByUserId(userId);
 		if (seated is null || seated.Match != match) return;
 
 		await matchMembership.LeaveAsync(seated, match, cancellationToken);
@@ -1154,6 +1155,17 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		await matchMembership.CloseAsync(match, actorId, actorName, cancellationToken);
+	}
+
+	/// <summary>
+	///     Enumerates the online sessions of a user id, a <see cref="GameSession" /> first then an
+	///     <see cref="IrcSession" />, so kick/ban cleanup reaches both live connections an account may hold.
+	/// </summary>
+	/// <param name="userId">The user id whose live sessions to enumerate.</param>
+	private IEnumerable<UserSession> OnlineSessions(int userId)
+	{
+		if (gameRegistry.GetByUserId(userId) is { } game) yield return game;
+		if (ircRegistry.GetByUserId(userId) is { } irc) yield return irc;
 	}
 
 	/// <summary>Represents one entry in a <c>PUT</c> or <c>PATCH /matches/{matchId}/slots</c> request.</summary>

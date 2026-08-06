@@ -20,15 +20,15 @@ public sealed class CantSpectateHandler(ILogger<CantSpectateHandler> logger) : I
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		var host = userSession.Spectating;
-		if (host is null || userSession.Stealth) return Task.CompletedTask;
+		var host = gameSession.Spectating;
+		if (host is null || gameSession.Stealth) return Task.CompletedTask;
 
 		logger.LogDebug(
-			"Client cannot spectate (missing map): UserId={UserId} HostId={HostId}", userSession.Id, host.Id);
-		var packet = ServerPacketWriter.SpectatorCantSpectate(userSession.Id);
+			"Client cannot spectate (missing map): UserId={UserId} HostId={HostId}", gameSession.Id, host.Id);
+		var packet = ServerPacketWriter.SpectatorCantSpectate(gameSession.Id);
 		host.Enqueue(packet);
 
 		foreach (var spectator in host.Spectators)

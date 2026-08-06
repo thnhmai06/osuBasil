@@ -17,18 +17,19 @@ namespace Basil.Application.Services.Irc;
 /// </summary>
 /// <remarks>
 ///     The session is chat/command-only, wired the same way <see cref="ICommandDispatcher" /> and the
-///     rest of the chat core treat any <see cref="UserSession" />. PASS is checked against the
+///     rests of the chat core treat any <see cref="UserSession" />. PASS is checked against the
 ///     account password using the same MD5-then-bcrypt flow as client login: the osu! client sends
 ///     the MD5 of its password as hex at login, while an IRC client sends the password in plaintext,
 ///     so the plaintext PASS is MD5-hashed here before verification.
 /// </remarks>
 public sealed class IrcAuthenticationService(
 	IUserRepository users,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<IrcSession> sessionRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IOptions<IrcOptions> options,
-	IPasswordHasher passwordHasher)
+	IPasswordHasher passwordHasher,
+	ITokenGenerator tokenGenerator)
 {
 	/// <summary>
 	///     Validates an IRC nick and password against the stored account and, on success, creates the
@@ -64,13 +65,14 @@ public sealed class IrcAuthenticationService(
 					"Password incorrect"));
 
 		var loginTime = DateTimeOffset.UtcNow;
-		var session = new IrcSession(user.Id, user.Name, $"irc-{Guid.NewGuid():N}", user.Privilege, loginTime)
+		var session = new IrcSession(
+			user.Id, user.Name, $"irc-{tokenGenerator.GenerateToken()}", user.Privilege, loginTime)
 		{
 			SilenceEnd = user.SilenceEnd,
 			Connection = connection
 		};
 
-		if (!sessionRegistry.TryAddIrcSession(session))
+		if (!sessionRegistry.TryAdd(session))
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
 					"Nickname is already in use"));

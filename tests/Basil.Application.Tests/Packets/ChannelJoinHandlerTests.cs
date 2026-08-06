@@ -14,12 +14,14 @@ namespace Basil.Application.Tests.Packets;
 public class ChannelJoinHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private ChannelJoinHandler MakeHandler()
 	{
 		return new ChannelJoinHandler(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())));
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -33,7 +35,7 @@ public class ChannelJoinHandlerTests
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([player]);
+		_gameRegistry.All.Returns([player]);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 
@@ -42,7 +44,8 @@ public class ChannelJoinHandlerTests
 		var expected = ServerPacketWriter.ChannelJoin("#osu")
 			.Concat(ServerPacketWriter.ChannelInfo("#osu", "General", 1))
 			.ToArray();
-		Assert.Equal(expected, player.Dequeue());
+		var actual = player.Dequeue();
+		Assert.Equal(expected, actual);
 	}
 
 	[Fact]

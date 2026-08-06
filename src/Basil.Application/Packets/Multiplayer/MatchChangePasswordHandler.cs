@@ -23,18 +23,18 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the change-password packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the match snapshot with the new password.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
 
-		var match = userSession.Match;
-		if (!MatchMembershipService.ValidateMatchData(matchData, userSession.Id) || match is null ||
-		    userSession.Id != match.HostId) return;
+		var match = gameSession.Match;
+		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
+		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try

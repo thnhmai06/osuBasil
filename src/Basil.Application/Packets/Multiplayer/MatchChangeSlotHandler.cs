@@ -26,16 +26,16 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the change-slot packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the target slot id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var slotId = reader.ReadI32();
 
-		var match = userSession.Match;
+		var match = gameSession.Match;
 		if (match is null || slotId is < 0 or >= 16) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
@@ -43,7 +43,7 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
 		{
 			if (match.Slots[slotId].Status != SlotStatus.Open) return;
 
-			var slot = match.GetSlot(userSession.Id);
+			var slot = match.GetSlot(gameSession.Id);
 			if (slot is null) return;
 
 			match.Slots[slotId].CopyFrom(slot);

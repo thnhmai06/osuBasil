@@ -29,19 +29,18 @@ namespace Basil.Application.Services.Multiplayer;
 public sealed class MatchMembershipService(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	ChannelMembershipService channelMembership,
 	IMatchRepository matchRepository,
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
-	ILogger<MatchMembershipService> logger,
-	int emptyRoomCloseSeconds = 300,
-	int emptyRoomWarnAtSeconds = 60)
+	ILogger<MatchMembershipService> logger)
 {
 	private const int MaxMatchNameLength = 50;
-	private readonly int _emptyRoomCloseSeconds = emptyRoomCloseSeconds;
-	private readonly int _emptyRoomWarnAtSeconds = emptyRoomWarnAtSeconds;
+	private const int EmptyRoomCloseSeconds = 300;
+	private const int EmptyRoomWarnAtSeconds = 60;
 
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
 	public enum JoinResult : byte
@@ -362,7 +361,7 @@ public sealed class MatchMembershipService(
 				newHostId = newHostSlot.PlayerId!.Value;
 				match.AssignGameplayHost(newHostId.Value);
 				hostTransfer = true;
-				sessionRegistry.GetGameByUserId(match.HostId)?.Enqueue(ServerPacketWriter.MatchTransferHost());
+				gameRegistry.GetByUserId(match.HostId)?.Enqueue(ServerPacketWriter.MatchTransferHost());
 			}
 			else
 			{
@@ -389,10 +388,10 @@ public sealed class MatchMembershipService(
 				match.DbId, prevHostId, newHostId);
 
 			var prevHostName = prevHostId is not null
-				? sessionRegistry.GetGameByUserId(prevHostId.Value)?.Name
+				? gameRegistry.GetByUserId(prevHostId.Value)?.Name
 				: null;
 			var newHostName = newHostId is not null
-				? sessionRegistry.GetGameByUserId(newHostId.Value)?.Name
+				? gameRegistry.GetByUserId(newHostId.Value)?.Name
 				: null;
 			_ = matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
@@ -428,7 +427,7 @@ public sealed class MatchMembershipService(
 		{
 			if (slot.PlayerId is not { } playerId) continue;
 
-			var player = sessionRegistry.GetGameByUserId(playerId);
+			var player = gameRegistry.GetByUserId(playerId);
 			if (player is null) continue;
 
 			if (channel is not null) channelMembership.Part(player, channel);
@@ -460,7 +459,7 @@ public sealed class MatchMembershipService(
 		match.PendingTimer = null;
 		match.PendingTimerIsAutoStart = false;
 
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null)
 			EnqueueChat(match, bot.Name, bot.Id, "Match start cancelled — room settings changed.");
 	}
@@ -482,7 +481,7 @@ public sealed class MatchMembershipService(
 		{
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
 				match.DbId, match.MapId);
-			var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+			var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 			if (bot is not null)
 				EnqueueChat(match, bot.Name, bot.Id,
 					"Match cannot start because the beatmap does not exist on the server.");
@@ -560,11 +559,11 @@ public sealed class MatchMembershipService(
 			BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
-			match, sessionRegistry, userRepo, beatmapRepo, cancellationToken);
+			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
 		eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
 
 		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
-			match, sessionRegistry, userRepo, beatmapRepo, cancellationToken);
+			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
 		var settingsDelta = match.SettingsSnapshot.Publish(settings);
 		eventBus.PublishSettings(match.DbId, settingsDelta);
 
@@ -580,7 +579,7 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
 	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var host = await MatchLiveSnapshotBuilder.BuildHost(match, sessionRegistry, userRepo, cancellationToken);
+		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
 		var delta = match.HostSnapshot.Publish(host);
 		eventBus.PublishHost(match.DbId, delta);
 	}
@@ -591,7 +590,7 @@ public sealed class MatchMembershipService(
 	public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
-			match, sessionRegistry, userRepo, cancellationToken);
+			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
 		var delta = match.RefsSnapshot.Publish(refs);
 		eventBus.PublishRefs(match.DbId, delta);
 	}
@@ -601,7 +600,7 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
 	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, sessionRegistry, userRepo, cancellationToken);
+		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
 		var delta = match.BansSnapshot.Publish(bans);
 		eventBus.PublishBans(match.DbId, delta);
 	}
@@ -619,7 +618,7 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
 	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, userRepo, cancellationToken);
+		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
 		var delta = match.SlotsSnapshot.Publish(slots);
 		eventBus.PublishSlots(match.DbId, delta);
 	}
@@ -665,7 +664,7 @@ public sealed class MatchMembershipService(
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 		var token = cts.Token;
 
-		if (!await DelayAsync(_emptyRoomCloseSeconds - _emptyRoomWarnAtSeconds, token)) return;
+		if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
 
 		await match.Lock.WaitAsync(token);
 		try
@@ -673,14 +672,14 @@ public sealed class MatchMembershipService(
 			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
 			match.EmptyRoomWarningSent = true;
 			AnnounceToRoomAndReferees(match,
-				$"The room is empty and will be closed in {_emptyRoomWarnAtSeconds} seconds unless a player joins.");
+				$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
 
-		if (!await DelayAsync(_emptyRoomWarnAtSeconds, token)) return;
+		if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
 
 		await match.Lock.WaitAsync(token);
 		try
@@ -719,7 +718,7 @@ public sealed class MatchMembershipService(
 	/// </summary>
 	private void AnnounceToRoomAndReferees(MatchSession match, string text)
 	{
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		EnqueueChat(match, bot.Name, bot.Id, text);
@@ -728,8 +727,10 @@ public sealed class MatchMembershipService(
 		foreach (var refereeId in match.Referees)
 		{
 			if (channel is not null && channel.Contains(refereeId)) continue;
-			foreach (var session in sessionRegistry.GetSessionsByUserId(refereeId))
-				session.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, session.Name, text));
+			if (gameRegistry.GetByUserId(refereeId) is { } game)
+				game.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, game.Name, text));
+			if (ircRegistry.GetByUserId(refereeId) is { } irc)
+				irc.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, irc.Name, text));
 		}
 	}
 

@@ -23,9 +23,10 @@ public class StopSpectatingHandlerTests
 	[Fact]
 	public async Task Handle_NotSpectating_NoOp()
 	{
-		var sessionRegistry = Substitute.For<IUserSessionRegistry>();
+		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
-			new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
 
@@ -37,15 +38,16 @@ public class StopSpectatingHandlerTests
 	[Fact]
 	public async Task Handle_Spectating_StopsAndClearsHostSpectatorList()
 	{
-		var sessionRegistry = Substitute.For<IUserSessionRegistry>();
+		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var host = MakePlayer(2, "host");
 		var player = MakePlayer(1, "alice");
-		sessionRegistry.GameSessions.Returns([host, player]);
-		sessionRegistry.GetGameByUserId(2).Returns(host);
-		sessionRegistry.GetGameByUserId(1).Returns(player);
+		gameRegistry.All.Returns([host, player]);
+		gameRegistry.GetByUserId(2).Returns(host);
+		gameRegistry.GetByUserId(1).Returns(player);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(sessionRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
+				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance);
 		spectatorService.AddSpectator(host, player);
 		var handler = new StopSpectatingHandler(spectatorService);

@@ -33,22 +33,22 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the score-update packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the raw score frame bytes.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var playData = reader.ReadRaw(reader.RemainingLength);
 
-		var match = userSession.Match;
+		var match = gameSession.Match;
 		if (match is null) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
-			var slotId = match.GetSlotId(userSession.Id);
+			var slotId = match.GetSlotId(gameSession.Id);
 			if (slotId is null) return;
 
 			// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the
@@ -63,8 +63,8 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 				{
 					var frame = new PacketReader(playData).ReadScoreFrame();
 					var payload = JsonSerializer.SerializeToUtf8Bytes(
-						MatchLiveSnapshotBuilder.BuildPlayerScore(userSession, frame), BasilJsonOptions.Instance);
-					eventBus.PublishPlayer(match.DbId, userSession.Name, payload);
+						MatchLiveSnapshotBuilder.BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
+					eventBus.PublishPlayer(match.DbId, gameSession.Name, payload);
 				}
 				catch (Exception)
 				{

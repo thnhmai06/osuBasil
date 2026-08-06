@@ -32,26 +32,26 @@ public sealed class TourneyMatchLeaveChannelHandler(
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the tournament-leave-channel packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the match id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchId = reader.ReadI32();
 
-		if (matchId < 0 || (userSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
+		if (matchId < 0 || (gameSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
 		var match = matchRegistry.GetById(matchId);
-		if (match is null || !match.TourneyClients.Contains(userSession.Id)) return Task.CompletedTask;
+		if (match is null || !match.TourneyClients.Contains(gameSession.Id)) return Task.CompletedTask;
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null) channelMembership.Part(userSession, channel);
+		if (channel is not null) channelMembership.Part(gameSession, channel);
 
-		match.RemoveTourneyClient(userSession.Id);
+		match.RemoveTourneyClient(gameSession.Id);
 		return Task.CompletedTask;
 	}
 }

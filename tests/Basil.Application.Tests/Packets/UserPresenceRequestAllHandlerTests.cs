@@ -13,7 +13,7 @@ namespace Basil.Application.Tests.Packets;
 /// </summary>
 public class UserPresenceRequestAllHandlerTests
 {
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 
 	[Fact]
 	public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
@@ -23,7 +23,7 @@ public class UserPresenceRequestAllHandlerTests
 			DateTimeOffset.UnixEpoch);
 		var restrictedOther =
 			new GameSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([self, unrestrictedOther, restrictedOther]);
+		_sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
 		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
 
 		await new UserPresenceRequestAllHandler(_sessionRegistry).HandleAsync(self, reader);

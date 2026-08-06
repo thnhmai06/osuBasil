@@ -21,7 +21,7 @@ public class ScoreSubmissionServiceTests
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
@@ -46,7 +46,7 @@ public class ScoreSubmissionServiceTests
 	private GameSession MakePlayer(int id = 7, string name = "cookiezi")
 	{
 		var session = new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName(name).Returns(session);
+		_sessionRegistry.GetByName(name).Returns(session);
 		_users.FetchPasswordHashAsync(id, Arg.Any<CancellationToken>()).Returns("hashed");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "hashed").Returns(true);
 		return session;
@@ -117,7 +117,7 @@ public class ScoreSubmissionServiceTests
 	{
 		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(MakeBeatmap());
-		_sessionRegistry.GetGameByName(Arg.Any<string>()).Returns((GameSession?)null);
+		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((GameSession?)null);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "ghost ", MakeScoreFields()));
 
@@ -211,7 +211,7 @@ public class ScoreSubmissionServiceTests
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
-		_sessionRegistry.Received().GetGameByName("cookiezi");
+		_sessionRegistry.Received().GetByName("cookiezi");
 	}
 
 	[Fact]

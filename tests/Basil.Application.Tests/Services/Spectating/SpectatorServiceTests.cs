@@ -15,12 +15,13 @@ namespace Basil.Application.Tests.Services.Spectating;
 public class SpectatorServiceTests
 {
 	private readonly FakeChannelRegistry _channelRegistry = new();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private SpectatorService MakeService()
 	{
 		return new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance);
 	}
 
@@ -31,12 +32,12 @@ public class SpectatorServiceTests
 
 	private void RegisterAll(params GameSession[] sessions)
 	{
-		_sessionRegistry.All.Returns(sessions);
-		_sessionRegistry.GameSessions.Returns(sessions);
+		_gameRegistry.All.Returns(sessions);
+		
 		foreach (var session in sessions)
 		{
-			_sessionRegistry.GetGameByUserId(session.Id).Returns(session);
-			_sessionRegistry.GetSessionsByUserId(session.Id).Returns([session]);
+			_gameRegistry.GetByUserId(session.Id).Returns(session);
+			_gameRegistry.GetByUserId(session.Id).Returns(session);
 		}
 	}
 

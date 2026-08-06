@@ -34,6 +34,6 @@ public static class PacketBuilders
 			session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
 			(int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
 			session.CurrentStats?.RankedScore ?? 0, 100.0, session.CurrentStats?.Plays ?? 0,
-			session.CurrentStats?.TotalScore ?? 0, session.CurrentStats?.Rank ?? 0, 0);
+			session.CurrentStats?.TotalScore ?? 0, session.CurrentStats?.Rank ?? 0, 727);
 	}
 }

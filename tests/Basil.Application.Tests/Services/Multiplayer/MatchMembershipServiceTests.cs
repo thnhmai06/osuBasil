@@ -31,7 +31,8 @@ public class MatchMembershipServiceTests
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry;
 
 	private readonly FakeMatchRepository _matchRepository = new();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -45,8 +46,8 @@ public class MatchMembershipServiceTests
 
 	private MatchMembershipService MakeService()
 	{
-		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())),
 			_matchRepository,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
@@ -68,13 +69,13 @@ public class MatchMembershipServiceTests
 
 	private void RegisterAll(params GameSession[] sessions)
 	{
-		_sessionRegistry.All.Returns(sessions);
-		_sessionRegistry.GameSessions.Returns(sessions);
+		_gameRegistry.All.Returns(sessions);
+		
 		foreach (var session in sessions)
 		{
-			_sessionRegistry.GetGameByUserId(session.Id).Returns(session);
-			_sessionRegistry.GetGameByName(session.Name).Returns(session);
-			_sessionRegistry.GetSessionsByUserId(session.Id).Returns([session]);
+			_gameRegistry.GetByUserId(session.Id).Returns(session);
+			_gameRegistry.GetByName(session.Name).Returns(session);
+			_gameRegistry.GetByUserId(session.Id).Returns(session);
 		}
 	}
 
@@ -236,7 +237,7 @@ public class MatchMembershipServiceTests
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions()));
 		membership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
@@ -307,7 +308,7 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await service.EnqueueStateAsync(match);
@@ -329,8 +330,8 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
-		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())), _matchRepository, events,
+		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())), _matchRepository, events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
@@ -363,7 +364,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
-		_sessionRegistry.GetGameByUserId(host.Id).Returns(host);
+		_gameRegistry.GetByUserId(host.Id).Returns(host);
 		host.Dequeue();
 
 		service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");

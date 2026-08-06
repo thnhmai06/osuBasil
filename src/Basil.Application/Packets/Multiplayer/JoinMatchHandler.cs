@@ -27,11 +27,11 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the join-match packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the match id and password.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchId = reader.ReadI32();
@@ -40,22 +40,22 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 		var match = matchRegistry.GetById(matchId);
 		if (match is null)
 		{
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
 			return;
 		}
 
-		if (userSession.Restricted)
+		if (gameSession.Restricted)
 		{
-			userSession.Enqueue([
+			gameSession.Enqueue([
 				.. ServerPacketWriter.MatchJoinFail(),
 				.. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
 			]);
 			return;
 		}
 
-		if (userSession.Silenced)
+		if (gameSession.Silenced)
 		{
-			userSession.Enqueue([
+			gameSession.Enqueue([
 				.. ServerPacketWriter.MatchJoinFail(),
 				.. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
 			]);
@@ -65,7 +65,7 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
-			await matchMembership.JoinAsync(userSession, match, password, cancellationToken);
+			await matchMembership.JoinAsync(gameSession, match, password, cancellationToken);
 		}
 		finally
 		{

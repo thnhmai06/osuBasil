@@ -18,11 +18,12 @@ namespace Basil.Application.Services.Bot;
 ///     relationships so its watch of every online userSession can be exposed over SSE. It is not a
 ///     login: no client connection sits behind this session, and it never occupies a multiplayer
 ///     slot (see the <c>IsBot</c> guards in <c>MatchMembershipService</c>). The normal handshake is
-///     skipped entirely and the session is registered directly with <see cref="IUserSessionRegistry" />.
+///     skipped entirely and the session is registered directly with
+///     <see cref="ISessionRegistry{TSession}" />.
 /// </remarks>
 public sealed class BotBootstrapService(
 	IUserRepository users,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IOptions<BotOptions> botOptions,
@@ -70,7 +71,7 @@ public sealed class BotBootstrapService(
 		foreach (var channel in channelRegistry.AutoJoinChannels)
 			channelMembership.Join(session, channel);
 
-		sessionRegistry.TryAddGameSession(session);
+		sessionRegistry.TryAdd(session);
 		logger.LogInformation("Bot session created: BotId={BotId}", BotId);
 		return session;
 	}

@@ -19,15 +19,15 @@ public sealed class SetAwayMessageHandler : IPacketHandler
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Reads the message and stores its text as the userSession's away message.</summary>
-	/// <param name="userSession">The userSession session whose away message is being set.</param>
+	/// <param name="gameSession">The userSession session whose away message is being set.</param>
 	/// <param name="reader">The packet reader positioned at the SetAwayMessage body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var message = reader.ReadMessage();
-		userSession.AwayMessage = message.Text;
+		gameSession.AwayMessage = message.Text;
 		return Task.CompletedTask;
 	}
 }

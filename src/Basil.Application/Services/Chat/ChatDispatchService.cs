@@ -33,7 +33,7 @@ namespace Basil.Application.Services.Chat;
 /// </remarks>
 public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	ChannelMembershipService channelMembership,
 	IUserRepository users,
 	IRelationshipRepository relationships,
@@ -68,7 +68,7 @@ public sealed class ChatDispatchService(
 			return;
 		}
 
-		var target = sessionRegistry.GetGameByName(channelOrNick);
+		var target = sessionRegistry.GetByName(channelOrNick);
 		if (target is { IsBot: true })
 		{
 			await SendBotCommandAsync(sender, target, text, cancellationToken);
@@ -92,7 +92,7 @@ public sealed class ChatDispatchService(
 	/// <param name="sender">The userSession sending the message.</param>
 	/// <param name="channelName">The channel name as the client wrote it.</param>
 	/// <returns>
-	///     The internal channel name that indexes the registry, or the input unchanged when no
+	///     The internal channel name that indexes the registry or the input unchanged when no
 	///     translation applies.
 	/// </returns>
 	private static string ResolveClientChannelName(UserSession sender, string channelName)
@@ -133,7 +133,7 @@ public sealed class ChatDispatchService(
 			channel, IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
 			sender.Id);
 
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		var senderMatch = (sender as GameSession)?.Match;

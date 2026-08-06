@@ -34,7 +34,8 @@ internal static class ScoreRoutes
 	public static void MapScoreRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/scores", async ([FromQuery] int? page, [FromQuery] int? pageSize, IScoreRepository scores,
-				IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
+				IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var (p, ps) = Pagination.Normalize(page, pageSize);
@@ -43,7 +44,7 @@ internal static class ScoreRoutes
 				var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
 				var views = new List<ScoreDetailView>(trimmed.Items.Count);
 				foreach (var row in trimmed.Items)
-					views.Add(await BuildDetailView(row, sessionRegistry, users, beatmaps, cancellationToken));
+					views.Add(await BuildDetailView(row, gameRegistry, ircRegistry, users, beatmaps, cancellationToken));
 				return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
 					trimmed.TotalRecords, views));
 			})
@@ -60,13 +61,15 @@ internal static class ScoreRoutes
 			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
 		group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
-				IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
+				IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
 			{
 				var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
 				return score is null
 					? Results.NotFound()
-					: Results.Json(await BuildDetailView(score, sessionRegistry, users, beatmaps, cancellationToken));
+					: Results.Json(await BuildDetailView(score, gameRegistry, ircRegistry, users, beatmaps,
+						cancellationToken));
 			})
 			.WithGroupName("basilapi")
 			.WithName("getScore")
@@ -109,10 +112,11 @@ internal static class ScoreRoutes
 	///     Builds the public <see cref="ScoreDetailView" /> for a score row, resolving the submitting
 	///     user's embed and the played beatmap's embed (null once the stored md5 no longer resolves).
 	/// </summary>
-	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row, IUserSessionRegistry sessionRegistry,
+	private static async Task<ScoreDetailView> BuildDetailView(ScoreRow row,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
-		var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, sessionRegistry, users,
+		var user = await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(row.UserId, gameRegistry, ircRegistry, users,
 			cancellationToken);
 		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(row.MapMd5, beatmaps, cancellationToken);
 

@@ -25,7 +25,8 @@ namespace Basil.Application.Sessions;
 ///     shared PART/QUIT rules based on whether the same UserId is still present elsewhere.
 /// </remarks>
 public sealed class PlayerLogoutService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	ChannelMembershipService channelMembership,
 	SpectatorService spectatorService,
 	MatchMembershipService matchMembership,
@@ -73,20 +74,20 @@ public sealed class PlayerLogoutService(
 		// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
 		// BasilBot's own watch of this departing userSession now, or the channel would be left with a
 		// dead member reference until this same user logs back in and re-triggers AddSpectator.
-		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.RemoveSpectator(game, bot);
 
 		channelMembership.DisconnectFromChannels(game, "Logged out");
-		sessionRegistry.Remove(game);
+		gameRegistry.Remove(game);
 
 		if (!game.Restricted)
-			foreach (var other in sessionRegistry.GameSessions)
+			foreach (var other in gameRegistry.All)
 				other.Enqueue(ServerPacketWriter.Logout(game.Id));
 	}
 
 	private void LogoutIrcSession(IrcSession irc)
 	{
 		channelMembership.DisconnectFromChannels(irc, "Connection closed");
-		sessionRegistry.Remove(irc);
+		ircRegistry.Remove(irc);
 	}
 }

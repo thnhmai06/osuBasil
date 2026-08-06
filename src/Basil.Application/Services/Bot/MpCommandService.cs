@@ -7,7 +7,6 @@ using Basil.Application.Packets.Channels;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -36,9 +35,9 @@ namespace Basil.Application.Services.Bot;
 ///     Every method sends its own reply through the <see cref="ICommandReplySink" /> passed in and
 ///     returns only success or failure; nothing here returns reply text for a caller to route. The
 ///     actual room-mutation logic lives in <see cref="MatchControlService" />, shared with the
-///     <c>api.</c> host's HTTP write routes so both surfaces call the identical state-mutation and
+///     <c>api.</c> host's HTTP writes routes so both surfaces call the identical state-mutation and
 ///     broadcast code. This class owns everything chat-specific: parsing raw argument tokens,
-///     resolving a target userSession by name via <see cref="IUserSessionRegistry.GetByName" />, the
+///     resolving a target userSession by name via <see cref="ISessionRegistry{TSession}.GetByName" />, the
 ///     referee gate, and sending a reply for the result.
 /// </remarks>
 public sealed class MpCommandService(
@@ -46,7 +45,8 @@ public sealed class MpCommandService(
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
 	IBeatmapRepository beatmapRepository,
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	IUserRepository userRepository,
 	IChannelRegistry channelRegistry,
 	ILogger<MpCommandService> logger,
@@ -54,7 +54,7 @@ public sealed class MpCommandService(
 {
 	private const int MaxMatchNameLength = 50;
 
-	/// <summary>Safe under 512-byte IRC line limit even with the longest wire prefix/command.</summary>
+	/// <summary>Safe under a 512-byte IRC line limit even with the longest wire prefix/command.</summary>
 	private const int MaxSettingsLineBytes = 400;
 
 	/// <summary>Subcommands that only report state — runnable by anyone the match resolves for, not just referees.</summary>
@@ -66,7 +66,7 @@ public sealed class MpCommandService(
 	///     output.
 	/// </summary>
 	/// <remarks>
-	///     Add a subcommand here and it appears in <c>!mp help</c> with no separate help string to
+	///     Add a subcommand here, and it appears in <c>!mp help</c> with no separate help string to
 	///     keep in sync. <c>make</c>, <c>join</c>, <c>in</c>, and <c>makeprivate</c> are not listed here
 	///     because they run outside this class's subcommand switch, routed directly from
 	///     <see cref="CommandDispatcher" />, which lists them in its own <c>!help</c>.
@@ -110,7 +110,7 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchRepository, beatmapRepository, sessionRegistry, matchControlLogger);
+		new(matchMembership, matchRepository, beatmapRepository, gameRegistry, ircRegistry, matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
@@ -457,7 +457,8 @@ public sealed class MpCommandService(
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : "";
 
-			var name = sessionRegistry.GetSessionsByUserId(slot.PlayerId!.Value).FirstOrDefault()?.Name
+			var name = ((UserSession?)gameRegistry.GetByUserId(slot.PlayerId!.Value) ?? ircRegistry.GetByUserId(slot.PlayerId!.Value))
+			           ?.Name
 			           ?? $"#{slot.PlayerId}";
 			lines.Add($"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {slot.PlayerId,6} {name,-16}{tagText}");
 		}
@@ -476,8 +477,9 @@ public sealed class MpCommandService(
 		// IRC — independent of Players/Refs: anyone with a live IrcSession in the match's own channel,
 		// whether or not they also occupy a slot or hold referee status.
 		var ircNames = (channelRegistry.GetByName(match.ChatChannelName)?.MemberIds ?? [])
-			.SelectMany(id => sessionRegistry.GetSessionsByUserId(id))
-			.OfType<IrcSession>()
+			.Select(ircRegistry.GetByUserId)
+			.Where(s => s is not null)
+			.Cast<IrcSession>()
 			.OrderBy(s => s.Id)
 			.Select(s => $"#{s.Id} {s.Name}")
 			.ToList();
@@ -799,7 +801,7 @@ public sealed class MpCommandService(
 		var referees = match.Referees
 			.Select(id =>
 			{
-				var session = sessionRegistry.GetSessionsByUserId(id).FirstOrDefault();
+				var session = (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id);
 				return session is null
 					? $"#{id}"
 					: $"#{id} {session.Name}";
@@ -821,7 +823,7 @@ public sealed class MpCommandService(
 		var players = match.BannedIds
 			.Select(id =>
 			{
-				var session = sessionRegistry.GetSessionsByUserId(id).FirstOrDefault();
+				var session = (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id);
 				return session is null
 					? $"#{id}"
 					: $"#{id} {session.Name}";
@@ -1238,20 +1240,20 @@ public sealed class MpCommandService(
 	private UserSession? ParseUserSession(string target)
 	{
 		if (int.TryParse(target, out var playerId))
-			return sessionRegistry.GetSessionsByUserId(playerId).FirstOrDefault() ?? ParseByName(target);
+			return (UserSession?)gameRegistry.GetByUserId(playerId) ?? ircRegistry.GetByUserId(playerId) ?? ParseByName(target);
 		return ParseByName(target);
 
 		UserSession? ParseByName(string name)
 		{
-			return (UserSession?)sessionRegistry.GetGameByName(name) ?? sessionRegistry.GetIrcByName(name);
+			return (UserSession?)gameRegistry.GetByName(name) ?? ircRegistry.GetByName(name);
 		}
 	}
 
 	private GameSession? ParseGameSession(string target)
 	{
 		if (int.TryParse(target, out var playerId))
-			return sessionRegistry.GetGameByUserId(playerId) ?? sessionRegistry.GetGameByName(target);
-		return sessionRegistry.GetGameByName(target);
+			return gameRegistry.GetByUserId(playerId) ?? gameRegistry.GetByName(target);
+		return gameRegistry.GetByName(target);
 	}
 
 	private async Task<User?> ParseUser(string target)

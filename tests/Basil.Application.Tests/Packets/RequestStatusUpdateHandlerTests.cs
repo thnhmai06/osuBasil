@@ -25,7 +25,7 @@ public class RequestStatusUpdateHandlerTests
 		await new RequestStatusUpdateHandler().HandleAsync(session, reader);
 
 		var expected = ServerPacketWriter.UserStats(
-			42, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 100.0, 10, 1000, 3, 0);
+			42, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900, 100.0, 10, 1000, 3, 727);
 		Assert.Equal(expected, session.Dequeue());
 	}
 }

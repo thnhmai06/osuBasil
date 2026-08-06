@@ -18,11 +18,11 @@ public sealed class StopSpectatingHandler(SpectatorService spectatorService) : I
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		var host = userSession.Spectating;
-		if (host is not null) spectatorService.RemoveSpectator(host, userSession);
+		var host = gameSession.Spectating;
+		if (host is not null) spectatorService.RemoveSpectator(host, gameSession);
 
 		return Task.CompletedTask;
 	}

@@ -25,23 +25,23 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService, ILogger<Log
 	public bool AllowedWhenRestricted => true;
 
 	/// <summary>Reads the reserved field and runs the logout flow once the grace period has passed.</summary>
-	/// <param name="userSession">The userSession session that is logging out.</param>
+	/// <param name="gameSession">The userSession session that is logging out.</param>
 	/// <param name="reader">The packet reader positioned at the Logout body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes once the logout is handled or the request is ignored.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		reader.ReadI32(); // reserved
 
 		// osu! tends to log out immediately after login (300-800ms observed) —
 		// block any logout request within 1 second from login. (that's so weird lol)
-		if (DateTimeOffset.UtcNow - userSession.LoginTime < TimeSpan.FromSeconds(1))
+		if (DateTimeOffset.UtcNow - gameSession.LoginTime < TimeSpan.FromSeconds(1))
 		{
-			logger.LogDebug("Logout within grace period ignored: UserId={UserId}", userSession.Id);
+			logger.LogDebug("Logout within grace period ignored: UserId={UserId}", gameSession.Id);
 			return;
 		}
 
-		await logoutService.LogoutAsync(userSession, cancellationToken);
+		await logoutService.LogoutAsync(gameSession, cancellationToken);
 	}
 }

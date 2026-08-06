@@ -12,7 +12,7 @@ namespace Basil.Application.Tests.Packets;
 /// <summary>Ported from app/api/domains/cho.py's ChangeAction (@register(ClientPackets.CHANGE_ACTION, restricted=True)).</summary>
 public class ChangeActionHandlerTests
 {
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 
 	private static byte[] Payload(int action, string infoText, string mapMd5, uint mods, byte mode, int mapId)
 	{
@@ -76,7 +76,7 @@ public class ChangeActionHandlerTests
 	{
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([session, other]);
+		_sessionRegistry.All.Returns([session, other]);
 		var reader = new PacketReader(Payload((int)UserActivity.Idle, "", "", 0, 0, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
@@ -90,7 +90,7 @@ public class ChangeActionHandlerTests
 		var session =
 			new GameSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([session, other]);
+		_sessionRegistry.All.Returns([session, other]);
 		var reader = new PacketReader(Payload(0, "", "", 0, 0, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);

@@ -1,5 +1,4 @@
 using Basil.Application.Configurations;
-using Basil.Application.Sessions.Irc;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
@@ -29,7 +28,8 @@ namespace Basil.Application.Sessions.Channels;
 ///     spamming everyone else with a redundant JOIN/PART.
 /// </remarks>
 public sealed class ChannelMembershipService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	IChannelRegistry channelRegistry,
 	IOptions<IrcOptions> options)
 {
@@ -116,7 +116,10 @@ public sealed class ChannelMembershipService(
 	/// <param name="quitReason">The reason reported to remaining members if a QUIT is sent.</param>
 	public void DisconnectFromChannels(UserSession session, string quitReason)
 	{
-		var userStillPresent = sessionRegistry.GetSessionsByUserId(session.Id).Any(s => !ReferenceEquals(s, session));
+		var otherGame = gameRegistry.GetByUserId(session.Id);
+		var otherIrc = ircRegistry.GetByUserId(session.Id);
+		var userStillPresent = (otherGame is not null && !ReferenceEquals(otherGame, session))
+		                       || (otherIrc is not null && !ReferenceEquals(otherIrc, session));
 		var quitMessage = IrcMessageWriter.Quit(session.Name, session.Id, quitReason);
 		var quitNotified = new HashSet<int>();
 
@@ -139,7 +142,7 @@ public sealed class ChannelMembershipService(
 				foreach (var memberId in channel.MemberIds)
 				{
 					if (memberId == session.Id || !quitNotified.Add(memberId)) continue;
-					foreach (var irc in sessionRegistry.GetSessionsByUserId(memberId).OfType<IrcSession>())
+					if (ircRegistry.GetByUserId(memberId) is { } irc)
 						irc.Connection.Send(quitMessage);
 				}
 			}
@@ -156,7 +159,7 @@ public sealed class ChannelMembershipService(
 	public IEnumerable<IrcMessage> BuildNamesReply(string requesterName, ChannelSession channel)
 	{
 		var names = channel.MemberIds
-			.Select(id => sessionRegistry.GetSessionsByUserId(id).FirstOrDefault())
+			.Select(id => (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))
 			.Where(member => member is not null)
 			.Select(member => NamePrefix(member!) + member!.Name);
 
@@ -189,7 +192,7 @@ public sealed class ChannelMembershipService(
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (immune is not null && immune.Contains(memberId)) continue;
-			foreach (var game in sessionRegistry.GetSessionsByUserId(memberId).OfType<GameSession>())
+			if (gameRegistry.GetByUserId(memberId) is { } game)
 				game.Enqueue(packet);
 		}
 	}
@@ -207,8 +210,10 @@ public sealed class ChannelMembershipService(
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (memberId == skipMemberId) continue;
-			foreach (var member in sessionRegistry.GetSessionsByUserId(memberId))
-				member.IrcConnection.Send(message);
+			if (gameRegistry.GetByUserId(memberId) is { } game)
+				game.IrcConnection.Send(message);
+			if (ircRegistry.GetByUserId(memberId) is { } irc)
+				irc.IrcConnection.Send(message);
 		}
 	}
 
@@ -217,7 +222,7 @@ public sealed class ChannelMembershipService(
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (memberId == excludeUserId) continue;
-			foreach (var irc in sessionRegistry.GetSessionsByUserId(memberId).OfType<IrcSession>())
+			if (ircRegistry.GetByUserId(memberId) is { } irc)
 				irc.Connection.Send(message);
 		}
 	}
@@ -227,12 +232,16 @@ public sealed class ChannelMembershipService(
 		var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
 
 		if (channel.Instance)
+		{
 			foreach (var memberId in channel.MemberIds)
-			foreach (var game in sessionRegistry.GetSessionsByUserId(memberId).OfType<GameSession>())
-				game.Enqueue(packet);
-		else
-			foreach (var game in sessionRegistry.GameSessions)
-				if (channel.CanRead(game.Privilege))
+				if (gameRegistry.GetByUserId(memberId) is { } game)
 					game.Enqueue(packet);
+		}
+		else
+		{
+			foreach (var session in gameRegistry.All)
+				if (channel.CanRead(session.Privilege))
+					session.Enqueue(packet);
+		}
 	}
 }

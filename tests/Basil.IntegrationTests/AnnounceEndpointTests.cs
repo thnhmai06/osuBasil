@@ -60,20 +60,20 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 	public async Task Announce_NoUserIds_NotifiesEveryoneOnlineExceptBot()
 	{
 		var client = _factory.CreateClient();
-		var registry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var registry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var alice = MakeSession(1, "alice");
 		var bob = MakeSession(2, "bob");
 		var bot = MakeSession(0, "BasilBot", true);
-		registry.TryAddGameSession(alice);
-		registry.TryAddGameSession(bob);
-		registry.TryAddGameSession(bot);
+		registry.TryAdd(alice);
+		registry.TryAdd(bob);
+		registry.TryAdd(bot);
 
 		var response = await client.SendAsync(MakeRequest(new { message = "server restarting soon" }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.NotNull(body?.Data);
-		Assert.Equal(2, body!.Data!.DeliveredCount);
+		Assert.Equal(2, body.Data!.DeliveredCount);
 
 		var expectedPacket = ServerPacketWriter.Notification("server restarting soon");
 		Assert.Equal(expectedPacket, alice.Dequeue());
@@ -85,9 +85,9 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 	public async Task Announce_ExplicitUserIds_NotifiesOnlyThoseSkippingOfflineAndBot()
 	{
 		var client = _factory.CreateClient();
-		var registry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var registry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var alice = MakeSession(11, "alice2");
-		registry.TryAddGameSession(alice);
+		registry.TryAdd(alice);
 
 		var response = await client.SendAsync(MakeRequest(new { message = "hi", userIds = new[] { 11, 999, 0 } }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();

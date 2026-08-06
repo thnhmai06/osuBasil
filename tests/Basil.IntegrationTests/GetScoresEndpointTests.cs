@@ -101,8 +101,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task WrongPassword_ReturnsUnauthorized()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.TryAddGameSession(new GameSession(50, "cmyui-wrongpw", "tok", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(50, "cmyui-wrongpw", "tok", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-wrongpw&ha=wrong-md5&m=0&mods=0");
 
@@ -114,8 +114,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task Authenticated_UnknownMap_ReturnsNotSubmitted()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.TryAddGameSession(new GameSession(51, "cmyui-stub", "tok2", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(51, "cmyui-stub", "tok2", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-stub&ha=correct-md5&c=unknown-md5&m=0&mods=0");
 
@@ -128,8 +128,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task Authenticated_KnownMap_ReturnsMapsetRankedStatus()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		sessionRegistry.TryAddGameSession(new GameSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted,
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		sessionRegistry.TryAdd(new GameSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest($"us=cmyui-known&ha=correct-md5&c={KnownMd5}&m=0&mods=0");
 
@@ -142,13 +142,13 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task ModeOrModsChanged_BroadcastsUpdatedStatsToOtherSessions()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var player = new GameSession(52, "cmyui-status", "tok3", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		var other = new GameSession(53, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(player);
-		sessionRegistry.TryAddGameSession(other);
+		sessionRegistry.TryAdd(player);
+		sessionRegistry.TryAdd(other);
 		var request = MakeRequest("us=cmyui-status&ha=correct-md5&m=1&mods=8"); // Taiko + Hidden, differs from defaults
 
 		await _factory.CreateClient().SendAsync(request);
@@ -159,14 +159,14 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task ModeAndModsUnchanged_DoesNotBroadcast()
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var player = new GameSession(54, "cmyui-nochange", "tok4", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		var other = new GameSession(55, "other2", "other-token2", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(player);
-		sessionRegistry.TryAddGameSession(other);
-		var request = MakeRequest("us=cmyui-nochange&ha=correct-md5&m=0&mods=0"); // matches PlayerStatus defaults
+		sessionRegistry.TryAdd(player);
+		sessionRegistry.TryAdd(other);
+		var request = MakeRequest("us=cmyui-nochange&ha=correct-md5&m=0&mods=0"); // matches UserStatus defaults
 
 		await _factory.CreateClient().SendAsync(request);
 

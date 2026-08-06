@@ -11,7 +11,7 @@ namespace Basil.Application.Tests.Services.Authentication;
 public class AuthenticationServiceTests
 {
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	private AuthenticationService MakeService()
@@ -23,7 +23,7 @@ public class AuthenticationServiceTests
 	[Fact]
 	public async Task PlayerNotOnline_ReturnsNull()
 	{
-		_sessionRegistry.GetGameByName("cmyui").Returns((GameSession?)null);
+		_sessionRegistry.GetByName("cmyui").Returns((GameSession?)null);
 
 		var result = await MakeService().AuthenticateOnlinePlayerAsync("cmyui", "hash");
 
@@ -34,7 +34,7 @@ public class AuthenticationServiceTests
 	public async Task NoStoredPasswordHash_ReturnsNull()
 	{
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("cmyui").Returns(session);
+		_sessionRegistry.GetByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns((string?)null);
 
 		var result = await MakeService().AuthenticateOnlinePlayerAsync("cmyui", "hash");
@@ -46,7 +46,7 @@ public class AuthenticationServiceTests
 	public async Task WrongPassword_ReturnsNull()
 	{
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("cmyui").Returns(session);
+		_sessionRegistry.GetByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
 
@@ -59,7 +59,7 @@ public class AuthenticationServiceTests
 	public async Task CorrectPassword_ReturnsSession()
 	{
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("cmyui").Returns(session);
+		_sessionRegistry.GetByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 

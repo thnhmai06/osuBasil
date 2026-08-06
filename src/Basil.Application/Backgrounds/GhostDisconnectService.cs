@@ -17,11 +17,13 @@ namespace Basil.Application.Backgrounds;
 ///     into match-leave, so a ghost's slot stayed stuck at SlotStatus.Playing forever and permanently
 ///     blocked every other userSession's MatchComplete from completing the round.
 /// </remarks>
-/// <param name="sessionRegistry">The registry of live userSession sessions this watchdog scans.</param>
+/// <param name="gameRegistry">The registry of live <see cref="GameSession" /> sessions this watchdog scans.</param>
+/// <param name="ircRegistry">The registry of live <see cref="IrcSession" /> sessions this watchdog scans.</param>
 /// <param name="playerLogout">The logout service that performs the actual session cleanup.</param>
 /// <param name="logger">The logger used to record cleanup failures.</param>
 public sealed class GhostDisconnectService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	PlayerLogoutService playerLogout,
 	ILogger<GhostDisconnectService> logger) : BackgroundService
 {
@@ -37,7 +39,7 @@ public sealed class GhostDisconnectService(
 	{
 		var currentTime = DateTimeOffset.UtcNow;
 
-		foreach (var player in sessionRegistry.All)
+		foreach (var player in gameRegistry.All.Concat<UserSession>(ircRegistry.All))
 			if (!player.IsBot && currentTime - player.LastRecvTime >
 			    TimeSpan.FromSeconds(OsuClientMinPingIntervalSeconds))
 				try

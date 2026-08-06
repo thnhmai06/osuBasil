@@ -46,6 +46,7 @@ public class TcpIrcConnectionTests
 	[Fact]
 	public async Task TwoIrcClients_LoginAndPrivmsgInAutoJoinChannel_MessageArrivesAtTheOtherClient()
 	{
+		var tokenGenerator = new GuidTokenGenerator();
 		var hasher = new BCryptPasswordHasher();
 		var users = new FakeUserRepository();
 		users.Add(new User(1, "alice", Country.Xx, 0, default),
@@ -53,18 +54,19 @@ public class TcpIrcConnectionTests
 		users.Add(new User(2, "bob", Country.Xx, 0, default),
 			HashPassword(hasher, "bob-key"));
 
-		var sessionRegistry = new InMemoryUserSessionRegistry();
+		var gameRegistry = new GameSessionRegistry();
+		var ircRegistry = new IrcSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry, _fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, _fakeIrcOptions);
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
-		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
-			_fakeIrcOptions, hasher);
-		var playerLogout = MakePlayerLogoutService(sessionRegistry, channelRegistry, channelMembership);
+		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
+			_fakeIrcOptions, hasher, tokenGenerator);
+		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 
 		var listener = new TcpListener(IPAddress.Loopback, 0);
 		listener.Start();
@@ -123,24 +125,26 @@ public class TcpIrcConnectionTests
 		users.Add(new User(1, "alice", Country.Xx, 0, default),
 			HashPassword(hasher, "alice-key"));
 
-		var sessionRegistry = new InMemoryUserSessionRegistry();
+		var tokenGenerator = new GuidTokenGenerator();
+var gameRegistry = new GameSessionRegistry();
+		var ircRegistry = new IrcSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry, _fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, _fakeIrcOptions);
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
-		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
-			_fakeIrcOptions, hasher);
-		var playerLogout = MakePlayerLogoutService(sessionRegistry, channelRegistry, channelMembership);
+		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
+			_fakeIrcOptions, hasher, tokenGenerator);
+		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 
 		// Stands in for a real bancho client: same GameSession/IrcConnection shape the chat core sees
 		// once LoginService logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
 		var banchoPlayer = new GameSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(banchoPlayer);
+		gameRegistry.TryAdd(banchoPlayer);
 		channelMembership.Join(banchoPlayer, channelRegistry.GetByName("#osu")!);
 
 		var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -181,17 +185,18 @@ public class TcpIrcConnectionTests
 		listener.Stop();
 	}
 
-	private static PlayerLogoutService MakePlayerLogoutService(IUserSessionRegistry sessionRegistry,
-		IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
+	private static PlayerLogoutService MakePlayerLogoutService(ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry, IChannelRegistry channelRegistry,
+		ChannelMembershipService channelMembership)
 	{
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
-			sessionRegistry, channelMembership, new NotSupportedMatchRepository(),
+			gameRegistry, ircRegistry, channelMembership, new NotSupportedMatchRepository(),
 			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
 			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
-		return new PlayerLogoutService(sessionRegistry, channelMembership, spectatorService, matchMembership,
+		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
 			NullLogger<PlayerLogoutService>.Instance);
 	}
 

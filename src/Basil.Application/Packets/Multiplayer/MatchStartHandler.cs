@@ -24,17 +24,17 @@ public sealed class MatchStartHandler(MatchMembershipService matchMembership) : 
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the match-start packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">
 	///     The packet reader positioned at the start of the payload; this handler does not read the payload.
 	/// </param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		var match = userSession.Match;
-		if (match is null || userSession.Id != match.HostId) return;
+		var match = gameSession.Match;
+		if (match is null || gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try

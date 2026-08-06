@@ -21,14 +21,14 @@ public sealed class RequestStatusUpdateHandler : IPacketHandler
 	public bool AllowedWhenRestricted => true;
 
 	/// <summary>Enqueues a rebuilt user-stats packet for the requesting userSession.</summary>
-	/// <param name="userSession">The userSession session that requested its stats.</param>
+	/// <param name="gameSession">The userSession session that requested its stats.</param>
 	/// <param name="reader">The packet reader positioned at the RequestStatusUpdate body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		userSession.Enqueue(PacketBuilders.BuildUserStats(userSession));
+		gameSession.Enqueue(PacketBuilders.BuildUserStats(gameSession));
 		return Task.CompletedTask;
 	}
 }

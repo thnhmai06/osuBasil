@@ -29,23 +29,23 @@ public sealed class TourneyMatchInfoRequestHandler(
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the tournament-info-request packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the match id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchId = reader.ReadI32();
 
-		if (matchId < 0 || (userSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
+		if (matchId < 0 || (gameSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
 		var match = matchRegistry.GetById(matchId);
 		if (match is null) return Task.CompletedTask;
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
-		userSession.Enqueue(ServerPacketWriter.UpdateMatch(match.ToPacket(), false));
+		gameSession.Enqueue(ServerPacketWriter.UpdateMatch(match.ToPacket(), false));
 		return Task.CompletedTask;
 	}
 }

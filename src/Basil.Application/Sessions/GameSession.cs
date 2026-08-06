@@ -25,7 +25,6 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 {
 	private readonly ConcurrentQueue<byte[]> _packetQueue = new();
 	private readonly ConcurrentDictionary<int, GameSession> _spectators = new();
-	private IIrcConnection? _chatBridge;
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; init; }
@@ -48,6 +47,7 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 	///     multiplayer lobby screen, between the <see cref="Basil.Protocol.Packets.ClientPackets.JoinLobby" />
 	///     and <see cref="Basil.Protocol.Packets.ClientPackets.PartLobby" /> packets.
 	/// </summary>
+	// ReSharper disable once UnusedAutoPropertyAccessor.Global
 	public bool InLobby { get; set; }
 
 	/// <summary>
@@ -55,14 +55,14 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 	///     score submission's own client hash to catch a submission coming from a different client
 	///     session than the one currently logged in.
 	/// </summary>
-	public ClientDetails? Client { get; set; }
+	public ClientDetails? Client { get; init; }
 
 	/// <summary>
 	///     Gets or sets the osu! client version captured at login, kept separate from
 	///     <see cref="Client" /> because <see cref="ClientDetails" /> no longer carries a version
 	///     date. Score submission's version-mismatch check compares against this.
 	/// </summary>
-	public OsuVersion? OsuVersion { get; set; }
+	public OsuVersion? OsuVersion { get; init; }
 
 	/// <summary>
 	///     Gets or sets the session this userSession is currently spectating, or null when the userSession is not
@@ -83,10 +83,10 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 	public bool Stealth { get; set; }
 
 	/// <summary>Gets the sessions currently spectating this userSession, as a snapshot collection.</summary>
-	public IReadOnlyCollection<GameSession> Spectators => [.. _spectators.Values];
+	public IReadOnlyCollection<GameSession> Spectators => (IReadOnlyCollection<GameSession>)_spectators.Values;
 
 	/// <summary>Gets the client's currently reported presence state, including activity, selected map, mods, and mode.</summary>
-	public PlayerStatus Status { get; } = new();
+	public UserStatus Status { get; } = new();
 
 	/// <summary>
 	///     Gets the per-mode stats for this userSession, loaded into memory at login and never re-queried
@@ -106,7 +106,7 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 	///     bancho packets, so any <see cref="GameSession" /> works out of the box even when the
 	///     constructing code never wires one explicitly (tests, mostly).
 	/// </remarks>
-	public override IIrcConnection IrcConnection => _chatBridge ??= new BanchoIrcBridgeConnection(this);
+	public override IIrcConnection IrcConnection => field ??= new BanchoIrcBridgeConnection(this);
 
 	/// <summary>
 	///     Adds a session to this userSession's spectator list, replacing any previous entry for the same
@@ -141,7 +141,7 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 	///     Drains every queued outgoing packet chunk and returns them concatenated into a single
 	///     byte array, clearing the queue.
 	/// </summary>
-	/// <returns>The concatenated bytes of all queued packets, or an empty array when the queue is empty.</returns>
+	/// <returns>The concatenated bytes of all queued packets or an empty array when the queue is empty.</returns>
 	public byte[] Dequeue()
 	{
 		using var buffer = new MemoryStream();
@@ -156,16 +156,16 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 ///     Represents the client's currently reported presence state, updated as the userSession idles,
 ///     selects a map, changes mods, or switches modes.
 /// </summary>
-public sealed class PlayerStatus
+public sealed class UserStatus
 {
 	/// <summary>Gets or sets the activity the client is currently reporting.</summary>
 	public UserActivity UserActivity { get; set; } = UserActivity.Idle;
 
 	/// <summary>Gets or sets the free-form status text coming with the activity, shown to other players.</summary>
-	public string InfoText { get; set; } = "";
+	public string InfoText { get; set; } = string.Empty;
 
 	/// <summary>Gets or sets the md5 of the beatmap the userSession is currently playing or selecting.</summary>
-	public string MapMd5 { get; set; } = "";
+	public string MapMd5 { get; set; } = string.Empty;
 
 	/// <summary>Gets or sets the mods the userSession currently has active.</summary>
 	public Mods Mods { get; set; } = Mods.NoMod;

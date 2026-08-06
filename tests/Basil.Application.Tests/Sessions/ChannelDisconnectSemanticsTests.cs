@@ -17,11 +17,13 @@ namespace Basil.Application.Tests.Sessions;
 public class ChannelDisconnectSemanticsTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private ChannelMembershipService MakeService()
 	{
-		return new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Options.Create(new IrcOptions()));
 	}
 
 	private static GameSession MakeGame(int id, string name)
@@ -39,10 +41,10 @@ public class ChannelDisconnectSemanticsTests
 
 	private void Register(params UserSession[] sessions)
 	{
-		foreach (var group in sessions.GroupBy(s => s.Id))
-			_sessionRegistry.GetSessionsByUserId(group.Key).Returns(group.ToList());
-
-		_sessionRegistry.GameSessions.Returns(sessions.OfType<GameSession>().ToList());
+		foreach (var game in sessions.OfType<GameSession>())
+			_gameRegistry.GetByUserId(game.Id).Returns(game);
+		foreach (var irc in sessions.OfType<IrcSession>())
+			_ircRegistry.GetByUserId(irc.Id).Returns(irc);
 	}
 
 	[Fact]

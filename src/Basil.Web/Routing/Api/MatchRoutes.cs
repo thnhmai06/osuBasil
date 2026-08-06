@@ -271,7 +271,8 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchMembershipService matchMembership,
-		MatchControlService matchControl, IUserSessionRegistry sessionRegistry, IUserRepository users,
+		MatchControlService matchControl, ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
@@ -305,19 +306,22 @@ internal static class MatchRoutes
 		}
 
 		var settings =
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken);
+			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
+				cancellationToken);
 		return Results.Created($"/matches/{match.DbId}/settings", settings);
 	}
 
 	private static async Task<IResult> HandleSettingsGet(int matchId, IMatchRegistry matchRegistry,
-		IUserSessionRegistry sessionRegistry, IUserRepository users, IBeatmapRepository beatmaps,
+		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
+		IUserRepository users, IBeatmapRepository beatmaps,
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound();
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
+				cancellationToken));
 	}
 
 	private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
@@ -348,7 +352,7 @@ internal static class MatchRoutes
 
 	private static IResult HandleLiveSlotStream(int matchId, int slotIndex, HttpContext context,
 		IMatchRegistry matchRegistry, IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents,
-		IUserSessionRegistry sessionRegistry, CancellationToken cancellationToken)
+		ISessionRegistry<GameSession> gameRegistry, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null || slotIndex is < 1 or > 16)
@@ -356,7 +360,7 @@ internal static class MatchRoutes
 				"Match is not currently live, or slotIndex is out of range.");
 
 		var index = slotIndex - 1;
-		return LiveSseRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, sessionRegistry,
+		return LiveSseRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, gameRegistry,
 			() => match.SlotSnapshots[index].Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,
@@ -364,7 +368,8 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> HandleSettingsReplace(int matchId, ReplaceMatchSettingsRequest body,
-		IMatchRegistry matchRegistry, MatchControlService matchControl, IUserSessionRegistry sessionRegistry,
+		IMatchRegistry matchRegistry, MatchControlService matchControl, ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -392,11 +397,13 @@ internal static class MatchRoutes
 		}
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
+				cancellationToken));
 	}
 
 	private static async Task<IResult> HandleSettingsUpdate(int matchId, UpdateMatchSettingsRequest body,
-		IMatchRegistry matchRegistry, MatchControlService matchControl, IUserSessionRegistry sessionRegistry,
+		IMatchRegistry matchRegistry, MatchControlService matchControl, ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -414,7 +421,8 @@ internal static class MatchRoutes
 		}
 
 		return Results.Json(
-			await MatchLiveSnapshotBuilder.BuildSettings(match, sessionRegistry, users, beatmaps, cancellationToken));
+			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
+				cancellationToken));
 	}
 
 	/// <summary>

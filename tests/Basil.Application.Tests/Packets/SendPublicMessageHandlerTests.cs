@@ -29,12 +29,13 @@ public class SendPublicMessageHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private SendPublicMessageHandler MakeHandler()
 	{
-		var channelMembership = new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
-		var chatDispatch = new ChatDispatchService(_channelRegistry, _sessionRegistry, channelMembership,
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership,
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
 		return new SendPublicMessageHandler(chatDispatch);
@@ -113,9 +114,9 @@ public class SendPublicMessageHandlerTests
 		channel.Join(member.Id);
 		member.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([sender, member]);
-		_sessionRegistry.GetGameByUserId(member.Id).Returns(member);
-		_sessionRegistry.GetSessionsByUserId(member.Id).Returns([member]);
+		_gameRegistry.All.Returns([sender, member]);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hello", "#osu", 1));
 
@@ -135,9 +136,9 @@ public class SendPublicMessageHandlerTests
 		channel.Join(member.Id);
 		member.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([sender, member]);
-		_sessionRegistry.GetGameByUserId(member.Id).Returns(member);
-		_sessionRegistry.GetSessionsByUserId(member.Id).Returns([member]);
+		_gameRegistry.All.Returns([sender, member]);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
 		var longText = new string('a', 2500);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", longText, "#osu", 1));
@@ -158,9 +159,9 @@ public class SendPublicMessageHandlerTests
 		channel.Join(member.Id);
 		member.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([sender, member]);
-		_sessionRegistry.GetGameByUserId(member.Id).Returns(member);
-		_sessionRegistry.GetSessionsByUserId(member.Id).Returns([member]);
+		_gameRegistry.All.Returns([sender, member]);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
+		_gameRegistry.GetByUserId(member.Id).Returns(member);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!help", "#osu", 1));
 
@@ -181,11 +182,11 @@ public class SendPublicMessageHandlerTests
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([sender]);
-		_sessionRegistry.GetGameByUserId(sender.Id).Returns(sender);
-		_sessionRegistry.GetSessionsByUserId(sender.Id).Returns([sender]);
-		_sessionRegistry.GetGameByUserId(BotBootstrapService.BotId).Returns(bot);
-		_sessionRegistry.GetSessionsByUserId(BotBootstrapService.BotId).Returns([bot]);
+		_gameRegistry.All.Returns([sender]);
+		_gameRegistry.GetByUserId(sender.Id).Returns(sender);
+		_gameRegistry.GetByUserId(sender.Id).Returns(sender);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
 		_commandDispatcher.DispatchAsync(sender, "!roll", null, "#osu", Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
 				Arg.Any<CancellationToken>())
 			.Returns(call =>
@@ -213,11 +214,11 @@ public class SendPublicMessageHandlerTests
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([sender]);
-		_sessionRegistry.GetGameByUserId(sender.Id).Returns(sender);
-		_sessionRegistry.GetSessionsByUserId(sender.Id).Returns([sender]);
-		_sessionRegistry.GetGameByUserId(BotBootstrapService.BotId).Returns(bot);
-		_sessionRegistry.GetSessionsByUserId(BotBootstrapService.BotId).Returns([bot]);
+		_gameRegistry.All.Returns([sender]);
+		_gameRegistry.GetByUserId(sender.Id).Returns(sender);
+		_gameRegistry.GetByUserId(sender.Id).Returns(sender);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
 		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, "#osu", Arg.Any<ICommandReplySink>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call =>

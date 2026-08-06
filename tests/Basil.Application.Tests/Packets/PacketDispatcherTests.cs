@@ -144,10 +144,10 @@ public class PacketDispatcherTests
 		public ClientPackets PacketId => packetId;
 		public bool AllowedWhenRestricted => allowedWhenRestricted;
 
-		public Task HandleAsync(GameSession userSession, PacketReader reader,
+		public Task HandleAsync(GameSession gameSession, PacketReader reader,
 			CancellationToken cancellationToken = default)
 		{
-			onHandle(userSession, reader);
+			onHandle(gameSession, reader);
 			return Task.CompletedTask;
 		}
 	}

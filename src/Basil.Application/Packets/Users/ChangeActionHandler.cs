@@ -17,7 +17,7 @@ namespace Basil.Application.Packets.Users;
 ///     packet is enqueued on every online session so the updated status reaches the other players'
 ///     friends lists and main menus immediately.
 /// </remarks>
-public sealed class ChangeActionHandler(IUserSessionRegistry sessionRegistry) : IPacketHandler
+public sealed class ChangeActionHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
 {
 	/// <summary>The <see cref="ClientPackets.ChangeAction" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.ChangeAction;
@@ -26,11 +26,11 @@ public sealed class ChangeActionHandler(IUserSessionRegistry sessionRegistry) : 
 	public bool AllowedWhenRestricted => true;
 
 	/// <summary>Reads the status fields from the packet and updates <see cref="UserSession.Status" />.</summary>
-	/// <param name="userSession">The userSession session whose status is being updated.</param>
+	/// <param name="gameSession">The userSession session whose status is being updated.</param>
 	/// <param name="reader">The packet reader positioned at the ChangeAction body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var action = reader.ReadU8();
@@ -41,17 +41,17 @@ public sealed class ChangeActionHandler(IUserSessionRegistry sessionRegistry) : 
 		var mode = reader.ReadU8();
 		var mapId = reader.ReadI32();
 
-		userSession.Status.UserActivity = (UserActivity)action;
-		userSession.Status.InfoText = infoText;
-		userSession.Status.MapMd5 = mapMd5;
-		userSession.Status.Mods = mods;
-		userSession.Status.Mode = (GameMode)mode;
-		userSession.Status.MapId = mapId;
+		gameSession.Status.UserActivity = (UserActivity)action;
+		gameSession.Status.InfoText = infoText;
+		gameSession.Status.MapMd5 = mapMd5;
+		gameSession.Status.Mods = mods;
+		gameSession.Status.Mode = (GameMode)mode;
+		gameSession.Status.MapId = mapId;
 
-		if (userSession.Restricted) return Task.CompletedTask;
+		if (gameSession.Restricted) return Task.CompletedTask;
 
-		var statsPacket = PacketBuilders.BuildUserStats(userSession);
-		foreach (var other in sessionRegistry.GameSessions)
+		var statsPacket = PacketBuilders.BuildUserStats(gameSession);
+		foreach (var other in sessionRegistry.All)
 			other.Enqueue(statsPacket);
 
 		return Task.CompletedTask;

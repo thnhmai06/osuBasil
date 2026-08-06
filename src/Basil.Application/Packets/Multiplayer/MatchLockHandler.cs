@@ -25,17 +25,17 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Processes the match-lock packet for the given userSession.</summary>
-	/// <param name="userSession">The userSession session that sent the packet.</param>
+	/// <param name="gameSession">The userSession session that sent the packet.</param>
 	/// <param name="reader">The packet reader positioned at the payload holding the target slot id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var slotId = reader.ReadI32();
 
-		var match = userSession.Match;
-		if (match is null || userSession.Id != match.HostId || slotId is < 0 or >= 16) return;
+		var match = gameSession.Match;
+		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -48,7 +48,7 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
 			}
 			else
 			{
-				if (slot.PlayerId == userSession.Id)
+				if (slot.PlayerId == gameSession.Id)
 					// don't allow the host to kick themselves by clicking their own crown.
 					return;
 

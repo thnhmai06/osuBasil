@@ -16,7 +16,7 @@ namespace Basil.Application.Services.Authentication;
 ///     repeat checks against the same account's hash cost almost nothing.
 /// </remarks>
 public sealed class AuthenticationService(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	IUserRepository users,
 	IPasswordHasher passwordHasher,
 	ILogger<AuthenticationService> logger)
@@ -35,7 +35,7 @@ public sealed class AuthenticationService(
 	public async Task<GameSession?> AuthenticateOnlinePlayerAsync(
 		string username, string passwordMd5, CancellationToken cancellationToken = default)
 	{
-		var session = sessionRegistry.GetGameByName(username);
+		var session = sessionRegistry.GetByName(username);
 		if (session is null)
 		{
 			logger.LogDebug("Online-userSession authentication failed: Username={Username} (not online)", username);

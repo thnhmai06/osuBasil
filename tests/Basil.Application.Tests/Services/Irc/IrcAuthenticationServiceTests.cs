@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Irc;
@@ -9,7 +6,6 @@ using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -26,21 +22,24 @@ public class IrcAuthenticationServiceTests
 	private const string Password = "hunter2";
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<IrcSession> _sessionRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 
 	public IrcAuthenticationServiceTests()
 	{
 		_channelRegistry.AutoJoinChannels.Returns([]);
-		_sessionRegistry.TryAddIrcSession(Arg.Any<IrcSession>()).Returns(true);
+		_sessionRegistry.TryAdd(Arg.Any<IrcSession>()).Returns(true);
 	}
 
 	private IrcAuthenticationService MakeService()
 	{
 		var channelMembership =
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
+				Options.Create(new IrcOptions()));
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
-			Options.Create(new IrcOptions { Name = "basil.local" }), _passwordHasher);
+			Options.Create(new IrcOptions { Name = "basil.local" }), _passwordHasher, _tokenGenerator);
 	}
 
 	private void StubValidCredentials(int userId, string name)
@@ -97,7 +96,7 @@ public class IrcAuthenticationServiceTests
 		Assert.True(outcome.Success);
 		Assert.NotNull(outcome.Session);
 		Assert.Equal(1, outcome.Session!.Id);
-		_sessionRegistry.Received(1).TryAddIrcSession(Arg.Is<IrcSession>(s => s.Id == 1 && s.Name == "alice"));
+		_sessionRegistry.Received(1).TryAdd(Arg.Is<IrcSession>(s => s != null && s.Id == 1 && s.Name == "alice"));
 	}
 
 	[Fact]
@@ -110,18 +109,18 @@ public class IrcAuthenticationServiceTests
 		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
 
 		Assert.True(outcome.Success);
-		_sessionRegistry.DidNotReceiveWithAnyArgs().GetGameByUserId(default);
-		_sessionRegistry.DidNotReceiveWithAnyArgs().GetGameByName(default!);
-		_sessionRegistry.DidNotReceive().Remove(Arg.Any<UserSession>());
+		_gameRegistry.DidNotReceiveWithAnyArgs().GetByUserId(default);
+		_gameRegistry.DidNotReceiveWithAnyArgs().GetByName(default!);
+		_gameRegistry.DidNotReceive().Remove(Arg.Any<GameSession>());
 	}
 
 	[Fact]
 	public async Task AuthenticateAsync_AnotherIrcSessionSameAccountAlreadyRegistered_FailsWithNicknameInUse()
 	{
-		// TryAddIrcSession is the final, atomic authority — this is what makes two concurrent IRC
+		// TryAdd is the final, atomic authority — this is what makes two concurrent IRC
 		// logins for the same account resolve to exactly one winner.
 		StubValidCredentials(1, "alice");
-		_sessionRegistry.TryAddIrcSession(Arg.Any<IrcSession>()).Returns(false);
+		_sessionRegistry.TryAdd(Arg.Any<IrcSession>()).Returns(false);
 
 		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
 

@@ -28,13 +28,14 @@ public class SendPrivateMessageHandlerTests
 {
 	private readonly ICommandDispatcher _commandDispatcher = Substitute.For<ICommandDispatcher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	private SendPrivateMessageHandler MakeHandler()
 	{
 		var channelRegistry = Substitute.For<IChannelRegistry>();
-		var channelMembership = new ChannelMembershipService(_sessionRegistry, channelRegistry, Options.Create(new IrcOptions()));
+		var channelMembership = new ChannelMembershipService(_sessionRegistry,
+			Substitute.For<ISessionRegistry<IrcSession>>(), channelRegistry, Options.Create(new IrcOptions()));
 		var matchRegistry = Substitute.For<IMatchRegistry>();
 		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership, _users,
 			_relationships, _commandDispatcher, matchRegistry, NullLogger<ChatDispatchService>.Instance);
@@ -69,7 +70,7 @@ public class SendPrivateMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var target = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("other").Returns(target);
+		_sessionRegistry.GetByName("other").Returns(target);
 		_relationships.FetchOneAsync(2, 1).Returns(new Relationship(2, 1, RelationshipType.Block));
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));
@@ -83,7 +84,7 @@ public class SendPrivateMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var target = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ PmPrivate = true };
-		_sessionRegistry.GetGameByName("other").Returns(target);
+		_sessionRegistry.GetByName("other").Returns(target);
 		_relationships.FetchOneAsync(2, 1).Returns((Relationship?)null);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));
@@ -100,7 +101,7 @@ public class SendPrivateMessageHandlerTests
 		{
 			SilenceEnd = DateTimeOffset.UtcNow.AddSeconds(60)
 		};
-		_sessionRegistry.GetGameByName("other").Returns(target);
+		_sessionRegistry.GetByName("other").Returns(target);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));
 
@@ -113,7 +114,7 @@ public class SendPrivateMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var target = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("other").Returns(target);
+		_sessionRegistry.GetByName("other").Returns(target);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi there", "other", 1));
 
@@ -132,7 +133,7 @@ public class SendPrivateMessageHandlerTests
 				UserActivity = UserActivity.Afk
 			}
 		};
-		_sessionRegistry.GetGameByName("other").Returns(target);
+		_sessionRegistry.GetByName("other").Returns(target);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));
 
@@ -144,7 +145,7 @@ public class SendPrivateMessageHandlerTests
 	public async Task Handle_TargetOffline_ExistsInDb_NoOp()
 	{
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("offlineuser").Returns((GameSession?)null);
+		_sessionRegistry.GetByName("offlineuser").Returns((GameSession?)null);
 		_users.FetchByNameAsync("offlineuser").Returns(new User(
 			5, "offlineuser", Country.Xx, UserPrivileges.Unrestricted, default));
 
@@ -160,7 +161,7 @@ public class SendPrivateMessageHandlerTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		_sessionRegistry.GetGameByName("BanchoBot").Returns(bot);
+		_sessionRegistry.GetByName("BanchoBot").Returns(bot);
 		_commandDispatcher.DispatchAsync(sender, "!roll", null, null, Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
 				Arg.Any<CancellationToken>())
 			.Returns(call =>
@@ -184,7 +185,7 @@ public class SendPrivateMessageHandlerTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		_sessionRegistry.GetGameByName("BanchoBot").Returns(bot);
+		_sessionRegistry.GetByName("BanchoBot").Returns(bot);
 		_commandDispatcher.DispatchAsync(sender, "hi", null, null, Arg.Any<ICommandReplySink>(), Arg.Any<bool>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult(false));
@@ -201,7 +202,7 @@ public class SendPrivateMessageHandlerTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		_sessionRegistry.GetGameByName("BasilBot").Returns(bot);
+		_sessionRegistry.GetByName("BasilBot").Returns(bot);
 		_commandDispatcher.DispatchAsync(sender, "!faq rules", null, null, Arg.Any<ICommandReplySink>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call =>
@@ -222,7 +223,7 @@ public class SendPrivateMessageHandlerTests
 	public async Task Handle_TargetDoesNotExist_NoOp()
 	{
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetGameByName("nobody").Returns((GameSession?)null);
+		_sessionRegistry.GetByName("nobody").Returns((GameSession?)null);
 		_users.FetchByNameAsync("nobody").Returns((User?)null);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "nobody", 1));

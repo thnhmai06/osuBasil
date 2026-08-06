@@ -13,6 +13,6 @@ public sealed class GuidTokenGenerator : ITokenGenerator
 	/// <inheritdoc />
 	public string GenerateToken()
 	{
-		return Guid.NewGuid().ToString();
+		return Guid.NewGuid().ToString("N");
 	}
 }

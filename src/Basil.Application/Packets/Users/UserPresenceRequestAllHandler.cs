@@ -12,7 +12,7 @@ namespace Basil.Application.Packets.Users;
 ///     and discarded. A presence packet is then enqueued on the requester for every non-restricted
 ///     online session.
 /// </remarks>
-public sealed class UserPresenceRequestAllHandler(IUserSessionRegistry sessionRegistry) : IPacketHandler
+public sealed class UserPresenceRequestAllHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
 {
 	/// <summary>The <see cref="ClientPackets.UserPresenceRequestAll" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.UserPresenceRequestAll;
@@ -21,20 +21,20 @@ public sealed class UserPresenceRequestAllHandler(IUserSessionRegistry sessionRe
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Enqueues a presence packet for every non-restricted online userSession on the requester.</summary>
-	/// <param name="userSession">The userSession session that requested the presence data.</param>
+	/// <param name="gameSession">The userSession session that requested the presence data.</param>
 	/// <param name="reader">The packet reader positioned at the UserPresenceRequestAll body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		reader.ReadI32(); // ingame_time, unused
 
 		var buffer = new List<byte>();
-		foreach (var other in sessionRegistry.GameSessions.Where(s => !s.Restricted))
+		foreach (var other in sessionRegistry.All.Where(s => !s.Restricted))
 			buffer.AddRange(PacketBuilders.BuildUserPresence(other));
 
-		userSession.Enqueue([.. buffer]);
+		gameSession.Enqueue([.. buffer]);
 		return Task.CompletedTask;
 	}
 }

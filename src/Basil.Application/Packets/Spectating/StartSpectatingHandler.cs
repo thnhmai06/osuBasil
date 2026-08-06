@@ -17,7 +17,7 @@ namespace Basil.Application.Packets.Spectating;
 ///     for an unknown target id is ignored.
 /// </remarks>
 public sealed class StartSpectatingHandler(
-	IUserSessionRegistry sessionRegistry,
+	ISessionRegistry<GameSession> sessionRegistry,
 	SpectatorService spectatorService,
 	ILogger<StartSpectatingHandler> logger) : IPacketHandler
 {
@@ -25,14 +25,14 @@ public sealed class StartSpectatingHandler(
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var targetId = reader.ReadI32();
-		var newHost = sessionRegistry.GetGameByUserId(targetId);
+		var newHost = sessionRegistry.GetByUserId(targetId);
 		if (newHost is null) return Task.CompletedTask;
 
-		var currentHost = userSession.Spectating;
+		var currentHost = gameSession.Spectating;
 		if (currentHost is not null)
 		{
 			if (currentHost == newHost)
@@ -40,23 +40,23 @@ public sealed class StartSpectatingHandler(
 				// Host hasn't changed — the client didn't have the map but has now downloaded
 				// it. `userSession` already received the other fellow spectators, so no resend.
 				logger.LogDebug("Spectator map re-download: UserId={UserId} HostId={NewHostId}",
-					userSession.Id, newHost.Id);
+					gameSession.Id, newHost.Id);
 
-				if (userSession.Stealth) return Task.CompletedTask;
+				if (gameSession.Stealth) return Task.CompletedTask;
 
-				newHost.Enqueue(ServerPacketWriter.SpectatorJoined(userSession.Id));
-				var joined = ServerPacketWriter.FellowSpectatorJoined(userSession.Id);
+				newHost.Enqueue(ServerPacketWriter.SpectatorJoined(gameSession.Id));
+				var joined = ServerPacketWriter.FellowSpectatorJoined(gameSession.Id);
 				foreach (var spec in newHost.Spectators)
-					if (spec.Id != userSession.Id)
+					if (spec.Id != gameSession.Id)
 						spec.Enqueue(joined);
 
 				return Task.CompletedTask;
 			}
 
-			spectatorService.RemoveSpectator(currentHost, userSession);
+			spectatorService.RemoveSpectator(currentHost, gameSession);
 		}
 
-		spectatorService.AddSpectator(newHost, userSession);
+		spectatorService.AddSpectator(newHost, gameSession);
 		return Task.CompletedTask;
 	}
 }

@@ -14,12 +14,14 @@ namespace Basil.Application.Tests.Packets;
 public class ChannelPartHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private ChannelPartHandler MakeHandler()
 	{
 		return new ChannelPartHandler(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())));
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -35,7 +37,7 @@ public class ChannelPartHandlerTests
 		channel.Join(player.Id);
 		player.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.GameSessions.Returns([player]);
+		_gameRegistry.All.Returns([player]);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 

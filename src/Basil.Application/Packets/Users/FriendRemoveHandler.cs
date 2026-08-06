@@ -22,16 +22,16 @@ public sealed class FriendRemoveHandler(IRelationshipRepository relationships) :
 	public bool AllowedWhenRestricted => false;
 
 	/// <summary>Reads the target user id and deletes the friend relationship when one exists.</summary>
-	/// <param name="userSession">The userSession session that is removing a friend.</param>
+	/// <param name="gameSession">The userSession session that is removing a friend.</param>
 	/// <param name="reader">The packet reader positioned at the FriendRemove body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes once the relationship lookup and optional deletion finish.</returns>
-	public async Task HandleAsync(GameSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var targetId = reader.ReadI32();
-		var relationship = await relationships.FetchOneAsync(userSession.Id, targetId, cancellationToken);
+		var relationship = await relationships.FetchOneAsync(gameSession.Id, targetId, cancellationToken);
 		if (relationship?.Type == RelationshipType.Friend)
-			await relationships.DeleteAsync(userSession.Id, targetId, cancellationToken);
+			await relationships.DeleteAsync(gameSession.Id, targetId, cancellationToken);
 	}
 }

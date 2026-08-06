@@ -9,7 +9,8 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 
 public class UserBriefResolverTests
 {
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	[Fact]
@@ -19,9 +20,9 @@ public class UserBriefResolverTests
 		{
 			Country = Country.Vn
 		};
-		_sessionRegistry.GetSessionsByUserId(7).Returns([session]);
+		_gameRegistry.GetByUserId(7).Returns(session);
 
-		var brief = await UserBriefResolver.ResolveAsync(7, _sessionRegistry, _users);
+		var brief = await UserBriefResolver.ResolveAsync(7, _gameRegistry, _ircRegistry, _users);
 
 		Assert.NotNull(brief);
 		Assert.Equal(7, brief.Id);
@@ -33,11 +34,10 @@ public class UserBriefResolverTests
 	[Fact]
 	public async Task ResolveAsync_OfflinePlayer_FallsBackToUserRepository()
 	{
-		_sessionRegistry.GetSessionsByUserId(9).Returns([]);
 		_users.FetchByIdAsync(9, Arg.Any<CancellationToken>())
 			.Returns(new User(9, "Carol", Country.Us, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
 
-		var brief = await UserBriefResolver.ResolveAsync(9, _sessionRegistry, _users);
+		var brief = await UserBriefResolver.ResolveAsync(9, _gameRegistry, _ircRegistry, _users);
 
 		Assert.NotNull(brief);
 		Assert.Equal(9, brief.Id);
@@ -48,10 +48,9 @@ public class UserBriefResolverTests
 	[Fact]
 	public async Task ResolveAsync_UnknownUser_ReturnsNull()
 	{
-		_sessionRegistry.GetSessionsByUserId(999).Returns([]);
 		_users.FetchByIdAsync(999, Arg.Any<CancellationToken>()).Returns((User?)null);
 
-		var brief = await UserBriefResolver.ResolveAsync(999, _sessionRegistry, _users);
+		var brief = await UserBriefResolver.ResolveAsync(999, _gameRegistry, _ircRegistry, _users);
 
 		Assert.Null(brief);
 	}

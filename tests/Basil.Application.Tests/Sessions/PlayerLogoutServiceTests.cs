@@ -30,26 +30,31 @@ public class PlayerLogoutServiceTests
 
 	private readonly MatchMembershipService _matchMembership = new(
 		Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-		Substitute.For<IUserSessionRegistry>(),
-		new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(), Substitute.For<IChannelRegistry>(),
+		Substitute.For<ISessionRegistry<GameSession>>(),
+		Substitute.For<ISessionRegistry<IrcSession>>(),
+		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
 			Options.Create(new IrcOptions())),
 		Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
 
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
-		new ChannelMembershipService(Substitute.For<IUserSessionRegistry>(), Substitute.For<IChannelRegistry>(),
+		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
 			Options.Create(new IrcOptions())),
 		NullLogger<SpectatorService>.Instance);
 
 	private PlayerLogoutService MakeService()
 	{
 		var channelMembership =
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
-		return new PlayerLogoutService(_sessionRegistry, channelMembership, _spectatorService, _matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Options.Create(new IrcOptions()));
+		return new PlayerLogoutService(_gameRegistry, _ircRegistry, channelMembership, _spectatorService,
+			_matchMembership, NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -59,7 +64,7 @@ public class PlayerLogoutServiceTests
 
 		await MakeService().LogoutAsync(player);
 
-		_sessionRegistry.Received(1).Remove(player);
+		_gameRegistry.Received(1).Remove(player);
 	}
 
 	[Fact]
@@ -72,11 +77,11 @@ public class PlayerLogoutServiceTests
 			Connection = Substitute.For<IIrcConnection>()
 		};
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([other]);
+		_gameRegistry.All.Returns([other]);
 
 		await MakeService().LogoutAsync(irc);
 
-		_sessionRegistry.Received(1).Remove(irc);
+		_ircRegistry.Received(1).Remove(irc);
 		Assert.Empty(other.Dequeue());
 	}
 
@@ -89,13 +94,13 @@ public class PlayerLogoutServiceTests
 			Connection = Substitute.For<IIrcConnection>()
 		};
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([game, other]);
-		_sessionRegistry.GetSessionsByUserId(1).Returns([game, irc]);
+		_gameRegistry.All.Returns([game, other]);
+		_ircRegistry.GetByUserId(1).Returns(irc);
 
 		await MakeService().LogoutAsync(game);
 
-		_sessionRegistry.Received(1).Remove(game);
-		_sessionRegistry.DidNotReceive().Remove(irc);
+		_gameRegistry.Received(1).Remove(game);
+		_ircRegistry.DidNotReceive().Remove(irc);
 		// Game logout still broadcasts the bancho Logout packet to other GameSessions — that part is
 		// independent of whether an IrcSession for the same account survives.
 		Assert.Equal(ServerPacketWriter.Logout(1), other.Dequeue());
@@ -121,7 +126,7 @@ public class PlayerLogoutServiceTests
 	{
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([other]);
+		_gameRegistry.All.Returns([other]);
 
 		await MakeService().LogoutAsync(player);
 
@@ -134,7 +139,7 @@ public class PlayerLogoutServiceTests
 		var player =
 			new GameSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([other]);
+		_gameRegistry.All.Returns([other]);
 
 		await MakeService().LogoutAsync(player);
 
@@ -161,7 +166,7 @@ public class PlayerLogoutServiceTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		_sessionRegistry.GetGameByUserId(BotBootstrapService.BotId).Returns(bot);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		player.AddSpectator(bot);
 		bot.Spectating = player;
@@ -178,22 +183,24 @@ public class PlayerLogoutServiceTests
 		var channelRegistry = new MultiplayerTestSupport.FakeChannelRegistry();
 		var matchRepository = new MultiplayerTestSupport.FakeMatchRepository();
 		var matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(channelRegistry, matchRepository);
-		var sessionRegistry = Substitute.For<IUserSessionRegistry>();
-		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, sessionRegistry,
-			new ChannelMembershipService(sessionRegistry, channelRegistry, Options.Create(new IrcOptions())),
+		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, gameRegistry, ircRegistry,
+			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+				Options.Create(new IrcOptions())),
 			matchRepository,
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
 			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		var host = new GameSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.GameSessions.Returns([host]);
-		sessionRegistry.GetGameByUserId(1).Returns(host);
-		sessionRegistry.GetSessionsByUserId(1).Returns([host]);
+		gameRegistry.All.Returns([host]);
+		gameRegistry.GetByUserId(1).Returns(host);
 		var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
-		var channelMembership =
-			new ChannelMembershipService(sessionRegistry, channelRegistry, Options.Create(new IrcOptions()));
-		var service = new PlayerLogoutService(sessionRegistry, channelMembership, _spectatorService, matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+var channelMembership =
+			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+				Options.Create(new IrcOptions()));
+		var service = new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, _spectatorService,
+			matchMembership, NullLogger<PlayerLogoutService>.Instance);
 
 		await service.LogoutAsync(host);
 

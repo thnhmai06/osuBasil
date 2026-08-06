@@ -39,7 +39,8 @@ public class MpCommandServiceTests
 	{
 		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchRepository,
 			_beatmaps,
-			_fixture.SessionRegistry, _users, _fixture.ChannelRegistry, NullLogger<MpCommandService>.Instance,
+			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
+			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 	}
 
@@ -341,8 +342,8 @@ public class MpCommandServiceTests
 	private void JoinMatchChannel(UserSession session)
 	{
 		var channelMembership =
-			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.ChannelRegistry,
-				Options.Create(new IrcOptions()));
+			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
+				_fixture.ChannelRegistry, Options.Create(new IrcOptions()));
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#multi_"));
 		channelMembership.Join(session, channel);
 	}
@@ -355,7 +356,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var refereeIrc = MakeIrc(2, "refonirc");
 		_fixture.RegisterAll(host);
-		_fixture.SessionRegistry.GetSessionsByUserId(2).Returns([refereeIrc]);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(2);
 		JoinMatchChannel(refereeIrc);
@@ -412,7 +413,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var hostIrc = MakeIrc(1, "host");
 		_fixture.RegisterAll(host);
-		_fixture.SessionRegistry.GetSessionsByUserId(1).Returns([host, hostIrc]);
+		_fixture.IrcSessionRegistry.GetByUserId(1).Returns(hostIrc);
 		var match = _fixture.CreateMatch(host);
 		JoinMatchChannel(hostIrc);
 

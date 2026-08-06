@@ -74,12 +74,12 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 	private async Task<GameSession> SeatNewPlayer(int id, string name, int matchId)
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 
 		var session = new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(session);
+		sessionRegistry.TryAdd(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
 		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));

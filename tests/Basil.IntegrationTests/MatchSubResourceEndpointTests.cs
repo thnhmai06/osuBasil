@@ -25,7 +25,7 @@ namespace Basil.IntegrationTests;
 ///     that replaced the old generic `POST /matches/{matchId}/{action}` dispatch. Matches are created
 ///     through the real `POST /matches` route (no chat "sender", host id 0), then seated with real
 ///     <see cref="UserSession" />s registered directly against the app's actual DI-resolved
-///     <see cref="IUserSessionRegistry" />/<see cref="MatchMembershipService" /> — the same
+///     <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembershipService" /> — the same
 ///     production singletons the routes themselves use.
 /// </summary>
 public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -74,12 +74,12 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 	private async Task<GameSession> SeatNewPlayer(int id, string name, int matchId)
 	{
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 
 		var session = new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(session);
+		sessionRegistry.TryAdd(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
 		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));
@@ -251,7 +251,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
 		var player = await SeatNewPlayer(2005, "elsewhere", matchId);
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		await matchMembership.LeaveAsync(player, matchRegistry.GetByDbId(matchId)!);
@@ -271,11 +271,11 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
-		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var banned = new GameSession(2006, "banned", "t2006", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var free = new GameSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.TryAddGameSession(banned);
-		sessionRegistry.TryAddGameSession(free);
+		sessionRegistry.TryAdd(banned);
+		sessionRegistry.TryAdd(free);
 
 		var banRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		banRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id } });

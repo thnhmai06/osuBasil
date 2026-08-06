@@ -12,7 +12,7 @@ namespace Basil.Application.Tests.Packets;
 /// <summary>Ported from app/api/domains/cho.py's StatsRequest (@register(ClientPackets.USER_STATS_REQUEST)).</summary>
 public class UserStatsRequestHandlerTests
 {
-	private readonly IUserSessionRegistry _sessionRegistry = Substitute.For<IUserSessionRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 
 	[Fact]
 	public async Task Handle_UnrestrictedTarget_EnqueuesTheirStats()
@@ -26,8 +26,8 @@ public class UserStatsRequestHandlerTests
 				[GameMode.Standard] = new CachedPlayerStats(1000, 900, 10, 3)
 			}
 		};
-		_sessionRegistry.GameSessions.Returns([self, target]);
-		_sessionRegistry.GetGameByUserId(2).Returns(target);
+		_sessionRegistry.All.Returns([self, target]);
+		_sessionRegistry.GetByUserId(2).Returns(target);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
@@ -35,7 +35,7 @@ public class UserStatsRequestHandlerTests
 		var expected = ServerPacketWriter.UserStats(2, (int)UserActivity.Idle, "", "", (int)Mods.NoMod, 0, 0, 900,
 			100.0,
 			10,
-			1000, 3, 0);
+			1000, 3, 727);
 		Assert.Equal(expected, self.Dequeue());
 	}
 
@@ -46,7 +46,7 @@ public class UserStatsRequestHandlerTests
 		var target =
 			new GameSession(2, "target", "target-token", UserPrivileges.Verified,
 				DateTimeOffset.UnixEpoch); // restricted
-		_sessionRegistry.GameSessions.Returns([self, target]);
+		_sessionRegistry.All.Returns([self, target]);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
@@ -58,7 +58,7 @@ public class UserStatsRequestHandlerTests
 	public async Task Handle_OwnId_ExcludedFromResults()
 	{
 		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GameSessions.Returns([self]);
+		_sessionRegistry.All.Returns([self]);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([1]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);

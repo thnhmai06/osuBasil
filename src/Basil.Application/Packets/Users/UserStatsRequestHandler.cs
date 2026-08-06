@@ -12,7 +12,7 @@ namespace Basil.Application.Packets.Users;
 ///     packet for each requested id that is online and not restricted, plus always for the requester
 ///     themselves. Requests for offline or restricted players are skipped.
 /// </remarks>
-public sealed class UserStatsRequestHandler(IUserSessionRegistry sessionRegistry) : IPacketHandler
+public sealed class UserStatsRequestHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
 {
 	/// <summary>The <see cref="ClientPackets.UserStatsRequest" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.UserStatsRequest;
@@ -21,22 +21,22 @@ public sealed class UserStatsRequestHandler(IUserSessionRegistry sessionRegistry
 	public bool AllowedWhenRestricted => true;
 
 	/// <summary>Enqueues a user-stats packet for each requested id that resolves to an eligible session.</summary>
-	/// <param name="userSession">The userSession session that requested the stats data.</param>
+	/// <param name="gameSession">The userSession session that requested the stats data.</param>
 	/// <param name="reader">The packet reader positioned at the UserStatsRequest body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(GameSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var requestedIds = reader.ReadI32ListI16L();
-		var unrestrictedIds = sessionRegistry.GameSessions.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();
+		var unrestrictedIds = sessionRegistry.All.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();
 
 		foreach (var id in requestedIds)
 		{
-			if (id == userSession.Id || !unrestrictedIds.Contains(id)) continue;
+			if (id == gameSession.Id || !unrestrictedIds.Contains(id)) continue;
 
-			var target = sessionRegistry.GetGameByUserId(id);
-			if (target is not null) userSession.Enqueue(PacketBuilders.BuildUserStats(target));
+			var target = sessionRegistry.GetByUserId(id);
+			if (target is not null) gameSession.Enqueue(PacketBuilders.BuildUserStats(target));
 		}
 
 		return Task.CompletedTask;
