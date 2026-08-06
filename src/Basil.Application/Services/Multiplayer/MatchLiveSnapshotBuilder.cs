@@ -42,7 +42,7 @@ public static class MatchLiveSnapshotBuilder
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != BotBootstrapService.BotId // a real host: id 0 means none
+		var host = match.HostId != MatchSession.NoHostId // has real host
 			? await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 

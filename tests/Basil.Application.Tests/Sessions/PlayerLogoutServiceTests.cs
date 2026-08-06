@@ -74,7 +74,7 @@ public class PlayerLogoutServiceTests
 		// disconnect must never surface as a bancho Logout packet to anyone.
 		var irc = new IrcSession(1, "cmyui", "irc-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = Substitute.For<IIrcConnection>()
+			IrcConnection = Substitute.For<IIrcConnection>()
 		};
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_gameRegistry.All.Returns([other]);
@@ -91,7 +91,7 @@ public class PlayerLogoutServiceTests
 		var game = new GameSession(1, "cmyui", "game-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var irc = new IrcSession(1, "cmyui", "irc-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = Substitute.For<IIrcConnection>()
+			IrcConnection = Substitute.For<IIrcConnection>()
 		};
 		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_gameRegistry.All.Returns([game, other]);

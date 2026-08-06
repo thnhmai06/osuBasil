@@ -35,7 +35,7 @@ public class ChannelDisconnectSemanticsTests
 	{
 		return new IrcSession(id, name, $"irc-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = new RecordingIrcConnection()
+			IrcConnection = new RecordingIrcConnection()
 		};
 	}
 
@@ -66,7 +66,7 @@ public class ChannelDisconnectSemanticsTests
 		MakeService().DisconnectFromChannels(irc, "Connection closed");
 
 		Assert.True(channel.Contains(1)); // game session keeps UserId 1 in the roster
-		var received = ((RecordingIrcConnection)otherIrc.Connection).Received;
+		var received = ((RecordingIrcConnection)otherIrc.IrcConnection).Received;
 		Assert.DoesNotContain(received, m => m.Command is "PART" or "QUIT");
 	}
 
@@ -89,7 +89,7 @@ public class ChannelDisconnectSemanticsTests
 		MakeService().DisconnectFromChannels(game, "Logged out");
 
 		Assert.True(channel.Contains(1)); // irc session keeps UserId 1 in the roster
-		var received = ((RecordingIrcConnection)otherIrc.Connection).Received;
+		var received = ((RecordingIrcConnection)otherIrc.IrcConnection).Received;
 		Assert.DoesNotContain(received, m => m.Command is "PART" or "QUIT");
 	}
 
@@ -115,7 +115,7 @@ public class ChannelDisconnectSemanticsTests
 
 		Assert.False(osu.Contains(1)); // #osu: game session, the only presence there, is gone
 		Assert.True(chat.Contains(1)); // #chat: irc session is untouched
-		var received = ((RecordingIrcConnection)otherIrc.Connection).Received;
+		var received = ((RecordingIrcConnection)otherIrc.IrcConnection).Received;
 		Assert.Contains(received, m => m.Command == "PART");
 		Assert.DoesNotContain(received, m => m.Command == "QUIT");
 	}
@@ -143,7 +143,7 @@ public class ChannelDisconnectSemanticsTests
 
 		Assert.False(osu.Contains(1));
 		Assert.False(chat.Contains(1));
-		var received = ((RecordingIrcConnection)otherIrc.Connection).Received;
+		var received = ((RecordingIrcConnection)otherIrc.IrcConnection).Received;
 		Assert.DoesNotContain(received, m => m.Command == "PART");
 		Assert.Single(received, m => m.Command == "QUIT"); // exactly one QUIT, not one per shared channel
 	}

@@ -17,7 +17,7 @@ public class IrcSessionRegistryTests
 	{
 		return new IrcSession(id, name, token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = new FakeIrcConnection()
+			IrcConnection = new FakeIrcConnection()
 		};
 	}
 

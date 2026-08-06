@@ -237,7 +237,7 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		var prevHostId = match.HostId;
-		match.AssignGameplayHost(target.Id);
+		match.HostId = target.Id;
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 			match.DbId, prevHostId, target.Id);
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
@@ -260,7 +260,7 @@ public sealed class MatchControlService(
 	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
 	public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		match.ClearGameplayHost();
+		match.HostId = MatchSession.NoHostId;
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		await matchMembership.PublishHostAsync(match, cancellationToken);
 	}

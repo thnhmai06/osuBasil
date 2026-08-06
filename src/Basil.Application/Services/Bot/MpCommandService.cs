@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
@@ -52,14 +53,15 @@ public sealed class MpCommandService(
 	ILogger<MpCommandService> logger,
 	ILogger<MatchControlService> matchControlLogger)
 {
+	/// <summary>Max osu! client match name length</summary>
 	private const int MaxMatchNameLength = 50;
 
 	/// <summary>Safe under a 512-byte IRC line limit even with the longest wire prefix/command.</summary>
 	private const int MaxSettingsLineBytes = 400;
 
 	/// <summary>Subcommands that only report state — runnable by anyone the match resolves for, not just referees.</summary>
-	private static readonly HashSet<string> ReadOnlySubcommands =
-		new(StringComparer.OrdinalIgnoreCase) { "settings", "listrefs", "banlist" };
+	private static readonly FrozenSet<string> ReadOnlySubcommands =
+		new[] {"settings", "listrefs", "banlist"}.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     The <c>!mp</c> subcommands listed by <c>!mp help</c>, the single source of truth for that
@@ -447,7 +449,7 @@ public sealed class MpCommandService(
 			.Select((slot, i) => (slot, i))
 			.Where(t => !t.slot.Empty)
 			.ToList();
-		lines.Add($"Players: {occupied.Count}");
+		lines.Add($"Players: ({occupied.Count})");
 
 		var hostSlotId = match.GetSlotId(match.HostId);
 		foreach (var (slot, i) in occupied)
@@ -457,25 +459,26 @@ public sealed class MpCommandService(
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : "";
 
-			var name = ((UserSession?)gameRegistry.GetByUserId(slot.PlayerId!.Value) ?? ircRegistry.GetByUserId(slot.PlayerId!.Value))
+			var name = ((UserSession?)gameRegistry.GetByUserId(slot.PlayerId!.Value) ??
+			            ircRegistry.GetByUserId(slot.PlayerId!.Value))
 			           ?.Name
 			           ?? $"#{slot.PlayerId}";
 			lines.Add($"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {slot.PlayerId,6} {name,-16}{tagText}");
 		}
 
 		// Refs — independent of Players: a referee may or may not also occupy a slot.
-		var refNames = new List<string>();
-		foreach (var id in match.Referees.OrderBy(id => id))
-		{
-			var user = await userRepository.FetchByIdAsync(id, cancellationToken); // referee can be offline
-			refNames.Add(user is { } u ? $"#{id} {u.Name}" : $"#{id}");
-		}
-
-		lines.Add($"Refs: {refNames.Count}");
-		lines.AddRange(WrapCsv(refNames, MaxSettingsLineBytes));
+		// var refNames = new List<string>();
+		// foreach (var id in match.Referees.OrderBy(id => id))
+		// {
+		// 	var user = await userRepository.FetchByIdAsync(id, cancellationToken); // referee can be offline
+		// 	refNames.Add(user != null ? $"#{id} {user.Name}" : $"#{id}");
+		// }
+		//
+		// lines.Add($"Refs: {refNames.Count}");
+		// lines.AddRange(WrapCsv(refNames, MaxSettingsLineBytes));
 
 		// IRC — independent of Players/Refs: anyone with a live IrcSession in the match's own channel,
-		// whether or not they also occupy a slot or hold referee status.
+		// whether they also occupy a slot or hold referee status.
 		var ircNames = (channelRegistry.GetByName(match.ChatChannelName)?.MemberIds ?? [])
 			.Select(ircRegistry.GetByUserId)
 			.Where(s => s is not null)
@@ -485,7 +488,7 @@ public sealed class MpCommandService(
 			.ToList();
 		if (ircNames.Count > 0)
 		{
-			lines.Add($"IRC: {ircNames.Count}");
+			lines.Add($"IRC: ({ircNames.Count})");
 			lines.AddRange(WrapCsv(ircNames, MaxSettingsLineBytes));
 		}
 
@@ -1240,7 +1243,8 @@ public sealed class MpCommandService(
 	private UserSession? ParseUserSession(string target)
 	{
 		if (int.TryParse(target, out var playerId))
-			return (UserSession?)gameRegistry.GetByUserId(playerId) ?? ircRegistry.GetByUserId(playerId) ?? ParseByName(target);
+			return (UserSession?)gameRegistry.GetByUserId(playerId) ??
+			       ircRegistry.GetByUserId(playerId) ?? ParseByName(target);
 		return ParseByName(target);
 
 		UserSession? ParseByName(string name)

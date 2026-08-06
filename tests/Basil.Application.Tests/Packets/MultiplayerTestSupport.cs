@@ -132,7 +132,7 @@ internal static class MultiplayerTestSupport
 
 		public IReadOnlyList<ChannelSession> AutoJoinChannels => throw new NotSupportedException();
 
-		public IReadOnlyCollection<ChannelSession> All => [.. _byName.Values];
+		public IReadOnlyCollection<ChannelSession> All => _byName.Values;
 	}
 
 	public sealed class FakeMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
@@ -178,7 +178,7 @@ internal static class MultiplayerTestSupport
 			_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
 		}
 
-		public IReadOnlyCollection<MatchSession> All => [.. _byId.Values];
+		public IReadOnlyCollection<MatchSession> All => _byId.Values;
 	}
 
 	/// <summary>In-memory stand-in for the Matches/Rounds tables — auto-incrementing ids, nothing persisted.</summary>

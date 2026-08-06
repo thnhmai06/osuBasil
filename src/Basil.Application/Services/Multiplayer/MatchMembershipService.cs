@@ -75,7 +75,7 @@ public sealed class MatchMembershipService(
 	/// <remarks>
 	///     Every match starts with <see cref="MatchSession.NoHostId" />; a <see cref="GameSession" />
 	///     creator only becomes host once they actually occupy a slot, via the normal
-	///     <see cref="JoinAsync" /> path (there is no special host-bypass case any more). When the
+	///     <see cref="JoinAsync" /> path (there is no special host-bypass case anymore). When the
 	///     creator is an <see cref="IrcSession" />, or a <see cref="GameSession" /> already seated in a
 	///     different match, nobody is seated in the new room at all — it persists with an empty slot
 	///     table under referee control, exactly as if a referee had used <c>!mp make</c> from chat with
@@ -237,7 +237,9 @@ public sealed class MatchMembershipService(
 			return JoinResult.NoFreeSlot;
 		}
 
-		return await OccupySlot(userSession, match, free.Value, cancellationToken) ? JoinResult.Ok : JoinResult.NoFreeSlot;
+		return await OccupySlot(userSession, match, free.Value, cancellationToken)
+			? JoinResult.Ok
+			: JoinResult.NoFreeSlot;
 	}
 
 	/// <summary>Seats a userSession directly, bypassing every join gate.</summary>
@@ -259,7 +261,9 @@ public sealed class MatchMembershipService(
 		var free = match.GetFreeSlotId();
 		if (free is null) return JoinResult.NoFreeSlot;
 
-		return await OccupySlot(userSession, match, free.Value, cancellationToken) ? JoinResult.Ok : JoinResult.NoFreeSlot;
+		return await OccupySlot(userSession, match, free.Value, cancellationToken)
+			? JoinResult.Ok
+			: JoinResult.NoFreeSlot;
 	}
 
 	/// <summary>Occupies a specific slot, runs the shared join tail, and broadcasts the new state.</summary>
@@ -307,7 +311,7 @@ public sealed class MatchMembershipService(
 		slot.PlayerId = userSession.Id;
 		userSession.Match = match;
 
-		if (!match.HasGameplayHost) match.AssignGameplayHost(userSession.Id);
+		if (!match.HasGameplayHost) match.HostId = userSession.Id;
 
 		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
@@ -359,14 +363,11 @@ public sealed class MatchMembershipService(
 			if (newHostSlot is not null)
 			{
 				newHostId = newHostSlot.PlayerId!.Value;
-				match.AssignGameplayHost(newHostId.Value);
+				match.HostId = newHostId.Value;
 				hostTransfer = true;
 				gameRegistry.GetByUserId(match.HostId)?.Enqueue(ServerPacketWriter.MatchTransferHost());
 			}
-			else
-			{
-				match.ClearGameplayHost();
-			}
+			else match.HostId = MatchSession.NoHostId;
 		}
 
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
@@ -579,7 +580,8 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
 	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
+		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
+			cancellationToken);
 		var delta = match.HostSnapshot.Publish(host);
 		eventBus.PublishHost(match.DbId, delta);
 	}
@@ -600,7 +602,8 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
 	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
+		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
+			cancellationToken);
 		var delta = match.BansSnapshot.Publish(bans);
 		eventBus.PublishBans(match.DbId, delta);
 	}
@@ -618,7 +621,8 @@ public sealed class MatchMembershipService(
 	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
 	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, userRepo, cancellationToken);
+		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, userRepo,
+			cancellationToken);
 		var delta = match.SlotsSnapshot.Publish(slots);
 		eventBus.PublishSlots(match.DbId, delta);
 	}

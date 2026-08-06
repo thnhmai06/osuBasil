@@ -72,7 +72,7 @@ public sealed class ChannelSession(
 	public int PlayerCount => _members.Count;
 
 	/// <summary>Gets the ids of the players currently in the channel, as a snapshot collection.</summary>
-	public IReadOnlyCollection<int> MemberIds => [.. _members.Keys];
+	public IReadOnlyCollection<int> MemberIds => (IReadOnlyCollection<int>)_members.Keys;
 
 	/// <summary>
 	///     Gets a value that indicates whether a userSession with <paramref name="privilege" /> may read
@@ -87,7 +87,7 @@ public sealed class ChannelSession(
 
 	/// <summary>
 	///     Gets a value that indicates whether a userSession with <paramref name="privilege" /> may write
-	///     to this channel: no write requirement, or at least one required flag present.
+	///     to this channel: no write permission, or at least one required flag present.
 	/// </summary>
 	/// <param name="privilege">The privilege flags of the userSession to check.</param>
 	/// <returns><see langword="true" /> if the userSession may write to the channel; otherwise, <see langword="false" />.</returns>
@@ -126,9 +126,7 @@ public sealed class ChannelSession(
 		while (true)
 		{
 			if (!_members.TryGetValue(playerId, out var count)) return false;
-
 			if (count <= 1) return _members.TryRemove(new KeyValuePair<int, int>(playerId, count));
-
 			if (_members.TryUpdate(playerId, count - 1, count)) return false;
 			// Lost a race against a concurrent Join/Part on the same UserId — reread and retry.
 		}

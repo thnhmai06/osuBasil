@@ -24,7 +24,7 @@ namespace Basil.Application.Services.Irc;
 /// </remarks>
 public sealed class IrcAuthenticationService(
 	IUserRepository users,
-	ISessionRegistry<IrcSession> sessionRegistry,
+	ISessionRegistry<IrcSession> ircSessions,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IOptions<IrcOptions> options,
@@ -69,10 +69,10 @@ public sealed class IrcAuthenticationService(
 			user.Id, user.Name, $"irc-{tokenGenerator.GenerateToken()}", user.Privilege, loginTime)
 		{
 			SilenceEnd = user.SilenceEnd,
-			Connection = connection
+			IrcConnection = connection
 		};
 
-		if (!sessionRegistry.TryAdd(session))
+		if (!ircSessions.TryAdd(session))
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
 					"Nickname is already in use"));

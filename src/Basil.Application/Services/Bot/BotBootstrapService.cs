@@ -46,7 +46,7 @@ public sealed class BotBootstrapService(
 		var user = await users.FetchByIdAsync(BotId, cancellationToken);
 		if (user is null)
 		{
-			logger.LogError("BasilBot user row (id=0) missing — chat bot unavailable");
+			logger.LogError("BasilBot user row (id={Id}) missing — chat bot unavailable", BotId);
 			return null;
 		}
 

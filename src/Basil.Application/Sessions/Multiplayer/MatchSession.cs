@@ -117,21 +117,8 @@ public sealed class MatchSession(
 	/// <summary>Gets or sets the id of the current host. <see cref="NoHostId" /> means no host.</summary>
 	public int HostId { get; set; } = hostId;
 
-	/// <summary>Gets a value that indicates whether a player currently holds gameplay host.</summary>
+	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
 	public bool HasGameplayHost => HostId != NoHostId;
-
-	/// <summary>Clears gameplay host, marking the room as having nobody in control of in-client settings.</summary>
-	public void ClearGameplayHost()
-	{
-		HostId = NoHostId;
-	}
-
-	/// <summary>Assigns gameplay host to the given userSession.</summary>
-	/// <param name="userId">The id of the userSession to make host.</param>
-	public void AssignGameplayHost(int userId)
-	{
-		HostId = userId;
-	}
 
 	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
 	public int MapId { get; set; } = mapId;
@@ -216,7 +203,7 @@ public sealed class MatchSession(
 	/// <summary>
 	///     Gets or sets a value that indicates whether the 60-second warning for the pending
 	///     empty-room auto-close has already been announced, so a player joining after that point gets
-	///     a "cancelled" notice instead of silence.
+	///     a "canceled" notice instead of silence.
 	/// </summary>
 	public bool EmptyRoomWarningSent { get; set; }
 
@@ -282,16 +269,16 @@ public sealed class MatchSession(
 	public IReadOnlyList<MatchSlot> Slots { get; } = [.. Enumerable.Range(0, 16).Select(_ => new MatchSlot())];
 
 	/// <summary>Gets the ids of the players granted referee authority for this match.</summary>
-	public IReadOnlyCollection<int> Referees => _referees.Keys.ToArray();
+	public IReadOnlyCollection<int> Referees => (IReadOnlyCollection<int>)_referees.Keys;
 
 	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
 	public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
 
 	/// <summary>Gets the ids of the players banned from this match.</summary>
-	public IReadOnlyCollection<int> BannedIds => _bannedIds.Keys.ToArray();
+	public IReadOnlyCollection<int> BannedIds => (IReadOnlyCollection<int>)_bannedIds.Keys;
 
 	/// <summary>Gets the ids of the players a referee has invited via <c>!mp invite</c>, see <see cref="IsPrivate" />.</summary>
-	public IReadOnlyCollection<int> InvitedIds => _invitedIds.Keys.ToArray();
+	public IReadOnlyCollection<int> InvitedIds => (IReadOnlyCollection<int>)_invitedIds.Keys;
 
 	/// <summary>
 	///     Grants referee authority on this match to a userSession.
@@ -396,7 +383,6 @@ public sealed class MatchSession(
 		for (var i = 0; i < Slots.Count; i++)
 			if (Slots[i].PlayerId == playerId)
 				return i;
-
 		return null;
 	}
 
@@ -414,7 +400,6 @@ public sealed class MatchSession(
 		for (var i = 0; i < Slots.Count; i++)
 			if (Slots[i].Status == SlotStatus.Open)
 				return i;
-
 		return null;
 	}
 

@@ -39,7 +39,7 @@ public sealed class LoginService(
 	IClientHashRepository clientHashes,
 	ILoginRepository loginRepository,
 	IChannelRegistry channelRegistry,
-	ISessionRegistry<GameSession> sessionRegistry,
+	ISessionRegistry<GameSession> gameSessions,
 	IRelationshipRepository relationships,
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator,
@@ -86,7 +86,7 @@ public sealed class LoginService(
 
 		// disallow multiple game sessions from a single user, except tourney spectator clients. An
 		// IrcSession for the same account, if any, is untouched — the two kinds coexist independently.
-		var existingSession = sessionRegistry.GetByName(loginForm.Username);
+		var existingSession = gameSessions.GetByName(loginForm.Username);
 		if (existingSession is not null && loginForm.OsuVersion.Stream != OsuStream.Tourney)
 		{
 			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(10))
@@ -98,11 +98,11 @@ public sealed class LoginService(
 			// the bot's spectating relationship on the departing session now, or a relogin would pile
 			// a dead member reference onto the channel the new session's own AddSpectator call
 			// below re-creates.
-			var staleBot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
+			var staleBot = gameSessions.GetByUserId(BotBootstrapService.BotId);
 			if (staleBot is not null) spectatorService.RemoveSpectator(existingSession, staleBot);
 
 			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
-			sessionRegistry.Remove(existingSession);
+			gameSessions.Remove(existingSession);
 		}
 
 		var user = await users.FetchByNameAsync(loginForm.Username, cancellationToken);
@@ -182,7 +182,7 @@ public sealed class LoginService(
 
 			data.Add(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
 
-			foreach (var other in sessionRegistry.All)
+			foreach (var other in gameSessions.All)
 				if (channel.CanRead(other.Privilege))
 					other.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
 		}
@@ -224,7 +224,7 @@ public sealed class LoginService(
 
 		if (!session.Restricted)
 		{
-			foreach (var other in sessionRegistry.All)
+			foreach (var other in gameSessions.All)
 			{
 				other.Enqueue(userPresenceAndStats);
 
@@ -246,7 +246,7 @@ public sealed class LoginService(
 		}
 		else
 		{
-			foreach (var other in sessionRegistry.All.Where(o => !o.Restricted))
+			foreach (var other in gameSessions.All.Where(o => !o.Restricted))
 			{
 				data.Add(PacketBuilders.BuildUserPresence(other));
 				data.Add(PacketBuilders.BuildUserStats(other));
@@ -255,10 +255,7 @@ public sealed class LoginService(
 			data.Add(ServerPacketWriter.AccountRestricted());
 		}
 
-		if (!sessionRegistry.TryAdd(session))
-			// TryAdd is the final authority on "already logged in" — the eviction check
-			// above only advises on a stale session, it never guarantees uniqueness by itself. A
-			// concurrent login for the same account can still win the race here.
+		if (!gameSessions.TryAdd(session))
 			return new LoginResult("user-already-logged-in", Concat(
 				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
 				ServerPacketWriter.Notification("User already logged in.")));
@@ -266,7 +263,7 @@ public sealed class LoginService(
 		// BasilBot spectates every userSession from the moment they log in, so their input can be
 		// exposed externally via the api. host's SSE /spec/{id} channel — the real osu! client only
 		// sends SpectateFrames packets while it believes it has >=1 spectator.
-		var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
+		var bot = gameSessions.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
 
 		logger.LogInformation("+ User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",

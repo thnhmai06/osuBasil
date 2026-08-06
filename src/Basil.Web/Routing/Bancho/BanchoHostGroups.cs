@@ -14,6 +14,7 @@ namespace Basil.Web.Routing.Bancho;
 ///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="BanchoHostGroups" /> is static and
 ///     can't be a type argument.
 /// </summary>
+// ReSharper disable once ClassNeverInstantiated.Global
 internal sealed class BanchoHostGroupsLog;
 
 /// <summary>
@@ -35,7 +36,8 @@ public static class BanchoHostGroups
 	private static readonly string[] BanchoSubdomains = ["c", "ce", "c4", "c5", "c6"];
 
 	private static readonly FrozenSet<string> VideoExtensions =
-		[".avi", ".flv", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".m4v", ".webm", ".wmv"];
+		new[] { ".avi", ".flv", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".m4v", ".webm", ".wmv" }.ToFrozenSet(
+			StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     Registers all Bancho host groups for the configured domain and the fallback
@@ -160,7 +162,7 @@ public static class BanchoHostGroups
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			// Most commonly: no ffmpeg binary on PATH. Caught here rather than left to propagate,
-			// so a missing/broken ffmpeg install degrades one endpoint instead of crashing the request
+			// so a missing/broken ffmpeg installation degrades one endpoint instead of crashing the request
 			// pipeline with an unhandled exception.
 			logger.LogError(ex, "Audio preview extraction failed: MapsetId={MapsetId}", setId);
 			return (null, true);

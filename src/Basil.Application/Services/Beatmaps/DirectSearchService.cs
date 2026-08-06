@@ -41,7 +41,8 @@ public sealed class DirectSearchService(
 	// ASP.NET Core model binding decodes a query string's literal "+" as a space (matching
 	// x-www-form-urlencoded rules) before this ever sees it, so the sentinel here must be the
 	// decoded form ("Top Rated"): a literal "+" would never match what the client actually sent.
-	private static readonly FrozenSet<string> NonTextQueries = ["Newest", "Top Rated", "Most Played"];
+	private static readonly FrozenSet<string> NonTextQueries =
+		new[] { "Newest", "Top Rated", "Most Played" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     Runs a single osu!direct search against the local beatmap database.

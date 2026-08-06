@@ -53,8 +53,8 @@ public sealed class ChannelMembershipService(
 				game.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
 				break;
 			case IrcSession irc:
-				irc.Connection.Send(IrcMessageWriter.Join(irc.Name, irc.Id, channel.Name));
-				foreach (var reply in BuildNamesReply(irc.Name, channel)) irc.Connection.Send(reply);
+				irc.IrcConnection.Send(IrcMessageWriter.Join(irc.Name, irc.Id, channel.Name));
+				foreach (var reply in BuildNamesReply(irc.Name, channel)) irc.IrcConnection.Send(reply);
 				break;
 		}
 
@@ -93,16 +93,15 @@ public sealed class ChannelMembershipService(
 				game.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
 				break;
 			case IrcSession irc:
-				irc.Connection.Send(IrcMessageWriter.Part(irc.Name, irc.Id, channel.Name));
+				irc.IrcConnection.Send(IrcMessageWriter.Part(irc.Name, irc.Id, channel.Name));
 				break;
 		}
 
-		if (userLeftRoster)
-		{
-			BroadcastChannelInfo(channel);
-			BroadcastToOtherIrcMembers(channel, userSession.Id,
-				IrcMessageWriter.Part(userSession.Name, userSession.Id, channel.Name));
-		}
+		if (!userLeftRoster) return;
+
+		BroadcastChannelInfo(channel);
+		BroadcastToOtherIrcMembers(channel, userSession.Id,
+			IrcMessageWriter.Part(userSession.Name, userSession.Id, channel.Name));
 	}
 
 	/// <summary>
@@ -143,7 +142,7 @@ public sealed class ChannelMembershipService(
 				{
 					if (memberId == session.Id || !quitNotified.Add(memberId)) continue;
 					if (ircRegistry.GetByUserId(memberId) is { } irc)
-						irc.Connection.Send(quitMessage);
+						irc.IrcConnection.Send(quitMessage);
 				}
 			}
 		}
@@ -223,7 +222,7 @@ public sealed class ChannelMembershipService(
 		{
 			if (memberId == excludeUserId) continue;
 			if (ircRegistry.GetByUserId(memberId) is { } irc)
-				irc.Connection.Send(message);
+				irc.IrcConnection.Send(message);
 		}
 	}
 

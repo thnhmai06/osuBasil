@@ -58,9 +58,8 @@ public abstract class UserSession(int id, string name, string token, UserPrivile
 	public DateTimeOffset SilenceEnd { get; set; } = DateTimeOffset.UnixEpoch;
 
 	/// <summary>
-	///     Gets or sets the away message shown to other players while this userSession is idle, or null when the userSession
-	///     is not
-	///     away.
+	///     Gets or sets the away message shown to other players while this userSession is idle or null when the userSession
+	///     is not away.
 	/// </summary>
 	public string? AwayMessage { get; set; }
 
@@ -117,14 +116,14 @@ public abstract class UserSession(int id, string name, string token, UserPrivile
 	public bool Silenced => RemainingSilence != TimeSpan.Zero;
 
 	/// <summary>Gets the set of channel names this session has joined, as a snapshot collection.</summary>
-	public IReadOnlyCollection<string> Channels => [.. _channels.Keys];
+	public IReadOnlyCollection<string> Channels => (IReadOnlyCollection<string>)_channels.Keys;
 
 	/// <summary>
 	///     Gets the IRC-shaped transport chat traffic is routed through for this session: a real TCP
 	///     IRC connection for an <see cref="IrcSession" />, or a bancho packet bridge for a
 	///     <see cref="GameSession" />.
 	/// </summary>
-	public abstract IIrcConnection IrcConnection { get; }
+	public abstract IIrcConnection IrcConnection { get; init; }
 
 	/// <summary>
 	///     Adds a channel name to this session's joined-channel set.

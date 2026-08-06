@@ -22,7 +22,7 @@ public sealed class GameSessionRegistry : ISessionRegistry<GameSession>
 	private readonly ConcurrentDictionary<string, string> _bySafeName = new();
 
 	/// <inheritdoc />
-	public IEnumerable<GameSession> All => _byToken.Values;
+	public IReadOnlyCollection<GameSession> All => (IReadOnlyCollection<GameSession>)_byToken.Values;
 
 	/// <inheritdoc />
 	public bool TryAdd(GameSession session)

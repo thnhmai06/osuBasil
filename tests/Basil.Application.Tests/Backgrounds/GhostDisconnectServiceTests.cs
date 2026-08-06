@@ -216,7 +216,7 @@ public class GhostDisconnectServiceTests
 		private readonly Dictionary<int, GameSession> _byUserId = [];
 		private readonly Dictionary<string, GameSession> _byToken = [];
 
-		public IEnumerable<GameSession> All => [.. _byToken.Values];
+		public IReadOnlyCollection<GameSession> All => [.. _byToken.Values];
 
 		public bool TryAdd(GameSession session)
 		{

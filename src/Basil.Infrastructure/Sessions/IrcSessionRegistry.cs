@@ -22,7 +22,7 @@ public sealed class IrcSessionRegistry : ISessionRegistry<IrcSession>
 	private readonly ConcurrentDictionary<string, string> _bySafeName = new();
 
 	/// <inheritdoc />
-	public IEnumerable<IrcSession> All => _byToken.Values;
+	public IReadOnlyCollection<IrcSession> All => (IReadOnlyCollection<IrcSession>)_byToken.Values;
 
 	/// <inheritdoc />
 	public bool TryAdd(IrcSession session)

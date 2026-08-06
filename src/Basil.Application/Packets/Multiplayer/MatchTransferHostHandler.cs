@@ -41,7 +41,7 @@ public sealed class MatchTransferHostHandler(
 			if (targetId is null) return;
 
 			var prevHostId = match.HostId;
-			match.AssignGameplayHost(targetId.Value);
+			match.HostId = targetId.Value;
 			logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 				match.DbId, prevHostId, targetId.Value);
 

@@ -40,8 +40,8 @@ public sealed class PlayerLogoutService(
 	/// <returns>A task that completes when the logout cleanup has finished.</returns>
 	public async Task LogoutAsync(UserSession userSession, CancellationToken cancellationToken = default)
 	{
-		logger.LogInformation("- User logged out: UserId={UserId} Username={Username}", userSession.Id,
-			userSession.Name);
+		logger.LogInformation(
+			"- User logged out: UserId={UserId} Username={Username}", userSession.Id, userSession.Name);
 
 		switch (userSession)
 		{

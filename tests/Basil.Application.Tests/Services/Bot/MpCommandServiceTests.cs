@@ -334,7 +334,7 @@ public class MpCommandServiceTests
 	{
 		return new IrcSession(id, name, $"irc-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = new RecordingIrcConnection()
+			IrcConnection = new RecordingIrcConnection()
 		};
 	}
 

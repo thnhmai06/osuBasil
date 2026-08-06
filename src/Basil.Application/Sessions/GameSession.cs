@@ -15,16 +15,28 @@ namespace Basil.Application.Sessions;
 ///     synthetic session with no real <see cref="Client" />, needed because <see cref="Spectating" />
 ///     lets it watch every online userSession and expose their input over SSE.
 /// </summary>
-/// <param name="id">The persistent id of the userSession.</param>
-/// <param name="name">The userSession's username.</param>
-/// <param name="token">The login token the session is keyed by, used to authenticate HTTP polls.</param>
-/// <param name="privilege">The server-side privilege flags granted at login.</param>
-/// <param name="loginTime">The time at which the session was created.</param>
-public sealed class GameSession(int id, string name, string token, UserPrivileges privilege, DateTimeOffset loginTime)
-	: UserSession(id, name, token, privilege, loginTime)
+public sealed class GameSession : UserSession
 {
 	private readonly ConcurrentQueue<byte[]> _packetQueue = new();
 	private readonly ConcurrentDictionary<int, GameSession> _spectators = new();
+
+	/// <summary>
+	///     Represents a real osu! client logged in over the bancho binary protocol: outgoing packet
+	///     queue, joined channels, spectator relationships, current multiplayer match, and per-mode
+	///     cached stats. BasilBot is also represented as a <see cref="GameSession" /> — a server-owned
+	///     synthetic session with no real <see cref="Client" />, needed because <see cref="Spectating" />
+	///     lets it watch every online userSession and expose their input over SSE.
+	/// </summary>
+	/// <param name="id">The persistent id of the userSession.</param>
+	/// <param name="name">The userSession's username.</param>
+	/// <param name="token">The login token the session is keyed by, used to authenticate HTTP polls.</param>
+	/// <param name="privilege">The server-side privilege flags granted at login.</param>
+	/// <param name="loginTime">The time at which the session was created.</param>
+	public GameSession(int id, string name, string token, UserPrivileges privilege, DateTimeOffset loginTime)
+		: base(id, name, token, privilege, loginTime)
+	{
+		IrcConnection = new BanchoIrcBridgeConnection(this);
+	}
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; init; }
@@ -102,11 +114,11 @@ public sealed class GameSession(int id, string name, string token, UserPrivilege
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Lazily defaults to a bridge wrapping this session that re-encodes IRC-shaped chat into
-	///     bancho packets, so any <see cref="GameSession" /> works out of the box even when the
-	///     constructing code never wires one explicitly (tests, mostly).
+	///     Defaults to a bridge that translates IRC-style chat into bancho packets,
+	///     allowing <see cref="GameSession" /> to participate in IRC messaging even
+	///     when no transport is supplied explicitly (primarily for tests).
 	/// </remarks>
-	public override IIrcConnection IrcConnection => field ??= new BanchoIrcBridgeConnection(this);
+	public override IIrcConnection IrcConnection { get; init; }
 
 	/// <summary>
 	///     Adds a session to this userSession's spectator list, replacing any previous entry for the same

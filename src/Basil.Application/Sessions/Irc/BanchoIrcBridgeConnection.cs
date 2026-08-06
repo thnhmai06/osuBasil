@@ -12,7 +12,7 @@ namespace Basil.Application.Sessions.Irc;
 /// </summary>
 public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcConnection
 {
-	/// <summary>Gets the userSession session this bridge sends chat on behalf of.</summary>
+	/// <summary>Gets the user session this bridge sends chat on behalf of.</summary>
 	public GameSession User { get; } = userSession;
 
 	/// <inheritdoc />
@@ -40,7 +40,7 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 	///     <c>#multiplayer</c> and <c>#spectator</c>, because
 	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" /> sends
 	///     <c>ChannelSession.DisplayName</c> rather than <c>Name</c>. Without this translation, a
-	///     PRIVMSG addressed to the internal name would match no window the client has open and be
+	///     PRIVMSG addressed to the internal name would match no window the client has opened and be
 	///     silently dropped.
 	/// </summary>
 	/// <param name="internalName">The internal registry name of the message's recipient channel.</param>

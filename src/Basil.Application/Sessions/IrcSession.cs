@@ -15,9 +15,6 @@ namespace Basil.Application.Sessions;
 public sealed class IrcSession(int id, string name, string token, UserPrivileges privilege, DateTimeOffset loginTime)
 	: UserSession(id, name, token, privilege, loginTime)
 {
-	/// <summary>Gets the real IRC transport this session sends and receives chat through.</summary>
-	public required IIrcConnection Connection { get; init; }
-
 	/// <inheritdoc />
-	public override IIrcConnection IrcConnection => Connection;
+	public override required IIrcConnection IrcConnection { get; init; }
 }

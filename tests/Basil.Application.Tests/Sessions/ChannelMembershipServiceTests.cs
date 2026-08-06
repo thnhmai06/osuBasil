@@ -37,7 +37,7 @@ public class ChannelMembershipServiceTests
 	{
 		return new IrcSession(id, name, $"irc-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
-			Connection = new RecordingIrcConnection()
+			IrcConnection = new RecordingIrcConnection()
 		};
 	}
 
@@ -198,7 +198,7 @@ public class ChannelMembershipServiceTests
 
 		MakeService().Join(joinerIrc, channel);
 
-		var recorded = ((RecordingIrcConnection)existingIrc.Connection).Received;
+		var recorded = ((RecordingIrcConnection)existingIrc.IrcConnection).Received;
 		Assert.Contains(recorded, m => m.Command == "JOIN");
 	}
 
