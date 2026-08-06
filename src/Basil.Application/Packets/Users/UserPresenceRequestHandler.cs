@@ -14,17 +14,10 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class UserPresenceRequestHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.UserPresenceRequest" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.UserPresenceRequest;
 
-	/// <summary>Restricted players may not request presence, so this handler is unavailable to them.</summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Enqueues a presence packet for each requested user id that resolves to an online session.</summary>
-	/// <param name="gameSession">The userSession session that requested the presence data.</param>
-	/// <param name="reader">The packet reader positioned at the UserPresenceRequest body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A completed task.</returns>
 	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

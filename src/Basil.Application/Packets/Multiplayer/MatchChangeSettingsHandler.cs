@@ -14,7 +14,7 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     speed-changing mods on the match and strips them from every occupied slot; turning it off
 ///     restores the host slot's mods to the match and clears the mods of every other occupied slot. The
 ///     beatmap selection is handled through a clear-and-resolve handshake: a snapshot with MapId -1
-///     clears the current selection (unreadying all players, remembering the previous map, and
+///     clears the current selection (unready all players, remembering the previous map, and
 ///     cancelling a queued auto-start), while a match that currently has no map re-attempts resolution
 ///     of the snapshot's md5 against the local repository, applying the resolved beatmap and updating
 ///     the game mode from the host's current status, or warning once through a bot chat message when
@@ -29,20 +29,10 @@ public sealed class MatchChangeSettingsHandler(
 	ISessionRegistry<GameSession> sessionRegistry,
 	MatchMembershipService matchMembership) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchChangeSettings;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: settings changes are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the change-settings packet for the given userSession.</summary>
-	/// <param name="gameSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the full settings snapshot.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

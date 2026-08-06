@@ -19,20 +19,9 @@ public sealed class TourneyMatchInfoRequestHandler(
 	IMatchRegistry matchRegistry,
 	ILogger<TourneyMatchInfoRequestHandler> logger) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.TournamentMatchInfoRequest;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: tournament info requests are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
-
-	/// <summary>Processes the tournament-info-request packet for the given userSession.</summary>
-	/// <param name="gameSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the match id.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
 	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

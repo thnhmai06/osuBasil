@@ -16,17 +16,10 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class FriendAddHandler(IRelationshipRepository relationships) : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.FriendAdd" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.FriendAdd;
 
-	/// <summary>Restricted players may not add friends, so this handler is unavailable to them.</summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Reads the target user id and adds them as a friend when the relationship does not exist.</summary>
-	/// <param name="gameSession">The userSession session that is adding a friend.</param>
-	/// <param name="reader">The packet reader positioned at the FriendAdd body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A task that completes once the relationship lookup and optional creation finish.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

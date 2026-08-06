@@ -17,20 +17,10 @@ namespace Basil.Application.Packets.Multiplayer;
 public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembershipService matchMembership)
 	: IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.JoinMatch;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: match joins are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the join-match packet for the given userSession.</summary>
-	/// <param name="gameSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the match id and password.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

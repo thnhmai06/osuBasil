@@ -15,17 +15,10 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class FriendRemoveHandler(IRelationshipRepository relationships) : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.FriendRemove" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.FriendRemove;
 
-	/// <summary>Restricted players may not remove friends, so this handler is unavailable to them.</summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Reads the target user id and deletes the friend relationship when one exists.</summary>
-	/// <param name="gameSession">The userSession session that is removing a friend.</param>
-	/// <param name="reader">The packet reader positioned at the FriendRemove body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A task that completes once the relationship lookup and optional deletion finish.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

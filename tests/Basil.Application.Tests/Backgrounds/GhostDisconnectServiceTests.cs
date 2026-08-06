@@ -70,8 +70,7 @@ public class GhostDisconnectServiceTests
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		gameRegistry.TryAdd(stale);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
-				NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
 			.RunOnce();
 
 		Assert.Null(gameRegistry.GetByToken("stale-token"));
@@ -86,8 +85,7 @@ public class GhostDisconnectServiceTests
 		var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
 		gameRegistry.TryAdd(fresh);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
-				NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
 			.RunOnce();
 
 		Assert.NotNull(gameRegistry.GetByToken("fresh-token"));
@@ -103,8 +101,7 @@ public class GhostDisconnectServiceTests
 			{ LastRecvTime = Now.AddSeconds(-301), IsBot = true };
 		gameRegistry.TryAdd(bot);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
-				NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
 			.RunOnce();
 
 		Assert.NotNull(gameRegistry.GetByToken("bot-token"));
@@ -121,8 +118,7 @@ public class GhostDisconnectServiceTests
 		gameRegistry.TryAdd(stale);
 		gameRegistry.TryAdd(bystander);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
-				NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
 			.RunOnce();
 
 		Assert.Equal(ServerPacketWriter.Logout(1), bystander.Dequeue());
@@ -148,8 +144,7 @@ public class GhostDisconnectServiceTests
 		gameRegistry.TryAdd(bystander);
 
 		await new GhostDisconnectService(gameRegistry, ircRegistry,
-			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry),
-			NullLogger<GhostDisconnectService>.Instance).RunOnce();
+			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry)).RunOnce();
 
 		Assert.False(channel.Contains(stale.Id));
 		Assert.False(stale.InChannel("#osu"));
@@ -170,8 +165,7 @@ public class GhostDisconnectServiceTests
 		bot.Spectating = stale;
 		gameRegistry.TryAdd(stale);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
-				NullLogger<GhostDisconnectService>.Instance)
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
 			.RunOnce();
 
 		Assert.Empty(stale.Spectators);
@@ -207,8 +201,7 @@ public class GhostDisconnectServiceTests
 				NullLogger<SpectatorService>.Instance),
 			fixture.MatchMembership, NullLogger<PlayerLogoutService>.Instance);
 
-		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout,
-			NullLogger<GhostDisconnectService>.Instance).RunOnce();
+		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout).RunOnce();
 
 		Assert.Null(ghost.Match);
 		Assert.Equal(SlotStatus.Open, ghostSlot.Status);

@@ -22,20 +22,10 @@ public sealed class MatchTransferHostHandler(
 	IMatchRepository matchRepository,
 	ILogger<MatchTransferHostHandler> logger) : IPacketHandler
 {
-	/// <summary>Gets the client packet this handler processes.</summary>
 	public ClientPackets PacketId => ClientPackets.MatchTransferHost;
 
-	/// <summary>
-	///     Gets a value that indicates whether the handler may run for restricted players. Always
-	///     <see langword="false" />: host transfers are not processed for restricted players.
-	/// </summary>
 	public bool AllowedWhenRestricted => false;
 
-	/// <summary>Processes the transfer-host packet for the given userSession.</summary>
-	/// <param name="gameSession">The userSession session that sent the packet.</param>
-	/// <param name="reader">The packet reader positioned at the payload holding the target slot id.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A task that completes when the packet has been handled.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

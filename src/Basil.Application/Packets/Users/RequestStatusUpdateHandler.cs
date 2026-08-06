@@ -14,17 +14,10 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class RequestStatusUpdateHandler : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.RequestStatusUpdate" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.RequestStatusUpdate;
 
-	/// <summary>Restricted players may request their own stats, so this handler is always available.</summary>
 	public bool AllowedWhenRestricted => true;
 
-	/// <summary>Enqueues a rebuilt user-stats packet for the requesting userSession.</summary>
-	/// <param name="gameSession">The userSession session that requested its stats.</param>
-	/// <param name="reader">The packet reader positioned at the RequestStatusUpdate body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A completed task.</returns>
 	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

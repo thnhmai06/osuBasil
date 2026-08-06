@@ -19,17 +19,10 @@ namespace Basil.Application.Packets.Users;
 /// </remarks>
 public sealed class ChangeActionHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.ChangeAction" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.ChangeAction;
 
-	/// <summary>Restricted players may change their action, so this handler is always available.</summary>
 	public bool AllowedWhenRestricted => true;
 
-	/// <summary>Reads the status fields from the packet and updates <see cref="UserSession.Status" />.</summary>
-	/// <param name="gameSession">The userSession session whose status is being updated.</param>
-	/// <param name="reader">The packet reader positioned at the ChangeAction body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A completed task.</returns>
 	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

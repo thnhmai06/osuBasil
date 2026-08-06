@@ -18,17 +18,10 @@ namespace Basil.Application.Packets.Users;
 public sealed class LogoutHandler(PlayerLogoutService logoutService, ILogger<LogoutHandler> logger)
 	: IPacketHandler
 {
-	/// <summary>The <see cref="ClientPackets.Logout" /> packet type.</summary>
 	public ClientPackets PacketId => ClientPackets.Logout;
 
-	/// <summary>Restricted players may log out, so this handler is always available.</summary>
 	public bool AllowedWhenRestricted => true;
 
-	/// <summary>Reads the reserved field and runs the logout flow once the grace period has passed.</summary>
-	/// <param name="gameSession">The userSession session that is logging out.</param>
-	/// <param name="reader">The packet reader positioned at the Logout body.</param>
-	/// <param name="cancellationToken">The token used to cancel the operation.</param>
-	/// <returns>A task that completes once the logout is handled or the request is ignored.</returns>
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
