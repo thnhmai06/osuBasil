@@ -25,17 +25,17 @@ public sealed class UserStatsRequestHandler(IUserSessionRegistry sessionRegistry
 	/// <param name="reader">The packet reader positioned at the UserStatsRequest body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var requestedIds = reader.ReadI32ListI16L();
-		var unrestrictedIds = sessionRegistry.All.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();
+		var unrestrictedIds = sessionRegistry.GameSessions.Where(s => !s.Restricted).Select(s => s.Id).ToHashSet();
 
 		foreach (var id in requestedIds)
 		{
 			if (id == userSession.Id || !unrestrictedIds.Contains(id)) continue;
 
-			var target = sessionRegistry.GetById(id);
+			var target = sessionRegistry.GetGameByUserId(id);
 			if (target is not null) userSession.Enqueue(PacketBuilders.BuildUserStats(target));
 		}
 

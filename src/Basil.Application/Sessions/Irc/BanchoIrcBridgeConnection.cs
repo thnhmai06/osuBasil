@@ -4,19 +4,19 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Sessions.Irc;
 
 /// <summary>
-///     The default <see cref="IIrcConnection" /> for a bancho <see cref="UserSession" />: it
-///     re-encodes chat text routed through the IRC core back into a bancho SEND_MESSAGE packet,
-///     enqueued for the client's next HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN, PART,
-///     QUIT, and numerics are IRC-only and ignored here, because bancho clients already receive
-///     channel presence through ChannelInfo rather than per-user join and part events.
+///     The default <see cref="IIrcConnection" /> for a <see cref="GameSession" />: it re-encodes
+///     chat text routed through the IRC core back into a bancho SEND_MESSAGE packet, enqueued for
+///     the client's next HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN, PART, QUIT, and
+///     numerics are IRC-only and ignored here, because bancho clients already receive channel
+///     presence through ChannelInfo rather than per-user join and part events.
 /// </summary>
-public sealed class BanchoIrcBridgeConnection(UserSession userSession) : IIrcConnection
+public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcConnection
 {
 	/// <summary>Gets the userSession session this bridge sends chat on behalf of.</summary>
-	public UserSession User { get; } = userSession;
+	public GameSession User { get; } = userSession;
 
-	/// <summary>Gets a value that indicates whether the recipient is a real external IRC client; always false for this bridge.</summary>
-	public bool IsExternalIrcClient => false;
+	/// <inheritdoc />
+	UserSession IIrcConnection.User => User;
 
 	/// <summary>
 	///     Converts a PRIVMSG into a bancho SEND_MESSAGE packet and enqueues it for the userSession's

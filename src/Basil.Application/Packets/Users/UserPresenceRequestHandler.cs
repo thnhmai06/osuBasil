@@ -25,12 +25,12 @@ public sealed class UserPresenceRequestHandler(IUserSessionRegistry sessionRegis
 	/// <param name="reader">The packet reader positioned at the UserPresenceRequest body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		foreach (var id in reader.ReadI32ListI16L())
 		{
-			var target = sessionRegistry.GetById(id);
+			var target = sessionRegistry.GetGameByUserId(id);
 			if (target is not null) userSession.Enqueue(PacketBuilders.BuildUserPresence(target));
 		}
 

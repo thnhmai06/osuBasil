@@ -32,7 +32,8 @@ public sealed class ChannelSession(
 	string? displayName = null,
 	bool instance = false)
 {
-	private readonly ConcurrentDictionary<int, byte> _members = new();
+	/// <summary>Maps each present UserId to how many of its sessions (game and/or IRC) are in this channel.</summary>
+	private readonly ConcurrentDictionary<int, int> _members = new();
 
 	/// <summary>Gets the channel's id.</summary>
 	public int Id { get; } = id;
@@ -96,21 +97,41 @@ public sealed class ChannelSession(
 	}
 
 	/// <summary>
-	///     Adds a userSession to the channel's member set.
+	///     Records one more session of a userSession as present in the channel. A single UserId may
+	///     have both a game session and an IRC session here at once; each counts as one reference.
 	/// </summary>
 	/// <param name="playerId">The id of the userSession joining.</param>
-	public void Join(int playerId)
+	/// <returns>
+	///     <see langword="true" /> if this is the userSession's first session in the channel (the
+	///     roster gained a member); <see langword="false" /> if another of their sessions was already
+	///     present.
+	/// </returns>
+	public bool Join(int playerId)
 	{
-		_members[playerId] = 0;
+		return _members.AddOrUpdate(playerId, 1, (_, count) => count + 1) == 1;
 	}
 
 	/// <summary>
-	///     Removes a userSession from the channel's member set.
+	///     Removes one session of a userSession from the channel. The UserId only leaves the roster
+	///     once every one of its sessions has parted.
 	/// </summary>
 	/// <param name="playerId">The id of the userSession leaving.</param>
-	public void Part(int playerId)
+	/// <returns>
+	///     <see langword="true" /> if this was the userSession's last session in the channel (the
+	///     roster lost a member); <see langword="false" /> if another of their sessions remains, or if
+	///     the userSession was not a member at all.
+	/// </returns>
+	public bool Part(int playerId)
 	{
-		_members.TryRemove(playerId, out _);
+		while (true)
+		{
+			if (!_members.TryGetValue(playerId, out var count)) return false;
+
+			if (count <= 1) return _members.TryRemove(new KeyValuePair<int, int>(playerId, count));
+
+			if (_members.TryUpdate(playerId, count - 1, count)) return false;
+			// Lost a race against a concurrent Join/Part on the same UserId — reread and retry.
+		}
 	}
 
 	/// <summary>

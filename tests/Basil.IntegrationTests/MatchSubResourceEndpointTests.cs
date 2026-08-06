@@ -72,17 +72,17 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		return created.GetProperty("data").GetProperty("id").GetInt32();
 	}
 
-	private async Task<UserSession> SeatNewPlayer(int id, string name, int matchId)
+	private async Task<GameSession> SeatNewPlayer(int id, string name, int matchId)
 	{
 		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
 
-		var session = new UserSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.Add(session);
+		var session = new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		sessionRegistry.TryAddGameSession(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
-		Assert.True(await matchMembership.JoinAsync(session, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));
 		return session;
 	}
 
@@ -234,6 +234,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
 		var player = await SeatNewPlayer(2004, "kickme", matchId);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(player.Id, player.Name, Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var request = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new { userId = player.Id });
@@ -270,10 +272,10 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
 		var sessionRegistry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
-		var banned = new UserSession(2006, "banned", "t2006", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var free = new UserSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		sessionRegistry.Add(banned);
-		sessionRegistry.Add(free);
+		var banned = new GameSession(2006, "banned", "t2006", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var free = new GameSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		sessionRegistry.TryAddGameSession(banned);
+		sessionRegistry.TryAddGameSession(free);
 
 		var banRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		banRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id } });
@@ -506,14 +508,22 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	/// </summary>
 	private sealed class NoopUserRepository : IUserRepository
 	{
+		private readonly Dictionary<int, User> _byId = new();
+
+		/// <summary>Seeds a user row so a kick/ban route resolving it by id or name finds a real account.</summary>
+		public void Add(User user)
+		{
+			_byId[user.Id] = user;
+		}
+
 		public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.GetValueOrDefault(id));
 		}
 
 		public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.Values.FirstOrDefault(u => u.Name == name));
 		}
 
 		public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)

@@ -42,9 +42,9 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 		});
 	}
 
-	private static UserSession MakeSession(int id, string name, bool isBot = false)
+	private static GameSession MakeSession(int id, string name, bool isBot = false)
 	{
-		return new UserSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UtcNow)
+		return new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UtcNow)
 			{ IsBot = isBot };
 	}
 
@@ -64,9 +64,9 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 		var alice = MakeSession(1, "alice");
 		var bob = MakeSession(2, "bob");
 		var bot = MakeSession(0, "BasilBot", true);
-		registry.Add(alice);
-		registry.Add(bob);
-		registry.Add(bot);
+		registry.TryAddGameSession(alice);
+		registry.TryAddGameSession(bob);
+		registry.TryAddGameSession(bot);
 
 		var response = await client.SendAsync(MakeRequest(new { message = "server restarting soon" }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
@@ -87,7 +87,7 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 		var client = _factory.CreateClient();
 		var registry = _factory.Services.GetRequiredService<IUserSessionRegistry>();
 		var alice = MakeSession(11, "alice2");
-		registry.Add(alice);
+		registry.TryAddGameSession(alice);
 
 		var response = await client.SendAsync(MakeRequest(new { message = "hi", userIds = new[] { 11, 999, 0 } }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();

@@ -29,7 +29,7 @@ public sealed class LogoutHandler(PlayerLogoutService logoutService, ILogger<Log
 	/// <param name="reader">The packet reader positioned at the Logout body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes once the logout is handled or the request is ignored.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		reader.ReadI32(); // reserved

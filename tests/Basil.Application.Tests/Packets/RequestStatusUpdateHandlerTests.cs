@@ -13,7 +13,7 @@ public class RequestStatusUpdateHandlerTests
 	[Fact]
 	public async Task Handle_EnqueuesOwnUserStatsPacket()
 	{
-		var session = new UserSession(42, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var session = new GameSession(42, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			ModeStats =
 			{

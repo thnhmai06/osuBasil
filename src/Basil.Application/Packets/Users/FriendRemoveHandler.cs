@@ -26,7 +26,7 @@ public sealed class FriendRemoveHandler(IRelationshipRepository relationships) :
 	/// <param name="reader">The packet reader positioned at the FriendRemove body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes once the relationship lookup and optional deletion finish.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var targetId = reader.ReadI32();

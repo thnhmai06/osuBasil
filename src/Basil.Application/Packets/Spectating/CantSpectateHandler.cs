@@ -20,7 +20,7 @@ public sealed class CantSpectateHandler(ILogger<CantSpectateHandler> logger) : I
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var host = userSession.Spectating;

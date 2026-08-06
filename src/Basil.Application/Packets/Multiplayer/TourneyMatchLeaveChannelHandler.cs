@@ -36,7 +36,7 @@ public sealed class TourneyMatchLeaveChannelHandler(
 	/// <param name="reader">The packet reader positioned at the payload holding the match id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchId = reader.ReadI32();

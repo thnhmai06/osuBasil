@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Social;
@@ -9,6 +10,8 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Irc;
+using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
@@ -54,13 +57,14 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
+		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry, _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
+		var playerLogout = MakePlayerLogoutService(sessionRegistry, channelRegistry, channelMembership);
 
 		var listener = new TcpListener(IPAddress.Loopback, 0);
 		listener.Start();
@@ -74,7 +78,7 @@ public class TcpIrcConnectionTests
 			{
 				var client = await listener.AcceptTcpClientAsync(cts.Token);
 				var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-					channelRegistry, sessionRegistry, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, i);
+					channelRegistry, playerLogout, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, i);
 				_ = connection.RunAsync(cts.Token);
 			}
 		}, cts.Token);
@@ -123,19 +127,20 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry);
+		var channelMembership = new ChannelMembershipService(sessionRegistry, channelRegistry, _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, sessionRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
 			NullLogger<ChatDispatchService>.Instance);
 		var authService = new IrcAuthenticationService(users, sessionRegistry, channelRegistry, channelMembership,
 			_fakeIrcOptions, hasher);
+		var playerLogout = MakePlayerLogoutService(sessionRegistry, channelRegistry, channelMembership);
 
-		// Stands in for a real bancho client: same UserSession/IrcConnection shape the chat core sees
+		// Stands in for a real bancho client: same GameSession/IrcConnection shape the chat core sees
 		// once LoginService logs one-in — no TCP socket, IrcConnection defaults to the bancho bridge.
-		var banchoPlayer = new UserSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
+		var banchoPlayer = new GameSession(99, "bob", "bancho-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		sessionRegistry.Add(banchoPlayer);
+		sessionRegistry.TryAddGameSession(banchoPlayer);
 		channelMembership.Join(banchoPlayer, channelRegistry.GetByName("#osu")!);
 
 		var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -148,7 +153,7 @@ public class TcpIrcConnectionTests
 		{
 			var client = await listener.AcceptTcpClientAsync(cts.Token);
 			var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-				channelRegistry, sessionRegistry, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, 1);
+				channelRegistry, playerLogout, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, 1);
 			_ = connection.RunAsync(cts.Token);
 		}, cts.Token);
 
@@ -176,7 +181,21 @@ public class TcpIrcConnectionTests
 		listener.Stop();
 	}
 
-	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(UserSession session)
+	private static PlayerLogoutService MakePlayerLogoutService(IUserSessionRegistry sessionRegistry,
+		IChannelRegistry channelRegistry, ChannelMembershipService channelMembership)
+	{
+		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
+			NullLogger<SpectatorService>.Instance);
+		var matchMembership = new MatchMembershipService(
+			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
+			sessionRegistry, channelMembership, new NotSupportedMatchRepository(),
+			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
+			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
+		return new PlayerLogoutService(sessionRegistry, channelMembership, spectatorService, matchMembership,
+			NullLogger<PlayerLogoutService>.Instance);
+	}
+
+	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(GameSession session)
 	{
 		using var cts = new CancellationTokenSource(ReadTimeout);
 		while (!cts.IsCancellationRequested)
@@ -382,6 +401,109 @@ public class TcpIrcConnectionTests
 			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
+		}
+	}
+
+	/// <summary>Unused by these tests — no beatmap lookup ever happens, just chat login/privmsg.</summary>
+	private sealed class NotSupportedBeatmapRepository : IBeatmapRepository
+	{
+		public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+			int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
+			int amount, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+	}
+
+	/// <summary>No-op event bus — these tests never inspect the SSE live layer.</summary>
+	private sealed class NoOpMatchLiveEvents : IMatchLiveEvents
+	{
+		public bool HasPlayerScoreSubscribers => false;
+
+		public event Action<int, byte[]>? MainPublished;
+		public event Action<int, string, byte[]>? PlayerScorePublished;
+		public event Action<int, byte[]>? SettingsPublished;
+		public event Action<int, int, byte[]>? SlotPublished;
+		public event Action<int, byte[]>? HostPublished;
+		public event Action<int, byte[]>? RefsPublished;
+		public event Action<int, byte[]>? BansPublished;
+		public event Action<int, byte[]>? TimerPublished;
+		public event Action<int, byte[]>? SlotsPublished;
+
+		public void PublishMain(int matchDbId, byte[] payload)
+		{
+			MainPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
+		{
+			PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+		}
+
+		public void PublishSettings(int matchDbId, byte[] payload)
+		{
+			SettingsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
+		{
+			SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+		}
+
+		public void PublishHost(int matchDbId, byte[] payload)
+		{
+			HostPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishRefs(int matchDbId, byte[] payload)
+		{
+			RefsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishBans(int matchDbId, byte[] payload)
+		{
+			BansPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishTimer(int matchDbId, byte[] payload)
+		{
+			TimerPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishSlots(int matchDbId, byte[] payload)
+		{
+			SlotsPublished?.Invoke(matchDbId, payload);
 		}
 	}
 }

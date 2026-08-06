@@ -48,12 +48,16 @@ public class LoginServiceTests
 	public LoginServiceTests()
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry), NullLogger<SpectatorService>.Instance);
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+			NullLogger<SpectatorService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
 		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
 		// this explicitly so every test's happy path matches "no MOTD configured" unless overridden.
 		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns((string?)null);
+		// TryAddGameSession's unconfigured NSubstitute default is false — stub it true so the happy
+		// path doesn't spuriously hit the "user-already-logged-in" branch.
+		_sessionRegistry.TryAddGameSession(Arg.Any<GameSession>()).Returns(true);
 	}
 
 	private LoginService MakeUseCase()
@@ -67,9 +71,9 @@ public class LoginServiceTests
 			}), NullLogger<LoginService>.Instance);
 	}
 
-	private static UserSession MakeBot()
+	private static GameSession MakeBot()
 	{
-		return new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		return new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 	}
@@ -136,11 +140,11 @@ public class LoginServiceTests
 	[Fact]
 	public async Task DuplicateActiveSession_NonTourney_ReturnsUserAlreadyLoggedIn()
 	{
-		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-5)
 		};
-		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_sessionRegistry.GetGameByName("cmyui").Returns(existing);
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
@@ -156,11 +160,11 @@ public class LoginServiceTests
 	[Fact]
 	public async Task DuplicateExpiredSession_LogsOutOldSession_AndProceeds()
 	{
-		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
 		};
-		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_sessionRegistry.GetGameByName("cmyui").Returns(existing);
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -177,14 +181,14 @@ public class LoginServiceTests
 		// #spec_{userId} is keyed by the persistent user id, stable across relogins — without this
 		// cleanup, a relogin would pile a dead member reference onto the previous session's channel.
 		var bot = MakeBot();
-		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
-		var existing = new UserSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		_sessionRegistry.GetGameByUserId(BotBootstrapService.BotId).Returns(bot);
+		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100)
 		};
 		existing.AddSpectator(bot);
 		bot.Spectating = existing;
-		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_sessionRegistry.GetGameByName("cmyui").Returns(existing);
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -251,8 +255,8 @@ public class LoginServiceTests
 		// already-stored country, regardless of which (if any) geolocation headers arrive.
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "jp");
 
-		UserSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+		GameSession? captured = null;
+		_sessionRegistry.TryAddGameSession(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -326,18 +330,18 @@ public class LoginServiceTests
 		await _users.Received(1).UpdatePrivilegesAsync(user.Id, UserPrivileges.Unrestricted | UserPrivileges.Verified,
 			Arg.Any<CancellationToken>());
 		_sessionRegistry.Received(1)
-			.Add(Arg.Is<UserSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
+			.TryAddGameSession(Arg.Is<GameSession>(s => s != null && s.Id == user.Id && s.Token == "generated-token"));
 	}
 
 	[Fact]
 	public async Task HappyPath_BotStartsSpectatingTheNewSession()
 	{
 		var bot = MakeBot();
-		_sessionRegistry.GetById(BotBootstrapService.BotId).Returns(bot);
+		_sessionRegistry.GetGameByUserId(BotBootstrapService.BotId).Returns(bot);
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
-		UserSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+		GameSession? captured = null;
+		_sessionRegistry.TryAddGameSession(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -388,8 +392,8 @@ public class LoginServiceTests
 			new Stats(user.Id, GameMode.Taiko, 200_000, 180_000, 80)
 		]);
 
-		UserSession? captured = null;
-		_sessionRegistry.When(r => r.Add(Arg.Any<UserSession>())).Do(ci => captured = ci.Arg<UserSession>());
+		GameSession? captured = null;
+		_sessionRegistry.TryAddGameSession(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -499,7 +503,7 @@ public class LoginServiceTests
 				Arg.Any<string?>(), Arg.Any<CancellationToken>())
 			.Returns([]);
 		_channelRegistry.AutoJoinChannels.Returns([]);
-		_sessionRegistry.All.Returns([]);
+		_sessionRegistry.GameSessions.Returns([]);
 		_userStatRepository.FetchAllForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
 		_relationships.FetchAllAsync(userId, null, Arg.Any<CancellationToken>()).Returns([]);
 		_tokenGenerator.GenerateToken().Returns("generated-token");

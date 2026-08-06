@@ -30,7 +30,7 @@ public sealed class ChangeActionHandler(IUserSessionRegistry sessionRegistry) : 
 	/// <param name="reader">The packet reader positioned at the ChangeAction body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var action = reader.ReadU8();
@@ -51,7 +51,7 @@ public sealed class ChangeActionHandler(IUserSessionRegistry sessionRegistry) : 
 		if (userSession.Restricted) return Task.CompletedTask;
 
 		var statsPacket = PacketBuilders.BuildUserStats(userSession);
-		foreach (var other in sessionRegistry.All)
+		foreach (var other in sessionRegistry.GameSessions)
 			other.Enqueue(statsPacket);
 
 		return Task.CompletedTask;

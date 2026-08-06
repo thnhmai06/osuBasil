@@ -43,7 +43,7 @@ public sealed class MatchChangeSettingsHandler(
 	/// <param name="reader">The packet reader positioned at the payload holding the full settings snapshot.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
@@ -103,7 +103,7 @@ public sealed class MatchChangeSettingsHandler(
 					match.MapName = beatmap.FullName;
 					match.UnresolvedMapMd5 = null;
 
-					var host = sessionRegistry.GetById(match.HostId);
+					var host = sessionRegistry.GetGameByUserId(match.HostId);
 					if (host is not null) match.Mode = host.Status.Mode;
 					matchMembership.CancelQueuedAutoStart(match);
 				}
@@ -116,7 +116,7 @@ public sealed class MatchChangeSettingsHandler(
 					// UnresolvedMapMd5 this warning would re-fire on every one of those instead of just
 					// the first.
 					match.UnresolvedMapMd5 = matchData.MapMd5;
-					var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+					var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
 					if (bot is not null)
 						matchMembership.EnqueueChat(match, bot.Name, bot.Id,
 							"Beatmap not found on the server — map selection ignored.");

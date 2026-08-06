@@ -10,21 +10,25 @@ using Microsoft.Extensions.Options;
 namespace Basil.Application.Services.Bot;
 
 /// <summary>
-///     Boots the seeded id=0 bot user into an in-memory <see cref="UserSession" /> at startup.
+///     Boots the seeded id=0 bot user into an in-memory <see cref="GameSession" /> at startup.
 /// </summary>
 /// <remarks>
-///     This gives chat and <c>!mp</c> commands a real sender identity to reply from. It is not a
-///     login: no client connection sits behind this session, so the normal handshake is skipped
-///     entirely and the session is registered directly with <see cref="IUserSessionRegistry" />.
+///     This gives chat and <c>!mp</c> commands a real sender identity to reply from, and — because it
+///     is a <see cref="GameSession" /> — lets it hold <see cref="GameSession.Spectating" />
+///     relationships so its watch of every online userSession can be exposed over SSE. It is not a
+///     login: no client connection sits behind this session, and it never occupies a multiplayer
+///     slot (see the <c>IsBot</c> guards in <c>MatchMembershipService</c>). The normal handshake is
+///     skipped entirely and the session is registered directly with <see cref="IUserSessionRegistry" />.
 /// </remarks>
 public sealed class BotBootstrapService(
 	IUserRepository users,
 	IUserSessionRegistry sessionRegistry,
 	IChannelRegistry channelRegistry,
+	ChannelMembershipService channelMembership,
 	IOptions<BotOptions> botOptions,
 	ILogger<BotBootstrapService> logger)
 {
-	public const int BotId = 0;
+	public const int BotId = SystemUserIds.BasilBot;
 	private const string BotToken = "bancho-bot-session";
 
 	/// <summary>
@@ -33,10 +37,10 @@ public sealed class BotBootstrapService(
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	/// <returns>
-	///     The bot's <see cref="UserSession" />, or <see langword="null" /> when the seeded user row
+	///     The bot's <see cref="GameSession" />, or <see langword="null" /> when the seeded user row
 	///     is missing.
 	/// </returns>
-	public async Task<UserSession?> BootstrapAsync(CancellationToken cancellationToken = default)
+	public async Task<GameSession?> BootstrapAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await users.FetchByIdAsync(BotId, cancellationToken);
 		if (user is null)
@@ -57,19 +61,16 @@ public sealed class BotBootstrapService(
 			await users.UpdateCountryAsync(BotId, country, cancellationToken);
 
 		var loginTime = DateTimeOffset.UtcNow;
-		var session = new UserSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
+		var session = new GameSession(BotId, configuredName, BotToken, user.Privilege, loginTime)
 		{
 			IsBot = true,
 			Country = country
 		};
 
 		foreach (var channel in channelRegistry.AutoJoinChannels)
-		{
-			channel.Join(BotId);
-			session.JoinChannel(channel.Name);
-		}
+			channelMembership.Join(session, channel);
 
-		sessionRegistry.Add(session);
+		sessionRegistry.TryAddGameSession(session);
 		logger.LogInformation("Bot session created: BotId={BotId}", BotId);
 		return session;
 	}

@@ -25,7 +25,7 @@ public sealed class RequestStatusUpdateHandler : IPacketHandler
 	/// <param name="reader">The packet reader positioned at the RequestStatusUpdate body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		userSession.Enqueue(PacketBuilders.BuildUserStats(userSession));

@@ -25,11 +25,11 @@ public sealed class StartSpectatingHandler(
 
 	public bool AllowedWhenRestricted => false;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var targetId = reader.ReadI32();
-		var newHost = sessionRegistry.GetById(targetId);
+		var newHost = sessionRegistry.GetGameByUserId(targetId);
 		if (newHost is null) return Task.CompletedTask;
 
 		var currentHost = userSession.Spectating;

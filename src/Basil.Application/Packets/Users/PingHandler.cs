@@ -24,7 +24,7 @@ public sealed class PingHandler : IPacketHandler
 	/// <param name="reader">The packet reader positioned at the Ping body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader, CancellationToken cancellationToken = default)
+	public Task HandleAsync(GameSession userSession, PacketReader reader, CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}

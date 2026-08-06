@@ -26,7 +26,7 @@ public sealed class MatchInviteHandler(IUserSessionRegistry sessionRegistry) : I
 	/// <param name="reader">The packet reader positioned at the payload holding the target user id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var userId = reader.ReadI32();
@@ -34,7 +34,7 @@ public sealed class MatchInviteHandler(IUserSessionRegistry sessionRegistry) : I
 		var match = userSession.Match;
 		if (match is null) return Task.CompletedTask;
 
-		var target = sessionRegistry.GetById(userId);
+		var target = sessionRegistry.GetGameByUserId(userId);
 
 		target?.Enqueue(ServerPacketWriter.MatchInvite(userSession.Id, userSession.Name, match.Embed, target.Name));
 		return Task.CompletedTask;

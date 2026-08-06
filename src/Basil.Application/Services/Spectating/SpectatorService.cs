@@ -38,7 +38,7 @@ public sealed class SpectatorService(
 	/// </remarks>
 	/// <param name="host">The spectated userSession.</param>
 	/// <param name="spectator">The userSession starting to spectate.</param>
-	public void AddSpectator(UserSession host, UserSession spectator)
+	public void AddSpectator(GameSession host, GameSession spectator)
 	{
 		var channel = channelRegistry.GetByName(ChannelNameFor(host.Id));
 		if (channel is null)
@@ -80,7 +80,7 @@ public sealed class SpectatorService(
 	/// <remarks>Tears the channel down (parting the host as well) when the last spectator leaves.</remarks>
 	/// <param name="host">The spectated userSession.</param>
 	/// <param name="spectator">The userSession stopping to spectate.</param>
-	public void RemoveSpectator(UserSession host, UserSession spectator)
+	public void RemoveSpectator(GameSession host, GameSession spectator)
 	{
 		host.RemoveSpectator(spectator);
 		spectator.Spectating = null;

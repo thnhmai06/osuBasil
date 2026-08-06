@@ -18,12 +18,12 @@ public class UserPresenceRequestAllHandlerTests
 	[Fact]
 	public async Task Handle_EnqueuesPresenceOfAllUnrestrictedPlayers_ExcludingRestricted()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var unrestrictedOther = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted,
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var unrestrictedOther = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		var restrictedOther =
-			new UserSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.All.Returns([self, unrestrictedOther, restrictedOther]);
+			new GameSession(3, "banned", "banned-token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([self, unrestrictedOther, restrictedOther]);
 		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
 
 		await new UserPresenceRequestAllHandler(_sessionRegistry).HandleAsync(self, reader);

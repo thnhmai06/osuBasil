@@ -23,7 +23,7 @@ public class AuthenticationServiceTests
 	[Fact]
 	public async Task PlayerNotOnline_ReturnsNull()
 	{
-		_sessionRegistry.GetByName("cmyui").Returns((UserSession?)null);
+		_sessionRegistry.GetGameByName("cmyui").Returns((GameSession?)null);
 
 		var result = await MakeService().AuthenticateOnlinePlayerAsync("cmyui", "hash");
 
@@ -33,8 +33,8 @@ public class AuthenticationServiceTests
 	[Fact]
 	public async Task NoStoredPasswordHash_ReturnsNull()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetByName("cmyui").Returns(session);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetGameByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns((string?)null);
 
 		var result = await MakeService().AuthenticateOnlinePlayerAsync("cmyui", "hash");
@@ -45,8 +45,8 @@ public class AuthenticationServiceTests
 	[Fact]
 	public async Task WrongPassword_ReturnsNull()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetByName("cmyui").Returns(session);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetGameByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
 
@@ -58,8 +58,8 @@ public class AuthenticationServiceTests
 	[Fact]
 	public async Task CorrectPassword_ReturnsSession()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetByName("cmyui").Returns(session);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetGameByName("cmyui").Returns(session);
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 

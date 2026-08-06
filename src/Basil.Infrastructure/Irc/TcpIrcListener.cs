@@ -28,7 +28,7 @@ public sealed class TcpIrcListener(
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
 	IChannelRegistry channelRegistry,
-	IUserSessionRegistry sessionRegistry,
+	PlayerLogoutService playerLogout,
 	ILogger<TcpIrcListener> logger,
 	ILogger<TcpIrcConnection> connectionLogger) : BackgroundService
 {
@@ -67,7 +67,7 @@ public sealed class TcpIrcListener(
 					connectionId, client.Client.RemoteEndPoint);
 
 				var connection = new TcpIrcConnection(
-					client, authService, chatDispatch, channelMembership, channelRegistry, sessionRegistry, options,
+					client, authService, chatDispatch, channelMembership, channelRegistry, playerLogout, options,
 					connectionLogger, connectionId);
 
 				_ = RunConnectionAsync(connection, client, connectionId, stoppingToken);

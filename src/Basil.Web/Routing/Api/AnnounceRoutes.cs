@@ -93,9 +93,9 @@ internal static class AnnounceRoutes
 			return Results.BadRequest(new ErrorResponse("Message must not be empty."));
 
 		var targets = body.UserIds is null
-			? sessionRegistry.All.Where(s => s.Id != BotBootstrapService.BotId)
+			? sessionRegistry.GameSessions.Where(s => s.Id != BotBootstrapService.BotId)
 			: body.UserIds.Where(id => id != BotBootstrapService.BotId)
-				.Select(sessionRegistry.GetById)
+				.Select(sessionRegistry.GetGameByUserId)
 				.Where(s => s is not null)!;
 
 		var packet = ServerPacketWriter.Notification(body.Message);

@@ -15,15 +15,6 @@ public interface IIrcConnection
 	UserSession User { get; }
 
 	/// <summary>
-	///     Gets a value that indicates whether this connection is a real external IRC client, as
-	///     opposed to the bancho packet bridge. Drives the <c>+</c> NAMES prefix that marks a user
-	///     as connected via an external IRC client. Declared as an interface flag rather than a
-	///     concrete-type check because Application cannot reference the Infrastructure project that
-	///     implements the real TCP connection.
-	/// </summary>
-	bool IsExternalIrcClient { get; }
-
-	/// <summary>
 	///     Sends an IRC-shaped message to the recipient. Must never block on I/O, matching
 	///     <see cref="Multiplayer.IMatchLiveEvents" />'s non-blocking publish contract.
 	/// </summary>

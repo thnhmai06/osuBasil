@@ -31,5 +31,5 @@ public interface IPacketHandler
 	/// <param name="reader">The packet reader positioned at the body of this handler's packet type.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A task that completes when the packet has been fully handled.</returns>
-	Task HandleAsync(UserSession userSession, PacketReader reader, CancellationToken cancellationToken = default);
+	Task HandleAsync(GameSession userSession, PacketReader reader, CancellationToken cancellationToken = default);
 }

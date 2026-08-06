@@ -1,3 +1,5 @@
+using Basil.Application.Configurations;
+using Microsoft.Extensions.Options;
 using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -17,7 +19,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		return new PacketReader(BinaryWriter.WriteInt32(matchId));
 	}
 
-	private static UserSession MakeDonator(int id, string name)
+	private static GameSession MakeDonator(int id, string name)
 	{
 		var player = MakePlayer(id, name);
 		player.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
@@ -32,7 +34,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry),
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry, Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 		host.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 
@@ -50,7 +52,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host, observer);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry),
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry, Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 
 		await handler.HandleAsync(observer, ReaderFor(match.Id));

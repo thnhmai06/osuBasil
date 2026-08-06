@@ -15,10 +15,10 @@ public class UserPresenceRequestHandlerTests
 	[Fact]
 	public async Task Handle_KnownTarget_EnqueuesTheirPresence()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var target = new UserSession(2, "target", "target-token", UserPrivileges.Unrestricted,
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var target = new GameSession(2, "target", "target-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetById(2).Returns(target);
+		_sessionRegistry.GetGameByUserId(2).Returns(target);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);
@@ -32,8 +32,8 @@ public class UserPresenceRequestHandlerTests
 	[Fact]
 	public async Task Handle_UnknownTarget_NothingEnqueued()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetById(2).Returns((UserSession?)null);
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetGameByUserId(2).Returns((GameSession?)null);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserPresenceRequestHandler(_sessionRegistry).HandleAsync(self, reader);

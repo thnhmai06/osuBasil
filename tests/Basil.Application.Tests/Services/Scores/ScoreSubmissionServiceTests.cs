@@ -43,17 +43,17 @@ public class ScoreSubmissionServiceTests
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
 
-	private UserSession MakePlayer(int id = 7, string name = "cookiezi")
+	private GameSession MakePlayer(int id = 7, string name = "cookiezi")
 	{
-		var session = new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.GetByName(name).Returns(session);
+		var session = new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetGameByName(name).Returns(session);
 		_users.FetchPasswordHashAsync(id, Arg.Any<CancellationToken>()).Returns("hashed");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "hashed").Returns(true);
 		return session;
 	}
 
 	/// <summary>Puts the userSession in an active multiplayer round — the only state that satisfies the multiplayer-only gate.</summary>
-	private static void PutInActiveRound(UserSession userSession, int roundId = 10)
+	private static void PutInActiveRound(GameSession userSession, int roundId = 10)
 	{
 		var match = new MatchSession(0, "Grand Finals", "", "map", 1, new string('a', 32), userSession.Id,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0")
@@ -117,7 +117,7 @@ public class ScoreSubmissionServiceTests
 	{
 		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(MakeBeatmap());
-		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((UserSession?)null);
+		_sessionRegistry.GetGameByName(Arg.Any<string>()).Returns((GameSession?)null);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "ghost ", MakeScoreFields()));
 
@@ -211,7 +211,7 @@ public class ScoreSubmissionServiceTests
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
 
-		_sessionRegistry.Received().GetByName("cookiezi");
+		_sessionRegistry.Received().GetGameByName("cookiezi");
 	}
 
 	[Fact]

@@ -214,7 +214,7 @@ public class MatchChangeSettingsHandlerTests
 			Chunk(host.Dequeue()));
 	}
 
-	private static (Fixture Fixture, UserSession Host, UserSession Bot, MatchSession Match)
+	private static (Fixture Fixture, GameSession Host, GameSession Bot, MatchSession Match)
 		SetUpMatchWithPendingAutoStart()
 	{
 		var fixture = new Fixture();
@@ -227,7 +227,7 @@ public class MatchChangeSettingsHandlerTests
 		return (fixture, host, bot, match);
 	}
 
-	private static void AssertAutoStartCancelled(MatchSession match, UserSession host, UserSession bot)
+	private static void AssertAutoStartCancelled(MatchSession match, GameSession host, GameSession bot)
 	{
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);

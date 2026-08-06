@@ -47,7 +47,7 @@ public sealed class ClientIntegrityService(
 	///     other flags are ignored.
 	/// </remarks>
 	public Task<ClientIntegrityResult> HandleLastFmFlagsAsync(
-		UserSession userSession, string beatmapIdOrHiddenFlag)
+		GameSession userSession, string beatmapIdOrHiddenFlag)
 	{
 		if (string.IsNullOrEmpty(beatmapIdOrHiddenFlag) || beatmapIdOrHiddenFlag[0] != 'a')
 			return Task.FromResult(ClientIntegrityResult.StopSending);
@@ -78,7 +78,7 @@ public sealed class ClientIntegrityService(
 		return Task.FromResult(ClientIntegrityResult.Empty);
 	}
 
-	private void ReportFlag(UserSession userSession, string reason)
+	private void ReportFlag(GameSession userSession, string reason)
 	{
 		var match = userSession.Match;
 		if (match is null)
@@ -88,7 +88,7 @@ public sealed class ClientIntegrityService(
 			return;
 		}
 
-		var bot = sessionRegistry.GetById(BotBootstrapService.BotId);
+		var bot = sessionRegistry.GetGameByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
 		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
@@ -97,9 +97,7 @@ public sealed class ClientIntegrityService(
 		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",
 			match.DbId, match.Referees);
 		foreach (var refereeId in match.Referees)
-		{
-			var referee = sessionRegistry.GetById(refereeId);
-			referee?.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
-		}
+		foreach (var referee in sessionRegistry.GetSessionsByUserId(refereeId))
+			referee.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
 	}
 }

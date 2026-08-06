@@ -9,9 +9,9 @@ namespace Basil.Application.Tests.Packets;
 /// <summary>Ported from app/api/domains/cho.py's ReceiveUpdates.</summary>
 public class ReceiveUpdatesHandlerTests
 {
-	private static UserSession MakeSession()
+	private static GameSession MakeSession()
 	{
-		return new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
 	[Theory]

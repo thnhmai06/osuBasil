@@ -1,3 +1,5 @@
+using Basil.Application.Configurations;
+using Microsoft.Extensions.Options;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -17,7 +19,7 @@ public class ChannelJoinHandlerTests
 	private ChannelJoinHandler MakeHandler()
 	{
 		return new ChannelJoinHandler(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -30,8 +32,8 @@ public class ChannelJoinHandlerTests
 	{
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.All.Returns([player]);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([player]);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 
@@ -47,7 +49,7 @@ public class ChannelJoinHandlerTests
 	public async Task Handle_UnknownChannel_NoOp()
 	{
 		_channelRegistry.GetByName("#missing").Returns((ChannelSession?)null);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#missing"));
 
@@ -59,7 +61,7 @@ public class ChannelJoinHandlerTests
 	{
 		var channel = new ChannelSession(1, "#staff", "Staff", UserPrivileges.Staff, UserPrivileges.Staff, true);
 		_channelRegistry.GetByName("#staff").Returns(channel);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#staff"));
 
@@ -72,7 +74,7 @@ public class ChannelJoinHandlerTests
 	{
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		player.JoinChannel("#osu");
 		channel.Join(player.Id);
 

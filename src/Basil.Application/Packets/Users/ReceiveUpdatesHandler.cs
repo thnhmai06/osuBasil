@@ -26,7 +26,7 @@ public sealed class ReceiveUpdatesHandler : IPacketHandler
 	/// <param name="reader">The packet reader positioned at the ReceiveUpdates body.</param>
 	/// <param name="cancellationToken">The token used to cancel the operation.</param>
 	/// <returns>A completed task.</returns>
-	public Task HandleAsync(UserSession userSession, PacketReader reader, CancellationToken cancellationToken = default)
+	public Task HandleAsync(GameSession userSession, PacketReader reader, CancellationToken cancellationToken = default)
 	{
 		var value = reader.ReadI32();
 		if (value is < 0 or >= 3) return Task.CompletedTask;

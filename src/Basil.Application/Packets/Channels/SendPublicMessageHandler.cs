@@ -20,7 +20,7 @@ public sealed class SendPublicMessageHandler(ChatDispatchService chatDispatch) :
 
 	public bool AllowedWhenRestricted => true;
 
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var message = reader.ReadMessage();

@@ -120,7 +120,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(target, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
 		await control.SetBansAsync(match, [target.Id]);
@@ -136,7 +136,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(target, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
 		await control.AddBansAsync(match, [target.Id]);
@@ -170,7 +170,7 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, otherHost, target);
 		var match = _fixture.CreateMatch(host);
 		var otherMatch = _fixture.CreateMatch(otherHost);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(target, otherMatch, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, otherMatch, ""));
 		var control = MakeService();
 
 		var result = await control.ForceInviteAsync(match, target);
@@ -249,7 +249,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		// Only re-teams host's slot — doesn't mention `other`, who is also currently seated.
@@ -271,7 +271,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
@@ -312,7 +312,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.True(await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;

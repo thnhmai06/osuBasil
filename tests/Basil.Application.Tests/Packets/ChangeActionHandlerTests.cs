@@ -30,7 +30,7 @@ public class ChangeActionHandlerTests
 	[Fact]
 	public async Task Handle_UpdatesStatusFields()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader =
 			new PacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0,
 				42));
@@ -50,7 +50,7 @@ public class ChangeActionHandlerTests
 	{
 		// GameMode is a plain 4-value enum — Relax/Autopilot are ordinary Mods bits now, with no
 		// effect on Mode, unlike the old Vanilla/Relax/Autopilot-variant enum.
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader = new PacketReader(Payload(0, "", "", (uint)Mods.Relax, 0, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
@@ -62,7 +62,7 @@ public class ChangeActionHandlerTests
 	[Fact]
 	public async Task Handle_AutopilotModOnMania_PassesThroughModeAndModsUnchanged()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader = new PacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 3, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
@@ -74,9 +74,9 @@ public class ChangeActionHandlerTests
 	[Fact]
 	public async Task Handle_Unrestricted_BroadcastsUpdatedStatsToAllOnlinePlayers()
 	{
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var other = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.All.Returns([session, other]);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([session, other]);
 		var reader = new PacketReader(Payload((int)UserActivity.Idle, "", "", 0, 0, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
@@ -88,9 +88,9 @@ public class ChangeActionHandlerTests
 	public async Task Handle_Restricted_DoesNotBroadcast()
 	{
 		var session =
-			new UserSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
-		var other = new UserSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.All.Returns([session, other]);
+			new GameSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([session, other]);
 		var reader = new PacketReader(Payload(0, "", "", 0, 0, 0));
 
 		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);

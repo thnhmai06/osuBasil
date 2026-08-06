@@ -213,7 +213,7 @@ public sealed class CommandDispatcher(
 			sender.MpScopeMatchId = null;
 		}
 
-		return channelScope ?? sender.Match;
+		return channelScope ?? (sender as GameSession)?.Match;
 	}
 
 	/// <summary>

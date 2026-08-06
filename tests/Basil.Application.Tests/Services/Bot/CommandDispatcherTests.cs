@@ -63,7 +63,8 @@ public class CommandDispatcherTests
 		fixture ??= new MultiplayerTestSupport.Fixture();
 		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchRepository,
 			_beatmaps,
-			fixture.SessionRegistry, Substitute.For<IUserRepository>(), NullLogger<MpCommandService>.Instance,
+			fixture.SessionRegistry, Substitute.For<IUserRepository>(), fixture.ChannelRegistry,
+			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 		return new CommandDispatcher(options, mpCommands, _users,
 			Options.Create(storageOptions ?? MakeStorageOptions()),

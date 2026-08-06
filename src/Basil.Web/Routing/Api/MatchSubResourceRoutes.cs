@@ -134,9 +134,9 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
 
-				var target = sessionRegistry.GetById(body.UserId);
+				var target = sessionRegistry.GetGameByUserId(body.UserId);
 				if (target is null)
-					return Results.BadRequest(new ErrorResponse("userId is required and must be online."));
+					return Results.BadRequest(new ErrorResponse("userId is required and must be online with the osu! client."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -353,7 +353,7 @@ internal static class MatchSubResourceRoutes
 				if (match is null) return Results.NotFound();
 
 				if (userId is not { } uid) return Results.BadRequest(new ErrorResponse("userId is required."));
-				var target = sessionRegistry.GetById(uid);
+				var target = sessionRegistry.GetSessionsByUserId(uid).FirstOrDefault();
 				if (target is null)
 					return Results.BadRequest(new ErrorResponse("userId is required and must be online."));
 
@@ -680,15 +680,15 @@ internal static class MatchSubResourceRoutes
 				try
 				{
 					var results = new List<InviteResult>();
-					var sender = sessionRegistry.GetById(match.HostId) ??
-					             sessionRegistry.GetById(BotBootstrapService.BotId);
+					var sender = sessionRegistry.GetSessionsByUserId(match.HostId).FirstOrDefault() ??
+					             sessionRegistry.GetSessionsByUserId(BotBootstrapService.BotId).FirstOrDefault();
 
 					foreach (var userId in userIds)
 					{
-						var target = sessionRegistry.GetById(userId);
+						var target = sessionRegistry.GetGameByUserId(userId);
 						if (target is null)
 						{
-							results.Add(new InviteResult(userId, false, "Not online."));
+							results.Add(new InviteResult(userId, false, "Not online with the osu! client."));
 							continue;
 						}
 
@@ -702,6 +702,8 @@ internal static class MatchSubResourceRoutes
 									new InviteResult(userId, false, "Banned from this match."),
 								MatchControlService.ForceInviteResult.TargetInAnotherMatch =>
 									new InviteResult(userId, false, "Already in another match."),
+								MatchControlService.ForceInviteResult.TargetIsBot =>
+									new InviteResult(userId, false, "Cannot invite BasilBot."),
 								_ => new InviteResult(userId, false, "No free slot.")
 							});
 							continue;
@@ -715,9 +717,14 @@ internal static class MatchSubResourceRoutes
 						}
 
 						var inviteResult = MatchControlService.Invite(sender, match, target);
-						results.Add(inviteResult == MatchControlService.InviteResult.TargetAlreadyInRoom
-							? new InviteResult(userId, false, "Already in the room.")
-							: new InviteResult(userId, true, null));
+						results.Add(inviteResult switch
+						{
+							MatchControlService.InviteResult.TargetAlreadyInRoom =>
+								new InviteResult(userId, false, "Already in the room."),
+							MatchControlService.InviteResult.TargetIsBot =>
+								new InviteResult(userId, false, "Cannot invite BasilBot."),
+							_ => new InviteResult(userId, true, null)
+						});
 					}
 
 					return Results.Json(results);
@@ -758,18 +765,26 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
 
-				var target = sessionRegistry.GetById(body.UserId);
-				if (target is null)
-					return Results.BadRequest(new ErrorResponse("userId is required and must be online."));
+				var targetUser = await users.FetchByIdAsync(body.UserId, cancellationToken);
+				if (targetUser is null)
+					return Results.BadRequest(new ErrorResponse("userId is not registered."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var result = await matchControl.KickAsync(null, null, match, target, cancellationToken);
-					return result == MatchControlService.KickResult.TargetNotInMatch
-						? Results.BadRequest(new ErrorResponse("userId is not in this match."))
-						: Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, users,
-							cancellationToken));
+					var result = await matchControl.KickAsync(null, null, match, targetUser.Id, targetUser.Name,
+						cancellationToken);
+					return result switch
+					{
+						MatchControlService.KickResult.TargetNotInMatch =>
+							Results.BadRequest(new ErrorResponse("userId is not in this match.")),
+						MatchControlService.KickResult.TargetIsReferee =>
+							Results.BadRequest(new ErrorResponse("userId is a referee; remove referee status first.")),
+						MatchControlService.KickResult.TargetIsBot =>
+							Results.BadRequest(new ErrorResponse("userId is BasilBot and cannot be kicked.")),
+						_ => Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, sessionRegistry, users,
+							cancellationToken))
+					};
 				}
 				finally
 				{
@@ -783,7 +798,7 @@ internal static class MatchSubResourceRoutes
 			.WithDescription("""
 			                 Kicks the player identified by `{ userId }` and returns the resulting slot arrangement.
 
-			                 Returns `400 Bad Request` if `userId` is missing, not online, or not currently seated in this match, or `404 Not Found` if the match isn't currently live.
+			                 Returns `400 Bad Request` if `userId` is not registered, not currently present in this match, is a referee (remove referee status first), or is BasilBot, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Slots")
 			.Produces<MatchSlotsView>()
@@ -1075,7 +1090,7 @@ internal static class MatchSubResourceRoutes
 		var targets = new List<UserSession>();
 		foreach (var userId in userIds)
 		{
-			var target = sessionRegistry.GetById(userId);
+			var target = sessionRegistry.GetSessionsByUserId(userId).FirstOrDefault();
 			if (target is null)
 				return (targets,
 					Results.BadRequest(new ErrorResponse($"userId {userId} is required and must be online.")));

@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
@@ -5,6 +6,8 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -24,11 +27,12 @@ namespace Basil.Application.Services.Bot;
 ///     <see cref="MakeAsync" />) that creates the room already private; <c>!mp private [0|1]</c> is
 ///     the way to view or change privacy on a room that already exists. <c>!mp join &lt;id&gt;</c>
 ///     bypasses the referee gate because it is routed directly from <see cref="CommandDispatcher" />.
-///     Every other
-///     subcommand requires <see cref="MatchSession.IsReferee" />, and unmet permission is a silent
-///     no-op with no error reply. Referee is a pure permission flag that does not require physical
-///     presence in the room, and the host is not automatically a referee: hosting only grants direct
-///     in-client settings control, which ranks below referee authority for <c>!mp</c> purposes.
+///     A read-only subcommand (<c>settings</c>, <c>listrefs</c>, <c>banlist</c>, and <c>private</c>
+///     with no argument) runs for anyone the match resolves for; every mutating subcommand requires
+///     <see cref="MatchSession.IsReferee" />, and unmet permission is a silent no-op with no error
+///     reply. Referee is a pure permission flag that does not require physical presence in the room,
+///     and the host is not automatically a referee: hosting only grants direct in-client settings
+///     control, which ranks below referee authority for <c>!mp</c> purposes.
 ///     Every method sends its own reply through the <see cref="ICommandReplySink" /> passed in and
 ///     returns only success or failure; nothing here returns reply text for a caller to route. The
 ///     actual room-mutation logic lives in <see cref="MatchControlService" />, shared with the
@@ -44,10 +48,18 @@ public sealed class MpCommandService(
 	IBeatmapRepository beatmapRepository,
 	IUserSessionRegistry sessionRegistry,
 	IUserRepository userRepository,
+	IChannelRegistry channelRegistry,
 	ILogger<MpCommandService> logger,
 	ILogger<MatchControlService> matchControlLogger)
 {
 	private const int MaxMatchNameLength = 50;
+
+	/// <summary>Safe under 512-byte IRC line limit even with the longest wire prefix/command.</summary>
+	private const int MaxSettingsLineBytes = 400;
+
+	/// <summary>Subcommands that only report state — runnable by anyone the match resolves for, not just referees.</summary>
+	private static readonly HashSet<string> ReadOnlySubcommands =
+		new(StringComparer.OrdinalIgnoreCase) { "settings", "listrefs", "banlist" };
 
 	/// <summary>
 	///     The <c>!mp</c> subcommands listed by <c>!mp help</c>, the single source of truth for that
@@ -132,7 +144,8 @@ public sealed class MpCommandService(
 			["Subcommand"] = subcommand
 		});
 
-		if (!match.IsReferee(sender.Id))
+		var readOnly = ReadOnlySubcommands.Contains(subcommand) || (subcommand == "private" && args.Count == 0);
+		if (!readOnly && !match.IsReferee(sender.Id))
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
 				match.DbId);
@@ -184,10 +197,9 @@ public sealed class MpCommandService(
 	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a client-created
 	///     match, except the creator is also auto-added as a referee. That bootstrap step is required
 	///     because a brand-new room would otherwise never pass the
-	///     <see cref="MatchSession.IsReferee" /> gate. The match is marked
-	///     <see cref="MatchSession.CreatedViaMakeCommand" /> so it persists until <c>!mp close</c> or
-	///     until the referee list empties, instead of auto-tearing down once every slot empties like a
-	///     normal client-created room. <paramref name="isPrivate" /> marks the room private
+	///     <see cref="MatchSession.IsReferee" /> gate. An empty room (whether created this way or by a
+	///     client that later left) auto-closes after 5 minutes of inactivity rather than tearing down
+	///     the instant it empties. <paramref name="isPrivate" /> marks the room private
 	///     (<see cref="MatchSession.IsPrivate" />) at creation, distinct from <c>!mp private</c>, which
 	///     toggles it on an existing room.
 	/// </remarks>
@@ -211,10 +223,10 @@ public sealed class MpCommandService(
 			[], [], [], sender.Id, 0,
 			0, 0, false, [], 0);
 
-		var match = await matchMembership.CreateAsync(sender, data, true, cancellationToken);
+		var match = await matchMembership.CreateAsync(sender, data, cancellationToken);
 		if (match is null)
 		{
-			sink.Reply("Couldn't create the match - server is full.");
+			sink.Reply("Couldn't create the match — please try again.");
 			return false;
 		}
 
@@ -246,6 +258,12 @@ public sealed class MpCommandService(
 	public async Task<bool> JoinAsync(UserSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
+		if (sender is not GameSession gameSender)
+		{
+			sink.Reply("IRC connections can't occupy a match slot — use !mp in <id> instead.");
+			return false;
+		}
+
 		if (args.Count < 1 || !int.TryParse(args[0], out var matchId))
 		{
 			sink.Reply("Usage: !mp join <id> [password]");
@@ -259,19 +277,20 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		if (match.IsPrivate && (sender.Privilege & UserPrivileges.Staff) == 0 && !match.InvitedIds.Contains(sender.Id))
+		if (match.IsPrivate && (gameSender.Privilege & UserPrivileges.Staff) == 0 &&
+		    !match.InvitedIds.Contains(gameSender.Id))
 		{
 			sink.Reply($"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.");
 			return false;
 		}
 
-		if (sender.Match is not null)
+		if (gameSender.Match is not null)
 		{
 			sink.Reply("You're already in a match.");
 			return false;
 		}
 
-		if (match.BannedIds.Contains(sender.Id))
+		if (match.BannedIds.Contains(gameSender.Id))
 		{
 			sink.Reply("You're banned from this match.");
 			return false;
@@ -281,13 +300,21 @@ public sealed class MpCommandService(
 		try
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-			if (await matchMembership.JoinAsync(sender, match, password, cancellationToken))
+			var joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
+			if (joined == MatchMembershipService.JoinResult.Ok)
 			{
 				sink.Reply($"Joined match #{matchId} {match.Name}");
 				return true;
 			}
 
-			sink.Reply("Failed to join the match.");
+			sink.Reply(joined switch
+			{
+				MatchMembershipService.JoinResult.WrongPassword => "Incorrect password.",
+				MatchMembershipService.JoinResult.NoFreeSlot => "The match is full.",
+				MatchMembershipService.JoinResult.Locked => "The match is locked.",
+				MatchMembershipService.JoinResult.Banned => "You're banned from this match.",
+				_ => "Failed to join the match."
+			});
 			return false;
 		}
 		finally
@@ -430,12 +457,64 @@ public sealed class MpCommandService(
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : "";
 
-			var name = sessionRegistry.GetById(slot.PlayerId!.Value)?.Name ?? $"#{slot.PlayerId}";
+			var name = sessionRegistry.GetSessionsByUserId(slot.PlayerId!.Value).FirstOrDefault()?.Name
+			           ?? $"#{slot.PlayerId}";
 			lines.Add($"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {slot.PlayerId,6} {name,-16}{tagText}");
+		}
+
+		// Refs — independent of Players: a referee may or may not also occupy a slot.
+		var refNames = new List<string>();
+		foreach (var id in match.Referees.OrderBy(id => id))
+		{
+			var user = await userRepository.FetchByIdAsync(id, cancellationToken); // referee can be offline
+			refNames.Add(user is { } u ? $"#{id} {u.Name}" : $"#{id}");
+		}
+
+		lines.Add($"Refs: {refNames.Count}");
+		lines.AddRange(WrapCsv(refNames, MaxSettingsLineBytes));
+
+		// IRC — independent of Players/Refs: anyone with a live IrcSession in the match's own channel,
+		// whether or not they also occupy a slot or hold referee status.
+		var ircNames = (channelRegistry.GetByName(match.ChatChannelName)?.MemberIds ?? [])
+			.SelectMany(id => sessionRegistry.GetSessionsByUserId(id))
+			.OfType<IrcSession>()
+			.OrderBy(s => s.Id)
+			.Select(s => $"#{s.Id} {s.Name}")
+			.ToList();
+		if (ircNames.Count > 0)
+		{
+			lines.Add($"IRC: {ircNames.Count}");
+			lines.AddRange(WrapCsv(ircNames, MaxSettingsLineBytes));
 		}
 
 		sink.Reply(string.Join('\n', lines));
 		return true;
+	}
+
+	/// <summary>
+	///     Joins comma-separated items into as few lines as possible, each at most
+	///     <paramref name="maxLineBytes" /> UTF-8 bytes, so a chat line never exceeds the IRC wire
+	///     limit. An individual item longer than the limit on its own is still emitted whole on its
+	///     own line rather than split mid-item, which would corrupt a name or a UTF-8 sequence.
+	/// </summary>
+	private static IEnumerable<string> WrapCsv(IReadOnlyList<string> items, int maxLineBytes)
+	{
+		var line = "";
+		foreach (var item in items)
+		{
+			var candidate = line.Length == 0 ? item : $"{line}, {item}";
+			if (Encoding.UTF8.GetByteCount(candidate) > maxLineBytes && line.Length > 0)
+			{
+				yield return line;
+				line = item;
+			}
+			else
+			{
+				line = candidate;
+			}
+		}
+
+		if (line.Length > 0) yield return line;
 	}
 
 	/// <summary>Formats a <see cref="SlotStatus" /> as the friendly text <c>!mp settings</c> displays.</summary>
@@ -498,7 +577,7 @@ public sealed class MpCommandService(
 
 		var rawTarget = string.Join(' ', args.Take(args.Count - 1));
 		var target = ParseUserSession(rawTarget);
-		if (target is null || target.Match != match)
+		if (target is null)
 		{
 			sink.Reply("User is not in this match or not registered.");
 			return false;
@@ -537,14 +616,14 @@ public sealed class MpCommandService(
 
 		var rawTarget = string.Join(' ', args);
 		var target = ParseUserSession(rawTarget);
-		if (target is null || target.Match != match)
+		if (target is not GameSession gameTarget || gameTarget.Match != match)
 		{
 			sink.Reply("User is not in this match or not registered.");
 			return false;
 		}
 
-		await _matchControl.SetHostAsync(match, target);
-		sink.Reply($"Changed match host to {target.Name}");
+		await _matchControl.SetHostAsync(match, gameTarget);
+		sink.Reply($"Changed match host to {gameTarget.Name}");
 		return true;
 	}
 
@@ -617,22 +696,26 @@ public sealed class MpCommandService(
 		}
 
 		var targetName = string.Join(' ', args);
-		var target = ParseUserSession(targetName);
+		var target = ParseGameSession(targetName);
 		if (target is null)
 		{
-			sink.Reply("User not found.");
+			sink.Reply("User must be connected with the osu! client to be invited.");
 			return false;
 		}
 
 		var result = MatchControlService.Invite(sender, match, target);
-		if (result == MatchControlService.InviteResult.TargetAlreadyInRoom)
+		switch (result)
 		{
-			sink.Reply("User is already in the room");
-			return false;
+			case MatchControlService.InviteResult.TargetAlreadyInRoom:
+				sink.Reply("User is already in the room");
+				return false;
+			case MatchControlService.InviteResult.TargetIsBot:
+				sink.Reply("Cannot invite BasilBot.");
+				return false;
+			default:
+				sink.Reply($"Invited {target.Name} to the room");
+				return true;
 		}
-
-		sink.Reply($"Invited {target.Name} to the room");
-		return true;
 	}
 
 	/// <summary>Implements <c>!mp addref &lt;name&gt;</c>, adding a referee to the match.</summary>
@@ -653,7 +736,13 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+		var result = await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+		if (result == MatchControlService.AddRefereeResult.TargetIsBot)
+		{
+			sink.Reply("Cannot add BasilBot as a referee.");
+			return false;
+		}
+
 		sink.Reply($"Added {target.Name} to the match referees");
 		return true;
 	}
@@ -710,7 +799,7 @@ public sealed class MpCommandService(
 		var referees = match.Referees
 			.Select(id =>
 			{
-				var session = sessionRegistry.GetById(id);
+				var session = sessionRegistry.GetSessionsByUserId(id).FirstOrDefault();
 				return session is null
 					? $"#{id}"
 					: $"#{id} {session.Name}";
@@ -732,7 +821,7 @@ public sealed class MpCommandService(
 		var players = match.BannedIds
 			.Select(id =>
 			{
-				var session = sessionRegistry.GetById(id);
+				var session = sessionRegistry.GetSessionsByUserId(id).FirstOrDefault();
 				return session is null
 					? $"#{id}"
 					: $"#{id} {session.Name}";
@@ -1046,16 +1135,31 @@ public sealed class MpCommandService(
 		}
 
 		var targetName = string.Join(' ', args);
-		var target = ParseUserSession(targetName);
-		if (target is null || target.Match != match)
+		var targetUser = await ParseUser(targetName);
+		if (targetUser is null)
 		{
 			sink.Reply("User is not in this match or not registered.");
 			return false;
 		}
 
-		await _matchControl.KickAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		sink.Reply($"Kicked {target.Name} from the match");
-		return true;
+		var result = await _matchControl.KickAsync(sender.Id, sender.Name, match, targetUser.Id, targetUser.Name,
+			cancellationToken);
+		switch (result)
+		{
+			case MatchControlService.KickResult.TargetIsBot:
+				sink.Reply("Cannot kick BasilBot.");
+				return false;
+			case MatchControlService.KickResult.TargetIsReferee:
+				sink.Reply(
+					$"Cannot kick {targetUser.Name} — they're a referee. Remove referee status first with !mp removeref.");
+				return false;
+			case MatchControlService.KickResult.TargetNotInMatch:
+				sink.Reply("User is not in this match or not registered.");
+				return false;
+			default:
+				sink.Reply($"Kicked {targetUser.Name} from the match");
+				return true;
+		}
 	}
 
 	/// <summary>Implements <c>!mp ban &lt;name&gt;</c>, kicking a userSession and blocking them from rejoining.</summary>
@@ -1069,16 +1173,28 @@ public sealed class MpCommandService(
 		}
 
 		var targetName = string.Join(' ', args);
-		var target = ParseUserSession(targetName);
-		if (target is null || target.Match != match)
+		var targetUser = await ParseUser(targetName);
+		if (targetUser is null)
 		{
-			sink.Reply("User is not in this match or not registered.");
+			sink.Reply("User is not registered.");
 			return false;
 		}
 
-		await _matchControl.BanAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		sink.Reply($"Banned {target.Name} from the match");
-		return true;
+		var result = await _matchControl.BanAsync(sender.Id, sender.Name, match, targetUser.Id, targetUser.Name,
+			cancellationToken);
+		switch (result)
+		{
+			case MatchControlService.BanResult.TargetIsBot:
+				sink.Reply("Cannot ban BasilBot.");
+				return false;
+			case MatchControlService.BanResult.TargetIsReferee:
+				sink.Reply(
+					$"Cannot ban {targetUser.Name} — they're a referee. Remove referee status first with !mp removeref.");
+				return false;
+			default:
+				sink.Reply($"Banned {targetUser.Name} from the match");
+				return true;
+		}
 	}
 
 	/// <summary>Implements <c>!mp unban &lt;name&gt;</c>, allowing a banned userSession to rejoin.</summary>
@@ -1122,8 +1238,20 @@ public sealed class MpCommandService(
 	private UserSession? ParseUserSession(string target)
 	{
 		if (int.TryParse(target, out var playerId))
-			return sessionRegistry.GetById(playerId) ?? sessionRegistry.GetByName(target);
-		return sessionRegistry.GetByName(target);
+			return sessionRegistry.GetSessionsByUserId(playerId).FirstOrDefault() ?? ParseByName(target);
+		return ParseByName(target);
+
+		UserSession? ParseByName(string name)
+		{
+			return (UserSession?)sessionRegistry.GetGameByName(name) ?? sessionRegistry.GetIrcByName(name);
+		}
+	}
+
+	private GameSession? ParseGameSession(string target)
+	{
+		if (int.TryParse(target, out var playerId))
+			return sessionRegistry.GetGameByUserId(playerId) ?? sessionRegistry.GetGameByName(target);
+		return sessionRegistry.GetGameByName(target);
 	}
 
 	private async Task<User?> ParseUser(string target)

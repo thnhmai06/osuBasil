@@ -84,4 +84,53 @@ public class ChannelSessionTests
 
 		Assert.Equal([2], channel.MemberIds);
 	}
+
+	[Fact]
+	public void Join_FirstSessionForUserId_ReturnsTrue()
+	{
+		var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+
+		Assert.True(channel.Join(1));
+	}
+
+	[Fact]
+	public void Join_SecondSessionForSameUserId_ReturnsFalse_ButPlayerCountStaysOne()
+	{
+		var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+
+		Assert.True(channel.Join(1));
+		Assert.False(channel.Join(1));
+		Assert.Equal(1, channel.PlayerCount);
+	}
+
+	[Fact]
+	public void Part_WhileAnotherSessionOfSameUserIdRemains_ReturnsFalse_ButStaysInRoster()
+	{
+		var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+		channel.Join(1);
+		channel.Join(1); // 2 sessions of the same UserId
+
+		Assert.False(channel.Part(1));
+		Assert.True(channel.Contains(1));
+	}
+
+	[Fact]
+	public void Part_LastSessionForUserId_ReturnsTrue_AndLeavesRoster()
+	{
+		var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+		channel.Join(1);
+		channel.Join(1);
+
+		channel.Part(1);
+		Assert.True(channel.Part(1));
+		Assert.False(channel.Contains(1));
+	}
+
+	[Fact]
+	public void Part_UnknownUserId_ReturnsFalse()
+	{
+		var channel = new ChannelSession(1, "#osu", "topic", 0, 0, true);
+
+		Assert.False(channel.Part(999));
+	}
 }

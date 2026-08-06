@@ -37,7 +37,7 @@ public class PacketDispatcherTests
 		var called = false;
 		var handler = new FakeHandler(ClientPackets.Ping, true, (_, _) => called = true);
 		var dispatcher = new PacketDispatcher([handler], NullLogger<PacketDispatcher>.Instance);
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.Ping, []));
 
@@ -48,7 +48,7 @@ public class PacketDispatcherTests
 	public async Task Dispatch_UnknownPacket_SkippedWithoutError()
 	{
 		var dispatcher = new PacketDispatcher([], NullLogger<PacketDispatcher>.Instance);
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await dispatcher.DispatchAsync(session, PacketBytes(ClientPackets.CantSpectate, [1, 2, 3, 4]));
 		// no exception -> success
@@ -66,7 +66,7 @@ public class PacketDispatcherTests
 		});
 		var dispatcher =
 			new PacketDispatcher([pingHandler, logoutHandler], NullLogger<PacketDispatcher>.Instance);
-		var session = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var body = PacketBytes(ClientPackets.Ping, [])
 			.Concat(PacketBytes(ClientPackets.Logout, BinaryWriter.WriteInt32(0))).ToArray();
 
@@ -85,7 +85,7 @@ public class PacketDispatcherTests
 		var dispatcher =
 			new PacketDispatcher([pingHandler, chatHandler], NullLogger<PacketDispatcher>.Instance);
 		var restrictedSession =
-			new UserSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
+			new GameSession(1, "cmyui", "token", UserPrivileges.Verified, DateTimeOffset.UnixEpoch); // restricted
 
 		var body = PacketBytes(ClientPackets.Ping, []).Concat(PacketBytes(ClientPackets.SendPublicMessage, [1, 2]))
 			.ToArray();
@@ -139,12 +139,12 @@ public class PacketDispatcherTests
 	private sealed class FakeHandler(
 		ClientPackets packetId,
 		bool allowedWhenRestricted,
-		Action<UserSession, PacketReader> onHandle) : IPacketHandler
+		Action<GameSession, PacketReader> onHandle) : IPacketHandler
 	{
 		public ClientPackets PacketId => packetId;
 		public bool AllowedWhenRestricted => allowedWhenRestricted;
 
-		public Task HandleAsync(UserSession userSession, PacketReader reader,
+		public Task HandleAsync(GameSession userSession, PacketReader reader,
 			CancellationToken cancellationToken = default)
 		{
 			onHandle(userSession, reader);

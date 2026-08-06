@@ -11,8 +11,10 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using Basil.Application.Configurations;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Backgrounds;
@@ -29,9 +31,9 @@ public class GhostDisconnectServiceTests
 {
 	private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
-	private static UserSession MakeSession(int id, string token, DateTimeOffset lastRecvTime)
+	private static GameSession MakeSession(int id, string token, DateTimeOffset lastRecvTime)
 	{
-		return new UserSession(id, $"player{id}", token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		return new GameSession(id, $"player{id}", token, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ LastRecvTime = lastRecvTime };
 	}
 
@@ -44,14 +46,15 @@ public class GhostDisconnectServiceTests
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
-		var channelMembership = new ChannelMembershipService(registry, channelRegistry);
+		var channelMembership = new ChannelMembershipService(registry, channelRegistry,
+			Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry, registry,
 			channelMembership, Substitute.For<IMatchRepository>(),
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
-		return new PlayerLogoutService(registry, channelRegistry, spectatorService, matchMembership,
+		return new PlayerLogoutService(registry, channelMembership, spectatorService, matchMembership,
 			NullLogger<PlayerLogoutService>.Instance);
 	}
 
@@ -60,13 +63,13 @@ public class GhostDisconnectServiceTests
 	{
 		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
-		registry.Add(stale);
+		registry.TryAddGameSession(stale);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
 				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
-		Assert.Null(registry.GetByToken("stale-token"));
+		Assert.Null(registry.GetGameByToken("stale-token"));
 	}
 
 	[Fact]
@@ -74,28 +77,28 @@ public class GhostDisconnectServiceTests
 	{
 		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
-		registry.Add(fresh);
+		registry.TryAddGameSession(fresh);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
 				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
-		Assert.NotNull(registry.GetByToken("fresh-token"));
+		Assert.NotNull(registry.GetGameByToken("fresh-token"));
 	}
 
 	[Fact]
 	public async Task RunOnce_BotSessionPastThreshold_IsNotRemoved()
 	{
 		var registry = new InMemoryUserSessionRegistryTestDouble();
-		var bot = new UserSession(1, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		var bot = new GameSession(1, "BanchoBot", "bot-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ LastRecvTime = Now.AddSeconds(-301), IsBot = true };
-		registry.Add(bot);
+		registry.TryAddGameSession(bot);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
 				NullLogger<GhostDisconnectService>.Instance)
 			.RunOnce();
 
-		Assert.NotNull(registry.GetByToken("bot-token"));
+		Assert.NotNull(registry.GetGameByToken("bot-token"));
 	}
 
 	[Fact]
@@ -104,8 +107,8 @@ public class GhostDisconnectServiceTests
 		var registry = new InMemoryUserSessionRegistryTestDouble();
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		var bystander = MakeSession(2, "bystander-token", Now);
-		registry.Add(stale);
-		registry.Add(bystander);
+		registry.TryAddGameSession(stale);
+		registry.TryAddGameSession(bystander);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
 				NullLogger<GhostDisconnectService>.Instance)
@@ -128,8 +131,8 @@ public class GhostDisconnectServiceTests
 		channel.Join(bystander.Id);
 		stale.JoinChannel("#osu");
 		bystander.JoinChannel("#osu");
-		registry.Add(stale);
-		registry.Add(bystander);
+		registry.TryAddGameSession(stale);
+		registry.TryAddGameSession(bystander);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry, channelRegistry),
 			NullLogger<GhostDisconnectService>.Instance).RunOnce();
@@ -142,14 +145,14 @@ public class GhostDisconnectServiceTests
 	public async Task RunOnce_SessionPastThreshold_RemovesBotSpectateRelationship()
 	{
 		var registry = new InMemoryUserSessionRegistryTestDouble();
-		var bot = new UserSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		registry.Add(bot);
+		registry.TryAddGameSession(bot);
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		stale.AddSpectator(bot);
 		bot.Spectating = stale;
-		registry.Add(stale);
+		registry.TryAddGameSession(stale);
 
 		await new GhostDisconnectService(registry, MakePlayerLogout(registry),
 				NullLogger<GhostDisconnectService>.Instance)
@@ -179,9 +182,10 @@ public class GhostDisconnectServiceTests
 		var ghostSlot = match.GetSlot(ghost.Id)!;
 		ghostSlot.Status = SlotStatus.Playing;
 
-		var playerLogout = new PlayerLogoutService(fixture.SessionRegistry, fixture.ChannelRegistry,
-			new SpectatorService(fixture.ChannelRegistry,
-				new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry),
+		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry, fixture.ChannelRegistry,
+			Options.Create(new IrcOptions()));
+		var playerLogout = new PlayerLogoutService(fixture.SessionRegistry, testChannelMembership,
+			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
 				NullLogger<SpectatorService>.Instance),
 			fixture.MatchMembership, NullLogger<PlayerLogoutService>.Instance);
 
@@ -200,9 +204,22 @@ public class GhostDisconnectServiceTests
 	{
 		private readonly Dictionary<string, UserSession> _byToken = [];
 
-		public void Add(UserSession session)
+		public IReadOnlyCollection<UserSession> All => [.. _byToken.Values];
+		public IReadOnlyCollection<GameSession> GameSessions => [.. _byToken.Values.OfType<GameSession>()];
+		public IReadOnlyCollection<IrcSession> IrcSessions => [.. _byToken.Values.OfType<IrcSession>()];
+
+		public bool TryAddGameSession(GameSession session)
 		{
+			if (_byToken.Values.OfType<GameSession>().Any(s => s.Id == session.Id)) return false;
 			_byToken[session.Token] = session;
+			return true;
+		}
+
+		public bool TryAddIrcSession(IrcSession session)
+		{
+			if (_byToken.Values.OfType<IrcSession>().Any(s => s.Id == session.Id)) return false;
+			_byToken[session.Token] = session;
+			return true;
 		}
 
 		public void Remove(UserSession session)
@@ -210,21 +227,34 @@ public class GhostDisconnectServiceTests
 			_byToken.Remove(session.Token);
 		}
 
-		public UserSession? GetByToken(string token)
+		public GameSession? GetGameByToken(string token)
 		{
-			return _byToken.GetValueOrDefault(token);
+			return _byToken.GetValueOrDefault(token) as GameSession;
 		}
 
-		public UserSession? GetById(int id)
+		public GameSession? GetGameByUserId(int id)
 		{
-			return _byToken.Values.FirstOrDefault(s => s.Id == id);
+			return _byToken.Values.OfType<GameSession>().FirstOrDefault(s => s.Id == id);
 		}
 
-		public UserSession? GetByName(string name)
+		public GameSession? GetGameByName(string name)
 		{
-			return _byToken.Values.FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
+			return _byToken.Values.OfType<GameSession>().FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
 		}
 
-		public IReadOnlyCollection<UserSession> All => [.. _byToken.Values];
+		public IrcSession? GetIrcByUserId(int id)
+		{
+			return _byToken.Values.OfType<IrcSession>().FirstOrDefault(s => s.Id == id);
+		}
+
+		public IrcSession? GetIrcByName(string name)
+		{
+			return _byToken.Values.OfType<IrcSession>().FirstOrDefault(s => s.SafeName == User.MakeSafeName(name));
+		}
+
+		public IReadOnlyList<UserSession> GetSessionsByUserId(int id)
+		{
+			return [.. _byToken.Values.Where(s => s.Id == id)];
+		}
 	}
 }

@@ -17,8 +17,8 @@ public class UserStatsRequestHandlerTests
 	[Fact]
 	public async Task Handle_UnrestrictedTarget_EnqueuesTheirStats()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var target = new UserSession(2, "target", "target-token", UserPrivileges.Unrestricted,
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var target = new GameSession(2, "target", "target-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch)
 		{
 			ModeStats =
@@ -26,8 +26,8 @@ public class UserStatsRequestHandlerTests
 				[GameMode.Standard] = new CachedPlayerStats(1000, 900, 10, 3)
 			}
 		};
-		_sessionRegistry.All.Returns([self, target]);
-		_sessionRegistry.GetById(2).Returns(target);
+		_sessionRegistry.GameSessions.Returns([self, target]);
+		_sessionRegistry.GetGameByUserId(2).Returns(target);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
@@ -42,11 +42,11 @@ public class UserStatsRequestHandlerTests
 	[Fact]
 	public async Task Handle_RestrictedTarget_NotEnqueued()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var target =
-			new UserSession(2, "target", "target-token", UserPrivileges.Verified,
+			new GameSession(2, "target", "target-token", UserPrivileges.Verified,
 				DateTimeOffset.UnixEpoch); // restricted
-		_sessionRegistry.All.Returns([self, target]);
+		_sessionRegistry.GameSessions.Returns([self, target]);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([2]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);
@@ -57,8 +57,8 @@ public class UserStatsRequestHandlerTests
 	[Fact]
 	public async Task Handle_OwnId_ExcludedFromResults()
 	{
-		var self = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_sessionRegistry.All.Returns([self]);
+		var self = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([self]);
 		var reader = new PacketReader(BinaryWriter.WriteI32List([1]));
 
 		await new UserStatsRequestHandler(_sessionRegistry).HandleAsync(self, reader);

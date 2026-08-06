@@ -20,7 +20,7 @@ public sealed class LobbyPartHandler(IChannelRegistry channelRegistry, ChannelMe
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		userSession.InLobby = false;

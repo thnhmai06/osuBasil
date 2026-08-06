@@ -2,6 +2,7 @@ using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -15,6 +16,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Multiplayer;
@@ -44,7 +46,8 @@ public class MatchMembershipServiceTests
 	private MatchMembershipService MakeService()
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchRepository,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+			_matchRepository,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
 	}
@@ -58,15 +61,21 @@ public class MatchMembershipServiceTests
 		return service.CreateAsync(host, data).GetAwaiter().GetResult();
 	}
 
-	private static UserSession MakePlayer(int id, string name)
+	private static GameSession MakePlayer(int id, string name)
 	{
-		return new UserSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	private void RegisterAll(params UserSession[] sessions)
+	private void RegisterAll(params GameSession[] sessions)
 	{
 		_sessionRegistry.All.Returns(sessions);
-		foreach (var session in sessions) _sessionRegistry.GetById(session.Id).Returns(session);
+		_sessionRegistry.GameSessions.Returns(sessions);
+		foreach (var session in sessions)
+		{
+			_sessionRegistry.GetGameByUserId(session.Id).Returns(session);
+			_sessionRegistry.GetGameByName(session.Name).Returns(session);
+			_sessionRegistry.GetSessionsByUserId(session.Id).Returns([session]);
+		}
 	}
 
 	private static MatchState MakeMatchData(int hostId, string name = "test match", string password = "",
@@ -115,7 +124,6 @@ public class MatchMembershipServiceTests
 		Assert.Equal(0, match.HostId);
 		Assert.Empty(match.Referees);
 		Assert.All(match.Slots, slot => Assert.True(slot.Empty));
-		Assert.True(match.CreatedViaMakeCommand);
 		Assert.True(match.DbId > 0);
 	}
 
@@ -131,7 +139,7 @@ public class MatchMembershipServiceTests
 
 		var joined = await service.JoinAsync(guest, match, "pw");
 
-		Assert.True(joined);
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, joined);
 		Assert.Same(match, guest.Match);
 		Assert.Equal(1, match.GetSlotId(guest.Id));
 		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()),
@@ -149,7 +157,7 @@ public class MatchMembershipServiceTests
 
 		var joined = await service.JoinAsync(guest, match, "wrong");
 
-		Assert.False(joined);
+		Assert.Equal(MatchMembershipService.JoinResult.WrongPassword, joined);
 		Assert.Null(guest.Match);
 		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
 	}
@@ -164,7 +172,7 @@ public class MatchMembershipServiceTests
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
 
-		Assert.True(await service.JoinAsync(staff, match, "wrong"));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await service.JoinAsync(staff, match, "wrong"));
 	}
 
 	[Fact]
@@ -180,7 +188,7 @@ public class MatchMembershipServiceTests
 		var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
 		await service.JoinAsync(guest, matchA, "");
 
-		Assert.False(await service.JoinAsync(guest, matchB, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.AlreadyInMatch, await service.JoinAsync(guest, matchB, ""));
 	}
 
 	[Fact]
@@ -199,7 +207,7 @@ public class MatchMembershipServiceTests
 		var overflow = MakePlayer(2, "overflow");
 		RegisterAll(host, overflow);
 
-		Assert.False(await service.JoinAsync(overflow, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.NoFreeSlot, await service.JoinAsync(overflow, match, ""));
 		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
 	}
 
@@ -219,7 +227,7 @@ public class MatchMembershipServiceTests
 	}
 
 	[Fact]
-	public async Task Leave_LastPlayer_RemovesMatchAndChannelAndDisposesToLobby()
+	public async Task Leave_LastPlayer_StartsEmptyRoomTimerInsteadOfImmediateTeardown()
 	{
 		var host = MakePlayer(1, "host");
 		var lobbyMember = MakePlayer(2, "lobbyguy");
@@ -228,15 +236,24 @@ public class MatchMembershipServiceTests
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry);
+		var membership = new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions()));
 		membership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await service.LeaveAsync(host, match);
 
+		// The room no longer tears down the instant it's empty — it starts a 5-minute auto-close
+		// timer instead (see MatchMembershipService.SyncEmptyRoomTimer), so nothing is disposed yet.
+		Assert.NotNull(_matchRegistry.GetById(match.Id));
+		Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
+		Assert.Null(host.Match);
+		Assert.NotNull(match.EmptyRoomTimer);
+		lobbyMember.Dequeue(); // drain the lobby's UpdateMatch broadcast from the slot becoming empty
+
+		await service.CloseAsync(match, null, null);
+
 		Assert.Null(_matchRegistry.GetById(match.Id));
 		Assert.Null(_channelRegistry.GetByName("#multi_0"));
-		Assert.Null(host.Match);
 		Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
 		Assert.Contains(match.DbId, _matchRepository.EndedMatchIds);
 	}
@@ -290,7 +307,7 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_sessionRegistry, _channelRegistry).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await service.EnqueueStateAsync(match);
@@ -313,7 +330,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _sessionRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry), _matchRepository, events,
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())), _matchRepository, events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
@@ -346,7 +363,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
-		_sessionRegistry.GetById(host.Id).Returns(host);
+		_sessionRegistry.GetGameByUserId(host.Id).Returns(host);
 		host.Dequeue();
 
 		service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");

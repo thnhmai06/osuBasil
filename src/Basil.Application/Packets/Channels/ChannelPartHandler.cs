@@ -22,7 +22,7 @@ public sealed class ChannelPartHandler(IChannelRegistry channelRegistry, Channel
 
 	public bool AllowedWhenRestricted => true;
 
-	public Task HandleAsync(UserSession userSession, PacketReader reader,
+	public Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var name = reader.ReadString();

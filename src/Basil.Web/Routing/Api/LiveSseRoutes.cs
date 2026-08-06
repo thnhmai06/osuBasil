@@ -236,7 +236,7 @@ internal static class LiveSseRoutes
 				{
 					if (id != match.DbId) return;
 					var occupantName = match.Slots[slotIndex].PlayerId is { } occupantId
-						? sessionRegistry.GetById(occupantId)?.Name
+						? sessionRegistry.GetGameByUserId(occupantId)?.Name
 						: null;
 					if (occupantName is not null && occupantName == playerName) publish("score", payload);
 				}

@@ -29,13 +29,13 @@ public sealed class AuthenticationService(
 	/// <param name="passwordMd5">The hex-encoded MD5 digest of the userSession's password.</param>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
 	/// <returns>
-	///     The online <see cref="UserSession" /> when the userSession is online and the password verifies;
-	///     otherwise, <see langword="null" />.
+	///     The online <see cref="GameSession" /> when the userSession is online with a real osu! client
+	///     and the password verifies; otherwise, <see langword="null" />.
 	/// </returns>
-	public async Task<UserSession?> AuthenticateOnlinePlayerAsync(
+	public async Task<GameSession?> AuthenticateOnlinePlayerAsync(
 		string username, string passwordMd5, CancellationToken cancellationToken = default)
 	{
-		var session = sessionRegistry.GetByName(username);
+		var session = sessionRegistry.GetGameByName(username);
 		if (session is null)
 		{
 			logger.LogDebug("Online-userSession authentication failed: Username={Username} (not online)", username);

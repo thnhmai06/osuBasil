@@ -22,7 +22,7 @@ public static class UserBriefResolver
 	public static async Task<UserBrief?> ResolveAsync(int userId, IUserSessionRegistry sessionRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
-		var session = sessionRegistry.GetById(userId);
+		var session = sessionRegistry.GetSessionsByUserId(userId).FirstOrDefault();
 		if (session is not null) return new UserBrief(session.Id, session.Name, session.Country);
 
 		var user = await users.FetchByIdAsync(userId, cancellationToken);

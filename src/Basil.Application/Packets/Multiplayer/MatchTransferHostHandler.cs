@@ -36,7 +36,7 @@ public sealed class MatchTransferHostHandler(
 	/// <param name="reader">The packet reader positioned at the payload holding the target slot id.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A task that completes when the packet has been handled.</returns>
-	public async Task HandleAsync(UserSession userSession, PacketReader reader,
+	public async Task HandleAsync(GameSession userSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
 		var slotId = reader.ReadI32();
@@ -51,15 +51,15 @@ public sealed class MatchTransferHostHandler(
 			if (targetId is null) return;
 
 			var prevHostId = match.HostId;
-			match.HostId = targetId.Value;
+			match.AssignGameplayHost(targetId.Value);
 			logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 				match.DbId, prevHostId, targetId.Value);
 
-			var targetPlayer = sessionRegistry.GetById(targetId.Value);
+			var targetPlayer = sessionRegistry.GetGameByUserId(targetId.Value);
 			targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
 			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
-			var prevHostName = sessionRegistry.GetById(prevHostId)?.Name;
+			var prevHostName = sessionRegistry.GetGameByUserId(prevHostId)?.Name;
 			_ = matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, targetId, targetPlayer?.Name,

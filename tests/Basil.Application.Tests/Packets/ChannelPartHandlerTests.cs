@@ -1,3 +1,5 @@
+using Basil.Application.Configurations;
+using Microsoft.Extensions.Options;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -17,7 +19,7 @@ public class ChannelPartHandlerTests
 	private ChannelPartHandler MakeHandler()
 	{
 		return new ChannelPartHandler(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, _channelRegistry));
+			new ChannelMembershipService(_sessionRegistry, _channelRegistry, Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -29,11 +31,11 @@ public class ChannelPartHandlerTests
 	public async Task Handle_JoinedChannel_LeavesBothSidesAndBroadcastsUpdatedInfo()
 	{
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		channel.Join(player.Id);
 		player.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		_sessionRegistry.All.Returns([player]);
+		_sessionRegistry.GameSessions.Returns([player]);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 
@@ -47,7 +49,7 @@ public class ChannelPartHandlerTests
 	public async Task Handle_UnknownChannel_NoOp()
 	{
 		_channelRegistry.GetByName("#missing").Returns((ChannelSession?)null);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#missing"));
 
@@ -59,7 +61,7 @@ public class ChannelPartHandlerTests
 	{
 		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
-		var player = new UserSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
 		await MakeHandler().HandleAsync(player, ChannelNameReader("#osu"));
 
