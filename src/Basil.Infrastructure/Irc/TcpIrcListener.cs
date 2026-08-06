@@ -56,6 +56,7 @@ public sealed class TcpIrcListener(
 				options.Value.Port);
 			return;
 		}
+		logger.LogInformation("IRC gateway is listening on port {Port}.", options.Value.Port);
 
 		try
 		{
@@ -80,6 +81,7 @@ public sealed class TcpIrcListener(
 		finally
 		{
 			listener.Stop();
+			logger.LogInformation("IRC gateway stopped.");
 		}
 	}
 
@@ -91,19 +93,23 @@ public sealed class TcpIrcListener(
 	private async Task RunConnectionAsync(TcpIrcConnection connection, TcpClient client, long connectionId,
 		CancellationToken stoppingToken)
 	{
+		logger.LogDebug("IRC connection started: ConnectionId={ConnectionId}", connectionId);
+
 		try
 		{
 			await connection.RunAsync(stoppingToken);
+
+			logger.LogDebug("IRC connection closed normally: ConnectionId={ConnectionId}", connectionId);
 		}
-		catch (IOException)
+		catch (IOException) when (!stoppingToken.IsCancellationRequested)
 		{
-			// The client dropped the connection mid-read/write.
-			logger.LogDebug("IRC connection dropped mid-read/write: ConnectionId={ConnectionId}", connectionId);
+			logger.LogDebug("IRC connection closed during I/O: ConnectionId={ConnectionId}", connectionId);
 		}
-		catch (SocketException)
+		catch (SocketException ex) when (!stoppingToken.IsCancellationRequested)
 		{
-			// Same as above, at the socket layer.
-			logger.LogDebug("IRC connection dropped (socket error): ConnectionId={ConnectionId}", connectionId);
+			logger.LogDebug("IRC connection closed: ConnectionId={ConnectionId}, SocketError={SocketError}",
+				connectionId,
+				ex.SocketErrorCode);
 		}
 		finally
 		{
