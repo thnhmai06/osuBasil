@@ -1,9 +1,12 @@
 ﻿<component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Basil.Web" type="DotNetProject" factoryName=".NET Project">
-    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Basil.Web/bin/Debug/net10.0/Basil.Web.exe" />
+    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Basil.Web/bin/Debug/net10.0/win-x64/Basil.Web.exe" />
     <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/Basil.Web" />
     <option name="PASS_PARENT_ENVS" value="1" />
+    <envs>
+      <env name="DOTNET_ENVIRONMENT" value="Development" />
+    </envs>
     <option name="ENV_FILE_PATHS" value="" />
     <option name="REDIRECT_INPUT_PATH" value="" />
     <option name="MIXED_MODE_DEBUG" value="0" />

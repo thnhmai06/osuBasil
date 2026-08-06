@@ -39,8 +39,13 @@ public sealed class MatchMembershipService(
 	ILogger<MatchMembershipService> logger)
 {
 	private const int MaxMatchNameLength = 50;
-	private const int EmptyRoomCloseSeconds = 300;
-	private const int EmptyRoomWarnAtSeconds = 60;
+
+	/* "Match created in 15, invite in 10"
+	* Matches are usually created 15 minutes before start and players are invited
+	* 10 minutes later, so do not close empty rooms too aggressively.
+	*/
+	private const int EmptyRoomCloseSeconds = 15 * 60;
+	private const int EmptyRoomWarnAtSeconds = 5 * 60;
 
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
 	public enum JoinResult : byte
