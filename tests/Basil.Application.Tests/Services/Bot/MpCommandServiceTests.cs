@@ -1,9 +1,13 @@
+using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Beatmaps;
@@ -11,8 +15,10 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Bot;
@@ -321,6 +327,138 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
 		Assert.Contains("Beatmap: Not found", reply);
+	}
+
+	private static IrcSession MakeIrc(int id, string name)
+	{
+		return new IrcSession(id, name, $"irc-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			Connection = new RecordingIrcConnection()
+		};
+	}
+
+	/// <summary>Joins a session into a match's own chat channel, using the fixture's shared registries.</summary>
+	private void JoinMatchChannel(UserSession session)
+	{
+		var channelMembership =
+			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.ChannelRegistry,
+				Options.Create(new IrcOptions()));
+		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#multi_"));
+		channelMembership.Join(session, channel);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_RefereeAlsoConnectedViaIrc_AppearsInBothRefsAndIrcLists()
+	{
+		// Three independent questions, not deduplicated: a referee with a separate live IrcSession
+		// in the match's own channel shows up in both the Refs and the IRC lists.
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var refereeIrc = MakeIrc(2, "refonirc");
+		_fixture.RegisterAll(host);
+		_fixture.SessionRegistry.GetSessionsByUserId(2).Returns([refereeIrc]);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(2);
+		JoinMatchChannel(refereeIrc);
+		_users.FetchByIdAsync(2, Arg.Any<CancellationToken>())
+			.Returns(new User(2, "refonirc", Country.Xx, UserPrivileges.Unrestricted, default));
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		// CreateMatch's default hostIsReferee also makes host a referee, so 2 referees total.
+		Assert.Contains("Refs: 2", reply);
+		Assert.Contains("#2 refonirc", reply);
+		Assert.Contains("IRC: 1", reply);
+		var refsIndex = reply!.IndexOf("Refs:", StringComparison.Ordinal);
+		var ircIndex = reply.IndexOf("IRC:", StringComparison.Ordinal);
+		// "#2 refonirc" must appear once under Refs and once more under IRC — not deduplicated away.
+		Assert.Equal(2, reply.Split("#2 refonirc").Length - 1);
+		Assert.True(refsIndex < ircIndex);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_OfflineReferee_ResolvesNameFromUserRepository()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(99); // never online this session — no GameSession/IrcSession for id 99
+		_users.FetchByIdAsync(99, Arg.Any<CancellationToken>())
+			.Returns(new User(99, "offlineref", Country.Xx, UserPrivileges.Unrestricted, default));
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("#99 offlineref", reply);
+		Assert.DoesNotContain("#99 \n", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_RefereeUnknownToUserRepository_FallsBackToBareId()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(999);
+		_users.FetchByIdAsync(999, Arg.Any<CancellationToken>()).Returns((User?)null);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("#999", reply);
+		Assert.DoesNotContain("#999 ", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_SeatedPlayerAlsoOnIrc_AppearsInBothPlayersAndIrcLists()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var hostIrc = MakeIrc(1, "host");
+		_fixture.RegisterAll(host);
+		_fixture.SessionRegistry.GetSessionsByUserId(1).Returns([host, hostIrc]);
+		var match = _fixture.CreateMatch(host);
+		JoinMatchChannel(hostIrc);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("Players: 1", reply);
+		Assert.Contains("host", reply); // slot line
+		Assert.Contains("IRC: 1", reply);
+		Assert.Contains("#1 host", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_LongUnicodeRefereeList_WrapsWithinIrcWireLimit()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		// Vietnamese names (multi-byte UTF-8) — enough of them to force at least one wrap.
+		for (var i = 0; i < 20; i++)
+		{
+			var id = 100 + i;
+			match.AddReferee(id);
+			_users.FetchByIdAsync(id, Arg.Any<CancellationToken>())
+				.Returns(new User(id, $"Người_chơi_số_{i}", Country.Vn, UserPrivileges.Unrestricted, default));
+		}
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		foreach (var line in reply!.Split('\n'))
+		{
+			var wireLine = IrcMessageWriter.Format(
+				IrcMessageWriter.Privmsg("BasilBot", 0, match.ChatChannelName, line));
+			Assert.True(Encoding.UTF8.GetByteCount(wireLine) <= 512,
+				$"Line exceeds the 512-byte IRC wire limit once framed: {wireLine}");
+		}
+	}
+
+	private sealed class RecordingIrcConnection : IIrcConnection
+	{
+		public List<IrcMessage> Received { get; } = [];
+		public UserSession User => throw new NotImplementedException();
+
+		public void Send(IrcMessage message)
+		{
+			Received.Add(message);
+		}
 	}
 
 	[Fact]

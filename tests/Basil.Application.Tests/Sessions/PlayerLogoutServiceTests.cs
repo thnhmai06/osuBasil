@@ -7,6 +7,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Users;
@@ -59,6 +60,45 @@ public class PlayerLogoutServiceTests
 		await MakeService().LogoutAsync(player);
 
 		_sessionRegistry.Received(1).Remove(player);
+	}
+
+	[Fact]
+	public async Task Logout_IrcSession_NeverBroadcastsBanchoLogoutPacket()
+	{
+		// An IRC-only connection was never a "player" osu! clients saw in the first place — its
+		// disconnect must never surface as a bancho Logout packet to anyone.
+		var irc = new IrcSession(1, "cmyui", "irc-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			Connection = Substitute.For<IIrcConnection>()
+		};
+		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([other]);
+
+		await MakeService().LogoutAsync(irc);
+
+		_sessionRegistry.Received(1).Remove(irc);
+		Assert.Empty(other.Dequeue());
+	}
+
+	[Fact]
+	public async Task Logout_GameSessionWhileIrcSessionOfSameUserIdStaysOnline_IrcSessionUntouched()
+	{
+		var game = new GameSession(1, "cmyui", "game-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var irc = new IrcSession(1, "cmyui", "irc-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			Connection = Substitute.For<IIrcConnection>()
+		};
+		var other = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GameSessions.Returns([game, other]);
+		_sessionRegistry.GetSessionsByUserId(1).Returns([game, irc]);
+
+		await MakeService().LogoutAsync(game);
+
+		_sessionRegistry.Received(1).Remove(game);
+		_sessionRegistry.DidNotReceive().Remove(irc);
+		// Game logout still broadcasts the bancho Logout packet to other GameSessions — that part is
+		// independent of whether an IrcSession for the same account survives.
+		Assert.Equal(ServerPacketWriter.Logout(1), other.Dequeue());
 	}
 
 	[Fact]

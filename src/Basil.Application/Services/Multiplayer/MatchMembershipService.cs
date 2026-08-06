@@ -35,11 +35,13 @@ public sealed class MatchMembershipService(
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
-	ILogger<MatchMembershipService> logger)
+	ILogger<MatchMembershipService> logger,
+	int emptyRoomCloseSeconds = 300,
+	int emptyRoomWarnAtSeconds = 60)
 {
 	private const int MaxMatchNameLength = 50;
-	private const int EmptyRoomCloseSeconds = 300;
-	private const int EmptyRoomWarnAtSeconds = 60;
+	private readonly int _emptyRoomCloseSeconds = emptyRoomCloseSeconds;
+	private readonly int _emptyRoomWarnAtSeconds = emptyRoomWarnAtSeconds;
 
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
 	public enum JoinResult : byte
@@ -663,7 +665,7 @@ public sealed class MatchMembershipService(
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 		var token = cts.Token;
 
-		if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
+		if (!await DelayAsync(_emptyRoomCloseSeconds - _emptyRoomWarnAtSeconds, token)) return;
 
 		await match.Lock.WaitAsync(token);
 		try
@@ -671,14 +673,14 @@ public sealed class MatchMembershipService(
 			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
 			match.EmptyRoomWarningSent = true;
 			AnnounceToRoomAndReferees(match,
-				$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
+				$"The room is empty and will be closed in {_emptyRoomWarnAtSeconds} seconds unless a player joins.");
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
 
-		if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
+		if (!await DelayAsync(_emptyRoomWarnAtSeconds, token)) return;
 
 		await match.Lock.WaitAsync(token);
 		try
