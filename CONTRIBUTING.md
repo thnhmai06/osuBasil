@@ -73,7 +73,7 @@ The CI workflow runs restore, build, and test across the whole solution on every
 
 Commits use [Conventional Commits](https://www.conventionalcommits.org/). The message starts with a lowercase type, an optional scope in parentheses, and a short imperative summary, for example `feat(irc): gate JOIN on referee status`.
 
-Add `[skip ci]` as a prefix to the commit message if you don't want the CI to run.
+Append `[skip ci]` to the end of the commit subject if you don't want the CI to run, for example `chore: fix typos [skip ci]`.
 
 Common types:
 
