@@ -116,7 +116,7 @@ public sealed record ScoreSubmissionOutcome(ScoreSubmissionResultCode Code, Subm
 ///     with a null round id and team instead. Every stored submission, pass or fail, also bumps
 ///     <see cref="IUserStatRepository.IncrementAsync" /> (TotalScore always, RankedScore only when
 ///     linked to a round) and refreshes the userSession's in-memory
-///     <see cref="UserSession.ModeStats" /> cache, so the next user-stats packet reflects the
+///     <see cref="GameSession.ModeStats" /> cache, so the next user-stats packet reflects the
 ///     change without a re-login.
 /// </remarks>
 public sealed class ScoreSubmissionService(

@@ -13,7 +13,7 @@ namespace Basil.Application.Packets.Users;
 /// <remarks>
 ///     Reads the new <see cref="UserActivity" />, an info text, the beatmap md5, the active
 ///     <see cref="Mods" />, the <see cref="GameMode" />, and the beatmap id, then stores them all on
-///     <see cref="UserSession.Status" />. When the userSession is not restricted, a rebuilt user-stats
+///     <see cref="GameSession.Status" />. When the user is not restricted, a rebuilt user-stats
 ///     packet is enqueued on every online session so the updated status reaches the other players'
 ///     friends lists and main menus immediately.
 /// </remarks>
