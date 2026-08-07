@@ -6,10 +6,21 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-		<!-- CS1591 (missing XML doc comment) is intentionally not enforced solution-wide: only
-			 existing-but-wrong XML docs (CS1574/CS1573/CS1734) are treated as build issues here,
-			 not every undocumented public member. -->
+		<!--
+			CS1591 (missing XML doc comment) is intentionally not enforced solution-wide: only
+			existing-but-wrong XML docs (CS1574/CS1573/CS1734) are treated as build issues here,
+			not every undocumented public member.
+		-->
 		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!--
+   			AutoMapper 13.0.1 is brought in transitively by ppy.osu.Rulesets.
+   			GHSA-rvv3-g6hj-g44x requires untrusted mapping configuration, which Basil
+   			does not expose. Remove this suppression once upstream updates AutoMapper.
+ 		-->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x"/>
+	</ItemGroup>
 
 </Project>
