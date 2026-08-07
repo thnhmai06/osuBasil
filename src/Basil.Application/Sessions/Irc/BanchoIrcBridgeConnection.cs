@@ -6,9 +6,9 @@ namespace Basil.Application.Sessions.Irc;
 /// <summary>
 ///     The default <see cref="IIrcConnection" /> for a <see cref="GameSession" />: it re-encodes
 ///     chat text routed through the IRC core back into a bancho SEND_MESSAGE packet, enqueued for
-///     the client's next HTTP poll. Only PRIVMSG has a bancho equivalent; JOIN, PART, QUIT, and
-///     numerics are IRC-only and ignored here, because bancho clients already receive channel
-///     presence through ChannelInfo rather than per-user join and part events.
+///     the client's next HTTP poll. Only PRIVMSG and NOTICE have a bancho equivalent; JOIN, PART,
+///     QUIT, and numerics are IRC-only and ignored here, because bancho clients already receive
+///     channel presence through ChannelInfo rather than per-user join and part events.
 /// </summary>
 public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcConnection
 {
@@ -19,14 +19,16 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 	UserSession IIrcConnection.User => User;
 
 	/// <summary>
-	///     Converts a PRIVMSG into a bancho SEND_MESSAGE packet and enqueues it for the userSession's
-	///     next HTTP poll. Every other IRC command is ignored, as is any message whose prefix cannot
-	///     be parsed into a sender name and id.
+	///     Converts a PRIVMSG or NOTICE into a bancho SEND_MESSAGE packet and enqueues it for the
+	///     userSession's next HTTP poll. Every other IRC command is ignored, as is any message whose
+	///     prefix cannot be parsed into a sender name and id.
 	/// </summary>
 	/// <param name="message">The IRC-shaped message to translate.</param>
 	public void Send(IrcMessage message)
 	{
-		if (message.Command != "PRIVMSG") return;
+		// A bancho client has no notice concept, so a notice reaches it as an ordinary chat line
+		// rather than not at all.
+		if (message.Command is not ("PRIVMSG" or "NOTICE")) return;
 		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
 
 		var recipient = TranslateRecipient(message.Params[0]);
@@ -35,7 +37,7 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 
 	/// <summary>
 	///     Translates an internal channel registry name into the alias the bancho client knows the
-	///     channel as. A match or spectator channel's internal name (<c>#multi_{id}</c> or
+	///     channel as. A match or spectator channel's internal name (<c>#mp_{id}</c> or
 	///     <c>#spec_{id}</c>) is never what the client joined: it only ever joined the fixed aliases
 	///     <c>#multiplayer</c> and <c>#spectator</c>, because
 	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" /> sends

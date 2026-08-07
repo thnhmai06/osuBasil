@@ -43,7 +43,10 @@ public sealed class TourneyMatchJoinChannelHandler(
 			return Task.CompletedTask; // already playing in the match
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null && channelMembership.Join(gameSession, channel)) match.AddTourneyClient(gameSession.Id);
+		// bypassMatchGate: a tourney client is a donator-privileged observer, not a seated player or
+		// referee — the donator check above is this join's own authorization.
+		if (channel is not null && channelMembership.Join(gameSession, channel, bypassMatchGate: true))
+			match.AddTourneyClient(gameSession.Id);
 
 		return Task.CompletedTask;
 	}

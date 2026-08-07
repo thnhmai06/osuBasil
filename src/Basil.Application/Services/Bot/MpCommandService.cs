@@ -61,7 +61,7 @@ public sealed class MpCommandService(
 
 	/// <summary>Subcommands that only report state — runnable by anyone the match resolves for, not just referees.</summary>
 	private static readonly FrozenSet<string> ReadOnlySubcommands =
-		new[] {"settings", "listrefs", "banlist"}.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+		new[] { "settings", "listrefs", "banlist" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     The <c>!mp</c> subcommands listed by <c>!mp help</c>, the single source of truth for that
@@ -86,8 +86,8 @@ public sealed class MpCommandService(
 		new("!mp name <text>", "rename the match"),
 		new("!mp password [text]", "set the room password; omit to clear it"),
 		new("!mp invite <name>", "invite an online userSession"),
-		new("!mp addref <name>", "add a referee"),
-		new("!mp removeref <name>", "remove a referee"),
+		new("!mp addref <name>", "add a referee (creator only)"),
+		new("!mp removeref <name>", "remove a referee (creator only)"),
 		new("!mp listrefs", "list current referees"),
 		new("!mp banlist", "list players banned from this match"),
 		new("!mp team <name> <red|blue>", "assign a userSession's team\nTeam: Red, Blue"),
@@ -121,6 +121,9 @@ public sealed class MpCommandService(
 	///     This is the main subcommand switch. Help bypasses the referee gate and is always delivered
 	///     by DM (see <see cref="ICommandReplySink.ReplyDm" />); every other subcommand requires
 	///     <see cref="MatchSession.IsReferee" /> and is rejected silently, with no reply, otherwise.
+	///     <c>addref</c>/<c>removeref</c> carry a further restriction on top of the referee gate: only
+	///     the match's creator (<see cref="MatchSession.IsCreator" />) may run them, so an ordinary
+	///     referee can never grant or revoke referee status on anyone.
 	/// </remarks>
 	/// <param name="sender">The userSession issuing the subcommand.</param>
 	/// <param name="match">The match the subcommand operates on.</param>
@@ -150,6 +153,13 @@ public sealed class MpCommandService(
 		if (!readOnly && !match.IsReferee(sender.Id))
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
+				match.DbId);
+			return false;
+		}
+
+		if (subcommand is "addref" or "removeref" && !match.IsCreator(sender.Id))
+		{
+			logger.LogDebug("Subcommand rejected: {UserId} is not the creator of MatchId={MatchId}", sender.Id,
 				match.DbId);
 			return false;
 		}
@@ -246,10 +256,12 @@ public sealed class MpCommandService(
 	/// </summary>
 	/// <remarks>
 	///     The match is resolved by <see cref="MatchSession.DbId" />, the unbounded persistent id
-	///     rather than the 0-63 wire-format slot id. A private match rejects everyone but staff and
-	///     invitees, the host included (see <see cref="MatchSession.IsPrivate" />); locked rooms and
-	///     banned players are also rejected, each with a descriptive reply. The command runs with no
-	///     <see cref="MatchSession" /> scope because it is routed directly from
+	///     rather than the 0-63 wire-format slot id. For a <see cref="GameSession" />, a private match
+	///     rejects everyone but staff and invitees, the host included (see
+	///     <see cref="MatchSession.IsPrivate" />); locked rooms and banned players are also rejected,
+	///     each with a descriptive reply. An <see cref="IrcSession" /> can never occupy a slot, so this
+	///     joins the match's chat channel instead — see <see cref="JoinChatOnly" /> for that gate. The
+	///     command runs with no <see cref="MatchSession" /> scope because it is routed directly from
 	///     <see cref="CommandDispatcher" />, bypassing scope resolution.
 	/// </remarks>
 	/// <param name="sender">The userSession joining.</param>
@@ -260,12 +272,6 @@ public sealed class MpCommandService(
 	public async Task<bool> JoinAsync(UserSession sender, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken = default)
 	{
-		if (sender is not GameSession gameSender)
-		{
-			sink.Reply("IRC connections can't occupy a match slot — use !mp in <id> instead.");
-			return false;
-		}
-
 		if (args.Count < 1 || !int.TryParse(args[0], out var matchId))
 		{
 			sink.Reply("Usage: !mp join <id> [password]");
@@ -278,6 +284,9 @@ public sealed class MpCommandService(
 			sink.Reply($"No active match with id {matchId}.");
 			return false;
 		}
+
+		if (sender is not GameSession gameSender)
+			return JoinChatOnly(sender, match, args, sink);
 
 		if (match.IsPrivate && (gameSender.Privilege & UserPrivileges.Staff) == 0 &&
 		    !match.InvitedIds.Contains(gameSender.Id))
@@ -323,6 +332,59 @@ public sealed class MpCommandService(
 		{
 			match.Lock.Release();
 		}
+	}
+
+	/// <summary>
+	///     Backs <c>!mp join &lt;id&gt; [password]</c> for an <see cref="IrcSession" /> sender, joining
+	///     the match's chat channel instead of a slot — an IRC connection can never be seated.
+	/// </summary>
+	/// <remarks>
+	///     A referee (which already includes the match's creator, see <see cref="MatchSession.IsReferee" />)
+	///     bypasses both the private-room gate and the password check. A locked room only ever admits an
+	///     invitee regardless of referee status — matching the in-client seat-join path, where a lock
+	///     blocks everyone unconditionally. A ban is never bypassable by anyone.
+	/// </remarks>
+	/// <param name="sender">The IRC session joining.</param>
+	/// <param name="match">The match to join.</param>
+	/// <param name="args">The argument tokens: the match id and an optional password.</param>
+	/// <param name="sink">The destination for the join reply.</param>
+	/// <returns>A value that indicates whether the sender joined the match's chat channel.</returns>
+	private bool JoinChatOnly(UserSession sender, MatchSession match, IReadOnlyList<string> args,
+		ICommandReplySink sink)
+	{
+		if (match.BannedIds.Contains(sender.Id))
+		{
+			sink.Reply("You're banned from this match.");
+			return false;
+		}
+
+		if (match.IsLocked && !match.InvitedIds.Contains(sender.Id))
+		{
+			sink.Reply("The match is locked.");
+			return false;
+		}
+
+		if (match.IsPrivate && !match.IsReferee(sender.Id) && !match.InvitedIds.Contains(sender.Id))
+		{
+			sink.Reply($"Cannot join match #{match.DbId} — the room is private. Ask a referee for an invite.");
+			return false;
+		}
+
+		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
+		if (password != match.Password && !match.IsReferee(sender.Id))
+		{
+			sink.Reply("Incorrect password.");
+			return false;
+		}
+
+		if (!matchMembership.JoinMatchChat(sender, match, true))
+		{
+			sink.Reply("Failed to join the match chat.");
+			return false;
+		}
+
+		sink.Reply($"Joined match #{match.DbId} {match.Name}'s chat.");
+		return true;
 	}
 
 	/// <summary>
@@ -445,6 +507,14 @@ public sealed class MpCommandService(
 		if (match.Freemods) activeMods.Add("Freemod");
 		if (activeMods.Count > 0) lines.Add($"Active mods: {string.Join(", ", activeMods)}");
 
+		if (match.CreatorId is { } creatorId)
+		{
+			var creatorName =
+				((UserSession?)gameRegistry.GetByUserId(creatorId) ?? ircRegistry.GetByUserId(creatorId))?.Name
+				?? (await userRepository.FetchByIdAsync(creatorId, cancellationToken))?.Name; // maybe offline
+			lines.Add($"Creator: #{creatorId} {creatorName ?? "?"}");
+		}
+
 		var occupied = match.Slots
 			.Select((slot, i) => (slot, i))
 			.Where(t => !t.slot.Empty)
@@ -452,21 +522,25 @@ public sealed class MpCommandService(
 		lines.Add($"Players: ({occupied.Count})");
 
 		var hostSlotId = match.GetSlotId(match.HostId);
+		var showTeam = match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs;
+
 		foreach (var (slot, i) in occupied)
 		{
 			var tags = new List<string>();
 			if (i == hostSlotId) tags.Add("Host");
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : "";
-
 			var name = ((UserSession?)gameRegistry.GetByUserId(slot.PlayerId!.Value) ??
 			            ircRegistry.GetByUserId(slot.PlayerId!.Value))
 			           ?.Name
 			           ?? $"#{slot.PlayerId}";
-			lines.Add($"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {slot.PlayerId,6} {name,-16}{tagText}");
+			var teamText = showTeam ? $"{slot.Team,-5} " : string.Empty;
+
+			lines.Add(
+				$"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {teamText}{slot.PlayerId,6} {name,-16}{tagText}");
 		}
 
-		// Refs — independent of Players: a referee may or may not also occupy a slot.
+		//* Refs — independent of Players: a referee may or may not also occupy a slot.
 		// var refNames = new List<string>();
 		// foreach (var id in match.Referees.OrderBy(id => id))
 		// {
@@ -757,7 +831,9 @@ public sealed class MpCommandService(
 	/// </summary>
 	/// <remarks>
 	///     At least one referee must always remain, so removing the last one is rejected instead of
-	///     disbanding the room (see <see cref="MatchControlService.RemoveOneRefereeAsync" />).
+	///     disbanding the room, and the match's creator can never be removed at all (see
+	///     <see cref="MatchControlService.RemoveOneRefereeAsync" />). Only the creator can run this
+	///     command in the first place (see <see cref="TryHandleAsync" />).
 	/// </remarks>
 	private async Task<bool> RemoveRefereeAsync(UserSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink, CancellationToken cancellationToken)
@@ -785,6 +861,9 @@ public sealed class MpCommandService(
 				return false;
 			case MatchControlService.RemoveRefereeResult.NotAReferee:
 				sink.Reply($"{target.Name} is not a referee of this match.");
+				return false;
+			case MatchControlService.RemoveRefereeResult.TargetIsCreator:
+				sink.Reply($"Cannot remove {target.Name} - they created this match.");
 				return false;
 			default:
 				sink.Reply($"Removed {target.Name} from the match referees");

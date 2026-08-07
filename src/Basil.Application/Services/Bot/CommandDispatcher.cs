@@ -4,8 +4,10 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Content;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Login;
+using Basil.Protocol.Irc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +20,9 @@ public sealed class CommandDispatcher(
 	IUserRepository userRepository,
 	IOptions<StorageOptions> storageOptions,
 	IMatchRegistry matchRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	IChannelRegistry channelRegistry,
+	ChannelMembershipService channelMembership,
 	ILogger<CommandDispatcher> logger)
 	: ICommandDispatcher
 {
@@ -169,23 +174,49 @@ public sealed class CommandDispatcher(
 			case "join":
 				return await mpCommands.JoinAsync(sender, subArgs, sink, cancellationToken);
 			case "in":
-				// Never from inside the very room's own #multiplayer channel — combined with the #lobby
-				// block above, this leaves DM-to-bot as the only place `!mp in` actually runs.
-				if (matchScope is not null && channelName == matchScope.ChatChannelName) return false;
-				return mpCommands.SetScopeAsync(sender, subArgs, sink);
+				// DM-to-bot only. A channel-typed `!mp in` — #lobby, #osu, or even the room's own
+				// channel — is refused rather than silently setting a scope nobody asked to see redirected.
+				return channelName is null && mpCommands.SetScopeAsync(sender, subArgs, sink);
 		}
 
-		var scope = ResolveScope(sender, matchScope);
+		var scope = ResolveScope(sender, matchScope, channelName);
+
+		// A scoped subcommand run from anywhere but the resolved match's own channel (or a DM, where
+		// channelName is null) never replies publicly into that unrelated channel — #osu, #lobby, or any
+		// other channel gets the exact same DM-with-[#id]-prefix-plus-room-mirror treatment a DM to the
+		// bot already gets, matching the real client instead of leaking room state into public chat.
+		var effectiveSink = channelName is not null && (scope is null || channelName != scope.ChatChannelName)
+			? BuildDmRedirectSink(sender, scope, sink)
+			: sink;
+
 		if (scope is null)
 		{
 			// Distinct from the referee-gate's silent no-op (see MpCommandService.TryHandleAsync's doc
 			// comment) — not being scoped to ANY match at all is a different, more basic failure than
 			// being scoped but lacking permission, so it gets an explicit reply instead of dead silence.
-			sink.Reply("You're not scoped to a match — use !mp make, !mp join <id>, or !mp in <id> first.");
+			effectiveSink.Reply("You're not scoped to a match — use !mp make, !mp join <id>, or !mp in <id> first.");
 			return false;
 		}
 
-		return await mpCommands.TryHandleAsync(sender, scope, subcommand, subArgs, sink, cancellationToken);
+		return await mpCommands.TryHandleAsync(sender, scope, subcommand, subArgs, effectiveSink, cancellationToken);
+	}
+
+	/// <summary>
+	///     Builds a reply sink that DMs <paramref name="sender" /> instead of posting into whatever
+	///     channel the command arrived on, mirroring <paramref name="scope" />'s own chat channel the
+	///     same way a DM-to-the-bot reply does.
+	/// </summary>
+	/// <param name="sender">The userSession to DM.</param>
+	/// <param name="scope">The resolved match scope, or <see langword="null" /> when none resolved.</param>
+	/// <param name="fallback">The sink to fall back to if the bot's own session can't be found.</param>
+	/// <returns>
+	///     A DM-routing reply sink, or <paramref name="fallback" /> unchanged if the bot's own session
+	///     can't be found (BasilBot being offline means no command reaches this far in practice).
+	/// </returns>
+	private ICommandReplySink BuildDmRedirectSink(UserSession sender, MatchSession? scope, ICommandReplySink fallback)
+	{
+		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
+		return bot is null ? fallback : new ScopedDmReplySink(sender, scope, bot, channelMembership, channelRegistry);
 	}
 
 	/// <summary>
@@ -195,15 +226,22 @@ public sealed class CommandDispatcher(
 	/// <remarks>
 	///     The scope set by <c>!mp in</c> is preferred over the sender's literal chat channel, so a
 	///     referee juggling several matches from one place keeps targeting the match they picked even
-	///     when they are sitting in a different match's own channel. The fallbacks are the
-	///     channel-derived scope, and finally the match the sender is physically sitting in, so a DM
-	///     <c>!mp abort</c> or any other subcommand still resolves for a sender who never ran
-	///     <c>!mp make</c> or <c>!mp in</c>. A stored scope whose match no longer exists is cleared.
+	///     when they are sitting in a different match's own channel — this one still applies from any
+	///     channel, since it was only ever set via a DM in the first place (see the <c>"in"</c> case in
+	///     <see cref="DispatchMpAsync" />). The channel-derived scope comes next. The last-resort
+	///     fallback — the match the sender is physically sitting in — only applies for a DM
+	///     (<paramref name="channelName" /> is <see langword="null" />): resolving it from an arbitrary
+	///     channel like <c>#osu</c> would let a seated player's room leak into unrelated public chat
+	///     just because they happen to be in a match elsewhere. A stored scope whose match no longer
+	///     exists is cleared.
 	/// </remarks>
 	/// <param name="sender">The userSession issuing the command.</param>
 	/// <param name="channelScope">The match derived from the sender's current chat channel, if any.</param>
+	/// <param name="channelName">
+	///     The channel the command arrived on, or <see langword="null" /> for a DM to the bot.
+	/// </param>
 	/// <returns>The match the command targets, or <see langword="null" /> when none resolves.</returns>
-	private MatchSession? ResolveScope(UserSession sender, MatchSession? channelScope)
+	private MatchSession? ResolveScope(UserSession sender, MatchSession? channelScope, string? channelName)
 	{
 		if (sender.MpScopeMatchId is { } dbId)
 		{
@@ -213,7 +251,8 @@ public sealed class CommandDispatcher(
 			sender.MpScopeMatchId = null;
 		}
 
-		return channelScope ?? (sender as GameSession)?.Match;
+		if (channelScope is not null) return channelScope;
+		return channelName is null ? (sender as GameSession)?.Match : null;
 	}
 
 	/// <summary>
@@ -236,8 +275,12 @@ public sealed class CommandDispatcher(
 	{
 		if (channelName == "#lobby") return false;
 
-		var scope = ResolveScope(sender, matchScope);
+		var scope = ResolveScope(sender, matchScope, channelName);
 		if (scope is null || !scope.IsReferee(sender.Id)) return false;
+
+		var effectiveSink = channelName is not null && channelName != scope.ChatChannelName
+			? BuildDmRedirectSink(sender, scope, sink)
+			: sink;
 
 		var parsed = new List<(string Subcommand, string[] Args, ChatCommandChain.ChainOperator Operator)>();
 		foreach (var segment in segments)
@@ -281,7 +324,8 @@ public sealed class CommandDispatcher(
 				continue;
 			}
 
-			var success = await mpCommands.TryHandleAsync(sender, scope, subcommand, args, sink, cancellationToken);
+			var success =
+				await mpCommands.TryHandleAsync(sender, scope, subcommand, args, effectiveSink, cancellationToken);
 			previousSucceeded = success;
 			anySucceeded |= success;
 		}
@@ -293,20 +337,20 @@ public sealed class CommandDispatcher(
 	/// <param name="sender">The userSession rolling.</param>
 	/// <param name="args">The command arguments, carrying the optional upper bound.</param>
 	/// <returns>The formatted roll result.</returns>
-	private static string Roll(UserSession sender, IReadOnlyList<string> args)
+	private static string Roll(UserSession sender, string[] args)
 	{
 		var max = 100;
-		if (args.Count > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = Math.Min(parsed, RollMaxCap);
+		if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = Math.Min(parsed, RollMaxCap);
 
 		var roll = (int)Random.Shared.NextInt64(0, (long)max + 1);
 		return $"{sender.Name} rolls {roll} point(s)";
 	}
 
 	/// <summary>Answers <c>!where</c>, reporting the registered country of the named userSession.</summary>
-	private async Task<bool> Where(IReadOnlyList<string> args, ICommandReplySink sink,
+	private async Task<bool> Where(string[] args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1)
+		if (args.Length < 1)
 		{
 			sink.Reply("Usage: !where <username>");
 			return false;
@@ -327,10 +371,10 @@ public sealed class CommandDispatcher(
 	/// <summary>
 	///     Answers <c>!faq</c>, printing a stored entry or the list of available entries.
 	/// </summary>
-	private async Task<bool> Faq(IReadOnlyList<string> args, ICommandReplySink sink,
+	private async Task<bool> Faq(string[] args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		switch (args.Count)
+		switch (args.Length)
 		{
 			case < 1:
 				sink.Reply("Usage: !faq <entry>|list");
@@ -383,6 +427,55 @@ public sealed class CommandDispatcher(
 	///     Combines a usage string with a one-line description.
 	/// </remarks>
 	private readonly record struct CommandInfo(string Usage, string Description);
+
+	/// <summary>
+	///     Routes a scoped <c>!mp</c> reply to the sender's DM instead of the channel the command
+	///     arrived on, mirroring an unprefixed copy into the resolved match's own channel.
+	/// </summary>
+	/// <remarks>
+	///     Identical in shape to <c>ChatDispatchService.DmReplySink</c>, used for the genuine DM-to-bot
+	///     path — this one exists because <see cref="CommandDispatcher" /> already resolved the scope
+	///     once and doesn't need to re-resolve it per reply line the way that class does (it also
+	///     handles <c>!mp make</c>/<c>!mp in</c> establishing scope as part of the reply itself, which
+	///     doesn't apply here since this sink is only ever built after a scoped subcommand's own scope
+	///     is already resolved).
+	/// </remarks>
+	private sealed class ScopedDmReplySink(
+		UserSession sender,
+		MatchSession? scope,
+		UserSession bot,
+		ChannelMembershipService channelMembership,
+		IChannelRegistry channelRegistry) : ICommandReplySink
+	{
+		/// <summary>
+		///     Sends each reply line to the sender's DM, prefixed with the resolved match's
+		///     <c>[#id]</c> when one resolved, and broadcasts an unprefixed copy into that match's
+		///     channel.
+		/// </summary>
+		/// <param name="text">The reply text to send.</param>
+		public void Reply(string text)
+		{
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+			{
+				var prefixed = scope is not null ? $"[#{scope.DbId}] {line}" : line;
+				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, prefixed));
+
+				if (scope is null) continue;
+
+				if (channelRegistry.GetByName(scope.ChatChannelName) is { } channel)
+					channelMembership.BroadcastPrivmsg(channel,
+						IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+			}
+		}
+
+		/// <summary>Sends a reply line to the sender's DM with no prefix and no broadcast.</summary>
+		/// <param name="text">The reply text to send.</param>
+		public void ReplyDm(string text)
+		{
+			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+		}
+	}
 }
 
 /// <summary>

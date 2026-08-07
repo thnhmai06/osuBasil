@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
@@ -26,7 +27,7 @@ public class StopSpectatingHandlerTests
 		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
-			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
 
@@ -47,7 +48,7 @@ public class StopSpectatingHandlerTests
 		gameRegistry.GetByUserId(1).Returns(player);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Options.Create(new IrcOptions())),
+				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance);
 		spectatorService.AddSpectator(host, player);
 		var handler = new StopSpectatingHandler(spectatorService);

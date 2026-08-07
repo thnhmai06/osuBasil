@@ -78,7 +78,13 @@ public sealed class MatchMembershipService(
 	///     real game client not already seated elsewhere — seats them in slot 0.
 	/// </summary>
 	/// <remarks>
-	///     Every match starts with <see cref="MatchSession.NoHostId" />; a <see cref="GameSession" />
+	///     Sets <see cref="MatchSession.CreatorId" /> to <paramref name="creator" />'s id, granting them
+	///     full, permanent <c>!mp</c> authority over this room regardless of referee status (see
+	///     <see cref="MatchSession.IsReferee" />/<see cref="MatchSession.IsCreator" />), and joins
+	///     <paramref name="creator" /> into the room's own chat channel on every success path — whether
+	///     that happens here directly (an unseated creator) or already happened via seating (see
+	///     <see cref="OccupySlot" />). Every match
+	///     starts with <see cref="MatchSession.NoHostId" />; a <see cref="GameSession" />
 	///     creator only becomes host once they actually occupy a slot, via the normal
 	///     <see cref="JoinAsync" /> path (there is no special host-bypass case anymore). When the
 	///     creator is an <see cref="IrcSession" />, or a <see cref="GameSession" /> already seated in a
@@ -98,6 +104,7 @@ public sealed class MatchMembershipService(
 		CancellationToken cancellationToken = default)
 	{
 		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
+		match.CreatorId = creator.Id;
 		logger.LogInformation(
 			"+ Match created: MatchId={MatchId} CreatorId={CreatorId} Name={Name}", match.DbId, creator.Id,
 			match.Name);
@@ -146,6 +153,14 @@ public sealed class MatchMembershipService(
 			}
 		}
 
+		// The creator isn't necessarily seated (an IrcSession never is; a GameSession creator already
+		// seated elsewhere isn't either) — seating already joins the channel via OccupySlot, but nothing
+		// else does, so join explicitly here. bypassMatchGate: referee status is granted by the caller
+		// right after this method returns, so the participant/referee check would reject this otherwise
+		// legitimate join. Idempotent for an already-seated creator (JoinChannel no-ops if already in).
+		if (channelRegistry.GetByName(match.ChatChannelName) is { } channel)
+			channelMembership.Join(creator, channel, bypassMatchGate: true);
+
 		return match;
 	}
 
@@ -153,8 +168,9 @@ public sealed class MatchMembershipService(
 	/// <remarks>
 	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
 	///     is no <see cref="UserSession" /> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
-	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays <see cref="MatchSession.NoHostId" />
-	///     and the referee list stays empty until a caller assigns them via
+	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays <see cref="MatchSession.NoHostId" />,
+	///     <see cref="MatchSession.CreatorId" /> stays null (nobody holds creator authority over this
+	///     room), and the referee list stays empty until a caller assigns them via
 	///     <c>PATCH /match/{id}/settings</c>, the <c>host</c> action, or the <c>addref</c> action.
 	/// </remarks>
 	/// <param name="data">The parsed match-create data.</param>
@@ -295,7 +311,9 @@ public sealed class MatchMembershipService(
 			throw new InvalidOperationException("System-owned game sessions cannot occupy multiplayer slots.");
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is null || !channelMembership.Join(userSession, channel)) return false;
+		// bypassMatchGate: the slot isn't assigned until below, so the participant check would reject
+		// this legitimate seat — every prior gate in JoinAsync/ForceJoinAsync already authorized it.
+		if (channel is null || !channelMembership.Join(userSession, channel, bypassMatchGate: true)) return false;
 
 		var lobby = channelRegistry.GetByName("#lobby");
 		if (lobby is not null && userSession.InChannel(lobby.Name)) channelMembership.Part(userSession, lobby);
@@ -404,6 +422,40 @@ public sealed class MatchMembershipService(
 				prevHostId, prevHostName, newHostId, newHostName,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
+	}
+
+	/// <summary>
+	///     Joins a non-seated participant (an IRC-only referee, or a userSession granted access via
+	///     <c>!mp join</c>) into the match's chat channel, without touching any slot.
+	/// </summary>
+	/// <param name="session">The session joining the match's chat.</param>
+	/// <param name="match">The match whose chat is being joined.</param>
+	/// <param name="bypassMatchGate">
+	///     When <see langword="true" />, skips the participant/referee authorization check — reserved
+	///     for a caller that already authorized the join through its own gates. See
+	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" /> for what this bypasses.
+	/// </param>
+	/// <returns><see langword="true" /> if the session was added to the channel; otherwise, <see langword="false" />.</returns>
+	public bool JoinMatchChat(UserSession session, MatchSession match, bool bypassMatchGate = false)
+	{
+		return channelRegistry.GetByName(match.ChatChannelName) is { } channel &&
+		       channelMembership.Join(session, channel, bypassMatchGate);
+	}
+
+	/// <summary>
+	///     Syncs a match's chat channel topic to the match's current <see cref="MatchSession.Name" />.
+	/// </summary>
+	/// <remarks>
+	///     Called after every room rename (<c>!mp name</c>, the equivalent HTTP route, and the native
+	///     client's settings-sync packet) so the channel's topic never drifts from the room name shown
+	///     everywhere else. A no-op when the topic already matches (see
+	///     <see cref="Sessions.Channels.ChannelMembershipService.SyncTopic" />).
+	/// </remarks>
+	/// <param name="match">The match whose channel topic to sync.</param>
+	public void SyncChannelTopic(MatchSession match)
+	{
+		if (channelRegistry.GetByName(match.ChatChannelName) is { } channel)
+			channelMembership.SyncTopic(channel, match.Name);
 	}
 
 	/// <summary>

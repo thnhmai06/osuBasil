@@ -41,7 +41,8 @@ public sealed class ChatDispatchService(
 	IMatchRegistry matchRegistry,
 	ILogger<ChatDispatchService> logger)
 {
-	private const int MaxMessageLength = 2000;
+	/// <summary>The longest single line a chat transport carries; longer text is split, never cut.</summary>
+	public const int MaxMessageLength = 2000;
 
 	/// <summary>
 	///     Dispatches a chat message from <paramref name="sender" /> to either a channel or a private
@@ -53,8 +54,85 @@ public sealed class ChatDispatchService(
 	/// </param>
 	/// <param name="text">The message body.</param>
 	/// <param name="cancellationToken">The cancellation token to observe.</param>
-	public async Task SendPrivmsgAsync(UserSession sender, string channelOrNick, string text,
+	public Task SendPrivmsgAsync(UserSession sender, string channelOrNick, string text,
 		CancellationToken cancellationToken = default)
+	{
+		return SendAsync(sender, channelOrNick, text, false, cancellationToken);
+	}
+
+	/// <summary>
+	///     Dispatches a notice from <paramref name="sender" /> to either a channel or a private
+	///     recipient.
+	/// </summary>
+	/// <remarks>
+	///     A notice is delivered under the same silence, membership, block, and PM-privacy rules as a
+	///     chat message, but never triggers an automatic reply: a <c>!</c> command in the body is not
+	///     run, and an away message is not echoed back. That is the whole point of the form — it is
+	///     what a bot uses to talk without provoking another bot.
+	/// </remarks>
+	/// <param name="sender">The user session sending the notice.</param>
+	/// <param name="channelOrNick">
+	///     The destination: a <c>#</c>-prefixed channel name, or the name of the receiving user.
+	/// </param>
+	/// <param name="text">The notice body.</param>
+	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	public Task SendNoticeAsync(UserSession sender, string channelOrNick, string text,
+		CancellationToken cancellationToken = default)
+	{
+		return SendAsync(sender, channelOrNick, text, true, cancellationToken);
+	}
+
+	/// <summary>
+	///     Says <paramref name="text" /> into <paramref name="channel" /> as BasilBot, one message per
+	///     line.
+	/// </summary>
+	/// <remarks>
+	///     Nothing is ever truncated: the text is split on its own newlines, and any line still too
+	///     long for a single chat message is wrapped at a word boundary into as many messages as it
+	///     takes. Blank lines are dropped, matching how the bot's command replies are delivered.
+	/// </remarks>
+	/// <param name="channel">The channel to say the text in.</param>
+	/// <param name="text">The text to say.</param>
+	/// <returns>The number of messages sent, or zero when the bot is not online.</returns>
+	public int SendAsBot(ChannelSession channel, string text)
+	{
+		var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
+		if (bot is null) return 0;
+
+		var lines = WrapLines(text).ToList();
+		foreach (var line in lines)
+			channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+
+		return lines.Count;
+	}
+
+	/// <summary>
+	///     Splits text into the lines a chat transport can carry: one per newline, each wrapped at
+	///     <see cref="MaxMessageLength" /> on a word boundary, with blank lines dropped.
+	/// </summary>
+	/// <param name="text">The text to split.</param>
+	/// <returns>The lines to send, in order.</returns>
+	public static IEnumerable<string> WrapLines(string text)
+	{
+		foreach (var line in text.Split('\n'))
+		{
+			var rest = line.Trim('\r').TrimEnd();
+			while (rest.Length > MaxMessageLength)
+			{
+				// A word longer than a whole message has no boundary to break on, so it is cut at the limit.
+				var cut = rest.LastIndexOf(' ', MaxMessageLength);
+				if (cut <= 0) cut = MaxMessageLength;
+
+				yield return rest[..cut].TrimEnd();
+				rest = rest[cut..].TrimStart();
+			}
+
+			if (rest.Length > 0) yield return rest;
+		}
+	}
+
+	private async Task SendAsync(UserSession sender, string channelOrNick, string text, bool notice,
+		CancellationToken cancellationToken)
 	{
 		if (sender.Silenced)
 		{
@@ -64,18 +142,18 @@ public sealed class ChatDispatchService(
 
 		if (channelOrNick.StartsWith('#'))
 		{
-			await SendChannelMessageAsync(sender, channelOrNick, text, cancellationToken);
+			await SendChannelMessageAsync(sender, channelOrNick, text, notice, cancellationToken);
 			return;
 		}
 
 		var target = sessionRegistry.GetByName(channelOrNick);
-		if (target is { IsBot: true })
+		if (target is { IsBot: true } && !notice)
 		{
 			await SendBotCommandAsync(sender, target, text, cancellationToken);
 			return;
 		}
 
-		await DeliverPrivateMessageAsync(sender, channelOrNick, target, text, cancellationToken);
+		await DeliverPrivateMessageAsync(sender, channelOrNick, target, text, notice, cancellationToken);
 	}
 
 	/// <summary>
@@ -85,7 +163,7 @@ public sealed class ChatDispatchService(
 	/// <remarks>
 	///     A bancho client only ever knows a match or spectator channel by its fixed alias
 	///     (<c>#multiplayer</c> or <c>#spectator</c>), never the internal registry name
-	///     (<see cref="MatchSession.ChatChannelName" />, for example <c>#multi_5</c>) that
+	///     (<see cref="MatchSession.ChatChannelName" />, for example <c>#mp_5</c>) that
 	///     <see cref="IChannelRegistry.GetByName" /> actually indexes on. This mirrors the inverse
 	///     translation done for outbound messages in <c>BanchoIrcBridgeConnection.TranslateRecipient</c>.
 	/// </remarks>
@@ -116,7 +194,7 @@ public sealed class ChatDispatchService(
 		return channelName;
 	}
 
-	private async Task SendChannelMessageAsync(UserSession sender, string channelName, string text,
+	private async Task SendChannelMessageAsync(UserSession sender, string channelName, string text, bool notice,
 		CancellationToken cancellationToken)
 	{
 		var resolvedName = ResolveClientChannelName(sender, channelName);
@@ -130,8 +208,12 @@ public sealed class ChatDispatchService(
 		var truncated = text.Length > MaxMessageLength ? text[..MaxMessageLength] : text;
 
 		channelMembership.BroadcastPrivmsg(
-			channel, IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
+			channel, notice
+				? IrcMessageWriter.Notice(sender.Name, sender.Id, channel.Name, truncated)
+				: IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
 			sender.Id);
+
+		if (notice) return;
 
 		var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
@@ -153,7 +235,7 @@ public sealed class ChatDispatchService(
 	}
 
 	private async Task DeliverPrivateMessageAsync(UserSession sender, string recipientName, GameSession? target,
-		string text, CancellationToken cancellationToken)
+		string text, bool notice, CancellationToken cancellationToken)
 	{
 		int targetId;
 		if (target is not null)
@@ -192,7 +274,11 @@ public sealed class ChatDispatchService(
 				return;
 			}
 
-			target.IrcConnection.Send(IrcMessageWriter.Privmsg(sender.Name, sender.Id, recipientName, text));
+			target.IrcConnection.Send(notice
+				? IrcMessageWriter.Notice(sender.Name, sender.Id, recipientName, text)
+				: IrcMessageWriter.Privmsg(sender.Name, sender.Id, recipientName, text));
+
+			if (notice) return;
 
 			if (target.Status.UserActivity == UserActivity.Afk && target.AwayMessage is { } awayMessage)
 				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(target.Name, target.Id, sender.Name, awayMessage));

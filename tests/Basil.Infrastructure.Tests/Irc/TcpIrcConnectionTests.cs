@@ -5,8 +5,10 @@ using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Services.Content;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Irc;
@@ -25,6 +27,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Security;
 using Basil.Infrastructure.Sessions;
+using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -59,13 +62,15 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, _fakeIrcOptions);
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+			matchRegistry, new NoOpMatchLiveEvents(), _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
-			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
-			NullLogger<ChatDispatchService>.Instance);
+			matchRegistry, NullLogger<ChatDispatchService>.Instance);
+		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
-			_fakeIrcOptions, hasher, tokenGenerator);
+			ircQueries, _fakeIrcOptions, hasher, tokenGenerator);
 		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 
 		var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -80,7 +85,8 @@ public class TcpIrcConnectionTests
 			{
 				var client = await listener.AcceptTcpClientAsync(cts.Token);
 				var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-					channelRegistry, playerLogout, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, i);
+					ircQueries, channelRegistry, playerLogout, _fakeIrcOptions,
+					NullLogger<TcpIrcConnection>.Instance, i);
 				_ = connection.RunAsync(cts.Token);
 			}
 		}, cts.Token);
@@ -108,7 +114,188 @@ public class TcpIrcConnectionTests
 		Assert.Contains("hello bob", received);
 		Assert.StartsWith(":alice!", received);
 
+		// A one-parameter TOPIC is a read, not an under-parameterized change: it must reach the topic
+		// reply rather than the "not enough parameters" numeric.
+		await WriteLineAsync(aliceStream, "TOPIC #osu");
+		var topic = await ReadUntilAsync(aliceReader, line => line.Contains(" 332 ") || line.Contains(" 461 "));
+		Assert.Contains(" 332 ", topic);
+		Assert.Contains("General", topic);
+
+		await WriteLineAsync(aliceStream, "FOO bar");
+		var unknown = await ReadUntilAsync(aliceReader, line => line.Contains(" 421 "));
+		Assert.Contains("FOO", unknown);
+
+		// A PONG answers the server's own keepalive; a numeric back would break that round trip, so
+		// the next reply must be the VERSION sent after it.
+		await WriteLineAsync(aliceStream, "PONG :basil");
+		await WriteLineAsync(aliceStream, "VERSION");
+		var afterPong = await ReadUntilAsync(aliceReader, line => line.Contains(" 351 ") || line.Contains(" 421 "));
+		Assert.Contains(" 351 ", afterPong);
+
 		listener.Stop();
+	}
+
+	/// <summary>
+	///     A modern IRC client opens with CAP before it has registered. Answering that with "you have
+	///     not registered" reads to the client as a server that does not speak IRC capabilities at all,
+	///     so the negotiation is answered (empty) while everything genuinely out of order is refused.
+	/// </summary>
+	[Fact]
+	public async Task UnregisteredClient_CapIsAnsweredEmptyWhileAnyOtherCommandIsRefused()
+	{
+		var hasher = new BCryptPasswordHasher();
+		var users = new FakeUserRepository();
+		var gameRegistry = new GameSessionRegistry();
+		var ircRegistry = new IrcSessionRegistry();
+		var channelRegistry = new InMemoryChannelRegistry();
+		channelRegistry.Seed([]);
+
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var channelMembership =
+			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, matchRegistry,
+				new NoOpMatchLiveEvents(), _fakeIrcOptions);
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
+			matchRegistry, NullLogger<ChatDispatchService>.Instance);
+		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
+		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
+			ircQueries, _fakeIrcOptions, hasher, new GuidTokenGenerator());
+		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
+
+		var listener = new TcpListener(IPAddress.Loopback, 0);
+		listener.Start();
+		var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+		var acceptTask = Task.Run(async () =>
+		{
+			var accepted = await listener.AcceptTcpClientAsync(cts.Token);
+			var connection = new TcpIrcConnection(accepted, authService, chatDispatch, channelMembership,
+				ircQueries, channelRegistry, playerLogout, _fakeIrcOptions,
+				NullLogger<TcpIrcConnection>.Instance, 1);
+			_ = connection.RunAsync(cts.Token);
+		}, cts.Token);
+
+		using var client = new TcpClient();
+		await client.ConnectAsync(IPAddress.Loopback, port, cts.Token);
+		await acceptTask;
+
+		await using var stream = client.GetStream();
+		using var reader = new StreamReader(stream, Encoding.UTF8);
+
+		await WriteLineAsync(stream, "CAP LS 302");
+		var cap = await ReadUntilAsync(reader, line => line.Contains("CAP") || line.Contains(" 451 "));
+		Assert.Equal(":Basil CAP * LS :", cap);
+
+		await WriteLineAsync(stream, "WHOIS someone");
+		var refused = await ReadUntilAsync(reader, line => line.Contains(" 451 "));
+		Assert.Contains("You have not registered", refused);
+
+		listener.Stop();
+	}
+
+	/// <summary>
+	///     A match room's channel is off-limits from IRC to anyone who is neither a referee nor
+	///     currently seated in it — the denial and a genuinely missing channel must be indistinguishable
+	///     on the wire, and becoming a referee must open the door without ever having been seated.
+	/// </summary>
+	[Fact]
+	public async Task JoiningAMatchRoomChannel_RequiresRefereeOrSeatedStanding()
+	{
+		var hasher = new BCryptPasswordHasher();
+		var users = new FakeUserRepository();
+		users.Add(new User(1, "alice", Country.Xx, 0, default), HashPassword(hasher, "alice-key"));
+
+		var gameRegistry = new GameSessionRegistry();
+		var ircRegistry = new IrcSessionRegistry();
+		var channelRegistry = new InMemoryChannelRegistry();
+		channelRegistry.Seed([]);
+		channelRegistry.Add(new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true));
+
+		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
+		var matchRegistry = new FakeMatchRegistry(match);
+
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+			matchRegistry, new NoOpMatchLiveEvents(), _fakeIrcOptions);
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), matchRegistry,
+			NullLogger<ChatDispatchService>.Instance);
+		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
+		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
+			ircQueries, _fakeIrcOptions, hasher, new GuidTokenGenerator());
+		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
+
+		var listener = new TcpListener(IPAddress.Loopback, 0);
+		listener.Start();
+		var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+		var acceptTask = Task.Run(async () =>
+		{
+			var accepted = await listener.AcceptTcpClientAsync(cts.Token);
+			var connection = new TcpIrcConnection(accepted, authService, chatDispatch, channelMembership,
+				ircQueries, channelRegistry, playerLogout, _fakeIrcOptions,
+				NullLogger<TcpIrcConnection>.Instance, 1);
+			_ = connection.RunAsync(cts.Token);
+		}, cts.Token);
+
+		using var aliceClient = new TcpClient();
+		await aliceClient.ConnectAsync(IPAddress.Loopback, port, cts.Token);
+		await acceptTask;
+
+		await using var aliceStream = aliceClient.GetStream();
+		using var aliceReader = new StreamReader(aliceStream, Encoding.UTF8);
+		await LoginAsync(aliceStream, aliceReader, "alice", "alice-key");
+
+		await WriteLineAsync(aliceStream, "JOIN #mp_5");
+		var denied = await ReadUntilAsync(aliceReader,
+			line => line.Contains(" 473 ") || line.Contains("JOIN #mp_5"));
+		Assert.Contains(" 473 ", denied);
+		Assert.Contains("no permission", denied);
+
+		match.AddReferee(1);
+		await WriteLineAsync(aliceStream, "JOIN #mp_5");
+		var allowed = await ReadUntilAsync(aliceReader,
+			line => line.Contains(" 473 ") || line.Contains("JOIN #mp_5"));
+		Assert.Contains("JOIN #mp_5", allowed);
+		Assert.StartsWith(":alice!", allowed);
+
+		await WriteLineAsync(aliceStream, "JOIN #doesnotexist");
+		var missing = await ReadUntilAsync(aliceReader, line => line.Contains(" 403 "));
+		Assert.Contains(" 403 ", missing);
+		Assert.Contains("No such channel", missing);
+
+		listener.Stop();
+	}
+
+	/// <summary>Backs <see cref="JoiningAMatchRoomChannel_RequiresRefereeOrSeatedStanding" /> with a single fixed match.</summary>
+	private sealed class FakeMatchRegistry(MatchSession match) : IMatchRegistry
+	{
+		public IReadOnlyCollection<MatchSession> All => [match];
+
+		public MatchSession? GetById(int id)
+		{
+			return id == match.Id ? match : null;
+		}
+
+		public MatchSession? GetByDbId(int dbId)
+		{
+			return dbId == match.DbId ? match : null;
+		}
+
+		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public void Remove(int id)
+		{
+			throw new NotSupportedException();
+		}
 	}
 
 	/// <summary>
@@ -131,13 +318,15 @@ var gameRegistry = new GameSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, _fakeIrcOptions);
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+			matchRegistry, new NoOpMatchLiveEvents(), _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
-			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()),
-			NullLogger<ChatDispatchService>.Instance);
+			matchRegistry, NullLogger<ChatDispatchService>.Instance);
+		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 		var authService = new IrcAuthenticationService(users, ircRegistry, channelRegistry, channelMembership,
-			_fakeIrcOptions, hasher, tokenGenerator);
+			ircQueries, _fakeIrcOptions, hasher, tokenGenerator);
 		var playerLogout = MakePlayerLogoutService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
 
 		// Stands in for a real bancho client: same GameSession/IrcConnection shape the chat core sees
@@ -157,7 +346,8 @@ var gameRegistry = new GameSessionRegistry();
 		{
 			var client = await listener.AcceptTcpClientAsync(cts.Token);
 			var connection = new TcpIrcConnection(client, authService, chatDispatch, channelMembership,
-				channelRegistry, playerLogout, _fakeIrcOptions, NullLogger<TcpIrcConnection>.Instance, 1);
+				ircQueries, channelRegistry, playerLogout, _fakeIrcOptions,
+				NullLogger<TcpIrcConnection>.Instance, 1);
 			_ = connection.RunAsync(cts.Token);
 		}, cts.Token);
 
@@ -183,6 +373,14 @@ var gameRegistry = new GameSessionRegistry();
 		Assert.StartsWith(":bob!", received);
 
 		listener.Stop();
+	}
+
+	private IrcQueryService MakeQueryService(ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry, IChannelRegistry channelRegistry,
+		ChannelMembershipService channelMembership)
+	{
+		return new IrcQueryService(channelRegistry, gameRegistry, ircRegistry, channelMembership,
+			new MotdService(new EmptySettingsRepository()), _fakeIrcOptions);
 	}
 
 	private static PlayerLogoutService MakePlayerLogoutService(ISessionRegistry<GameSession> gameRegistry,
@@ -299,6 +497,20 @@ var gameRegistry = new GameSessionRegistry();
 			_byName[User.MakeSafeName(user.Name)] = user;
 			if (pwBcrypt is not null)
 				_passwordHashes[user.Id] = pwBcrypt;
+		}
+	}
+
+	/// <summary>No MOTD is ever configured in these tests, so every key reads back unset.</summary>
+	private sealed class EmptySettingsRepository : ISettingsRepository
+	{
+		public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<string?>(null);
+		}
+
+		public Task SetAsync(string key, string? value, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
 		}
 	}
 
@@ -465,6 +677,7 @@ var gameRegistry = new GameSessionRegistry();
 		public event Action<int, byte[]>? BansPublished;
 		public event Action<int, byte[]>? TimerPublished;
 		public event Action<int, byte[]>? SlotsPublished;
+		public event Action<int, byte[]>? ChatPublished;
 
 		public void PublishMain(int matchDbId, byte[] payload)
 		{
@@ -509,6 +722,11 @@ var gameRegistry = new GameSessionRegistry();
 		public void PublishSlots(int matchDbId, byte[] payload)
 		{
 			SlotsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void PublishChat(int matchDbId, byte[] payload)
+		{
+			ChatPublished?.Invoke(matchDbId, payload);
 		}
 	}
 }

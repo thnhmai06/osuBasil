@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta content="width=device-width, initial-scale=1" name="viewport">
+	<link href="../icon.png" rel="icon" type="image/png">
+	<title>IRC Client | Basil Documentation</title>
+	<style>
+		:root {
+			color-scheme: light dark;
+		}
+
+		body {
+			max-width: 860px;
+			margin: 0 auto;
+			padding: 2rem 1.25rem 4rem;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			line-height: 1.55;
+			color: #1b1b1f;
+			background: #fff;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				color: #e4e4e7;
+				background: #17171a;
+			}
+
+			table {
+				border-color: #3a3a40 !important;
+			}
+
+			th, td {
+				border-color: #3a3a40 !important;
+			}
+
+			thead {
+				background: #232327 !important;
+			}
+
+			code, pre {
+				background: #232327 !important;
+				color: #e4e4e7 !important;
+			}
+
+			blockquote {
+				border-left-color: #4a4a52 !important;
+				color: #b8b8c0 !important;
+			}
+
+			a {
+				color: #8ab4ff;
+			}
+
+			hr {
+				border-color: #3a3a40 !important;
+			}
+		}
+
+		h1, h2, h3 {
+			line-height: 1.25;
+		}
+
+		h1 {
+			font-size: 1.9rem;
+			margin-bottom: .25rem;
+		}
+
+		h2 {
+			font-size: 1.4rem;
+			margin-top: 2.5rem;
+			border-bottom: 1px solid #ddd;
+			padding-bottom: .35rem;
+		}
+
+		h3 {
+			font-size: 1.15rem;
+			margin-top: 2rem;
+		}
+
+		.subtitle {
+			color: #666;
+			margin-top: 0;
+		}
+
+		table {
+			border-collapse: collapse;
+			width: 100%;
+			margin: 1rem 0;
+			font-size: .92rem;
+		}
+
+		th, td {
+			border: 1px solid #ddd;
+			padding: .5rem .6rem;
+			text-align: left;
+			vertical-align: top;
+		}
+
+		thead {
+			background: #f5f5f7;
+		}
+
+		code {
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			background: #f2f2f4;
+			padding: .1rem .35rem;
+			border-radius: 4px;
+			font-size: .9em;
+		}
+
+		pre {
+			background: #f2f2f4;
+			padding: .9rem 1rem;
+			border-radius: 8px;
+			overflow-x: auto;
+			font-size: .88rem;
+		}
+
+		pre code {
+			background: none;
+			padding: 0;
+		}
+
+		blockquote {
+			border-left: 3px solid #ccc;
+			margin: 1rem 0;
+			padding: .2rem 1rem;
+			color: #555;
+		}
+
+		a {
+			color: #0060df;
+		}
+
+		nav.top {
+			margin-bottom: 1.5rem;
+			font-size: .9rem;
+		}
+	</style>
+</head>
+<body>
+
+<nav class="top"><a href="../">&larr; Basil Documentation</a></nav>
+
+<h1>Connecting with an IRC Client</h1>
+<p class="subtitle">Basil runs an IRC gateway alongside the game server, so you can read and write the same chat
+	from any standard IRC program &mdash; no needed osu! client running.</p>
+
+<p>
+	This is the same chat the game shows. A message you send from IRC reaches players in the osu! client, and
+	theirs reach you. You can run <a href="../basil-bot/">BasilBot commands</a> such as <code>!mp</code> from
+	here too, which is how most referees run a tournament: an IRC window open, no game client needed.
+</p>
+<p>
+	One account can be logged in on the game <em>and</em> on IRC at the same time. Neither kicks the other off.
+	The one thing an IRC connection cannot do is take a slot in a multiplayer room &mdash; you can create a room,
+	referee it, and talk in it, but only the game client can actually play.
+</p>
+
+<h2 id="connecting">Connecting</h2>
+<table>
+	<thead>
+	<tr>
+		<th>Setting</th>
+		<th>Value</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td>Server</td>
+		<td>The server's domain or IP &mdash; the same address as the game server, with no subdomain.</td>
+	</tr>
+	<tr>
+		<td>Port</td>
+		<td><code>6667</code> by default. Ask the server admin if they changed it.</td>
+	</tr>
+	<tr>
+		<td>TLS / SSL</td>
+		<td><strong>Off.</strong> The gateway speaks plain TCP.</td>
+	</tr>
+	<tr>
+		<td>Nickname</td>
+		<td>Your Basil username.</td>
+	</tr>
+	<tr>
+		<td>Server password</td>
+		<td>Your Basil account password, in plain text.</td>
+	</tr>
+	</tbody>
+</table>
+<pre><code>/server basil.local 6667
+/pass your-account-password
+/nick YourUsername</code></pre>
+<blockquote>
+	Most clients (HexChat, mIRC, Irssi, WeeChat, Textual) have a <em>server password</em> field in their
+	connection settings. Fill that in and the client sends <code>PASS</code> for you.
+</blockquote>
+<blockquote>
+	<strong>Your password crosses the network unencrypted.</strong> There is no TLS on the IRC port, so treat it
+	the way you would any plaintext login: fine on a LAN or over a VPN, riskier over the open internet. If that
+	matters for your deployment, tunnel the port through SSH or a VPN rather than exposing it directly.
+</blockquote>
+<p>
+	Once connected, you are put into the server's default channels automatically, the same ones the game joins
+	you to. Two logins on the same account at once are refused: if you are already connected from another IRC
+	client, the second one is told the nickname is in use.
+</p>
+<p>
+	<strong>Your nickname is fixed.</strong> It is your account name, and <code>/nick</code> after connecting is
+	refused. This matches osu!'s own IRC gateway.
+</p>
+
+<h2 id="commands">What you can do</h2>
+<p>Standard IRC commands. Anything not listed here is answered with "unknown command".</p>
+
+<h3>Talking</h3>
+<table>
+	<thead>
+	<tr>
+		<th>Command</th>
+		<th>What it does</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>/join #channel</code></td>
+		<td>Enters a channel if your account is allowed to read it.</td>
+	</tr>
+	<tr>
+		<td><code>/part #channel</code></td>
+		<td>Leaves it.</td>
+	</tr>
+	<tr>
+		<td><code>/msg #channel text</code><br><code>/msg Username text</code></td>
+		<td>Says something in a channel, or sends a private message. A message starting with <code>!</code>
+			runs as a BasilBot command.
+		</td>
+	</tr>
+	<tr>
+		<td><code>/notice target text</code></td>
+		<td>Same delivery, but never triggers an automatic reply: no BasilBot command runs, and no away
+			message comes back. This is what a bot should use to avoid two bots answering each other forever.
+		</td>
+	</tr>
+	<tr>
+		<td><code>/away [message]</code></td>
+		<td>Marks you away; no message clears it.</td>
+	</tr>
+	<tr>
+		<td><code>/quit</code></td>
+		<td>Disconnects.</td>
+	</tr>
+	</tbody>
+</table>
+
+<h3>Looking around</h3>
+<table>
+	<thead>
+	<tr>
+		<th>Command</th>
+		<th>What it does</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>/list</code></td>
+		<td>Every channel you are allowed to see, with its member count and topic.</td>
+	</tr>
+	<tr>
+		<td><code>/names [#channel]</code></td>
+		<td>Who is in a channel. No channel given lists them all.</td>
+	</tr>
+	<tr>
+		<td><code>/topic #channel</code></td>
+		<td>Shows the channel topic.</td>
+	</tr>
+	<tr>
+		<td><code>/mode #channel</code></td>
+		<td>Shows the channel's modes.</td>
+	</tr>
+	<tr>
+		<td><code>/who #channel</code><br><code>/who Username</code></td>
+		<td>One line per member of a channel, or for a single person.</td>
+	</tr>
+	<tr>
+		<td><code>/whois Username</code></td>
+		<td>Someone's channels, away message, idle time, and when they signed on.</td>
+	</tr>
+	<tr>
+		<td><code>/ison Nick1 Nick2</code></td>
+		<td>Which of those people are online right now. Most clients use this for their notification list.</td>
+	</tr>
+	<tr>
+		<td><code>/motd</code>, <code>/version</code>, <code>/time</code>, <code>/lusers</code></td>
+		<td>The message of the day, the gateway version, the server's clock, and how many people are online.
+		</td>
+	</tr>
+	</tbody>
+</table>
+
+<h3>What you cannot do</h3>
+<p>
+	Basil's channels are run by the server, not by their members. <code>/topic #channel new topic</code>,
+	<code>/mode #channel +m</code>, <code>/kick</code>, and <code>/invite</code> are all refused &mdash; use
+	BasilBot's <code>!mp</code> commands to manage a match room instead.
+</p>
+<p>
+	<code>/nick</code>, <code>/pass</code>, and <code>/user</code> after connecting are refused too: your
+	identity is fixed at login.
+</p>
+<p>
+	Capability negotiation (<code>CAP</code>) is answered with an empty list, so modern clients connect cleanly
+	&mdash; but there is nothing to enable: no SASL, no message tags, no <code>multi-prefix</code>. Log in with
+	the server password instead.
+</p>
+
+<h2 id="prefixes">The <code>@</code> and <code>+</code> next to names</h2>
+<p>Standing is judged per channel, so the same person can be marked differently in two windows:</p>
+<table>
+	<thead>
+	<tr>
+		<th>Prefix</th>
+		<th>Meaning</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>@</code></td>
+		<td>Whoever runs <em>this</em> channel: a referee inside a match room, a staff member anywhere else.</td>
+	</tr>
+	<tr>
+		<td><code>+</code></td>
+		<td>Can talk here.</td>
+	</tr>
+	<tr>
+		<td><em>(none)</em></td>
+		<td>Can read here, but not talk.</td>
+	</tr>
+	</tbody>
+</table>
+<p>
+	So a referee shows as <code>@</code> in their own match room and unmarked in a general channel, and a staff
+	member is not an operator of a room they are not refereeing.
+</p>
+
+<h2 id="matches">Refereeing a match</h2>
+<p>
+	You do not join a match room from IRC &mdash; an IRC connection cannot take a slot, and it is never put into
+	the room's channel. You referee it by pointing your <code>!mp</code> commands at it, from wherever you are:
+</p>
+<pre><code>/msg BasilBot !mp make Group A: Team Alpha vs Team Beta
+&rarr; BasilBot: "Created the match #42 Group A: Team Alpha vs Team Beta. You are now scoped to this
+   match, and added as a referee."
+
+/msg BasilBot !mp settings
+/msg BasilBot !mp map 111222 &amp;&amp; !mp start 30</code></pre>
+<p>
+	Creating a room scopes you to it straight away, so everything after that just works. To pick up a different
+	room later &mdash; or one someone else made &mdash; use <code>!mp in 42</code> with the id BasilBot reported.
+	You need to already be a referee of that match.
+</p>
+<p>
+	BasilBot answers you privately and repeats the same line into the room, so the players see what you did. To
+	read the players' own chat as well, <code>/join #mp_42</code> &mdash; the channel is named after the id
+	BasilBot reported. You will be in the room's chat without occupying a slot, which is exactly what a referee
+	wants.
+</p>
+<blockquote>
+	A match room's channel is named <code>#mp_</code> plus the id BasilBot reported
+	(<code>#mp_42</code> for match <code>#42</code>), and only its referees and its currently seated
+	players can join it or see it in <code>/list</code>. Since you were added as a referee the moment you
+	created or were given the room, joining works for you &mdash; anyone else gets "Cannot join channel (no
+	permission)" instead. A room stays hidden from anyone browsing <code>/list</code> with no standing in
+	it, but a direct <code>JOIN</code> attempt against its exact name tells you it exists and simply refuses
+	entry, rather than pretending the room isn't there.
+</blockquote>
+<p>
+	See the <a href="../basil-bot/">BasilBot page</a> for every <code>!mp</code> subcommand.
+</p>
+
+<h2 id="troubleshooting">If something goes wrong</h2>
+<table>
+	<thead>
+	<tr>
+		<th>What you see</th>
+		<th>What it means</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td><code>Password incorrect</code></td>
+		<td>Wrong password, or no account with that name. The gateway does not say which.</td>
+	</tr>
+	<tr>
+		<td><code>Nickname is already in use</code></td>
+		<td>That account already has an IRC connection open. A game client logged in at the same time is
+			<em>not</em> the cause.
+		</td>
+	</tr>
+	<tr>
+		<td><code>You have not registered</code></td>
+		<td>You sent a command before the password and nickname went through.</td>
+	</tr>
+	<tr>
+		<td><code>Cannot send to channel</code></td>
+		<td>You are not in that channel, or your account may not talk there.</td>
+	</tr>
+	<tr>
+		<td><code>Cannot join channel (no permission)</code> on a <code>#mp_</code> room</td>
+		<td>You are neither a referee of that match nor currently seated in it.</td>
+	</tr>
+	<tr>
+		<td><code>No such channel</code> on a <code>#mp_</code> room</td>
+		<td>The match id in the channel name doesn't correspond to any current live room.</td>
+	</tr>
+	<tr>
+		<td>Your message vanishes with no error</td>
+		<td>You are silenced, or the person you messaged is offline, has blocked you, or accepts messages
+			from friends only.
+		</td>
+	</tr>
+	<tr>
+		<td>A <code>!mp</code> command does nothing</td>
+		<td>You are not a referee of the match you are scoped to. BasilBot stays silent rather than
+			refusing out loud. <code>!mp addref</code>/<code>!mp removeref</code> go silent for the same
+			reason even for an existing referee &mdash; only the match's creator can run those two (see the
+			<a href="../basil-bot/#multiplayer-commands">Referee, Host, and Creator</a> table on the
+			BasilBot page).
+		</td>
+	</tr>
+	</tbody>
+</table>
+
+<hr>
+<p style="font-size:.85rem;color:#777;">
+	Written for people connecting an IRC client. If you are working on the gateway itself, the design notes live
+	in the project's <code>docs/irc.md</code>.
+</p>
+
+</body>
+</html>

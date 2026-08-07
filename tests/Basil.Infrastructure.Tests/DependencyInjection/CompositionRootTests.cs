@@ -2,6 +2,7 @@ using Basil.Application;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Packets;
 using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Irc;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
@@ -89,6 +90,7 @@ public class CompositionRootTests
 	{
 		Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
 		Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
+		Assert.NotNull(_provider.GetRequiredService<IrcQueryService>());
 	}
 
 	[Fact]

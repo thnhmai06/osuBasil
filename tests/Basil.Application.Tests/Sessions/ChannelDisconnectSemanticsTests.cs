@@ -6,6 +6,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Sessions;
 
@@ -23,7 +24,7 @@ public class ChannelDisconnectSemanticsTests
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 	}
 
 	private static GameSession MakeGame(int id, string name)
@@ -50,7 +51,7 @@ public class ChannelDisconnectSemanticsTests
 	[Fact]
 	public void IrcDisconnects_GameSessionOfSameUserIdStillInChannel_NoPartNoQuit()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		var game = MakeGame(1, "alice");
 		var irc = MakeIrc(1, "alice");
 		var otherIrc = MakeIrc(2, "bob");
@@ -73,7 +74,7 @@ public class ChannelDisconnectSemanticsTests
 	[Fact]
 	public void GameLogsOut_IrcSessionOfSameUserIdStillInChannel_NoPartNoQuit()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		var game = MakeGame(1, "alice");
 		var irc = MakeIrc(1, "alice");
 		var otherIrc = MakeIrc(2, "bob");
@@ -96,8 +97,8 @@ public class ChannelDisconnectSemanticsTests
 	[Fact]
 	public void GameLogsOut_IrcSessionOfSameUserIdInADifferentChannel_PartsOnlyTheDisconnectedChannel()
 	{
-		var osu = new ChannelSession(1, "#osu", "General", 0, 0, true);
-		var chat = new ChannelSession(2, "#chat", "Chat", 0, 0, true);
+		var osu = new ChannelSession(1, "#osu", 0, 0, true);
+		var chat = new ChannelSession(2, "#chat", 0, 0, true);
 		var game = MakeGame(1, "alice");
 		var irc = MakeIrc(1, "alice");
 		var otherIrc = MakeIrc(2, "bob");
@@ -123,8 +124,8 @@ public class ChannelDisconnectSemanticsTests
 	[Fact]
 	public void LastSessionOfUserId_Disconnects_SendsExactlyOneQuit_NoPart()
 	{
-		var osu = new ChannelSession(1, "#osu", "General", 0, 0, true);
-		var chat = new ChannelSession(2, "#chat", "Chat", 0, 0, true);
+		var osu = new ChannelSession(1, "#osu", 0, 0, true);
+		var chat = new ChannelSession(2, "#chat", 0, 0, true);
 		var irc = MakeIrc(1, "alice"); // this UserId's only session
 		var otherIrc = MakeIrc(2, "bob");
 		irc.JoinChannel("#osu");

@@ -42,6 +42,9 @@ public sealed class MatchLiveEvents : IMatchLiveEvents
 	public event Action<int, byte[]>? SlotsPublished;
 
 	/// <inheritdoc />
+	public event Action<int, byte[]>? ChatPublished;
+
+	/// <inheritdoc />
 	public void PublishMain(int matchDbId, byte[] payload)
 	{
 		MainPublished?.Invoke(matchDbId, payload);
@@ -93,5 +96,11 @@ public sealed class MatchLiveEvents : IMatchLiveEvents
 	public void PublishSlots(int matchDbId, byte[] payload)
 	{
 		SlotsPublished?.Invoke(matchDbId, payload);
+	}
+
+	/// <inheritdoc />
+	public void PublishChat(int matchDbId, byte[] payload)
+	{
+		ChatPublished?.Invoke(matchDbId, payload);
 	}
 }

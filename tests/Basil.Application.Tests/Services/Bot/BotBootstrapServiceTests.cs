@@ -8,6 +8,7 @@ using Basil.Domain.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Bot;
 
@@ -27,7 +28,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns((User?)null);
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
@@ -41,7 +42,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
@@ -58,7 +59,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }),
 			NullLogger<BotBootstrapService>.Instance);
 
@@ -72,10 +73,10 @@ public class BotBootstrapServiceTests
 	public async Task BootstrapAsync_JoinsAllAutoJoinChannels()
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
-		var osu = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var osu = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.AutoJoinChannels.Returns([osu]);
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
 
 		var result = await service.BootstrapAsync();
@@ -89,7 +90,7 @@ public class BotBootstrapServiceTests
 	{
 		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
 		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			Options.Create(new BotOptions { Name = "BasilBot", Country = "jp", CommandPrefix = "!" }),
 			NullLogger<BotBootstrapService>.Instance);
 

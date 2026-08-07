@@ -93,7 +93,8 @@ public sealed class MatchControlService(
 	{
 		Ok,
 		NotAReferee,
-		WouldLeaveEmpty
+		WouldLeaveEmpty,
+		TargetIsCreator
 	}
 
 	public enum SetMapResult : byte
@@ -105,7 +106,8 @@ public sealed class MatchControlService(
 	public enum SetRefereesResult : byte
 	{
 		Ok,
-		WouldLeaveEmpty
+		WouldLeaveEmpty,
+		WouldRemoveCreator
 	}
 
 	public enum SetSlotsResult : byte
@@ -265,7 +267,10 @@ public sealed class MatchControlService(
 		await matchMembership.PublishHostAsync(match, cancellationToken);
 	}
 
-	/// <summary>Sets the room name, truncating it to <see cref="MaxMatchNameLength" /> characters, and broadcasts the state.</summary>
+	/// <summary>
+	///     Sets the room name, truncating it to <see cref="MaxMatchNameLength" /> characters, broadcasts
+	///     the state, and syncs the room's chat channel topic to match.
+	/// </summary>
 	/// <param name="match">The match to rename.</param>
 	/// <param name="name">The new room name.</param>
 	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
@@ -274,6 +279,7 @@ public sealed class MatchControlService(
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
 
 		match.Name = name;
+		matchMembership.SyncChannelTopic(match);
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 	}
 
@@ -334,15 +340,20 @@ public sealed class MatchControlService(
 	/// <summary>Replaces the full referee list and records the resulting add and remove events.</summary>
 	/// <remarks>
 	///     This is the PUT variant. An empty <paramref name="targets" /> collection is rejected with
-	///     <see cref="SetRefereesResult.WouldLeaveEmpty" /> (HTTP 409) rather than leaving the room
-	///     without any referees.
+	///     <see cref="SetRefereesResult.WouldLeaveEmpty" /> (HTTP 409), and a collection that omits a
+	///     current referee who is the match's creator is rejected with
+	///     <see cref="SetRefereesResult.WouldRemoveCreator" /> (also HTTP 409) — either way, the room
+	///     never ends up without any referees. A referee dropped by this replace who is not currently
+	///     seated as a player is also removed from the match's chat channel (see
+	///     <see cref="RemoveOneRefereeAsync" /> for why).
 	/// </remarks>
 	/// <param name="match">The match whose referees to replace.</param>
 	/// <param name="targets">The complete set of players to keep as referees.</param>
 	/// <param name="cancellationToken">A token that cancels the event writes and the referee publishes.</param>
 	/// <returns>
-	///     <see cref="SetRefereesResult.Ok" /> on success, or
-	///     <see cref="SetRefereesResult.WouldLeaveEmpty" /> when <paramref name="targets" /> is empty.
+	///     <see cref="SetRefereesResult.Ok" /> on success, <see cref="SetRefereesResult.WouldLeaveEmpty" />
+	///     when <paramref name="targets" /> is empty, or <see cref="SetRefereesResult.WouldRemoveCreator" />
+	///     when it omits the match's current creator-referee.
 	/// </returns>
 	public async Task<SetRefereesResult> SetRefereesAsync(
 		MatchSession match,
@@ -352,6 +363,9 @@ public sealed class MatchControlService(
 		if (targets.Count == 0) return SetRefereesResult.WouldLeaveEmpty;
 
 		var newIds = targets.Select(t => t.Id).ToHashSet();
+		if (match.CreatorId is { } creatorId && match.Referees.Contains(creatorId) && !newIds.Contains(creatorId))
+			return SetRefereesResult.WouldRemoveCreator;
+
 		var toRemove = match.Referees.Where(id => !newIds.Contains(id)).ToList();
 		var toAdd = targets.Where(t => !match.Referees.Contains(t.Id)).ToList();
 
@@ -359,6 +373,7 @@ public sealed class MatchControlService(
 		{
 			var removedName = ((UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))?.Name;
 			match.RemoveReferee(id);
+			KickFromChatIfUnseated(match, id);
 			await matchRepository.CreateEventAsync(new MatchEvent(
 					match.DbId, (int)MatchEventType.RefRemoved,
 					null, null, id, removedName, DateTimeOffset.UtcNow.UtcDateTime, null),
@@ -405,7 +420,12 @@ public sealed class MatchControlService(
 	/// <remarks>
 	///     A guard blocks removing the last referee, replacing the old behavior of auto-closing a
 	///     <c>!mp make</c> room when its last referee left. The auto-close branch is now unreachable
-	///     dead code, since a match can never actually reach zero referees through this path.
+	///     dead code, since a match can never actually reach zero referees through this path. The
+	///     match's creator (<see cref="MatchSession.IsCreator" />) can never be removed either — they
+	///     hold referee-equivalent authority for the room's lifetime regardless. A target who is
+	///     removed while not currently seated as a player is also removed from the match's chat
+	///     channel, since losing referee status also loses their only standing to be there (see
+	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" />'s match-room gate).
 	/// </remarks>
 	/// <param name="actorId">The acting userSession's id, or <see langword="null" /> for a system or HTTP action.</param>
 	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
@@ -414,7 +434,8 @@ public sealed class MatchControlService(
 	/// <param name="cancellationToken">A token that cancels the event writes and referee publication.</param>
 	/// <returns>
 	///     <see cref="RemoveRefereeResult.Ok" /> on success,
-	///     <see cref="RemoveRefereeResult.NotAReferee" /> when the target holds no referee status, or
+	///     <see cref="RemoveRefereeResult.NotAReferee" /> when the target holds no referee status,
+	///     <see cref="RemoveRefereeResult.TargetIsCreator" /> when the target created the match, or
 	///     <see cref="RemoveRefereeResult.WouldLeaveEmpty" /> when removing them would leave the room
 	///     without any referees.
 	/// </returns>
@@ -422,9 +443,11 @@ public sealed class MatchControlService(
 		UserSession target, CancellationToken cancellationToken = default)
 	{
 		if (!match.Referees.Contains(target.Id)) return RemoveRefereeResult.NotAReferee;
+		if (match.IsCreator(target.Id)) return RemoveRefereeResult.TargetIsCreator;
 		if (match.Referees.Count == 1) return RemoveRefereeResult.WouldLeaveEmpty;
 
 		match.RemoveReferee(target.Id);
+		KickFromChatIfUnseated(match, target.Id);
 		logger.LogInformation("Referee removed: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
 			match.DbId, actorId, target.Id);
 
@@ -435,6 +458,27 @@ public sealed class MatchControlService(
 
 		await matchMembership.PublishRefsAsync(match, cancellationToken);
 		return RemoveRefereeResult.Ok;
+	}
+
+	/// <summary>
+	///     Removes every live session a userSession has in a match's chat channel when they are not
+	///     currently seated as a player there.
+	/// </summary>
+	/// <remarks>
+	///     Called after a referee removal: losing referee status also loses a non-seated participant's
+	///     only standing to be in the room's channel (see
+	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" />'s match-room gate), so they
+	///     are parted rather than left to linger until they PART themselves. A seated player keeps
+	///     reading the room's chat regardless, since being seated is its own standing.
+	/// </remarks>
+	/// <param name="match">The match whose chat channel to part the userSession from.</param>
+	/// <param name="targetUserId">The id of the userSession who lost referee status.</param>
+	private void KickFromChatIfUnseated(MatchSession match, int targetUserId)
+	{
+		if (match.GetSlot(targetUserId) is not null) return;
+
+		foreach (var session in OnlineSessions(targetUserId))
+			matchMembership.LeaveMatchChat(session, match);
 	}
 
 	/// <summary>Assigns a userSession's team and broadcasts the resulting state.</summary>

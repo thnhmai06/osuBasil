@@ -34,7 +34,7 @@ public class SendPublicMessageHandlerTests
 
 	private SendPublicMessageHandler MakeHandler()
 	{
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership,
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
@@ -57,7 +57,7 @@ public class SendPublicMessageHandlerTests
 		{
 			SilenceEnd = DateTimeOffset.UtcNow.AddSeconds(60)
 		};
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hello", "#osu", 1));
@@ -80,7 +80,7 @@ public class SendPublicMessageHandlerTests
 	public async Task Handle_NotAMember_NoOp()
 	{
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hello", "#osu", 1));
@@ -92,7 +92,7 @@ public class SendPublicMessageHandlerTests
 	public async Task Handle_NoWritePriv_NoOp()
 	{
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var channel = new ChannelSession(1, "#staff", "Staff", 0, UserPrivileges.Staff, true);
+		var channel = new ChannelSession(1, "#staff", 0, UserPrivileges.Staff, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#staff");
 		_channelRegistry.GetByName("#staff").Returns(channel);
@@ -108,7 +108,7 @@ public class SendPublicMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var member = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		channel.Join(member.Id);
@@ -130,7 +130,7 @@ public class SendPublicMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var member = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		channel.Join(member.Id);
@@ -153,7 +153,7 @@ public class SendPublicMessageHandlerTests
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var member = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		channel.Join(member.Id);
@@ -178,7 +178,7 @@ public class SendPublicMessageHandlerTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BanchoBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);
@@ -210,7 +210,7 @@ public class SendPublicMessageHandlerTests
 		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channel.Join(sender.Id);
 		sender.JoinChannel("#osu");
 		_channelRegistry.GetByName("#osu").Returns(channel);

@@ -27,6 +27,9 @@ rights belong to their respective owners.
 
 ## ✨ Key features
 
+At Basil, our philosophy is simple: **minimize external dependencies**. Basil is built to operate **completely
+offline**, giving you full control without requiring internet connectivity or third-party online services:
+
 - **Replicates the full multiplayer experience of [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29)**, while
   intentionally omitting singleplayer ranking and other unrelated features.
 - **Supports [osu!direct](https://osu.ppy.sh/community/forums/topics/1433039),
@@ -37,13 +40,13 @@ rights belong to their respective owners.
 - **Runs entirely offline**, with no dependency on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or beatmap
   mirrors for core gameplay.
 - **Provides a comprehensive HTTP API** for tournament management, spectating, and real-time multiplayer data,
-  documented with OpenAPI and browsable through [Scalar](https://scalar.com/).
+  documented with [OpenAPI](https://www.openapis.org/) and browsable through [Scalar](https://scalar.com/).
 
 ## 🛠️ Tech stack
 
 | Layer          | Choice                                                                                                                                                                                         |
 |----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as a standalone executable. Support Docker.                                                                     |
+| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as a standalone executable. Support [Docker](https://www.docker.com/).                                          |
 | Database       | [SQLite](https://www.sqlite.org/), accessed via [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/).                                         |
 | API            | Build-time [OpenAPI](https://www.openapis.org/) generation with interactive documentation powered by [Scalar](https://scalar.com/).                                                            |
 | Star rating    | Uses the official difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu).                                                                              |
@@ -54,7 +57,7 @@ rights belong to their respective owners.
 
 ## 📖 Getting Started
 
-- **API & Bot Commands** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
+- **API, Bot Commands, Client** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
   the same docs on [GitHub Pages](https://thnhmai06.github.io/osuBasil/) without running a server.
 - **Run a Server** – See [`docs/run-deployment.md`](docs/run-deployment.md) for deployment, local development, and
   connecting an osu! client.
@@ -68,7 +71,14 @@ rights belong to their respective owners.
 **Basil** is built on top of [**bancho.py**](https://github.com/osuAkatsuki/bancho.py)
 by [Akatsuki](https://github.com/osuAkatsuki).
 
-Many thanks to the [Akatsuki](https://github.com/osuAkatsuki) team for their dedicated work on that project!
+Many thanks to the Akatsuki team for creating and maintaining such an amazing project, which laid the foundation and
+inspiration for Basil.
+
+### 💻 Contributors
+
+| [<img src="https://github.com/thnhmai06.png" width="100"><br><sub>**thnhmai06**</sub>](https://github.com/thnhmai06) |
+|:--------------------------------------------------------------------------------------------------------------------:|
+|                      <span title="Project Manager">👑</span> <span title="Developer">💻</span>                       |  
 
 ## ⭐ Star History
 

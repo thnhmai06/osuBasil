@@ -4,6 +4,7 @@ using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -110,6 +111,64 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var response = await _factory.CreateClient().SendAsync(request);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	// ---- /chat ----
+
+	[Theory]
+	[InlineData("POST", "/matches/1/chat")]
+	[InlineData("GET", "/matches/1/chat/live")]
+	public async Task Chat_MissingAdminKey_ReturnsUnauthorized(string method, string path)
+	{
+		var request = MakeRequest(new HttpMethod(method), path, null);
+		if (method == "POST") request.Content = JsonContent.Create(new { text = "hello" });
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task SendChat_UnknownMatch_ReturnsNotFound()
+	{
+		var request = MakeRequest(HttpMethod.Post, "/matches/999999/chat");
+		request.Content = JsonContent.Create(new { text = "hello" });
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task SendChat_BlankText_ReturnsBadRequest()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/chat");
+		request.Content = JsonContent.Create(new { text = "   " });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task SendChat_MultilineText_BecomesOneMessagePerLine()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		if (sessionRegistry.GetByUserId(BotBootstrapService.BotId) is null)
+			sessionRegistry.TryAdd(new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch) { IsBot = true });
+
+		var request = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/chat");
+		request.Content = JsonContent.Create(new { text = "first\n\nsecond" });
+		var response = await client.SendAsync(request);
+		var view = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		response.EnsureSuccessStatusCode();
+		Assert.Equal(2, view.GetProperty("data").GetProperty("sent").GetInt32());
 	}
 
 	// ---- /hosts ----

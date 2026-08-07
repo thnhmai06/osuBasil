@@ -26,8 +26,11 @@ public sealed class InMemoryChannelRegistry : IChannelRegistry
 	{
 		foreach (var channel in channels)
 			_byName[channel.Name] = new ChannelSession(
-				channel.Id, channel.Name, channel.Topic, channel.ReadPrivilege, channel.WritePrivilege,
-				channel.AutoJoin);
+				channel.Id, channel.Name, channel.ReadPrivilege, channel.WritePrivilege,
+				channel.AutoJoin)
+			{
+				Topic = channel.Topic
+			};
 	}
 
 	/// <inheritdoc />

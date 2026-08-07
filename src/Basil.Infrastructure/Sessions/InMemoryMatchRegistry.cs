@@ -41,17 +41,20 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	public async Task<MatchSession> CreateAsync(MatchState data, int hostId,
 		CancellationToken cancellationToken = default)
 	{
+		// The persistent id is claimed first because it names the room's chat channel, which is fixed
+		// for the session's lifetime.
+		var dbId =
+			await matchRepository.CreateMatchAsync(data.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
+
 		MatchSession match;
 		var id = 0;
 		do
 		{
 			while (_matches.ContainsKey(id)) id++;
-			match = BuildNew(id, data, hostId);
+			match = BuildNew(id, dbId, data, hostId);
 		} while (!_matches.TryAdd(id, match));
 
-		match.DbId =
-			await matchRepository.CreateMatchAsync(match.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
-		_dbIdtoId[match.DbId] = match.Id;
+		_dbIdtoId[dbId] = match.Id;
 		RegisterChannel(match);
 
 		return match;
@@ -72,23 +75,27 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 
 	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
 	/// <param name="id">The in-memory registry slot id.</param>
+	/// <param name="dbId">The match's persistent database id.</param>
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="hostId">The id of the userSession who created the room.</param>
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	private static MatchSession BuildNew(int id, MatchState data, int hostId)
+	private static MatchSession BuildNew(int id, int dbId, MatchState data, int hostId)
 	{
 		return new MatchSession(
 			id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
 			hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(id));
+			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(dbId))
+		{
+			DbId = dbId
+		};
 	}
 
 	/// <summary>Get the chat channel name of a match.</summary>
-	/// <param name="matchId">The match's in-memory registry id.</param>
-	/// <returns>The <c>#multi_{id}</c> channel name.</returns>
-	private static string ChannelNameFor(int matchId)
+	/// <param name="matchDbId">The match's persistent database id, the same id every command and route names it by.</param>
+	/// <returns>The <c>#mp_{dbId}</c> channel name.</returns>
+	private static string ChannelNameFor(int matchDbId)
 	{
-		return $"#multi_{matchId}";
+		return $"#mp_{matchDbId}";
 	}
 
 	/// <summary>Registers the match's chat channel in the channel registry.</summary>
@@ -96,8 +103,11 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	private void RegisterChannel(MatchSession match)
 	{
 		channelRegistry.Add(new ChannelSession(
-			0, match.ChatChannelName, $"MID {match.Id}'s multiplayer channel.",
-			0, 0, false, "#multiplayer", true));
+			0, match.ChatChannelName,
+			0, 0, false, "#multiplayer", true)
+		{
+			Topic = match.Name
+		});
 	}
 
 	/// <summary>Registers the match's chat channel in the channel registry.</summary>

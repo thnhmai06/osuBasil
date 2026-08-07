@@ -78,6 +78,17 @@ public static class IrcMessageWriter
 		return new IrcMessage(UserPrefix(senderNick, senderId), "PRIVMSG", [target, text]);
 	}
 
+	/// <summary>Builds a NOTICE message from a user to a target player or channel.</summary>
+	/// <param name="senderNick">The nickname of the sending user.</param>
+	/// <param name="senderId">The <c>UserSession</c> id of the sending user, embedded in the hostmask.</param>
+	/// <param name="target">The nickname or channel the notice is sent to.</param>
+	/// <param name="text">The notice body.</param>
+	/// <returns>The NOTICE message.</returns>
+	public static IrcMessage Notice(string senderNick, int senderId, string target, string text)
+	{
+		return new IrcMessage(UserPrefix(senderNick, senderId), "NOTICE", [target, text]);
+	}
+
 	/// <summary>Builds a JOIN message announcing that a user entered a channel.</summary>
 	/// <param name="nick">The nickname of the joining user.</param>
 	/// <param name="id">The <c>UserSession</c> id of the joining user, embedded in the hostmask.</param>
@@ -98,6 +109,17 @@ public static class IrcMessageWriter
 	{
 		var parameters = reason is null ? new List<string> { channel } : [channel, reason];
 		return new IrcMessage(UserPrefix(nick, id), "PART", parameters);
+	}
+
+	/// <summary>Builds a TOPIC message announcing a channel's topic changed.</summary>
+	/// <param name="nick">The nickname attributed as having set the topic.</param>
+	/// <param name="id">The <c>UserSession</c> id attributed as having set the topic, embedded in the hostmask.</param>
+	/// <param name="channel">The name of the channel whose topic changed.</param>
+	/// <param name="topic">The new topic text.</param>
+	/// <returns>The TOPIC message.</returns>
+	public static IrcMessage Topic(string nick, int id, string channel, string topic)
+	{
+		return new IrcMessage(UserPrefix(nick, id), "TOPIC", [channel, topic]);
 	}
 
 	/// <summary>Builds a QUIT message announcing that a user disconnected.</summary>

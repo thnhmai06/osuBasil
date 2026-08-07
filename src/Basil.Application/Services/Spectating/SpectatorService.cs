@@ -44,7 +44,7 @@ public sealed class SpectatorService(
 		if (channel is null)
 		{
 			channel = new ChannelSession(
-				0, ChannelNameFor(host.Id), $"{host.Name}'s spectator channel.",
+				0, ChannelNameFor(host.Id),
 				0, 0, false, "#spectator", true);
 			channelRegistry.Add(channel);
 			channelMembership.Join(host, channel);

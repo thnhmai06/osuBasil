@@ -47,7 +47,7 @@ public class MatchMembershipServiceTests
 	private MatchMembershipService MakeService()
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			_matchRepository,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
@@ -100,7 +100,10 @@ public class MatchMembershipServiceTests
 		Assert.NotNull(match);
 		Assert.Same(match, host.Match);
 		Assert.Equal(host.Id, match.Slots[0].PlayerId);
-		Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
+		// Named from the persistent id, the same one every command and route calls the room by — not
+		// the registry slot id, which is reused once a room closes.
+		Assert.Equal($"#mp_{match.DbId}", match.ChatChannelName);
+		Assert.NotNull(_channelRegistry.GetByName(match.ChatChannelName));
 	}
 
 	[Fact]
@@ -233,11 +236,11 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var lobbyMember = MakePlayer(2, "lobbyguy");
 		RegisterAll(host, lobbyMember);
-		_channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
+		_channelRegistry.Add(new ChannelSession(1, "#lobby", 0, 0, true));
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions()));
+		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		membership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
@@ -246,7 +249,7 @@ public class MatchMembershipServiceTests
 		// The room no longer tears down the instant it's empty — it starts a 5-minute auto-close
 		// timer instead (see MatchMembershipService.SyncEmptyRoomTimer), so nothing is disposed yet.
 		Assert.NotNull(_matchRegistry.GetById(match.Id));
-		Assert.NotNull(_channelRegistry.GetByName("#multi_0"));
+		Assert.NotNull(_channelRegistry.GetByName(match.ChatChannelName));
 		Assert.Null(host.Match);
 		Assert.NotNull(match.EmptyRoomTimer);
 		lobbyMember.Dequeue(); // drain the lobby's UpdateMatch broadcast from the slot becoming empty
@@ -254,7 +257,7 @@ public class MatchMembershipServiceTests
 		await service.CloseAsync(match, null, null);
 
 		Assert.Null(_matchRegistry.GetById(match.Id));
-		Assert.Null(_channelRegistry.GetByName("#multi_0"));
+		Assert.Null(_channelRegistry.GetByName(match.ChatChannelName));
 		Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
 		Assert.Contains(match.DbId, _matchRepository.EndedMatchIds);
 	}
@@ -299,7 +302,7 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var lobbyMember = MakePlayer(2, "lobbyguy");
 		RegisterAll(host, lobbyMember);
-		_channelRegistry.Add(new ChannelSession(1, "#lobby", "t", 0, 0, true));
+		_channelRegistry.Add(new ChannelSession(1, "#lobby", 0, 0, true));
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		host.Dequeue();
@@ -308,7 +311,7 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await service.EnqueueStateAsync(match);
@@ -331,7 +334,7 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())), _matchRepository, events,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())), _matchRepository, events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 

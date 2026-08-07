@@ -71,6 +71,12 @@ public interface IMatchLiveEvents
 	/// </summary>
 	event Action<int, byte[]> SlotsPublished;
 
+	/// <summary>
+	///     Occurs when a line of chat is said in a match's own channel. Rose with the match's
+	///     database id and the payload bytes to broadcast.
+	/// </summary>
+	event Action<int, byte[]> ChatPublished;
+
 	/// <summary>Raises <see cref="MainPublished" /> with the given match database id and payload.</summary>
 	/// <param name="matchDbId">The persistent database id of the match whose channel is being updated.</param>
 	/// <param name="payload">The UTF-8 JSON bytes to broadcast to the channel's subscribers.</param>
@@ -117,4 +123,9 @@ public interface IMatchLiveEvents
 	/// <param name="matchDbId">The persistent database id of the match whose channel is being updated.</param>
 	/// <param name="payload">The UTF-8 JSON bytes to broadcast to the channel's subscribers.</param>
 	void PublishSlots(int matchDbId, byte[] payload);
+
+	/// <summary>Raises <see cref="ChatPublished" /> with the given match database id and payload.</summary>
+	/// <param name="matchDbId">The persistent database id of the match whose chat carried the line.</param>
+	/// <param name="payload">The UTF-8 JSON bytes to broadcast to the channel's subscribers.</param>
+	void PublishChat(int matchDbId, byte[] payload);
 }

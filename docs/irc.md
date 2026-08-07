@@ -15,6 +15,32 @@ Splitting into sibling types closes that hole at compile time. Every match-seati
 - **One account, up to two live sessions.** A user can have a `GameSession`, an `IrcSession`, both, or neither, all under the same account id. Neither kind ever evicts the other on login — a fresh IRC login doesn't touch an existing `GameSession` and vice versa.
 - **Only a `GameSession` can occupy a multiplayer slot.** An `IrcSession` can create a room, referee it, chat in it, and run every `!mp` subcommand, but it physically cannot be seated — the type system forbids it.
 - **BasilBot is a synthetic `GameSession`**, not an `IrcSession` and not "no session." It never connects over TCP; it exists so `SpectatorService` can expose its input over the `api.` host's SSE `/spec/{id}` channel the same way a real player's would be. This is a compatibility shape for the current implementation, not a claim that a bot "is" a game client.
+- **The command surface is what a standard IRC client needs to sit in a channel, and nothing more.** There is no generated reference for it the way there is for the HTTP API, so it is listed here in full:
+
+  | Command | Parameters | What the server answers |
+  | --- | --- | --- |
+  | `PASS` / `NICK` / `USER` | password, nick | The handshake. `USER` is accepted and ignored; `PASS`+`NICK` are what authenticate. |
+  | `CAP` | subcommand | An empty capability list. The gateway offers none, so a request is refused and `CAP END` needs no answer. |
+  | `PRIVMSG` | target, text | Nothing on success. The text is routed into the shared chat core, so a `!` command runs. |
+  | `NOTICE` | target, text | Nothing. Same delivery rules as `PRIVMSG`, but no command runs and no away message comes back. |
+  | `JOIN` / `PART` | channel | The join or part echo, plus the member list on a join. A match room's channel refuses anyone but its referees and seated players with `ErrInviteOnlyChan`, distinct from `ErrNoSuchChannel` for a channel that genuinely doesn't exist. |
+  | `LIST` | optional channel names | Every channel the caller may read, with the same referee/seated-only rule for a match room. A mask (`>0`, `*`) lists everything rather than nothing. |
+  | `NAMES` | optional channel | That channel's members, or every visible channel's when omitted. |
+  | `TOPIC` | channel, optional new topic | The topic. A request to change one is refused. |
+  | `MODE` | channel, optional mode change | The channel's modes. A request to change them is refused. A nick target is ignored — there are no user modes. |
+  | `WHO` | channel or nick | One entry per matching user. |
+  | `WHOIS` | nick | The user's hostmask, visible channels, away message, and idle and sign-on times. |
+  | `ISON` | nicks | Which of those nicknames are online, under their stored spelling. |
+  | `MOTD` / `VERSION` / `TIME` / `LUSERS` | none | The message of the day, the gateway version, the server clock, and the online counts. |
+  | `AWAY` | optional message | Nothing. An empty `AWAY` clears the message. |
+  | `PING` | optional token | `PONG` with the same token. |
+  | `QUIT` | — | The connection closes and the shared logout runs. |
+
+  Anything else is refused rather than ignored: before the handshake completes it is answered "you have not registered", and after it "unknown command". Three exceptions never draw a refusal, because a client treats each as a flow the server is obliged to complete — `CAP` (answered as above), `PONG` (the client's half of the keepalive round trip), and `AUTHENTICATE` (SASL, which is never offered).
+
+- **A member's `@`/`+` status prefix is judged per channel, not globally.** `@` marks whoever holds authority over *that* channel — its referees inside a match room, staff everywhere else — so a referee is unmarked in `#osu` and a staff member is not an operator in a room they are not refereeing. `+` marks anyone else who may write to the channel, and a member who may only read carries no prefix. The same rule produces the prefix in a `/NAMES` list and the status letter in a `/WHO` entry; a `/WHO` on a bare nick has no channel to judge against, so it carries the away flag alone.
+- **No IRC command mutates anything but the caller's own presence.** Joining, parting, chatting, and going away are the only writes. Topics, channel modes, and the nick itself are fixed by the server: `TOPIC #chan :new` and `MODE #chan +m` are refused rather than applied, and `NICK`, `PASS`, or `USER` after registration are refused too ("Can I use another username? No." — the osu!Bancho IRC FAQ). A channel a caller cannot read is never named to them, and neither is a spectator room they are not already in.
+- **A match room's channel is visible and joinable only to that match's referees and its currently seated players** (`ChannelMembershipService.CanJoinMatchChannel`), applied identically by `JOIN` and `LIST` — a room never shows up in `/list` for anyone who is neither, and a `JOIN #mp_5` is refused with `ErrInviteOnlyChan` ("Cannot join channel (no permission)"), distinct from the `ErrNoSuchChannel` a genuinely nonexistent channel gets — the room's existence is visible, only entry to it is not. The internal seating path (`MatchMembershipService.OccupySlot`) and the tourney-client observer join (`TourneyMatchJoinChannelHandler`) bypass this check deliberately — each already authorizes the join through its own gate (the full seat-gate chain, or the donator-privilege check) before the participant/referee fact would even be true yet. The room's creator (`MatchSession.CreatorId`, see [`multiplayer.md`](multiplayer.md)) always counts as a referee for this gate, permanently, so they can never lock themselves out of a room they made. The gate is enforced on `JOIN`, not on staying: a referee who loses that status while not seated is proactively parted from the channel rather than left to linger until they `PART` themselves.
 - **`!mp settings` reports three independent lists** — Players (who's seated), Refs (who has referee authority), and IRC (who has a live `IrcSession` in the room's own channel). One account can appear in all three at once: seated *and* a referee *and* running a separate IRC connection are three separate facts, not one.
 
 ## Concepts
@@ -78,6 +104,7 @@ Session disconnects (game logout OR irc connection closed OR ghost-reap)
 - `Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs`
 - `Basil.Application/Sessions/PlayerLogoutService.cs` (game-vs-IRC logout branching)
 - `Basil.Application/Services/Irc/IrcAuthenticationService.cs` (the PASS/NICK/USER handshake)
+- `Basil.Application/Services/Irc/IrcQueryService.cs` (the read-only query replies)
 - `Basil.Application/Services/Multiplayer/MatchMembershipService.cs` (`NoHostId`, empty-room auto-close)
 - `Basil.Application/Services/Multiplayer/MatchControlService.cs` (kick/ban/addref/invite guards)
 - `Basil.Application/Services/Bot/MpCommandService.cs` (`!mp settings`' three lists, read-only subcommands)

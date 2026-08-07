@@ -27,6 +27,7 @@ public sealed class IrcAuthenticationService(
 	ISessionRegistry<IrcSession> ircSessions,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	IrcQueryService queries,
 	IOptions<IrcOptions> options,
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator)
@@ -82,6 +83,7 @@ public sealed class IrcAuthenticationService(
 			IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplWelcome, user.Name,
 				$"Welcome to {options.Value.Name} IRC, {user.Name}")
 		};
+		messages.AddRange(queries.BuildWelcomeBurst(user.Name));
 
 		foreach (var channel in channelRegistry.AutoJoinChannels)
 		{

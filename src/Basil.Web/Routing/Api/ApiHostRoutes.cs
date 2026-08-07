@@ -47,10 +47,6 @@ internal static class ApiHostRoutes
 
 		group.MapGet("/favicon.ico", () => Results.Redirect("/docs/icon.png")).ExcludeFromDescription();
 
-		docs.MapGet("/basil-bot/",
-				() => Results.File(Path.Combine(docsSiteRoot, "basil-bot", "index.html"), "text/html"))
-			.ExcludeFromDescription();
-
 		docs.MapGet("/osu-client/",
 				() => Results.File(Path.Combine(docsSiteRoot, "osu-client", "index.html"), "text/html"))
 			.ExcludeFromDescription();
@@ -61,6 +57,14 @@ internal static class ApiHostRoutes
 			options.Favicon = "/docs/icon.png";
 			options.AddDocument("basilapi", "Basil API");
 		}).ExcludeFromDescription();
+
+		docs.MapGet("/basil-bot/",
+				() => Results.File(Path.Combine(docsSiteRoot, "basil-bot", "index.html"), "text/html"))
+			.ExcludeFromDescription();
+
+		docs.MapGet("/irc-client/",
+				() => Results.File(Path.Combine(docsSiteRoot, "irc-client", "index.html"), "text/html"))
+			.ExcludeFromDescription();
 
 		group.MapMatchRoutes();
 

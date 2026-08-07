@@ -22,6 +22,33 @@ public class MatchControlServiceGuardTests
 	}
 
 	[Fact]
+	public void CreateMatch_ChannelTopicStartsAsTheRoomName()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+
+		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName);
+
+		Assert.NotNull(channel);
+		Assert.Equal(match.Name, channel.Topic);
+	}
+
+	[Fact]
+	public async Task SetNameAsync_SyncsChannelTopicToTheNewName()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+
+		await control.SetNameAsync(match, "Grand Finals");
+
+		Assert.Equal("Grand Finals", match.Name);
+		Assert.Equal("Grand Finals", _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!.Topic);
+	}
+
+	[Fact]
 	public async Task SetRefereesAsync_EmptyTargets_ReturnsWouldLeaveEmpty()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
@@ -53,6 +80,40 @@ public class MatchControlServiceGuardTests
 	}
 
 	[Fact]
+	public async Task SetRefereesAsync_OmitsCurrentCreatorReferee_ReturnsWouldRemoveCreator()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var newRef = MultiplayerTestSupport.MakePlayer(2, "newref");
+		_fixture.RegisterAll(host, newRef);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+
+		var result = await control.SetRefereesAsync(match, [newRef]);
+
+		Assert.Equal(MatchControlService.SetRefereesResult.WouldRemoveCreator, result);
+		Assert.Contains(host.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task SetRefereesAsync_IncludesCreator_ReplacesRestNormally()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var oldRef = MultiplayerTestSupport.MakePlayer(2, "oldref");
+		var newRef = MultiplayerTestSupport.MakePlayer(3, "newref");
+		_fixture.RegisterAll(host, oldRef, newRef);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(oldRef.Id);
+		var control = MakeService();
+
+		var result = await control.SetRefereesAsync(match, [host, newRef]);
+
+		Assert.Equal(MatchControlService.SetRefereesResult.Ok, result);
+		Assert.Contains(host.Id, match.Referees);
+		Assert.Contains(newRef.Id, match.Referees);
+		Assert.DoesNotContain(oldRef.Id, match.Referees);
+	}
+
+	[Fact]
 	public async Task AddRefereesAsync_AddsBatch_SkipsExisting()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
@@ -70,7 +131,7 @@ public class MatchControlServiceGuardTests
 	}
 
 	[Fact]
-	public async Task RemoveOneRefereeAsync_LastReferee_ReturnsWouldLeaveEmpty()
+	public async Task RemoveOneRefereeAsync_LastReferee_IsAlsoCreator_ReturnsTargetIsCreator()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
@@ -79,8 +140,79 @@ public class MatchControlServiceGuardTests
 
 		var result = await control.RemoveOneRefereeAsync(null, null, match, host);
 
-		Assert.Equal(MatchControlService.RemoveRefereeResult.WouldLeaveEmpty, result);
+		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
 		Assert.Contains(host.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task RemoveOneRefereeAsync_LastReferee_NotCreator_ReturnsWouldLeaveEmpty()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
+		var match = _fixture.CreateMatch(host, hostIsReferee: false);
+		match.AddReferee(referee.Id);
+		var control = MakeService();
+
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+
+		Assert.Equal(MatchControlService.RemoveRefereeResult.WouldLeaveEmpty, result);
+		Assert.Contains(referee.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task RemoveOneRefereeAsync_TargetIsCreator_Rejected_EvenWithOtherRefereesPresent()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(referee.Id);
+		var control = MakeService();
+
+		var result = await control.RemoveOneRefereeAsync(null, null, match, host);
+
+		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
+		Assert.Contains(host.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task RemoveOneRefereeAsync_NotSeated_IsPartedFromMatchChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(referee.Id);
+		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
+		channel.Join(referee.Id);
+		referee.JoinChannel(channel.Name);
+		Assert.Contains(channel.Name, referee.Channels);
+		var control = MakeService();
+
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+
+		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
+		Assert.DoesNotContain(channel.Name, referee.Channels);
+	}
+
+	[Fact]
+	public async Task RemoveOneRefereeAsync_StillSeated_StaysInMatchChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(referee.Id);
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(referee, match, ""));
+		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
+		Assert.Contains(channel.Name, referee.Channels);
+		var control = MakeService();
+
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+
+		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
+		Assert.Contains(channel.Name, referee.Channels);
 	}
 
 	[Fact]

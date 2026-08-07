@@ -14,8 +14,8 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Irc;
 
 /// <summary>
-///     One real TCP IRC client. Owns the socket's read loop (handshake, then PRIVMSG/JOIN/PART/AWAY/
-///     PING/QUIT dispatch) and a bounded-channel write pump. <see cref="Send" /> is a non-blocking
+///     One real TCP IRC client. Owns the socket's read loop (handshake, then chat, membership,
+///     query, and keepalive dispatch) and a bounded-channel write pump. <see cref="Send" /> is a non-blocking
 ///     <c>TryWrite</c>, so a slow or dead client can never stall a broadcast made while another lock
 ///     is held elsewhere in the chat core.
 /// </summary>
@@ -27,8 +27,9 @@ namespace Basil.Infrastructure.Irc;
 /// <param name="client">The accepted TCP socket to read from and write to.</param>
 /// <param name="authService">Authenticates the PASS/NICK handshake and builds the session on success.</param>
 /// <param name="chatDispatch">Routes registered PRIVMSG traffic into the shared chat core.</param>
-/// <param name="channelMembership">Handles JOIN/PART commands.</param>
-/// <param name="channelRegistry">Resolves JOIN/PART channel names to their live sessions.</param>
+/// <param name="channelMembership">Handles JOIN/PART commands and builds the LIST reply.</param>
+/// <param name="ircQueries">Builds the replies to the read-only query commands.</param>
+/// <param name="channelRegistry">Resolves channel names to their live sessions.</param>
 /// <param name="playerLogout">Performs the shared teardown when this connection disconnects.</param>
 /// <param name="options">Provides the gateway's display name used in numerics and PINGs.</param>
 /// <param name="logger">Logs this connection's lifecycle events.</param>
@@ -38,6 +39,7 @@ public sealed class TcpIrcConnection(
 	IrcAuthenticationService authService,
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
+	IrcQueryService ircQueries,
 	IChannelRegistry channelRegistry,
 	PlayerLogoutService playerLogout,
 	IOptions<IrcOptions> options,
@@ -146,11 +148,31 @@ public sealed class TcpIrcConnection(
 					break;
 				case "NICK":
 					nick = message.Params.Count > 0 ? message.Params[0] : null;
+					if (string.IsNullOrWhiteSpace(nick))
+					{
+						nick = null;
+						Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrErroneousNickname,
+							"*", "Erroneous nickname"));
+					}
+
 					break;
 				case "PING":
 					Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
 					break;
-				// USER's real-name and hostname fields carry nothing Basil needs; PASS+NICK are enough.
+				case "CAP":
+					HandleCap(message);
+					break;
+				case "USER" or "PONG" or "AUTHENTICATE":
+					// USER's real-name and hostname fields carry nothing Basil needs; PASS+NICK are
+					// enough. PONG answers a keepalive, and SASL is never offered — none needs a reply.
+					break;
+				case "QUIT":
+					logger.LogDebug("IRC client quit before registering");
+					return;
+				default:
+					Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNotRegistered, "*",
+						"You have not registered"));
+					break;
 			}
 
 			if (!_registered && nick is not null && pass is not null)
@@ -161,42 +183,174 @@ public sealed class TcpIrcConnection(
 	/// <summary>Returns false when the connection should close (QUIT).</summary>
 	private async Task<bool> HandleRegisteredCommandAsync(IrcMessage message, CancellationToken cancellationToken)
 	{
+		var first = message.Params.Count > 0 ? message.Params[0] : null;
+		var second = message.Params.Count > 1 ? message.Params[1] : null;
+
 		switch (message.Command)
 		{
-			case "PRIVMSG" when message.Params.Count >= 2:
-				await chatDispatch.SendPrivmsgAsync(User, message.Params[0], message.Params[1], cancellationToken);
+			case "PRIVMSG" or "NOTICE" when first is null || second is null:
+			case "JOIN" or "PART" or "TOPIC" or "MODE" or "WHOIS" or "ISON" when first is null:
+				Send(Numeric(IrcNumeric.ErrNeedMoreParams, message.Command, "Not enough parameters"));
 				break;
 
-			case "JOIN" when message.Params.Count >= 1:
-				var joinTarget = channelRegistry.GetByName(message.Params[0]);
-				if (joinTarget is not null) channelMembership.Join(User, joinTarget);
+			case "PRIVMSG":
+				if (EnsureCanSendTo(first))
+					await chatDispatch.SendPrivmsgAsync(User, first, second, cancellationToken);
 				break;
 
-			case "PART" when message.Params.Count >= 1:
-				var partTarget = channelRegistry.GetByName(message.Params[0]);
+			case "NOTICE":
+				if (EnsureCanSendTo(first))
+					await chatDispatch.SendNoticeAsync(User, first, second, cancellationToken);
+				break;
+
+			case "JOIN":
+				if (channelRegistry.GetByName(first) is not { } joinTarget)
+					Send(Numeric(IrcNumeric.ErrNoSuchChannel, first, "No such channel"));
+				else if (!channelMembership.Join(User, joinTarget))
+					Send(Numeric(IrcNumeric.ErrInviteOnlyChan, first, "Cannot join channel (no permission)"));
+				break;
+
+			case "PART":
+				var partTarget = channelRegistry.GetByName(first);
 				if (partTarget is not null) channelMembership.Part(User, partTarget, false);
 				break;
 
+			case "LIST":
+				SendAll(channelMembership.BuildListReply(User, first));
+				break;
+
+			case "NAMES":
+				SendAll(ircQueries.BuildNamesReply(User, first));
+				break;
+
+			case "TOPIC":
+				Send(ircQueries.BuildTopicReply(User, first, second));
+				break;
+
+			case "MODE":
+				// Only channel modes are reported; Basil has no per-user mode to read or set.
+				if (first.StartsWith('#')) Send(ircQueries.BuildChannelModeReply(User, first, second));
+				break;
+
+			case "WHO":
+				SendAll(ircQueries.BuildWhoReply(User, first ?? "*"));
+				break;
+
+			case "WHOIS":
+				SendAll(ircQueries.BuildWhoisReply(User, first));
+				break;
+
+			case "ISON":
+				// A client may spell the list as separate parameters or as one trailing parameter.
+				Send(ircQueries.BuildIsonReply(User, message.Params));
+				break;
+
+			case "MOTD":
+				SendAll(await ircQueries.BuildMotdReplyAsync(User, cancellationToken));
+				break;
+
+			case "VERSION":
+				Send(ircQueries.BuildVersionReply(User));
+				break;
+
+			case "TIME":
+				Send(ircQueries.BuildTimeReply(User));
+				break;
+
+			case "LUSERS":
+				SendAll(ircQueries.BuildLusersReply(User));
+				break;
+
 			case "AWAY":
-				User.AwayMessage = message.Params.Count > 0 ? message.Params[0] : null;
+				User.AwayMessage = first;
 				break;
 
 			case "PING":
-				Send(IrcMessageWriter.Pong(message.Params.Count > 0 ? message.Params[0] : ""));
+				Send(IrcMessageWriter.Pong(first ?? ""));
 				break;
 
-			case "NICK":
-				// "Can I use another username? No." (osu!Bancho IRC FAQ). Nick is fixed at login.
-				Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrUnknownCommand,
-					User.Name, "NICK", "Changing nickname is not supported"));
+			case "NICK" or "PASS" or "USER":
+				// "Can I use another username? No." (osu!Bancho IRC FAQ). Identity is fixed at login.
+				Send(Numeric(IrcNumeric.ErrAlreadyRegistered, "Changing nickname is not supported"));
 				break;
 
 			case "QUIT":
 				logger.LogDebug("IRC client sent explicit QUIT: UserId={UserId}", User.Id);
 				return false;
+
+			case "CAP":
+				HandleCap(message);
+				break;
+
+			case "PONG" or "AUTHENTICATE":
+				// The client's own PONG closes the keepalive round trip, and SASL is never offered;
+				// answering either with a numeric would break a flow the client considers mandatory.
+				break;
+
+			default:
+				Send(Numeric(IrcNumeric.ErrUnknownCommand, message.Command, "Unknown command"));
+				break;
 		}
 
 		return true;
+	}
+
+	/// <summary>
+	///     Answers a capability negotiation. The gateway offers no capabilities, so a listing comes
+	///     back empty, and a request is refused — a client that waits on either reply would otherwise
+	///     stall before it ever registers.
+	/// </summary>
+	/// <remarks>
+	///     Registration is never held pending negotiation: it completes as soon as PASS and NICK have
+	///     both arrived, so an ending capability request lands afterward and needs no reply.
+	/// </remarks>
+	private void HandleCap(IrcMessage message)
+	{
+		var subcommand = message.Params.Count > 0 ? message.Params[0].ToUpperInvariant() : "";
+
+		switch (subcommand)
+		{
+			case "LS" or "LIST":
+				Send(new IrcMessage(options.Value.Name, "CAP", ["*", subcommand, ""]));
+				break;
+			case "REQ":
+				Send(new IrcMessage(options.Value.Name, "CAP",
+					["*", "NAK", message.Params.Count > 1 ? message.Params[1] : ""]));
+				break;
+			// END, ACK, and anything else need no reply.
+		}
+	}
+
+	/// <summary>
+	///     Reports whether chat may be sent to <paramref name="target" />, sending the numeric that
+	///     explains the refusal when it may not. Only a channel target is checked; chat addressed to a
+	///     nick that resolves to nobody is dropped without a reply.
+	/// </summary>
+	private bool EnsureCanSendTo(string target)
+	{
+		if (!target.StartsWith('#')) return true;
+
+		var channel = channelRegistry.GetByName(target);
+		if (channel is null)
+		{
+			Send(Numeric(IrcNumeric.ErrNoSuchChannel, target, "No such channel"));
+			return false;
+		}
+
+		if (channel.Contains(User.Id) && channel.CanWrite(User.Privilege)) return true;
+
+		Send(Numeric(IrcNumeric.ErrCannotSendToChannel, target, "Cannot send to channel"));
+		return false;
+	}
+
+	private IrcMessage Numeric(IrcNumeric numeric, params string[] args)
+	{
+		return IrcMessageWriter.Numeric(options.Value.Name, numeric, User.Name, args);
+	}
+
+	private void SendAll(IEnumerable<IrcMessage> messages)
+	{
+		foreach (var message in messages) Send(message);
 	}
 
 	/// <summary>

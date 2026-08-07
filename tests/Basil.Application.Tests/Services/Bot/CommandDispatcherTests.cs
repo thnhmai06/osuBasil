@@ -5,10 +5,12 @@ using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Irc;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Basil.Protocol.Irc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -68,7 +70,8 @@ public class CommandDispatcherTests
 			NullLogger<MatchControlService>.Instance);
 		return new CommandDispatcher(options, mpCommands, _users,
 			Options.Create(storageOptions ?? MakeStorageOptions()),
-			fixture.MatchRegistry, NullLogger<CommandDispatcher>.Instance);
+			fixture.MatchRegistry, fixture.SessionRegistry, fixture.ChannelRegistry, fixture.ChannelMembership,
+			NullLogger<CommandDispatcher>.Instance);
 	}
 
 	[Fact]
@@ -518,6 +521,102 @@ public class CommandDispatcherTests
 	}
 
 	[Fact]
+	public async Task DispatchAsync_MpIn_FromRealChannel_Refused()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
+		fixture.RegisterAll(host, referee);
+		var match = fixture.CreateMatch(host);
+		match.AddReferee(referee.Id);
+
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(referee, $"!mp in {match.DbId}", null, "#osu", sink);
+
+		Assert.Null(referee.MpScopeMatchId);
+		Assert.Empty(sink.Replies);
+		Assert.Empty(sink.DmReplies);
+	}
+
+	[Fact]
+	public async Task DispatchAsync_ScopedSubcommand_FromUnrelatedChannel_NoPhysicalSeatFallback_NotScoped()
+	{
+		// The "physically seated" fallback only applies to a DM (channelName is null) — from any real
+		// channel like #osu, a sender with no !mp in scope and no channel-derived scope gets the
+		// "not scoped" reply instead of silently resolving to whatever match they happen to be seated in.
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var hostIrc = new IrcSession(1, "host", "irc-1", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IrcConnection = new RecordingIrcConnection() };
+		fixture.IrcSessionRegistry.GetByUserId(1).Returns(hostIrc);
+		fixture.CreateMatch(hostIrc); // scoped to nothing — !mp in was never called
+
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(hostIrc, "!mp settings", null, "#osu", sink);
+
+		Assert.Empty(sink.Replies);
+		Assert.Empty(sink.DmReplies);
+		var connection = (RecordingIrcConnection)hostIrc.IrcConnection;
+		Assert.Contains(connection.Received,
+			m => m.Command == "PRIVMSG" && m.Params[1].Contains("not scoped to a match"));
+	}
+
+	[Fact]
+	public async Task DispatchAsync_ScopedSubcommand_FromUnrelatedChannel_WithMpInScope_RepliesViaDmOnly()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var refereeIrc = new IrcSession(2, "ircref", "irc-2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IrcConnection = new RecordingIrcConnection() };
+		fixture.RegisterAll(host);
+		fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
+		var match = fixture.CreateMatch(host);
+		match.AddReferee(refereeIrc.Id);
+
+		// !mp in via a genuine DM (channelName null) establishes the scope.
+		var dmSink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(refereeIrc, $"!mp in {match.DbId}", null, null, dmSink);
+		Assert.Equal(match.DbId, refereeIrc.MpScopeMatchId);
+
+		// A scoped subcommand typed in an unrelated channel (#osu) never posts into it.
+		var osuSink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(refereeIrc, "!mp settings", null, "#osu", osuSink);
+
+		Assert.Empty(osuSink.Replies);
+		Assert.Empty(osuSink.DmReplies);
+
+		var connection = (RecordingIrcConnection)refereeIrc.IrcConnection;
+		var dmsToSelf = connection.Received
+			.Where(m => m.Command == "PRIVMSG" && m.Params[0] == refereeIrc.Name)
+			.ToList();
+		Assert.NotEmpty(dmsToSelf);
+		Assert.All(dmsToSelf, m => Assert.StartsWith($"[#{match.DbId}]", m.Params[1]));
+	}
+
+	[Fact]
+	public async Task DispatchAsync_ScopedSubcommand_FromMatchsOwnChannel_RepliesPubliclyAsBefore()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(host, "!mp settings", match, match.ChatChannelName, sink);
+
+		Assert.NotEmpty(sink.Replies);
+	}
+
+	[Fact]
 	public async Task DispatchAsync_ScopeOverridesLiteralChannel()
 	{
 		var fixture = new MultiplayerTestSupport.Fixture();
@@ -653,6 +752,18 @@ public class CommandDispatcherTests
 		public void ReplyDm(string text)
 		{
 			DmReplies.Add(text);
+		}
+	}
+
+	/// <summary>Captures what would be sent over a real IRC connection, for asserting DM-redirect behavior.</summary>
+	private sealed class RecordingIrcConnection : IIrcConnection
+	{
+		public List<IrcMessage> Received { get; } = [];
+		public UserSession User => throw new NotImplementedException();
+
+		public void Send(IrcMessage message)
+		{
+			Received.Add(message);
 		}
 	}
 }

@@ -20,7 +20,7 @@ Without a shared layer, "who can see this message" and "does this start with `!`
 - **`ChatDispatchService`** is the one entry point every chat message passes through, whichever transport it arrived on. It decides three things: is this a channel message, a DM to the bot, or a regular DM; then routes accordingly.
 - **The IRC gateway is embedded:** no separate process, no Docker container. `TcpIrcListener` binds a raw TCP port (6667 by default) directly inside the same server process.
 - **BasilBot is a synthetic `GameSession`**, bootstrapped at startup with no client connection behind it. It's exempt from the idle-disconnect sweep that would otherwise reap a session that never sends a ping.
-- **Referee and host are separate roles** for `!mp` purposes. See the BasilBot Commands reference (`api.<domain>/docs/basil-bot/`) for the full command list and the referee/host distinction in detail.
+- **Referee, host, and creator are three separate roles** for `!mp` purposes. The creator — whoever ran `!mp make`/`!mp makeprivate` or created the room from the client — holds full `!mp` authority for the room's lifetime regardless of referee status, is the only one who can run `!mp addref`/`!mp removeref` from chat, and can never be removed from the referee list. See the BasilBot Commands reference (`api.<domain>/docs/basil-bot/`) for the full command list and the referee/host/creator distinction in detail.
 
 ## Lifecycle
 
@@ -61,6 +61,8 @@ join auto-join channels, send welcome numerics
 **Why route bot replies through the same broadcast path as regular chat instead of writing packets directly?** A reply from BasilBot needs to reach real IRC clients in the channel too, not just the bancho client that triggered it. Using the same `ChannelMembershipService.BroadcastPrivmsg` path every regular message uses means the bot never needs its own delivery logic. It's just another sender.
 
 **Why does a referee-less action fail silently instead of replying with an error?** Most `!mp` subcommands require the sender to be a referee of the targeted match. A silent no-op (rather than an error reply) avoids leaking match state or referee membership to someone who isn't authorized to see it. The command simply does nothing observable.
+
+**Why does a scoped `!mp` reply move to DM the moment it isn't typed in the match's own channel?** `#osu`, `#lobby`, and every other ordinary channel are shared by everyone who can read them — broadcasting a room's settings or slot list into one just because the sender happens to be scoped to (or seated in) that match would leak it to bystanders with no standing in the room. `CommandDispatcher` resolves the scope the same way regardless of where the command came from, then routes the reply based on where it landed: the match's own channel gets a normal public reply, and everywhere else — a DM, `#osu`, `#lobby` — gets the DM treatment (`[#id]`-prefixed, with an unprefixed copy still mirrored into the room so referees running it remotely stay visible to it). The same reasoning is why `!mp in` itself only runs from a DM: it exists to let a referee reach a match they aren't physically in, and letting it be set from a public channel would announce that scoping to everyone else there.
 
 ## Related code
 

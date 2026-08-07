@@ -20,8 +20,9 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     the game mode from the host's current status, or warning once through a bot chat message when
 ///     the beatmap is not found locally. Changing the team type normalizes every occupied slot to
 ///     Neutral (for HeadToHead and TagCoop) or Red (for all other types), and any team-type or
-///     win-condition change cancels a queued auto-start. The room name is adopted from the snapshot, and
-///     the final state is broadcast. All mutations run under the match's
+///     win-condition change cancels a queued auto-start. The room name is adopted from the snapshot,
+///     the chat channel's topic is synced to it, and the final state is broadcast. All mutations run
+///     under the match's
 ///     <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
 public sealed class MatchChangeSettingsHandler(
@@ -136,6 +137,7 @@ public sealed class MatchChangeSettingsHandler(
 			}
 
 			match.Name = matchData.Name;
+			matchMembership.SyncChannelTopic(match);
 			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		}
 		finally

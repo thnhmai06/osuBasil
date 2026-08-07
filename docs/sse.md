@@ -16,6 +16,7 @@ WebSockets would also work, but they're bidirectional and stateful in ways this 
 - **The first event on any connection is a full snapshot.** Every event after that is a partial update carrying only the fields that changed (an [RFC 7396 JSON Merge Patch](https://www.rfc-editor.org/rfc/rfc7396) against the previous event). This is computed per connection, so a client that connects late still gets a full snapshot first, regardless of what earlier clients have already received.
 - **A `/live` route on a resource that isn't currently live returns `409 Conflict`** as a normal enveloped JSON error, instead of ever opening the stream.
 - Some resources have no meaningful one-shot form at all. `GET /matches/{id}/live/{slotIndex}` is SSE-only, since "whoever is currently sitting in this slot" doesn't have a sensible snapshot outside of a live connection.
+- **A match's chat (`GET /matches/{id}/chat/live`) is the one channel that carries events rather than state**, and the only one with neither a snapshot nor a JSON sibling: chat is never stored, so a subscriber receives what is said from the moment it connects and nothing earlier. Every line reaching the room is carried, whoever said it and however they're connected — an osu! client, an IRC client, or BasilBot answering a command. It is also the only live channel gated on the admin key, which is worth knowing because the key travels in the `Authorization` header and a browser's built-in `EventSource` cannot set one.
 
 ## Concepts
 

@@ -211,7 +211,7 @@
    (hidden from lobby, invite-only)"
 &rarr; BasilBot: "!mp join &lt;id&gt; [password] - join a match by id (private rooms need an invite from the
    host/a referee)"
-&rarr; BasilBot: "!mp in [match_id] - target/show a match you're not physically in (needs referee rights there)"
+&rarr; BasilBot: "!mp in [match_id] - scope to a live match (DM only - needs referee permission there)"
 &rarr; BasilBot: "!mp help - list multiplayer subcommands (usable while scoped to a match)"
 
 !roll
@@ -235,15 +235,16 @@
 <h2 id="multiplayer-commands">Multiplayer Commands</h2>
 <p>Controlling matches: creating rooms, changing maps, managing players, starting matches.</p>
 
-<h3>Referee and Host</h3>
-<p><strong>Referee</strong> and <strong>host</strong> are two completely separate roles. Neither automatically includes
-	the other.</p>
+<h3>Referee, Host, and Creator</h3>
+<p><strong>Referee</strong>, <strong>host</strong>, and <strong>creator</strong> are three separate roles. Neither
+	referee nor host automatically includes the other, but the creator always counts as a referee too.</p>
 <table>
 	<thead>
 	<tr>
 		<th></th>
 		<th>Referee</th>
 		<th>Host</th>
+		<th>Creator</th>
 	</tr>
 	</thead>
 	<tbody>
@@ -251,22 +252,35 @@
 		<td>Who / what can they do?</td>
 		<td>Granted via <code>!mp addref</code>, authorized to use <code>!mp</code> commands on that match.</td>
 		<td>Physically present in the room, can change settings directly in the client (not via chat).</td>
+		<td>Whoever created the room. Holds full <code>!mp</code> authority for the room's lifetime regardless of
+			referee status, and is the only one who can run <code>!mp addref</code>/<code>!mp removeref</code>.</td>
 	</tr>
 	<tr>
 		<td>Must be in the room?</td>
 		<td><strong>No</strong>. Can control remotely via <code>!mp in &lt;match_id&gt;</code>.</td>
 		<td><strong>Yes</strong>.</td>
+		<td><strong>No</strong>.</td>
 	</tr>
 	<tr>
 		<td>Default assignee?</td>
 		<td>The room creator.</td>
 		<td>The room creator.</td>
+		<td>&mdash; (set once, at creation, and never reassigned)</td>
+	</tr>
+	<tr>
+		<td>Can it be lost?</td>
+		<td>Yes, via <code>!mp removeref</code> (except the creator, see below).</td>
+		<td>Yes, by leaving the slot or via <code>!mp host</code>/<code>!mp clearhost</code>.</td>
+		<td><strong>Never</strong>, for the room's whole lifetime.</td>
 	</tr>
 	</tbody>
 </table>
 <p>
 	The room creator is always both host and referee from the moment of creation, regardless of whether the
-	room was created via <code>!mp make</code> or the in-game <em>Create Room</em> button.
+	room was created via <code>!mp make</code> or the in-game <em>Create Room</em> button. Unlike an ordinary
+	referee, the creator's referee status can never be revoked — <code>!mp removeref</code> against the
+	creator is always rejected, whether run by chat or through the equivalent HTTP management API — and only
+	the creator can run <code>!mp addref</code>/<code>!mp removeref</code> at all.
 </p>
 <p>
 	Every <code>!mp</code> subcommand except <code>help</code>/<code>make</code>/<code>join</code>/<code>in</code>
@@ -275,8 +289,12 @@
 </p>
 <p>
 	Which match are you currently scoped to? By default, the match linked to the chat channel you're in.
-	Use <code>!mp in &lt;match_id&gt;</code> to control a match without being in its room. Once set, this
-	scope always takes priority over the current channel until changed.
+	Use <code>!mp in &lt;match_id&gt;</code> to control a match without being in its room &mdash; DM only,
+	refused if run in any channel. Once set, this scope always takes priority over the current channel
+	until changed. A scoped subcommand run anywhere except the match's own channel &mdash; a DM, or any
+	other channel like <code>#osu</code> &mdash; always replies privately (DM'd back to you, prefixed with
+	<code>[#id]</code>, with an unprefixed copy mirrored into the room) rather than posting into whatever
+	unrelated channel you happened to type it in.
 </p>
 <p>
 	Rooms created via <code>!mp make</code> do <strong>not</strong> auto-close when empty. Only
@@ -514,7 +532,9 @@
 	<tr>
 		<td>Add / Remove referee</td>
 		<td><code>!mp addref &lt;name&gt;</code> / <code>!mp removeref &lt;name&gt;</code></td>
-		<td>A match must always keep at least one referee: removing the last one is rejected.</td>
+		<td><strong>Creator only</strong> — an ordinary referee cannot run either subcommand. A match must
+			always keep at least one referee: removing the last one is rejected, and the creator can never be
+			removed at all.</td>
 	</tr>
 	<tr>
 		<td>List referees</td>
@@ -538,9 +558,11 @@
 	</tr>
 	</tbody>
 </table>
-<p>Kick/ban can target other referees. This only removes physical presence from the room; kicked/banned referees keep
-	their <code>!mp</code> permissions and can still control the match remotely via <code>!mp in</code>.
-	<code>ban</code> only applies to players physically present in the room when issued.</p>
+<p>Kick and ban can never target a referee (the creator included) — remove referee status first with
+	<code>!mp removeref</code>. <code>kick</code> requires the target to actually be present in the room
+	(seated, or an IRC session in its chat) and does not block rejoining. <code>ban</code> has no such
+	presence requirement — it can be issued by name/id against anyone, online or not, evicts any live
+	presence they currently have, and blocks every future join attempt until <code>!mp unban</code>.</p>
 <pre><code>!mp addref RefereeName
 &rarr; BasilBot: "Added RefereeName to the match referees"
 

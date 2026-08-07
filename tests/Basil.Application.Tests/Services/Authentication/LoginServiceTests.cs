@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Authentication;
 
@@ -49,7 +50,7 @@ public class LoginServiceTests
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
 			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry,
-					Options.Create(new IrcOptions())),
+					Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);

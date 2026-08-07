@@ -59,6 +59,7 @@ public static class DependencyInjection
 		services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 		services.AddSingleton<ChatDispatchService>();
 		services.AddSingleton<IrcAuthenticationService>();
+		services.AddSingleton<IrcQueryService>();
 		services.AddSingleton<FaqService>();
 		services.AddSingleton<SeasonalService>();
 		services.AddSingleton<MenuIconService>();

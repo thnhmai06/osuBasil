@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Reflection;
+using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using Basil.Application;
@@ -74,7 +76,8 @@ public sealed class Program
 				"Management of the match's 16 slots, including assignments, teams, locking, invitations, and kicking players."),
 			("Match Timer", "Match countdown timer."),
 			("Match Abort", "Abort the match currently in progress."),
-			("Match Close", "Close the match immediately.")
+			("Match Close", "Close the match immediately."),
+			("Match Chat", "The match room's live chat stream, and saying something in it as BasilBot.")
 		]),
 		("Users",
 		[
@@ -179,21 +182,86 @@ public sealed class Program
 		              ?? typeof(Program).Assembly.GetName().Version?.ToString()
 		              ?? "unknown";
 
+		var gcInfo = GC.GetGCMemoryInfo();
+		var appDrive = new DriveInfo(Path.GetPathRoot(AppContext.BaseDirectory)!);
+
 		logger.LogInformation("{Art}", BasilArt);
 		logger.LogInformation("Basil v{Version}", version);
 		logger.LogInformation(BasilDescription);
 		logger.LogInformation(BasilLicense);
-		logger.LogInformation("Current time: {Date}", DateTime.Now.ToString("O"));
+		logger.LogInformation("Current time (UTC): {Time}", DateTimeOffset.UtcNow.ToString("O"));
+
 		logger.LogInformation(
-			"Machine: {MachineName} | OS: {Os} ({OsArch}) | Runtime: {Runtime} ({RuntimeArch}) | Logical CPUs: {Cpu} | GC Memory limit: {MemoryGb:F1} GB",
+			"""
+			System Information:
+			Environment:
+			  Machine              : {Machine}
+			  OS                   : {OsDescription}
+			  OS Version           : {OsVersion}
+			  OS Architecture      : {OsArchitecture}
+			  Runtime              : {Framework}
+			  Runtime Identifier   : {RuntimeIdentifier}
+			  CLR                  : {ClrVersion}
+			  Process Architecture : {ProcessArchitecture}
+			  Process ID           : {ProcessId}
+			  Process Name         : {ProcessName}
+			  Logical CPUs         : {LogicalCpuCount}
+			  64-bit OS            : {Is64BitOs}
+			  64-bit Process       : {Is64BitProcess}
+
+			GC:
+			  Server GC            : {ServerGc}
+			  Latency Mode         : {LatencyMode}
+			  Memory Limit         : {MemoryLimitGiB:F2} GiB
+			  Heap Size            : {HeapSizeMiB:F2} MiB
+
+			Localization:
+			  Time Zone            : {TimeZone}
+			  Time Zone Id         : {TimeZoneId}
+			  Culture              : {Culture}
+			  UI Culture           : {UiCulture}
+
+			Storage:
+			  Application Drive    : {DriveName}
+			  Drive Format         : {DriveFormat}
+			  Total Space          : {TotalSpaceGiB:F2} GiB
+			  Free Space           : {FreeSpaceGiB:F2} GiB
+
+			Paths:
+			  Working Directory    : {WorkingDirectory}
+			  Base Directory       : {BaseDirectory}
+			  Command Line         : {CommandLine}
+			""",
 			Environment.MachineName,
 			RuntimeInformation.OSDescription,
+			Environment.OSVersion.Version,
 			RuntimeInformation.OSArchitecture,
 			RuntimeInformation.FrameworkDescription,
+			RuntimeInformation.RuntimeIdentifier,
+			Environment.Version,
 			RuntimeInformation.ProcessArchitecture,
+			Environment.ProcessId,
+			Environment.ProcessPath is { } path
+				? Path.GetFileNameWithoutExtension(path)
+				: "Unknown",
 			Environment.ProcessorCount,
-			GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024d / 1024 / 1024);
-		logger.LogInformation("Working directory: {Directory}", Environment.CurrentDirectory);
+			Environment.Is64BitOperatingSystem,
+			Environment.Is64BitProcess,
+			GCSettings.IsServerGC,
+			GCSettings.LatencyMode,
+			gcInfo.TotalAvailableMemoryBytes / 1024d / 1024 / 1024,
+			gcInfo.HeapSizeBytes / 1024d / 1024,
+			TimeZoneInfo.Local.DisplayName,
+			TimeZoneInfo.Local.Id,
+			CultureInfo.CurrentCulture.Name,
+			CultureInfo.CurrentUICulture.Name,
+			appDrive.Name,
+			appDrive.DriveFormat,
+			appDrive.TotalSize / 1024d / 1024 / 1024,
+			appDrive.AvailableFreeSpace / 1024d / 1024 / 1024,
+			Environment.CurrentDirectory,
+			AppContext.BaseDirectory,
+			Environment.CommandLine);
 	}
 
 	/// <summary>

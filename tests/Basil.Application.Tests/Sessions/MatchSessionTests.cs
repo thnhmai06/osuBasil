@@ -14,7 +14,7 @@ public class MatchSessionTests
 			0, "test match", "pw",
 			"Some Map", 100, new string('a', 32), hostId,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
-			MatchTeamType.HeadToHead, false, 0, "#multi_0");
+			MatchTeamType.HeadToHead, false, 0, "#mp_0");
 	}
 
 	[Fact]

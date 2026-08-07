@@ -35,7 +35,7 @@ public class EmptyRoomAutoCloseTests
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			_matchRepository, Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>(), NullLogger<MatchMembershipService>.Instance);
 	}
@@ -64,14 +64,6 @@ public class EmptyRoomAutoCloseTests
 			0, 0, false, [], 0);
 	}
 
-	private static string Text(byte[] packet)
-	{
-		// SendMessage packet body: senderName, text, recipient, senderId — all length-prefixed
-		// strings; decoding the whole packet stream isn't needed, a substring search on the raw
-		// UTF-8 bytes is enough to prove which announcement text arrived.
-		return System.Text.Encoding.UTF8.GetString(packet);
-	}
-
 	[Fact]
 	public async Task Close_WhileEmptyRoomTimerPending_CancelsItCleanly()
 	{
@@ -84,7 +76,7 @@ public class EmptyRoomAutoCloseTests
 		await service.LeaveAsync(host, match);
 		var pendingTimer = match.EmptyRoomTimer!;
 
-		await service.CloseAsync(match, null, null);
+		await service.CloseAsync(match, null, null, pendingTimer.Token);
 
 		Assert.Null(match.EmptyRoomTimer);
 		Assert.True(pendingTimer.IsCancellationRequested);
@@ -102,10 +94,10 @@ public class EmptyRoomAutoCloseTests
 
 		await service.LeaveAsync(host, match);
 		var firstTimer = match.EmptyRoomTimer;
-		await service.JoinAsync(host, match, "");
+		await service.JoinAsync(host, match, "", firstTimer!.Token);
 		Assert.Null(match.EmptyRoomTimer);
 
-		await service.LeaveAsync(host, match);
+		await service.LeaveAsync(host, match, firstTimer.Token);
 		var secondTimer = match.EmptyRoomTimer;
 
 		Assert.NotNull(secondTimer);

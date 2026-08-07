@@ -62,7 +62,7 @@ public class InMemoryChannelRegistryTests
 	public void Add_ThenGetByName_ReturnsInstanceChannel()
 	{
 		var registry = new InMemoryChannelRegistry();
-		var channel = new ChannelSession(0, "#spec_5", "topic", 0, 0, false, "#spectator", true);
+		var channel = new ChannelSession(0, "#spec_5", 0, 0, false, "#spectator", true);
 
 		registry.Add(channel);
 
@@ -73,7 +73,7 @@ public class InMemoryChannelRegistryTests
 	public void Remove_ThenGetByName_ReturnsNull()
 	{
 		var registry = new InMemoryChannelRegistry();
-		registry.Add(new ChannelSession(0, "#spec_5", "topic", 0, 0, false, instance: true));
+		registry.Add(new ChannelSession(0, "#spec_5", 0, 0, false, instance: true));
 
 		registry.Remove("#spec_5");
 

@@ -49,7 +49,7 @@ public class GhostDisconnectServiceTests
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
-			Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry,
@@ -131,7 +131,7 @@ public class GhostDisconnectServiceTests
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		ircRegistry.All.Returns([]);
 		var channelRegistry = Substitute.For<IChannelRegistry>();
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		channelRegistry.GetByName("#osu").Returns(channel);
 
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
@@ -194,7 +194,7 @@ public class GhostDisconnectServiceTests
 
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
 			fixture.IrcSessionRegistry, fixture.ChannelRegistry,
-			Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var playerLogout = new PlayerLogoutService(fixture.SessionRegistry, fixture.IrcSessionRegistry,
 			testChannelMembership,
 			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,

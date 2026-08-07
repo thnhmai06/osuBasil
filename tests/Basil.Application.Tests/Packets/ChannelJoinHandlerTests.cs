@@ -7,6 +7,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
@@ -21,7 +22,7 @@ public class ChannelJoinHandlerTests
 	{
 		return new ChannelJoinHandler(_channelRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Options.Create(new IrcOptions())));
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -32,7 +33,7 @@ public class ChannelJoinHandlerTests
 	[Fact]
 	public async Task Handle_ExistingReadableChannel_JoinsBothSidesAndSendsJoinSuccess()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_gameRegistry.All.Returns([player]);
@@ -42,7 +43,7 @@ public class ChannelJoinHandlerTests
 		Assert.True(channel.Contains(1));
 		Assert.True(player.InChannel("#osu"));
 		var expected = ServerPacketWriter.ChannelJoin("#osu")
-			.Concat(ServerPacketWriter.ChannelInfo("#osu", "General", 1))
+			.Concat(ServerPacketWriter.ChannelInfo("#osu", "#osu", 1))
 			.ToArray();
 		var actual = player.Dequeue();
 		Assert.Equal(expected, actual);
@@ -62,7 +63,7 @@ public class ChannelJoinHandlerTests
 	[Fact]
 	public async Task Handle_NoReadPrivilege_NoOp()
 	{
-		var channel = new ChannelSession(1, "#staff", "Staff", UserPrivileges.Staff, UserPrivileges.Staff, true);
+		var channel = new ChannelSession(1, "#staff", UserPrivileges.Staff, UserPrivileges.Staff, true);
 		_channelRegistry.GetByName("#staff").Returns(channel);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 
@@ -75,7 +76,7 @@ public class ChannelJoinHandlerTests
 	[Fact]
 	public async Task Handle_AlreadyJoined_NoOp()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		player.JoinChannel("#osu");

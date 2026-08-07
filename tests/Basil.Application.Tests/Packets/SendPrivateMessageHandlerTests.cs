@@ -35,7 +35,7 @@ public class SendPrivateMessageHandlerTests
 	{
 		var channelRegistry = Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(_sessionRegistry,
-			Substitute.For<ISessionRegistry<IrcSession>>(), channelRegistry, Options.Create(new IrcOptions()));
+			Substitute.For<ISessionRegistry<IrcSession>>(), channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var matchRegistry = Substitute.For<IMatchRegistry>();
 		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership, _users,
 			_relationships, _commandDispatcher, matchRegistry, NullLogger<ChatDispatchService>.Instance);

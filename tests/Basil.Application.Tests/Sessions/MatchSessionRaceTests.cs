@@ -21,7 +21,7 @@ public class MatchSessionRaceTests
 			0, "race test", "",
 			"", 0, new string('a', 32), 1,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
-			MatchTeamType.HeadToHead, false, 0, "#multi_0");
+			MatchTeamType.HeadToHead, false, 0, "#mp_0");
 	}
 
 	/// <summary>

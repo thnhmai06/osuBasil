@@ -27,6 +27,7 @@ public sealed class TcpIrcListener(
 	IrcAuthenticationService authService,
 	ChatDispatchService chatDispatch,
 	ChannelMembershipService channelMembership,
+	IrcQueryService ircQueries,
 	IChannelRegistry channelRegistry,
 	PlayerLogoutService playerLogout,
 	ILogger<TcpIrcListener> logger,
@@ -68,8 +69,8 @@ public sealed class TcpIrcListener(
 					connectionId, client.Client.RemoteEndPoint);
 
 				var connection = new TcpIrcConnection(
-					client, authService, chatDispatch, channelMembership, channelRegistry, playerLogout, options,
-					connectionLogger, connectionId);
+					client, authService, chatDispatch, channelMembership, ircQueries, channelRegistry, playerLogout,
+					options, connectionLogger, connectionId);
 
 				_ = RunConnectionAsync(connection, client, connectionId, stoppingToken);
 			}

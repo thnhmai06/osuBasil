@@ -1,5 +1,7 @@
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -8,6 +10,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Irc;
 
@@ -35,11 +38,14 @@ public class IrcAuthenticationServiceTests
 
 	private IrcAuthenticationService MakeService()
 	{
+		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var channelMembership =
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
-				Options.Create(new IrcOptions()));
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
+			new MotdService(Substitute.For<ISettingsRepository>()), options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
-			Options.Create(new IrcOptions { Name = "basil.local" }), _passwordHasher, _tokenGenerator);
+			queries, options, _passwordHasher, _tokenGenerator);
 	}
 
 	private void StubValidCredentials(int userId, string name)
@@ -133,7 +139,7 @@ public class IrcAuthenticationServiceTests
 	public async Task AuthenticateAsync_JoinsAutoJoinChannelsAndBuildsWelcomeMessages()
 	{
 		StubValidCredentials(1, "alice");
-		var channel = new ChannelSession(1, "#osu", "General chat", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.AutoJoinChannels.Returns([channel]);
 
 		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());

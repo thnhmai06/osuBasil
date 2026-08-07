@@ -7,6 +7,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
@@ -21,7 +22,7 @@ public class ChannelPartHandlerTests
 	{
 		return new ChannelPartHandler(_channelRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Options.Create(new IrcOptions())));
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)
@@ -32,7 +33,7 @@ public class ChannelPartHandlerTests
 	[Fact]
 	public async Task Handle_JoinedChannel_LeavesBothSidesAndBroadcastsUpdatedInfo()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		channel.Join(player.Id);
 		player.JoinChannel("#osu");
@@ -43,7 +44,7 @@ public class ChannelPartHandlerTests
 
 		Assert.False(channel.Contains(1));
 		Assert.False(player.InChannel("#osu"));
-		var expected = ServerPacketWriter.ChannelInfo("#osu", "General", 0);
+		var expected = ServerPacketWriter.ChannelInfo("#osu", "#osu", 0);
 		Assert.Equal(expected, player.Dequeue());
 	}
 
@@ -61,7 +62,7 @@ public class ChannelPartHandlerTests
 	[Fact]
 	public async Task Handle_NotJoined_NoOp()
 	{
-		var channel = new ChannelSession(1, "#osu", "General", 0, 0, true);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
 		_channelRegistry.GetByName("#osu").Returns(channel);
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 

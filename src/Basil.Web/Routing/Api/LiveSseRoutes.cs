@@ -250,6 +250,29 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
+	///     Streams the chat said in a match's own channel.
+	/// </summary>
+	/// <remarks>
+	///     Only lines said from the moment the stream opens are delivered; chat is not stored, so
+	///     there is no earlier state to send first.
+	/// </remarks>
+	public static IResult HandleChat(HttpContext context, int matchId, IMatchLiveEvents events,
+		CancellationToken cancellationToken)
+	{
+		SetSseHeaders(context);
+		return TypedResults.ServerSentEvents(Subscribe("chat", publish =>
+		{
+			events.ChatPublished += Handler;
+			return () => events.ChatPublished -= Handler;
+
+			void Handler(int id, byte[] payload)
+			{
+				if (id == matchId) publish(payload);
+			}
+		}, cancellationToken));
+	}
+
+	/// <summary>
 	///     Streams live spectator input for a player.
 	/// </summary>
 	public static IResult HandleInput(HttpContext context, int playerId, IPlayerInputEvents events,

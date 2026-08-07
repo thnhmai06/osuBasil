@@ -156,18 +156,22 @@ internal static class MultiplayerTestSupport
 		{
 			var id = 0;
 			while (_byId.ContainsKey(id)) id++;
+			var dbId = _nextDbId++;
 
 			var match = new MatchSession(
 				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
 				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#multi_{id}")
+				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
 			{
-				DbId = _nextDbId++
+				DbId = dbId
 			};
 			_byId[id] = match;
 			channelRegistry.Add(new ChannelSession(
-				0, match.ChatChannelName, $"MID {match.Id}'s multiplayer channel.",
-				0, 0, false, "#multiplayer", true));
+				0, match.ChatChannelName,
+				0, 0, false, "#multiplayer", true)
+			{
+				Topic = match.Name
+			});
 			return Task.FromResult(match);
 		}
 
@@ -282,6 +286,7 @@ internal static class MultiplayerTestSupport
 		public event Action<int, byte[]>? BansPublished;
 		public event Action<int, byte[]>? TimerPublished;
 		public event Action<int, byte[]>? SlotsPublished;
+		public event Action<int, byte[]>? ChatPublished;
 
 		public void PublishMain(int matchDbId, byte[] payload)
 		{
@@ -337,6 +342,11 @@ internal static class MultiplayerTestSupport
 			SlotsPublished?.Invoke(matchDbId, payload);
 		}
 
+		public void PublishChat(int matchDbId, byte[] payload)
+		{
+			ChatPublished?.Invoke(matchDbId, payload);
+		}
+
 		public event Action<int, byte[]>? LivePublished;
 
 		public void PublishLive(int matchDbId, byte[] payload)
@@ -373,11 +383,11 @@ internal static class MultiplayerTestSupport
 			BeatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
+			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				IrcSessionRegistry,
-				new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
-					Options.Create(new IrcOptions())),
-				MatchRepository, EventBus,
+				IrcSessionRegistry, ChannelMembership, MatchRepository, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
@@ -392,6 +402,7 @@ internal static class MultiplayerTestSupport
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
 		public IBeatmapRepository BeatmapRepository { get; } = Substitute.For<IBeatmapRepository>();
 
+		public ChannelMembershipService ChannelMembership { get; }
 		public MatchMembershipService MatchMembership { get; }
 
 		public void RegisterAll(params GameSession[] sessions)

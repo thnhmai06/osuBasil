@@ -259,20 +259,65 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_AddRef_ByExistingReferee_Succeeds()
+	public async Task HandleAsync_AddRef_ByCreator_Succeeds()
 	{
-		// Any referee can add another — referees can act on/manage each other, not just the host.
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var other = MultiplayerTestSupport.MakePlayer(2, "other");
+		_fixture.RegisterAll(host, other);
+		var match = _fixture.CreateMatch(host);
+
+		var reply = await Run(MakeService(), host, match, "addref", ["other"]);
+
+		Assert.Contains(other.Id, match.Referees);
+		Assert.Equal("Added other to the match referees", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_AddRef_ByOrdinaryReferee_SilentlyIgnored()
+	{
+		// addref/removeref are creator-only — an ordinary referee (not the room's creator) cannot
+		// grant referee status on anyone, even though they pass the general referee gate.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		var other = MultiplayerTestSupport.MakePlayer(3, "other");
 		_fixture.RegisterAll(host, referee, other);
-		var match = _fixture.CreateMatch(host, hostIsReferee: false);
+		var match = _fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
 
 		var reply = await Run(MakeService(), referee, match, "addref", ["other"]);
 
+		Assert.DoesNotContain(other.Id, match.Referees);
+		Assert.Null(reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_RemoveRef_ByOrdinaryReferee_SilentlyIgnored()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		var other = MultiplayerTestSupport.MakePlayer(3, "other");
+		_fixture.RegisterAll(host, referee, other);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(referee.Id);
+		match.AddReferee(other.Id);
+
+		var reply = await Run(MakeService(), referee, match, "removeref", ["other"]);
+
 		Assert.Contains(other.Id, match.Referees);
-		Assert.Equal("Added other to the match referees", reply);
+		Assert.Null(reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_RemoveRef_TargetIsCreator_Rejected()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+
+		var reply = await Run(MakeService(), host, match, "removeref", ["host"]);
+
+		Assert.Contains(host.Id, match.Referees);
+		Assert.Equal("Cannot remove host - they created this match.", reply);
 	}
 
 	[Fact]
@@ -293,14 +338,17 @@ public class MpCommandServiceTests
 	[Fact]
 	public async Task HandleAsync_NonReadOnlySubcommand_NonReferee_SilentlyIgnored()
 	{
+		// The creator always passes the referee gate (see MatchSession.IsReferee), so this exercises
+		// the gate against a genuine outsider — neither the creator nor an added referee.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		_fixture.RegisterAll(host);
+		var outsider = MultiplayerTestSupport.MakePlayer(2, "outsider");
+		_fixture.RegisterAll(host, outsider);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 
-		var reply = await Run(MakeService(), host, match, "lock", []);
+		var reply = await Run(MakeService(), outsider, match, "lock", []);
 
 		Assert.Null(reply);
-		Assert.DoesNotContain(host.Id, match.Referees);
+		Assert.DoesNotContain(outsider.Id, match.Referees);
 	}
 
 	[Fact]
@@ -315,6 +363,95 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
 		Assert.Contains($"Beatmap: {bmap.Id} {bmap.FullName}", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_ShowsCreatorBeforePlayers()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("Creator: #1 host", reply);
+		Assert.True(reply!.IndexOf("Creator:", StringComparison.Ordinal) <
+		            reply.IndexOf("Players:", StringComparison.Ordinal));
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_CreatorOffline_FallsBackToUserRepositoryLookup()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		// Simulate the creator having since logged out: no session resolves them, only the DB does.
+		_fixture.SessionRegistry.GetByUserId(1).Returns((GameSession?)null);
+		_users.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(MakeUser(1, "host"));
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.Contains("Creator: #1 host", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_NoCreator_OmitsCreatorLine()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.CreatorId = null;
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		Assert.DoesNotContain("Creator:", reply);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_TeamVs_ShowsPlayerTeamInSlotLine()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host, MatchTeamType.TeamVs);
+		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var team = match.Slots[hostSlot].Team;
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		var slotLine = reply!.Split('\n').Single(l => l.StartsWith("Slot"));
+		Assert.Contains(team.ToString(), slotLine);
+	}
+
+	[Fact]
+	public async Task HandleAsync_Settings_TagTeamVs_ShowsPlayerTeamInSlotLine()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host, MatchTeamType.TagTeamVs);
+		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var team = match.Slots[hostSlot].Team;
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		var slotLine = reply!.Split('\n').Single(l => l.StartsWith("Slot"));
+		Assert.Contains(team.ToString(), slotLine);
+	}
+
+	[Theory]
+	[InlineData(MatchTeamType.HeadToHead)]
+	[InlineData(MatchTeamType.TagCoop)]
+	public async Task HandleAsync_Settings_NonTeamMode_SlotLineHasNoTeamColumn(MatchTeamType teamType)
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host, teamType);
+
+		var reply = await Run(MakeService(), host, match, "settings", []);
+
+		var slotLine = reply!.Split('\n').Single(l => l.StartsWith("Slot"));
+		Assert.DoesNotContain("Red", slotLine);
+		Assert.DoesNotContain("Blue", slotLine);
+		Assert.DoesNotContain("Neutral", slotLine);
 	}
 
 	[Fact]
@@ -343,8 +480,8 @@ public class MpCommandServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-				_fixture.ChannelRegistry, Options.Create(new IrcOptions()));
-		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#multi_"));
+				_fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		channelMembership.Join(session, channel);
 	}
 
@@ -452,6 +589,30 @@ public class MpCommandServiceTests
 		await Run(MakeService(), host, match, "removeref", ["other"]);
 
 		Assert.DoesNotContain(other.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task HandleAsync_RemoveRef_IrcOnlyReferee_NotSeated_IsPartedFromMatchChannel()
+	{
+		// The scenario the creator-only removeref restriction exists for: an IRC-connected referee
+		// (never seated as a player) loses standing in the room's own channel the moment they lose
+		// referee status, and must be parted rather than left lingering until they PART themselves.
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var refereeIrc = MakeIrc(2, "refonirc");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
+		_fixture.IrcSessionRegistry.GetByName("refonirc").Returns(refereeIrc);
+		var match = _fixture.CreateMatch(host);
+		match.AddReferee(2);
+		JoinMatchChannel(refereeIrc);
+		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
+		Assert.Contains(channel.Name, refereeIrc.Channels);
+
+		var reply = await Run(MakeService(), host, match, "removeref", ["refonirc"]);
+
+		Assert.Equal("Removed refonirc from the match referees", reply);
+		Assert.DoesNotContain(2, match.Referees);
+		Assert.DoesNotContain(channel.Name, refereeIrc.Channels);
 	}
 
 	[Fact]
@@ -879,19 +1040,23 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_Kick_HostNotReferee_Succeeds()
+	public async Task HandleAsync_Kick_SeatedNonReferee_Succeeds()
 	{
+		// The room's creator is always protected from kick (see MatchSession.IsReferee), so this
+		// exercises kick against a genuinely non-referee seated player instead of the host.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
-		_fixture.RegisterAll(host, referee);
+		var target = MultiplayerTestSupport.MakePlayer(3, "target");
+		_fixture.RegisterAll(host, referee, target);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
 		match.AddReferee(referee.Id);
-		_users.FetchByNameAsync("host", Arg.Any<CancellationToken>()).Returns(MakeUser(host.Id, "host"));
+		await _fixture.MatchMembership.JoinAsync(target, match, "");
+		_users.FetchByNameAsync("target", Arg.Any<CancellationToken>()).Returns(MakeUser(target.Id, "target"));
 
-		var reply = await Run(MakeService(), referee, match, "kick", ["host"]);
+		var reply = await Run(MakeService(), referee, match, "kick", ["target"]);
 
-		Assert.Null(host.Match);
-		Assert.Equal("Kicked host from the match", reply);
+		Assert.Null(target.Match);
+		Assert.Equal("Kicked target from the match", reply);
 	}
 
 	[Fact]
@@ -1174,8 +1339,11 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task RemoveRef_LastReferee_RejectedAndMatchStaysOpen()
+	public async Task RemoveRef_LastReferee_IsCreator_Rejected()
 	{
+		// !mp make's own creator is both the room's creator and, at this point, its only referee — the
+		// creator-protection guard reports first (see MatchControlService.RemoveOneRefereeAsync), which
+		// also happens to guarantee the room can never end up without any referee.
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 		var service = MakeService();
@@ -1186,6 +1354,21 @@ public class MpCommandServiceTests
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.Contains(sender.Id, match.Referees);
+		Assert.Contains("they created this match", reply);
+	}
+
+	[Fact]
+	public async Task RemoveRef_LastReferee_NotCreator_Rejected()
+	{
+		var creator = MultiplayerTestSupport.MakePlayer(1, "creator");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(creator, referee);
+		var match = _fixture.CreateMatch(creator, hostIsReferee: false);
+		match.AddReferee(referee.Id);
+
+		var reply = await Run(MakeService(), creator, match, "removeref", ["referee"]);
+
+		Assert.Contains(referee.Id, match.Referees);
 		Assert.Contains("at least one referee must remain", reply);
 	}
 
@@ -1386,6 +1569,137 @@ public class MpCommandServiceTests
 
 		Assert.NotNull(reply);
 		Assert.Contains("Joined match", reply);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Banned_Rejected()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.AddBan(ircUser.Id);
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
+
+		Assert.Contains("banned", reply);
+		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Locked_NotInvited_Rejected()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.IsLocked = true;
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
+
+		Assert.Contains("locked", reply);
+		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Locked_Invited_JoinsChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.IsLocked = true;
+		match.AddInvite(ircUser.Id);
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
+
+		Assert.Contains("Joined match", reply);
+		Assert.Contains(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Private_NotRefereeNotInvited_Rejected()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.IsPrivate = true;
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
+
+		Assert.Contains("private", reply);
+		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Private_Referee_BypassesInvite_JoinsChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircReferee = MakeIrc(2, "ircref");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircReferee);
+		var match = _fixture.CreateMatch(host);
+		match.IsPrivate = true;
+		match.AddReferee(ircReferee.Id);
+
+		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString()]);
+
+		Assert.Contains("Joined match", reply);
+		Assert.Contains(match.ChatChannelName, ircReferee.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_WrongPassword_Rejected()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.Password = "secret";
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString(), "wrong"]);
+
+		Assert.Contains("Incorrect password", reply);
+		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_CorrectPassword_JoinsChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircUser = MakeIrc(2, "ircuser");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
+		var match = _fixture.CreateMatch(host);
+		match.Password = "secret";
+
+		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString(), "secret"]);
+
+		Assert.Contains("Joined match", reply);
+		Assert.Contains(match.ChatChannelName, ircUser.Channels);
+	}
+
+	[Fact]
+	public async Task JoinAsync_IrcSender_Referee_BypassesWrongPassword_JoinsChannel()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var ircReferee = MakeIrc(2, "ircref");
+		_fixture.RegisterAll(host);
+		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircReferee);
+		var match = _fixture.CreateMatch(host);
+		match.Password = "secret";
+		match.AddReferee(ircReferee.Id);
+
+		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString(), "wrong"]);
+
+		Assert.Contains("Joined match", reply);
+		Assert.Contains(match.ChatChannelName, ircReferee.Channels);
 	}
 
 	private static User MakeUser(int id, string name)

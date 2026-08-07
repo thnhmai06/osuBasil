@@ -13,7 +13,6 @@ namespace Basil.Application.Sessions.Channels;
 /// </summary>
 /// <param name="id">The persistent id of the channel's database row, or a runtime-assigned value for an instance channel.</param>
 /// <param name="name">The registry key of the channel.</param>
-/// <param name="topic">The channel's topic text shown to its members.</param>
 /// <param name="readPrivilege">The privilege flags required to read the channel, or zero for no requirement.</param>
 /// <param name="writePrivilege">The privilege flags required to write to the channel, or zero for no requirement.</param>
 /// <param name="autoJoin">A value that indicates whether the channel is joined automatically at login.</param>
@@ -25,7 +24,6 @@ namespace Basil.Application.Sessions.Channels;
 public sealed class ChannelSession(
 	int id,
 	string name,
-	string topic,
 	UserPrivileges readPrivilege,
 	UserPrivileges writePrivilege,
 	bool autoJoin,
@@ -47,8 +45,13 @@ public sealed class ChannelSession(
 	/// </summary>
 	public string DisplayName { get; } = displayName ?? name;
 
-	/// <summary>Gets the channel's topic text.</summary>
-	public string Topic { get; } = topic;
+	/// <summary>
+	///     Gets or sets the channel's topic text. Defaults to <see cref="Name" />; a match room's
+	///     channel keeps this synced to the room's current name (see
+	///     <see cref="ChannelMembershipService.SyncTopic" />) rather than ever taking a fixed,
+	///     separately configured topic.
+	/// </summary>
+	public string Topic { get; set; } = name;
 
 	/// <summary>Gets the privilege flags required to read the channel, or zero when reading is unrestricted.</summary>
 	public UserPrivileges ReadPrivilege { get; } = readPrivilege;

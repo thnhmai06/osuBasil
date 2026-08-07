@@ -246,6 +246,13 @@ public sealed class MatchSession(
 	public int DbId { get; set; }
 
 	/// <summary>
+	///     Gets or sets the id of the userSession who created this match, or null when the room was
+	///     created via the HTTP API with no session behind it. Set once, right after the room is
+	///     created, by MatchMembershipService.CreateAsync.
+	/// </summary>
+	public int? CreatorId { get; set; }
+
+	/// <summary>
 	///     Gets or sets the Rounds.Id of the beatmap currently being played, or null when no round is
 	///     in progress. Set at match start, when a new Round row is created per beatmap played and
 	///     cleared at MatchComplete. Score submissions link to this, so score-to-round linking does
@@ -333,13 +340,34 @@ public sealed class MatchSession(
 	///     Referee is a pure permission flag granted by <c>!mp addref</c> or <c>!mp make</c> (which
 	///     auto-adds one at creation). It does not require being physically in the room, and the host
 	///     is not automatically a referee: hosting only grants direct in-client settings control,
-	///     which ranks below referee authority for <c>!mp</c> purposes.
+	///     which ranks below referee authority for <c>!mp</c> purposes. Kept by userSession id, exactly
+	///     like <see cref="BannedIds" />, so it never depends on any live session: disconnecting,
+	///     logging out, or leaving the room's slots leaves it untouched. Only <c>!mp removeref</c> (or
+	///     the referee-removal API) revokes it, and both refuse to remove a match's last referee or the
+	///     room's creator (see <see cref="IsCreator" />) — a room can be emptied of every player
+	///     without ever losing referee control. The creator additionally counts as a referee here
+	///     unconditionally, even on the rare match where they were somehow never granted the flag
+	///     itself, so <c>!mp</c> authority never depends on that grant having happened.
 	/// </remarks>
 	/// <param name="playerId">The id of the userSession to check.</param>
 	/// <returns><see langword="true" /> if the userSession is a referee; otherwise, <see langword="false" />.</returns>
 	public bool IsReferee(int playerId)
 	{
-		return _referees.ContainsKey(playerId);
+		return _referees.ContainsKey(playerId) || IsCreator(playerId);
+	}
+
+	/// <summary>Gets a value that indicates whether <paramref name="playerId" /> created this match.</summary>
+	/// <remarks>
+	///     The creator holds full <c>!mp</c> authority for the room's lifetime regardless of referee
+	///     status (see <see cref="IsReferee" />) and can never be stripped of it: <c>!mp addref</c>/
+	///     <c>!mp removeref</c> are restricted to the creator alone, and removing the creator from
+	///     <see cref="Referees" /> — by name or by a full-list replace — is always refused.
+	/// </remarks>
+	/// <param name="playerId">The id of the userSession to check.</param>
+	/// <returns><see langword="true" /> if the userSession created this match; otherwise, <see langword="false" />.</returns>
+	public bool IsCreator(int playerId)
+	{
+		return CreatorId == playerId;
 	}
 
 	/// <summary>
