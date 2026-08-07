@@ -82,7 +82,10 @@ public static class MpReplies
 	/// <summary>Reply when the requested id names no live match; <c>{0}</c> is the id.</summary>
 	public const string NoActiveMatchWithHashId = "No active match with id #{0}.";
 
-	/// <summary>Reply when the sender is not a referee of the requested match; <c>{0}</c> is the id.</summary>
+	/// <summary>
+	///     Reply when the sender is not a referee of the targeted match, whether rejected by
+	///     <c>!mp in</c> or by the general <c>!mp</c> referee gate; <c>{0}</c> is the match id.
+	/// </summary>
 	public const string NotARefereeOfMatch = "You're not a referee of match #{0}.";
 
 	/// <summary>Reply after switching the scope; <c>{0}</c> is the room id, <c>{1}</c> its name.</summary>
@@ -351,6 +354,23 @@ public static class MpReplies
 	/// <summary>Reply when a scoped subcommand resolves to no match at all.</summary>
 	public const string NotScopedToAnyMatchHint =
 		"You're not scoped to a match — use !mp make, !mp join <id>, or !mp in <id> first.";
+
+	// ── !mp dispatch errors ──────────────────────────────────────────────────────────────────
+	/// <summary>Reply when a subcommand name is not recognized; <c>{0}</c> is the subcommand.</summary>
+	public const string UnknownMpSubcommand =
+		"Unknown !mp subcommand: {0}. Use !mp help to list available subcommands.";
+
+	/// <summary>Reply when a subcommand is limited to the match's creator; <c>{0}</c> is the subcommand.</summary>
+	public const string CreatorOnlyMp = "Only the match's creator can run {0}.";
+
+	/// <summary>Reply when a subcommand is not allowed from <c>#lobby</c>; <c>{0}</c> is the subcommand.</summary>
+	public const string MpNotUsableFromLobby = "!mp {0} can't be used from #lobby.";
+
+	/// <summary>Reply when a chained <c>!mp</c> line is issued from <c>#lobby</c>.</summary>
+	public const string MpChainNotUsableFromLobby = "Chained !mp commands can't be used from #lobby.";
+
+	/// <summary>Reply when <c>!mp in</c> is run from a channel instead of a DM to the bot.</summary>
+	public const string MpInDmOnly = "!mp in only works in a DM to BasilBot.";
 
 	// ── !where / !faq / !roll / chain rejection ──────────────────────────────────────────────
 	/// <summary>Usage line for <c>!where</c>.</summary>

@@ -421,12 +421,12 @@
 		</td>
 	</tr>
 	<tr>
-		<td>A <code>!mp</code> command does nothing</td>
-		<td>You are not a referee of the match you are scoped to. BasilBot stays silent rather than
-			refusing out loud. <code>!mp addref</code>/<code>!mp removeref</code> go silent for the same
-			reason even for an existing referee &mdash; only the match's creator can run those two (see the
-			<a href="../basil-bot/#multiplayer-commands">Referee, Host, and Creator</a> table on the
-			BasilBot page).
+		<td>A <code>!mp</code> command gets an error reply</td>
+		<td>You are not a referee of the match you are scoped to, or the subcommand is unknown.
+			<code>!mp addref</code>/<code>!mp removeref</code> also fail unless you are the match's creator
+			(see the <a href="../basil-bot/#multiplayer-commands">Referee, Host, and Creator</a> table on the
+			BasilBot page). If you typed the command in a shared channel, the error is DM'd back to you
+			rather than posted there.
 		</td>
 	</tr>
 	</tbody>

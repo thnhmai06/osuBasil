@@ -284,13 +284,15 @@
 </p>
 <p>
 	Every <code>!mp</code> subcommand except <code>help</code>/<code>make</code>/<code>join</code>/<code>in</code>
-	requires you to be a referee of the currently targeted match. Lacking permission means BasilBot
-	<strong>silently ignores the command with no reply</strong>.
+	requires you to be a referee of the currently targeted match. Lacking permission (or using an unknown
+	subcommand) makes BasilBot reply with an error instead of staying silent. The error is posted publicly
+	only in the match's own channel; anywhere else it is DM'd back to you, so a shared channel like
+	<code>#osu</code> or <code>#lobby</code> never gets spammed with a failed command.
 </p>
 <p>
 	Which match are you currently scoped to? By default, the match linked to the chat channel you're in.
 	Use <code>!mp in &lt;match_id&gt;</code> to control a match without being in its room &mdash; DM only,
-	refused if run in any channel. Once set, this scope always takes priority over the current channel
+	refused (with a DM'd error) if run in any channel. Once set, this scope always takes priority over the current channel
 	until changed. A scoped subcommand run anywhere except the match's own channel &mdash; a DM, or any
 	other channel like <code>#osu</code> &mdash; always replies privately (DM'd back to you, prefixed with
 	<code>[#id]</code>, with an unprefixed copy mirrored into the room) rather than posting into whatever

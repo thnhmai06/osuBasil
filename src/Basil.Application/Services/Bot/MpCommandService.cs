@@ -27,10 +27,11 @@ namespace Basil.Application.Services.Bot;
 ///     <see cref="MakeAsync" />) that creates the room already private; <c>!mp private [0|1]</c> is
 ///     the way to view or change privacy on a room that already exists. <c>!mp join &lt;id&gt;</c>
 ///     bypasses the referee gate; it is routed directly from <see cref="CommandDispatcher" />.
-///     A read-only subcommand (<c>settings</c>, <c>listrefs</c>, <c>banlist</c>, and <c>private</c>
-///     with no argument) runs for anyone the match resolves for; every mutating subcommand requires
-///     <see cref="MatchSession.IsReferee" />, and unmet permission is a silent no-op with no error
-///     reply. Referee is a pure permission flag that does not require physical presence in the room,
+	///     A read-only subcommand (<c>settings</c>, <c>listrefs</c>, <c>banlist</c>, and <c>private</c>
+	///     with no argument) runs for anyone the match resolves for; every mutating subcommand requires
+	///     <see cref="MatchSession.IsReferee" />, and unmet permission is answered with an error reply
+	///     through the sink the caller provided. Referee is a pure permission flag that does not
+	///     require physical presence in the room,
 ///     and the host is not automatically a referee: hosting only grants direct in-client settings
 ///     control, which ranks below referee authority for <c>!mp</c> purposes.
 ///     Every method sends its own reply through the <see cref="ICommandReplySink" /> passed in and
@@ -120,7 +121,8 @@ public sealed class MpCommandService(
 	/// <remarks>
 	///     This is the main subcommand switch. Help bypasses the referee gate and is always delivered
 	///     by DM (see <see cref="ICommandReplySink.ReplyDm" />); every other subcommand requires
-	///     <see cref="MatchSession.IsReferee" /> and is rejected silently, with no reply, otherwise.
+	///     <see cref="MatchSession.IsReferee" /> and is otherwise rejected with an error reply, which
+	///     the caller routes to a DM when the command did not come from the match's own channel.
 	///     <c>addref</c>/<c>removeref</c> carry a further restriction on top of the referee gate: only
 	///     the match's creator (<see cref="MatchSession.IsCreator" />) may run them, so an ordinary
 	///     referee can never grant or revoke referee status on anyone.
@@ -154,6 +156,7 @@ public sealed class MpCommandService(
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
 				match.DbId);
+			sink.Reply(string.Format(MpReplies.NotARefereeOfMatch, match.DbId));
 			return false;
 		}
 
@@ -161,6 +164,7 @@ public sealed class MpCommandService(
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not the creator of MatchId={MatchId}", sender.Id,
 				match.DbId);
+			sink.Reply(string.Format(MpReplies.CreatorOnlyMp, $"!mp {subcommand}"));
 			return false;
 		}
 
@@ -195,7 +199,7 @@ public sealed class MpCommandService(
 			"ban" => await RunLockedAsync(match, () => BanAsync(sender, match, args, sink, cancellationToken)),
 			"unban" => await RunLockedAsync(match, () => UnbanAsync(match, args, sink, cancellationToken)),
 			"close" => await RunLockedAsync(match, () => CloseAsync(sender, match, sink, cancellationToken)),
-			_ => false
+			_ => UnknownSubcommand(sink, subcommand)
 		};
 	}
 
@@ -244,8 +248,7 @@ public sealed class MpCommandService(
 		match.AddReferee(sender.Id);
 		if (isPrivate) await _matchControl.SetPrivateAsync(match, true, cancellationToken);
 		sender.MpScopeMatchId = match.DbId;
-		sink.Reply(string.Format(MpReplies.CreatedMatch, match.DbId, match.Name,
-			isPrivate ? " (private)" : ""));
+		sink.Reply(string.Format(MpReplies.CreatedMatch, match.DbId, match.Name, isPrivate ? " (private)" : ""));
 		return true;
 	}
 
@@ -454,6 +457,18 @@ public sealed class MpCommandService(
 		sender.MpScopeMatchId = dbId;
 		sink.Reply(string.Format(MpReplies.NowTargetingMatch, dbId, match.Name));
 		return true;
+	}
+
+	/// <summary>
+	///     Replies to an unrecognized <c>!mp</c> subcommand.
+	/// </summary>
+	/// <param name="sink">The destination for the reply.</param>
+	/// <param name="subcommand">The unrecognized subcommand name.</param>
+	/// <returns>Always <see langword="false" />, the "did not run" result.</returns>
+	private static bool UnknownSubcommand(ICommandReplySink sink, string subcommand)
+	{
+		sink.Reply(string.Format(MpReplies.UnknownMpSubcommand, subcommand));
+		return false;
 	}
 
 	/// <summary>

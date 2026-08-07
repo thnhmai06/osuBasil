@@ -75,7 +75,7 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_NonReferee_SilentlyIgnored()
+	public async Task HandleAsync_NonReferee_RepliesNotAReferee()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
@@ -84,7 +84,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), other, match, "lock", ["1"]);
 
-		Assert.Null(reply);
+		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
 	}
 
 	[Fact]
@@ -273,7 +273,7 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_AddRef_ByOrdinaryReferee_SilentlyIgnored()
+	public async Task HandleAsync_AddRef_ByOrdinaryReferee_RepliesCreatorOnly()
 	{
 		// addref/removeref are creator-only — an ordinary referee (not the room's creator) cannot
 		// grant referee status on anyone, even though they pass the general referee gate.
@@ -287,11 +287,11 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), referee, match, "addref", ["other"]);
 
 		Assert.DoesNotContain(other.Id, match.Referees);
-		Assert.Null(reply);
+		Assert.Equal(string.Format(MpReplies.CreatorOnlyMp, "!mp addref"), reply);
 	}
 
 	[Fact]
-	public async Task HandleAsync_RemoveRef_ByOrdinaryReferee_SilentlyIgnored()
+	public async Task HandleAsync_RemoveRef_ByOrdinaryReferee_RepliesCreatorOnly()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
@@ -304,7 +304,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), referee, match, "removeref", ["other"]);
 
 		Assert.Contains(other.Id, match.Referees);
-		Assert.Null(reply);
+		Assert.Equal(string.Format(MpReplies.CreatorOnlyMp, "!mp removeref"), reply);
 	}
 
 	[Fact]
@@ -336,7 +336,7 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_NonReadOnlySubcommand_NonReferee_SilentlyIgnored()
+	public async Task HandleAsync_NonReadOnlySubcommand_NonReferee_RepliesNotAReferee()
 	{
 		// The creator always passes the referee gate (see MatchSession.IsReferee), so this exercises
 		// the gate against a genuine outsider — neither the creator nor an added referee.
@@ -347,8 +347,20 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), outsider, match, "lock", []);
 
-		Assert.Null(reply);
+		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
 		Assert.DoesNotContain(outsider.Id, match.Referees);
+	}
+
+	[Fact]
+	public async Task HandleAsync_UnknownSubcommand_RepliesUnknown()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+
+		var reply = await Run(MakeService(), host, match, "bogus", []);
+
+		Assert.Equal(string.Format(MpReplies.UnknownMpSubcommand, "bogus"), reply);
 	}
 
 	[Fact]
@@ -1484,7 +1496,7 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_Private_WithArgNonReferee_SilentlyIgnored()
+	public async Task HandleAsync_Private_WithArgNonReferee_RepliesNotAReferee()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
@@ -1494,7 +1506,7 @@ public class MpCommandServiceTests
 		// "!mp private 1" mutates state — still referee-gated.
 		var reply = await Run(MakeService(), other, match, "private", ["1"]);
 
-		Assert.Null(reply);
+		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
 	}
 
 	[Fact]

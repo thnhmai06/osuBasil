@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Users;
@@ -54,19 +55,20 @@ public sealed class CommandDispatcher(
 	///     The <c>!mp</c> subcommands that reject being run as part of a <c>;</c>/<c>&amp;&amp;</c>
 	///     chain.
 	/// </summary>
-	private static readonly HashSet<string> NonChainableMpSubcommands =
-		new(StringComparer.OrdinalIgnoreCase) { "", "help", "make", "makeprivate", "in", "join" };
+	private static readonly FrozenSet<string> NonChainableMpSubcommands =
+		new[]{ "", "help", "make", "makeprivate", "in", "join" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     The <c>!mp</c> subcommands reachable from <c>#lobby</c>.
 	/// </summary>
 	/// <remarks>
-	///     Every other subcommand is a silent no-op when issued from <c>#lobby</c>. <c>in</c> is
-	///     deliberately excluded: combined with the separate rule that rejects it from the sender's
-	///     own match channel, <c>!mp in</c> ends up reachable only via DM to the bot.
+	///     Every other subcommand is refused when issued from <c>#lobby</c>, with an error DM'd to the
+	///     sender rather than posted into the shared channel. <c>in</c> is deliberately excluded:
+	///     combined with the separate rule that rejects it from the sender's own match channel,
+	///     <c>!mp in</c> ends up reachable only via DM to the bot.
 	/// </remarks>
-	private static readonly HashSet<string> LobbyAllowedMpSubcommands =
-		new(StringComparer.OrdinalIgnoreCase) { "make", "makeprivate" };
+	private static readonly FrozenSet<string> LobbyAllowedMpSubcommands =
+		new[]{ "make", "makeprivate" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	private readonly FaqService _faq = new(storageOptions);
 
@@ -157,9 +159,14 @@ public sealed class CommandDispatcher(
 			return true;
 		}
 
-		// `#lobby` only ever reaches `make`/`makeprivate` — every other subcommand (including `in`) is a
-		// silent no-op there.
-		if (channelName == "#lobby" && !LobbyAllowedMpSubcommands.Contains(subcommand)) return false;
+		// `#lobby` only ever reaches `make`/`makeprivate` — every other subcommand (including `in`) is
+		// refused there with a DM'd error rather than running (or staying silent).
+		if (channelName == "#lobby" && !LobbyAllowedMpSubcommands.Contains(subcommand))
+		{
+			BuildDmRedirectSink(sender, null, sink)
+				.Reply(string.Format(MpReplies.MpNotUsableFromLobby, subcommand));
+			return false;
+		}
 
 		switch (subcommand)
 		{
@@ -175,8 +182,15 @@ public sealed class CommandDispatcher(
 				return await mpCommands.JoinAsync(sender, subArgs, sink, cancellationToken);
 			case "in":
 				// DM-to-bot only. A channel-typed `!mp in` — #lobby, #osu, or even the room's own
-				// channel — is refused rather than silently setting a scope nobody asked to see redirected.
-				return channelName is null && mpCommands.SetScopeAsync(sender, subArgs, sink);
+				// channel — is refused rather than silently setting a scope nobody asked to see
+				// redirected, and the refusal is DM'd back instead of announced in the channel.
+				if (channelName is not null)
+				{
+					BuildDmRedirectSink(sender, null, sink).Reply(MpReplies.MpInDmOnly);
+					return false;
+				}
+
+				return mpCommands.SetScopeAsync(sender, subArgs, sink);
 		}
 
 		var scope = ResolveScope(sender, matchScope, channelName);
@@ -191,9 +205,9 @@ public sealed class CommandDispatcher(
 
 		if (scope is null)
 		{
-			// Distinct from the referee-gate's silent no-op (see MpCommandService.TryHandleAsync's doc
-			// comment) — not being scoped to ANY match at all is a different, more basic failure than
-			// being scoped but lacking permission, so it gets an explicit reply instead of dead silence.
+			// Distinct from the referee-gate error (see MpCommandService.TryHandleAsync) — not being
+			// scoped to ANY match at all is a different, more basic failure than being scoped but
+			// lacking permission, so it gets its own hint instead of the referee-gate error.
 			effectiveSink.Reply(MpReplies.NotScopedToAnyMatchHint);
 			return false;
 		}
@@ -261,22 +275,37 @@ public sealed class CommandDispatcher(
 	///     <c>join</c>, <c>in</c>, and <c>help</c> are not chainable: they either create a match or
 	///     change the scope elsewhere. Any other segment, such as a bare <c>!roll</c>, <c>!where</c>, or
 	///     <c>!faq</c>, is not a <c>!mp</c> command at all, and its presence in a chain rejects the
-	///     whole line rather than running part of it silently. <c>#lobby</c> never reaches here with
-	///     anything runnable, since every chainable subcommand is already outside that channel's
-	///     allowlist.
+	///     whole line rather than running part of it silently. A chain with no scope, or from a sender
+	///     who is not a referee of it, is likewise rejected with an error, DM'd when the line was
+	///     issued outside the match's own channel. <c>#lobby</c> never reaches here with anything
+	///     runnable, since every chainable subcommand is already outside that channel's allowlist.
 	/// </remarks>
 	private async Task<bool> DispatchChainAsync(UserSession sender,
 		IReadOnlyList<ChatCommandChain.Segment> segments, MatchSession? matchScope, string? channelName,
 		string prefix, ICommandReplySink sink, CancellationToken cancellationToken)
 	{
-		if (channelName == "#lobby") return false;
+		if (channelName == "#lobby")
+		{
+			BuildDmRedirectSink(sender, null, sink).Reply(MpReplies.MpChainNotUsableFromLobby);
+			return false;
+		}
 
 		var scope = ResolveScope(sender, matchScope, channelName);
-		if (scope is null || !scope.IsReferee(sender.Id)) return false;
-
-		var effectiveSink = channelName is not null && channelName != scope.ChatChannelName
+		var effectiveSink = channelName is not null && (scope is null || channelName != scope.ChatChannelName)
 			? BuildDmRedirectSink(sender, scope, sink)
 			: sink;
+
+		if (scope is null)
+		{
+			effectiveSink.Reply(MpReplies.NotScopedToAnyMatchHint);
+			return false;
+		}
+
+		if (!scope.IsReferee(sender.Id))
+		{
+			effectiveSink.Reply(string.Format(MpReplies.NotARefereeOfMatch, scope.DbId));
+			return false;
+		}
 
 		var parsed = new List<(string Subcommand, string[] Args, ChatCommandChain.ChainOperator Operator)>();
 		foreach (var segment in segments)
@@ -285,7 +314,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
+				effectiveSink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
 				return false;
 			}
 
@@ -294,7 +323,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
+				effectiveSink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
 				return false;
 			}
 
@@ -303,7 +332,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply(string.Format(MpReplies.CannotChainMp, prefix, subcommand, segment.Text));
+				effectiveSink.Reply(string.Format(MpReplies.CannotChainMp, prefix, subcommand, segment.Text));
 				return false;
 			}
 

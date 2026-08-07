@@ -522,13 +522,17 @@ public class CommandDispatcherTests
 	}
 
 	[Fact]
-	public async Task DispatchAsync_MpIn_FromRealChannel_Refused()
+	public async Task DispatchAsync_MpIn_FromRealChannel_RepliesDmOnly()
 	{
 		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
 		var dispatcher = MakeDispatcher(fixture: fixture);
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
-		fixture.RegisterAll(host, referee);
+		var referee = new IrcSession(2, "ref", "irc-2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IrcConnection = new RecordingIrcConnection() };
+		fixture.RegisterAll(host);
+		fixture.IrcSessionRegistry.GetByUserId(2).Returns(referee);
 		var match = fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
 
@@ -536,8 +540,12 @@ public class CommandDispatcherTests
 		await dispatcher.DispatchAsync(referee, $"!mp in {match.DbId}", null, "#osu", sink);
 
 		Assert.Null(referee.MpScopeMatchId);
+		// The refusal is DM'd back rather than posted into #osu.
 		Assert.Empty(sink.Replies);
 		Assert.Empty(sink.DmReplies);
+		var connection = (RecordingIrcConnection)referee.IrcConnection;
+		Assert.Contains(connection.Received,
+			m => m.Command == "PRIVMSG" && m.Params[1] == MpReplies.MpInDmOnly);
 	}
 
 	[Fact]
@@ -615,6 +623,92 @@ public class CommandDispatcherTests
 		await dispatcher.DispatchAsync(host, "!mp settings", match, match.ChatChannelName, sink);
 
 		Assert.NotEmpty(sink.Replies);
+	}
+
+	[Fact]
+	public async Task DispatchAsync_MpSubcommand_FromLobby_RepliesDmError()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var sender = new IrcSession(1, "host", "irc-1", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IrcConnection = new RecordingIrcConnection() };
+
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(sender, "!mp settings", null, "#lobby", sink);
+
+		// #lobby is a shared channel — the refusal is DM'd back, never posted there.
+		Assert.Empty(sink.Replies);
+		Assert.Empty(sink.DmReplies);
+		var connection = (RecordingIrcConnection)sender.IrcConnection;
+		Assert.Contains(connection.Received,
+			m => m.Command == "PRIVMSG" && m.Params[1] == string.Format(MpReplies.MpNotUsableFromLobby, "settings"));
+	}
+
+	[Fact]
+	public async Task DispatchAsync_Chain_FromLobby_RepliesDmError()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var bot = MultiplayerTestSupport.MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		fixture.SessionRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var sender = new IrcSession(1, "host", "irc-1", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IrcConnection = new RecordingIrcConnection() };
+
+		var sink = new RecordingReplySink();
+		await dispatcher.DispatchAsync(sender, "!mp lock; !mp size 4", null, "#lobby", sink);
+
+		Assert.Empty(sink.Replies);
+		Assert.Empty(sink.DmReplies);
+		var connection = (RecordingIrcConnection)sender.IrcConnection;
+		Assert.Contains(connection.Received,
+			m => m.Command == "PRIVMSG" && m.Params[1] == MpReplies.MpChainNotUsableFromLobby);
+	}
+
+	[Fact]
+	public async Task DispatchAsync_MpNonReferee_FromMatchsOwnChannel_RepliesPublicError()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var other = MultiplayerTestSupport.MakePlayer(2, "other");
+		fixture.RegisterAll(host, other);
+		var match = fixture.CreateMatch(host);
+
+		// The match's own channel is not a shared one — the error is public there, not DM'd.
+		var reply = await Run(dispatcher, other, "!mp lock", match);
+
+		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
+	}
+
+	[Fact]
+	public async Task DispatchAsync_Chain_NonReferee_RepliesError()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var other = MultiplayerTestSupport.MakePlayer(2, "other");
+		fixture.RegisterAll(host, other);
+		var match = fixture.CreateMatch(host);
+
+		var reply = await Run(dispatcher, other, "!mp lock; !mp size 4", match);
+
+		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
+	}
+
+	[Fact]
+	public async Task DispatchAsync_MpUnknownSubcommand_RepliesError()
+	{
+		var fixture = new MultiplayerTestSupport.Fixture();
+		var dispatcher = MakeDispatcher(fixture: fixture);
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+
+		var reply = await Run(dispatcher, host, "!mp bogus", match);
+
+		Assert.Equal(string.Format(MpReplies.UnknownMpSubcommand, "bogus"), reply);
 	}
 
 	[Fact]
