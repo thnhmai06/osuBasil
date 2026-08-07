@@ -15,11 +15,8 @@ public static class DatabaseConnectionStringBuilder
 		/// <summary>Builds the SQLite connection string for the database file described by the given options.</summary>
 		/// <returns>The connection string.</returns>
 		/// <remarks>
-		///     The connection string always carries <c>Foreign Keys=True</c>, because SQLite disables
-		///     foreign key enforcement per-connection by default while the schema declares foreign keys,
-		///     and <c>Default Timeout=5</c>, which maps to SQLite's busy_timeout. The server is
-		///     deliberately multithreaded, so concurrent writers across different matches are expected;
-		///     without the timeout they would throw SQLITE_BUSY immediately instead of waiting.
+		///     The connection string always carries <c>Foreign Keys=True</c> and
+		///     <c>Default Timeout=5</c>.
 		/// </remarks>
 		public string Build()
 		{

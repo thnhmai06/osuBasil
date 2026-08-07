@@ -9,8 +9,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IUserRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>UserRow</c> DTO, since Dapper fills by property
-///     name rather than through a positional record constructor. Each method opens its own
+///     Rows map through the private mutable <c>UserRow</c> DTO. Each method opens its own
 ///     connection.
 /// </remarks>
 public sealed class SqliteUserRepository(string connectionString, ILogger<SqliteUserRepository> logger)
@@ -90,9 +89,9 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	///     The safe form of the name comes from <see cref="User.MakeSafeName" />. When
 	///     <paramref name="privilege" /> is <see langword="null" />, the row defaults to the
 	///     unrestricted, verified, and supporter flags. A duplicate display or safe name trips a
-	///     SQLite constraint violation (error code 19), which is swallowed and reported as
-	///     <see langword="null" />. The insert and the id read-back are one batched statement, and
-	///     the new row is then re-read and returned.
+	///     constraint violation, which is swallowed and reported as <see langword="null" />. The
+	///     insert and the id read-back are one batched statement, and the new row is then re-read
+	///     and returned.
 	/// </remarks>
 	public async Task<User?> CreateAsync(string name, string pwBcrypt, Country country,
 		UserPrivileges? privilege = null,
@@ -142,9 +141,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Users table columns. Mutable because Dapper fills by
-	///     property name (coercing column types loosely) rather than through a positional record
-	///     constructor.
+	///     A mutable row DTO matching the Users table columns.
 	/// </summary>
 	private sealed class UserRow
 	{

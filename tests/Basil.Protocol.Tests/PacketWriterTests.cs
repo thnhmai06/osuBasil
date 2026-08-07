@@ -4,8 +4,8 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 namespace Basil.Protocol.Tests;
 
 /// <summary>
-///     Ported from the write-side helpers exercised inline in bancho.py's tests/unit/packets_test.py
-///     (write_string, write_i32_list are used there to build expected payloads for composite packets).
+///     Verifies `BinaryWriter`'s wire encodings (ULEB128, string, byte, integer, double, byte-array and
+///     i32-list payloads) and `PacketWriter.Wrap`'s header assembly.
 /// </summary>
 public class PacketWriterTests
 {

@@ -5,7 +5,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchChangeTeam.</summary>
+/// <summary>Verifies the `MatchChangeTeam` handler toggles the player between red and blue.</summary>
 public class MatchChangeTeamHandlerTests
 {
 	[Fact]

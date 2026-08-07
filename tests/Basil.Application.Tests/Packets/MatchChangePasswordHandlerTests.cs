@@ -3,7 +3,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchChangePassword.</summary>
+/// <summary>Verifies the `MatchChangePassword` handler changes the match password, host-only.</summary>
 public class MatchChangePasswordHandlerTests
 {
 	[Fact]

@@ -6,8 +6,8 @@ using Basil.Protocol.Packets;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SpectateFrames — forwards raw bytes unparsed to native
-///     spectators, and (new) also decodes the same bytes into a structured SSE payload.
+///     Verifies the `SpectateFrames` handler: forwards raw bytes unparsed to native spectators and
+///     decodes the same bytes into a structured SSE payload.
 /// </summary>
 public class SpectateFramesHandlerTests
 {

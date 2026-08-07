@@ -3,6 +3,7 @@ using System.Text;
 
 namespace Basil.Protocol.Binary;
 
+/// <summary>Provides low-level binary encoding primitives for the Bancho protocol.</summary>
 public static class BinaryWriter
 {
 	/// <summary>Encodes an integer as a ULEB128 variable-length byte sequence.</summary>

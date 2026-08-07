@@ -20,12 +20,11 @@ using NSubstitute;
 namespace Basil.Application.Tests.Backgrounds;
 
 /// <summary>
-///     Ported from app/bg_loops.py's _disconnect_ghosts: every OSU_CLIENT_MIN_PING_INTERVAL/3
-///     seconds (100s), any userSession whose last_recv_time exceeds OSU_CLIENT_MIN_PING_INTERVAL (300s)
-///     is force-logged-out via the same <see cref="PlayerLogoutService" /> a graceful LOGOUT uses —
-///     see GhostDisconnectService's own doc comment for why this is no longer a hand-rolled second
-///     copy of that cleanup. Only the per-tick check is unit tested here — the sleep loop itself
-///     isn't (it's a thin `while(!token.IsCancellationRequested) { delay; RunOnce(); }` wrapper).
+///     Verifies the per-tick ghost check: a session whose last received time exceeds
+///     OSU_CLIENT_MIN_PING_INTERVAL (300s) is force-logged-out through the same
+///     <see cref="PlayerLogoutService" /> a graceful LOGOUT uses, checked every
+///     OSU_CLIENT_MIN_PING_INTERVAL/3 seconds (100s). Only the per-tick check is unit tested —
+///     the sleep loop itself is not.
 /// </summary>
 public class GhostDisconnectServiceTests
 {
@@ -173,10 +172,9 @@ public class GhostDisconnectServiceTests
 	}
 
 	/// <summary>
-	///     Regression test for the actual multiplayer-hang bug: a ghosted userSession whose slot was still
-	///     SlotStatus.Playing previously kept that slot stuck forever (GhostDisconnectService never
-	///     called into match-leave), permanently blocking every other userSession's MatchComplete from ever
-	///     completing the round. Uses the real MatchMembershipService (via MultiplayerTestSupport.Fixture)
+	///     Regression test for the multiplayer-hang bug: a ghosted userSession whose slot is still
+	///     SlotStatus.Playing must leave the match and reset its slot, otherwise the round can never
+	///     complete. Uses the real MatchMembershipService (via MultiplayerTestSupport.Fixture)
 	///     so LeaveAsync's actual slot-reset behavior is exercised, not a fake.
 	/// </summary>
 	[Fact]

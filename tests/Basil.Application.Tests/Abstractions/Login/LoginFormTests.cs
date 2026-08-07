@@ -4,7 +4,7 @@ using Basil.Domain.Login;
 
 namespace Basil.Application.Tests.Abstractions.Login;
 
-/// <summary>Ported from app/api/domains/cho.py's parse_login_data.</summary>
+/// <summary>Verifies `LoginForm.From` parses the osu! login POST body into its fields.</summary>
 public class LoginFormTests
 {
 	private static byte[] Body(string s)

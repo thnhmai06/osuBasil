@@ -5,7 +5,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchInvite.</summary>
+/// <summary>Verifies the `MatchInvite` handler invites the target player into the sender's match.</summary>
 public class MatchInviteHandlerTests
 {
 	private static PacketReader ReaderFor(int userId)

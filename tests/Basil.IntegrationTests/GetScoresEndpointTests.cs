@@ -16,11 +16,10 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Ported from app/api/domains/osu.py's getScores, reduced to a status-only reply — per-beatmap
-///     leaderboard browsing is out of scope (see BanchoHostGroups.cs's route doc comment), but the
-///     map's real BeatmapStatus is still reported via the stubbed <see cref="IBeatmapRepository" />. Covers
-///     the auth gate, the mode/mods status-broadcast side effect (this is the only request osu! sends
-///     on every song-select map change), and the two status outcomes (known/unknown map).
+///     Verifies the getScores endpoint's status-only reply, reporting the map's BeatmapStatus via
+///     the stubbed <see cref="IBeatmapRepository" />. Covers the auth gate, the mode/mods
+///     status-broadcast side effect (the only request osu! sends on every song-select map change),
+///     and the two status outcomes (known/unknown map).
 /// </summary>
 public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {

@@ -9,7 +9,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's RemoveFriend.</summary>
+/// <summary>Verifies the `RemoveFriend` handler deletes a friend relationship, leaving blocks untouched.</summary>
 public class FriendRemoveHandlerTests
 {
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();

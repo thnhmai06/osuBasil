@@ -5,7 +5,7 @@ using Basil.Domain.Scores;
 
 namespace Basil.Application.Tests.Sessions;
 
-/// <summary>Ported from app/objects/match.py's Match — slot lookup/state helpers, no networking.</summary>
+/// <summary>Verifies `MatchSession`'s slot lookup and match-state helpers.</summary>
 public class MatchSessionTests
 {
 	private static MatchSession MakeMatch(int hostId = 1)

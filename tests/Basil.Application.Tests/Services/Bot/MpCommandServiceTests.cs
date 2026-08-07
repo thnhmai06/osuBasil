@@ -112,7 +112,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "lock", []);
 
 		Assert.True(match.IsLocked);
-		Assert.Equal("Locked the match", reply);
+		Assert.Equal(MpReplies.LockedMatch, reply);
 		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		Assert.Null(other.Match);
 	}
@@ -129,7 +129,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "unlock", []);
 
 		Assert.False(match.IsLocked);
-		Assert.Equal("Unlocked the match", reply);
+		Assert.Equal(MpReplies.UnlockedMatch, reply);
 		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 	}
 
@@ -159,7 +159,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "size", [arg]);
 
-		Assert.Equal($"Changed match to size {expectedSize}", reply);
+		Assert.Equal(string.Format(MpReplies.ChangedMatchSize, expectedSize), reply);
 	}
 
 	[Fact]
@@ -175,7 +175,7 @@ public class MpCommandServiceTests
 
 		Assert.Equal(2, match.Slots[4].PlayerId);
 		Assert.True(match.Slots[1].Empty);
-		Assert.Equal("Moved other into slot 5", reply);
+		Assert.Equal(string.Format(MpReplies.MovedToSlot, "other", 5), reply);
 	}
 
 	[Fact]
@@ -190,7 +190,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "move", ["other", "99"]);
 
 		Assert.Equal(2, match.Slots[15].PlayerId);
-		Assert.Equal("Moved other into slot 16", reply);
+		Assert.Equal(string.Format(MpReplies.MovedToSlot, "other", 16), reply);
 	}
 
 	[Fact]
@@ -205,7 +205,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "host", ["other"]);
 
 		Assert.Equal(2, match.HostId);
-		Assert.Equal("Changed match host to other", reply);
+		Assert.Equal(string.Format(MpReplies.ChangedMatchHost, "other"), reply);
 	}
 
 	[Fact]
@@ -269,7 +269,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "addref", ["other"]);
 
 		Assert.Contains(other.Id, match.Referees);
-		Assert.Equal("Added other to the match referees", reply);
+		Assert.Equal(string.Format(MpReplies.AddedReferee, "other"), reply);
 	}
 
 	[Fact]
@@ -317,7 +317,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "removeref", ["host"]);
 
 		Assert.Contains(host.Id, match.Referees);
-		Assert.Equal("Cannot remove host - they created this match.", reply);
+		Assert.Equal(string.Format(MpReplies.CannotRemoveCreator, "host"), reply);
 	}
 
 	[Fact]
@@ -362,7 +362,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains($"Beatmap: {bmap.Id} {bmap.FullName}", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsBeatmap, bmap.Id, bmap.FullName), reply);
 	}
 
 	[Fact]
@@ -374,7 +374,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains("Creator: #1 host", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsCreator, 1, "host"), reply);
 		Assert.True(reply!.IndexOf("Creator:", StringComparison.Ordinal) <
 		            reply.IndexOf("Players:", StringComparison.Ordinal));
 	}
@@ -391,7 +391,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains("Creator: #1 host", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsCreator, 1, "host"), reply);
 	}
 
 	[Fact]
@@ -464,7 +464,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains("Beatmap: Not found", reply);
+		Assert.Contains(MpReplies.SettingsBeatmapNotFound, reply);
 	}
 
 	private static IrcSession MakeIrc(int id, string name)
@@ -501,7 +501,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
 		Assert.DoesNotContain("Refs:", reply);
-		Assert.Contains("IRC: (1)", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsIrc, 1), reply);
 		Assert.Contains("#2 refonirc", reply);
 	}
 
@@ -517,9 +517,9 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
-		Assert.Contains("Players: (1)", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsPlayers, 1), reply);
 		Assert.Contains("host", reply); // slot line
-		Assert.Contains("IRC: (1)", reply);
+		Assert.Contains(string.Format(MpReplies.SettingsIrc, 1), reply);
 		Assert.Contains("#1 host", reply);
 	}
 
@@ -610,7 +610,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "removeref", ["refonirc"]);
 
-		Assert.Equal("Removed refonirc from the match referees", reply);
+		Assert.Equal(string.Format(MpReplies.RemovedReferee, "refonirc"), reply);
 		Assert.DoesNotContain(2, match.Referees);
 		Assert.DoesNotContain(channel.Name, refereeIrc.Channels);
 	}
@@ -638,7 +638,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "banlist", []);
 
-		Assert.Equal("No banned players", reply);
+		Assert.Equal(MpReplies.NoBannedPlayers, reply);
 	}
 
 	[Fact]
@@ -681,7 +681,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "map", ["999"]);
 
-		Assert.Equal("No beatmap with ID 999 found.", reply);
+		Assert.Equal(string.Format(MpReplies.NoBeatmapWithId, 999), reply);
 	}
 
 	[Fact]
@@ -706,7 +706,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "mods", ["HD"]);
 
-		Assert.Equal("Enabled Hidden", reply);
+		Assert.Equal(string.Format(MpReplies.EnabledMods, Mods.Hidden), reply);
 	}
 
 	[Fact]
@@ -723,7 +723,7 @@ public class MpCommandServiceTests
 
 		Assert.False(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Mods);
-		Assert.Equal("Enabled Hidden, Disabled FreeMod", reply);
+		Assert.Equal(string.Format(MpReplies.EnabledMods, Mods.Hidden) + ", " + MpReplies.DisabledFreemod, reply);
 	}
 
 	[Fact]
@@ -738,7 +738,7 @@ public class MpCommandServiceTests
 
 		Assert.True(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Slots[0].Mods);
-		Assert.Equal("Disabled Hidden, Enabled FreeMod", reply);
+		Assert.Equal(string.Format(MpReplies.DisabledMods, Mods.Hidden) + ", " + MpReplies.EnabledFreemod, reply);
 	}
 
 	[Fact]
@@ -764,7 +764,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "start", []);
 
-		Assert.Equal("Match is already in progress.", reply);
+		Assert.Equal(MpReplies.MatchAlreadyInProgress, reply);
 	}
 
 	[Fact]
@@ -777,7 +777,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "start", []);
 
 		Assert.True(match.InProgress);
-		Assert.Equal("Match started", reply);
+		Assert.Equal(MpReplies.MatchStarted, reply);
 	}
 
 	[Fact]
@@ -813,7 +813,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "abort", []);
 
-		Assert.Equal("Match is not in progress.", reply);
+		Assert.Equal(MpReplies.MatchNotInProgress, reply);
 	}
 
 	[Fact]
@@ -828,7 +828,7 @@ public class MpCommandServiceTests
 
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
-		Assert.Equal("Aborted the match", reply);
+		Assert.Equal(MpReplies.AbortedMatch, reply);
 	}
 
 	[Fact]
@@ -844,7 +844,7 @@ public class MpCommandServiceTests
 		var timer = match.PendingTimer;
 		Assert.NotNull(timer);
 		Assert.True(match.PendingTimerIsAutoStart);
-		Assert.Equal("Match starts in 30 seconds", reply);
+		Assert.Equal(string.Format(MpReplies.MatchStartsInSeconds, 30), reply);
 
 		await timer.CancelAsync();
 	}
@@ -862,7 +862,7 @@ public class MpCommandServiceTests
 		Assert.NotNull(timer);
 		Assert.False(match.InProgress);
 		Assert.False(match.PendingTimerIsAutoStart);
-		Assert.Equal("Countdown started: 10 seconds", reply);
+		Assert.Equal(string.Format(MpReplies.CountdownStarted, 10), reply);
 
 		await timer.CancelAsync();
 	}
@@ -876,7 +876,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "timer", []);
 
-		Assert.Equal("Countdown started: 30 seconds", reply);
+		Assert.Equal(string.Format(MpReplies.CountdownStarted, 30), reply);
 
 		var timer = match.PendingTimer;
 		Assert.NotNull(timer);
@@ -892,7 +892,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "aborttimer", []);
 
-		Assert.Equal("No countdown is running.", reply);
+		Assert.Equal(MpReplies.NoCountdownRunning, reply);
 	}
 
 	[Fact]
@@ -910,7 +910,7 @@ public class MpCommandServiceTests
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.True(cts!.IsCancellationRequested);
-		Assert.Equal("Countdown aborted", reply);
+		Assert.Equal(MpReplies.CountdownAborted, reply);
 	}
 
 	[Theory]
@@ -1056,7 +1056,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), referee, match, "kick", ["target"]);
 
 		Assert.Null(target.Match);
-		Assert.Equal("Kicked target from the match", reply);
+		Assert.Equal(string.Format(MpReplies.KickedFromMatch, "target"), reply);
 	}
 
 	[Fact]
@@ -1076,7 +1076,7 @@ public class MpCommandServiceTests
 
 		Assert.Same(match, referee.Match);
 		Assert.Contains(referee.Id, match.Referees);
-		Assert.Contains("Remove referee status first", reply);
+		Assert.Contains(string.Format(MpReplies.CannotKickReferee, "referee"), reply);
 	}
 
 	[Fact]
@@ -1092,7 +1092,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "kick", ["other"]);
 
 		Assert.Null(other.Match);
-		Assert.Equal("Kicked other from the match", reply);
+		Assert.Equal(string.Format(MpReplies.KickedFromMatch, "other"), reply);
 	}
 
 	[Fact]
@@ -1109,7 +1109,7 @@ public class MpCommandServiceTests
 
 		Assert.Null(other.Match);
 		Assert.Contains(other.Id, match.BannedIds);
-		Assert.Equal("Banned other from the match", reply);
+		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
 		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
@@ -1128,7 +1128,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
 		Assert.Contains(other.Id, match.BannedIds);
-		Assert.Equal("Banned other from the match", reply);
+		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
 		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
@@ -1144,7 +1144,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "ban", ["nobody"]);
 
-		Assert.Equal("User is not registered.", reply);
+		Assert.Equal(MpReplies.UserNotRegistered, reply);
 	}
 
 	[Fact]
@@ -1165,7 +1165,7 @@ public class MpCommandServiceTests
 		Assert.DoesNotContain(referee.Id, match.BannedIds);
 		Assert.Contains(referee.Id, match.Referees);
 		Assert.Same(match, referee.Match);
-		Assert.Contains("Remove referee status first", reply);
+		Assert.Contains(string.Format(MpReplies.CannotBanReferee, "referee"), reply);
 	}
 
 	[Fact]
@@ -1180,7 +1180,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "unban", ["offline_guy"]);
 
 		Assert.DoesNotContain(99, match.BannedIds);
-		Assert.Equal("Unbanned offline_guy from the match", reply);
+		Assert.Equal(string.Format(MpReplies.UnbannedFromMatch, "offline_guy"), reply);
 	}
 
 	[Fact]
@@ -1209,7 +1209,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "unban", ["other"]);
 
-		Assert.Equal("other is not banned from this match.", reply);
+		Assert.Equal(string.Format(MpReplies.NotBannedFromMatch, "other"), reply);
 	}
 
 	[Fact]
@@ -1226,7 +1226,7 @@ public class MpCommandServiceTests
 		Assert.Null(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.Null(host.Match);
 		Assert.Null(other.Match);
-		Assert.Equal("Closed the match", reply);
+		Assert.Equal(MpReplies.ClosedMatch, reply);
 	}
 
 	[Fact]
@@ -1241,7 +1241,8 @@ public class MpCommandServiceTests
 		Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
 		Assert.Equal(MatchWinCondition.Accuracy, match.WinCondition);
 		Assert.Equal(SlotStatus.Locked, match.Slots[8].Status);
-		Assert.Equal("Changed match settings to TeamVs, Accuracy, 8 slots.", reply);
+		Assert.Equal(string.Format(MpReplies.ChangedMatchSettings, MatchTeamType.TeamVs, MatchWinCondition.Accuracy,
+			", 8 slots."), reply);
 	}
 
 	[Fact]
@@ -1256,7 +1257,8 @@ public class MpCommandServiceTests
 
 		Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
 		Assert.Equal(MatchWinCondition.Combo, match.WinCondition);
-		Assert.Equal("Changed match settings to TeamVs, Combo.", reply);
+		Assert.Equal(string.Format(MpReplies.ChangedMatchSettings, MatchTeamType.TeamVs, MatchWinCondition.Combo, "."),
+			reply);
 	}
 
 	[Fact]
@@ -1268,7 +1270,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "set", ["4", "0", "8"]);
 
-		Assert.Equal("Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]", reply);
+		Assert.Equal(MpReplies.SetUsage, reply);
 	}
 
 	[Fact]
@@ -1281,7 +1283,8 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "set", ["0", "0", "99"]);
 
 		Assert.Equal(SlotStatus.Open, match.Slots[15].Status);
-		Assert.Equal("Changed match settings to HeadToHead, Score, 16 slots.", reply);
+		Assert.Equal(string.Format(MpReplies.ChangedMatchSettings, MatchTeamType.HeadToHead, MatchWinCondition.Score,
+			", 16 slots."), reply);
 	}
 
 	[Fact]
@@ -1296,7 +1299,7 @@ public class MpCommandServiceTests
 		Assert.Equal(sender.Id, sender.Match!.HostId);
 		Assert.Contains(sender.Id, sender.Match.Referees);
 		Assert.Equal("My Tournament", sender.Match.Name);
-		Assert.Contains("Created the match", reply);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match!.DbId, sender.Match.Name, ""), reply);
 	}
 
 	[Fact]
@@ -1308,7 +1311,8 @@ public class MpCommandServiceTests
 		var reply = await RunMake(MakeService(), sender, ["Room"], isPrivate: true);
 
 		Assert.True(sender.Match!.IsPrivate);
-		Assert.Contains("(private)", reply);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match.DbId, sender.Match.Name, " (private)"),
+			reply);
 	}
 
 	[Fact]
@@ -1354,7 +1358,7 @@ public class MpCommandServiceTests
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
 		Assert.Contains(sender.Id, match.Referees);
-		Assert.Contains("they created this match", reply);
+		Assert.Contains(string.Format(MpReplies.CannotRemoveCreator, "creator"), reply);
 	}
 
 	[Fact]
@@ -1369,7 +1373,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), creator, match, "removeref", ["referee"]);
 
 		Assert.Contains(referee.Id, match.Referees);
-		Assert.Contains("at least one referee must remain", reply);
+		Assert.Contains(string.Format(MpReplies.CannotRemoveLastReferee, "referee"), reply);
 	}
 
 	[Fact]
@@ -1398,7 +1402,7 @@ public class MpCommandServiceTests
 		var reply = await RunMake(MakeService(), sender, ["Room"]);
 
 		Assert.Equal(sender.Match!.DbId, sender.MpScopeMatchId);
-		Assert.Contains("scoped to this match", reply);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match.DbId, sender.Match.Name, ""), reply);
 	}
 
 	[Fact]
@@ -1409,7 +1413,7 @@ public class MpCommandServiceTests
 
 		var reply = RunSetScope(MakeService(), sender, []);
 
-		Assert.Equal("You're not scoped to any match.", reply);
+		Assert.Equal(MpReplies.NotScopedToAnyMatch, reply);
 	}
 
 	[Fact]
@@ -1451,7 +1455,7 @@ public class MpCommandServiceTests
 		var reply = RunSetScope(MakeService(), other, [match.DbId.ToString()]);
 
 		Assert.Null(other.MpScopeMatchId);
-		Assert.Contains("not a referee", reply);
+		Assert.Contains(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
 	}
 
 	[Fact]
@@ -1462,7 +1466,7 @@ public class MpCommandServiceTests
 
 		var reply = RunSetScope(MakeService(), sender, ["999"]);
 
-		Assert.Contains("No active match", reply);
+		Assert.Contains(string.Format(MpReplies.NoActiveMatchWithHashId, 999), reply);
 	}
 
 	[Fact]
@@ -1476,7 +1480,7 @@ public class MpCommandServiceTests
 		// "!mp private" with no argument only reports status — read-only, so open to non-referees too.
 		var reply = await Run(MakeService(), other, match, "private", []);
 
-		Assert.Contains("not private", reply);
+		Assert.Contains(string.Format(MpReplies.MatchIsPrivateNow, "not private"), reply);
 	}
 
 	[Fact]
@@ -1502,7 +1506,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "private", []);
 
-		Assert.Contains("not private", reply);
+		Assert.Contains(string.Format(MpReplies.MatchIsPrivateNow, "not private"), reply);
 	}
 
 	[Fact]
@@ -1515,7 +1519,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "private", ["1"]);
 
 		Assert.True(match.IsPrivate);
-		Assert.Contains("now private", reply);
+		Assert.Contains(MpReplies.MatchNowPrivate, reply);
 	}
 
 	[Fact]
@@ -1529,7 +1533,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "private", ["0"]);
 
 		Assert.False(match.IsPrivate);
-		Assert.Contains("now public", reply);
+		Assert.Contains(MpReplies.MatchNowPublic, reply);
 	}
 
 	[Fact]
@@ -1540,7 +1544,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), sender, ["999"]);
 
-		Assert.Contains("No active match", reply);
+		Assert.Contains(string.Format(MpReplies.NoActiveMatchWithId, 999), reply);
 	}
 
 	[Fact]
@@ -1554,7 +1558,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), player, [match.DbId.ToString()]);
 
-		Assert.Contains("private", reply);
+		Assert.Contains(string.Format(MpReplies.PrivateRoomJoinDenied, match.DbId), reply);
 	}
 
 	[Fact]
@@ -1568,7 +1572,7 @@ public class MpCommandServiceTests
 		var reply = await RunJoin(MakeService(), player, [match.DbId.ToString()]);
 
 		Assert.NotNull(reply);
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatch, match.DbId, match.Name), reply);
 	}
 
 	[Fact]
@@ -1583,7 +1587,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
-		Assert.Contains("banned", reply);
+		Assert.Contains(MpReplies.BannedFromMatch, reply);
 		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1599,7 +1603,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
-		Assert.Contains("locked", reply);
+		Assert.Contains(MpReplies.MatchIsLocked, reply);
 		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1616,7 +1620,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatchChat, match.DbId, match.Name), reply);
 		Assert.Contains(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1632,7 +1636,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
-		Assert.Contains("private", reply);
+		Assert.Contains(string.Format(MpReplies.PrivateRoomJoinDenied, match.DbId), reply);
 		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1649,7 +1653,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString()]);
 
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatchChat, match.DbId, match.Name), reply);
 		Assert.Contains(match.ChatChannelName, ircReferee.Channels);
 	}
 
@@ -1665,7 +1669,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString(), "wrong"]);
 
-		Assert.Contains("Incorrect password", reply);
+		Assert.Contains(MpReplies.IncorrectPassword, reply);
 		Assert.DoesNotContain(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1681,7 +1685,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString(), "secret"]);
 
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatchChat, match.DbId, match.Name), reply);
 		Assert.Contains(match.ChatChannelName, ircUser.Channels);
 	}
 
@@ -1698,7 +1702,7 @@ public class MpCommandServiceTests
 
 		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString(), "wrong"]);
 
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatchChat, match.DbId, match.Name), reply);
 		Assert.Contains(match.ChatChannelName, ircReferee.Channels);
 	}
 

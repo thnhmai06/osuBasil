@@ -13,7 +13,7 @@ using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's StopSpectating.</summary>
+/// <summary>Verifies the `StopSpectating` handler stops spectating and clears the host's spectator list.</summary>
 public class StopSpectatingHandlerTests
 {
 	private static GameSession MakePlayer(int id, string name)

@@ -9,8 +9,8 @@ namespace Basil.Infrastructure.Beatmaps;
 ///     Physically deletes beatmapset folders whose name carries
 ///     <see cref="BeatmapIngestionService.DeletedFolderInfix" />. The rename that marks a folder for
 ///     deletion leaves it on disk until this pass reclaims it, and the DB already treats it as gone.
-///     The pass runs on its own timer rather than the live <see cref="FileSystemWatcher" />, so a
-///     locked file simply gets retried next cycle instead of failing the pass.
+///     The pass runs on a recurring schedule, so a folder that can't be deleted yet (for example a
+///     locked file) is simply retried on the next pass.
 /// </summary>
 public sealed class MapsetGarbageCollectorService(
 	IOptions<StorageOptions> options,

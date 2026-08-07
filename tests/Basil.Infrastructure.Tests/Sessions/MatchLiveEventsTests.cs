@@ -3,8 +3,9 @@ using Basil.Infrastructure.Sessions;
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>
-///     Replaces InMemoryMatchEventBus's hand-rolled per-match subscriber dictionary with plain C#
-///     events — the CLR's multicast delegate already provides the fan-out these tests exercise.
+///     Verifies `MatchLiveEvents`' per-match publish events fan out to every subscribed handler
+///     with the full payload, that unsubscribed handlers stop receiving, and that publishing with
+///     no subscribers doesn't throw.
 /// </summary>
 public class MatchLiveEventsTests
 {

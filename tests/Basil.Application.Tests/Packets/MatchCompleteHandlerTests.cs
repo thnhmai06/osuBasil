@@ -7,8 +7,8 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's MatchComplete. The is_scrimming scoring branch is dropped along with the
-///     rest of the scrim engine.
+///     Verifies the `MatchComplete` handler: marks the completing player's slot complete and
+///     finishes the match once every playing player has completed.
 /// </summary>
 public class MatchCompleteHandlerTests
 {

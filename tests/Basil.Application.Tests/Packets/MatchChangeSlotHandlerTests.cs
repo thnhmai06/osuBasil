@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchChangeSlot.</summary>
+/// <summary>Verifies the `MatchChangeSlot` handler moves the player to the requested slot.</summary>
 public class MatchChangeSlotHandlerTests
 {
 	private static PacketReader ReaderFor(int slotId)

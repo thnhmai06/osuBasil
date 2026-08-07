@@ -71,8 +71,7 @@ public sealed class GameSession : UserSession
 
 	/// <summary>
 	///     Gets or sets the osu! client version captured at login, kept separate from
-	///     <see cref="Client" /> because <see cref="ClientDetails" /> no longer carries a version
-	///     date. Score submission's version-mismatch check compares against this.
+	///     <see cref="Client" />. Score submission's version-mismatch check compares against this.
 	/// </summary>
 	public OsuVersion? OsuVersion { get; init; }
 

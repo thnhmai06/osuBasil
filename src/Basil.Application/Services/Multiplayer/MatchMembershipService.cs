@@ -20,11 +20,10 @@ namespace Basil.Application.Services.Multiplayer;
 /// </summary>
 /// <remarks>
 ///     Every method here that reads-then-mutates a match's slots or settings must be called with
-///     <see cref="MatchSession.Lock" /> already held by the caller. Packet handlers own the lock's
-///     lifetime, since the lock also has to span the eventual state broadcast; see
-///     <see cref="MatchSession" />'s doc comment. The one exception is <see cref="CreateAsync" />,
-///     which acquires the lock itself around the seat attempt — no caller can already hold the lock
-///     of a match that does not exist yet.
+///     <see cref="MatchSession.Lock" /> already held by the caller; packet handlers own the lock's
+///     lifetime, since it must span the eventual state broadcast (see <see cref="MatchSession" />'s
+///     doc comment). The one exception is <see cref="CreateAsync" />, which acquires the lock itself
+///     around the seat attempt.
 /// </remarks>
 public sealed class MatchMembershipService(
 	IMatchRegistry matchRegistry,

@@ -11,7 +11,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchChangeSettings.</summary>
+/// <summary>Verifies the `MatchChangeSettings` handler applies the host's new match settings (host-only, map resolution, pending auto-start cancellation).</summary>
 public class MatchChangeSettingsHandlerTests
 {
 	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();

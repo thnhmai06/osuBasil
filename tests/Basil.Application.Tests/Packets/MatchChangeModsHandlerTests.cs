@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchChangeMods.</summary>
+/// <summary>Verifies the `MatchChangeMods` handler applies mod changes: host match mods, or per-slot mods in freemods.</summary>
 public class MatchChangeModsHandlerTests
 {
 	private static PacketReader ReaderFor(Mods mods)

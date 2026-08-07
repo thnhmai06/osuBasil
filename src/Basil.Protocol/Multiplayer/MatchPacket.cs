@@ -2,11 +2,7 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Protocol.Multiplayer;
 
-/// <summary>
-///     Wire-shape for a multiplayer match, as needed by <see cref="ServerPacketWriter" />. This is a
-///     pure Protocol-layer DTO (no dependency on the richer Domain match entity); a mapper in a
-///     later phase translates the real match aggregate into this shape before writing.
-/// </summary>
+/// <summary>Wire-shape for a multiplayer match as it is written to the Bancho protocol.</summary>
 /// <param name="Id">The id of the match.</param>
 /// <param name="InProgress">
 ///     <see langword="true" /> if the match is currently in progress; otherwise,

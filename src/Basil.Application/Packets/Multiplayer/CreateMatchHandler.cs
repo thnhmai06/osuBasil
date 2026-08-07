@@ -13,9 +13,8 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     through <see cref="MatchMembershipService.CreateAsync" />; if that returns <see langword="null" />
 ///     the userSession receives a <c>MatchJoinFail</c>. On success the creating userSession is added as the
 ///     match's first referee via <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.AddReferee" />.
-///     No <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" /> is taken here: the room
-///     does not exist yet, and <see cref="MatchMembershipService.CreateAsync" /> joins the host into it
-///     under that lock internally.
+///     <see cref="MatchMembershipService.CreateAsync" /> joins the host into the room under the match's
+///     <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />, so no lock is taken here.
 /// </remarks>
 public sealed class CreateMatchHandler(MatchMembershipService matchMembership) : IPacketHandler
 {

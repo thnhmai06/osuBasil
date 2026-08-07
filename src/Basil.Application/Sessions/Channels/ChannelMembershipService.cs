@@ -3,6 +3,7 @@ using System.Text.Json;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Login;
@@ -212,7 +213,7 @@ public sealed class ChannelMembershipService(
 		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplNamReply, requesterName, "=",
 			channel.Name, string.Join(' ', names));
 		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplEndOfNames, requesterName,
-			channel.Name, "End of /NAMES list");
+			channel.Name, IrcReplies.EndOfNames);
 	}
 
 	/// <summary>
@@ -233,7 +234,7 @@ public sealed class ChannelMembershipService(
 			: null;
 
 		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplListStart, requester.Name,
-			"Channel", "Users  Name");
+			IrcReplies.ListChannel, IrcReplies.ListUsers);
 
 		foreach (var channel in channelRegistry.All.OrderBy(channel => channel.Name, StringComparer.Ordinal))
 		{
@@ -251,7 +252,7 @@ public sealed class ChannelMembershipService(
 		}
 
 		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplListEnd, requester.Name,
-			"End of /LIST");
+			IrcReplies.EndOfList);
 	}
 
 	/// <summary>
@@ -291,8 +292,7 @@ public sealed class ChannelMembershipService(
 	/// <summary>
 	///     Reports whether a user may join or be listed in a match room's channel: a referee of
 	///     that match or a user currently seated in it. A channel that is not a match room
-	///     always passes, since the rule only exists to keep an unseated, non-refereeing account from
-	///     discovering or entering a room it has no standing in.
+	///     always passes.
 	/// </summary>
 	/// <param name="userSession">The userSession being checked.</param>
 	/// <param name="channel">The channel being joined or listed.</param>

@@ -4,8 +4,8 @@ using Basil.Domain.Scores;
 namespace Basil.Domain.Tests;
 
 /// <summary>
-///     Expected checksum generated from bancho.py's exact format string via a pure-Python oracle
-///     script (hashlib.md5 over the literal template), not by re-deriving the C# logic.
+///     Verifies the online score checksum computed from a submission's fields matches a known-good
+///     expected value.
 /// </summary>
 public class ScoreChecksumTests
 {

@@ -6,8 +6,7 @@ namespace Basil.Protocol.Packets;
 
 /// <summary>
 ///     Reads Bancho packet primitives from a client request body. This is the read side of the
-///     Bancho binary protocol; the packet-id driven iteration and dispatch loop is wired up in
-///     Basil.Web. All multibyte integers are little-endian, per the osu! protocol.
+///     Bancho binary protocol; all multibyte integers are little-endian, per the osu! protocol.
 /// </summary>
 /// <param name="buffer">The request body to read from.</param>
 public sealed class PacketReader(ReadOnlyMemory<byte> buffer)
@@ -28,7 +27,8 @@ public sealed class PacketReader(ReadOnlyMemory<byte> buffer)
 		return value;
 	}
 
-	/// <summary>Advances past `length` bytes without allocating/copying, for skipping unhandled packet payloads.</summary>
+	/// <summary>Advances past <paramref name="length" /> bytes, for skipping unhandled packet payloads.</summary>
+	/// <param name="length">The number of bytes to skip.</param>
 	public void SkipRaw(int length)
 	{
 		_buffer = _buffer[length..];

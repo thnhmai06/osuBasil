@@ -19,10 +19,8 @@ using NSubstitute;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from User.logout's match/channel-leaving + playerlist-removal + broadcast, extracted
-///     out of LogoutHandler so !reconnect can force the same cleanup on a session without going
-///     through the LOGOUT packet's 1-second login-grace-period check (which is packet-specific, not
-///     part of "logout" semantics).
+///     Verifies the logout cleanup applied to a session: leaving matches and channels, removing the
+///     player from the online player list, and broadcasting the removal.
 /// </summary>
 public class PlayerLogoutServiceTests
 {

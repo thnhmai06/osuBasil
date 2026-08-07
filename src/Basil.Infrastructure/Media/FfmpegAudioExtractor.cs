@@ -5,14 +5,13 @@ using FFMpegCore.Enums;
 namespace Basil.Infrastructure.Media;
 
 /// <summary>
-///     Implements <see cref="IAudioExtractor" /> by shelling out to the ffmpeg binary through
-///     FFMpegCore.
+///     Implements <see cref="IAudioExtractor" /> by trimming an audio file with an external ffmpeg
+///     executable.
 /// </summary>
 /// <remarks>
 ///     Trims the clip by seeking to the requested start offset (clamped to 0), disables the video
-///     channel, and encodes the requested duration with the libmp3lame codec at 128kbps. The output
-///     goes to a uniquely named temp file which is read back as bytes and deleted in a
-///     <c>finally</c> block. Requires a ffmpeg executable on PATH.
+///     channel, and encodes the requested duration as a 128kbps MP3. Requires a ffmpeg executable
+///     on PATH.
 /// </remarks>
 public sealed class FfmpegAudioExtractor : IAudioExtractor
 {

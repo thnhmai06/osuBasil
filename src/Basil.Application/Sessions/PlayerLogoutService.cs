@@ -9,10 +9,8 @@ namespace Basil.Application.Sessions;
 
 /// <summary>
 ///     Performs the coordinated cleanup that runs when a session goes offline. Shared by the LOGOUT
-///     packet handler, the <c>!reconnect</c> command, and a real IRC connection's disconnect, both of
-///     which force the same cleanup on a session outside the normal logout flow. The LOGOUT packet's
-///     one-second login-grace-period check is deliberately absent here because it is specific to that
-///     packet rather than part of logout semantics.
+///     packet handler, the <c>!reconnect</c> command, and a real IRC connection's disconnect, all of
+///     which force the same cleanup on a session outside the normal logout flow.
 /// </summary>
 /// <remarks>
 ///     Game and IRC sessions get different treatment: a <see cref="GameSession" /> leaves its match,

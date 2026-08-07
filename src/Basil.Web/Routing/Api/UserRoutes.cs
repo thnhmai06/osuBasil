@@ -20,10 +20,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Api;
 
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="UserRoutes" /> is static and can't be a
-///     type argument.
-/// </summary>
+/// <summary>A dedicated logger category marker for the static <see cref="UserRoutes" /> class.</summary>
 internal sealed class UserRoutesLog;
 
 /// <summary>

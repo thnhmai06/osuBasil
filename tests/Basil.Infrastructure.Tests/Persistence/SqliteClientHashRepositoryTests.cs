@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/client_hashes.py, scoped to what login needs: recording a hash
-///     entry (upsert, bumping occurrences on repeat) and the hardware-ban lookup.
+///     Verifies `SqliteClientHashRepository` records hash entries (upsert, bumping occurrences on
+///     repeat) and resolves the hardware-match lookup.
 /// </summary>
 public class SqliteClientHashRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {

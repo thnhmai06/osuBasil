@@ -7,7 +7,7 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Authentication;
 
-/// <summary>Ported from app/services/bancho.py's AuthenticationService.authenticate_online_player.</summary>
+/// <summary>Verifies `AuthenticationService`'s online-player authentication against stored password hashes.</summary>
 public class AuthenticationServiceTests
 {
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();

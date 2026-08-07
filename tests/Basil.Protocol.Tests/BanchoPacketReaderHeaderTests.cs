@@ -3,8 +3,8 @@ using Basil.Protocol.Packets;
 namespace Basil.Protocol.Tests;
 
 /// <summary>
-///     Ported from app/packets.py's PacketReader._read_header + the packet_map-driven skip
-///     behavior in __next__ ("packet type not handled, remove from internal buffer and continue").
+///     Verifies `PacketReader.ReadHeader` parses the type/length header and leaves the payload
+///     unconsumed, and that `SkipRaw` advances past unhandled payloads so reading continues.
 /// </summary>
 public class BanchoPacketReaderHeaderTests
 {

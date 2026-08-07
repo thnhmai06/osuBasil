@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchLock.</summary>
+/// <summary>Verifies the `MatchLock` handler locks/unlocks slots, host-only.</summary>
 public class MatchLockHandlerTests
 {
 	private static PacketReader ReaderFor(int slotId)

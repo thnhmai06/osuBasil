@@ -8,8 +8,7 @@ namespace Basil.Application.Sessions.Channels;
 ///     set of member ids. <see cref="Name" /> is the registry key; <see cref="DisplayName" /> is
 ///     what is actually sent to clients in packets. For ordinary channels the two are the same, but
 ///     an instance channel (for example <c>#spec_123</c>) always displays as a fixed alias
-///     (<c>#spectator</c>) regardless of which instance a given client is currently in, because
-///     multiple instances exist concurrently server-side.
+///     (<c>#spectator</c>) regardless of which instance a given client is currently in.
 /// </summary>
 /// <param name="id">The persistent id of the channel's database row, or a runtime-assigned value for an instance channel.</param>
 /// <param name="name">The registry key of the channel.</param>

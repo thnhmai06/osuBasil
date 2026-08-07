@@ -18,7 +18,7 @@ namespace Basil.IntegrationTests;
 ///     read-your-writes across `PUT`/`PATCH`/`DELETE` then `GET`. An uploaded icon's bytes still land
 ///     on disk under `Data/MenuIcon.{ext}` (not a `StorageOptions` path, so — unlike avatar/seasonal
 ///     tests — these tests share that fixed location and must clean it up themselves), even though
-///     the pointer to it now lives in the (in-memory, per-test) Settings repository.
+///     the pointer to it lives in the (in-memory, per-test) Settings repository.
 /// </summary>
 public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {

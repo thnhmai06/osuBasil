@@ -11,11 +11,9 @@ namespace Basil.Infrastructure.Sessions;
 
 /// <inheritdoc cref="IMatchRegistry" />
 /// <remarks>
-///     Backed by two concurrent dictionaries: one keyed on the wire-protocol match id, one keyed on
-///     the persistent database id. <see cref="CreateAsync" /> finds the lowest free wire-protocol id
-///     and reserves it via <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd" />, retrying with the
-///     next id on a lost race instead of taking a lock; this is safe because building a candidate
-///     <see cref="MatchSession" /> has no side effects, so a discarded attempt costs nothing.
+///     Stores matches keyed by both the wire-protocol match id and the persistent database id.
+///     <see cref="CreateAsync" /> assigns the lowest free wire-protocol id, retrying with the next
+///     id when a concurrent creation wins the race for the candidate id.
 /// </remarks>
 public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
 	: IMatchRegistry

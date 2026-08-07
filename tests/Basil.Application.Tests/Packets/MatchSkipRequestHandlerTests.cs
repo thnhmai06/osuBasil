@@ -5,7 +5,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchSkipRequest.</summary>
+/// <summary>Verifies the `MatchSkipRequest` handler broadcasts a skip once every playing player has skipped.</summary>
 public class MatchSkipRequestHandlerTests
 {
 	[Fact]

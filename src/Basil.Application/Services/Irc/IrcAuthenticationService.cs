@@ -51,19 +51,19 @@ public sealed class IrcAuthenticationService(
 		if (user is null)
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-					"Password incorrect"));
+					IrcReplies.PasswordIncorrect));
 
 		var storedHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
 		if (storedHash is null)
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-					"Password incorrect"));
+					IrcReplies.PasswordIncorrect));
 
 		var md5Hex = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(pass)));
 		if (!passwordHasher.Verify(Encoding.UTF8.GetBytes(md5Hex), storedHash))
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
-					"Password incorrect"));
+					IrcReplies.PasswordIncorrect));
 
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new IrcSession(
@@ -76,12 +76,12 @@ public sealed class IrcAuthenticationService(
 		if (!ircSessions.TryAdd(session))
 			return IrcLoginOutcome.Failed(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
-					"Nickname is already in use"));
+					IrcReplies.NicknameInUse));
 
 		var messages = new List<IrcMessage>
 		{
 			IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplWelcome, user.Name,
-				$"Welcome to {options.Value.Name} IRC, {user.Name}")
+				string.Format(IrcReplies.Welcome, options.Value.Name, user.Name))
 		};
 		messages.AddRange(queries.BuildWelcomeBurst(user.Name));
 

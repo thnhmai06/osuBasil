@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Cache;
 
 /// <summary>
-///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IUserRepository" />:
-///     eliminates the N+1 that embedding a full <c>{id, name, country}</c> user reference into every
-///     response that carries one would otherwise cause. Every writes invalidates the affected entry
-///     immediately; the TTL is only a safety net bounding staleness or memory use if an invalidation
-///     path is ever missed, not a substitute for it.
+///     Read-through caching decorator over the real <see cref="IUserRepository" />: eliminates the
+///     N+1 that embedding a full <c>{id, name, country}</c> user reference into every response that
+///     carries one would otherwise cause. Every write invalidates the affected entry immediately;
+///     the TTL is only a safety net bounding staleness or memory use if an invalidation path is
+///     ever missed, not a substitute for it.
 /// </summary>
 public sealed class CachingUserRepository(
 	IUserRepository inner,
@@ -86,11 +86,11 @@ public sealed class CachingUserRepository(
 		cache.Remove(IdKey(id));
 	}
 
-	/// <summary>
-	///     Fetches the pre-rename row directly from <c>inner</c> (bypassing the cache is fine, a
-	///     rename is rare) so the *old* name's cache entry can be invalidated too; otherwise a lookup
-	///     by the old (now-freed) name could keep resolving to this user until the TTL expires.
-	/// </summary>
+	/// <inheritdoc cref="IUserRepository.UpdateNameAsync" />
+	/// <remarks>
+	///     Invalidates the old-name entry as well as the new-name and id entries, so a lookup by the
+	///     previous name stops resolving to this user.
+	/// </remarks>
 	public async Task UpdateNameAsync(int id, string name, string safeName,
 		CancellationToken cancellationToken = default)
 	{

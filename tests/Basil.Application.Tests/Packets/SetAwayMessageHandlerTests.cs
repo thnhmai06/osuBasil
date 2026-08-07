@@ -5,7 +5,7 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's SetAwayMessage.</summary>
+/// <summary>Verifies the `SetAwayMessage` handler updates the player's away message.</summary>
 public class SetAwayMessageHandlerTests
 {
 	[Fact]

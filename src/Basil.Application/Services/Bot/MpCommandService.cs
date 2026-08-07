@@ -26,7 +26,7 @@ namespace Basil.Application.Services.Bot;
 ///     real Bancho command. <c>makeprivate</c> is a Basil-only variant of <c>make</c> (see
 ///     <see cref="MakeAsync" />) that creates the room already private; <c>!mp private [0|1]</c> is
 ///     the way to view or change privacy on a room that already exists. <c>!mp join &lt;id&gt;</c>
-///     bypasses the referee gate because it is routed directly from <see cref="CommandDispatcher" />.
+///     bypasses the referee gate; it is routed directly from <see cref="CommandDispatcher" />.
 ///     A read-only subcommand (<c>settings</c>, <c>listrefs</c>, <c>banlist</c>, and <c>private</c>
 ///     with no argument) runs for anyone the match resolves for; every mutating subcommand requires
 ///     <see cref="MatchSession.IsReferee" />, and unmet permission is a silent no-op with no error
@@ -69,8 +69,8 @@ public sealed class MpCommandService(
 	/// </summary>
 	/// <remarks>
 	///     Add a subcommand here, and it appears in <c>!mp help</c> with no separate help string to
-	///     keep in sync. <c>make</c>, <c>join</c>, <c>in</c>, and <c>makeprivate</c> are not listed here
-	///     because they run outside this class's subcommand switch, routed directly from
+	///     keep in sync. <c>make</c>, <c>join</c>, <c>in</c>, and <c>makeprivate</c> are not listed here;
+	///     they run outside this class's subcommand switch, routed directly from
 	///     <see cref="CommandDispatcher" />, which lists them in its own <c>!help</c>.
 	/// </remarks>
 	private static readonly CommandInfo[] Commands =
@@ -207,8 +207,7 @@ public sealed class MpCommandService(
 	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet, since there
 	///     is nothing to be a referee of; it bypasses <see cref="TryHandleAsync" /> entirely and reuses
 	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a client-created
-	///     match, except the creator is also auto-added as a referee. That bootstrap step is required
-	///     because a brand-new room would otherwise never pass the
+	///     match, except the creator is also auto-added as a referee so the room passes the
 	///     <see cref="MatchSession.IsReferee" /> gate. An empty room (whether created this way or by a
 	///     client that later left) auto-closes after 5 minutes of inactivity rather than tearing down
 	///     the instant it empties. <paramref name="isPrivate" /> marks the room private
@@ -238,15 +237,15 @@ public sealed class MpCommandService(
 		var match = await matchMembership.CreateAsync(sender, data, cancellationToken);
 		if (match is null)
 		{
-			sink.Reply("Couldn't create the match — please try again.");
+			sink.Reply(MpReplies.CreateFailed);
 			return false;
 		}
 
 		match.AddReferee(sender.Id);
 		if (isPrivate) await _matchControl.SetPrivateAsync(match, true, cancellationToken);
 		sender.MpScopeMatchId = match.DbId;
-		sink.Reply(
-			$"Created the match #{match.DbId} {match.Name}{(isPrivate ? " (private)" : "")}. You are now scoped to this match, and added as a referee.");
+		sink.Reply(string.Format(MpReplies.CreatedMatch, match.DbId, match.Name,
+			isPrivate ? " (private)" : ""));
 		return true;
 	}
 
@@ -261,7 +260,7 @@ public sealed class MpCommandService(
 	///     <see cref="MatchSession.IsPrivate" />); locked rooms and banned players are also rejected,
 	///     each with a descriptive reply. An <see cref="IrcSession" /> can never occupy a slot, so this
 	///     joins the match's chat channel instead — see <see cref="JoinChatOnly" /> for that gate. The
-	///     command runs with no <see cref="MatchSession" /> scope because it is routed directly from
+	///     command runs with no <see cref="MatchSession" /> scope: it is routed directly from
 	///     <see cref="CommandDispatcher" />, bypassing scope resolution.
 	/// </remarks>
 	/// <param name="sender">The userSession joining.</param>
@@ -274,14 +273,14 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var matchId))
 		{
-			sink.Reply("Usage: !mp join <id> [password]");
+			sink.Reply(MpReplies.JoinUsage);
 			return false;
 		}
 
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null)
 		{
-			sink.Reply($"No active match with id {matchId}.");
+			sink.Reply(string.Format(MpReplies.NoActiveMatchWithId, matchId));
 			return false;
 		}
 
@@ -291,19 +290,19 @@ public sealed class MpCommandService(
 		if (match.IsPrivate && (gameSender.Privilege & UserPrivileges.Staff) == 0 &&
 		    !match.InvitedIds.Contains(gameSender.Id))
 		{
-			sink.Reply($"Cannot join match #{matchId} — the room is private. Ask a referee for an invite.");
+			sink.Reply(string.Format(MpReplies.PrivateRoomJoinDenied, matchId));
 			return false;
 		}
 
 		if (gameSender.Match is not null)
 		{
-			sink.Reply("You're already in a match.");
+			sink.Reply(MpReplies.AlreadyInAMatch);
 			return false;
 		}
 
 		if (match.BannedIds.Contains(gameSender.Id))
 		{
-			sink.Reply("You're banned from this match.");
+			sink.Reply(MpReplies.BannedFromMatch);
 			return false;
 		}
 
@@ -314,17 +313,17 @@ public sealed class MpCommandService(
 			var joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
 			if (joined == MatchMembershipService.JoinResult.Ok)
 			{
-				sink.Reply($"Joined match #{matchId} {match.Name}");
+				sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
 				return true;
 			}
 
 			sink.Reply(joined switch
 			{
-				MatchMembershipService.JoinResult.WrongPassword => "Incorrect password.",
-				MatchMembershipService.JoinResult.NoFreeSlot => "The match is full.",
-				MatchMembershipService.JoinResult.Locked => "The match is locked.",
-				MatchMembershipService.JoinResult.Banned => "You're banned from this match.",
-				_ => "Failed to join the match."
+				MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
+				MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
+				MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
+				MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
+				_ => MpReplies.FailedToJoinMatch
 			});
 			return false;
 		}
@@ -354,36 +353,36 @@ public sealed class MpCommandService(
 	{
 		if (match.BannedIds.Contains(sender.Id))
 		{
-			sink.Reply("You're banned from this match.");
+			sink.Reply(MpReplies.BannedFromMatch);
 			return false;
 		}
 
 		if (match.IsLocked && !match.InvitedIds.Contains(sender.Id))
 		{
-			sink.Reply("The match is locked.");
+			sink.Reply(MpReplies.MatchIsLocked);
 			return false;
 		}
 
 		if (match.IsPrivate && !match.IsReferee(sender.Id) && !match.InvitedIds.Contains(sender.Id))
 		{
-			sink.Reply($"Cannot join match #{match.DbId} — the room is private. Ask a referee for an invite.");
+			sink.Reply(string.Format(MpReplies.PrivateRoomJoinDenied, match.DbId));
 			return false;
 		}
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
 		if (password != match.Password && !match.IsReferee(sender.Id))
 		{
-			sink.Reply("Incorrect password.");
+			sink.Reply(MpReplies.IncorrectPassword);
 			return false;
 		}
 
 		if (!matchMembership.JoinMatchChat(sender, match, true))
 		{
-			sink.Reply("Failed to join the match chat.");
+			sink.Reply(MpReplies.FailedToJoinMatchChat);
 			return false;
 		}
 
-		sink.Reply($"Joined match #{match.DbId} {match.Name}'s chat.");
+		sink.Reply(string.Format(MpReplies.JoinedMatchChat, match.DbId, match.Name));
 		return true;
 	}
 
@@ -413,47 +412,47 @@ public sealed class MpCommandService(
 			bool scopeValid;
 			if (sender.MpScopeMatchId is not { } currentId)
 			{
-				scopeLine = "You're not scoped to any match.";
+				scopeLine = MpReplies.NotScopedToAnyMatch;
 				scopeValid = false;
 			}
 			else
 			{
 				var current = matchRegistry.GetByDbId(currentId);
 				scopeLine = current is null
-					? $"You were scoped to match #{currentId}, but it no longer exists."
-					: $"Currently scoped to match #{current.DbId} {current.Name}.";
+					? string.Format(MpReplies.WasScopedToGoneMatch, currentId)
+					: string.Format(MpReplies.CurrentlyScopedToMatch, current.DbId, current.Name);
 				scopeValid = current is not null;
 			}
 
 			var refereeMatches = matchRegistry.All.Where(m => m.IsReferee(sender.Id)).ToList();
 			sink.Reply(refereeMatches.Count == 0
 				? scopeLine
-				: scopeLine + "\nYou're a referee of:\n" +
+				: scopeLine + "\n" + MpReplies.YouAreARefereeOf + "\n" +
 				  string.Join('\n', refereeMatches.Select(m => $"#{m.DbId} {m.Name}")));
 			return scopeValid;
 		}
 
 		if (!int.TryParse(args[0], out var dbId))
 		{
-			sink.Reply("Usage: !mp in [match_id]");
+			sink.Reply(MpReplies.InUsage);
 			return false;
 		}
 
 		var match = matchRegistry.GetByDbId(dbId);
 		if (match is null)
 		{
-			sink.Reply($"No active match with id #{dbId}.");
+			sink.Reply(string.Format(MpReplies.NoActiveMatchWithHashId, dbId));
 			return false;
 		}
 
 		if (!match.IsReferee(sender.Id))
 		{
-			sink.Reply($"You're not a referee of match #{dbId}.");
+			sink.Reply(string.Format(MpReplies.NotARefereeOfMatch, dbId));
 			return false;
 		}
 
 		sender.MpScopeMatchId = dbId;
-		sink.Reply($"Now targeting match #{dbId} {match.Name}.");
+		sink.Reply(string.Format(MpReplies.NowTargetingMatch, dbId, match.Name));
 		return true;
 	}
 
@@ -491,35 +490,36 @@ public sealed class MpCommandService(
 	{
 		var beatmapLine = match.MapId > 0
 			? await beatmapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
-				? $"Beatmap: {bmap.Id} {bmap.FullName}"
-				: "Beatmap: Not found"
-			: $"Beatmap: {match.MapId} {match.MapName}";
+				? string.Format(MpReplies.SettingsBeatmap, bmap.Id, bmap.FullName)
+				: MpReplies.SettingsBeatmapNotFound
+			: string.Format(MpReplies.SettingsBeatmap, match.MapId, match.MapName);
 
 		var lines = new List<string>
 		{
-			$"Room name: {match.Name} (#{match.DbId})",
+			string.Format(MpReplies.SettingsRoomName, match.Name, match.DbId),
 			beatmapLine,
-			$"Team mode: {match.TeamType}, Win condition: {match.WinCondition}"
+			string.Format(MpReplies.SettingsTeamMode, match.TeamType, match.WinCondition)
 		};
 
 		var activeMods = new List<string>();
 		if (match.Mods != Mods.NoMod) activeMods.Add(match.Mods.ToString());
 		if (match.Freemods) activeMods.Add("Freemod");
-		if (activeMods.Count > 0) lines.Add($"Active mods: {string.Join(", ", activeMods)}");
+		if (activeMods.Count > 0)
+			lines.Add(string.Format(MpReplies.SettingsActiveMods, string.Join(", ", activeMods)));
 
 		if (match.CreatorId is { } creatorId)
 		{
 			var creatorName =
 				((UserSession?)gameRegistry.GetByUserId(creatorId) ?? ircRegistry.GetByUserId(creatorId))?.Name
 				?? (await userRepository.FetchByIdAsync(creatorId, cancellationToken))?.Name; // maybe offline
-			lines.Add($"Creator: #{creatorId} {creatorName ?? "?"}");
+			lines.Add(string.Format(MpReplies.SettingsCreator, creatorId, creatorName ?? "?"));
 		}
 
 		var occupied = match.Slots
 			.Select((slot, i) => (slot, i))
 			.Where(t => !t.slot.Empty)
 			.ToList();
-		lines.Add($"Players: ({occupied.Count})");
+		lines.Add(string.Format(MpReplies.SettingsPlayers, occupied.Count));
 
 		var hostSlotId = match.GetSlotId(match.HostId);
 		var showTeam = match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs;
@@ -562,7 +562,7 @@ public sealed class MpCommandService(
 			.ToList();
 		if (ircNames.Count > 0)
 		{
-			lines.Add($"IRC: ({ircNames.Count})");
+			lines.Add(string.Format(MpReplies.SettingsIrc, ircNames.Count));
 			lines.AddRange(WrapCsv(ircNames, MaxSettingsLineBytes));
 		}
 
@@ -621,7 +621,7 @@ public sealed class MpCommandService(
 	private static bool SetRoomLocked(MatchSession match, bool locked, ICommandReplySink sink)
 	{
 		MatchControlService.SetLocked(match, locked);
-		sink.Reply(locked ? "Locked the match" : "Unlocked the match");
+		sink.Reply(locked ? MpReplies.LockedMatch : MpReplies.UnlockedMatch);
 		return true;
 	}
 
@@ -630,13 +630,13 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size))
 		{
-			sink.Reply("Usage: !mp size <1-16>");
+			sink.Reply(MpReplies.SizeUsage);
 			return false;
 		}
 
 		size = Math.Clamp(size, 1, 16);
 		await _matchControl.SetSizeAsync(match, size);
-		sink.Reply($"Changed match to size {size}");
+		sink.Reply(string.Format(MpReplies.ChangedMatchSize, size));
 		return true;
 	}
 
@@ -648,7 +648,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 2 || !int.TryParse(args[^1], out var destSlotId))
 		{
-			sink.Reply("Usage: !mp move <name/id> <slot 1-16>");
+			sink.Reply(MpReplies.MoveUsage);
 			return false;
 		}
 
@@ -658,7 +658,7 @@ public sealed class MpCommandService(
 		var target = ParseUserSession(rawTarget);
 		if (target is null)
 		{
-			sink.Reply("User is not in this match or not registered.");
+			sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 			return false;
 		}
 
@@ -667,13 +667,13 @@ public sealed class MpCommandService(
 		return result switch
 		{
 			MatchControlService.MoveResult.DestinationNotOpen =>
-				Reply("Destination slot is not open."),
+				Reply(MpReplies.DestinationSlotNotOpen),
 
 			MatchControlService.MoveResult.TargetNotInMatch =>
-				Reply($"{target.Name} is not in this match."),
+				Reply(string.Format(MpReplies.NotInThisMatch, target.Name)),
 
 			_ =>
-				Reply($"Moved {target.Name} into slot {destSlotId}")
+				Reply(string.Format(MpReplies.MovedToSlot, target.Name, destSlotId))
 		};
 
 		bool Reply(string message)
@@ -689,7 +689,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp host <name/id>");
+			sink.Reply(MpReplies.HostUsage);
 			return false;
 		}
 
@@ -697,12 +697,12 @@ public sealed class MpCommandService(
 		var target = ParseUserSession(rawTarget);
 		if (target is not GameSession gameTarget || gameTarget.Match != match)
 		{
-			sink.Reply("User is not in this match or not registered.");
+			sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 			return false;
 		}
 
 		await _matchControl.SetHostAsync(match, gameTarget);
-		sink.Reply($"Changed match host to {gameTarget.Name}");
+		sink.Reply(string.Format(MpReplies.ChangedMatchHost, gameTarget.Name));
 		return true;
 	}
 
@@ -710,7 +710,7 @@ public sealed class MpCommandService(
 	private async Task<bool> ClearHost(MatchSession match, ICommandReplySink sink)
 	{
 		await _matchControl.ClearHostAsync(match);
-		sink.Reply("Cleared match host");
+		sink.Reply(MpReplies.ClearedMatchHost);
 		return true;
 	}
 
@@ -719,12 +719,12 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp name <text>");
+			sink.Reply(MpReplies.NameUsage);
 			return false;
 		}
 
 		await _matchControl.SetNameAsync(match, string.Join(' ', args));
-		sink.Reply($"Room name updated to \"{match.Name}\"");
+		sink.Reply(string.Format(MpReplies.RoomNameUpdated, match.Name));
 		return true;
 	}
 
@@ -733,7 +733,7 @@ public sealed class MpCommandService(
 	{
 		var password = args.Count == 0 ? "" : string.Join(' ', args);
 		await _matchControl.SetPasswordAsync(match, password);
-		sink.Reply(args.Count == 0 ? "Removed the match password" : "Changed the match password");
+		sink.Reply(args.Count == 0 ? MpReplies.RemovedMatchPassword : MpReplies.ChangedMatchPassword);
 		return true;
 	}
 
@@ -748,20 +748,18 @@ public sealed class MpCommandService(
 	{
 		if (args.Count == 0)
 		{
-			sink.Reply($"This match is {(match.IsPrivate ? "private" : "not private")}.");
+			sink.Reply(string.Format(MpReplies.MatchIsPrivateNow, match.IsPrivate ? "private" : "not private"));
 			return true;
 		}
 
 		if (args[0] is "0" or "1")
 		{
 			await _matchControl.SetPrivateAsync(match, args[0] == "1");
-			sink.Reply(match.IsPrivate
-				? "The match is now private. It will be hidden from the lobby and only for invited."
-				: "The match is now public.");
+			sink.Reply(match.IsPrivate ? MpReplies.MatchNowPrivate : MpReplies.MatchNowPublic);
 			return true;
 		}
 
-		sink.Reply("Usage: !mp private [0|1]");
+		sink.Reply(MpReplies.PrivateUsage);
 		return false;
 	}
 
@@ -770,7 +768,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp invite <name/id>");
+			sink.Reply(MpReplies.InviteUsage);
 			return false;
 		}
 
@@ -778,7 +776,7 @@ public sealed class MpCommandService(
 		var target = ParseGameSession(targetName);
 		if (target is null)
 		{
-			sink.Reply("User must be connected with the osu! client to be invited.");
+			sink.Reply(MpReplies.InviteRequiresClient);
 			return false;
 		}
 
@@ -786,13 +784,13 @@ public sealed class MpCommandService(
 		switch (result)
 		{
 			case MatchControlService.InviteResult.TargetAlreadyInRoom:
-				sink.Reply("User is already in the room");
+				sink.Reply(MpReplies.UserAlreadyInRoom);
 				return false;
 			case MatchControlService.InviteResult.TargetIsBot:
-				sink.Reply("Cannot invite BasilBot.");
+				sink.Reply(MpReplies.CannotInviteBot);
 				return false;
 			default:
-				sink.Reply($"Invited {target.Name} to the room");
+				sink.Reply(string.Format(MpReplies.InvitedToRoom, target.Name));
 				return true;
 		}
 	}
@@ -803,7 +801,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp addref <name/id>");
+			sink.Reply(MpReplies.AddRefUsage);
 			return false;
 		}
 
@@ -811,18 +809,18 @@ public sealed class MpCommandService(
 		var target = ParseUserSession(targetName);
 		if (target is null)
 		{
-			sink.Reply("User not found");
+			sink.Reply(MpReplies.UserNotFound);
 			return false;
 		}
 
 		var result = await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
 		if (result == MatchControlService.AddRefereeResult.TargetIsBot)
 		{
-			sink.Reply("Cannot add BasilBot as a referee.");
+			sink.Reply(MpReplies.CannotAddBotReferee);
 			return false;
 		}
 
-		sink.Reply($"Added {target.Name} to the match referees");
+		sink.Reply(string.Format(MpReplies.AddedReferee, target.Name));
 		return true;
 	}
 
@@ -840,7 +838,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp removeref <name/id>");
+			sink.Reply(MpReplies.RemoveRefUsage);
 			return false;
 		}
 
@@ -848,7 +846,7 @@ public sealed class MpCommandService(
 		var target = ParseUserSession(targetName);
 		if (target is null)
 		{
-			sink.Reply("User not found");
+			sink.Reply(MpReplies.UserNotFound);
 			return false;
 		}
 
@@ -857,16 +855,16 @@ public sealed class MpCommandService(
 		switch (result)
 		{
 			case MatchControlService.RemoveRefereeResult.WouldLeaveEmpty:
-				sink.Reply($"Cannot remove {target.Name} - at least one referee must remain.");
+				sink.Reply(string.Format(MpReplies.CannotRemoveLastReferee, target.Name));
 				return false;
 			case MatchControlService.RemoveRefereeResult.NotAReferee:
-				sink.Reply($"{target.Name} is not a referee of this match.");
+				sink.Reply(string.Format(MpReplies.TargetIsNotAReferee, target.Name));
 				return false;
 			case MatchControlService.RemoveRefereeResult.TargetIsCreator:
-				sink.Reply($"Cannot remove {target.Name} - they created this match.");
+				sink.Reply(string.Format(MpReplies.CannotRemoveCreator, target.Name));
 				return false;
 			default:
-				sink.Reply($"Removed {target.Name} from the match referees");
+				sink.Reply(string.Format(MpReplies.RemovedReferee, target.Name));
 				return true;
 		}
 	}
@@ -876,7 +874,7 @@ public sealed class MpCommandService(
 	{
 		if (match.Referees.Count == 0)
 		{
-			sink.Reply("No referees");
+			sink.Reply(MpReplies.NoReferees);
 			return true;
 		}
 
@@ -889,7 +887,7 @@ public sealed class MpCommandService(
 					: $"#{id} {session.Name}";
 			});
 
-		sink.Reply("Match referees:\n" + string.Join('\n', referees));
+		sink.Reply(MpReplies.MatchReferees + "\n" + string.Join('\n', referees));
 		return true;
 	}
 
@@ -898,7 +896,7 @@ public sealed class MpCommandService(
 	{
 		if (match.BannedIds.Count == 0)
 		{
-			sink.Reply("No banned players");
+			sink.Reply(MpReplies.NoBannedPlayers);
 			return true;
 		}
 
@@ -911,7 +909,7 @@ public sealed class MpCommandService(
 					: $"#{id} {session.Name}";
 			});
 
-		sink.Reply("Match bans:\n" + string.Join('\n', players));
+		sink.Reply(MpReplies.MatchBans + "\n" + string.Join('\n', players));
 		return true;
 	}
 
@@ -920,14 +918,14 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 2)
 		{
-			sink.Reply("Usage: !mp team <name/id> <red|blue>");
+			sink.Reply(MpReplies.TeamUsage);
 			return false;
 		}
 
 		var teamArg = args[^1].ToLowerInvariant();
 		if (teamArg is not ("red" or "blue"))
 		{
-			sink.Reply("Usage: !mp team <name> <red|blue>");
+			sink.Reply(MpReplies.TeamUsageName);
 			return false;
 		}
 
@@ -935,7 +933,7 @@ public sealed class MpCommandService(
 		var target = ParseUserSession(targetName);
 		if (target is null)
 		{
-			sink.Reply("User is not in this match or not registered.");
+			sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 			return false;
 		}
 
@@ -943,12 +941,12 @@ public sealed class MpCommandService(
 		var result = await _matchControl.SetTeamAsync(match, target, team);
 		if (result == MatchControlService.TeamResult.TargetNotInMatch)
 		{
-			sink.Reply($"{targetName} is not in this match.");
+			sink.Reply(string.Format(MpReplies.NotInThisMatch, targetName));
 			return false;
 		}
 
 		var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-		sink.Reply($"Moved {target.Name} to team {teamDisplay}");
+		sink.Reply(string.Format(MpReplies.MovedToTeam, target.Name, teamDisplay));
 		return true;
 	}
 
@@ -958,7 +956,7 @@ public sealed class MpCommandService(
 	/// </summary>
 	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		const string usage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
+		const string usage = MpReplies.SetUsage;
 
 		if (args.Count < 1 || !TryParseTeamType(args[0], out var teamType))
 		{
@@ -991,8 +989,8 @@ public sealed class MpCommandService(
 		}
 
 		await _matchControl.SetTeamTypeWinConditionAndSizeAsync(match, teamType, winCondition, size);
-		sink.Reply($"Changed match settings to {match.TeamType}, {match.WinCondition}" +
-		           (size is { } sz ? $", {sz} slots." : "."));
+		sink.Reply(string.Format(MpReplies.ChangedMatchSettings, match.TeamType, match.WinCondition,
+			size is { } sz ? $", {sz} slots." : "."));
 		return true;
 	}
 
@@ -1034,18 +1032,19 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId))
 		{
-			sink.Reply("Usage: !mp map <beatmap id>");
+			sink.Reply(MpReplies.MapUsage);
 			return false;
 		}
 
 		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, cancellationToken);
 		if (result == MatchControlService.SetMapResult.BeatmapNotFound || beatmap is null)
 		{
-			sink.Reply($"No beatmap with ID {beatmapId} found.");
+			sink.Reply(string.Format(MpReplies.NoBeatmapWithId, beatmapId));
 			return false;
 		}
 
-		sink.Reply($"Changed beatmap to {beatmap.Beatmapset.Artist} - {beatmap.Beatmapset.Title} [{beatmap.Version}]");
+		sink.Reply(string.Format(MpReplies.ChangedBeatmap, beatmap.Beatmapset.Artist, beatmap.Beatmapset.Title,
+			beatmap.Version));
 		return true;
 	}
 
@@ -1062,7 +1061,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp mods <mods>|Freemod|None");
+			sink.Reply(MpReplies.ModsUsage);
 			return false;
 		}
 
@@ -1113,24 +1112,24 @@ public sealed class MpCommandService(
 		var parts = new List<string>();
 
 		if (enabled != Mods.NoMod)
-			parts.Add($"Enabled {enabled}");
+			parts.Add(string.Format(MpReplies.EnabledMods, enabled));
 
 		if (disabled != Mods.NoMod)
-			parts.Add($"Disabled {disabled}");
+			parts.Add(string.Format(MpReplies.DisabledMods, disabled));
 
 		switch (wasFreemod)
 		{
 			case true when !isFreemod:
-				parts.Add("Disabled FreeMod");
+				parts.Add(MpReplies.DisabledFreemod);
 				break;
 			case false when isFreemod:
-				parts.Add("Enabled FreeMod");
+				parts.Add(MpReplies.EnabledFreemod);
 				break;
 		}
 
 		return parts.Count > 0
 			? string.Join(", ", parts)
-			: "No mod changes";
+			: MpReplies.NoModChanges;
 	}
 
 	/// <summary>
@@ -1147,13 +1146,13 @@ public sealed class MpCommandService(
 		switch (result)
 		{
 			case MatchControlService.StartResult.AlreadyInProgress:
-				sink.Reply("Match is already in progress.");
+				sink.Reply(MpReplies.MatchAlreadyInProgress);
 				return false;
 			case MatchControlService.StartResult.CountdownQueued:
-				sink.Reply($"Match starts in {countdownSeconds} seconds");
+				sink.Reply(string.Format(MpReplies.MatchStartsInSeconds, countdownSeconds));
 				return true;
 			case MatchControlService.StartResult.Started:
-				sink.Reply("Match started");
+				sink.Reply(MpReplies.MatchStarted);
 				return true;
 			case MatchControlService.StartResult.BeatmapMissing:
 			default:
@@ -1170,12 +1169,12 @@ public sealed class MpCommandService(
 		var seconds = 30;
 		if (args.Count > 0 && (!int.TryParse(args[0], out seconds) || seconds <= 0))
 		{
-			sink.Reply("Usage: !mp timer [seconds]");
+			sink.Reply(MpReplies.TimerUsage);
 			return false;
 		}
 
 		_matchControl.Timer(match, seconds);
-		sink.Reply($"Countdown started: {seconds} seconds");
+		sink.Reply(string.Format(MpReplies.CountdownStarted, seconds));
 		return true;
 	}
 
@@ -1185,11 +1184,11 @@ public sealed class MpCommandService(
 		var result = _matchControl.AbortTimer(match);
 		if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
 		{
-			sink.Reply("No countdown is running.");
+			sink.Reply(MpReplies.NoCountdownRunning);
 			return false;
 		}
 
-		sink.Reply("Countdown aborted");
+		sink.Reply(MpReplies.CountdownAborted);
 		return true;
 	}
 
@@ -1200,11 +1199,11 @@ public sealed class MpCommandService(
 		var result = await _matchControl.AbortAsync(match, cancellationToken);
 		if (result == MatchControlService.AbortResult.NotInProgress)
 		{
-			sink.Reply("Match is not in progress.");
+			sink.Reply(MpReplies.MatchNotInProgress);
 			return false;
 		}
 
-		sink.Reply("Aborted the match");
+		sink.Reply(MpReplies.AbortedMatch);
 		return true;
 	}
 
@@ -1214,7 +1213,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp kick <name/id>");
+			sink.Reply(MpReplies.KickUsage);
 			return false;
 		}
 
@@ -1222,7 +1221,7 @@ public sealed class MpCommandService(
 		var targetUser = await ParseUser(targetName);
 		if (targetUser is null)
 		{
-			sink.Reply("User is not in this match or not registered.");
+			sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 			return false;
 		}
 
@@ -1231,17 +1230,16 @@ public sealed class MpCommandService(
 		switch (result)
 		{
 			case MatchControlService.KickResult.TargetIsBot:
-				sink.Reply("Cannot kick BasilBot.");
+				sink.Reply(MpReplies.CannotKickBot);
 				return false;
 			case MatchControlService.KickResult.TargetIsReferee:
-				sink.Reply(
-					$"Cannot kick {targetUser.Name} — they're a referee. Remove referee status first with !mp removeref.");
+				sink.Reply(string.Format(MpReplies.CannotKickReferee, targetUser.Name));
 				return false;
 			case MatchControlService.KickResult.TargetNotInMatch:
-				sink.Reply("User is not in this match or not registered.");
+				sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 				return false;
 			default:
-				sink.Reply($"Kicked {targetUser.Name} from the match");
+				sink.Reply(string.Format(MpReplies.KickedFromMatch, targetUser.Name));
 				return true;
 		}
 	}
@@ -1252,7 +1250,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp ban <name/id>");
+			sink.Reply(MpReplies.BanUsage);
 			return false;
 		}
 
@@ -1260,7 +1258,7 @@ public sealed class MpCommandService(
 		var targetUser = await ParseUser(targetName);
 		if (targetUser is null)
 		{
-			sink.Reply("User is not registered.");
+			sink.Reply(MpReplies.UserNotRegistered);
 			return false;
 		}
 
@@ -1269,14 +1267,13 @@ public sealed class MpCommandService(
 		switch (result)
 		{
 			case MatchControlService.BanResult.TargetIsBot:
-				sink.Reply("Cannot ban BasilBot.");
+				sink.Reply(MpReplies.CannotBanBot);
 				return false;
 			case MatchControlService.BanResult.TargetIsReferee:
-				sink.Reply(
-					$"Cannot ban {targetUser.Name} — they're a referee. Remove referee status first with !mp removeref.");
+				sink.Reply(string.Format(MpReplies.CannotBanReferee, targetUser.Name));
 				return false;
 			default:
-				sink.Reply($"Banned {targetUser.Name} from the match");
+				sink.Reply(string.Format(MpReplies.BannedPlayerFromMatch, targetUser.Name));
 				return true;
 		}
 	}
@@ -1287,7 +1284,7 @@ public sealed class MpCommandService(
 	{
 		if (args.Count < 1)
 		{
-			sink.Reply("Usage: !mp unban <name/id>");
+			sink.Reply(MpReplies.UnbanUsage);
 			return false;
 		}
 
@@ -1295,18 +1292,18 @@ public sealed class MpCommandService(
 		var targetUser = await ParseUser(targetName);
 		if (targetUser is null)
 		{
-			sink.Reply("User is not registered.");
+			sink.Reply(MpReplies.UserNotRegistered);
 			return false;
 		}
 
 		var result = await _matchControl.UnbanAsync(match, targetUser.Id, cancellationToken);
 		if (result == MatchControlService.UnbanResult.NotBanned)
 		{
-			sink.Reply($"{targetUser.Name} is not banned from this match.");
+			sink.Reply(string.Format(MpReplies.NotBannedFromMatch, targetUser.Name));
 			return false;
 		}
 
-		sink.Reply($"Unbanned {targetUser.Name} from the match");
+		sink.Reply(string.Format(MpReplies.UnbannedFromMatch, targetUser.Name));
 		return true;
 	}
 
@@ -1315,7 +1312,7 @@ public sealed class MpCommandService(
 		CancellationToken cancellationToken)
 	{
 		await _matchControl.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
-		sink.Reply("Closed the match");
+		sink.Reply(MpReplies.ClosedMatch);
 		return true;
 	}
 

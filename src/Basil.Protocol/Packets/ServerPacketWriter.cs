@@ -4,11 +4,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Protocol.Packets;
 
-/// <summary>
-///     Server-to-client Bancho packet builders. Every payload is assembled from
-///     <see cref="PacketWriter" /> primitives, then wrapped with the 7-byte packet header via
-///     <see cref="PacketWriter.Wrap" />.
-/// </summary>
+/// <summary>Builds the Bancho packets the server sends to the osu! client.</summary>
 public static class ServerPacketWriter
 {
 	private static byte[] Concat(params ReadOnlySpan<byte[]> parts)

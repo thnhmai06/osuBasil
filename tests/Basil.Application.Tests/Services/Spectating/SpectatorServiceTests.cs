@@ -12,7 +12,7 @@ using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Spectating;
 
-/// <summary>Ported from User.add_spectator/remove_spectator.</summary>
+/// <summary>Verifies `SpectatorService`'s add/remove-spectator handling and the resulting channel membership.</summary>
 public class SpectatorServiceTests
 {
 	private readonly FakeChannelRegistry _channelRegistry = new();

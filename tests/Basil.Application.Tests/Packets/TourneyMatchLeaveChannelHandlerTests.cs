@@ -12,7 +12,7 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's TourneyMatchLeaveChannel.</summary>
+/// <summary>Verifies the `TourneyMatchLeaveChannel` handler parts the tournament client from the match channel.</summary>
 public class TourneyMatchLeaveChannelHandlerTests
 {
 	private static PacketReader ReaderFor(int matchId)

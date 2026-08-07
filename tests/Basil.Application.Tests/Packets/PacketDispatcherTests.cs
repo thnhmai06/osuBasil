@@ -12,9 +12,9 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Ported from app/state/__init__.py's packet_map ("all"/"restricted" split) + the dispatch loop
-///     in app/api/domains/cho.py's bancho_handler (`for packet in PacketReader(...): await
-///     packet.handle(userSession)` — unhandled packet types are skipped via their declared length).
+///     Verifies `PacketDispatcher`'s routing: each packet is dispatched to the handler registered
+///     for its type (with the reader positioned after the header), the "all"/"restricted" handler
+///     split, and unhandled packet types skipped via their declared length.
 /// </summary>
 public class PacketDispatcherTests
 {

@@ -25,9 +25,9 @@ using Basil.Application.Sessions.Multiplayer;
 namespace Basil.Application.Tests.Services.Authentication;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's handle_osu_login_request — the 14-step login flow.
-///     Each early-exit validation branch is tested in isolation with mocked ports; the happy path
-///     is exercised separately, verifying the assembled packet stream structure against ServerPacketWriter.
+///     Verifies the login flow: each early-exit validation branch is tested in isolation with mocked
+///     ports, and the happy path is exercised separately, verifying the assembled packet stream
+///     structure against ServerPacketWriter.
 /// </summary>
 public class LoginServiceTests
 {

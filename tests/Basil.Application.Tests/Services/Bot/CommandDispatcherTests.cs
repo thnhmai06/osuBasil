@@ -23,10 +23,9 @@ public class CommandDispatcherTests
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	/// <summary>
-	///     Mirrors the old `dispatcher.DispatchAsync(sender, message, matchScope, prefixOptional)` shape
-	///     so call sites don't need per-test channel plumbing — a non-null <paramref name="matchScope" />
-	///     is inferred to mean "sent in that match's own chat channel", matching every existing test's
-	///     actual intent (see <see cref="ICommandDispatcher.DispatchAsync" />'s doc comment on matchScope).
+	///     Dispatches a chat message and returns the last reply sent; a non-null
+	///     <paramref name="matchScope" /> is inferred to mean the message was sent in that match's own
+	///     chat channel (see <see cref="ICommandDispatcher.DispatchAsync" />'s doc comment on matchScope).
 	/// </summary>
 	private static async Task<string?> Run(CommandDispatcher dispatcher, UserSession sender, string message,
 		MatchSession? matchScope, bool prefixOptional = false)
@@ -38,8 +37,7 @@ public class CommandDispatcherTests
 
 	/// <summary>
 	///     Like <see cref="Run" />, but returns every reply sent (in order) instead of just the last —
-	///     needed for a `;`-chained line, where each segment now sends its own reply immediately instead
-	///     of the dispatcher joining them into one string.
+	///     needed for a `;`-chained line, where each segment sends its own reply immediately.
 	/// </summary>
 	private static async Task<IReadOnlyList<string>> RunAll(CommandDispatcher dispatcher, UserSession sender,
 		string message, MatchSession? matchScope)
@@ -94,7 +92,8 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "roll", null, true);
 
 		Assert.NotNull(reply);
-		Assert.StartsWith("cmyui rolls ", reply);
+		Assert.Matches(string.Format(MpReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
+			reply);
 	}
 
 	[Fact]
@@ -128,7 +127,8 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "!roll", null);
 
 		Assert.NotNull(reply);
-		Assert.StartsWith("cmyui rolls ", reply);
+		Assert.Matches(string.Format(MpReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
+			reply);
 		var pointsToken = reply.Split(' ')[2];
 		var points = int.Parse(pointsToken);
 		Assert.InRange(points, 0, 100);
@@ -167,7 +167,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!mp settings", null);
 
-		Assert.Contains("not scoped to a match", reply);
+		Assert.Contains(MpReplies.NotScopedToAnyMatchHint, reply);
 	}
 
 	[Fact]
@@ -196,8 +196,8 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "!mp make Room", null);
 
 		Assert.NotNull(reply);
-		Assert.Contains("Created the match", reply);
 		Assert.NotNull(sender.Match);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match.DbId, sender.Match.Name, ""), reply);
 	}
 
 	[Fact]
@@ -211,9 +211,10 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "!mp makeprivate Room", null);
 
 		Assert.NotNull(reply);
-		Assert.Contains("Created the match", reply);
 		Assert.NotNull(sender.Match);
-		Assert.True(sender.Match!.IsPrivate);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match.DbId, sender.Match.Name, " (private)"),
+			reply);
+		Assert.True(sender.Match.IsPrivate);
 	}
 
 	[Fact]
@@ -227,9 +228,9 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, host, "!mp makeprivate", existing);
 
-		Assert.Contains("Created the match", reply);
 		var created = fixture.MatchRegistry.GetByDbId(host.MpScopeMatchId!.Value);
 		Assert.NotNull(created);
+		Assert.Contains(string.Format(MpReplies.CreatedMatch, created.DbId, created.Name, " (private)"), reply);
 		Assert.NotEqual(existing.DbId, created.DbId);
 		Assert.True(created.IsPrivate);
 		Assert.False(existing.IsPrivate);
@@ -245,7 +246,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!mp join 999", null);
 
-		Assert.Contains("No active match", reply);
+		Assert.Contains(string.Format(MpReplies.NoActiveMatchWithId, 999), reply);
 	}
 
 	[Fact]
@@ -261,7 +262,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, player, $"!mp join {match.DbId}", null);
 
-		Assert.Contains("private", reply);
+		Assert.Contains(string.Format(MpReplies.PrivateRoomJoinDenied, match.DbId), reply);
 	}
 
 	[Fact]
@@ -277,7 +278,7 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, player, $"!mp join {match.DbId}", null);
 
 		Assert.NotNull(reply);
-		Assert.Contains("Joined match", reply);
+		Assert.Contains(string.Format(MpReplies.JoinedMatch, match.DbId, match.Name), reply);
 	}
 
 	[Fact]
@@ -291,7 +292,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, host, "!mp private", match);
 
-		Assert.Contains("not private", reply);
+		Assert.Contains(string.Format(MpReplies.MatchIsPrivateNow, "not private"), reply);
 	}
 
 	[Fact]
@@ -313,7 +314,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where peppy", null);
 
-		Assert.Equal("peppy is in United States", reply);
+		Assert.Equal(string.Format(MpReplies.WhereIsIn, "peppy", "United States"), reply);
 	}
 
 	[Fact]
@@ -325,7 +326,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where ghost", null);
 
-		Assert.Equal("ghost is not registered.", reply);
+		Assert.Equal(string.Format(MpReplies.NotRegistered, "ghost"), reply);
 	}
 
 	[Fact]
@@ -337,7 +338,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where nobody", null);
 
-		Assert.Equal("nobody is in Unknown", reply);
+		Assert.Equal(string.Format(MpReplies.WhereIsIn, "nobody", "Unknown"), reply);
 	}
 
 	[Fact]
@@ -371,7 +372,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq nonexistent", null);
 
-			Assert.Equal("No FAQ entry found for 'nonexistent'.", reply);
+			Assert.Equal(string.Format(MpReplies.NoFaqEntryFound, "nonexistent"), reply);
 		}
 		finally
 		{
@@ -393,7 +394,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq list", null);
 
-			Assert.Equal("Available FAQ entries: peppy, rules", reply);
+			Assert.Equal(string.Format(MpReplies.AvailableFaqEntries, "peppy, rules"), reply);
 		}
 		finally
 		{
@@ -412,7 +413,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq list", null);
 
-			Assert.Equal("No FAQ entries available.", reply);
+			Assert.Equal(MpReplies.NoFaqEntriesAvailable, reply);
 		}
 		finally
 		{
@@ -436,7 +437,7 @@ public class CommandDispatcherTests
 			var reply = await Run(dispatcher, sender, "!faq ../secret", null);
 
 			Assert.DoesNotContain("TOP SECRET", reply);
-			Assert.Equal("No FAQ entry found for 'secret'.", reply);
+			Assert.Equal(string.Format(MpReplies.NoFaqEntryFound, "secret"), reply);
 		}
 		finally
 		{
@@ -516,7 +517,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, other, $"!mp in {match.DbId}", null);
 
-		Assert.Contains("not a referee", reply);
+		Assert.Contains(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
 		Assert.Null(other.MpScopeMatchId);
 	}
 
@@ -561,7 +562,7 @@ public class CommandDispatcherTests
 		Assert.Empty(sink.DmReplies);
 		var connection = (RecordingIrcConnection)hostIrc.IrcConnection;
 		Assert.Contains(connection.Received,
-			m => m.Command == "PRIVMSG" && m.Params[1].Contains("not scoped to a match"));
+			m => m.Command == "PRIVMSG" && m.Params[1].Contains(MpReplies.NotScopedToAnyMatchHint));
 	}
 
 	[Fact]
@@ -646,8 +647,9 @@ public class CommandDispatcherTests
 
 		var replies = await RunAll(dispatcher, host, "!mp host; !mp name Renamed", match);
 
-		Assert.Contains(replies, r => r.Contains("Usage: !mp host"));
-		Assert.Contains(replies, r => r.Contains("renamed", StringComparison.OrdinalIgnoreCase));
+		Assert.Contains(replies, r => r.Contains(MpReplies.HostUsage));
+		Assert.Contains(replies, r => r.Contains(string.Format(MpReplies.RoomNameUpdated, "Renamed"),
+			StringComparison.OrdinalIgnoreCase));
 		Assert.Equal("Renamed", match.Name);
 	}
 
@@ -662,8 +664,9 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, host, "!mp host && !mp name Renamed", match);
 
-		Assert.Contains("Usage: !mp host", reply);
-		Assert.DoesNotContain("renamed", reply, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains(MpReplies.HostUsage, reply);
+		Assert.DoesNotContain(string.Format(MpReplies.RoomNameUpdated, "Renamed"), reply,
+			StringComparison.OrdinalIgnoreCase);
 		Assert.NotEqual("Renamed", match.Name);
 	}
 
@@ -720,7 +723,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, host, "!mp name Foo; !roll 100", match);
 
-		Assert.Contains("rejected at", reply);
+		Assert.Contains(string.Format(MpReplies.ChainMustBeMp, "!", "!roll 100"), reply);
 		Assert.NotEqual("Foo", match.Name);
 	}
 

@@ -194,7 +194,7 @@ public sealed class CommandDispatcher(
 			// Distinct from the referee-gate's silent no-op (see MpCommandService.TryHandleAsync's doc
 			// comment) — not being scoped to ANY match at all is a different, more basic failure than
 			// being scoped but lacking permission, so it gets an explicit reply instead of dead silence.
-			effectiveSink.Reply("You're not scoped to a match — use !mp make, !mp join <id>, or !mp in <id> first.");
+			effectiveSink.Reply(MpReplies.NotScopedToAnyMatchHint);
 			return false;
 		}
 
@@ -224,16 +224,12 @@ public sealed class CommandDispatcher(
 	///     scope.
 	/// </summary>
 	/// <remarks>
-	///     The scope set by <c>!mp in</c> is preferred over the sender's literal chat channel, so a
-	///     referee juggling several matches from one place keeps targeting the match they picked even
-	///     when they are sitting in a different match's own channel — this one still applies from any
-	///     channel, since it was only ever set via a DM in the first place (see the <c>"in"</c> case in
-	///     <see cref="DispatchMpAsync" />). The channel-derived scope comes next. The last-resort
-	///     fallback — the match the sender is physically sitting in — only applies for a DM
-	///     (<paramref name="channelName" /> is <see langword="null" />): resolving it from an arbitrary
-	///     channel like <c>#osu</c> would let a seated player's room leak into unrelated public chat
-	///     just because they happen to be in a match elsewhere. A stored scope whose match no longer
-	///     exists is cleared.
+	///     The scope set by <c>!mp in</c> is preferred over the sender's literal chat channel, and it
+	///     applies from any channel, since it was only ever set via a DM in the first place (see the
+	///     <c>"in"</c> case in <see cref="DispatchMpAsync" />). The channel-derived scope comes next.
+	///     The last-resort fallback — the match the sender is physically sitting in — only applies for
+	///     a DM (<paramref name="channelName" /> is <see langword="null" />), never from a public
+	///     channel. A stored scope whose match no longer exists is cleared.
 	/// </remarks>
 	/// <param name="sender">The userSession issuing the command.</param>
 	/// <param name="channelScope">The match derived from the sender's current chat channel, if any.</param>
@@ -289,7 +285,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply($"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.");
+				sink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
 				return false;
 			}
 
@@ -298,7 +294,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply($"Chained commands must all be `{prefix}mp <subcommand>` — rejected at: '{segment.Text}'.");
+				sink.Reply(string.Format(MpReplies.ChainMustBeMp, prefix, segment.Text));
 				return false;
 			}
 
@@ -307,7 +303,7 @@ public sealed class CommandDispatcher(
 			{
 				logger.LogDebug("Command chain rejected: UserId={UserId} RejectedSegment={RejectedSegment}",
 					sender.Id, segment.Text);
-				sink.Reply($"`{prefix}mp {subcommand}` can't be chained — rejected at: '{segment.Text}'.");
+				sink.Reply(string.Format(MpReplies.CannotChainMp, prefix, subcommand, segment.Text));
 				return false;
 			}
 
@@ -343,7 +339,7 @@ public sealed class CommandDispatcher(
 		if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = Math.Min(parsed, RollMaxCap);
 
 		var roll = (int)Random.Shared.NextInt64(0, (long)max + 1);
-		return $"{sender.Name} rolls {roll} point(s)";
+		return string.Format(MpReplies.RollResult, sender.Name, roll);
 	}
 
 	/// <summary>Answers <c>!where</c>, reporting the registered country of the named userSession.</summary>
@@ -352,7 +348,7 @@ public sealed class CommandDispatcher(
 	{
 		if (args.Length < 1)
 		{
-			sink.Reply("Usage: !where <username>");
+			sink.Reply(MpReplies.WhereUsage);
 			return false;
 		}
 
@@ -360,11 +356,11 @@ public sealed class CommandDispatcher(
 		var user = await userRepository.FetchByNameAsync(name, cancellationToken);
 		if (user is null)
 		{
-			sink.Reply($"{name} is not registered.");
+			sink.Reply(string.Format(MpReplies.NotRegistered, name));
 			return false;
 		}
 
-		sink.Reply($"{user.Name} is in {user.Country.Describe()}");
+		sink.Reply(string.Format(MpReplies.WhereIsIn, user.Name, user.Country.Describe()));
 		return true;
 	}
 
@@ -377,7 +373,7 @@ public sealed class CommandDispatcher(
 		switch (args.Length)
 		{
 			case < 1:
-				sink.Reply("Usage: !faq <entry>|list");
+				sink.Reply(MpReplies.FaqUsage);
 				return false;
 			case 1 when args[0].Equals("list", StringComparison.OrdinalIgnoreCase):
 				sink.Reply(ListFaqEntries());
@@ -389,7 +385,7 @@ public sealed class CommandDispatcher(
 		var content = await _faq.ReadEntryAsync(entry, cancellationToken);
 		if (content is null)
 		{
-			sink.Reply($"No FAQ entry found for '{entry}'.");
+			sink.Reply(string.Format(MpReplies.NoFaqEntryFound, entry));
 			return false;
 		}
 
@@ -407,8 +403,8 @@ public sealed class CommandDispatcher(
 			.ToList();
 
 		return entries.Count == 0
-			? "No FAQ entries available."
-			: $"Available FAQ entries: {string.Join(", ", entries)}";
+			? MpReplies.NoFaqEntriesAvailable
+			: string.Format(MpReplies.AvailableFaqEntries, string.Join(", ", entries));
 	}
 
 	/// <summary>Shortens a string for logging, appending an ellipsis when truncated.</summary>
@@ -433,12 +429,9 @@ public sealed class CommandDispatcher(
 	///     arrived on, mirroring an unprefixed copy into the resolved match's own channel.
 	/// </summary>
 	/// <remarks>
-	///     Identical in shape to <c>ChatDispatchService.DmReplySink</c>, used for the genuine DM-to-bot
-	///     path — this one exists because <see cref="CommandDispatcher" /> already resolved the scope
-	///     once and doesn't need to re-resolve it per reply line the way that class does (it also
-	///     handles <c>!mp make</c>/<c>!mp in</c> establishing scope as part of the reply itself, which
-	///     doesn't apply here since this sink is only ever built after a scoped subcommand's own scope
-	///     is already resolved).
+	///     Mirrors the DM-prefix and channel-broadcast behavior of the sink used for the genuine
+	///     DM-to-bot path, but the match scope here is already resolved once by the dispatcher, so it
+	///     does not need to be re-derived per reply line.
 	/// </remarks>
 	private sealed class ScopedDmReplySink(
 		UserSession sender,

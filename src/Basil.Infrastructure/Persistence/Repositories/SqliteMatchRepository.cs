@@ -10,8 +10,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IMatchRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>*RowDto</c> DTOs, since Dapper fills by property
-///     name rather than through a positional record constructor; the stored integer enum columns
+///     Rows map through the private mutable <c>*RowDto</c> DTOs; the stored integer enum columns
 ///     are cast to their domain enum types during mapping. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteMatchRepository(
@@ -20,8 +19,8 @@ public sealed class SqliteMatchRepository(
 {
 	/// <inheritdoc />
 	/// <remarks>
-	///     The insert and the id read-back are one batched statement, so the auto-increment id is
-	///     the immediately inserted row's.
+	///     The insert and the id read-back are one batched statement, so the returned id is the
+	///     immediately inserted row's.
 	/// </remarks>
 	public async Task<int> CreateMatchAsync(
 		string name, DateTime createdAt, CancellationToken cancellationToken = default)
@@ -51,7 +50,7 @@ public sealed class SqliteMatchRepository(
 	/// <inheritdoc />
 	/// <remarks>
 	///     The enum columns are stored as their integer values. The insert and the id read-back are
-	///     one batched statement, so the auto-increment id is the immediately inserted row's.
+	///     one batched statement, so the returned id is the immediately inserted row's.
 	/// </remarks>
 	public async Task<int> CreateRoundAsync(
 		int matchId, int roundIndex, string mapMd5,
@@ -207,8 +206,7 @@ public sealed class SqliteMatchRepository(
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Matches table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the Matches table columns.
 	/// </summary>
 	private sealed class MatchRowDto
 	{
@@ -226,8 +224,7 @@ public sealed class SqliteMatchRepository(
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Rounds table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the Rounds table columns.
 	/// </summary>
 	private sealed class RoundRowDto
 	{
@@ -256,8 +253,7 @@ public sealed class SqliteMatchRepository(
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the MatchEvents table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the MatchEvents table columns.
 	/// </summary>
 	private sealed class MatchEventRowDto
 	{

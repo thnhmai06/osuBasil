@@ -8,10 +8,7 @@ using Basil.Web.OpenApi;
 
 namespace Basil.Web.Routing.Api;
 
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="FaqRoutes" /> is static and can't be a
-///     type argument.
-/// </summary>
+/// <summary>A dedicated logger category marker for the static <see cref="FaqRoutes" /> class.</summary>
 internal sealed class FaqRoutesLog;
 
 /// <summary>

@@ -5,9 +5,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
-///     Applies the embedded SQL migration scripts (see <c>Persistence/Migrations/</c>) against the SQLite
-///     database file, in filename order. DbUp records each script in its own journal table, so a
-///     script runs exactly once per database file.
+///     Applies the embedded SQL migration scripts (see <c>Persistence/Migrations/</c>) against the
+///     SQLite database file, in filename order. Each script runs exactly once per database file.
 /// </summary>
 public static class SqlMigrationRunner
 {
@@ -17,9 +16,7 @@ public static class SqlMigrationRunner
 	/// </summary>
 	/// <param name="connectionString">The SQLite connection string of the database file to migrate.</param>
 	/// <remarks>
-	///     Switches the database to WAL journal mode first. The mode lives in the database file
-	///     header, so it only needs setting once per file, but running it every startup is harmless
-	///     and keeps a hand-copied or older database file in WAL mode too.
+	///     Switches the database to WAL journal mode first.
 	/// </remarks>
 	/// <exception cref="InvalidOperationException">A migration script failed; the inner exception carries the cause.</exception>
 	public static void RunMigrations(string connectionString)

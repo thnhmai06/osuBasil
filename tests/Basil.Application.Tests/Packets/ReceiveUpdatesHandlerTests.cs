@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's ReceiveUpdates.</summary>
+/// <summary>Verifies the `ReceiveUpdates` handler updates the player's presence filter, ignoring out-of-range values.</summary>
 public class ReceiveUpdatesHandlerTests
 {
 	private static GameSession MakeSession()

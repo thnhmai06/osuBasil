@@ -13,7 +13,7 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's TourneyMatchJoinChannel.</summary>
+/// <summary>Verifies the `TourneyMatchJoinChannel` handler joins an observing donator as a tournament client.</summary>
 public class TourneyMatchJoinChannelHandlerTests
 {
 	private static PacketReader ReaderFor(int matchId)

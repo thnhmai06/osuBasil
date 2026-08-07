@@ -3,9 +3,8 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// <summary>
 ///     Non-blocking pub/sub for the live event layer. Publishers, mostly packet handlers that
 ///     already hold <see cref="MatchSession.Lock" />, must never block on a slow or dead
-///     subscriber: raising a plain C# event is itself non-blocking, and each subscriber writes what
-///     it receives into its own bounded channel. The actual response writing happens later, entirely
-///     decoupled from whatever lock the publisher was holding.
+///     subscriber; each subscriber receives the payload and writes it out on its own schedule,
+///     decoupled from the publisher.
 /// </summary>
 public interface IMatchLiveEvents
 {
@@ -17,19 +16,19 @@ public interface IMatchLiveEvents
 	bool HasPlayerScoreSubscribers { get; }
 
 	/// <summary>
-	///     Occurs when the match's general state channel should be updated. Rose with the match's
+	///     Occurs when the match's general state channel should be updated. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> MainPublished;
 
 	/// <summary>
-	///     Occurs when one userSession's live score channel should be updated. Rose with the match's
+	///     Occurs when one userSession's live score channel should be updated. Raised with the match's
 	///     database id, the userSession's name, and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, string, byte[]> PlayerScorePublished;
 
 	/// <summary>
-	///     Occurs when a match's settings channel should be updated. Rose with the match's
+	///     Occurs when a match's settings channel should be updated. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> SettingsPublished;
@@ -42,37 +41,37 @@ public interface IMatchLiveEvents
 	event Action<int, int, byte[]> SlotPublished;
 
 	/// <summary>
-	///     Occurs when a match's host channel should be updated. Rose with the match's database id
+	///     Occurs when a match's host channel should be updated. Raised with the match's database id
 	///     and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> HostPublished;
 
 	/// <summary>
-	///     Occurs when a match's referee-list channel should be updated. Rose with the match's
+	///     Occurs when a match's referee-list channel should be updated. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> RefsPublished;
 
 	/// <summary>
-	///     Occurs when a match's banlist channel should be updated. Rose with the match's
+	///     Occurs when a match's banlist channel should be updated. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> BansPublished;
 
 	/// <summary>
-	///     Occurs when a match's countdown-timer channel should be updated. Rose with the match's
+	///     Occurs when a match's countdown-timer channel should be updated. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> TimerPublished;
 
 	/// <summary>
-	///     Occurs when a match's slot channel should be updated. Rose with the match's database
+	///     Occurs when a match's slot channel should be updated. Raised with the match's database
 	///     id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> SlotsPublished;
 
 	/// <summary>
-	///     Occurs when a line of chat is said in a match's own channel. Rose with the match's
+	///     Occurs when a line of chat is said in a match's own channel. Raised with the match's
 	///     database id and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> ChatPublished;

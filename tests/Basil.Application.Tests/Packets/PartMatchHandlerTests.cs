@@ -4,7 +4,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchPart.</summary>
+/// <summary>Verifies the `MatchPart` handler removes the player from the match.</summary>
 public class PartMatchHandlerTests
 {
 	[Fact]

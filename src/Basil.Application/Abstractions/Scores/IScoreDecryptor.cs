@@ -6,9 +6,8 @@ namespace Basil.Application.Abstractions.Scores;
 /// <remarks>
 ///     The client encrypts its score data and its client hash with a symmetric cipher derived from
 ///     the osu! version string. This is genuinely Rijndael, not AES: the client uses a 256-bit
-///     block size, which the .NET <c>Aes</c> class cannot handle because it is hardcoded to 128-bit
-///     blocks, so the Infrastructure implementation uses BouncyCastle's configurable-block
-///     Rijndael engine.
+///     block size rather than AES's 128-bit block, so the implementation must use a
+///     configurable-block-size Rijndael engine.
 /// </remarks>
 public interface IScoreDecryptor
 {

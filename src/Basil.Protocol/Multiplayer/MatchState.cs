@@ -3,10 +3,7 @@ using Basil.Protocol.Packets;
 namespace Basil.Protocol.Multiplayer;
 
 /// <summary>
-///     The match state as produced by <see cref="PacketReader.ReadMatch" />. This is
-///     intentionally a different shape than <see cref="MatchPacket" /> (the write side): the wire
-///     format itself is asymmetric, so reading yields a flat <see cref="SlotIds" /> list (only for
-///     occupied slots) rather than a full per-slot player and mods mapping.
+///     The decoded shape of a multiplayer match, as produced by <see cref="PacketReader.ReadMatch" />.
 /// </summary>
 /// <param name="Id">The id of the match.</param>
 /// <param name="InProgress">

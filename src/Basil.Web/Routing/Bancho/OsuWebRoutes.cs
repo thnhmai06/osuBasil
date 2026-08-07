@@ -20,10 +20,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Bancho;
 
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="OsuWebRoutes" /> is static and can't be
-///     a type argument.
-/// </summary>
+/// <summary>A dedicated logger category marker for the static <see cref="OsuWebRoutes" /> class.</summary>
 // ReSharper disable once ClassNeverInstantiated.Global
 internal sealed class OsuWebRoutesLog;
 

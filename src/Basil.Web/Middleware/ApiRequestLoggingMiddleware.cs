@@ -13,7 +13,7 @@ namespace Basil.Web.Middleware;
 ///     carries a literal <c>live</c> segment (the same structural signature
 ///     <see cref="EnvelopeMiddleware" /> uses, via <see cref="LiveSseRoutes.IsSseRoute" />) is skipped.
 ///     Only the <c>basilapi</c> group is covered; every other host group (bancho/osu-web/beatmap-assets/
-///     avatar) is left to the global <c>UseSerilogRequestLogging()</c> line.
+///     avatar) is left to the global request-logging line.
 /// </remarks>
 public sealed class ApiRequestLoggingMiddleware(RequestDelegate next, ILogger<ApiRequestLoggingMiddleware> logger)
 {

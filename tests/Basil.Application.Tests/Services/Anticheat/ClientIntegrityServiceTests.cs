@@ -10,11 +10,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Application.Tests.Services.Anticheat;
 
 /// <summary>
-///     Ported from app/services/client_integrity.py's ClientIntegrityService.handle_lastfm_flags.
-///     Per explicit user decision, restrict/force-logout/random-ban-roll/Discord-webhook side effects
-///     are dropped entirely (Basil has no restrict machinery); instead, a flagged userSession currently in
-///     a match gets a BasilBot warning on that match's own chat channel plus a DM to every referee —
-///     a flagged userSession outside any match produces no side effect at all.
+///     Verifies `ClientIntegrityService`'s handling of anticheat-flagged sessions: a flagged session
+///     currently in a match gets a BasilBot warning on that match's chat channel plus a DM to every
+///     referee, while a flagged session outside any match produces no side effect.
 /// </summary>
 public class ClientIntegrityServiceTests
 {

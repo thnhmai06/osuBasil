@@ -9,14 +9,13 @@ namespace Basil.Application.Services;
 ///     Holds lock-free "full snapshot, then deltas" state for one live event channel.
 /// </summary>
 /// <remarks>
-///     A publisher calls <see cref="Publish" /> on every mutation; it performs a plain reference-type
-///     field swap, which is atomic in C# and made explicit here with <see cref="Volatile" />. There
-///     is never a lock, so a burst of reconnections can never contend with it. A fresh subscriber reads
-///     <see cref="Latest" /> directly to get the current full state instead of waiting for the next
-///     delta, so it never misses a mutation that happened before it subscribed. The publisher always
-///     writes <see cref="Latest" /> before anything it publishes reaches a subscriber's queue, so
-///     anything discarded while draining a just-opened subscription is already reflected in the
-///     fresh <see cref="Latest" /> read that follows.
+///     A publisher calls <see cref="Publish" /> on every mutation; there is never a lock, so a burst
+///     of reconnections can never contend with it. A fresh subscriber reads <see cref="Latest" />
+///     directly to get the current full state instead of waiting for the next delta, so it never
+///     misses a mutation that happened before it subscribed. The publisher always stores
+///     <see cref="Latest" /> before anything it publishes reaches a subscriber's queue, so anything
+///     discarded while draining a just-opened subscription is already reflected in the fresh
+///     <see cref="Latest" /> read that follows.
 /// </remarks>
 /// <typeparam name="T">The full-state payload type carried by the channel.</typeparam>
 public sealed class SnapshotChannel<T> where T : class

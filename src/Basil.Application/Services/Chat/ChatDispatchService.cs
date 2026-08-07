@@ -25,11 +25,7 @@ namespace Basil.Application.Services.Chat;
 ///     real IRC connection's PRIVMSG. A leading <c>#</c> routes to the channel path, which broadcasts
 ///     and dispatches any <c>!</c> command; anything else resolves to a user, either the bot for a
 ///     command shortcut or a regular recipient whose message is checked against block, PM-privacy,
-///     and silence state. Delivery is online only, with no offline persistence. The service lives one
-///     layer above <see cref="ChannelMembershipService" /> specifically to avoid a dependency cycle:
-///     it depends on <see cref="ICommandDispatcher" />, which chains back down through the match
-///     services to <see cref="ChannelMembershipService" />, so that class must stay free of any
-///     dependency on this one.
+///     and silence state. Delivery is online only, with no offline persistence.
 /// </remarks>
 public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
@@ -327,7 +323,7 @@ public sealed class ChatDispatchService(
 	/// <remarks>
 	///     <see cref="Reply" /> always DMs the sender, prefixed with <c>[#id]</c> once the sender is
 	///     resolvably scoped to a match. Scope resolution mirrors
-	///     <see cref="CommandDispatcher.ResolveScope" />'s precedence, re-checked per call because
+	///     <see cref="CommandDispatcher.ResolveScope" />'s precedence and is re-checked per call;
 	///     <c>!mp make</c> and <c>!mp in</c> establish that scope as part of the very reply being sent.
 	///     When a match resolves, an unprefixed copy is also broadcast into the match's own channel, so
 	///     referees running the room remotely stay visible to it. <see cref="ReplyDm" />, used for

@@ -12,8 +12,7 @@ namespace Basil.Application.Abstractions.Beatmaps;
 ///     Every such calculation is consolidated into this one port rather than one interface per
 ///     calculation. The single deliberate exception is <c>HitCounts.CalculateAccuracy</c> in
 ///     Basil.Domain, a standard, documented osu! formula with no equivalent static library
-///     function, which is kept hand-rolled because Basil.Domain has no package dependencies by
-///     design. Nothing in scoring, leaderboards, or match win conditions depends on these
+///     function. Nothing in scoring, leaderboards, or match win conditions depends on these
 ///     calculations: they feed star rating and difficulty display only.
 /// </remarks>
 public interface IOsuCalculator
@@ -55,10 +54,9 @@ public interface IOsuCalculator
 ///     <see cref="Difficulty" /> already carries every mod- and mode-affected stat (star rating,
 ///     BPM, length, CS/AR/OD/HP) computed for the exact mode and mods passed to
 ///     <see cref="IOsuCalculator.Analyze" />; see the implementation's analysis method for how each
-///     field is derived, and why the raw decoder's own length, max combo, BPM, and difficulty
-///     settings are never read directly. <see cref="ObjectCounts" /> is its own concrete
-///     subtype per mode and also carries the max combo; it is not part of
-///     <see cref="Difficulty" /> because it does not vary with mods.
+///     field is derived. <see cref="ObjectCounts" /> is its own concrete subtype per mode and also
+///     carries the max combo; it is not part of <see cref="Difficulty" /> because it does not vary
+///     with mods.
 /// </remarks>
 public sealed record BeatmapAnalysis(
 	Difficulty Difficulty,

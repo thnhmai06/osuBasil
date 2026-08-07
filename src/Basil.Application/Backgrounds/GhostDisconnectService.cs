@@ -11,10 +11,7 @@ namespace Basil.Application.Backgrounds;
 ///     Runs a cleanup pass every <c>OsuClientMinPingIntervalSeconds / 3</c> seconds and force-logs-out
 ///     any userSession whose last received packet is older than the full interval; the threshold mirrors
 ///     the interval the osu! client itself is used to ping the server. Cleanup is delegated to
-///     <see cref="PlayerLogoutService" />, the same service a graceful logout packet uses, rather than
-///     being duplicated here. A hand-rolled duplicate previously drifted out of sync: it never called
-///     into match-leave, so a ghost's slot stayed stuck at SlotStatus.Playing forever and permanently
-///     blocked every other userSession's MatchComplete from completing the round.
+///     <see cref="PlayerLogoutService" />, the same service a graceful logout packet uses.
 /// </remarks>
 /// <param name="gameRegistry">The registry of live <see cref="GameSession" /> sessions this watchdog scans.</param>
 /// <param name="ircRegistry">The registry of live <see cref="IrcSession" /> sessions this watchdog scans.</param>

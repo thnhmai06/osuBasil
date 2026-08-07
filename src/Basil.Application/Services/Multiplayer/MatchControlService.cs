@@ -418,12 +418,10 @@ public sealed class MatchControlService(
 
 	/// <summary>Revokes referee status from a single userSession and records the removal as a match event.</summary>
 	/// <remarks>
-	///     A guard blocks removing the last referee, replacing the old behavior of auto-closing a
-	///     <c>!mp make</c> room when its last referee left. The auto-close branch is now unreachable
-	///     dead code, since a match can never actually reach zero referees through this path. The
-	///     match's creator (<see cref="MatchSession.IsCreator" />) can never be removed either — they
-	///     hold referee-equivalent authority for the room's lifetime regardless. A target who is
-	///     removed while not currently seated as a player is also removed from the match's chat
+	///     A guard blocks removing the last referee, so a match can never reach zero referees through
+	///     this path. The match's creator (<see cref="MatchSession.IsCreator" />) can never be removed
+	///     either — they hold referee-equivalent authority for the room's lifetime regardless. A target
+	///     who is removed while not currently seated as a player is also removed from the match's chat
 	///     channel, since losing referee status also loses their only standing to be there (see
 	///     <see cref="Sessions.Channels.ChannelMembershipService.Join" />'s match-room gate).
 	/// </remarks>

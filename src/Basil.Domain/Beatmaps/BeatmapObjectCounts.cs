@@ -6,13 +6,10 @@ namespace Basil.Domain.Beatmaps;
 ///     Represents the per-mode hit-object counts of a beatmap.
 /// </summary>
 /// <remarks>
-///     Replaces a mode-agnostic <c>Dictionary&lt;string,int&gt;</c> with one concrete subtype per
-///     <see cref="GameMode" />, so the OpenAPI schema can describe the real shape with a
-///     <c>oneOf</c> union instead of an opaque string-keyed map. <see cref="Total" /> and
-///     <see cref="MaxCombo" /> are the only fields every mode shares; everything else is named
-///     after that mode's own object types. The <c>mode</c> discriminator matches
-///     <see cref="GameMode" />'s own wire values, which are plain numbers, so a client can
-///     dispatch on the same integer either way.
+///     <see cref="Total" /> and <see cref="MaxCombo" /> are the only fields every mode shares;
+///     everything else is named after that mode's own object types. Each subtype is serialized
+///     with a <c>mode</c> discriminator whose values match <see cref="GameMode" />'s own wire
+///     values, so a client can dispatch on the same integer either way.
 /// </remarks>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "mode")]
 [JsonDerivedType(typeof(OsuBeatmapObjectCounts), (int)GameMode.Standard)]

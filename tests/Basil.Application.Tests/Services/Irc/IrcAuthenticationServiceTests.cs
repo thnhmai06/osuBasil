@@ -15,10 +15,9 @@ using Basil.Application.Sessions.Multiplayer;
 namespace Basil.Application.Tests.Services.Irc;
 
 /// <summary>
-///     Ported from the IRC PASS/NICK/USER handshake in <see cref="IrcAuthenticationService" /> — the
-///     dual-session login path (plan tests 1-3): a real IRC client authenticates independently of
-///     any game session for the same account, and two concurrent IRC logins for the same account
-///     can't both win.
+///     Verifies the IRC PASS/NICK/USER handshake in <see cref="IrcAuthenticationService" /> — the
+///     dual-session login path: a real IRC client authenticates independently of any game session
+///     for the same account, and two concurrent IRC logins for the same account can't both win.
 /// </summary>
 public class IrcAuthenticationServiceTests
 {

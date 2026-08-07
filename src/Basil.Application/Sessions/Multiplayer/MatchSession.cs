@@ -13,11 +13,11 @@ namespace Basil.Application.Sessions.Multiplayer;
 ///     state, and the snapshot state that feeds the live event channels.
 /// </summary>
 /// <remarks>
-///     Concurrency model: ASP.NET Core dispatches packet handlers on the real thread pool, so a
-///     read-then-mutate of slot or settings state is not atomic between awaits. <see cref="Lock" />
-///     is the per-match answer: callers that read then mutate slot state (join, change-slot, part,
-///     and so on) must hold it across the whole read-mutate-broadcast sequence. The snapshot state
-///     on this type is deliberately lock-free instead (see <see cref="SnapshotChannel{T}" />).
+///     Concurrency model: a read-then-mutate of slot or settings state is not atomic between
+///     awaits. <see cref="Lock" /> is the per-match answer: callers that read then mutate slot state
+///     (join, change-slot, part, and so on) must hold it across the whole read-mutate-broadcast
+///     sequence. The snapshot state on this type is deliberately lock-free instead (see
+///     <see cref="SnapshotChannel{T}" />).
 /// </remarks>
 /// <param name="id">
 ///     The 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the

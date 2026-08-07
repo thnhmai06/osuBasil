@@ -12,10 +12,7 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Hp">The health drain rate setting.</param>
 /// <param name="Sr">The star rating of the beatmap.</param>
 /// <remarks>
-///     <see cref="TotalLength" /> serializes as whole seconds on the wire, via
-///     Basil.Application.Json.TimeSpanSecondsJsonConverter. The converter is registered globally
-///     rather than declared here with an attribute because Basil.Domain has no project references
-///     and cannot see it.
+///     <see cref="TotalLength" /> serializes as a whole number of seconds on the wire.
 /// </remarks>
 public sealed record Difficulty(
 	GameMode Mode,

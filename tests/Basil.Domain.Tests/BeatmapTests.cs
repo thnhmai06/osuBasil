@@ -3,8 +3,8 @@ using Basil.Domain.Beatmaps;
 namespace Basil.Domain.Tests;
 
 /// <summary>
-///     Ported from app/objects/beatmap.py's Beatmap fields + the properties actually consumed by score submission and
-///     leaderboards.
+///     Verifies `Beatmap`'s field values and derived properties consumed by score submission and
+///     leaderboards, such as `FullName`.
 /// </summary>
 public class BeatmapTests
 {

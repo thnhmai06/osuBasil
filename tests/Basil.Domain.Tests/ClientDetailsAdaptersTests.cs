@@ -2,7 +2,7 @@ using Basil.Domain.Login;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Ported from app/api/domains/cho.py's parse_adapters_string, exercised via ClientDetails.From.</summary>
+/// <summary>Verifies `ClientDetails.From` parses the adapters segment of a client hash string (splitting on dots, wine sentinel).</summary>
 public class ClientDetailsAdaptersTests
 {
 	private static string MakeHash(string adaptersString)

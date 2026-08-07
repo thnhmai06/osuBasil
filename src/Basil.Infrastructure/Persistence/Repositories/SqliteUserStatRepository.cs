@@ -7,8 +7,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IUserStatRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>StatsRow</c> DTO, since Dapper fills by property
-///     name rather than through a positional record constructor; the stored mode column is cast to
+///     Rows map through the private mutable <c>StatsRow</c> DTO; the stored mode column is cast to
 ///     <see cref="GameMode" /> during mapping. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteUserStatRepository(string connectionString) : IUserStatRepository
@@ -56,8 +55,7 @@ public sealed class SqliteUserStatRepository(string connectionString) : IUserSta
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the UserStats table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the UserStats table columns.
 	/// </summary>
 	private sealed class StatsRow
 	{

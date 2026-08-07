@@ -8,8 +8,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="ILoginRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>IngameLoginRow</c> DTO: Dapper fills by property
-///     name, not through a positional record constructor.
+///     Rows map through the private mutable <c>IngameLoginRow</c> DTO.
 /// </remarks>
 public sealed class SqliteLoginRepository(string connectionString, ILogger<SqliteLoginRepository> logger)
 	: ILoginRepository
@@ -18,7 +17,7 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 	/// <remarks>
 	///     The osu! client's <see cref="DateOnly" /> version is stored as a <c>datetime</c> at midnight
 	///     UTC and converted back to <see cref="DateOnly" /> on read. The insert and the id read-back
-	///     are one batched statement, so the auto-increment id is always the row just inserted.
+	///     are one batched statement, so the returned id is always the row just inserted.
 	/// </remarks>
 	public async Task<Login> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
 		CancellationToken cancellationToken = default)
@@ -50,8 +49,7 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the IngameLogins table columns. Mutable because Dapper fills
-	///     by property name, not through a positional record constructor.
+	///     A mutable row DTO matching the IngameLogins table columns.
 	/// </summary>
 	private sealed class IngameLoginRow
 	{

@@ -9,10 +9,7 @@ namespace Basil.Application.Packets;
 /// <remarks>
 ///     Each <see cref="ClientPackets" /> value has exactly one handler implementation, matched by
 ///     <see cref="PacketId" />. The handler reads the packet body from the supplied
-///     <see cref="PacketReader" /> and performs the corresponding server work. Handlers are
-///     asynchronous because several of them perform real I/O, such as relationship and user lookups;
-///     synchronous I/O here could starve the thread pool under concurrent packet load, which matters
-///     most for this server's multiplayer focus.
+///     <see cref="PacketReader" /> and performs the corresponding server work.
 /// </remarks>
 public interface IPacketHandler
 {

@@ -190,7 +190,7 @@ public class TcpIrcConnectionTests
 
 		await WriteLineAsync(stream, "WHOIS someone");
 		var refused = await ReadUntilAsync(reader, line => line.Contains(" 451 "));
-		Assert.Contains("You have not registered", refused);
+		Assert.Contains(IrcReplies.YouHaveNotRegistered, refused);
 
 		listener.Stop();
 	}
@@ -254,7 +254,7 @@ public class TcpIrcConnectionTests
 		var denied = await ReadUntilAsync(aliceReader,
 			line => line.Contains(" 473 ") || line.Contains("JOIN #mp_5"));
 		Assert.Contains(" 473 ", denied);
-		Assert.Contains("no permission", denied);
+		Assert.Contains(IrcReplies.CannotJoinChannel, denied);
 
 		match.AddReferee(1);
 		await WriteLineAsync(aliceStream, "JOIN #mp_5");
@@ -266,7 +266,7 @@ public class TcpIrcConnectionTests
 		await WriteLineAsync(aliceStream, "JOIN #doesnotexist");
 		var missing = await ReadUntilAsync(aliceReader, line => line.Contains(" 403 "));
 		Assert.Contains(" 403 ", missing);
-		Assert.Contains("No such channel", missing);
+		Assert.Contains(IrcReplies.NoSuchChannel, missing);
 
 		listener.Stop();
 	}

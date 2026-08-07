@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's CantSpectate.</summary>
+/// <summary>Verifies the `CantSpectate` handler notifies the spectated player that a spectator can't spectate.</summary>
 public class CantSpectateHandlerTests
 {
 	private static GameSession MakePlayer(int id, string name)

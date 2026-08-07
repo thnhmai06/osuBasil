@@ -2,7 +2,7 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Ported from app/constants/beatmap_statuses.py's BeatmapStatus.</summary>
+/// <summary>Verifies `BeatmapStatus`'s integer enum values and its `ToOsuApi()` mapping.</summary>
 public class BeatmapStatusTests
 {
 	[Fact]

@@ -8,7 +8,7 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Beatmaps;
 
-/// <summary>Ported from app/services/direct_search.py's DirectSearchService, DB-backed instead of mirror-backed.</summary>
+/// <summary>Verifies `DirectSearchService`'s beatmap search behavior (query parsing, mirror fallback, result shaping).</summary>
 public class DirectSearchServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();

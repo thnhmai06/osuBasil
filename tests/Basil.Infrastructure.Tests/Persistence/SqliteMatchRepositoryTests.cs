@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
-/// <summary>Covers the Matches/Rounds persistence added in Phase A and extended (read/delete) in Phase C.</summary>
+/// <summary>Covers the Matches/Rounds persistence layer: create, read, update, and delete.</summary>
 public class SqliteMatchRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private static readonly DateTime FixedTime = new(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);

@@ -9,9 +9,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IBeatmapRepository" />
 /// <remarks>
-///     Reads join the Beatmaps and Beatmapsets tables and map through the private mutable row DTOs
-///     (<c>BeatmapRow</c> and <c>MapsetRow</c>): Dapper materializes by property name, not through a
-///     positional record constructor. Each method opens its own connection.
+///     Reads join the Beatmaps and Beatmapsets tables. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteBeatmapRepository(string connectionString, ILogger<SqliteBeatmapRepository> logger)
 	: IBeatmapRepository
@@ -25,12 +23,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Dapper has no multimap <c>QueryFirstOrDefaultAsync</c> overload, so the JOIN is queried
-	///     with <c>QueryAsync</c> and the first row is taken. Id, md5, and filename each match at most
-	///     one row because of their unique constraints, but setId can match several difficulties
+	///     Id, md5, and filename each match at most one row; setId can match several difficulties
 	///     within the same set, in which case any one of them satisfies the lookup. When
 	///     <paramref name="includePrivate" /> is <see langword="false" />, a beatmapset-level privacy
-	///     filter (<c>m.IsPrivate = 0</c>) is added to the query.
+	///     filter is applied to the lookup.
 	/// </remarks>
 	public async Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
 		int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
@@ -244,11 +240,8 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		return new SqliteConnection(connectionString);
 	}
 
-	/// <summary>
-	///     A mutable row DTO matching the Beatmaps columns of the shared SELECT, split off from the
-	///     Beatmapsets columns so Dapper's multi-mapping can map each half of the JOIN. Mutable because
-	///     Dapper fills by property name, not through a positional record constructor.
-	/// </summary>
+	/// <summary>A row DTO matching the Beatmaps columns of the shared SELECT, split off from the
+	///     Beatmapsets columns so each half of the JOIN maps separately.</summary>
 	private sealed class BeatmapRow
 	{
 		public string Md5 { get; set; } = "";
@@ -288,8 +281,8 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Beatmapsets columns of the shared SELECT, the other half of
-	///     the JOIN's multi-mapping.
+	///     A mutable row DTO matching the Beatmapsets columns of the shared SELECT, the other half
+	///     of the JOIN.
 	/// </summary>
 	private sealed class MapsetRow
 	{

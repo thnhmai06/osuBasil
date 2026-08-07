@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
-/// <summary>Ported from app/repositories/ingame_logins.py, scoped to what login needs: recording a login entry.</summary>
+/// <summary>Verifies `SqliteLoginRepository` records an ingame login entry.</summary>
 public class SqliteLoginRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteLoginRepository _repository = new(fixture.ConnectionString,

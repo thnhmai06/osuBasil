@@ -10,10 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Bancho;
 
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="BanchoHostGroups" /> is static and
-///     can't be a type argument.
-/// </summary>
+/// <summary>A dedicated logger category marker for the static <see cref="BanchoHostGroups" /> class.</summary>
 // ReSharper disable once ClassNeverInstantiated.Global
 internal sealed class BanchoHostGroupsLog;
 

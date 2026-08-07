@@ -5,7 +5,6 @@ using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Performance;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using osu.Game.Beatmaps.Formats;
@@ -21,9 +20,7 @@ namespace Basil.Infrastructure.Beatmaps;
 ///     beatmapset (<c>"{MapsetId} {Artist} - {Title}"</c>, holding the full original .osz contents,
 ///     audio/images/backgrounds/video/.osu, as extracted, not renamed), or a loose ".osz" at the
 ///     root waiting to be extracted. A single loose ".osu" file has no set context on its own and
-///     is never ingested. Uses ppy.osu.Game's own decoder (the same one
-///     <see cref="PpyOsuCalculator" /> uses) so metadata parsing matches the real client
-///     byte-for-byte. <see cref="BeatmapWatcherService" /> is the incremental caller (per-folder
+///     is never ingested. <see cref="BeatmapWatcherService" /> is the incremental caller (per-folder
 ///     reconciliation on every filesystem change); <see cref="ReconcileAllAsync" /> is the full-pass
 ///     caller.
 /// </summary>
@@ -124,10 +121,8 @@ public sealed partial class BeatmapIngestionService(
 	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing on disk, or
 	///     its beatmapset folder can't be found. Unlike <see cref="BackgroundFilePath(StorageOptions,Beatmap)" />/
 	///     <see cref="AudioFilePath(StorageOptions,Beatmap)" />, video has no ingestion-time DB column:
-	///     the filename is re-derived from the `.osu`'s own <see cref="Storyboard" /> (osu.Game's own
-	///     module, the same one background-finding effectively relies on) via
-	///     <see cref="Storyboard.PrimaryVideo" /> on every call, since a request for it is rare enough
-	///     that a stored column isn't worth the schema churn.
+	///     the filename is re-derived from the `.osu`'s own <see cref="Storyboard" /> via
+	///     <see cref="Storyboard.PrimaryVideo" /> on every call.
 	/// </summary>
 	public static string? VideoFilePath(StorageOptions storage, Beatmap beatmap)
 	{
@@ -360,10 +355,10 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Drops the beatmapset's DB row (Beatmaps cascade via FK) and its resize/transcode cache entries
-	///     (thumb small/large, audio preview; see <see cref="ResponseCacheKeys" />), which would
-	///     otherwise keep serving stale bytes for a beatmapset id that has since been reused or is simply
-	///     gone. This is the single call site both <see cref="ReconcileAllAsync" />'s orphan sweep and
+	///     Drops the beatmapset's DB row (Beatmaps cascade via FK) and its resize/transcode cache
+	///     entries (thumb small/large, audio preview; see <see cref="ResponseCacheKeys" />), so stale
+	///     bytes can't be served for a beatmapset id that no longer exists. This is the single call
+	///     site both <see cref="ReconcileAllAsync" />'s orphan sweep and
 	///     <see cref="ReconcileDeletedFolderAsync" />'s watcher path go through, so cache invalidation
 	///     can't be forgotten at one but not the other.
 	/// </summary>
@@ -436,7 +431,7 @@ public sealed partial class BeatmapIngestionService(
 
 	/// <summary>
 	///     Runs <see cref="IOsuCalculator.Analyze" /> for a beatmap, falling back to an all-zero
-	///     difficulty, and the empty object counts when calculation fails, so the beatmap still ingests.
+	///     difficulty and empty object counts when calculation fails.
 	/// </summary>
 	private BeatmapAnalysis TryAnalyze(string osuFilePath, GameMode mode)
 	{

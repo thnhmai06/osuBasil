@@ -106,8 +106,5 @@ internal static class AdminKeyRoutes
 	public sealed record AdminKeyChangedView(bool Success, string Message);
 }
 
-/// <summary>
-///     Dedicated <c>ILogger&lt;T&gt;</c> category marker, because <see cref="AdminKeyRoutes" /> is static and can't be
-///     a type argument.
-/// </summary>
+/// <summary>A dedicated logger category marker for the static <see cref="AdminKeyRoutes" /> class.</summary>
 internal sealed class AdminKeyRoutesLog;

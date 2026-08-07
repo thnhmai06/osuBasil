@@ -4,7 +4,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchFailed.</summary>
+/// <summary>Verifies the `MatchFailed` handler broadcasts the player's failed slot.</summary>
 public class MatchFailedHandlerTests
 {
 	[Fact]

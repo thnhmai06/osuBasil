@@ -146,10 +146,9 @@ public sealed class FaqService(IOptions<StorageOptions> storage)
 	/// <returns><see langword="true" /> if the name is safe to use as a file name; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
 	///     Entry names behave like normal file names, so spaces and most punctuation are fine. A
-	///     backslash is rejected because .NET only treats it as a path separator on Windows; on a
-	///     Linux deployment a name such as <c>..\..\secret</c> would otherwise pass through
-	///     untouched. A literal <c>..</c> is rejected outright as defense in depth against path
-	///     traversal.
+	///     backslash is rejected, since the path separator differs between Windows and Linux
+	///     deployments and a name such as <c>..\..\secret</c> must not survive either. A literal
+	///     <c>..</c> is rejected outright as defense in depth against path traversal.
 	/// </remarks>
 	private static bool IsSafeEntry(string entry)
 	{

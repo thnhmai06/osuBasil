@@ -5,7 +5,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchReady.</summary>
+/// <summary>Verifies the `MatchReady` handler sets the player's slot to Ready.</summary>
 public class MatchReadyHandlerTests
 {
 	[Fact]

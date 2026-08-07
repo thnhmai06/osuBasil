@@ -9,8 +9,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 /// <inheritdoc cref="IClientHashRepository" />
 /// <remarks>
 ///     Rows map through the private mutable <c>ClientHashRow</c> and <c>ClientHashWithPlayerRow</c>
-///     DTOs: Dapper fills by property name, not through a positional record constructor. Each
-///     method opens its own connection.
+///     DTOs. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteClientHashRepository(string connectionString, ILogger<SqliteClientHashRepository> logger)
 	: IClientHashRepository
@@ -113,8 +112,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the ClientHashes table columns. Mutable because Dapper fills
-	///     by property name, not through a positional record constructor.
+	///     A mutable row DTO matching the ClientHashes table columns.
 	/// </summary>
 	private sealed class ClientHashRow
 	{

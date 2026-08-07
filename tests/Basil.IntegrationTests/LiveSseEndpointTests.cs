@@ -111,7 +111,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	///     Directly registers a live <see cref="MatchSession" /> against the real, DI-resolved
 	///     <see cref="IMatchRegistry" /> — this test file has no admin key configured (it only cares
 	///     about the SSE plumbing, not the write routes), so matches can't be created through
-	///     `POST /matches`, but `GET /matches/{matchId}/live` now 409s unless the match is actually
+	///     `POST /matches`, but `GET /matches/{matchId}/live` returns 409 unless the match is actually
 	///     tracked in memory. Returns the real <see cref="MatchSession.DbId" /> the registry assigned
 	///     — it can't be overridden to an arbitrary value without desyncing the registry's own
 	///     DbId-to-wire-id lookup.

@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Cache;
 
 /// <summary>
-///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="IBeatmapRepository" />:
-///     eliminates the N+1 that embedding a full <see cref="Beatmap" /> reference into every response
-///     that carries one would otherwise cause. Only the two single-row lookup shapes (by <c>Id</c>,
-///     by <c>Md5</c>) are cached; a filename/setId-qualified call always passes through, since those
-///     are not the hot paths this decorator exists for. Every writes invalidates the affected entry
-///     immediately; the TTL is only a safety net, not a substitute for it.
+///     Read-through caching decorator over the real <see cref="IBeatmapRepository" />: eliminates
+///     the N+1 that embedding a full <see cref="Beatmap" /> reference into every response that
+///     carries one would otherwise cause. Only the two single-row lookup shapes (by <c>Id</c>, by
+///     <c>Md5</c>) are cached; a filename/setId-qualified call always passes through. Every write
+///     invalidates the affected entry immediately; the TTL is only a safety net, not a substitute
+///     for it.
 /// </summary>
 public sealed class CachingBeatmapRepository(
 	IBeatmapRepository inner,

@@ -10,8 +10,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IScoreRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>*RowDto</c> DTOs, since Dapper fills by property
-///     name rather than through a positional record constructor; the stored integer enum columns
+///     Rows map through the private mutable <c>*RowDto</c> DTOs; the stored integer enum columns
 ///     are cast to their domain enum types during mapping. Each method opens its own connection.
 /// </remarks>
 public sealed class SqliteScoreRepository(string connectionString, ILogger<SqliteScoreRepository> logger)
@@ -29,9 +28,8 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     The <see cref="ScoreInsertRow" /> is passed straight to Dapper, whose property names line
-	///     up with the insert's columns. The insert and the id read-back are one batched statement,
-	///     so the returned id is the immediately inserted row's.
+	///     The insert and the id read-back are one batched statement, so the returned id is the
+	///     immediately inserted row's.
 	/// </remarks>
 	public async Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
 	{
@@ -136,8 +134,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the round-score SELECT's columns. Mutable because Dapper
-	///     fills by property name, not through a positional record constructor.
+	///     A mutable row DTO matching the round-score SELECT's columns.
 	/// </summary>
 	private sealed class RoundScoreRowDto
 	{

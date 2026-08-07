@@ -52,14 +52,16 @@ public sealed class IrcQueryService(
 	{
 		var server = options.Value.Name;
 
-		yield return Reply(IrcNumeric.RplYourHost, nick, $"Your host is {server}, running version {Version}");
+		yield return Reply(IrcNumeric.RplYourHost, nick,
+			string.Format(IrcReplies.YourHost, server, Version));
 		yield return Reply(IrcNumeric.RplCreated, nick,
-			$"This server was created {Created.ToString("u", CultureInfo.InvariantCulture)}");
+			string.Format(IrcReplies.ServerCreated, Created.ToString("u", CultureInfo.InvariantCulture)));
 		// "-" is the conventional placeholder for a server that supports no user modes at all; an
 		// empty parameter would serialize into a malformed line.
 		yield return Reply(IrcNumeric.RplMyInfo, nick, server, Version, "-", "nt");
 		yield return Reply(IrcNumeric.RplIsupport, nick,
-			"CHANTYPES=#", "PREFIX=(o)@", $"NETWORK={server}", "CASEMAPPING=ascii", "are supported by this server");
+			"CHANTYPES=#", "PREFIX=(o)@", $"NETWORK={server}", "CASEMAPPING=ascii",
+			IrcReplies.AreSupportedByThisServer);
 	}
 
 	/// <summary>
@@ -82,7 +84,7 @@ public sealed class IrcQueryService(
 
 		if (Resolve(requester, channelName) is not { } named)
 		{
-			yield return Reply(IrcNumeric.RplEndOfNames, requester.Name, channelName, "End of /NAMES list");
+			yield return Reply(IrcNumeric.RplEndOfNames, requester.Name, channelName, IrcReplies.EndOfNames);
 			yield break;
 		}
 
@@ -100,13 +102,13 @@ public sealed class IrcQueryService(
 	{
 		if (newTopic is not null)
 			return Reply(IrcNumeric.ErrChanOPrivsNeeded, requester.Name, channelName,
-				"Channel topics are managed by the server");
+				IrcReplies.TopicManagedByServer);
 
 		if (Resolve(requester, channelName) is not { } channel)
-			return Reply(IrcNumeric.ErrNoSuchChannel, requester.Name, channelName, "No such channel");
+			return Reply(IrcNumeric.ErrNoSuchChannel, requester.Name, channelName, IrcReplies.NoSuchChannel);
 
 		return string.IsNullOrEmpty(channel.Topic)
-			? Reply(IrcNumeric.RplNoTopic, requester.Name, channel.Name, "No topic is set")
+			? Reply(IrcNumeric.RplNoTopic, requester.Name, channel.Name, IrcReplies.NoTopicIsSet)
 			: Reply(IrcNumeric.RplTopic, requester.Name, channel.Name, channel.Topic);
 	}
 
@@ -130,7 +132,7 @@ public sealed class IrcQueryService(
 			yield return WhoEntry(requester, null, single);
 		}
 
-		yield return Reply(IrcNumeric.RplEndOfWho, requester.Name, mask, "End of /WHO list");
+		yield return Reply(IrcNumeric.RplEndOfWho, requester.Name, mask, IrcReplies.EndOfWho);
 	}
 
 	/// <summary>
@@ -144,8 +146,8 @@ public sealed class IrcQueryService(
 	{
 		if (FindByName(nick) is not { } target)
 		{
-			yield return Reply(IrcNumeric.ErrNoSuchNick, requester.Name, nick, "No such nick/channel");
-			yield return Reply(IrcNumeric.RplEndOfWhoIs, requester.Name, nick, "End of /WHOIS list");
+			yield return Reply(IrcNumeric.ErrNoSuchNick, requester.Name, nick, IrcReplies.NoSuchNickChannel);
+			yield return Reply(IrcNumeric.RplEndOfWhoIs, requester.Name, nick, IrcReplies.EndOfWhoIs);
 			yield break;
 		}
 
@@ -159,7 +161,7 @@ public sealed class IrcQueryService(
 			yield return Reply(IrcNumeric.RplWhoIsChannels, requester.Name, target.Name, channels);
 
 		yield return Reply(IrcNumeric.RplWhoIsServer, requester.Name, target.Name, options.Value.Name,
-			"Basil IRC gateway");
+			IrcReplies.IrcGateway);
 
 		if (target.AwayMessage is { } away)
 			yield return Reply(IrcNumeric.RplAway, requester.Name, target.Name, away);
@@ -168,9 +170,9 @@ public sealed class IrcQueryService(
 		yield return Reply(IrcNumeric.RplWhoIsIdle, requester.Name, target.Name,
 			idle.ToString(CultureInfo.InvariantCulture),
 			target.LoginTime.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-			"seconds idle, signon time");
+			IrcReplies.SecondsIdleSignonTime);
 
-		yield return Reply(IrcNumeric.RplEndOfWhoIs, requester.Name, target.Name, "End of /WHOIS list");
+		yield return Reply(IrcNumeric.RplEndOfWhoIs, requester.Name, target.Name, IrcReplies.EndOfWhoIs);
 	}
 
 	/// <summary>
@@ -203,10 +205,10 @@ public sealed class IrcQueryService(
 	{
 		if (modeChange is not null)
 			return Reply(IrcNumeric.ErrChanOPrivsNeeded, requester.Name, channelName,
-				"Channel modes are managed by the server");
+				IrcReplies.ModesManagedByServer);
 
 		if (Resolve(requester, channelName) is not { } channel)
-			return Reply(IrcNumeric.ErrNoSuchChannel, requester.Name, channelName, "No such channel");
+			return Reply(IrcNumeric.ErrNoSuchChannel, requester.Name, channelName, IrcReplies.NoSuchChannel);
 
 		// A channel that requires a privilege to read is not advertised to anyone who lacks it, which
 		// is what the secret mode means on the wire.
@@ -223,15 +225,16 @@ public sealed class IrcQueryService(
 	{
 		var text = await motd.GetTextAsync(cancellationToken);
 		if (string.IsNullOrWhiteSpace(text))
-			return [Reply(IrcNumeric.ErrNoMotd, requester.Name, "The server has no MOTD.")];
+			return [Reply(IrcNumeric.ErrNoMotd, requester.Name, IrcReplies.NoMotd)];
 
 		var replies = new List<IrcMessage>
 		{
-			Reply(IrcNumeric.RplMotdStart, requester.Name, $"- {options.Value.Name} Message of the Day -")
+			Reply(IrcNumeric.RplMotdStart, requester.Name,
+				string.Format(IrcReplies.MotdStart, options.Value.Name))
 		};
 		replies.AddRange(text.Split('\n', StringSplitOptions.TrimEntries)
 			.Select(line => Reply(IrcNumeric.RplMotd, requester.Name, $"- {line}")));
-		replies.Add(Reply(IrcNumeric.RplEndOfMotd, requester.Name, "End of /MOTD command."));
+		replies.Add(Reply(IrcNumeric.RplEndOfMotd, requester.Name, IrcReplies.EndOfMotd));
 		return replies;
 	}
 
@@ -240,7 +243,7 @@ public sealed class IrcQueryService(
 	/// <returns>The numeric that answers the request.</returns>
 	public IrcMessage BuildVersionReply(UserSession requester)
 	{
-		return Reply(IrcNumeric.RplVersion, requester.Name, Version, options.Value.Name, "Basil IRC gateway");
+		return Reply(IrcNumeric.RplVersion, requester.Name, Version, options.Value.Name, IrcReplies.IrcGateway);
 	}
 
 	/// <summary>Builds the server's local time reply.</summary>
@@ -263,11 +266,11 @@ public sealed class IrcQueryService(
 		var channels = channelRegistry.All.Count(channel => !channel.Instance);
 
 		yield return Reply(IrcNumeric.RplLuserClient, requester.Name,
-			$"There are {accounts} users and 0 invisible on 1 servers");
+			string.Format(IrcReplies.LusersClients, accounts));
 		yield return Reply(IrcNumeric.RplLuserChannels, requester.Name,
-			channels.ToString(CultureInfo.InvariantCulture), "channels formed");
+			channels.ToString(CultureInfo.InvariantCulture), IrcReplies.ChannelsFormed);
 		yield return Reply(IrcNumeric.RplLuserMe, requester.Name,
-			$"I have {game.Count + irc.Count} clients and 1 servers");
+			string.Format(IrcReplies.LusersMe, game.Count + irc.Count));
 	}
 
 	/// <summary>

@@ -5,10 +5,8 @@ using Basil.Infrastructure.Security;
 namespace Basil.Infrastructure.Tests.Security;
 
 /// <summary>
-///     Ported from app/services/bancho.py's AuthenticationService.authenticate_login_credentials:
-///     bancho.py bcrypt-hashes the md5 digest of the plaintext password (client sends md5(password),
-///     never the raw password) and verifies the same way, with an in-memory (hash -> md5) cache for
-///     repeat logins.
+///     Verifies `BCryptPasswordHasher` hashes and verifies the md5 digest of the plaintext password
+///     (the client sends md5(password), never the raw password).
 /// </summary>
 public class BCryptPasswordHasherTests
 {

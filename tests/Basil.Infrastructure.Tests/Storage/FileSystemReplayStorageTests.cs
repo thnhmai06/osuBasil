@@ -8,10 +8,8 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Tests.Storage;
 
 /// <summary>
-///     Verifies the <c>.osr</c> header <see cref="FileSystemReplayStorage" /> builds around the raw
-///     LZMA replay bytes. The expected file is a golden byte-for-byte oracle generated with bancho.py's
-///     exact <c>build_full_replay</c> algorithm (same field order, format strings, and DATETIME_OFFSET),
-///     not by re-deriving the C# logic.
+///     Verifies the `.osr` header <see cref="FileSystemReplayStorage" /> builds around the raw
+///     LZMA replay bytes, byte-for-byte against a golden oracle file.
 /// </summary>
 public class FileSystemReplayStorageTests
 {

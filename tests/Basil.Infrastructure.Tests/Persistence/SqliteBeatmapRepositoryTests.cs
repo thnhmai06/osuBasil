@@ -5,8 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/beatmaps.py, scoped to what beatmap resolution needs:
-///     lookup by id/md5/filename and upsert. `server` is hardcoded to "osu!" everywhere.
+///     Verifies `SqliteBeatmapRepository`'s beatmap lookups by id/md5/filename and upsert behavior.
 /// </summary>
 public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {

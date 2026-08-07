@@ -3,8 +3,8 @@ using Basil.Infrastructure.Persistence.Repositories;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/channels.py. migrations/base.sql seeds 2 channels (#osu, #lobby),
-///     only #osu has auto_join=true.
+///     Verifies `SqliteChannelRepository`'s channel lookups. migrations/base.sql seeds 2 channels
+///     (#osu, #lobby), only #osu has auto_join=true.
 /// </summary>
 public class SqliteChannelRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {

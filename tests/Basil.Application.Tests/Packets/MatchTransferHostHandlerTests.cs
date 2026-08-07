@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchTransferHost.</summary>
+/// <summary>Verifies the `MatchTransferHost` handler transfers host to the target slot, host-only.</summary>
 public class MatchTransferHostHandlerTests
 {
 	private static PacketReader ReaderFor(int slotId)

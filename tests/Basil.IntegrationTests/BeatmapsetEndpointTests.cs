@@ -13,13 +13,11 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the public `/beatmapsets` routes (info + downloads) — the old singular `/beatmap/{id}`
-///     and `/beatmap/{id}/download` routes were dropped in favor of `GET /beatmapsets/{mapsetId}`
-///     (which now embeds each beatmap's id/version/mode inline), `GET
+///     Covers the public `/beatmapsets` routes (info + downloads): `GET /beatmapsets/{mapsetId}`
+///     (which embeds each beatmap's id/version/mode inline), `GET
 ///     /beatmapsets/{mapsetId}/{beatmapId}` (a single difficulty's JSON metadata), and `GET
-///     /beatmapsets/{mapsetId}/{beatmapId}/download` (the raw `.osu` file, moved off the bare
-///     path). Also covers the MIME-type correctness pass across every download route (osu!'s real
-///     per-extension types instead of generic ones).
+///     /beatmapsets/{mapsetId}/{beatmapId}/download` (the raw `.osu` file). Also covers MIME-type
+///     correctness across every download route (osu!'s real per-extension types).
 /// </summary>
 public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {

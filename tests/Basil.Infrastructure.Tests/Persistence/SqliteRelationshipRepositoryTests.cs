@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
-/// <summary>Ported from app/repositories/relationships.py — friends/blocks between users.</summary>
+/// <summary>Verifies `SqliteRelationshipRepository`'s friend/block relationship CRUD between users.</summary>
 public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteRelationshipRepository _repository = new(fixture.ConnectionString,

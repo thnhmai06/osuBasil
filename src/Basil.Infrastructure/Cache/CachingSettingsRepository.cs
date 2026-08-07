@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Cache;
 
 /// <summary>
-///     Read-through <see cref="IMemoryCache" /> decorator over the real <see cref="ISettingsRepository" />,
-///     shared by every feature backed by the Settings table (the admin key, the menu icon) rather
-///     than one cache per feature.
+///     Read-through caching decorator over the real <see cref="ISettingsRepository" />, shared by
+///     every feature backed by the Settings table (the admin key, the menu icon) rather than one
+///     cache per feature.
 /// </summary>
 public sealed class CachingSettingsRepository(
 	ISettingsRepository inner,

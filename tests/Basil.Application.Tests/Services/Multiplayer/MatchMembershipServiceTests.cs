@@ -21,7 +21,7 @@ using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Multiplayer;
 
-/// <summary>Ported from User.join_match/leave_match plus Match.enqueue/enqueue_state.</summary>
+/// <summary>Verifies `MatchMembershipService`'s match join/leave handling and the match-state broadcasts that follow.</summary>
 public class MatchMembershipServiceTests
 {
 	/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
@@ -355,10 +355,8 @@ public class MatchMembershipServiceTests
 	}
 
 	/// <summary>
-	///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the exact same
-	///     bancho SendMessage bytes the old `Enqueue(..., lobby: false)` call did, since bancho recipients
-	///     go through <see cref="Basil.Application.Sessions.Irc.BanchoIrcBridgeConnection" /> now instead
-	///     of a direct packet build.
+	///     `EnqueueChat` is `MatchControlService.Announce`'s transport — asserts it produces the
+	///     bancho SendMessage bytes a match-channel recipient receives.
 	/// </summary>
 	[Fact]
 	public void EnqueueChat_BroadcastsBanchoSendMessageToMatchChannelMembers()

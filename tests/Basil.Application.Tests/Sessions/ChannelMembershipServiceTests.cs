@@ -16,9 +16,9 @@ using Basil.Application.Sessions.Multiplayer;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from User.join_channel/leave_channel, shared between client-initiated packets and server-initiated
-///     instance membership (spectator, mp). Covers the dual-session (GameSession + IrcSession) roster
-///     dedup: a UserId with two live sessions in the same channel is one member for
+///     Verifies channel join/leave membership handling, shared between client-initiated packets and
+///     server-initiated membership (spectator, mp). Covers the dual-session (GameSession + IrcSession)
+///     roster dedup: a UserId with two live sessions in the same channel is one member for
 ///     broadcast/roster purposes, but each session still gets its own echo.
 /// </summary>
 public class ChannelMembershipServiceTests

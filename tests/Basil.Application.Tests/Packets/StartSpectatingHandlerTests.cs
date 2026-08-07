@@ -14,7 +14,7 @@ using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's StartSpectating.</summary>
+/// <summary>Verifies the `StartSpectating` handler starts spectating the target player.</summary>
 public class StartSpectatingHandlerTests
 {
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();

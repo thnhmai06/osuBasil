@@ -3,7 +3,7 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Ported from app/constants/mods.py's Mods.filter_invalid_combos / from_modstr / from_np.</summary>
+/// <summary>Verifies `Mods` conflict resolution (`FilterInvalidCombos`) and mod-string parsing (`FromModString`, `FromNowPlayingString`).</summary>
 public class ModsTests
 {
 	[Theory]

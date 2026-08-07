@@ -15,9 +15,8 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the new public `/scores` routes: `GET /scores/{scoreId}` (a score's full row, new — a score
-///     used to only be visible embedded in a match report) and `GET /scores/{scoreId}/replay` (a direct
-///     rename of the old bare `GET /replays/{scoreId}`).
+///     Covers the public `/scores` routes: `GET /scores/{scoreId}` (a score's full row) and
+///     `GET /scores/{scoreId}/replay` (its replay file).
 /// </summary>
 public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {

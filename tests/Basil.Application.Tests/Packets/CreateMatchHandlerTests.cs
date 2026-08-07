@@ -4,7 +4,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchCreate.</summary>
+/// <summary>Verifies the `MatchCreate` handler creates a new match and joins the host.</summary>
 public class CreateMatchHandlerTests
 {
 	private static PacketReader ReaderFor(int hostId, string name = "test match")

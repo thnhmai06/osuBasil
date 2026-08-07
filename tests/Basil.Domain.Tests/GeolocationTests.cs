@@ -4,8 +4,8 @@ using Basil.Domain.Login;
 namespace Basil.Domain.Tests;
 
 /// <summary>
-///     Covers the resolved client-IP reading from proxy headers. Country-based geolocation was
-///     removed entirely — a session's country comes from the stored user record, never from headers.
+///     Covers the resolved client-IP reading from proxy headers. A session's country comes from the
+///     stored user record, never from headers.
 /// </summary>
 public class GeolocationTests
 {

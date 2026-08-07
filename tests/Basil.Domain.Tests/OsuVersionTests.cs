@@ -3,8 +3,7 @@ using Basil.Domain.Login;
 namespace Basil.Domain.Tests;
 
 /// <summary>
-///     Ported from app/constants/regexes.py's OSU_VERSION + app/api/domains/cho.py's
-///     parse_osu_version_string. Reference behaviour verified by running the actual Python regex.
+///     Verifies `OsuVersion.From` parses osu! client version strings into date, revision, and stream.
 /// </summary>
 public class OsuVersionTests
 {

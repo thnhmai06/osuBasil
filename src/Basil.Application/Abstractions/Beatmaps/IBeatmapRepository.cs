@@ -31,11 +31,10 @@ public interface IBeatmapRepository
 	/// <returns>The matching beatmap, or <see langword="null" /> when no row matches.</returns>
 	/// <remarks>
 	///     At least one of id, md5, filename, or setId must be supplied. Id, md5, and filename each
-	///     match at most one beatmap because of their unique constraints, but setId can match
-	///     several difficulties within the same set, in which case any one of them is returned. The
-	///     <paramref name="includePrivate" /> default of <see langword="false" /> matches every
-	///     public lookup; only callers that must see private content (for example ingestion
-	///     reconciliation) pass <see langword="true" />.
+	///     match at most one beatmap; setId can match several difficulties within the same set, in
+	///     which case any one of them is returned. The <paramref name="includePrivate" /> default of
+	///     <see langword="false" /> matches every public lookup; only callers that must see private
+	///     content (for example ingestion reconciliation) pass <see langword="true" />.
 	/// </remarks>
 	Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null, int? setId = null,
 		bool includePrivate = false, CancellationToken cancellationToken = default);

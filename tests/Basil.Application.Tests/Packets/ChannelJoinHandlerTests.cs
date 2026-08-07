@@ -11,7 +11,7 @@ using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's ChannelJoin (calls User.join_channel).</summary>
+/// <summary>Verifies the `ChannelJoin` handler joins the requested channel when readable, no-op otherwise.</summary>
 public class ChannelJoinHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();

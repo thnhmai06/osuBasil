@@ -37,10 +37,8 @@ public class PpyOsuCalculatorTests
 	}
 
 	/// <summary>
-	///     Regression lock for CS/AR/OD/HP now coming from <c>Ruleset.GetAdjustedDisplayDifficulty</c>
-	///     instead of a hand-rolled formula — DoubleTime/HalfTime values below match what the deleted
-	///     <c>DifficultyModCalculator</c> formula used to produce for this fixture's base AR/OD (7/7),
-	///     confirming the library call is a drop-in replacement for Standard.
+	///     Regression lock for the CS/AR/OD/HP values produced by the adjusted-display-difficulty
+	///     path, pinned against recorded reference values for Standard.
 	/// </summary>
 	[Theory]
 	[InlineData(Mods.NoMod, 6, 7, 7, 2)]
@@ -106,11 +104,8 @@ public class PpyOsuCalculatorTests
 	}
 
 	/// <summary>
-	///     Regression lock for the 3.1 fix: the raw `.osu` decoder never populates
-	///     BeatmapInfo.Length/MaxCombo/BPM (confirmed zero/null both before AND after
-	///     GetPlayableBeatmap by direct inspection) — these values only come from
-	///     BeatmapExtensions.CalculatePlayableLength/GetMaxCombo/GetMostCommonBeatLength on the
-	///     processed beatmap, which is what Analyze now returns instead of the always-zero raw fields.
+	///     Verifies `PpyOsuCalculator.Analyze` returns non-zero TotalLength, MaxCombo, and Bpm values
+	///     for the standard fixture.
 	/// </summary>
 	[Fact]
 	public void Analyze_StandardFixture_ReturnsNonZeroLengthComboAndBpm()

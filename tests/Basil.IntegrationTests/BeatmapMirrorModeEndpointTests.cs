@@ -12,12 +12,11 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers Item 3's online-mirror-mode fallback: local storage is always tried first (see
-///     <see cref="BeatmapRedirectEndpointTests" /> for `/d/{id}`'s pre-existing local-first
-///     coverage), and only a beatmapset genuinely missing locally is affected by
-///     <see cref="MirrorOptions.IsOnlineMode" /> — a redirect for a genuine ppy id, `503` for a
-///     locally-authored (synthesized-id) set or a route with no mirror equivalent, `404` when
-///     offline (unchanged from before Item 3).
+///     Covers the online-mirror-mode fallback: local storage is always tried first (see
+///     <see cref="BeatmapRedirectEndpointTests" /> for `/d/{id}`'s local-first coverage), and only a
+///     beatmapset genuinely missing locally is affected by <see cref="MirrorOptions.IsOnlineMode" />
+///     — a redirect for a genuine ppy id, `503` for a locally-authored (synthesized-id) set or a
+///     route with no mirror equivalent, `404` when offline.
 /// </summary>
 public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> factory)
 	: IClassFixture<WebApplicationFactory<Program>>, IDisposable

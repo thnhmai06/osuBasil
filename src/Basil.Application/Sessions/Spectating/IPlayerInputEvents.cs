@@ -16,7 +16,7 @@ public interface IPlayerInputEvents
 	bool HasSubscribers { get; }
 
 	/// <summary>
-	///     Occurs whenever a spectated userSession's input frame is relayed. Rose with the userSession's id
+	///     Occurs whenever a spectated userSession's input frame is relayed. Raised with the userSession's id
 	///     and the payload bytes to broadcast.
 	/// </summary>
 	event Action<int, byte[]> InputPublished;

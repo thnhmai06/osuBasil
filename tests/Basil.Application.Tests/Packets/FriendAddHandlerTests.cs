@@ -9,7 +9,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's AddFriend.</summary>
+/// <summary>Verifies the `AddFriend` handler creates a friend relationship, skipping duplicates and self.</summary>
 public class FriendAddHandlerTests
 {
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();

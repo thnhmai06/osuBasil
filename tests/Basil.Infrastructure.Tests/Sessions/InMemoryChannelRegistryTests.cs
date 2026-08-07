@@ -6,8 +6,8 @@ using Basil.Infrastructure.Sessions;
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>
-///     Ported from app/state/sessions.py's Channels collection — runtime channel registry, seeded
-///     from the DB (IChannelRepository) at startup.
+///     Verifies `InMemoryChannelRegistry`'s runtime channel registry: seeding, lookups by name,
+///     auto-join filtering, and add/remove membership.
 /// </summary>
 public class InMemoryChannelRegistryTests
 {

@@ -22,12 +22,11 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the `/matches/{matchId}/{hosts,refs,ban,kick,invite,slots,timer,abort,close}` routes
-///     that replaced the old generic `POST /matches/{matchId}/{action}` dispatch. Matches are created
-///     through the real `POST /matches` route (no chat "sender", host id 0), then seated with real
-///     <see cref="UserSession" />s registered directly against the app's actual DI-resolved
-///     <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembershipService" /> — the same
-///     production singletons the routes themselves use.
+///     Covers the `/matches/{matchId}/{hosts,refs,ban,kick,invite,slots,timer,abort,close}` routes.
+///     Matches are created through the real `POST /matches` route (no chat "sender", host id 0), then
+///     seated with real <see cref="UserSession" />s registered directly against the app's actual
+///     DI-resolved <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembershipService" /> —
+///     the same production singletons the routes themselves use.
 /// </summary>
 public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {

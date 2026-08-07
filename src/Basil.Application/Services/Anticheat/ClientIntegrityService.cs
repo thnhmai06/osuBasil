@@ -26,8 +26,7 @@ public enum ClientIntegrityResult : byte
 ///     A flagged userSession who is currently in a match gets BasilBot posting a warning to that match's
 ///     own chat channel and a direct message to every referee of the match, naming the userSession,
 ///     room, and reason. A flagged userSession who is not in a match produces no side effect at all.
-///     This deliberately drops the restrict, force-logout, and ban-roll machinery that a ranked
-///     server would apply, because Basil has no restrict system.
+///     There is no restrict, force-logout, or ban machinery: this service only reports.
 /// </remarks>
 public sealed class ClientIntegrityService(
 	ISessionRegistry<GameSession> gameRegistry,

@@ -15,10 +15,9 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Ported from app/api/domains/osu.py's osuSearchHandler/osuSearchSetHandler, replumbed to query
-///     the local beatmaps table instead of a mirror. Only wiring (auth gate, query binding, dispatch to
-///     the right formatter) is covered here — DirectSearchService/DirectSearchResponseFormatter have
-///     their own unit tests.
+///     Verifies the direct-search endpoints' wiring: the auth gate, query binding, and dispatch to
+///     the right formatter. DirectSearchService/DirectSearchResponseFormatter have their own unit
+///     tests.
 /// </summary>
 public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {

@@ -11,7 +11,7 @@ using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's ChannelPart (calls User.leave_channel).</summary>
+/// <summary>Verifies the `ChannelPart` handler leaves the requested channel.</summary>
 public class ChannelPartHandlerTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();

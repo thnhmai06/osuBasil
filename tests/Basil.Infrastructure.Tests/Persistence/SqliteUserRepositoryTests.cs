@@ -6,10 +6,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/users.py — scoped to what the login flow needs
-///     (fetch by id/name, password hash, country fix, privilege grant). Broader filter/paging/create
-///     methods are added when a use case needs them.
-///     migrations/base.sql seeds a BasilBot user (id=1), which these tests read back.
+///     Verifies `SqliteUserRepository`'s user lookups and writes: fetch by id/name, password hash,
+///     country fix, and privilege grant. migrations/base.sql seeds a BasilBot user (id=0), which
+///     these tests read back.
 /// </summary>
 public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {

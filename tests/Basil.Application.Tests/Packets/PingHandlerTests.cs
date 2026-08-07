@@ -5,7 +5,7 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's Ping (@register(ClientPackets.PING, restricted=True)) — a no-op.</summary>
+/// <summary>Verifies the `Ping` handler is a no-op, allowed while restricted.</summary>
 public class PingHandlerTests
 {
 	[Fact]

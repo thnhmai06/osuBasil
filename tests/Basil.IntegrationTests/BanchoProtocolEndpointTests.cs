@@ -11,10 +11,10 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's bancho_handler: dispatches by presence of the osu-token
-///     header. Only the token-present branches are covered here — they touch only the in-memory
-///     session registry and dispatcher, no DB. The no-token (login) branch is fully covered by
-///     LoginService's own 19 unit tests and is not re-tested through HTTP here.
+///     Verifies the bancho HTTP endpoint dispatches by presence of the osu-token header. Only the
+///     token-present branches are covered here — they touch only the in-memory session registry and
+///     dispatcher, no DB. The no-token (login) branch is fully covered by LoginService's own unit
+///     tests and is not re-tested through HTTP here.
 /// </summary>
 public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {

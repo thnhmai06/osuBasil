@@ -8,8 +8,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IChannelRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>ChannelRow</c> DTO, since Dapper fills by property
-///     name rather than through a positional record constructor. Each method opens its own
+///     Rows map through the private mutable <c>ChannelRow</c> DTO. Each method opens its own
 ///     connection.
 /// </remarks>
 public sealed class SqliteChannelRepository(string connectionString) : IChannelRepository
@@ -39,8 +38,7 @@ public sealed class SqliteChannelRepository(string connectionString) : IChannelR
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Channels table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the Channels table columns.
 	/// </summary>
 	private sealed class ChannelRow
 	{

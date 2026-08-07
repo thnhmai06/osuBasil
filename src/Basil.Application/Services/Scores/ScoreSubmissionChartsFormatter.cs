@@ -9,14 +9,10 @@ namespace Basil.Application.Services.Scores;
 /// </summary>
 /// <remarks>
 ///     The output is a pipe-delimited list of key/value pairs describing a beatmap ranking chart
-///     and an overall ranking chart, which the osu! client's result screen parses. Achievements
-///     are out of scope, so the achievements field is always empty, and plays and passes are not
-///     tracked, so the play and pass counts are always emitted as zero. PP chart entries are
-///     always passed zero because Basil has no pp. These zero and empty values keep the protocol's
-///     fixed key/value shape intact without any pp-specific or plays/passes-specific
-///     special-casing. The overall chart carries no before/after delta because user stats are
-///     never updated on submission, so every entry is emitted empty rather than reading stats that
-///     would never change.
+///     and an overall ranking chart, which the osu! client's result screen parses. The achievements
+///     field is always empty, the play and pass counts are always zero, and every pp chart entry is
+///     zero, keeping the protocol's fixed key/value shape intact. The overall chart's before/after
+///     entries are all emitted empty.
 /// </remarks>
 public static class ScoreSubmissionChartsFormatter
 {

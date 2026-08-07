@@ -6,14 +6,12 @@ namespace Basil.Web.Middleware;
 
 /// <summary>
 ///     Pushes the current request's <see cref="HttpContext.TraceIdentifier" /> and resolved client IP
-///     onto Serilog's ambient LogContext for the entire downstream pipeline. Every log line emitted
-///     while handling this request carries it, not just Serilog.AspNetCore's own per-request summary
-///     line. Registered first in Program.cs's pipeline (before UseSerilogRequestLogging), so the pushed
-///     scope also wraps that summary line's own emission.
+///     as ambient log properties for the entire downstream pipeline, so every log line emitted while
+///     handling this request carries them.
 /// </summary>
 public sealed class RequestIdLoggingMiddleware(RequestDelegate next)
 {
-	/// <summary>Pushes the request's trace identifier and resolved client IP onto Serilog's LogContext for the request.</summary>
+	/// <summary>Pushes the request's trace identifier and resolved client IP as ambient log properties for the request.</summary>
 	/// <remarks>
 	///     When the request carries neither a <c>CF-Connecting-IP</c> nor an <c>X-Forwarded-For</c>
 	///     header, the remote IP (falling back to loopback) is written into both headers before the IP

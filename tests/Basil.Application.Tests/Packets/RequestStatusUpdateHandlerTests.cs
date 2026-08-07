@@ -7,7 +7,7 @@ using Basil.Protocol.Packets;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's StatsUpdateRequest (@register(ClientPackets.REQUEST_STATUS_UPDATE)).</summary>
+/// <summary>Verifies the `StatsUpdateRequest` handler enqueues the player's own updated stats.</summary>
 public class RequestStatusUpdateHandlerTests
 {
 	[Fact]

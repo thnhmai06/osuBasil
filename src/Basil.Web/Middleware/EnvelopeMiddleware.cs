@@ -16,11 +16,9 @@ namespace Basil.Web.Middleware;
 ///     never produces a plain-JSON body regardless of the request.
 ///     Every SSE route on this host is a dedicated, unconditionally-SSE `.../live` path, so no route
 ///     branches on the `Accept` header anymore; the route pattern's `live` segment alone decides
-///     skip-vs.-wrap (see <see cref="LiveSseRoutes.IsSseRoute" />). Buffering a live push stream until
-///     the handler completes would silently turn it into one that never delivers a single event until
-///     the connection closes. A file download's `Content-Type` is never "json", so it passes through
-///     unwrapped for the same structural reason, with no separate marker needed. `HEAD` requests and
-///     responses that must never carry a body under the HTTP spec (`304 Not Modified`,
+///     skip-vs.-wrap (see <see cref="LiveSseRoutes.IsSseRoute" />). A file download's `Content-Type`
+///     is never "json", so it passes through unwrapped, with no separate marker needed. `HEAD` requests
+///     and responses that must never carry a body under the HTTP spec (`304 Not Modified`,
 ///     `205 Reset Content`) are also passed through unwrapped rather than enveloped, regardless of
 ///     their (absent) `Content-Type`.
 /// </remarks>

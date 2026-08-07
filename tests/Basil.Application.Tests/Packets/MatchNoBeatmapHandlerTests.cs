@@ -5,7 +5,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchNoBeatmap.</summary>
+/// <summary>Verifies the `MatchNoBeatmap` handler sets the player's slot to NoMap.</summary>
 public class MatchNoBeatmapHandlerTests
 {
 	[Fact]

@@ -6,7 +6,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's ToggleBlockingDMs.</summary>
+/// <summary>Verifies the `ToggleBlockingDMs` handler toggles whether non-friend DMs are blocked.</summary>
 public class ToggleBlockNonFriendDmsHandlerTests
 {
 	private static PacketReader ValueReader(int value)

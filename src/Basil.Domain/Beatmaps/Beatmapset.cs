@@ -29,9 +29,8 @@ namespace Basil.Domain.Beatmaps;
 ///     <see cref="CreatedAt" /> records the first ingestion time, distinct from
 ///     <see cref="LastUpdate" />, which changes on every re-ingestion or content change.
 ///     <see cref="BackgroundFile" /> is the lowest-id beatmap's
-///     <see cref="Beatmap.BackgroundFile" /> in the set, kept in sync by ingestion. It backs the
-///     per-set thumbnail on the b.&lt;domain&gt; host and the set-level background route on the
-///     api. host, so neither has to scan every beatmap in the set per request.
+///     <see cref="Beatmap.BackgroundFile" /> in the set. It backs the per-set thumbnail on the
+///     b.&lt;domain&gt; host and the set-level background route on the api. host.
 /// </remarks>
 public sealed record Beatmapset(
 	int Id,

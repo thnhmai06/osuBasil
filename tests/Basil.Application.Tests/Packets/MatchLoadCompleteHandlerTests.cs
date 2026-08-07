@@ -5,7 +5,7 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchLoadComplete.</summary>
+/// <summary>Verifies the `MatchLoadComplete` handler broadcasts all-players-loaded once every playing slot has loaded.</summary>
 public class MatchLoadCompleteHandlerTests
 {
 	[Fact]

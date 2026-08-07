@@ -80,12 +80,11 @@ public sealed class BeatmapWatcherService(
 	/// <summary>
 	///     A rename into a `.deleted_`-suffixed name (see
 	///     <see cref="BeatmapIngestionService.DeletedFolderInfix" />, the atomic marker of a folder
-	///     mid-deletion) means the folder's *new* name is never a live beatmapset. Debouncing on the
-	///     *old* path instead lets <see cref="Settle" />'s own Directory.Exists/File.Exists checks
-	///     naturally resolve it to <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />:
-	///     the old path no longer exists on disk, and its name (unlike the new one) still carries the
-	///     beatmapset's real leading id. Any other rename (e.g., a human renaming a beatmapset folder) still
-	///     debounces on the new path as before.
+	///     mid-deletion) means the folder's new name is never a live beatmapset, so the debounce is
+	///     keyed on the old path instead: the old path no longer exists on disk and still carries the
+	///     beatmapset's real leading id, which resolves it to
+	///     <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />. Any other rename still
+	///     debounces on the new path.
 	/// </summary>
 	private void DebounceRenamed(string root, RenamedEventArgs e)
 	{

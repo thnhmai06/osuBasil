@@ -13,14 +13,13 @@ namespace Basil.Infrastructure.Irc;
 
 /// <summary>
 ///     The embedded IRC gateway. Accepts raw TCP connections on <see cref="IrcOptions.Port" /> and
-///     hands each one off to its own <see cref="TcpIrcConnection" />. Runs in-process as a
-///     <see cref="BackgroundService" />, so no separate executable or container is required.
+///     hands each one off to its own <see cref="TcpIrcConnection" />. Runs in-process, so no separate
+///     executable or container is required.
 /// </summary>
 /// <remarks>
 ///     If the listener can't bind its port (for example, the port is already in use), it logs the
-///     error and stops rather than throwing out of <see cref="BackgroundService" />'s execution path
-///     and taking the host down with it. Each accepted connection gets a fresh per-process id and
-///     runs detached.
+///     error and stops rather than letting the failure take the host down with it. Each accepted
+///     connection gets a fresh per-process id and runs detached.
 /// </remarks>
 public sealed class TcpIrcListener(
 	IOptions<IrcOptions> options,

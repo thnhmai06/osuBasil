@@ -4,9 +4,8 @@ using Basil.Infrastructure.Persistence.Repositories;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>
-///     Ported from app/repositories/stats.py, scoped to what login (User.stats_from_sql_full)
-///     needs: fetch all per-mode stat rows for a user. migrations/base.sql seeds 4 mode rows
-///     (Standard/Taiko/Catch/Mania) for the BasilBot user (id=0) — one per supported GameMode.
+///     Verifies `SqliteUserStatRepository` fetches all per-mode stat rows for a user.
+///     migrations/base.sql seeds 4 mode rows (Standard/Taiko/Catch/Mania) for the BasilBot user (id=0).
 /// </summary>
 public class SqliteUserStatRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {

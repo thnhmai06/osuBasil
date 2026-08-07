@@ -105,6 +105,30 @@ The Implementation Test: if the whole implementation were swapped out tomorrow (
 - **Add a "Related code" list** (file paths) so a reader can jump straight to the source instead of guessing.
 - **Don't re-document the HTTP API.** OpenAPI/Scalar already lists routes and status codes; `docs/*.md` explains why the architecture looks the way it does, not `GET`/`POST` lists.
 
+### 8. Test Writing Style
+
+**Tests pin the contract, never the implementation.** The same Implementation Test as rules 5 and 6 applies to every assertion: if the implementation were swapped out tomorrow but the observable behavior stayed the same, would the test still pass? If not, it's testing implementation, not behavior.
+
+- **What is contract in Basil:** bancho packet bytes, IRC wire text and numerics, HTTP status codes and JSON/envelope shapes, error codes, and the BasilBot `!mp` replies a player actually sees. **What is not:** Serilog messages, debug/console output, exception message text (unless that text reaches an API response), and internal diagnostic strings.
+- **Assert contract exactly, but centralize the literals in production.** User-visible reply text is owned by the code that emits it — `MpReplies` in `src/Basil.Application/Services/Bot/` holds every `!mp` reply as a `const`, and both the service and the tests reference those constants, never inline strings. Deliberately changing the wording is a public-behavior change: it is a one-line edit to a named, documented constant, and the tests keep both sides pinned to the same symbol so they can't drift. Log lines are never asserted word-for-word; check behavior instead, or at most `Assert.Contains` a stable fragment.
+- **One behavior per test, one reason to fail.** Split `Login()` into `Login_ShouldCreateSession`, `Login_ShouldGenerateToken`, and so on. Name tests `Condition_Should_ExpectedBehavior`. Every test runs independently and in any order — no shared mutable state, no reliance on another test having run.
+- **No real time, randomness, or GUIDs in tests.** Inject `IClock`/`IRandom`/`IGuidGenerator` (adding the port if production lacks one) instead of `DateTime.UtcNow`, `Random.Shared`, or `Guid.NewGuid()`. No `Thread.Sleep`/`Task.Delay` to wait out async work — use a deterministic signal (`TaskCompletionSource`, a poll-with-timeout loop, or awaiting the async API directly). A race-reproduction test that deliberately widens a timing window is the one documented exception.
+- **No environment dependence.** No hardcoded absolute paths, no reliance on `CultureInfo.CurrentCulture`/`TimeZoneInfo.Local`; temp dirs and SQLite files are created and cleaned up per test.
+- **Keep Arrange short.** A fixture or builder (`MultiplayerTestSupport.Fixture`, `SqliteFixture`) beats fifty lines of setup in each test.
+- **Test through the public API only** — no reflection into private members; a private method too complex to test through its callers should become a class.
+- **Cover the edges, not just the happy path:** null, empty, duplicate, already-exists, offline, permission-denied, full match, banned, overflow. Assert exceptions with `Assert.ThrowsAsync<T>`.
+- **Every bug fix ships with a regression test that reproduces it first.**
+- **XML docs in test files follow rule 6** — say what the test verifies, never provenance ("Ported from bancho.py's...") or mechanism. Full detail and the migration policy are in [`docs/testing.md`](docs/testing.md).
+
+### 9. User-Visible Reply Strings
+
+**Every user-visible chat reply lives in one named place per chat surface — never scattered as inline literals across handlers.** The same Implementation Test as rule 6 applies: if you change who emits the text but the player still sees the same words, the constant stays in its one named place.
+
+- **One constants class per chat surface, owned by the code that emits it.** `!mp` replies live in `MpReplies` (`src/Basil.Application/Services/Bot/MpReplies.cs`) — every `!mp` subcommand and every `!mp` test references those `const`s, never an inline string. IRC reply text lives in `IrcReplies` (`src/Basil.Application/Services/Irc/IrcReplies.cs`) and is shared by `IrcQueryService`, `IrcAuthenticationService`, `ChannelMembershipService`, and the TCP connection layer. The same applies everywhere else a player can read text: bot messages and chat-service replies each get their own `Replies` constants class next to the service — not just `!mp`.
+- **Wording is a public-behavior change.** Changing a reply's text is a one-line edit to one documented constant; production and tests are pinned to the same symbol so they can't drift (see rule 8).
+- **If the set grows too large for hand-maintained constants, use a snapshot/golden file** — one fixture file holding the expected reply table plus a test that fails if production adds, removes, or rewrites an entry — instead of hundreds of inline literals.
+- **Only user-visible text is centralized.** Internal diagnostic strings, Serilog messages, and debug output stay inline and are never asserted word-for-word (rule 8).
+
 ## Commands
 
 ```bash

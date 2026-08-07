@@ -5,9 +5,8 @@ using Basil.Domain.Users;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     Ported from app/objects/userSession.py's User.stats (dict[GameMode, ModeData], populated once at
-///     login via stats_from_sql_full — never re-queried per packet) + the gm_stats property
-///     (`self.stats[self.status.mode]`).
+///     Verifies `GameSession.CurrentStats` indexes per-mode cached player stats by the session's
+///     current status mode, returning null for a mode with no cached entry.
 /// </summary>
 public class PlayerSessionStatsTests
 {

@@ -18,9 +18,9 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's Logout — the 1-second login-grace-period check. The
-///     actual cleanup (match/channel-leaving, registry removal, broadcast) is delegated to
-///     PlayerLogoutService and covered by PlayerLogoutServiceTests.
+///     Verifies the `Logout` handler's 1-second login-grace-period check; the actual cleanup
+///     (match/channel-leaving, registry removal, broadcast) is delegated to PlayerLogoutService and
+///     covered by PlayerLogoutServiceTests.
 /// </summary>
 public class LogoutHandlerTests
 {

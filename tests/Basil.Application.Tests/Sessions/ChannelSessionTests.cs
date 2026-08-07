@@ -3,7 +3,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Tests.Sessions;
 
-/// <summary>Ported from app/objects/channel.py's Channel — can_read/can_write + live membership tracking.</summary>
+/// <summary>Verifies `ChannelSession`'s read/write privilege gating (`CanRead`/`CanWrite`) and live membership tracking.</summary>
 public class ChannelSessionTests
 {
 	[Fact]

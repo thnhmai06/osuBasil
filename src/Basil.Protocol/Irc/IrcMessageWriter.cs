@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Basil.Protocol.Irc;
 
-/// <summary>Formats <see cref="IrcMessage" />s (or the common shapes Basil's IRC bridge sends) into raw wire lines.</summary>
+/// <summary>Formats <see cref="IrcMessage" />s into raw IRC wire lines.</summary>
 public static class IrcMessageWriter
 {
 	/// <summary>Formats an <see cref="IrcMessage" /> into a single raw IRC line, without a trailing CRLF.</summary>
@@ -24,12 +24,11 @@ public static class IrcMessageWriter
 		return line;
 	}
 
-	/// <summary>
-	///     Builds a user-hostmask prefix ("nick!id@host") for JOIN/PART/QUIT/PRIVMSG originating from a user.
-	///     The "user" slot carries the sender's <c>UserSession</c> id (not a real ident) so
-	///     <c>BanchoIrcBridgeConnection</c> can recover it without a session-registry lookup; a real IRC client
-	///     just displays it as an ordinary hostmask.
-	/// </summary>
+	/// <summary>Builds a user hostmask prefix for messages originating from a user.</summary>
+	/// <remarks>
+	///     The prefix has the shape <c>nick!id@host</c>; the <c>user</c> slot carries the sender's
+	///     session id (not a real ident), which IRC clients display as an ordinary hostmask.
+	/// </remarks>
 	public static string UserPrefix(string nick, int id)
 	{
 		return $"{nick}!{id}@basil";
@@ -69,7 +68,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a PRIVMSG message from a user to a target player or channel.</summary>
 	/// <param name="senderNick">The nickname of the sending user.</param>
-	/// <param name="senderId">The <c>UserSession</c> id of the sending user, embedded in the hostmask.</param>
+	/// <param name="senderId">The id of the sending user, embedded in the hostmask.</param>
 	/// <param name="target">The nickname or channel the message is sent to.</param>
 	/// <param name="text">The message body.</param>
 	/// <returns>The PRIVMSG message.</returns>
@@ -80,7 +79,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a NOTICE message from a user to a target player or channel.</summary>
 	/// <param name="senderNick">The nickname of the sending user.</param>
-	/// <param name="senderId">The <c>UserSession</c> id of the sending user, embedded in the hostmask.</param>
+	/// <param name="senderId">The id of the sending user, embedded in the hostmask.</param>
 	/// <param name="target">The nickname or channel the notice is sent to.</param>
 	/// <param name="text">The notice body.</param>
 	/// <returns>The NOTICE message.</returns>
@@ -91,7 +90,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a JOIN message announcing that a user entered a channel.</summary>
 	/// <param name="nick">The nickname of the joining user.</param>
-	/// <param name="id">The <c>UserSession</c> id of the joining user, embedded in the hostmask.</param>
+	/// <param name="id">The id of the joining user, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel joined.</param>
 	/// <returns>The JOIN message.</returns>
 	public static IrcMessage Join(string nick, int id, string channel)
@@ -101,7 +100,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a PART message announcing that a user left a channel, optionally with a reason.</summary>
 	/// <param name="nick">The nickname of the leaving user.</param>
-	/// <param name="id">The <c>UserSession</c> id of the leaving user, embedded in the hostmask.</param>
+	/// <param name="id">The id of the leaving user, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel left.</param>
 	/// <param name="reason">The optional leave reason appended as the trailing parameter.</param>
 	/// <returns>The PART message.</returns>
@@ -113,7 +112,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a TOPIC message announcing a channel's topic changed.</summary>
 	/// <param name="nick">The nickname attributed as having set the topic.</param>
-	/// <param name="id">The <c>UserSession</c> id attributed as having set the topic, embedded in the hostmask.</param>
+	/// <param name="id">The id of the user credited with setting the topic, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel whose topic changed.</param>
 	/// <param name="topic">The new topic text.</param>
 	/// <returns>The TOPIC message.</returns>
@@ -124,7 +123,7 @@ public static class IrcMessageWriter
 
 	/// <summary>Builds a QUIT message announcing that a user disconnected.</summary>
 	/// <param name="nick">The nickname of the disconnecting user.</param>
-	/// <param name="id">The <c>UserSession</c> id of the disconnecting user, embedded in the hostmask.</param>
+	/// <param name="id">The id of the disconnecting user, embedded in the hostmask.</param>
 	/// <param name="reason">The quit message shown to other users.</param>
 	/// <returns>The QUIT message.</returns>
 	public static IrcMessage Quit(string nick, int id, string reason)

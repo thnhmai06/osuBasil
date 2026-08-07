@@ -12,11 +12,9 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     bancho.py routes by hostname (app/api/init_api.py:init_routes) rather than by path prefix:
-///     c./ce./c4./c5./c6.{domain} -> bancho realtime, osu.{domain} -> osu! web endpoints,
-///     b.{domain} -> beatmap assets, api.{domain} -> developer API. Both the configured DOMAIN and
-///     the hardcoded ppy.sh are registered for every group. This test locks in that routing shape
-///     before any real endpoint logic exists.
+///     Verifies hostname-based routing: c./ce./c4./c5./c6.{domain} -> bancho realtime,
+///     osu.{domain} -> osu! web endpoints, b.{domain} -> beatmap assets, api.{domain} -> developer
+///     API, with both the configured DOMAIN and the hardcoded ppy.sh registered for every group.
 /// </summary>
 public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 {

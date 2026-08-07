@@ -12,14 +12,13 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Shared NSubstitute-backed test doubles for the endpoint tests that were previously
-///     copy-pasting the same byte-identical no-op stub class into every file. Only the truly
-///     identical shapes live here — a repository/service with divergent per-file behavior stays a
-///     local <c>Substitute.For&lt;T&gt;()</c> configured with just what that file's tests need.
+///     Shared NSubstitute-backed test doubles for the endpoint tests. Only the truly identical
+///     shapes live here — a repository/service with divergent per-file behavior stays a local
+///     <c>Substitute.For&lt;T&gt;()</c> configured with just what that file's tests need.
 /// </summary>
 internal static class TestDoubles
 {
-	/// <summary>No channels, matching the old NullChannelRepository — used where routing doesn't care about channels.</summary>
+	/// <summary>No channels — used where routing doesn't care about channels.</summary>
 	public static IChannelRepository NullChannelRepository()
 	{
 		var repo = Substitute.For<IChannelRepository>();
@@ -30,10 +29,7 @@ internal static class TestDoubles
 		return repo;
 	}
 
-	/// <summary>
-	///     Verifies against a single fixed "correct-md5" digest, matching the old StubPasswordHasher —
-	///     used where a route needs a password check to succeed/fail deterministically without real bcrypt.
-	/// </summary>
+	/// <summary>Verifies against a single fixed "correct-md5" digest — used where a route needs a password check to succeed/fail deterministically without real bcrypt.</summary>
 	public static IPasswordHasher FixedPasswordHasher()
 	{
 		var hasher = Substitute.For<IPasswordHasher>();
@@ -43,7 +39,7 @@ internal static class TestDoubles
 		return hasher;
 	}
 
-	/// <summary>Every beatmap unknown, upsert/search all no-ops — matching the old NullMapRepository.</summary>
+	/// <summary>Every beatmap unknown, upsert/search all no-ops.</summary>
 	public static IBeatmapRepository NullMapRepository()
 	{
 		var repo = Substitute.For<IBeatmapRepository>();
@@ -67,7 +63,7 @@ internal static class TestDoubles
 		return repo;
 	}
 
-	/// <summary>Every user unknown, every write a no-op, matching the old StubUserRepository used as a pure DI placeholder.</summary>
+	/// <summary>Every user unknown, every write a no-op.</summary>
 	public static IUserRepository NullUserRepository()
 	{
 		var repo = Substitute.For<IUserRepository>();

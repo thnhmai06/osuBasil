@@ -7,7 +7,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's UserPresenceRequest (@register(ClientPackets.USER_PRESENCE_REQUEST)).</summary>
+/// <summary>Verifies the `UserPresenceRequest` handler enqueues the requested players' presence.</summary>
 public class UserPresenceRequestHandlerTests
 {
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();

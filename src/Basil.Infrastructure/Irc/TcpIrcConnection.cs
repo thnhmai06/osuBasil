@@ -15,14 +15,13 @@ namespace Basil.Infrastructure.Irc;
 
 /// <summary>
 ///     One real TCP IRC client. Owns the socket's read loop (handshake, then chat, membership,
-///     query, and keepalive dispatch) and a bounded-channel write pump. <see cref="Send" /> is a non-blocking
-///     <c>TryWrite</c>, so a slow or dead client can never stall a broadcast made while another lock
-///     is held elsewhere in the chat core.
+///     query, and keepalive dispatch) and the write path for outgoing messages. <see cref="Send" /> is
+///     non-blocking, so a slow or dead client can never stall a caller.
 /// </summary>
 /// <remarks>
 ///     Implements <see cref="IIrcConnection" /> for a real external IRC client. Outgoing messages
-///     queue on a bounded outbox that drops the oldest entry when full, honoring the port's
-///     non-blocking sending contract. The connection id scopes this connection's log events.
+///     queue and, when the queue is full, the oldest queued message is dropped so the send stays
+///     non-blocking. The connection id scopes this connection's log events.
 /// </remarks>
 /// <param name="client">The accepted TCP socket to read from and write to.</param>
 /// <param name="authService">Authenticates the PASS/NICK handshake and builds the session on success.</param>
@@ -66,8 +65,8 @@ public sealed class TcpIrcConnection(
 	UserSession IIrcConnection.User => User;
 
 	/// <summary>
-	///     Enqueues to the bounded outbox with a non-blocking <c>TryWrite</c>.
-	///     When the outbox is full, the oldest queued message is dropped rather than this call stalling.
+	///     Queues a message for writing to the socket. Never blocks: when the queue is full, the
+	///     oldest queued message is dropped instead of this call stalling.
 	/// </summary>
 	public void Send(IrcMessage message)
 	{
@@ -152,7 +151,7 @@ public sealed class TcpIrcConnection(
 					{
 						nick = null;
 						Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrErroneousNickname,
-							"*", "Erroneous nickname"));
+							"*", IrcReplies.ErroneousNickname));
 					}
 
 					break;
@@ -171,7 +170,7 @@ public sealed class TcpIrcConnection(
 					return;
 				default:
 					Send(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNotRegistered, "*",
-						"You have not registered"));
+						IrcReplies.YouHaveNotRegistered));
 					break;
 			}
 
@@ -190,7 +189,7 @@ public sealed class TcpIrcConnection(
 		{
 			case "PRIVMSG" or "NOTICE" when first is null || second is null:
 			case "JOIN" or "PART" or "TOPIC" or "MODE" or "WHOIS" or "ISON" when first is null:
-				Send(Numeric(IrcNumeric.ErrNeedMoreParams, message.Command, "Not enough parameters"));
+				Send(Numeric(IrcNumeric.ErrNeedMoreParams, message.Command, IrcReplies.NotEnoughParameters));
 				break;
 
 			case "PRIVMSG":
@@ -205,9 +204,9 @@ public sealed class TcpIrcConnection(
 
 			case "JOIN":
 				if (channelRegistry.GetByName(first) is not { } joinTarget)
-					Send(Numeric(IrcNumeric.ErrNoSuchChannel, first, "No such channel"));
+					Send(Numeric(IrcNumeric.ErrNoSuchChannel, first, IrcReplies.NoSuchChannel));
 				else if (!channelMembership.Join(User, joinTarget))
-					Send(Numeric(IrcNumeric.ErrInviteOnlyChan, first, "Cannot join channel (no permission)"));
+					Send(Numeric(IrcNumeric.ErrInviteOnlyChan, first, IrcReplies.CannotJoinChannel));
 				break;
 
 			case "PART":
@@ -271,7 +270,7 @@ public sealed class TcpIrcConnection(
 
 			case "NICK" or "PASS" or "USER":
 				// "Can I use another username? No." (osu!Bancho IRC FAQ). Identity is fixed at login.
-				Send(Numeric(IrcNumeric.ErrAlreadyRegistered, "Changing nickname is not supported"));
+				Send(Numeric(IrcNumeric.ErrAlreadyRegistered, IrcReplies.NicknameChangeNotSupported));
 				break;
 
 			case "QUIT":
@@ -288,7 +287,7 @@ public sealed class TcpIrcConnection(
 				break;
 
 			default:
-				Send(Numeric(IrcNumeric.ErrUnknownCommand, message.Command, "Unknown command"));
+				Send(Numeric(IrcNumeric.ErrUnknownCommand, message.Command, IrcReplies.UnknownCommand));
 				break;
 		}
 
@@ -333,13 +332,13 @@ public sealed class TcpIrcConnection(
 		var channel = channelRegistry.GetByName(target);
 		if (channel is null)
 		{
-			Send(Numeric(IrcNumeric.ErrNoSuchChannel, target, "No such channel"));
+			Send(Numeric(IrcNumeric.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel));
 			return false;
 		}
 
 		if (channel.Contains(User.Id) && channel.CanWrite(User.Privilege)) return true;
 
-		Send(Numeric(IrcNumeric.ErrCannotSendToChannel, target, "Cannot send to channel"));
+		Send(Numeric(IrcNumeric.ErrCannotSendToChannel, target, IrcReplies.CannotSendToChannel));
 		return false;
 	}
 
@@ -373,7 +372,7 @@ public sealed class TcpIrcConnection(
 		logger.LogInformation("IRC login succeeded: UserId={UserId} Nick={Nick}", User.Id, User.Name);
 	}
 
-	/// <summary>Drains the outbox, writing each message to the socket as a CRLF-terminated wire line.</summary>
+	/// <summary>Writes each queued message to the socket as a CRLF-terminated wire line.</summary>
 	private async Task PumpWritesAsync(StreamWriter writer, CancellationToken cancellationToken)
 	{
 		try

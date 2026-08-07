@@ -121,14 +121,9 @@ internal static class SchemaTypeTransformers
 		///     </para>
 		///     <para>
 		///         Runs as a *document* transformer over the final `components.schemas`, matched by
-		///         component name against every public enum across the `Basil.*` assemblies, rather than
-		///         as a schema transformer keyed on <c>context.JsonTypeInfo.Type</c>. A schema
-		///         transformer only reliably mutates the *first* schema object generated for a given
-		///         type, and for a type used at several call sites (nullable in one place, non-nullable
-		///         in another) that first mutation isn't guaranteed to be the one that survives into the
-		///         final named component (confirmed by inspecting the generated document: some enum
-		///         components kept the mutation, others silently didn't). Operating on the
-		///         fully assembled document sidesteps that ordering entirely.
+		///         component name against every public enum across the `Basil.*` assemblies, so the
+		///         mutation is applied to the single schema that survives into the final named
+		///         component, regardless of how many call sites reference the type.
 		///     </para>
 		/// </remarks>
 		public void AddEnumValuesSchemaTransformer()

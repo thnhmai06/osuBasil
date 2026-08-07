@@ -6,12 +6,9 @@ using Basil.Domain.Scores;
 namespace Basil.Application.Tests.Sessions;
 
 /// <summary>
-///     bancho.py's Match has no lock at all — it relies entirely on asyncio's single-threaded event
-///     loop making `get_free()` immediately followed by occupying that slot atomic between `await`
-///     points (see MatchCreate/join_match in cho.py/userSession.py, both of which have no `await` between
-///     the two steps). Under ASP.NET Core's real thread-pool concurrency there is no such guarantee,
-///     so <see cref="MatchSession.Lock" /> exists to restore it. These tests prove both halves: the
-///     race is real without synchronization, and <see cref="MatchSession.Lock" /> closes it.
+///     Proves the slot-assignment race is real under concurrent access — two threads can read the
+///     same free slot index and lose one player's occupancy — and that holding
+///     <see cref="MatchSession.Lock" /> across the read-mutate sequence closes it.
 /// </summary>
 public class MatchSessionRaceTests
 {
@@ -25,10 +22,10 @@ public class MatchSessionRaceTests
 	}
 
 	/// <summary>
-	///     Reproduces the exact hazard get_free()+occupy would have without asyncio's atomicity: two
-	///     threads read the same free slot index before either writes, so one userSession's occupancy is
-	///     silently lost. A `Task.Delay` between the read and the write widens the window so the
-	///     interleaving is reliably observed rather than being timing-dependent.
+	///     Reproduces the slot-assignment hazard under concurrent access: two threads read the same
+	///     free slot index before either writes, so one userSession's occupancy is silently lost.
+	///     A `Task.Delay` between the read and the write widens the window so the interleaving is
+	///     reliably observed rather than being timing-dependent.
 	/// </summary>
 	[Fact]
 	public async Task UnsynchronizedFreeSlotLookup_CanLoseAPlayerToADoubleAssignment()

@@ -20,9 +20,9 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Ported from app/api/domains/cho.py's SendMessage (private). Exercises the real
+///     Verifies the `SendMessage` (private) handler. Exercises the real
 ///     <see cref="ChannelMembershipService" />/<see cref="ChatDispatchService" /> chain (not mocked) so
-///     these assertions actually cover the chat core the handler delegates to.
+///     these assertions cover the chat core the handler delegates to.
 /// </summary>
 public class SendPrivateMessageHandlerTests
 {

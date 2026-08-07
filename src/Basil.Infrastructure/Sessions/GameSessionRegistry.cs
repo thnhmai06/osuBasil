@@ -6,14 +6,9 @@ namespace Basil.Infrastructure.Sessions;
 
 /// <inheritdoc cref="ISessionRegistry{TSession}" />
 /// <remarks>
-///     Backed by a <see cref="ConcurrentDictionary{TKey,TValue}" /> keyed by login token (the
-///     authoritative store) plus two key-only indices — UserId→token and SafeName→token — so
-///     <see cref="ISessionRegistry{TSession}.GetByUserId" />/<see cref="ISessionRegistry{TSession}.GetByName" />
-///     resolve through the token without duplicating the stored session, and
-///     <see cref="ISessionRegistry{TSession}.TryAdd" /> can check-then-insert atomically. No lock is
-///     needed: <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd" /> on the UserId index is the
-///     atomic gate that decides the single winner between racing logins, and every read returns a
-///     snapshot, so callers never iterate a live collection.
+///     Stores sessions keyed by login token, with UserId→token and SafeName→token indices so
+///     lookups by user id or name resolve without iterating. All operations are thread-safe; every
+///     read returns a snapshot rather than a live collection.
 /// </remarks>
 public sealed class GameSessionRegistry : ISessionRegistry<GameSession>
 {

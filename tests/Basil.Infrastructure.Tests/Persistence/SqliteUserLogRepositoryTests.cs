@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;
 
-/// <summary>Ported from app/repositories/logs.py, scoped to the single append-only insert ClientIntegrityService needs.</summary>
+/// <summary>Verifies `SqliteUserLogRepository`'s append-only insert of a log entry.</summary>
 public class SqliteUserLogRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteUserLogRepository _repository =

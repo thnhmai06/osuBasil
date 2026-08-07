@@ -10,10 +10,9 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Ported from app/api/domains/osu.py's get_osz/get_updated_beatmap. This server has no local
-///     .osz/.osu file storage and no internet default — see MirrorOptions' doc comment. Both
-///     endpoints report unavailability rather than reaching out to the internet by default;
-///     /d/{set_id} only redirects if an operator explicitly configures MirrorOptions:DownloadEndpoint.
+///     Verifies the /d/ and updated-beatmap endpoints report unavailability rather than reaching out
+///     to the internet by default; /d/{set_id} only redirects if an operator explicitly configures
+///     MirrorOptions:DownloadEndpoint.
 /// </summary>
 public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory)
 	: IClassFixture<WebApplicationFactory<Program>>

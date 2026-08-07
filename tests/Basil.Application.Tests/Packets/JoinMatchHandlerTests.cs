@@ -5,7 +5,7 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Ported from app/api/domains/cho.py's MatchJoin.</summary>
+/// <summary>Verifies the `MatchJoin` handler joins the player into the match, honoring password, private-match and invite rules.</summary>
 public class JoinMatchHandlerTests
 {
 	private static PacketReader ReaderFor(int matchId, string password)

@@ -8,8 +8,8 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IBeatmapsetRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>MapsetRow</c> DTO: Dapper fills by property name,
-///     not through a positional record constructor. Each method opens its own connection.
+///     Rows map through the private mutable <c>MapsetRow</c> DTO. Each method opens its own
+///     connection.
 /// </remarks>
 public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<SqliteBeatmapsetRepository> logger)
 	: IBeatmapsetRepository
@@ -25,15 +25,12 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 
 	/// <inheritdoc />
 	/// <remarks>
-	///     Uses <c>INSERT ... ON CONFLICT DO UPDATE</c>, not <c>REPLACE INTO</c>: a replacement deletes
-	///     then reinserts on a primary-key conflict, and that delete cascades through the
-	///     Beatmaps-Beatmapsets foreign key, wiping every beatmap under the set on every re-upsert. The
-	///     update clause overwrites only the shared metadata columns. <see cref="Beatmapset.IsFrozen" />,
-	///     <see cref="Beatmapset.IsPrivate" />, and the media-file columns are deliberately left alone:
-	///     a re-ingestion pass must never clear an admin-set freeze lock or privacy flag, and the pass's
-	///     actual background and audio files are not known yet (they are set later via
-	///     <see cref="SetBackgroundFileAsync" /> and <see cref="SetAudioFileAsync" />). The persisted
-	///     row is re-read and returned.
+	///     The update clause overwrites only the shared metadata columns.
+	///     <see cref="Beatmapset.IsFrozen" />, <see cref="Beatmapset.IsPrivate" />, and the
+	///     media-file columns are deliberately left alone: a re-ingestion pass must never clear an
+	///     admin-set freeze lock or privacy flag, and the pass's actual background and audio files
+	///     are not known yet (they are set later via <see cref="SetBackgroundFileAsync" /> and
+	///     <see cref="SetAudioFileAsync" />). The persisted row is re-read and returned.
 	/// </remarks>
 	public async Task<Beatmapset> UpsertAsync(Beatmapset beatmapset, CancellationToken cancellationToken = default)
 	{
@@ -169,8 +166,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	}
 
 	/// <summary>
-	///     A mutable row DTO matching the Beatmapsets table columns. Mutable because Dapper fills by
-	///     property name, not through a positional record constructor.
+	///     A mutable row DTO matching the Beatmapsets table columns.
 	/// </summary>
 	private sealed class MapsetRow
 	{

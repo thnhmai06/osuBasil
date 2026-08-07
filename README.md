@@ -57,7 +57,7 @@ offline**, giving you full control without requiring internet connectivity or th
 
 ## 📖 Getting Started
 
-- **API, Bot Commands, Client** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
+- **API, Chatbot, Client** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
   the same docs on [GitHub Pages](https://thnhmai06.github.io/osuBasil/) without running a server.
 - **Run a Server** – See [`docs/run-deployment.md`](docs/run-deployment.md) for deployment, local development, and
   connecting an osu! client.
@@ -65,6 +65,7 @@ offline**, giving you full control without requiring internet connectivity or th
   subsystem.
 - **Project Scope** – See [`docs/working-scopes.md`](docs/working-scopes.md) for the project's goals, supported
   features, and intentional limitations.
+- **Countribute to Basil** - See [`CONTRIBUTING.md`](CONTRIBUTING.md) for information on how to contribute to the project.
 
 ## ❤️ Credits
 

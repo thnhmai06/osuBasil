@@ -12,10 +12,9 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the third slice of Phase C: the admin-key gate on the management REST API. Per the
-///     review that shaped this phase, the admin key is the one thing here that MUST be verified —
-///     everything else is boilerplate CRUD. This is because a wrong-key DELETE returning 200 instead of 401
-///     would be a real, silent security hole on destructive endpoints.
+///     Verifies the admin-key gate on the management REST API: missing or wrong admin keys are
+///     rejected with 401 (not 200) across endpoints, the correct key succeeds, and the BasilBot user
+///     id is protected from edits.
 /// </summary>
 public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
