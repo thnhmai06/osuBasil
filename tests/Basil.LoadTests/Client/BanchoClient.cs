@@ -43,21 +43,22 @@ public sealed class BanchoClient(
 		_loginSentAt = DateTimeOffset.UtcNow;
 		var body = LoginFormBuilder.Build(account);
 		using var content = new ByteArrayContent(body);
-		using var request = new HttpRequestMessage(HttpMethod.Post, clientFactory.BuildUri("c", "/"))
-		{
-			Content = content
-		};
+		using var request = new HttpRequestMessage(HttpMethod.Post, clientFactory.BuildUri("c", "/"));
+		request.Content = content;
 
 		using var response = await _http.SendAsync(request, cancellationToken);
 		var responseBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-		var choToken = response.Headers.TryGetValues("cho-token", out var values) ? values.FirstOrDefault() : null;
+		var choToken = response.Headers.TryGetValues("cho-token", out var values)
+			? values.FirstOrDefault()
+			: null;
 
 		var frames = ServerPacketStream.ReadFrames(responseBytes);
 		var reply = frames.FirstOrDefault(f => f.Type == ServerPackets.UserId);
 
-		var dbg = System.Threading.Interlocked.Increment(ref _sDebugCounter);
+		var dbg = Interlocked.Increment(ref _sDebugCounter);
 		if (dbg <= 400)
-			Console.WriteLine($"[CLIENTDBG] #{dbg} acct={account.Name} choToken={(choToken ?? "<null>")} bytes={responseBytes.Length} frames={frames.Count} uidLen={reply.Payload?.Length}");
+			Console.WriteLine(
+				$"[CLIENTDBG] #{dbg} acct={account.Name} choToken={choToken ?? "<null>"} bytes={responseBytes.Length} frames={frames.Count} uidLen={reply.Payload?.Length}");
 
 		if (reply.Payload is { Length: >= 4 } payload && choToken is not null)
 		{
@@ -114,9 +115,7 @@ public sealed class BanchoClient(
 		if (_token is null) return;
 
 		var remaining = _minSessionHold - (DateTimeOffset.UtcNow - _loginSentAt);
-		if (remaining > TimeSpan.Zero)
-			await Task.Delay(remaining, cancellationToken);
-
+		if (remaining > TimeSpan.Zero) await Task.Delay(remaining, cancellationToken);
 		await SendLogoutAsync();
 	}
 
@@ -134,9 +133,7 @@ public sealed class BanchoClient(
 		try
 		{
 			var remaining = _minSessionHold - (DateTimeOffset.UtcNow - _loginSentAt);
-			if (remaining > TimeSpan.Zero)
-				await Task.Delay(remaining);
-
+			if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
 			await SendLogoutAsync();
 		}
 		catch

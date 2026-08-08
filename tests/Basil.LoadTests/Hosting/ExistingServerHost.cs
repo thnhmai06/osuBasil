@@ -7,19 +7,19 @@ namespace Basil.LoadTests.Hosting;
 
 /// <summary>
 ///     Attaches to an already-running Basil instance the harness does not own. Every lifecycle method
-///     is a no-op except health/metrics collection: no start, no stop, and
+///     is a no-op except health/metrics collections: no start, no stop, and
 ///     <see cref="SyncDatabaseSnapshotAsync" /> refuses outright rather than touching data this host
 ///     didn't create. Process/counters metrics require an explicit <c>Existing.ProcessId</c> in the
 ///     profile — there is no process-name guessing.
 /// </summary>
 public sealed class ExistingServerHost(
 	ServerHostSettings settings,
-	string countersOutputPath,
+	DotnetCountersSettings countersSettings,
 	Action<string> logWarning)
 	: IServerHost
 {
 	private ProcessResourceSampler? _processSampler;
-	private DotnetCountersSidecar? _countersSampler;
+	private DotnetRuntimeMetricsCollector? _countersSampler;
 	private BasilHttpClientFactory? _clientFactory;
 
 	public ServerHostCapabilities Capabilities => new(
@@ -38,8 +38,13 @@ public sealed class ExistingServerHost(
 		if (settings.Existing.ProcessId is { } pid)
 		{
 			_processSampler = new ProcessResourceSampler(pid, settings.Port);
-			_countersSampler = new DotnetCountersSidecar(pid, countersOutputPath, 1, logWarning);
-			await _countersSampler.StartAsync(cancellationToken);
+
+			if (countersSettings.Enabled)
+			{
+				_countersSampler = new DotnetRuntimeMetricsCollector(pid,
+					countersSettings.RefreshIntervalSeconds, logWarning);
+				await _countersSampler.StartAsync(cancellationToken);
+			}
 		}
 	}
 
@@ -78,8 +83,7 @@ public sealed class ExistingServerHost(
 		return Task.CompletedTask;
 	}
 
-	public Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent,
-		CancellationToken cancellationToken = default)
+	public Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent)
 	{
 		throw new NotSupportedException(
 			"ExistingServerHost does not own the target server's data and refuses to snapshot or restore it.");

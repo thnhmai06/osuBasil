@@ -54,7 +54,7 @@ public sealed class AccountSeeder(BasilApiClient apiClient)
 			catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
 			{
 				// A single flaky connection among thousands of sequential seed calls must never
-				// abort the whole run. One retry covers a transient hiccup; a second failure is logged.
+				// abort the whole run. One retry covers transient hiccup; a second failure is logged.
 				try
 				{
 					account.UserId =

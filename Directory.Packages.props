@@ -47,5 +47,8 @@
     <PackageVersion Include="NBomber" Version="6.5.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.661903" />
+    <PackageVersion Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.5" />
+    <PackageVersion Include="Docker.DotNet" Version="3.125.15" />
   </ItemGroup>
 </Project>

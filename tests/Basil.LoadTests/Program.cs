@@ -35,7 +35,7 @@ var reportFolder = Path.Combine(RepoPaths.Resolve(profile.Report.Folder),
 Directory.CreateDirectory(reportFolder);
 LogInfo($"Report folder: {reportFolder}");
 
-await using var host = ServerHostFactory.Create(profile.ServerHost, reportFolder, LogWarning);
+await using var host = ServerHostFactory.Create(profile.ServerHost, profile.Metrics.DotnetCounters, LogWarning);
 
 var manifest = new RunManifest
 {

@@ -1,66 +1,143 @@
 {
-  "Name": "quick",
-  "ServerHost": {
-    "Kind": "Dotnet",
-    "Domain": "basil.local",
-    "Port": 8443,
-    "IrcPort": 16667,
-    "CertPath": "basil-cert.pfx",
-    "CertPassword": "your-password",
-    "StartupTimeoutSeconds": 60,
-    "IdleSettleSeconds": 5,
-    "Dotnet": {
-      "Mode": "Published",
-      "PublishDirectory": ".loadtest/server",
-      "AutoPublish": true
-    }
-  },
-  "Client": {
-    "HttpVersion": "1.1",
-    "ConnectionMode": "Shared",
-    "MaxConnectionsPerServer": 128,
-    "RequestTimeoutSeconds": 15,
-    "PollIntervalSeconds": 30
-  },
-  "Accounts": {
-    "Count": 100,
-    "NamePrefix": "quick",
-    "Password": "loadtest-pw"
-  },
-  "Metrics": {
-    "SampleIntervalSeconds": 1,
-    "DotnetCounters": { "Enabled": true, "RefreshIntervalSeconds": 1 }
-  },
-  "Report": {
-    "Folder": ".loadtest/reports",
-    "Formats": ["Csv", "Md"]
-  },
-  "Scenarios": {
-    "startup": { "Enabled": true, "Iterations": 1 },
-    "login": {
-      "Enabled": true,
-      "ConcurrentUsers": [50],
-      "DurationSeconds": 20,
-      "WarmUpSeconds": 3,
-      "WarmBcryptCache": true,
-      "MinSessionHoldSeconds": 1.5,
-      "PostWarmupSettleSeconds": 11,
-      "MaxFailCount": 10000
-    },
-    "idle": { "Enabled": false, "ConcurrentUsers": [50], "DurationSeconds": 20, "WarmUpSeconds": 3 },
-    "chat": { "Enabled": false, "ConcurrentUsers": [50], "DurationSeconds": 20, "WarmUpSeconds": 3 },
-    "multiplayer": { "Enabled": false, "Rooms": [2], "PlayersPerRoom": 4, "RoundsPerRoom": 1, "ScoreUpdatesPerSecond": 1, "DurationSeconds": 30 },
-    "api": {
-      "Enabled": true,
-      "ConcurrentUsers": [20],
-      "DurationSeconds": 20,
-      "WarmUpSeconds": 3,
-      "Endpoints": ["health", "user"],
-      "MixedWeights": { "user": 100 },
-      "MaxFailCount": 10000
-    },
-    "sse": { "Enabled": false, "ConcurrentUsers": [10], "DurationSeconds": 20, "WarmUpSeconds": 3 },
-    "stress": { "Enabled": false, "ConcurrentUsers": [50], "RampSeconds": 5, "HoldSeconds": 10, "MaxFailCount": 2147483647, "UnusableSuccessRatePercent": 5, "UnusableForSeconds": 30, "SaturationCpuPercent": 95, "SaturationSeconds": 15 },
-    "soak": { "Enabled": false, "ConcurrentUsers": [50], "DurationSeconds": 60, "WarmUpSeconds": 5, "ReportingIntervalSeconds": 10, "Weights": { "api": 100 }, "LeakSlopeThresholds": { "WorkingSetMbPerHour": 25, "ThreadsPerHour": 5, "HandlesPerHour": 50, "P95MsPerHour": 10 } }
-  }
+	"Name": "quick",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "basil-cert.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 60,
+		"IdleSettleSeconds": 5,
+		"Dotnet": {
+			"Mode": "Published",
+			"PublishDirectory": ".loadtest/server",
+			"AutoPublish": true
+		}
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 128,
+		"RequestTimeoutSeconds": 15,
+		"PollIntervalSeconds": 30
+	},
+	"Accounts": {
+		"Count": 100,
+		"NamePrefix": "quick",
+		"Password": "loadtest-pw"
+	},
+	"Metrics": {
+		"SampleIntervalSeconds": 1,
+		"DotnetCounters": {
+			"Enabled": true,
+			"RefreshIntervalSeconds": 1
+		}
+	},
+	"Report": {
+		"Folder": ".loadtest/reports",
+		"Formats": [
+			"Csv",
+			"Md"
+		]
+	},
+	"Scenarios": {
+		"startup": {
+			"Enabled": true,
+			"Iterations": 1
+		},
+		"login": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				50
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 3,
+			"WarmBcryptCache": true,
+			"MinSessionHoldSeconds": 1.5,
+			"PostWarmupSettleSeconds": 11,
+			"MaxFailCount": 10000
+		},
+		"idle": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				50
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 3
+		},
+		"chat": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				50
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 3
+		},
+		"multiplayer": {
+			"Enabled": false,
+			"Rooms": [
+				2
+			],
+			"PlayersPerRoom": 4,
+			"RoundsPerRoom": 1,
+			"ScoreUpdatesPerSecond": 1,
+			"DurationSeconds": 30
+		},
+		"api": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				20
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 3,
+			"Endpoints": [
+				"health",
+				"user"
+			],
+			"MixedWeights": {
+				"user": 100
+			},
+			"MaxFailCount": 10000
+		},
+		"sse": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				10
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 3
+		},
+		"stress": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				50
+			],
+			"RampSeconds": 5,
+			"HoldSeconds": 10,
+			"MaxFailCount": 2147483647,
+			"UnusableSuccessRatePercent": 5,
+			"UnusableForSeconds": 30,
+			"SaturationCpuPercent": 95,
+			"SaturationSeconds": 15
+		},
+		"soak": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				50
+			],
+			"DurationSeconds": 60,
+			"WarmUpSeconds": 5,
+			"ReportingIntervalSeconds": 10,
+			"Weights": {
+				"api": 100
+			},
+			"LeakSlopeThresholds": {
+				"WorkingSetMbPerHour": 25,
+				"ThreadsPerHour": 5,
+				"HandlesPerHour": 50,
+				"P95MsPerHour": 10
+			}
+		}
+	}
 }

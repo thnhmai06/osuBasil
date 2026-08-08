@@ -22,7 +22,7 @@ public interface IServerHost : IAsyncDisposable
 	/// <summary>Stops the server (a no-op for <see cref="ExistingServerHost" />).</summary>
 	Task StopAsync(CancellationToken cancellationToken = default);
 
-	/// <summary>Completes once the server answers requests, or throws on timeout.</summary>
+	/// <summary>Completes once the server answers requests or throws on timeout.</summary>
 	/// <returns>
 	///     The time from <see cref="StartAsync" /> to the first successful response, or
 	///     <see langword="null" /> when this host did not start the server itself.
@@ -52,6 +52,5 @@ public interface IServerHost : IAsyncDisposable
 	///     server's current database into it.
 	/// </param>
 	/// <returns><see langword="true" /> if a snapshot was restored; <see langword="false" /> if one was captured instead.</returns>
-	Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent,
-		CancellationToken cancellationToken = default);
+	Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent);
 }

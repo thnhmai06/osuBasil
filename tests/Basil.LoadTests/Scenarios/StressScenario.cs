@@ -11,7 +11,7 @@ namespace Basil.LoadTests.Scenarios;
 ///     Progressive ramp-up to failure: chains ramp-then-hold steps across every configured concurrency
 ///     level with no gap between them, driven by repeated login round-trips (the most resource-intensive
 ///     single operation identified — bcrypt plus two SQLite writes per call). <see cref="StressSettings.MaxFailCount" />
-///     is set far above NBomber's 5000 default, so the run keeps collecting metrics through failures
+///     is set far above NBomber's default 5000, so the run keeps collecting metrics through failures
 ///     instead of stopping at the first wave of them.
 /// </summary>
 public sealed class StressScenario : IBasilScenario

@@ -8,7 +8,7 @@ namespace Basil.LoadTests.Infrastructure.Metrics;
 /// <param name="TimestampUtc">When the sample was taken.</param>
 public sealed record ResourceSample(DateTimeOffset TimestampUtc)
 {
-	/// <summary>Process CPU usage, in percent of one core normalized to 100 == all cores busy.</summary>
+	/// <summary>Process CPU usage, in percentage of one core normalized to 100 == all cores busy.</summary>
 	public double? CpuPercent { get; init; }
 
 	/// <summary>Working set, in bytes.</summary>

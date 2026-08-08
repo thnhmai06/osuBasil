@@ -1,17 +1,17 @@
-using System.Diagnostics;
-using System.Globalization;
-using System.Text.Json;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 
 namespace Basil.LoadTests.Infrastructure.Metrics;
 
 /// <summary>
-///     Samples CPU% and memory usage for a Docker Compose service via <c>docker stats --no-stream</c>.
-///     Docker's own stats surface has no GC/thread/handle view into the container, so those fields are
-///     always left <see langword="null" /> here — <see cref="Hosting.DockerServerHost" />'s
+///     Samples CPU% and memory usage for a container via the Docker Engine API (no <c>docker stats</c>
+///     CLI spawn). Docker's own stats surface has no GC/thread/handle view into the container, so those
+///     fields are always left <see langword="null" /> here — <see cref="Hosting.DockerServerHost" />'s
 ///     <see cref="Hosting.ServerHostCapabilities" /> reflects that rather than guessing.
 /// </summary>
-/// <param name="containerName">The container name or id to query.</param>
-public sealed class DockerStatsSampler(string containerName) : IResourceSampler
+/// <param name="client">A client for the Docker daemon.</param>
+/// <param name="containerId">The container id or name to query.</param>
+public sealed class DockerStatsSampler(DockerClient client, string containerId) : IResourceSampler
 {
 	public Task StartAsync(CancellationToken cancellationToken = default)
 	{
@@ -22,27 +22,23 @@ public sealed class DockerStatsSampler(string containerName) : IResourceSampler
 	{
 		var now = DateTimeOffset.UtcNow;
 
-		using var process = Process.Start(new ProcessStartInfo("docker",
-			$"stats {containerName} --no-stream --format \"{{{{json .}}}}\"")
+		ContainerStatsResponse? stats;
+		try
 		{
-			UseShellExecute = false,
-			RedirectStandardOutput = true,
-			RedirectStandardError = true,
-			CreateNoWindow = true
-		});
-		if (process is null) return new ResourceSample(now);
+			stats = await GetOneShotStatsAsync(cancellationToken);
+		}
+		catch (DockerApiException)
+		{
+			// The container may have just stopped mid-request; skip this sample rather than fail the run.
+			return new ResourceSample(now);
+		}
 
-		var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-		await process.WaitForExitAsync(cancellationToken);
-		if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output)) return new ResourceSample(now);
-
-		using var doc = JsonDocument.Parse(output.Trim());
-		var root = doc.RootElement;
+		if (stats is null) return new ResourceSample(now);
 
 		return new ResourceSample(now)
 		{
-			CpuPercent = ParsePercent(root, "CPUPerc"),
-			WorkingSetBytes = ParseMemoryUsage(root)
+			CpuPercent = ComputeCpuPercent(stats),
+			WorkingSetBytes = stats.MemoryStats?.Usage is { } usage ? (long)usage : null
 		};
 	}
 
@@ -56,35 +52,29 @@ public sealed class DockerStatsSampler(string containerName) : IResourceSampler
 		return ValueTask.CompletedTask;
 	}
 
-	private static double? ParsePercent(JsonElement root, string field)
+	private async Task<ContainerStatsResponse?> GetOneShotStatsAsync(CancellationToken cancellationToken)
 	{
-		if (!root.TryGetProperty(field, out var element)) return null;
-		var text = element.GetString()?.TrimEnd('%');
-		return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
+		// A one-shot request makes the daemon send exactly one snapshot, delivered through the progress
+		// callback rather than the returned task — so capture it via the callback and await both.
+		var completion = new TaskCompletionSource<ContainerStatsResponse?>();
+		var progress = new Progress<ContainerStatsResponse>(stats => completion.TrySetResult(stats));
+
+		await client.Containers.GetContainerStatsAsync(containerId, new ContainerStatsParameters
+		{
+			Stream = false,
+			OneShot = true
+		}, progress, cancellationToken);
+
+		return await completion.Task.WaitAsync(cancellationToken);
 	}
 
-	private static long? ParseMemoryUsage(JsonElement root)
+	private static double? ComputeCpuPercent(ContainerStatsResponse stats)
 	{
-		if (!root.TryGetProperty("MemUsage", out var element)) return null;
-		var used = element.GetString()?.Split('/').FirstOrDefault()?.Trim();
-		return used is null ? null : ParseByteSize(used);
-	}
+		var cpuDelta = (stats.CPUStats?.CPUUsage?.TotalUsage ?? 0) - (stats.PreCPUStats?.CPUUsage?.TotalUsage ?? 0);
+		var systemDelta = (stats.CPUStats?.SystemUsage ?? 0) - (stats.PreCPUStats?.SystemUsage ?? 0);
+		if (cpuDelta <= 0 || systemDelta <= 0) return null;
 
-	private static long? ParseByteSize(string text)
-	{
-		var units = new (string Suffix, double Multiplier)[]
-		{
-			("GiB", 1024.0 * 1024 * 1024), ("MiB", 1024.0 * 1024), ("KiB", 1024.0), ("B", 1.0)
-		};
-
-		foreach (var (suffix, multiplier) in units)
-		{
-			if (!text.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) continue;
-			var number = text[..^suffix.Length].Trim();
-			if (double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-				return (long)(value * multiplier);
-		}
-
-		return null;
+		var onlineCpus = stats.CPUStats?.OnlineCPUs ?? 1;
+		return (double)cpuDelta / systemDelta * onlineCpus * 100.0;
 	}
 }

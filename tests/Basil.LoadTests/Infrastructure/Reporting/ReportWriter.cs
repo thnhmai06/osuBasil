@@ -53,23 +53,21 @@ public static class ReportWriter
 			$"- Logical processors: {manifest.ProcessorCount}",
 			$"- Git commit: {manifest.GitCommit ?? "unknown"}",
 			$"- Server host kind: {manifest.Profile.ServerHost.Kind}",
-			""
+			"",
+			manifest.StartupTime.HasValue
+				? $"- Server startup time: {TimeSpanFormat.Humanize(manifest.StartupTime.Value)}"
+				: "- Server startup time: not available on this host",
+			"",
+			"## Host capabilities",
+			$"- Process metrics (CPU/working set/threads/handles): {(manifest.Capabilities.CanMeasureProcessMetrics ? "available" : "not available on this host")}",
+			$"- GC/allocation/threadpool counters: {(manifest.Capabilities.CanMeasureDotnetCounters ? "available" : "not available on this host")}",
+			$"- Database snapshot/restore: {(manifest.Capabilities.CanSnapshotDatabase ? "available" : "not available on this host")}",
+			"",
+			"## Resource usage (min / mean / max)",
+			"| Metric | Min | Mean | Max |",
+			"|---|---|---|---|"
 		};
 
-		lines.Add(manifest.StartupTime.HasValue
-			? $"- Server startup time: {TimeSpanFormat.Humanize(manifest.StartupTime.Value)}"
-			: "- Server startup time: not available on this host");
-		lines.Add("");
-
-		lines.Add("## Host capabilities");
-		lines.Add($"- Process metrics (CPU/working set/threads/handles): {(manifest.Capabilities.CanMeasureProcessMetrics ? "available" : "not available on this host")}");
-		lines.Add($"- GC/allocation/threadpool counters: {(manifest.Capabilities.CanMeasureDotnetCounters ? "available" : "not available on this host")}");
-		lines.Add($"- Database snapshot/restore: {(manifest.Capabilities.CanSnapshotDatabase ? "available" : "not available on this host")}");
-		lines.Add("");
-
-		lines.Add("## Resource usage (min / mean / max)");
-		lines.Add("| Metric | Min | Mean | Max |");
-		lines.Add("|---|---|---|---|");
 		AddRow(lines, aggregates, "CpuPercent", "CPU %", 2);
 		AddRow(lines, aggregates, "WorkingSetBytes", "Working set (MB)", 0, 1.0 / (1024 * 1024));
 		AddRow(lines, aggregates, "PrivateMemoryBytes", "Private memory (MB)", 0, 1.0 / (1024 * 1024));

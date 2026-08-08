@@ -1,51 +1,119 @@
 {
-  "Name": "soak",
-  "ServerHost": {
-    "Kind": "Dotnet",
-    "Domain": "basil.local",
-    "Port": 8443,
-    "IrcPort": 16667,
-    "CertPath": "basil-cert.pfx",
-    "CertPassword": "your-password",
-    "StartupTimeoutSeconds": 120,
-    "IdleSettleSeconds": 30,
-    "Dotnet": { "Mode": "Published", "PublishDirectory": ".loadtest/server", "AutoPublish": true }
-  },
-  "Client": {
-    "HttpVersion": "1.1",
-    "ConnectionMode": "Shared",
-    "MaxConnectionsPerServer": 1024,
-    "RequestTimeoutSeconds": 30,
-    "PollIntervalSeconds": 60
-  },
-  "Accounts": { "Count": 1000, "NamePrefix": "soak", "Password": "loadtest-pw" },
-  "Metrics": {
-    "SampleIntervalSeconds": 5,
-    "DotnetCounters": { "Enabled": true, "RefreshIntervalSeconds": 5 }
-  },
-  "Report": { "Folder": ".loadtest/reports", "Formats": ["Csv", "Md"] },
-  "Scenarios": {
-    "startup": { "Enabled": false },
-    "login": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
-    "idle": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
-    "chat": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
-    "multiplayer": { "Enabled": false, "Rooms": [], "PlayersPerRoom": 0, "RoundsPerRoom": 0, "ScoreUpdatesPerSecond": 0, "DurationSeconds": 0 },
-    "api": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
-    "sse": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
-    "stress": { "Enabled": false, "ConcurrentUsers": [], "RampSeconds": 0, "HoldSeconds": 0, "MaxFailCount": 0, "UnusableSuccessRatePercent": 0, "UnusableForSeconds": 0, "SaturationCpuPercent": 0, "SaturationSeconds": 0 },
-    "soak": {
-      "Enabled": true,
-      "ConcurrentUsers": [750],
-      "DurationSeconds": 43200,
-      "WarmUpSeconds": 300,
-      "ReportingIntervalSeconds": 300,
-      "Weights": { "chat": 40, "multiplayer": 20, "api": 25, "idle": 15 },
-      "LeakSlopeThresholds": {
-        "WorkingSetMbPerHour": 25,
-        "ThreadsPerHour": 5,
-        "HandlesPerHour": 50,
-        "P95MsPerHour": 10
-      }
-    }
-  }
+	"Name": "soak",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "basil-cert.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 120,
+		"IdleSettleSeconds": 30,
+		"Dotnet": {
+			"Mode": "Published",
+			"PublishDirectory": ".loadtest/server",
+			"AutoPublish": true
+		}
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 1024,
+		"RequestTimeoutSeconds": 30,
+		"PollIntervalSeconds": 60
+	},
+	"Accounts": {
+		"Count": 1000,
+		"NamePrefix": "soak",
+		"Password": "loadtest-pw"
+	},
+	"Metrics": {
+		"SampleIntervalSeconds": 5,
+		"DotnetCounters": {
+			"Enabled": true,
+			"RefreshIntervalSeconds": 5
+		}
+	},
+	"Report": {
+		"Folder": ".loadtest/reports",
+		"Formats": [
+			"Csv",
+			"Md"
+		]
+	},
+	"Scenarios": {
+		"startup": {
+			"Enabled": false
+		},
+		"login": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"DurationSeconds": 0,
+			"WarmUpSeconds": 0
+		},
+		"idle": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"DurationSeconds": 0,
+			"WarmUpSeconds": 0
+		},
+		"chat": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"DurationSeconds": 0,
+			"WarmUpSeconds": 0
+		},
+		"multiplayer": {
+			"Enabled": false,
+			"Rooms": [],
+			"PlayersPerRoom": 0,
+			"RoundsPerRoom": 0,
+			"ScoreUpdatesPerSecond": 0,
+			"DurationSeconds": 0
+		},
+		"api": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"DurationSeconds": 0,
+			"WarmUpSeconds": 0
+		},
+		"sse": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"DurationSeconds": 0,
+			"WarmUpSeconds": 0
+		},
+		"stress": {
+			"Enabled": false,
+			"ConcurrentUsers": [],
+			"RampSeconds": 0,
+			"HoldSeconds": 0,
+			"MaxFailCount": 0,
+			"UnusableSuccessRatePercent": 0,
+			"UnusableForSeconds": 0,
+			"SaturationCpuPercent": 0,
+			"SaturationSeconds": 0
+		},
+		"soak": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				750
+			],
+			"DurationSeconds": 43200,
+			"WarmUpSeconds": 300,
+			"ReportingIntervalSeconds": 300,
+			"Weights": {
+				"chat": 40,
+				"multiplayer": 20,
+				"api": 25,
+				"idle": 15
+			},
+			"LeakSlopeThresholds": {
+				"WorkingSetMbPerHour": 25,
+				"ThreadsPerHour": 5,
+				"HandlesPerHour": 50,
+				"P95MsPerHour": 10
+			}
+		}
+	}
 }

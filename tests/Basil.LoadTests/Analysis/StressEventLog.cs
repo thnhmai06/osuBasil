@@ -8,9 +8,9 @@ namespace Basil.LoadTests.Analysis;
 /// </summary>
 /// <remarks>
 ///     CPU saturation and database-bottleneck signatures are not auto-detected here — they are read
-///     from <c>resources.csv</c> by cross-referencing its timestamps against this log's, since building
+///     from <c>resources.csv</c> by cross-referencing its timestamps against this log, since building
 ///     a reliable automatic detector for either is a separate piece of analysis work. <c>summary.md</c>
-///     notes this explicitly rather than reporting a false "no saturation observed".
+///     notes this explicitly rather than reporting false "no saturation observed".
 /// </remarks>
 public sealed class StressEventLog
 {

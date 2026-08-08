@@ -54,7 +54,7 @@ public sealed class BasilHttpClientFactory : IDisposable
 		if (_sharedHandler.IsValueCreated) _sharedHandler.Value.Dispose();
 	}
 
-	private HttpMessageHandler CreateHandler()
+	private SocketsHttpHandler CreateHandler()
 	{
 		return new SocketsHttpHandler
 		{

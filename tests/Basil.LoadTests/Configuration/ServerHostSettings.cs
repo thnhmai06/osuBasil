@@ -1,7 +1,7 @@
 namespace Basil.LoadTests.Configuration;
 
 /// <summary>Which <see cref="Hosting.IServerHost" /> implementation a profile targets.</summary>
-public enum ServerHostKind
+public enum ServerHostKind : byte
 {
 	/// <summary>A local <c>dotnet run</c> or published binary, spawned and torn down by the harness.</summary>
 	Dotnet,
@@ -69,23 +69,23 @@ public enum DotnetLaunchMode
 /// <summary>Settings for launching Basil.Web as a local child process.</summary>
 public sealed class DotnetHostSettings
 {
-	/// <summary>Whether to run from source or from a published binary.</summary>
+	/// <summary>Whether to run from a source or from a published binary.</summary>
 	public DotnetLaunchMode Mode { get; init; } = DotnetLaunchMode.Published;
 
 	/// <summary>Directory a published build is placed in / read from.</summary>
 	public string PublishDirectory { get; init; } = ".loadtest/server";
 
-	/// <summary>Whether a missing publish output should be built automatically before the first run.</summary>
+	/// <summary>Whether a missing publishing output should be built automatically before the first run.</summary>
 	public bool AutoPublish { get; init; } = true;
 }
 
 /// <summary>Settings for launching Basil via <c>docker compose</c>.</summary>
 public sealed class DockerHostSettings
 {
-	/// <summary>Path to the compose file (defaults to the repo root's <c>docker-compose.yml</c>).</summary>
+	/// <summary>Path to the composition file (defaults to the repo root's <c>docker-compose.yml</c>).</summary>
 	public string ComposeFile { get; init; } = "docker-compose.yml";
 
-	/// <summary>The compose service name to start and observe.</summary>
+	/// <summary>The composition service name to start and observe.</summary>
 	public string ServiceName { get; init; } = "basil";
 }
 

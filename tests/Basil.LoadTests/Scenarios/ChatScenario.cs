@@ -12,7 +12,7 @@ namespace Basil.LoadTests.Scenarios;
 ///     Chat throughput/latency workload: a configurable percentage of virtual users send channel
 ///     messages at a fixed rate, the rest only poll and receive. Because <c>GameSession</c>'s outbound
 ///     packet queue is unbounded, "dropped packets" is not a real metric here — a 0% drop figure would
-///     be a tautology. Instead this measures delivery latency (marker timestamp embedded in each
+///     be a tautology. Instead, this measures delivery latency (marker timestamp embedded in each
 ///     message vs. receive time) and reports undelivered-at-end-of-run as the honest queue-depth proxy.
 /// </summary>
 public sealed class ChatScenario : IBasilScenario

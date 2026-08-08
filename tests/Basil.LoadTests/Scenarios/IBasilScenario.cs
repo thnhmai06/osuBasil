@@ -15,7 +15,7 @@ public interface IBasilScenario
 
 	/// <summary>
 	///     Builds one <see cref="ScenarioProps" /> per configured concurrency level (or per another
-	///     scale axis, e.g. room count for multiplayer). The caller (<c>Program.cs</c>) runs each
+	///     scale axis, e.g., room count for multiplayer). The caller (<c>Program.cs</c>) runs each
 	///     returned scenario as its own sequential <c>NBomberRunner.Run()</c> call — never all at once —
 	///     since concurrency levels of the same workload share the same account pool and must not
 	///     collide on the server's one-session-per-account rule.

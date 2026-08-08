@@ -1,118 +1,178 @@
 {
-  "Name": "full",
-  "ServerHost": {
-    "Kind": "Dotnet",
-    "Domain": "basil.local",
-    "Port": 8443,
-    "IrcPort": 16667,
-    "CertPath": "basil-cert.pfx",
-    "CertPassword": "your-password",
-    "StartupTimeoutSeconds": 120,
-    "IdleSettleSeconds": 30,
-    "Dotnet": {
-      "Mode": "Published",
-      "PublishDirectory": ".loadtest/server",
-      "AutoPublish": true
-    }
-  },
-  "Client": {
-    "HttpVersion": "1.1",
-    "ConnectionMode": "Shared",
-    "MaxConnectionsPerServer": 512,
-    "RequestTimeoutSeconds": 30,
-    "PollIntervalSeconds": 60
-  },
-  "Accounts": {
-    "Count": 2000,
-    "NamePrefix": "load",
-    "Password": "loadtest-pw"
-  },
-  "Metrics": {
-    "SampleIntervalSeconds": 1,
-    "DotnetCounters": { "Enabled": true, "RefreshIntervalSeconds": 1 }
-  },
-  "Report": {
-    "Folder": ".loadtest/reports",
-    "Formats": ["Html", "Csv", "Md", "Txt"]
-  },
-  "Scenarios": {
-    "startup": { "Enabled": true, "Iterations": 5 },
-    "login": {
-      "Enabled": true,
-      "ConcurrentUsers": [100, 250, 500, 1000, 2000],
-      "DurationSeconds": 60,
-      "WarmUpSeconds": 10,
-      "WarmBcryptCache": true,
-      "MinSessionHoldSeconds": 1.5,
-      "PostWarmupSettleSeconds": 11,
-      "MaxFailCount": 100000
-    },
-    "idle": {
-      "Enabled": true,
-      "ConcurrentUsers": [1000],
-      "DurationSeconds": 300,
-      "WarmUpSeconds": 10,
-      "MaxFailCount": 100000
-    },
-    "chat": {
-      "Enabled": true,
-      "ConcurrentUsers": [200, 500, 1000],
-      "DurationSeconds": 120,
-      "WarmUpSeconds": 10,
-      "Channel": "#osu",
-      "SendersPercent": 20,
-      "MessagesPerMinutePerSender": 12,
-      "MessageBytes": 64,
-      "MaxFailCount": 100000
-    },
-    "multiplayer": {
-      "Enabled": true,
-      "Rooms": [4, 16, 32, 64],
-      "PlayersPerRoom": 8,
-      "RoundsPerRoom": 3,
-      "ScoreUpdatesPerSecond": 2,
-      "BeatmapsetFixture": "fixtures/vivid.osz",
-      "DurationSeconds": 180
-    },
-    "api": {
-      "Enabled": true,
-      "ConcurrentUsers": [50, 200, 500],
-      "DurationSeconds": 60,
-      "WarmUpSeconds": 10,
-      "Endpoints": ["health", "user", "match_list", "match_report", "beatmapset"],
-      "MixedWeights": { "user": 40, "match_report": 30, "match_list": 20, "beatmapset": 10 },
-      "MaxFailCount": 100000
-    },
-    "sse": {
-      "Enabled": false,
-      "ConcurrentUsers": [100, 500],
-      "DurationSeconds": 120,
-      "WarmUpSeconds": 10
-    },
-    "stress": {
-      "Enabled": false,
-      "ConcurrentUsers": [100, 250, 500, 1000, 2000, 5000],
-      "RampSeconds": 30,
-      "HoldSeconds": 90,
-      "MaxFailCount": 2147483647,
-      "UnusableSuccessRatePercent": 5,
-      "UnusableForSeconds": 60,
-      "SaturationCpuPercent": 95,
-      "SaturationSeconds": 30
-    },
-    "soak": {
-      "Enabled": false,
-      "ConcurrentUsers": [750],
-      "DurationSeconds": 43200,
-      "WarmUpSeconds": 300,
-      "ReportingIntervalSeconds": 300,
-      "Weights": { "chat": 40, "multiplayer": 20, "api": 25, "idle": 15 },
-      "LeakSlopeThresholds": {
-        "WorkingSetMbPerHour": 25,
-        "ThreadsPerHour": 5,
-        "HandlesPerHour": 50,
-        "P95MsPerHour": 10
-      }
-    }
-  }
+	"Name": "full",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "basil-cert.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 120,
+		"IdleSettleSeconds": 30,
+		"Dotnet": {
+			"Mode": "Published",
+			"PublishDirectory": ".loadtest/server",
+			"AutoPublish": true
+		}
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 512,
+		"RequestTimeoutSeconds": 30,
+		"PollIntervalSeconds": 60
+	},
+	"Accounts": {
+		"Count": 2000,
+		"NamePrefix": "load",
+		"Password": "loadtest-pw"
+	},
+	"Metrics": {
+		"SampleIntervalSeconds": 1,
+		"DotnetCounters": {
+			"Enabled": true,
+			"RefreshIntervalSeconds": 1
+		}
+	},
+	"Report": {
+		"Folder": ".loadtest/reports",
+		"Formats": [
+			"Html",
+			"Csv",
+			"Md",
+			"Txt"
+		]
+	},
+	"Scenarios": {
+		"startup": {
+			"Enabled": true,
+			"Iterations": 5
+		},
+		"login": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				100,
+				250,
+				500,
+				1000,
+				2000
+			],
+			"DurationSeconds": 60,
+			"WarmUpSeconds": 10,
+			"WarmBcryptCache": true,
+			"MinSessionHoldSeconds": 1.5,
+			"PostWarmupSettleSeconds": 11,
+			"MaxFailCount": 100000
+		},
+		"idle": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				1000
+			],
+			"DurationSeconds": 300,
+			"WarmUpSeconds": 10,
+			"MaxFailCount": 100000
+		},
+		"chat": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				200,
+				500,
+				1000
+			],
+			"DurationSeconds": 120,
+			"WarmUpSeconds": 10,
+			"Channel": "#osu",
+			"SendersPercent": 20,
+			"MessagesPerMinutePerSender": 12,
+			"MessageBytes": 64,
+			"MaxFailCount": 100000
+		},
+		"multiplayer": {
+			"Enabled": true,
+			"Rooms": [
+				4,
+				16,
+				32,
+				64
+			],
+			"PlayersPerRoom": 8,
+			"RoundsPerRoom": 3,
+			"ScoreUpdatesPerSecond": 2,
+			"BeatmapsetFixture": "fixtures/vivid.osz",
+			"DurationSeconds": 180
+		},
+		"api": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				50,
+				200,
+				500
+			],
+			"DurationSeconds": 60,
+			"WarmUpSeconds": 10,
+			"Endpoints": [
+				"health",
+				"user",
+				"match_list",
+				"match_report",
+				"beatmapset"
+			],
+			"MixedWeights": {
+				"user": 40,
+				"match_report": 30,
+				"match_list": 20,
+				"beatmapset": 10
+			},
+			"MaxFailCount": 100000
+		},
+		"sse": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				100,
+				500
+			],
+			"DurationSeconds": 120,
+			"WarmUpSeconds": 10
+		},
+		"stress": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				100,
+				250,
+				500,
+				1000,
+				2000,
+				5000
+			],
+			"RampSeconds": 30,
+			"HoldSeconds": 90,
+			"MaxFailCount": 2147483647,
+			"UnusableSuccessRatePercent": 5,
+			"UnusableForSeconds": 60,
+			"SaturationCpuPercent": 95,
+			"SaturationSeconds": 30
+		},
+		"soak": {
+			"Enabled": false,
+			"ConcurrentUsers": [
+				750
+			],
+			"DurationSeconds": 43200,
+			"WarmUpSeconds": 300,
+			"ReportingIntervalSeconds": 300,
+			"Weights": {
+				"chat": 40,
+				"multiplayer": 20,
+				"api": 25,
+				"idle": 15
+			},
+			"LeakSlopeThresholds": {
+				"WorkingSetMbPerHour": 25,
+				"ThreadsPerHour": 5,
+				"HandlesPerHour": 50,
+				"P95MsPerHour": 10
+			}
+		}
+	}
 }

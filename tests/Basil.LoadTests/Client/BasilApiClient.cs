@@ -86,7 +86,7 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		using var client = CreateAuthorizedClient(adminKey);
 		using var content = new MultipartFormDataContent();
 		using var fileContent = new ByteArrayContent(oszBytes);
-		fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+		fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-osu-beatmap-archive");
 		content.Add(fileContent, "file", fileName);
 
 		using var response =

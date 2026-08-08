@@ -6,7 +6,7 @@ namespace Basil.LoadTests.Infrastructure.Metrics;
 /// <summary>
 ///     Samples CPU, memory, thread, handle, and TCP-connection counts for a known local process id.
 ///     This is the sampler every owned host (<c>dotnet</c>) delegates to for everything except
-///     GC/allocation counters, which come from <see cref="DotnetCountersSidecar" /> instead.
+///     GC/allocation counters, which come from <see cref="DotnetRuntimeMetricsCollector" /> instead.
 /// </summary>
 /// <param name="processId">The process id to sample.</param>
 /// <param name="serverPort">The server's listening port, used to count established TCP connections to it.</param>

@@ -14,8 +14,8 @@ public sealed record SeriesVerdict(string Series, double? SlopePerHour, double? 
 public static class SoakAnalyzer
 {
 	/// <summary>Analyzes <paramref name="timeline" />'s memory/thread/handle series for a sustained upward trend.</summary>
-	public static IReadOnlyList<SeriesVerdict> Analyze(ResourceTimeline timeline, TimeSpan warmUp,
-		IReadOnlyDictionary<string, double> thresholds)
+	public static IReadOnlyList<SeriesVerdict> Analyze(
+		ResourceTimeline timeline, TimeSpan warmUp, IReadOnlyDictionary<string, double> thresholds)
 	{
 		if (timeline.Samples.Count == 0) return [];
 
@@ -78,7 +78,7 @@ public static class SoakAnalyzer
 		var threshold = thresholds.GetValueOrDefault(thresholdKey, double.MaxValue);
 		var verdict = fit.SlopePerHour > threshold && fit.RSquared >= 0.5
 			? "leak"
-			: fit.SlopePerHour > 0 && fit.RSquared >= 0.3
+			: fit is { SlopePerHour: > 0, RSquared: >= 0.3 }
 				? "watch"
 				: "stable";
 

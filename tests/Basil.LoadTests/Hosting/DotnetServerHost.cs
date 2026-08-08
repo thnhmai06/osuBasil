@@ -16,25 +16,26 @@ namespace Basil.LoadTests.Hosting;
 public sealed class DotnetServerHost : IServerHost
 {
 	private readonly ServerHostSettings _settings;
+	private readonly DotnetCountersSettings _countersSettings;
 	private readonly Action<string> _logWarning;
 	private readonly string _serverDirectory;
-	private readonly string _countersCsvPath;
 	private readonly bool _processMetricsTrustworthy;
 
 	private Process? _process;
 	private ProcessResourceSampler? _processSampler;
-	private DotnetCountersSidecar? _countersSampler;
+	private DotnetRuntimeMetricsCollector? _countersSampler;
 	private BasilHttpClientFactory? _clientFactory;
 
-	public DotnetServerHost(ServerHostSettings settings, Action<string> logWarning)
+	public DotnetServerHost(ServerHostSettings settings, DotnetCountersSettings countersSettings,
+		Action<string> logWarning)
 	{
 		_settings = settings;
+		_countersSettings = countersSettings;
 		_logWarning = logWarning;
 		_processMetricsTrustworthy = settings.Dotnet.Mode == DotnetLaunchMode.Published;
 		_serverDirectory = settings.Dotnet.Mode == DotnetLaunchMode.Published
 			? RepoPaths.Resolve(settings.Dotnet.PublishDirectory)
 			: RepoPaths.Resolve("src/Basil.Web");
-		_countersCsvPath = Path.Combine(_serverDirectory, "dotnet-counters.csv");
 
 		Endpoint = new ServerEndpoint(settings.Domain, settings.Port, IPAddress.Loopback);
 		Capabilities = new ServerHostCapabilities(
@@ -83,8 +84,13 @@ public sealed class DotnetServerHost : IServerHost
 		if (_processMetricsTrustworthy)
 		{
 			_processSampler = new ProcessResourceSampler(_process.Id, _settings.Port);
-			_countersSampler = new DotnetCountersSidecar(_process.Id, _countersCsvPath, 1, _logWarning);
-			await _countersSampler.StartAsync(cancellationToken);
+
+			if (_countersSettings.Enabled)
+			{
+				_countersSampler = new DotnetRuntimeMetricsCollector(_process.Id,
+					_countersSettings.RefreshIntervalSeconds, _logWarning);
+				await _countersSampler.StartAsync(cancellationToken);
+			}
 		}
 	}
 
@@ -136,9 +142,6 @@ public sealed class DotnetServerHost : IServerHost
 	{
 		Directory.CreateDirectory(reportFolder);
 
-		if (File.Exists(_countersCsvPath))
-			File.Copy(_countersCsvPath, Path.Combine(reportFolder, "dotnet-counters.csv"), true);
-
 		var logPath = Path.Combine(_serverDirectory, "Logs", "latest.log");
 		if (File.Exists(logPath))
 		{
@@ -176,13 +179,11 @@ public sealed class DotnetServerHost : IServerHost
 		return null;
 	}
 
-	public Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent,
-		CancellationToken cancellationToken = default)
+	public Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent)
 	{
-		if (_process is { HasExited: false })
-			throw new InvalidOperationException("The server must be stopped before syncing its database snapshot.");
-
-		return Task.FromResult(ServerDatabase.SyncSnapshot(_serverDirectory, snapshotPath, restoreIfPresent));
+		return _process is { HasExited: false }
+			? throw new InvalidOperationException("The server must be stopped before syncing its database snapshot.")
+			: Task.FromResult(ServerDatabase.SyncSnapshot(_serverDirectory, snapshotPath, restoreIfPresent));
 	}
 
 	public async ValueTask DisposeAsync()
@@ -206,15 +207,9 @@ public sealed class DotnetServerHost : IServerHost
 
 	private async Task EnsurePublishedAsync(CancellationToken cancellationToken)
 	{
-		var executablePath = Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Web.exe" : "Basil.Web");
-		if (File.Exists(executablePath))
-		{
-			if (!_settings.Dotnet.AutoPublish) return;
-			// A stale publish from a previous checkout is fine to reuse — republishing on every
-			// run would defeat the point of the snapshot/publish-once model. Delete the directory
-			// manually to force a fresh publish.
-			return;
-		}
+		var executablePath =
+			Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Web.exe" : "Basil.Web");
+		if (File.Exists(executablePath) && !_settings.Dotnet.AutoPublish) return;
 
 		var webProject = RepoPaths.Resolve("src/Basil.Web");
 		var startInfo = new ProcessStartInfo("dotnet",
@@ -225,7 +220,8 @@ public sealed class DotnetServerHost : IServerHost
 			RedirectStandardError = true
 		};
 
-		using var publish = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start dotnet publish.");
+		using var publish = Process.Start(startInfo) ??
+		                    throw new InvalidOperationException("Failed to start dotnet publish.");
 		var output = await publish.StandardOutput.ReadToEndAsync(cancellationToken);
 		var error = await publish.StandardError.ReadToEndAsync(cancellationToken);
 		await publish.WaitForExitAsync(cancellationToken);

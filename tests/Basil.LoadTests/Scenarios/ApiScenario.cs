@@ -9,7 +9,7 @@ namespace Basil.LoadTests.Scenarios;
 ///     Benchmarks the commonly used read endpoints on the <c>api.</c> host: one scenario per endpoint
 ///     for clean per-endpoint percentiles, plus one <c>api_mixed</c> scenario blending them by
 ///     configured weight. Every path is resolved to a real, existing resource where one is available —
-///     a 404 measures the wrong thing.
+///     404 measures the wrong thing.
 /// </summary>
 public sealed class ApiScenario : IBasilScenario
 {

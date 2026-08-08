@@ -8,7 +8,7 @@ namespace Basil.LoadTests.Hosting;
 /// <param name="CanMeasureStartupTime">Whether this host started the process itself and can time it.</param>
 /// <param name="CanMeasureProcessMetrics">Whether CPU/working-set/private-memory/threads/handles are observable.</param>
 /// <param name="CanMeasureDotnetCounters">Whether GC-heap/gen-count/alloc-rate/threadpool counters are observable.</param>
-/// <param name="CanSnapshotDatabase">Whether this host may snapshot/restore the server's database between runs.</param>
+/// <param name="CanSnapshotDatabase">Whether this host may snapshoot/restore the server's database between runs.</param>
 public sealed record ServerHostCapabilities(
 	bool CanMeasureStartupTime,
 	bool CanMeasureProcessMetrics,

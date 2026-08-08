@@ -1,4 +1,3 @@
-using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
 using NBomber.Contracts;
 using NBomber.CSharp;
@@ -21,7 +20,6 @@ public sealed class SseScenario : IBasilScenario
 		if (!settings.Enabled) return [];
 
 		var clientFactory = context.ClientFactory;
-		var apiClient = new BasilApiClient(clientFactory);
 		var sampleUserId = context.Accounts.FirstOrDefault(a => a.UserId.HasValue)?.UserId ?? 0;
 		var reportFolder = context.ReportFolder;
 

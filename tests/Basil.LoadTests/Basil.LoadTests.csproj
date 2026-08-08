@@ -13,6 +13,11 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
 		<PackageReference Include="Microsoft.Extensions.Configuration.CommandLine"/>
+		<!-- In-process .NET runtime counters (replaces the dotnet-counters CLI sidecar). -->
+		<PackageReference Include="Microsoft.Diagnostics.NETCore.Client"/>
+		<PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent"/>
+		<!-- Docker Engine API (replaces the docker CLI for stats/logs/stop). -->
+		<PackageReference Include="Docker.DotNet"/>
 	</ItemGroup>
 
 	<ItemGroup>
