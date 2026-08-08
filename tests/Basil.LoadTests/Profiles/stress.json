@@ -1,0 +1,48 @@
+{
+  "Name": "stress",
+  "ServerHost": {
+    "Kind": "Dotnet",
+    "Domain": "basil.local",
+    "Port": 8443,
+    "IrcPort": 16667,
+    "CertPath": "basil-cert.pfx",
+    "CertPassword": "your-password",
+    "StartupTimeoutSeconds": 120,
+    "IdleSettleSeconds": 30,
+    "Dotnet": { "Mode": "Published", "PublishDirectory": ".loadtest/server", "AutoPublish": true }
+  },
+  "Client": {
+    "HttpVersion": "1.1",
+    "ConnectionMode": "Shared",
+    "MaxConnectionsPerServer": 2048,
+    "RequestTimeoutSeconds": 30,
+    "PollIntervalSeconds": 60
+  },
+  "Accounts": { "Count": 5000, "NamePrefix": "stress", "Password": "loadtest-pw" },
+  "Metrics": {
+    "SampleIntervalSeconds": 2,
+    "DotnetCounters": { "Enabled": true, "RefreshIntervalSeconds": 1 }
+  },
+  "Report": { "Folder": ".loadtest/reports", "Formats": ["Html", "Csv", "Md"] },
+  "Scenarios": {
+    "startup": { "Enabled": false },
+    "login": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+    "idle": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+    "chat": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+    "multiplayer": { "Enabled": false, "Rooms": [], "PlayersPerRoom": 0, "RoundsPerRoom": 0, "ScoreUpdatesPerSecond": 0, "DurationSeconds": 0 },
+    "api": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+    "sse": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+    "stress": {
+      "Enabled": true,
+      "ConcurrentUsers": [100, 250, 500, 1000, 2000, 5000],
+      "RampSeconds": 30,
+      "HoldSeconds": 90,
+      "MaxFailCount": 2147483647,
+      "UnusableSuccessRatePercent": 5,
+      "UnusableForSeconds": 60,
+      "SaturationCpuPercent": 95,
+      "SaturationSeconds": 30
+    },
+    "soak": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0, "ReportingIntervalSeconds": 300, "Weights": {}, "LeakSlopeThresholds": {} }
+  }
+}

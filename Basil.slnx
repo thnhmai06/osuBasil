@@ -16,6 +16,8 @@
 			Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
 		<Project
 			Path="tests/Basil.IntegrationTests/Basil.IntegrationTests.csproj"/>
+		<Project
+			Path="tests/Basil.LoadTests/Basil.LoadTests.csproj"/>
 		<Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
 	</Folder>
 </Solution>

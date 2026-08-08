@@ -23,3 +23,8 @@ Thumbs.db
 *.pfx
 
 *.db
+
+opencode.json
+
+# Load Tests
+.loadtest

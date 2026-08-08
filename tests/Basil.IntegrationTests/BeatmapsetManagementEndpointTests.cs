@@ -102,7 +102,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	private static async Task<byte[]> MakeMinimalOszAsync()
 	{
 		using var stream = new MemoryStream();
-		using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
+		await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
 		{
 			var entry = archive.CreateEntry("replacement.osu");
 			await using var entryStream = await entry.OpenAsync();
