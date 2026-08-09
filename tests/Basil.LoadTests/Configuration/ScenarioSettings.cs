@@ -1,3 +1,5 @@
+using Basil.Application.Services.Authentication;
+
 namespace Basil.LoadTests.Configuration;
 
 /// <summary>
@@ -61,11 +63,11 @@ public sealed class LoginSettings : ScenarioSettings
 	/// <summary>
 	///     How long to wait after the bcrypt warm-up pass before the first scenario starts. Warm-up
 	///     deliberately leaves every account with a live session, and the server rejects a relogin
-	///     within 10 seconds of the session's last poll. This settle lets those sessions age past the
+	///     within seconds of the session's last poll. This settle lets those sessions age past the
 	///     guard so each account's first measured login evicts its stale session cleanly instead of
 	///     failing with <c>user-already-logged-in</c>.
 	/// </summary>
-	public double PostWarmupSettleSeconds { get; init; } = 11;
+	public double PostWarmupSettleSeconds { get; init; } = LoginService.ReloginGuardWindowSeconds + 1;
 
 	/// <summary>Gets <see cref="PostWarmupSettleSeconds" /> as a <see cref="TimeSpan" />.</summary>
 	public TimeSpan PostWarmupSettle => TimeSpan.FromSeconds(PostWarmupSettleSeconds);

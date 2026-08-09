@@ -25,6 +25,7 @@
 		     deliberately NOT referenced here (even with ReferenceOutputAssembly=false, the SDK still
 		     rejects referencing a self-contained executable from a non-self-contained one) — the
 		     harness builds/publishes it as a subprocess via `dotnet publish` instead. -->
+		<ProjectReference Include="..\..\src\Basil.Application\Basil.Application.csproj" />
 		<ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
 	</ItemGroup>
 

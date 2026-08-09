@@ -52,6 +52,8 @@ public sealed class LoginService(
 	private static readonly string InactionableDiskSignatureMd5 =
 		Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
 
+	public const int ReloginGuardWindowSeconds = 10;
+
 	/// <summary>
 	///     Executes the login handshake for a raw osu! client login request.
 	/// </summary>
@@ -89,7 +91,7 @@ public sealed class LoginService(
 		var existingSession = gameSessions.GetByName(loginForm.Username);
 		if (existingSession is not null && loginForm.OsuVersion.Stream != OsuStream.Tourney)
 		{
-			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(10))
+			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(ReloginGuardWindowSeconds))
 				return new LoginResult("user-already-logged-in", Concat(
 					ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
 					ServerPacketWriter.Notification("User already logged in.")));
