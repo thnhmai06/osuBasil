@@ -5,39 +5,69 @@ on:
     types: [published]
 
 jobs:
-  publish-executables:
+  package:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
+        uses: actions/setup-dotnet@v6
 
       - name: Restore
         run: dotnet restore
 
-      # OpenApiGenerateDocumentsOnBuild disabled: Microsoft.Extensions.ApiDescription.Server's build-time
-      # doc generation runs the freshly-published binary to introspect it, which fails for a cross-OS RID
-      # (win-x64 published from this Linux runner has no win-x64 native SQLite driver to load). Neither
-      # publish needs the OpenAPI JSON anyway — that's the CI workflow's deploy-docs job.
-      - name: Publish win-x64 (self-contained)
-        run: dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained true -o publish/win-x64 -p:OpenApiGenerateDocumentsOnBuild=false
+      - name: Publish win-x64
+        run: >
+          dotnet publish src/Basil.Web
+          -c Release
+          -r win-x64
+          --self-contained true
+          -o publish/win-x64
 
-      - name: Publish linux-x64 (self-contained)
-        run: dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained true -o publish/linux-x64 -p:OpenApiGenerateDocumentsOnBuild=false
+      - name: Publish linux-x64
+        run: >
+          dotnet publish src/Basil.Web
+          -c Release
+          -r linux-x64
+          --self-contained true
+          -o publish/linux-x64
 
-      - name: Package artifacts
+      - name: Publish osx-arm64
+        run: >
+          dotnet publish src/Basil.Web
+          -c Release
+          -r osx-arm64
+          --self-contained true
+          -o publish/osx-arm64
+
+      - name: Package executables
+        env:
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          set -e
-          cd publish/win-x64 && zip -r ../../basil-win-x64.zip . && cd ../..
-          cd publish/linux-x64 && tar -czf ../../basil-linux-x64.tar.gz . && cd ../..
+          set -euo pipefail
+
+          VERSION="${TAG#v}"
+          mkdir -p dist
+
+          for platform in win-x64 linux-x64 osx-arm64; do
+            (
+              cd "publish/$platform"
+              zip -q -r "../../dist/Basil-$VERSION-$platform.zip" .
+            )
+          done
 
       - name: Upload release assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            dist/Basil-*-win-x64.zip
+            dist/Basil-*-linux-x64.zip
+            dist/Basil-*-osx-arm64.zip
+          fail_on_unmatched_files: true
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" basil-win-x64.zip basil-linux-x64.tar.gz
+          GITHUB_TOKEN: ${{ github.token }}

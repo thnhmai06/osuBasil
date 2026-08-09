@@ -104,24 +104,28 @@ it there.
 
 ## Docker (alternative to the manual publish below)
 
-A `Dockerfile` + `docker-compose.yml` at the repo root build a self-contained `linux-x64` image with `ffmpeg`
-preinstalled (required for `/preview/{id}.mp3` audio previews, see [`beatmap-ingestion.md`](beatmap-ingestion.md)). No
-.NET runtime or ffmpeg install is needed on the host machine at all, only Docker itself.
+Every release ships a ready-to-deploy container package: `Basil-{version}-compose.zip`, a single archive holding a
+published `linux-x64` build (`Basil.Web/`), the `Dockerfile` that wraps it into a runtime image, `docker-compose.yml`,
+and `appsettings.json`. With Docker installed, a machine becomes a Basil server in four steps — no .NET runtime, no
+ffmpeg, no source clone:
 
-1. Edit `src/Basil.Web/appsettings.json` (`Domain`, `CertPath`, `CertPassword` under `Basil:Server`, see Configuration
-   surface above). It's bind-mounted into the container, so this is the only place to set it; there's no
-   environment-variable override, in Docker or otherwise. The admin key is set separately via `PUT /adminkey` once the
-   container is running (see "Admin key" above), not through this file. Everything else in this doc (TLS cert
-   requirements, DNS/hosts entries, firewall, account creation) is identical to the manual deployment path below. Docker
-   only changes how the process itself gets built and run.
-2. Place the TLS cert file wherever `docker-compose.yml`'s volume mount expects it (`./basil-cert.pfx` by default,
-   mounted read-only into the container).
+1. Download `Basil-{version}-compose.zip` from the [latest release](https://github.com/thnhmai06/osuBasil/releases/latest)
+   and unzip it. Edit its `appsettings.json` in the package root (`Domain`, `CertPath`, `CertPassword` under
+   `Basil:Server`, see Configuration surface above). It's bind-mounted into the container, so this is the only place to
+   set it; there's no environment-variable override, in Docker or otherwise. The admin key is set separately via
+   `PUT /adminkey` once the container is running (see "Admin key" above), not through this file. Everything else in this
+   doc (TLS cert requirements, DNS/hosts entries, firewall, account creation) is identical to the executable deployment
+   path below — Docker only changes how the process itself gets built and run.
+2. Place the TLS cert file wherever `docker-compose.yml`'s volume mount expects it (`./basil-cert.pfx` next to the
+   package root, mounted read-only into the container).
 3. `docker compose up --build -d`. `Data/` and `Logs/` persist under `./docker-data/` on the host (bind-mounted, not a
    named volume, so they're easy to find/back up).
 4. `docker compose logs -f` to follow output; `docker compose down` to stop.
 
-The manual publish path below (no Docker) still works exactly as documented; pick whichever fits. Docker just bundles
-the ffmpeg dependency so there's nothing extra to install by hand.
+Building from a checkout works the same way: the `Dockerfile` + `docker-compose.yml` at the repo root build the same
+image from source (the release package's equivalents are generated from `deploy/docker/` during the release build).
+Edit `src/Basil.Web/appsettings.json` and place `./basil-cert.pfx`, then `docker compose up --build -d`. Docker bundles
+the ffmpeg dependency on either path, so there's nothing extra to install by hand.
 
 ---
 
@@ -129,13 +133,23 @@ the ffmpeg dependency so there's nothing extra to install by hand.
 
 ### Steps
 
-1. **Install the [.NET 10 ASP.NET Core Runtime](https://dotnet.microsoft.com/en-us/download/dotnet) and
-   `ffmpeg`(https://ffmpeg.org/)** on the target machine (skip this step on
-   the [Docker path](#docker-alternative-to-the-manual-publish-below) above, the image already bundles both). The
-   runtime (not the SDK) is required to run a framework-dependent publish. `ffmpeg` is required for beatmapset audio
-   previews (see [`beatmap-ingestion.md`](beatmap-ingestion.md)); without it, the audio preview endpoints return
-   `503 Service Unavailable` and log the failure instead of crashing the server. Nothing else on the server depends on
-   it.
+1. **Download the [latest release](https://github.com/thnhmai06/osuBasil/releases/latest) build for your platform and
+   install `ffmpeg`.** The release executables are self-contained — each zip bundles its own .NET runtime, so there is
+   nothing else to install on the target machine:
+
+   ```text
+   Basil-{version}-win-x64.zip
+   Basil-{version}-linux-x64.zip
+   Basil-{version}-osx-arm64.zip
+   ```
+
+   (`Basil-{version}-compose.zip` is the Docker package — the same `linux-x64` build behind a ready-to-use
+   `Dockerfile` + `docker-compose.yml`, see the [Docker section](#docker-alternative-to-the-manual-publish-below) above.
+   Pick one path, not both.)
+
+   `ffmpeg` is required for beatmapset audio previews (see [`beatmap-ingestion.md`](beatmap-ingestion.md)); without it,
+   the audio preview endpoints return `503 Service Unavailable` and log the failure instead of crashing the server.
+   Nothing else on the server depends on it.
 
    ```bash
    # Debian/Ubuntu
@@ -146,18 +160,10 @@ the ffmpeg dependency so there's nothing extra to install by hand.
    brew install ffmpeg
    ```
 
-   If you don't already have a published executable, build one:
-
-   ```bash
-   # Windows
-   dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
-   # Linux:
-   dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
-   # macOS:
-   dotnet publish src/Basil.Web -c Release -r osx-x64 --self-contained false -o publish/osx-x64
-   ```
-
-   Copy the `publish/<rid>/` folder to the target machine (or publish directly on it).
+   Unzip `Basil-{version}-{platform}.zip` wherever you want to run the server; `Data/`, `Logs/`, and `appsettings.json`
+   are created next to the executable on first startup. To build the executable yourself instead (a fork, or a platform
+   the releases don't ship), see the [Development section](#2-development-working-on-basil-itself) below — that's the
+   only path that needs the .NET SDK.
 
 2. **Edit `appsettings.json`** next to the published executable:
 	- `Basil:Server:Domain`: the real domain (or LAN hostname) clients will connect to, e.g. `tourney.example` or a
@@ -238,6 +244,11 @@ the ffmpeg dependency so there's nothing extra to install by hand.
 
 ## 2. Development: working on Basil itself
 
+Development is the only path that needs the .NET toolchain: working from source requires the [.NET 10
+SDK](https://dotnet.microsoft.com/en-us/download/dotnet), which includes the ASP.NET Core runtime the web host builds
+and runs on. Deployment (step 1 above) works from self-contained release binaries, so nothing .NET-related is installed
+there.
+
 1. **Clone the repo and run it:**
 
    ```bash
@@ -314,6 +325,16 @@ the ffmpeg dependency so there's nothing extra to install by hand.
    `Basil.Infrastructure.Tests` spins up a temp SQLite file per test class and deletes it afterward, no Docker daemon or
    external service needed. See [`CLAUDE.md`](../CLAUDE.md) for the recommendation to run this project in the foreground
    rather than backgrounded.
+
+5. **Build the self-contained executable yourself** instead of downloading a release zip — for example, a custom fork,
+   or a platform the release list doesn't cover. Same command the CI release build uses:
+
+   ```bash
+   dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained true -o publish/win-x64
+   ```
+
+   Point `-r` at the target machine (`win-x64`, `linux-x64`, `osx-arm64`, ...). Self-contained output runs without any
+   .NET runtime installed there; `ffmpeg` is still needed for audio previews (see step 1 of Deployment above).
 
 ---
 
