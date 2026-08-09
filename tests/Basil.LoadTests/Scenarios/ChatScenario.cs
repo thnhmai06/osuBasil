@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
@@ -40,6 +41,7 @@ public sealed class ChatScenario : IBasilScenario
 			var senderInterval = TimeSpan.FromSeconds(60.0 / Math.Max(1, settings.MessagesPerMinutePerSender));
 			var filler = new string('x', Math.Max(0, settings.MessageBytes - 24));
 			var metrics = new ChatMetrics();
+			var clients = new ConcurrentBag<BanchoClient>();
 			var n1 = n;
 
 			var scenario = Scenario.Create($"{Id}_{n}", async ctx =>
@@ -59,6 +61,7 @@ public sealed class ChatScenario : IBasilScenario
 							if (!string.Equals(settings.Channel, "#osu", StringComparison.OrdinalIgnoreCase))
 								client.Send(ClientPacketWriter.ChannelJoin(settings.Channel));
 
+							clients.Add(client);
 							ctx.ScenarioInstanceData["client"] = client;
 							await client.PollAsync(ctx.ScenarioCancellationToken);
 							return Response.Ok(statusCode: "login");
@@ -109,10 +112,10 @@ public sealed class ChatScenario : IBasilScenario
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
 				.WithWarmUpDuration(settings.WarmUp)
 				.WithMaxFailCount(settings.MaxFailCount)
-				.WithClean(_ =>
+				.WithClean(async _ =>
 				{
 					metrics.WriteReport(reportFolder, n1);
-					return Task.CompletedTask;
+					foreach (var client in clients) await client.DisposeAsync();
 				});
 
 			props.Add(scenario);

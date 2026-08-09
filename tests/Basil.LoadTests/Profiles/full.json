@@ -60,7 +60,6 @@
 			"DurationSeconds": 60,
 			"WarmUpSeconds": 10,
 			"WarmBcryptCache": true,
-			"MinSessionHoldSeconds": 1.5,
 			"PostWarmupSettleSeconds": 11,
 			"MaxFailCount": 100000
 		},

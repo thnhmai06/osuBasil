@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
 using NBomber.Contracts;
@@ -33,6 +34,8 @@ public sealed class IdleScenario : IBasilScenario
 					$"'{Id}' at concurrency {n} needs {n} seeded accounts but only {accounts.Length} exist; " +
 					"increase Accounts:Count.");
 
+			var clients = new ConcurrentBag<BanchoClient>();
+
 			props.Add(Scenario.Create($"{Id}_{n}", async ctx =>
 				{
 					try
@@ -46,6 +49,7 @@ public sealed class IdleScenario : IBasilScenario
 							if (!outcome.Success)
 								return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
 
+							clients.Add(client);
 							ctx.ScenarioInstanceData["client"] = client;
 							return Response.Ok(statusCode: "login");
 						}
@@ -63,7 +67,11 @@ public sealed class IdleScenario : IBasilScenario
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
 				.WithWarmUpDuration(settings.WarmUp)
-				.WithMaxFailCount(settings.MaxFailCount));
+				.WithMaxFailCount(settings.MaxFailCount)
+				.WithClean(async _ =>
+				{
+					foreach (var client in clients) await client.DisposeAsync();
+				}));
 		}
 
 		return props;

@@ -110,6 +110,11 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 			{
 				// The session already ended on its own; nothing to stop.
 			}
+			catch (ServerNotAvailableException)
+			{
+				// The target process exited before the session could be stopped; the reader observes
+				// the stream end on its own (handled in ProcessEvents) and collection just stops.
+			}
 			session.Dispose();
 		}
 
@@ -151,6 +156,11 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 		catch (ObjectDisposedException)
 		{
 			// Expected when the session is disposed while the reader is blocked (see StopAsync).
+		}
+		catch (FormatException)
+		{
+			// A truncated stream (the target process exited mid-block) surfaces as a format error
+			// rather than a clean EOF; treat it as the same benign end of collection.
 		}
 	}
 

@@ -18,9 +18,9 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 namespace Basil.Application.Tests.Packets;
 
 /// <summary>
-///     Verifies the `Logout` handler's 1-second login-grace-period check; the actual cleanup
-///     (match/channel-leaving, registry removal, broadcast) is delegated to PlayerLogoutService and
-///     covered by PlayerLogoutServiceTests.
+///     Verifies the `Logout` handler always delegates to PlayerLogoutService, with no login grace
+///     period. The actual cleanup (match/channel-leaving, registry removal, broadcast) is delegated
+///     to PlayerLogoutService and covered by PlayerLogoutServiceTests.
 /// </summary>
 public class LogoutHandlerTests
 {
@@ -48,11 +48,11 @@ public class LogoutHandlerTests
 				Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 				NullLogger<MatchMembershipService>.Instance),
-			NullLogger<PlayerLogoutService>.Instance), NullLogger<LogoutHandler>.Instance);
+			NullLogger<PlayerLogoutService>.Instance));
 	}
 
 	[Fact]
-	public async Task Handle_WithinOneSecondOfLogin_Ignored()
+	public async Task Handle_ImmediatelyAfterLogin_DelegatesToLogoutService()
 	{
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
@@ -60,8 +60,8 @@ public class LogoutHandlerTests
 
 		await MakeHandler().HandleAsync(session, reader);
 
-		_gameRegistry.DidNotReceive().Remove(Arg.Any<GameSession>());
-		Assert.Equal("token", session.Token);
+		// No login grace: a logout sent in the same second as login is honored like any other.
+		_gameRegistry.Received(1).Remove(session);
 	}
 
 	[Fact]

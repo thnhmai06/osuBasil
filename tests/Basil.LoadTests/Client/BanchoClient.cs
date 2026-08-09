@@ -12,23 +12,12 @@ namespace Basil.LoadTests.Client;
 /// </summary>
 public sealed class BanchoClient(
 	BasilHttpClientFactory clientFactory,
-	LoadAccount account,
-	TimeSpan? minSessionHold = null)
-	: IDisposable
+	LoadAccount account)
+	: IAsyncDisposable
 {
-	/// <summary>
-	///     The default minimum time a session must be held before <see cref="LogoutAsync" /> sends the
-	///     logout. The server silently ignores a logout sent within one second of login, so a client
-	///     that cycles login→logout faster than this never actually closes its session.
-	/// </summary>
-	private static readonly TimeSpan DefaultMinSessionHold = TimeSpan.FromSeconds(1.5);
-
 	private readonly HttpClient _http = clientFactory.CreateClient();
-	private readonly TimeSpan _minSessionHold = minSessionHold ?? DefaultMinSessionHold;
 	private readonly List<byte[]> _outbox = [];
 	private string? _token;
-	private DateTimeOffset _loginSentAt;
-	private static int _sDebugCounter;
 
 	/// <summary>Gets a value indicating whether this client currently holds a live session token.</summary>
 	public bool IsLoggedIn => _token is not null;
@@ -40,25 +29,33 @@ public sealed class BanchoClient(
 	/// </summary>
 	public async Task<LoginOutcome> LoginAsync(CancellationToken cancellationToken = default)
 	{
-		_loginSentAt = DateTimeOffset.UtcNow;
 		var body = LoginFormBuilder.Build(account);
 		using var content = new ByteArrayContent(body);
 		using var request = new HttpRequestMessage(HttpMethod.Post, clientFactory.BuildUri("c", "/"));
 		request.Content = content;
 
-		using var response = await _http.SendAsync(request, cancellationToken);
-		var responseBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+		// The scenario token must not interrupt the login I/O: a warm-up or teardown that cancels a
+		// login mid-flight would drop the response (and its `cho-token`) after the server has already
+		// created the session, leaving no token to close it with. The client's own timeout still
+		// bounds the request, and the caller observes the token before and after the call.
+		cancellationToken.ThrowIfCancellationRequested();
+		using var response = await _http.SendAsync(request, CancellationToken.None);
 		var choToken = response.Headers.TryGetValues("cho-token", out var values)
 			? values.FirstOrDefault()
 			: null;
 
+		// A real token is always `osu-{guid}`; every failure carries an error string instead.
+		// Record it as soon as the response arrives — so a caller whose iteration is cancelled
+		// before the body is read can still close the session it just opened.
+		if (choToken is not null && choToken.StartsWith("osu-", StringComparison.Ordinal))
+		{
+			_token = choToken;
+		}
+
+		var responseBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
+
 		var frames = ServerPacketStream.ReadFrames(responseBytes);
 		var reply = frames.FirstOrDefault(f => f.Type == ServerPackets.UserId);
-
-		var dbg = Interlocked.Increment(ref _sDebugCounter);
-		if (dbg <= 400)
-			Console.WriteLine(
-				$"[CLIENTDBG] #{dbg} acct={account.Name} choToken={choToken ?? "<null>"} bytes={responseBytes.Length} frames={frames.Count} uidLen={reply.Payload?.Length}");
 
 		if (reply.Payload is { Length: >= 4 } payload && choToken is not null)
 		{
@@ -87,7 +84,7 @@ public sealed class BanchoClient(
 	/// <exception cref="InvalidOperationException">Called before a successful <see cref="LoginAsync" />.</exception>
 	public async Task<IReadOnlyList<ServerPacketFrame>> PollAsync(CancellationToken cancellationToken = default)
 	{
-		if (_token is null) throw new InvalidOperationException("PollAsync called before a successful login.");
+		if (!IsLoggedIn) throw new InvalidOperationException("PollAsync called before a successful login.");
 
 		var body = _outbox.Count == 0 ? [] : _outbox.SelectMany(p => p).ToArray();
 		_outbox.Clear();
@@ -103,54 +100,33 @@ public sealed class BanchoClient(
 	}
 
 	/// <summary>
-	///     Sends a <c>Logout</c> packet and forgets the local token. The logout is only sent once the
-	///     session is older than the configured minimum hold — the server ignores a logout within one
-	///     second of login, so a logout sent before that would leave the session alive and the next
-	///     login for the account rejected. The hold is measured from when the login request was sent,
-	///     the earliest anchor the client knows, so the server-side <c>LoginTime</c> always falls
-	///     inside it.
+	///     Sends a <c>Logout</c> packet and forgets the local token. The server holds no login
+	///     grace, so a logout always closes the session; it is retried up to three times with a
+	///     short backoff if the server does not acknowledge it.
 	/// </summary>
 	public async Task LogoutAsync(CancellationToken cancellationToken = default)
 	{
-		if (_token is null) return;
+		if (!IsLoggedIn) return;
 
-		var remaining = _minSessionHold - (DateTimeOffset.UtcNow - _loginSentAt);
-		if (remaining > TimeSpan.Zero) await Task.Delay(remaining, cancellationToken);
-		await SendLogoutAsync();
-	}
-
-	/// <summary>
-	///     Best-effort cleanup that always tries to close the session, even when the caller is being
-	///     cancelled (warm-up ending, shutdown, aborted run). Waits out the minimum hold so the server
-	///     honors the logout, then sends it ignoring cancellation. A transport failure here is
-	///     swallowed — the session may be leaked, but the caller's own outcome must not be masked by
-	///     an exception from cleanup.
-	/// </summary>
-	public async Task LogoutIgnoringCancellationAsync()
-	{
-		if (_token is null) return;
-
-		try
+		for (var attempt = 0; attempt < 3; attempt++)
 		{
-			var remaining = _minSessionHold - (DateTimeOffset.UtcNow - _loginSentAt);
-			if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
-			await SendLogoutAsync();
-		}
-		catch
-		{
-			// Best-effort by contract: a failed cleanup must not mask the iteration's real outcome.
+			try
+			{
+				Send(ClientPacketWriter.Logout());
+				await PollAsync(CancellationToken.None);
+				_token = null;
+				return;
+			}
+			catch when (attempt < 2)
+			{
+				await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+			}
 		}
 	}
 
-	private async Task SendLogoutAsync()
+	public async ValueTask DisposeAsync()
 	{
-		Send(ClientPacketWriter.Logout());
-		await PollAsync(CancellationToken.None);
-		_token = null;
-	}
-
-	public void Dispose()
-	{
+		await LogoutAsync();
 		_http.Dispose();
 	}
 }

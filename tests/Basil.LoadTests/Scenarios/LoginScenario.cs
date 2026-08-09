@@ -14,13 +14,11 @@ namespace Basil.LoadTests.Scenarios;
 ///     different things; the report states which one this is.
 /// </summary>
 /// <remarks>
-///     A round trip is login → (hold ≥1s, enforced by <see cref="Client.BanchoClient.LogoutAsync" />
-///     against the server's logout grace) → logout → next login. The server rejects a relogin within
-///     the 10s of a still-live session, so a logout that never takes effect (sent inside the grace period)
-///     would make every subsequent login fail with <c>user-already-logged-in</c>; the hold guarantees
-///     the logout is honored. The measured latency therefore includes the hold — it is a real,
-///     server-enforced part of the round trip, and bounds sustained throughput to roughly one round
-///     trip per second per client.
+///     A round trip is login → logout → next login. The server holds no logout grace, so every logout
+///     closes its session immediately and the measured round trip is the raw login+logout latency. A
+///     cancelled or failed iteration still closes its session from disposal; a session that survives
+///     its iteration blocks that account's next login for up to 10s with <c>user-already-logged-in</c>,
+///     so leftovers serialise into the reported failures rather than the latency.
 /// </remarks>
 public sealed class LoginScenario : IBasilScenario
 {
@@ -47,29 +45,19 @@ public sealed class LoginScenario : IBasilScenario
 					try
 					{
 						var account = accounts[ctx.ScenarioInfo.InstanceNumber % accounts.Length];
-						using var client = new BanchoClient(clientFactory, account, settings.MinSessionHold);
+						await using var client = new BanchoClient(clientFactory, account);
 
-						var loggedIn = false;
-						try
-						{
-							var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
-							if (!outcome.Success)
-								return Response.Fail(statusCode: $"{outcome.FailureReason}::{account.Name}::inst{ctx.ScenarioInfo.InstanceNumber}");
-							loggedIn = true;
+						var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
+						if (!outcome.Success)
+							return Response.Fail(
+								statusCode:
+								$"{outcome.FailureReason}::{account.Name}::inst{ctx.ScenarioInfo.InstanceNumber}");
 
-							await client.LogoutAsync(ctx.ScenarioCancellationToken);
-							return Response.Ok(statusCode: "200");
-						}
-						finally
-						{
-							// A cancelled iteration (e.g. warm-up ending mid-hold) must still close the
-							// session, or the account's next login fails with user-already-logged-in.
-							if (loggedIn)
-								await client.LogoutIgnoringCancellationAsync();
-						}
+						await client.LogoutAsync(ctx.ScenarioCancellationToken);
+						return Response.Ok(statusCode: "200");
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
-					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						return Response.Fail(statusCode: ex.GetType().Name);
 					}
@@ -88,11 +76,11 @@ public sealed class LoginScenario : IBasilScenario
 	///     concurrency level runs, since the cache is process-lifetime and shared across levels.
 	/// </summary>
 	/// <remarks>
-	///     Warm-up deliberately does <em>not</em> log out: a logout within the server's 1s post-login
-	///     grace is ignored anyway, and logging out would take the full min-hold per account. The
-	///     sessions are left live, and the caller must settle for the at least 10s (see
-	///     <see cref="LoginSettings.PostWarmupSettleSeconds" />) before the measured scenario starts, so
-	///     each account's first measured login evicts its stale session instead of being rejected.
+	///     Warm-up deliberately does <em>not</em> log out: its purpose is only the bcrypt-verify cache.
+	///     Sessions are left live, and the caller must settle for at least 10s
+	///     (<see cref="LoginSettings.PostWarmupSettleSeconds" />) before the measured scenario starts, so
+	///     each account's stale warm-up session is old enough that its first measured login evicts it
+	///     instead of being rejected.
 	/// </remarks>
 	public static async Task WarmBcryptCacheAsync(IReadOnlyList<LoadAccount> accounts,
 		BasilHttpClientFactory clientFactory, Action<string> logInfo, CancellationToken cancellationToken = default)
@@ -102,11 +90,12 @@ public sealed class LoginScenario : IBasilScenario
 		{
 			try
 			{
-				using var client = new BanchoClient(clientFactory, accounts[i]);
+				await using var client = new BanchoClient(clientFactory, accounts[i]);
 				var outcome = await client.LoginAsync(cancellationToken);
 				if (!outcome.Success) failures++;
 			}
-			catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+			catch (Exception ex) when (ex is not OperationCanceledException ||
+			                           !cancellationToken.IsCancellationRequested)
 			{
 				// A single flaky connection among thousands of sequential warm-up calls must never
 				// abort the whole run — count it as a failure and move on.

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
 using Basil.Protocol;
@@ -32,6 +33,7 @@ public sealed class SoakScenario : IBasilScenario
 		var accounts = context.Accounts;
 		var pollInterval = context.Profile.Client.PollInterval;
 		var weightedActions = BuildWeightedActions(settings.Weights);
+		var clients = new ConcurrentBag<BanchoClient>();
 
 		var n = settings.ConcurrentUsers[0];
 		if (accounts.Count < n)
@@ -51,6 +53,7 @@ public sealed class SoakScenario : IBasilScenario
 						if (!outcome.Success)
 							return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
 
+						clients.Add(newClient);
 						ctx.ScenarioInstanceData["client"] = newClient;
 						return Response.Ok(statusCode: "login");
 					}
@@ -107,7 +110,11 @@ public sealed class SoakScenario : IBasilScenario
 			})
 			.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
 			.WithWarmUpDuration(settings.WarmUp)
-			.WithMaxFailCount(int.MaxValue);
+			.WithMaxFailCount(int.MaxValue)
+			.WithClean(async _ =>
+			{
+				foreach (var client in clients) await client.DisposeAsync();
+			});
 
 		// NBomberRunner.WithReportingInterval (applied per-run, not per-scenario) is set from
 		// this same SoakSettings.ReportingInterval by Program.cs when it runs this scenario, so a

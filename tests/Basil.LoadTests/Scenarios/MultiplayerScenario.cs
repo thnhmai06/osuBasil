@@ -93,7 +93,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 					{
 						var account = accounts[instance];
 
-						using var client = new BanchoClient(clientFactory, account);
+						await using var client = new BanchoClient(clientFactory, account);
 						var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
 						if (!outcome.Success)
 							return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");

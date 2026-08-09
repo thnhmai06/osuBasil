@@ -52,7 +52,7 @@ public sealed class StressScenario : IBasilScenario
 
 				try
 				{
-					using var client = new BanchoClient(clientFactory, account);
+					await using var client = new BanchoClient(clientFactory, account);
 					var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
 					if (!outcome.Success)
 					{
