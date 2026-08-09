@@ -51,7 +51,7 @@ public sealed class SoakScenario : IBasilScenario
 						var newClient = new BanchoClient(clientFactory, account);
 						var outcome = await newClient.LoginAsync(ctx.ScenarioCancellationToken);
 						if (!outcome.Success)
-							return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
+							return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 
 						clients.Add(newClient);
 						ctx.ScenarioInstanceData["client"] = newClient;
@@ -105,7 +105,7 @@ public sealed class SoakScenario : IBasilScenario
 				{
 					// A 12-24h unattended run must never let one transient failure propagate as an
 					// unhandled exception — always resolve to a counted failure and keep going.
-					return Response.Fail(statusCode: ex.GetType().Name);
+					return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 				}
 			})
 			.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))

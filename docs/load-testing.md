@@ -104,7 +104,7 @@ resource slopes.
 
 | Scenario      | What it does                                                                                                                                                                                                                                                                   | Scale axis   | Key settings                                                                                                                                                     |
 |---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `login`       | Repeated login → hold → logout round trips. Throughput is *sustained* round trips per second at N concurrent clients, not a thundering herd.                                                                                                                                   | users        | `WarmBcryptCache`, `MinSessionHoldSeconds`, `PostWarmupSettleSeconds`                                                                                            |
+| `login`       | Repeated login → logout round trips. Throughput is *sustained* round trips per second at N concurrent clients, not a thundering herd.                                                                                                                                   | users        | `WarmBcryptCache`, `PostWarmupSettleSeconds`                                                                                            |
 | `idle`        | Logged-in clients sitting in the lobby, polling to stay alive. Measures the baseline cost of a live session.                                                                                                                                                                   | users        | —                                                                                                                                                                |
 | `chat`        | Senders emitting messages on a channel; the rest of the load is receiving.                                                                                                                                                                                                     | users        | `Channel`, `SendersPercent`, `MessagesPerMinutePerSender`, `MessageBytes`                                                                                        |
 | `multiplayer` | Full create → assign map → play → score-update → complete round loops, repeated per room.                                                                                                                                                                                      | rooms (≤ 64) | `Rooms`, `PlayersPerRoom` (≤ 16), `RoundsPerRoom`, `ScoreUpdatesPerSecond`, `BeatmapsetFixture`                                                                  |
@@ -144,25 +144,25 @@ Every run writes to `.loadtest/reports/<profile>-<timestamp>/`:
 
 ## Design rationale
 
-### Why the login round trip holds for ≥ 1 second
-
-The server ignores a logout sent within one second of login. The scenario therefore holds each session for
-`MinSessionHoldSeconds` (default 1.5) before logging out, so the logout is honored. The hold is a real, server-enforced
-part of a login round trip, not harness overhead — and it bounds sustained login throughput to roughly one round trip
-per second per client.
-
 ### Why warm-up and settle exist
 
-The bcrypt warm-up logs every account in once, and deliberately does **not** log them out (a logout inside the grace
-period would be ignored anyway). Those sessions stay live. The server rejects a relogin within 10 seconds of a session's
-last poll, so the run settles for `PostWarmupSettleSeconds` (default 11) before measurement starts — this lets each
-account's first measured login evict its stale session cleanly instead of failing with `user-already-logged-in`.
+The bcrypt warm-up logs every account in once and deliberately does **not** log them out: its purpose is only the
+bcrypt-verify cache, and logging out would double the warm-up pass for nothing gained. Those sessions therefore stay
+live. The server rejects a relogin within 10 seconds of a live session's last poll, so the run settles for
+`PostWarmupSettleSeconds` (default 11) before measurement starts — this lets each account's stale warm-up session age
+past that guard so its first measured login evicts it cleanly instead of failing with `user-already-logged-in`.
 
 ### Why logout must be cancellation-safe
 
-NBomber cancels in-flight scenario iterations when warm-up ends. A login that completed but was cancelled mid-hold would
-otherwise leak a live session, and the account's next login would fail. Each login's `finally` block therefore logs the
-client out even when its token is cancelled. This is a harness-side invariant, not a server workaround.
+NBomber cancels in-flight scenario iterations when warm-up ends. A login that completed but was cancelled mid-flight
+would otherwise leak a live session, and the account's next login would fail. Two things make that impossible:
+- `BanchoClient.LoginAsync` captures the response's `cho-token` as soon as the headers arrive, before it reads the reply
+  body, and never lets the scenario's cancellation token interrupt a login request — so a cancelled iteration still
+  holds a token it can use to close the session.
+- Every scenario closes the sessions it opened: the login, multiplayer, and stress scenarios dispose one client per
+  iteration via `await using`, and the idle, chat, and soak scenarios collect each client and dispose the whole set in
+  `.WithClean`.
+This is a harness-side invariant, not a server workaround.
 
 ### Why multiplayer scales by rooms, not users
 
@@ -181,7 +181,8 @@ re-derive account state each time.
 - `MultiplayerSettings.Rooms` ≤ 64, `PlayersPerRoom` ≤ 16 — the server's match-id pool and per-match slot count.
 - `ClientSettings.PollIntervalSeconds` must stay well under the server's 300-second ghost-session reaper interval, or
   idle clients get reaped mid-run.
-- `LoginSettings.MinSessionHoldSeconds` > 1.0 — the server's logout grace.
+- The server rejects a relogin within 10 seconds of a still-live session's last poll (there is no logout grace), so
+  every scenario closes every session it opens (see [Why logout must be cancellation-safe](#why-logout-must-be-cancellation-safe))
 - `Accounts.Count` must be at least the largest concurrency any enabled scenario asks for.
 - `Dotnet` host: `Mode: Run` reports process metrics for the wrong process; use `Published` when those metrics matter.
 

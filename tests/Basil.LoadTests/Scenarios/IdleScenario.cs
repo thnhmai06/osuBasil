@@ -47,7 +47,7 @@ public sealed class IdleScenario : IBasilScenario
 							var client = new BanchoClient(clientFactory, account);
 							var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
 							if (!outcome.Success)
-								return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
+								return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 
 							clients.Add(client);
 							ctx.ScenarioInstanceData["client"] = client;
@@ -62,7 +62,7 @@ public sealed class IdleScenario : IBasilScenario
 					catch (Exception ex) when (ex is not OperationCanceledException ||
 					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
-						return Response.Fail(statusCode: ex.GetType().Name);
+						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))

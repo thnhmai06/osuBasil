@@ -57,7 +57,7 @@ public sealed class StressScenario : IBasilScenario
 					if (!outcome.Success)
 					{
 						eventLog.RecordServerError(currentLevel, outcome.FailureReason ?? "unknown-failure");
-						return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
+						return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 					}
 
 					await client.LogoutAsync(ctx.ScenarioCancellationToken);

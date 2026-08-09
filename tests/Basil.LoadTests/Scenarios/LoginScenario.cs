@@ -15,10 +15,10 @@ namespace Basil.LoadTests.Scenarios;
 /// </summary>
 /// <remarks>
 ///     A round trip is login → logout → next login. The server holds no logout grace, so every logout
-///     closes its session immediately and the measured round trip is the raw login+logout latency. A
-///     cancelled or failed iteration still closes its session from disposal; a session that survives
-///     its iteration blocks that account's next login for up to 10s with <c>user-already-logged-in</c>,
-///     so leftovers serialise into the reported failures rather than the latency.
+///     closes its session immediately, and the measured round trip is the raw login+logout latency. A
+///     canceled or failed iteration still closes its session from disposal; a session that survives
+///     its iteration blocks that account's next login for up to the 10s with <c>user-already-logged-in</c>,
+///     so leftovers serialize into the reported failures rather than the latency.
 /// </remarks>
 public sealed class LoginScenario : IBasilScenario
 {
@@ -48,10 +48,7 @@ public sealed class LoginScenario : IBasilScenario
 						await using var client = new BanchoClient(clientFactory, account);
 
 						var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
-						if (!outcome.Success)
-							return Response.Fail(
-								statusCode:
-								$"{outcome.FailureReason}::{account.Name}::inst{ctx.ScenarioInfo.InstanceNumber}");
+						if (!outcome.Success) return Response.Fail(message: outcome.FailureReason);
 
 						await client.LogoutAsync(ctx.ScenarioCancellationToken);
 						return Response.Ok(statusCode: "200");
@@ -59,7 +56,7 @@ public sealed class LoginScenario : IBasilScenario
 					catch (Exception ex) when (ex is not OperationCanceledException ||
 					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
-						return Response.Fail(statusCode: ex.GetType().Name);
+						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))

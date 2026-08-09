@@ -45,15 +45,12 @@ public sealed class BanchoClient(
 			: null;
 
 		// A real token is always `osu-{guid}`; every failure carries an error string instead.
-		// Record it as soon as the response arrives — so a caller whose iteration is cancelled
+		// Record it as soon as the response arrives — so a caller whose iteration is canceled
 		// before the body is read can still close the session it just opened.
 		if (choToken is not null && choToken.StartsWith("osu-", StringComparison.Ordinal))
-		{
 			_token = choToken;
-		}
 
 		var responseBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
-
 		var frames = ServerPacketStream.ReadFrames(responseBytes);
 		var reply = frames.FirstOrDefault(f => f.Type == ServerPackets.UserId);
 

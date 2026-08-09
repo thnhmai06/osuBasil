@@ -68,15 +68,15 @@ public sealed class ApiScenario : IBasilScenario
 	}
 
 	private static ScenarioProps BuildEndpointScenario(string name, BasilHttpClientFactory clientFactory,
-		IReadOnlyList<string> weightedPaths, int concurrency, ApiSettings settings)
+		string[] weightedPaths, int concurrency, ApiSettings settings)
 	{
 		return Scenario.Create(name, async ctx =>
 			{
 				try
 				{
-					var path = weightedPaths.Count == 1
+					var path = weightedPaths.Length == 1
 						? weightedPaths[0]
-						: weightedPaths[Random.Shared.Next(weightedPaths.Count)];
+						: weightedPaths[Random.Shared.Next(weightedPaths.Length)];
 
 					using var client = clientFactory.CreateClient();
 					using var response =
@@ -91,7 +91,7 @@ public sealed class ApiScenario : IBasilScenario
 				catch (Exception ex) when (ex is not OperationCanceledException ||
 				                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
 				{
-					return Response.Fail(statusCode: ex.GetType().Name);
+					return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 				}
 			})
 			.WithLoadSimulations(Simulation.KeepConstant(concurrency, settings.Duration))

@@ -96,7 +96,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 						await using var client = new BanchoClient(clientFactory, account);
 						var outcome = await client.LoginAsync(ctx.ScenarioCancellationToken);
 						if (!outcome.Success)
-							return Response.Fail(statusCode: outcome.FailureReason ?? "unknown-failure");
+							return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 
 						var roomReady = roomMatchIds.GetOrAdd(roomIndex,
 							_ => new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously));
@@ -171,7 +171,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 									_ => new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously))
 								.TrySetResult(-1);
 
-						return Response.Fail(statusCode: ex.GetType().Name);
+						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(totalPlayers, settings.Duration))

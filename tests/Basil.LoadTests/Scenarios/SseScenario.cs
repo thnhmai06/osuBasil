@@ -93,7 +93,7 @@ public sealed class SseScenario : IBasilScenario
 					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						metrics.RecordDisconnected(eventCount);
-						return Response.Fail(statusCode: ex.GetType().Name);
+						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
