@@ -78,7 +78,8 @@ Do not introduce new conventions when an existing project convention already cov
 
 * Formatting and analyzer rules are defined by the repository-level [`.editorconfig`](.editorconfig).
 * Development rules are collected in [`CLAUDE.md`](CLAUDE.md).
-* XML documentation rules, user-visible response strings, and testing conventions are covered by [`CLAUDE.md`](CLAUDE.md).
+* XML documentation rules, user-visible response strings, and testing conventions are covered by [
+  `CLAUDE.md`](CLAUDE.md).
 * Public members should have XML documentation describing their observable behavior rather than their implementation.
 
 When in doubt, follow the existing architecture and the authoritative developer documentation before introducing a new
@@ -144,17 +145,19 @@ If a change modifies an authoritative topic, update its authoritative document i
 
 ## Pull request requirements
 
+Use the pull request template when opening a pull request. Complete the relevant sections and remove any sections that
+do not apply.
+
 Before opening a pull request, verify:
 
-* [ ] `dotnet build --configuration Release` succeeds.
-* [ ] `dotnet test` passes.
-* [ ] New behavior has appropriate tests.
-* [ ] Documentation is updated when the change affects documented behavior.
-* [ ] The change respects the project's architecture and scope.
-* [ ] The PR has a focused purpose.
-* [ ] Unrelated changes have been separated into another PR.
-
-CI runs restore, build, and test across the solution on every push.
+- [ ] `dotnet build --configuration Release` succeeds.
+- [ ] `dotnet test` passes.
+- [ ] New behavior has appropriate tests.
+- [ ] Documentation is updated when the change affects documented behavior.
+- [ ] The change respects the project's architecture and scope.
+- [ ] The PR has a focused purpose.
+- [ ] Unrelated changes have been separated into another PR. CI runs restore, build, and test across the solution on
+  every push.
 
 A failing CI check should therefore be treated as a real problem rather than something to ignore.
 
@@ -204,13 +207,16 @@ Use `[skip ci]` only when the change genuinely does not require CI validation.
 
 ## Reporting issues
 
+Use the appropriate GitHub issue template when opening an issue. The templates help ensure that reports contain the
+information needed to investigate them.
+
 When reporting a bug, include enough information to reproduce it:
 
-* Basil version or commit
-* operating system
-* steps to reproduce
-* expected behavior
-* actual behavior
+- Basil version or commit
+- operating system
+- steps to reproduce
+- expected behavior
+- actual behavior
 
 For server-side issues, include relevant log lines from `Logs/` when available.
 
