@@ -60,22 +60,19 @@ jobs:
         env:
           TAG: ${{ github.event.release.tag_name }}
           RID: ${{ matrix.rid }}
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = 'Stop'
 
-          VERSION="${TAG#v}"
-          mkdir -p dist
+          $version = $env:TAG -replace '^v', ''
+          $source = "publish/$env:RID"
+          $destination = "dist/Basil-$version-$env:RID.zip"
 
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            powershell -NoProfile -Command \
-              "Compress-Archive -Path 'publish/$env:RID/*' -DestinationPath 'dist/Basil-$env:VERSION-$env:RID.zip'"
-          else
-            (
-              cd "publish/$RID"
-              zip -q -r "../../dist/Basil-$VERSION-$RID.zip" .
-            )
-          fi
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+          Compress-Archive `
+            -Path "$source/*" `
+            -DestinationPath $destination
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v3
