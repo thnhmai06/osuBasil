@@ -1,8 +1,8 @@
 ﻿<component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Basil.Web" type="DotNetProject" factoryName=".NET Project">
-    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Basil.Web/bin/Debug/net10.0/win-x64/Basil.Web.exe" />
+    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Basil.Web/bin/Release/net10.0/win-x64/Basil.Web.exe" />
     <option name="PROGRAM_PARAMETERS" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/Basil.Web" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/Basil.Web/bin/Release/net10.0/win-x64" />
     <option name="PASS_PARENT_ENVS" value="1" />
     <envs>
       <env name="DOTNET_ENVIRONMENT" value="Development" />
@@ -16,7 +16,7 @@
     <option name="PROJECT_PATH" value="$PROJECT_DIR$/src/Basil.Web/Basil.Web.csproj" />
     <option name="PROJECT_EXE_PATH_TRACKING" value="1" />
     <option name="PROJECT_ARGUMENTS_TRACKING" value="1" />
-    <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="1" />
+    <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="0" />
     <option name="PROJECT_KIND" value="DotNetCore" />
     <option name="PROJECT_TFM" value="net10.0" />
     <method v="2">

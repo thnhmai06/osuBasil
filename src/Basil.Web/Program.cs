@@ -181,7 +181,6 @@ public sealed class Program
 			              ?.InformationalVersion
 		              ?? typeof(Program).Assembly.GetName().Version?.ToString()
 		              ?? "unknown";
-
 		var gcInfo = GC.GetGCMemoryInfo();
 		var appDrive = new DriveInfo(Path.GetPathRoot(AppContext.BaseDirectory)!);
 
@@ -351,8 +350,13 @@ public sealed class Program
 			var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);
 			var domain = serverSection.GetValue<string>("Domain");
 			var port = serverSection.GetValue<int?>("Port") ?? 443;
-			var certPath = serverSection["CertPath"];
-			var certPassword = serverSection["CertPassword"];
+			var rawCertPath = serverSection.GetValue<string?>("CertPath");
+			var certPassword = serverSection.GetValue<string?>("CertPassword");
+
+			var certPath = !string.IsNullOrWhiteSpace(rawCertPath)
+				? Path.GetFullPath(rawCertPath)
+				: null;
+			if (certPath is not null) logger?.LogInformation("Certificate path: {CertPath}", certPath);
 
 			try
 			{
@@ -382,7 +386,7 @@ public sealed class Program
 			{
 				options.ListenAnyIP(port, listenOptions =>
 				{
-					if (!string.IsNullOrEmpty(certPath))
+					if (certPath is not null)
 						listenOptions.UseHttps(certPath, certPassword);
 					else
 						listenOptions.UseHttps();
