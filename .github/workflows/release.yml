@@ -2,11 +2,38 @@ name: Release
 
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   package:
-    runs-on: ubuntu-latest
+    name: Build release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            rid: win-x64
+          - name: Windows ARM64
+            os: windows-11-arm
+            rid: win-arm64
+
+          - name: Linux x64
+            os: ubuntu-latest
+            rid: linux-x64
+          - name: Linux ARM64
+            os: ubuntu-24.04-arm
+            rid: linux-arm64
+
+          - name: MacOS x64
+            os: macos-26-intel
+            rid: osx-x64
+          - name: MacOS ARM64
+            os: macos-26
+            rid: osx-arm64
+
+    runs-on: ${{ matrix.os }}
 
     permissions:
       contents: write
@@ -20,54 +47,75 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Publish win-x64
+      - name: Publish
         run: >
           dotnet publish src/Basil.Web
           -c Release
-          -r win-x64
+          -r ${{ matrix.rid }}
           --self-contained true
-          -o publish/win-x64
+          -o publish/${{ matrix.rid }}
+          -p:OpenApiGenerateDocumentsOnBuild=true
 
-      - name: Publish linux-x64
-        run: >
-          dotnet publish src/Basil.Web
-          -c Release
-          -r linux-x64
-          --self-contained true
-          -o publish/linux-x64
-
-      - name: Publish osx-arm64
-        run: >
-          dotnet publish src/Basil.Web
-          -c Release
-          -r osx-arm64
-          --self-contained true
-          -o publish/osx-arm64
-
-      - name: Package executables
+      - name: Package
         env:
           TAG: ${{ github.event.release.tag_name }}
+          RID: ${{ matrix.rid }}
+        shell: bash
         run: |
           set -euo pipefail
 
           VERSION="${TAG#v}"
           mkdir -p dist
 
-          for platform in win-x64 linux-x64 osx-arm64; do
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path 'publish/$env:RID/*' -DestinationPath 'dist/Basil-$env:VERSION-$env:RID.zip'"
+          else
             (
-              cd "publish/$platform"
-              zip -q -r "../../dist/Basil-$VERSION-$platform.zip" .
+              cd "publish/$RID"
+              zip -q -r "../../dist/Basil-$VERSION-$RID.zip" .
             )
-          done
+          fi
 
-      - name: Upload release assets
+      - name: Upload release asset
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: |
-            dist/Basil-*-win-x64.zip
-            dist/Basil-*-linux-x64.zip
-            dist/Basil-*-osx-arm64.zip
+          files: dist/Basil-*.zip
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+  docker:
+    name: Build Docker image
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: thanhmai06/osubasil
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
