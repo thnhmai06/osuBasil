@@ -2,85 +2,188 @@
 
 <img src="./assets/banner.png" alt="osuBasil Banner" width="727">
 
-Thank you for considering contributing to Basil. Whether you're fixing a typo, improving the docs, or building a new feature, your help is appreciated.
+Thank you for considering contributing to Basil. Whether you are fixing a typo, improving the documentation, fixing a
+bug, or building a new feature, your contribution is welcome.
 
-This page is the entry point for contributors. It tells you how to set up a development environment, what to read before you start, and what a pull request has to meet. The README answers "what is Basil?". These docs answer "how do I contribute?". The `docs/` folder answers "how does it work in detail?".
+This page is the entry point for contributors. It explains what to read before changing the code, how to set up a
+development environment, and what a pull request is expected to meet.
+
+The documentation has three different purposes:
+
+* The `README` answers **"What is Basil?"**
+* This page answers **"How do I contribute?"**
+* `docs/` answers **"How does Basil work?"**
 
 ## Read these first
 
-Before you open an editor, read the pages below in order. They will save you from making changes that the project deliberately doesn't want.
+Before changing the code, read these documents in order:
 
-- [`docs/architecture.md`](docs/architecture.md): how the code is organized, the dependency rule between projects, and how a login or a match flows through the system. Read this before any cross-layer change.
-- [`docs/working-scopes.md`](docs/working-scopes.md): what Basil supports versus what it intentionally leaves out. A lot of bancho.py features were cut on purpose; don't assume one is missing by accident.
-- [`docs/testing.md`](docs/testing.md): what the tests pin and how to write new ones.
-- [`docs/docs-guideline.md`](docs/docs-guideline.md): how documentation under `docs/` is written and structured.
-- The full HTTP API and BasilBot chat command reference is generated from the source and served at `api.<domain>/docs/` on a running instance, or on [GitHub Pages](https://thnhmai06.github.io/osuBasil/) without running one.
+1. [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md): explains the project structure,
+   dependency direction, layer responsibilities, and major request flows. Read this before making a cross-layer change.
+2. [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md): defines what Basil supports and
+   what it deliberately does not support. Do not assume a feature missing from Basil was accidentally omitted from
+   bancho.py.
+3. [`docs/for-developers/testing.md`](docs/for-developers/testing.md): defines what tests should protect and how new
+   tests should be written.
+4. [`docs/for-developers/docs-guideline.md`](docs/for-developers/docs-guideline.md): explains how the documentation is
+   organized and maintained.
+5. [`docs/index.md`](docs/index.md): the complete documentation map.
+
+For the complete HTTP API and BasilBot command reference, use the generated documentation at `api.<domain>/docs/` on a
+running instance, or the published copy on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 
 ## Development setup
 
-For the full guide on running Basil locally, deploying it, and connecting an osu! client, see [`docs/run-deployment.md`](docs/run-deployment.md).
+See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow,
+including:
+
+* setting up the [.NET SDK](https://dotnet.microsoft.com/en-us/download/dotnet)
+* cloning and building Basil
+* running the server locally
+* running the test suite
+* connecting an osu! client
+* working with development dependencies
+
+Follow that guide rather than creating an ad-hoc local setup.
 
 ## Project structure
 
-```
-src/     the application, five projects
-tests/   the test projects, one per source project plus integration and architecture tests
-docs/    architecture and guides, one topic per file
+```text
+src/
+    the five production projects
+
+tests/
+    one test project per source project,
+    plus integration and architecture tests
+
+docs/
+    documentation split by audience:
+    for-client/
+    for-technicians/
+    for-developers/
+    for-agents/
 ```
 
-The five `src/` projects form a layered monolith. `Basil.Web` sits on top and every reference points inward, a direction that `tests/Basil.ArchitectureTests` enforces. `docs/architecture.md` walks through each layer and where new code belongs.
+The five `src/` projects form a layered monolith.
+
+`Basil.Web` sits at the outermost layer, while dependencies point inward toward the domain. The dependency direction is
+enforced by [`tests/Basil.ArchitectureTests`](tests/Basil.ArchitectureTests).
+
+See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for the responsibilities of each
+project and guidance on where new code belongs.
 
 ## Coding guidelines
 
-The conventions are already written down; follow them instead of inventing new ones.
+Do not introduce new conventions when an existing project convention already covers the case.
 
-- Formatting and analyzer settings come from `.editorconfig` at the repository root.
-- The project's development rules, covering XML doc comments, user-visible reply strings, and test writing, are collected in `CLAUDE.md` at the repository root.
-- Public members carry XML documentation that describes observable behavior, never the implementation. See rule 6 in `CLAUDE.md`.
+* Formatting and analyzer rules are defined by the repository-level [`.editorconfig`](.editorconfig).
+* Development rules are collected in [`CLAUDE.md`](CLAUDE.md).
+* XML documentation rules, user-visible response strings, and testing conventions are covered by [`CLAUDE.md`](CLAUDE.md).
+* Public members should have XML documentation describing their observable behavior rather than their implementation.
 
-## Testing guidelines
+When in doubt, follow the existing architecture and the authoritative developer documentation before introducing a new
+pattern.
 
-All new code should include tests where appropriate. Behavior that a player or a client can observe is contract and gets pinned; internal detail is not.
+## Testing
 
-- `docs/testing.md` defines what counts as contract and the test-writing conventions.
-- Run a single project's tests when you're iterating:
+New behavior should have tests where appropriate.
+
+The basic rule is:
+
+> If a player, client, tournament tool, or another system can observe it, treat it as a contract and test it. Do not pin
+> tests to implementation details unless the implementation itself is the contract.
+
+See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete testing policy.
+
+The six test projects are:
+
+```text
+Basil.Domain.Tests
+Basil.Protocol.Tests
+Basil.Application.Tests
+Basil.Infrastructure.Tests
+Basil.IntegrationTests
+Basil.ArchitectureTests
+```
+
+During development, run the smallest relevant test project first:
 
 ```bash
 dotnet test tests/Basil.Application.Tests
 ```
 
-- The six test projects are `Basil.Domain.Tests`, `Basil.Protocol.Tests`, `Basil.Application.Tests`, `Basil.Infrastructure.Tests`, `Basil.IntegrationTests`, and `Basil.ArchitectureTests`.
+Run the complete suite before opening a pull request:
 
-## Documentation guidelines
+```bash
+dotnet test
+```
 
-- Public APIs should include XML documentation.
-- User-facing features and behavior changes should be documented under `docs/`, following `docs/docs-guideline.md`.
-- If your code change alters behavior, APIs, configuration, deployment, or user workflows, update the related docs in the same pull request.
+## Documentation
 
-## Pull request process
+Documentation is part of the change when behavior changes.
 
-Before opening a PR:
+Update the relevant documentation when a change affects:
 
-- The build succeeds with `dotnet build --configuration Release`.
-- The tests pass with `dotnet test`.
-- New functionality includes tests.
-- Documentation is updated if the change affects behavior, APIs, configuration, or workflows.
-- The PR stays focused on one thing. Split unrelated changes into separate PRs.
+* user-visible behavior
+* HTTP APIs
+* chat commands
+* configuration
+* deployment
+* authentication
+* protocols
+* architecture
+* supported or excluded functionality
+* developer workflows
 
-The CI workflow runs restore, build, and test across the whole solution on every push, so a red check means something is genuinely wrong. Keep the diff small and reviewable.
+Follow [`docs/for-developers/docs-guideline.md`](docs/for-developers/docs-guideline.md) when modifying `docs/`.
+
+Do not duplicate generated API or BasilBot command reference material in Markdown. Use the generated OpenAPI
+documentation as the detailed reference and keep Markdown focused on behavior, architecture, and operational guidance.
+
+If a change modifies an authoritative topic, update its authoritative document in the same change.
+
+## Pull request requirements
+
+Before opening a pull request, verify:
+
+* [ ] `dotnet build --configuration Release` succeeds.
+* [ ] `dotnet test` passes.
+* [ ] New behavior has appropriate tests.
+* [ ] Documentation is updated when the change affects documented behavior.
+* [ ] The change respects the project's architecture and scope.
+* [ ] The PR has a focused purpose.
+* [ ] Unrelated changes have been separated into another PR.
+
+CI runs restore, build, and test across the solution on every push.
+
+A failing CI check should therefore be treated as a real problem rather than something to ignore.
+
+Keep pull requests small enough to review confidently.
 
 ## Commit messages
 
-Commits use [Conventional Commits](https://www.conventionalcommits.org/). The message starts with a lowercase type, an optional scope in parentheses, and a short imperative summary, for example `feat(irc): gate JOIN on referee status`.
+Basil uses [Conventional Commits](https://www.conventionalcommits.org/).
 
-Append `[skip ci]` to the end of the commit subject if you don't want the CI to run, for example `chore: fix typos [skip ci]`.
+The subject uses:
 
-Common types:
-
+```text
+type(scope): imperative summary
 ```
+
+For example:
+
+```text
+feat(irc): gate JOIN on referee status
+```
+
+The scope is optional.
+
+Common types are:
+
+```text
 feat:     new feature
 fix:      bug fix
-refactor: change that keeps behavior the same
+refactor: behavior-preserving code change
 docs:     documentation
 test:     tests
 perf:     performance
@@ -89,18 +192,40 @@ build:    build system or packaging
 ci:       CI configuration
 ```
 
+Use lowercase types and keep the summary concise.
+
+Append `[skip ci]` to the commit subject when CI should intentionally be skipped:
+
+```text
+chore: fix typos [skip ci]
+```
+
+Use `[skip ci]` only when the change genuinely does not require CI validation.
+
 ## Reporting issues
 
-When reporting a bug, include:
+When reporting a bug, include enough information to reproduce it:
 
-- Basil version or commit
-- OS
-- Steps to reproduce
-- Expected behaviour
-- Actual behaviour
+* Basil version or commit
+* operating system
+* steps to reproduce
+* expected behavior
+* actual behavior
 
-Include the relevant log lines from `Logs/` if you have them. For a server that runs fully offline, most bug reports come with what the osu! client showed versus what the tournament API returned; those two observations are worth stating explicitly.
+For server-side issues, include relevant log lines from `Logs/` when available.
 
-## Code of conduct
+Because Basil can operate fully offline, reports involving osu! clients should also distinguish between the two
+observable sides of the system:
 
-This project has a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
+* what the osu! client observed
+* what the Basil HTTP/tournament API reported
+
+This distinction often makes protocol and state-transition bugs significantly easier to diagnose.
+
+Avoid pasting unrelated or sensitive configuration data into an issue.
+
+## Code of Conduct
+
+Basil has a [Code of Conduct](CODE_OF_CONDUCT.md).
+
+By participating in the project, you agree to follow its terms.

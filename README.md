@@ -4,15 +4,17 @@
 
 # Basil
 
-<sub><i>If [Akatsuki](https://github.com/osuAkatsuki) means dawn, then Basil is the sunflower that always facing to the
-sun.</i></sub>
+<sub><i>If [Akatsuki](https://github.com/osuAkatsuki/bancho.py) means dawn, then Basil is the sunflower that always
+faces the sun.</i></sub>
 
 **A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) server for tournaments and multiplayer.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
+[![GitHub Stars](https://img.shields.io/github/stars/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil)
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
-[![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white&style=flat-square)](https://dotnet.microsoft.com/)
 [![Last commit](https://img.shields.io/github/last-commit/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil/commits/main)
+[![GitHub Release](https://img.shields.io/github/v/release/thnhmai06/osuBasil?sort=semver&logo=github&logoColor=white&style=flat-square)](https://github.com/thnhmai06/osuBasil/releases/latest)
+[![Docker Image Version](https://img.shields.io/docker/v/thanhmai06/osubasil?sort=semver&logo=docker&logoColor=white&style=flat-square)](https://hub.docker.com/repository/docker/thnhmai06/osubasil/)
 
 </div>
 
@@ -27,45 +29,79 @@ rights belong to their respective owners.
 
 ## ✨ Key features
 
-At Basil, our philosophy is simple: **minimize external dependencies**. Basil is built to operate **completely
-offline**, giving you full control without requiring internet connectivity or third-party online services:
+Basil is designed around a simple principle: **keep the server self-contained and minimize external dependencies**.
 
-- **Replicates the full multiplayer experience of [osu!Bancho](https://osu.ppy.sh/wiki/en/Bancho_%28server%29)**, while
-  intentionally omitting singleplayer ranking and other unrelated features.
-- **Supports [osu!direct](https://osu.ppy.sh/community/forums/topics/1433039),
-  [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
-  [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot) (as BasilBot),
-  and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat)**.
-- **Stores all data locally**, requiring no external services or database server.
-- **Runs entirely offline**, with no dependency on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or beatmap
-  mirrors for core gameplay.
-- **Provides a comprehensive HTTP API** for tournament management, spectating, and real-time multiplayer data,
-  documented with [OpenAPI](https://www.openapis.org/) and browsable through [Scalar](https://scalar.com/).
+The server can operate entirely offline, keeping gameplay and tournament data under the operator's control without
+requiring third-party online services.
+
+* **Multiplayer-first**: provides the [osu! stable multiplayer](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer)
+  experience required for tournament operation, while deliberately excluding unrelated singleplayer and social features.
+* **Tournament support**: supports [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
+  tournament-oriented `!mp` commands, live match state, and real-time reporting.
+* **osu! ecosystem compatibility**:
+  supports [osu!direct](https://osu.ppy.sh/community/forums/topics/1433039), [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)
+  (as BasilBot), and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
+* **Self-contained storage**: stores server data locally using SQLite; no external database server is required.
+* **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
+  external beatmap mirrors.
+* **Tournament HTTP API**: provides HTTP and SSE endpoints for tournament management, match reports, spectating, and
+  real-time multiplayer data, with an [OpenAPI](https://spec.openapis.org/oas/latest.html) specification and interactive
+  documentation through [Scalar](https://scalar.com/).
+* **Stable-focused**: targets the osu! stable client and its multiplayer/tournament workflows rather than attempting to
+  reproduce the complete osu! server.
+
+For the complete supported and excluded feature set, see
+[`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md).
 
 ## 🛠️ Tech stack
 
-| Layer          | Choice                                                                                                                                                                                         |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as a standalone executable. Support [Docker](https://www.docker.com/).                                          |
-| Database       | [SQLite](https://www.sqlite.org/), accessed via [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/).                                         |
-| API            | Build-time [OpenAPI](https://www.openapis.org/) generation with interactive documentation powered by [Scalar](https://scalar.com/).                                                            |
-| Star rating    | Uses the official difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu).                                                                              |
-| Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore).                      |
-| Security       | Passwords hashed using [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net).                                                                                                                  |
-| Logging        | Structured logging with [Serilog](https://serilog.net/).                                                                                                                                       |
-| Testing        | [xUnit](https://xunit.net/) with [NSubstitute](https://nsubstitute.github.io/) for unit tests and [NetArchTest](https://github.com/BenMorris/NetArchTest) to enforce architectural boundaries. |
+| Layer          | Choice                                                                                                                                                                   |
+|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as self-contained executables and supported in [Docker](https://docker.com)               |
+| Database       | [SQLite](https://www.sqlite.org/), accessed through [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/)                |
+| API            | Build-time [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
+| Star rating    | Official osu! difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu)                                                             |
+| Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
+| Security       | Passwords hashed with [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net)                                                                                              |
+| Logging        | Structured logging with [Serilog](https://serilog.net/)                                                                                                                  |
+| Testing        | [xUnit](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), and [NetArchTest](https://github.com/BenMorris/NetArchTest)                                  |
 
 ## 📖 Getting Started
 
-- **API, Chatbot, Client** – Browse the interactive documentation at `api.<domain>/docs/` on any Basil instance, or view
-  the same docs on [GitHub Pages](https://thnhmai06.github.io/osuBasil/) without running a server.
-- **Run a Server** – See [`docs/run-deployment.md`](docs/run-deployment.md) for deployment, local development, and
-  connecting an osu! client.
-- **Architecture** – See [`docs/architecture.md`](docs/architecture.md) for the system architecture and links to every
-  subsystem.
-- **Project Scope** – See [`docs/working-scopes.md`](docs/working-scopes.md) for the project's goals, supported
-  features, and intentional limitations.
-- **Countribute to Basil** - See [`CONTRIBUTING.md`](CONTRIBUTING.md) for information on how to contribute to the project.
+Basil's documentation is organized by audience.
+
+### Client
+
+For connecting an osu! client or using Basil's HTTP/SSE interfaces:
+
+* Browse the interactive API and BasilBot documentation at `api.<domain>/docs/` on a running instance.
+* Browse the published API documentation on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
+* See [`docs/for-client/bancho/getting-started.md`](docs/for-client/bancho/getting-started.md) for connecting an osu!
+  client.
+
+### Server operator
+
+To deploy and operate a Basil server:
+
+* See [`docs/for-technicians/deployment.md`](docs/for-technicians/deployment.md) for deployment
+* See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docker deployment
+
+### Developer
+
+To work on Basil itself:
+
+* See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for system architecture
+* See [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md) for supported and excluded
+  functionality
+* See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for testing policy
+
+### Documentation map
+
+See [`docs/index.md`](docs/index.md) for the complete documentation structure.
+
+### Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.
 
 ## ❤️ Credits
 
