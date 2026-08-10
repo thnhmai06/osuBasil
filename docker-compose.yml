@@ -2,21 +2,12 @@ services:
   basil:
     build: .
     ports:
-      - "443:443"
+      - "443:443" # HTTPS
+      - "6667:6667" # IRC no TLS
     volumes:
-      # basil.db, Replays/, Avatars/, Mapsets/, Seasonals/, Faqs/, Cache/ all live under Data/ next
-      # to the executable (see docs/run-deployment.md) — mounted so they survive a container recreate.
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
-      # Edit src/Basil.Web/appsettings.json (or override via Basil__Server__... env vars below)
-      # before first run — Domain/CertPath/CertPassword all need real values. The admin key is set
-      # separately at runtime via PUT /adminkey, not through this file (see run-deployment.md).
       - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
-      # A TLS cert covering the domain + 9 subdomains is required — see run-deployment.md's
-      # "Get a TLS certificate" step. Point CertPath below at wherever this is mounted.
-      - ./basil-cert.pfx:/app/basil-cert.pfx:ro
     environment:
-      # There is no environment-variable override for Basil's own settings (Server/Mirror/Bot/Irc/
-      # Logging) — edit the bind-mounted src/Basil.Web/appsettings.json above instead.
       ASPNETCORE_ENVIRONMENT: Production
     restart: unless-stopped
