@@ -107,7 +107,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: thanhmai06/osubasil
+          images: thnhmai06/osubasil
           tags: |
             type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
 
