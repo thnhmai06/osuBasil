@@ -15,7 +15,7 @@ namespace Basil.Domain.Users;
 /// <remarks>
 ///     Carries only the fields that the server reads back somewhere. Clans, public profiles,
 ///     preferred mode, play style, custom badges, and userpages are out of scope (see
-///     docs/working-scopes.md) and are not part of this record.
+///     docs/for-developers/working-scopes.md) and are not part of this record.
 /// </remarks>
 public sealed partial record User(
 	int Id,

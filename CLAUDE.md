@@ -1,223 +1,497 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (`claude.ai/code`) when working in this repository.
 
 ## What this is
 
-Basil is a private osu! (stable) server for running multiplayer tournaments fully offline (no osu.ppy.sh/mirror dependency, no singleplayer ranking), built from [bancho.py](https://github.com/osuAkatsuki/bancho.py) (the osu! private server backend) with a redesigned schema, runtime-generated tournament match reports, and a scoped-down BanchoBot + chat/`!mp` command layer. It is not a full bancho.py port — pp calculation, clans, friends, and a general-purpose public v1/v2 API are intentionally out of scope; chat commands and the bot account are narrower than bancho.py's own set. Read [`docs/working-scopes.md`](docs/working-scopes.md) before assuming a bancho.py feature should exist here — a lot of it was cut on purpose, not left unfinished. [`README.md`](README.md) and [`docs/architecture.md`](docs/architecture.md) are the other primary references; this file complements them rather than repeating their content. The full HTTP API reference (osu! client protocol + Basil's own tournament API) and the BasilBot chat command wiki are no longer hand-written Markdown — they're generated OpenAPI documents rendered with Scalar, served at `api.<domain>/docs/` on any running instance (root `/` redirects there) and published to GitHub Pages by CI (see `src/Basil.Web/docs-site/` and the `deploy-docs` job in `.github/workflows/ci.yml`).
+Basil is a private [osu!](https://osu.ppy.sh/) stable server focused on offline multiplayer tournaments.
+
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, friends, clans, a general-purpose public v1/v2 API, the full bancho.py chat-command set, and other unrelated features are intentionally out of scope.
+
+Before porting or recreating anything from bancho.py, read:
+
+* [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md) — authoritative feature scope
+* [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) — system structure and dependency direction
+* [`README.md`](README.md) — project overview
+
+The generated HTTP API and BasilBot command reference is available at `api.<domain>/docs/` on a running instance and on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). Do not create a second hand-written API reference in Markdown.
 
 ## Rules
-### 1. Think Before Coding
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+### 1. Think before coding
+
+**Do not assume. Do not hide uncertainty. Surface tradeoffs.**
 
 Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
 
-### 2. Simplicity First
+* State important assumptions.
+* If multiple interpretations are plausible, identify them.
+* If a simpler solution exists, prefer it and explain the tradeoff.
+* If a requirement is genuinely ambiguous, ask before coding.
 
-**Minimum code that solves the problem. Nothing speculative.**
+Do not silently invent requirements.
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+### 2. Simplicity first
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+Implement the smallest solution that satisfies the request.
 
-### 3. Surgical Changes
+Do not add:
 
-**Touch only what you must. Clean up only your own mess.**
+* speculative features
+* unused abstractions
+* unnecessary configurability
+* future-proofing without a concrete requirement
+* error handling for impossible states
 
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+If a solution is significantly more complicated than the problem requires, simplify it.
 
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
+### 3. Surgical changes
 
-The test: Every changed line should trace directly to the user's request.
+Change only what the task requires.
 
-### 4. Goal-Driven Execution
+When modifying existing code:
 
-**Define success criteria. Loop until verified.**
+* preserve existing behavior unless the task changes it
+* match the surrounding style
+* do not refactor unrelated code
+* do not rewrite adjacent comments or formatting
+* do not remove unrelated dead code
 
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+Remove imports, variables, methods, or other artifacts only when **your own changes** make them unnecessary.
 
-For multi-step tasks, state a brief plan:
+Every changed line should have a clear connection to the task.
+
+### 4. Goal-driven execution
+
+Define a concrete success criterion before implementing.
+
+Examples:
+
+```text
+"Add validation"
+→ Add tests for invalid input, then make them pass.
+
+"Fix the bug"
+→ Reproduce the bug with a regression test, then make it pass.
+
+"Refactor X"
+→ Verify behavior before and after the refactor.
 ```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
+
+For multi-step work, use a short plan:
+
+```text
+1. [change] → verify: [check]
+2. [change] → verify: [check]
+3. [change] → verify: [check]
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+Do not stop at "the code looks right". Verify the result.
 
-### 5. API Documentation Style
+### 5. API documentation
 
-**Every `.WithSummary`/`.WithDescription` on an `api.` host route (`src/Basil.Web/Routing/Api/`) describes the API contract, never the implementation.**
+Every `.WithSummary` and `.WithDescription` on an `api.` host route describes the **public API contract**, never its implementation.
 
-The Implementation Test: if the whole implementation were swapped out tomorrow (SQLite → Postgres, filesystem → S3, events → a queue) but the endpoint still behaved the same, would this sentence need to change? If no, keep it. If yes, it's an implementation detail — cut it.
+Apply the Implementation Test:
 
-- **Summary**: one sentence, answers "what does this endpoint do?" (`Retrieve a match report.`, not `Gets data from SQLite...`). End with a period, matching `getMatchReport` in `MatchRoutes.cs` — the house style exemplar for both Summary and Description.
-- **Description**: Markdown paragraphs, one idea per paragraph, in priority order: what it returns → special cases → related/live endpoint → errors that matter (not every status code). Prefer `"""` raw strings over `" + "` concatenation so paragraph breaks are visible in source.
-- Never name: SQLite, Redis, middleware, DI, `Channel<T>`, background services, file paths, cache keys, or other internal service/type names. Say "the response is streamed using Server-Sent Events" (client-visible), never "uses `Channel<T>`" (internal). Say "deletion is processed asynchronously," never "deletes by renaming the folder."
-- Never restate what the OpenAPI schema already shows: HTTP method+path, "returns JSON," a param already documented by its own schema entry, or the exact response shape when a `Produces<T>` already declares it.
-- No history ("replaces the old endpoint", "previously...") unless the route exists purely for backward compatibility.
+> If the implementation were replaced while the endpoint's behavior remained identical, would this sentence need to change?
 
-### 6. XML Documentation Style
+If yes, it is implementation detail and does not belong in the API documentation.
 
-**Every `///` doc comment describes responsibility and observable behavior, never implementation.** Same Implementation Test as rule 5 above (would this need to change if the whole implementation were swapped out but behavior stayed the same?), applied to every C# XML doc comment in the codebase, not just `api.` host routes.
+#### Summary
 
-- **Summary**: one sentence answering "what is this / what does it do?", not "how." Don't restate the member's own name (`class AvatarRoutes` needs `Registers avatar endpoints.`, not `Registers avatar routes under /avatars.`).
-- **Remarks**: caller-visible details that don't fit in one sentence — still contract, never implementation ("clients receive the current state first, then incremental updates" is a remark; "backed by a `Channel<T>`" is not).
-- Never name: temp files, renames, locks/mutexes, cache keys, dictionaries, switch statements, reflection, or a specific framework/library (ASP.NET Core, Dapper, Serilog, OpenAPI, Scalar, `Channel<T>`, `EventSource`, middleware, DI) unless that detail is itself the contract (`Returns a Server-Sent Events stream.` is contract; `Uses TypedResults.ServerSentEvents.` is not).
-- Never explain *why* the code is written a certain way (nginx buffers, Dapper can't do X, OpenAPI requires Y) — that belongs in a regular `//` comment or ADR, not a doc comment.
-- No history ("replaces", "formerly", "used to", "legacy") unless the member exists purely for backward compatibility.
-- `<see cref>` only when it helps the reader (pointing at a public return/param type); not to reference an internal implementation collaborator.
-- `<param>`/`<returns>` describe meaning, not how the value is produced (`The destination file.`, not `The file created after renaming the temp file.`; `Returns the resolved MIME type.`, not `Returns Provider.TryGetContentType(...).`).
+Use one sentence describing what the endpoint does.
 
-### 7. Markdown Documentation Style (`docs/*.md`)
+```csharp
+.WithSummary("Retrieve a match report.")
+```
 
-**XML docs (rule 6) answer "what does this API/class do?" `docs/*.md` answers "why is the system built this way, how does it work, and how do the pieces fit together?"** XML docs are reference material; `docs/*.md` is architecture and guides. Keep them separate — a reader who wants one shouldn't have to wade through the other.
+Do not describe storage, frameworks, services, or internal mechanisms.
 
-- **Why → What → How, in that order.** Open with the problem being solved, then what Basil does about it, then the mechanics. Don't open with an implementation type (`Channel<T>`, `IAsyncEnumerable`).
-- **One topic per file.** `authentication.md`, `sse.md`, `database.md`, not one `everything.md`. If a change touches more than 3 doc files, the docs are duplicating each other — merge them.
-- **Overview before detail.** State the shape of the whole flow before the first packet field or column name.
-- **Separate contract from current implementation.** A "Contract" section (what the client sends, what the server guarantees) should stay true even if the implementation behind it is rewritten; put class/method names and mechanics in their own "Design"/"Implementation" section instead of interleaving them.
-- **Include a "Design rationale" section** ("Why SSE instead of WebSockets?", "Why SQLite?") — this is the one thing Markdown does that an XML doc comment can't.
-- **Prefer a diagram to a paragraph.** ASCII arrows or a Mermaid `sequenceDiagram` for any multi-step flow; a picture is worth the 500 words it replaces.
-- **State system invariants explicitly** ("A `MatchSession` always owns exactly one `SnapshotChannel`.", "Every live route ends in `/live`.") — these are exactly the facts a contributor needs and won't find by reading one file.
-- **Don't paste real code.** A short illustrative snippet is fine; a 200-line dump belongs in the source file, linked instead.
-- **Always include an example** — a request, a JSON body, a packet layout, a short timeline — concrete beats abstract.
-- **Each section answers one question.** A reader scanning headings should be able to guess the content before opening it.
-- **Link instead of repeating.** A "See also" list pointing at related docs beats re-explaining what they already cover.
-- **Add a "Related code" list** (file paths) so a reader can jump straight to the source instead of guessing.
-- **Don't re-document the HTTP API.** OpenAPI/Scalar already lists routes and status codes; `docs/*.md` explains why the architecture looks the way it does, not `GET`/`POST` lists.
+#### Description
 
-### 8. Test Writing Style
+Use Markdown paragraphs in this order:
 
-**Tests pin the contract, never the implementation.** The same Implementation Test as rules 5 and 6 applies to every assertion: if the implementation were swapped out tomorrow but the observable behavior stayed the same, would the test still pass? If not, it's testing implementation, not behavior.
+1. what the endpoint provides
+2. important special cases
+3. related or live endpoints
+4. important errors
 
-- **What is contract in Basil:** bancho packet bytes, IRC wire text and numerics, HTTP status codes and JSON/envelope shapes, error codes, and the BasilBot `!mp` replies a player actually sees. **What is not:** Serilog messages, debug/console output, exception message text (unless that text reaches an API response), and internal diagnostic strings.
-- **Assert contract exactly, but centralize the literals in production.** User-visible reply text is owned by the code that emits it — `MpReplies` in `src/Basil.Application/Services/Bot/` holds every `!mp` reply as a `const`, and both the service and the tests reference those constants, never inline strings. Deliberately changing the wording is a public-behavior change: it is a one-line edit to a named, documented constant, and the tests keep both sides pinned to the same symbol so they can't drift. Log lines are never asserted word-for-word; check behavior instead, or at most `Assert.Contains` a stable fragment.
-- **One behavior per test, one reason to fail.** Split `Login()` into `Login_ShouldCreateSession`, `Login_ShouldGenerateToken`, and so on. Name tests `Condition_Should_ExpectedBehavior`. Every test runs independently and in any order — no shared mutable state, no reliance on another test having run.
-- **No real time, randomness, or GUIDs in tests.** Inject `IClock`/`IRandom`/`IGuidGenerator` (adding the port if production lacks one) instead of `DateTime.UtcNow`, `Random.Shared`, or `Guid.NewGuid()`. No `Thread.Sleep`/`Task.Delay` to wait out async work — use a deterministic signal (`TaskCompletionSource`, a poll-with-timeout loop, or awaiting the async API directly). A race-reproduction test that deliberately widens a timing window is the one documented exception.
-- **No environment dependence.** No hardcoded absolute paths, no reliance on `CultureInfo.CurrentCulture`/`TimeZoneInfo.Local`; temp dirs and SQLite files are created and cleaned up per test.
-- **Keep Arrange short.** A fixture or builder (`MultiplayerTestSupport.Fixture`, `SqliteFixture`) beats fifty lines of setup in each test.
-- **Test through the public API only** — no reflection into private members; a private method too complex to test through its callers should become a class.
-- **Cover the edges, not just the happy path:** null, empty, duplicate, already-exists, offline, permission-denied, full match, banned, overflow. Assert exceptions with `Assert.ThrowsAsync<T>`.
-- **Every bug fix ships with a regression test that reproduces it first.**
-- **XML docs in test files follow rule 6** — say what the test verifies, never provenance ("Ported from bancho.py's...") or mechanism. Full detail and the migration policy are in [`docs/testing.md`](docs/testing.md).
+Do not restate information already represented by the OpenAPI schema, such as the HTTP method, path, ordinary parameter definitions, or declared response type.
 
-### 9. User-Visible Reply Strings
+Prefer raw strings for multi-paragraph descriptions.
 
-**Every user-visible chat reply lives in one named place per chat surface — never scattered as inline literals across handlers.** The same Implementation Test as rule 6 applies: if you change who emits the text but the player still sees the same words, the constant stays in its one named place.
+Never document implementation details such as:
 
-- **One constants class per chat surface, owned by the code that emits it.** `!mp` replies live in `MpReplies` (`src/Basil.Application/Services/Bot/MpReplies.cs`) — every `!mp` subcommand and every `!mp` test references those `const`s, never an inline string. IRC reply text lives in `IrcReplies` (`src/Basil.Application/Services/Irc/IrcReplies.cs`) and is shared by `IrcQueryService`, `IrcAuthenticationService`, `ChannelMembershipService`, and the TCP connection layer. The same applies everywhere else a player can read text: bot messages and chat-service replies each get their own `Replies` constants class next to the service — not just `!mp`.
-- **Wording is a public-behavior change.** Changing a reply's text is a one-line edit to one documented constant; production and tests are pinned to the same symbol so they can't drift (see rule 8).
-- **If the set grows too large for hand-maintained constants, use a snapshot/golden file** — one fixture file holding the expected reply table plus a test that fails if production adds, removes, or rewrites an entry — instead of hundreds of inline literals.
-- **Only user-visible text is centralized.** Internal diagnostic strings, Serilog messages, and debug output stay inline and are never asserted word-for-word (rule 8).
+* SQLite
+* Redis
+* DI
+* middleware
+* `Channel<T>`
+* background services
+* cache keys
+* internal file paths
+* internal service or type names
+
+The exception is when the mechanism itself is part of the public contract, for example:
+
+```text
+The response is streamed using Server-Sent Events.
+```
+
+### 6. XML documentation
+
+Every `///` comment describes **responsibility and observable behavior**, never implementation.
+
+Apply the same Implementation Test as rule 5.
+
+#### Summary
+
+Use one sentence answering:
+
+> What is this member, and what does it do?
+
+Do not simply restate its name.
+
+#### Remarks
+
+Use remarks only for additional caller-visible behavior that does not fit in the summary.
+
+Never document:
+
+* temporary files
+* locks
+* cache keys
+* dictionaries
+* reflection
+* switch statements
+* framework implementation
+* dependency injection
+* internal collaborators
+
+Do not document historical implementation decisions unless the member exists specifically for backward compatibility.
+
+`<param>` and `<returns>` describe the meaning of the value, not how it is produced.
+
+Use `<see cref>` only when it improves navigation for the reader.
+
+### 7. Markdown documentation
+
+`docs/*.md` explains **why the system exists, how it works, and how its components fit together**.
+
+XML documentation is reference material. Markdown documentation is architecture and guidance.
+
+Follow these rules:
+
+* Explain **Why → What → How**.
+* Keep one major topic per file.
+* Start with an overview before implementation details.
+* Separate public contract from implementation.
+* Put implementation details in a dedicated Design/Implementation section.
+* Include design rationale where useful.
+* Prefer diagrams for multi-step flows.
+* State important system invariants explicitly.
+* Use short illustrative examples.
+* Do not paste large amounts of source code.
+* Link to related documentation instead of duplicating it.
+* Include a `Related code` section when source locations are useful.
+* Do not duplicate the generated HTTP API or BasilBot command reference.
+
+Authoritative topic ownership is defined by [`docs/index.md`](docs/index.md).
+
+If a topic already has an authoritative document, update that document instead of creating a competing description elsewhere.
+
+### 8. Test writing
+
+**Tests pin observable contracts, not implementation details.**
+
+Apply the Implementation Test:
+
+> If the implementation changed but the observable behavior stayed the same, would this test still pass?
+
+If not, the test is probably testing implementation.
+
+Contract examples include:
+
+* bancho packet bytes
+* IRC wire text and numerics
+* HTTP status codes
+* JSON and envelope shapes
+* API error codes
+* user-visible BasilBot replies
+* multiplayer state transitions
+
+Do not normally assert:
+
+* Serilog messages
+* debug output
+* internal diagnostic strings
+* exception messages that never reach a client
+* internal call counts or ordering
+
+See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete policy.
+
+Important rules:
+
+* one behavior per test
+* one reason for failure
+* deterministic tests
+* no real-time sleeps
+* no uncontrolled randomness
+* no environment-dependent state
+* test through public APIs
+* cover relevant edge cases
+* add a regression test for every reproducible bug fix
+
+User-visible contract strings must be centralized in the production code that owns them. Tests reference those constants rather than duplicating literals.
+
+### 9. User-visible reply strings
+
+User-visible chat text is public behavior.
+
+Each chat surface owns its reply constants.
+
+Examples:
+
+* `MpReplies` for `!mp`
+* `IrcReplies` for IRC responses
+
+Do not scatter user-visible strings across handlers.
+
+Changing the wording of a user-visible response is a contract change. Update the named production constant and its tests deliberately.
+
+Internal diagnostics and logs are not subject to this rule.
 
 ## Commands
+
+Restore and build:
 
 ```bash
 dotnet restore
 dotnet build --configuration Release
 ```
 
-### Running locally
+Run Basil locally:
 
 ```bash
 dotnet run --project src/Basil.Web
 ```
 
-No external services to stand up — the database is a single SQLite file (`Data/Basil.db`, fixed, not configurable) created next to the running process, and migrations run automatically on startup (`SqlMigrationRunner`, DbUp) — no manual migration step. Docker is optional, not required: `Dockerfile`/`docker-compose.yml` at the repo root give a self-contained `linux-x64` image with `ffmpeg` preinstalled (see [`docs/run-deployment.md`](docs/run-deployment.md#docker-alternative-to-the-manual-publish-below)); the manual `dotnet publish` path below works identically without it, just requires `ffmpeg` on `PATH` for audio previews.
-
-Publishing a standalone executable (framework-dependent, needs the .NET 10 runtime on the target machine):
+Run all tests:
 
 ```bash
-dotnet publish src/Basil.Web -c Release -r win-x64 --self-contained false -o publish/win-x64
-dotnet publish src/Basil.Web -c Release -r linux-x64 --self-contained false -o publish/linux-x64
+dotnet test
 ```
 
-The published executable creates a `Data/` folder next to itself on first run — the database plus 5 fixed storage folders (`Replays/`, `Avatars/`, `Mapsets/`, `Seasonals/`, `Faqs/`) — see [`docs/run-deployment.md`](docs/run-deployment.md).
-
-### Tests
-
-Six test projects, run individually:
+Run one test project:
 
 ```bash
-dotnet test tests/Basil.Domain.Tests
-dotnet test tests/Basil.Protocol.Tests
 dotnet test tests/Basil.Application.Tests
-dotnet test tests/Basil.ArchitectureTests
-dotnet test tests/Basil.IntegrationTests
-dotnet test tests/Basil.Infrastructure.Tests   # no external service — runs against a temp SQLite file
 ```
 
-Run a single test class or method with a filter:
+Run a specific test class:
 
 ```bash
-dotnet test tests/Basil.Application.Tests --filter "FullyQualifiedName~MatchSessionRaceTests"
-dotnet test tests/Basil.Application.Tests --filter "FullyQualifiedName=Basil.Application.Tests.Sessions.MatchSessionRaceTests.ConcurrentJoins_UnderLock_NeverDoubleAssignsASlot"
+dotnet test tests/Basil.Application.Tests \
+  --filter "FullyQualifiedName~MatchSessionRaceTests"
 ```
 
-**Prefer running `Basil.Infrastructure.Tests` in the foreground, not backgrounded** — this project used to spin up a real MySQL via Testcontainers/Docker and got killed mid-run when backgrounded; it's now SQLite-only with no Docker dependency, but the caution is left here since it hasn't been specifically re-verified under a backgrounded run.
+See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
-### CI
+See [`docs/for-technicians/configuration.md`](docs/for-technicians/configuration.md) for runtime configuration and data directories.
 
-`.github/workflows/ci.yml`: `dotnet restore`/`build`/`test` across the whole solution (runs on every push/PR/manual dispatch), then a `deploy-docs` job rebuilds `src/Basil.Web` alone to regenerate the 5 OpenAPI documents and publishes the Scalar docs site to GitHub Pages (push/dispatch only). Mirror the build/test locally before assuming a change is CI-clean. Executable publishing is separate: `.github/workflows/release.yml` builds self-contained `win-x64`/`linux-x64` binaries and attaches them to the GitHub Release only when one is published — not run on every push.
+See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docker.
 
 ## Architecture
 
-Monolith Clean Architecture, five projects under `src/`, dependency direction enforced by `tests/Basil.ArchitectureTests` (NetArchTest) — a PR that violates it fails CI, not just review:
+Basil is a five-project Clean Architecture monolith.
 
+```text
+Basil.Domain
+    ↓
+Basil.Application
+    ↓
+Basil.Infrastructure
+    ↓
+Basil.Web
 ```
-Basil.Domain           # no project references. Pure C#: enums, records, value calculators.
-Basil.Protocol         # no project references. Bancho wire-format packet reading/writing.
-Basil.Application      # → Domain, Protocol. Use cases, packet handlers, and *ports* (interfaces)
-                         # describing what Infrastructure must provide.
-Basil.Infrastructure    # → Application (implements its ports), Domain. SQLite/filesystem/
-                         # osu!lazer-ruleset-library implementations.
-Basil.Web               # → Application, Infrastructure, Protocol. ASP.NET Core host: subdomain
-                         # routing, DI composition root.
+
+`Basil.Protocol` is an independent protocol layer used by the application and web layers.
+
+The intended project dependencies are:
+
+```text
+Basil.Domain
+    no project references
+
+Basil.Protocol
+    no project references
+
+Basil.Application
+    → Domain
+    → Protocol
+
+Basil.Infrastructure
+    → Application
+    → Domain
+
+Basil.Web
+    → Application
+    → Infrastructure
+    → Protocol
 ```
 
-Full walkthrough (dependency rule, login flow, multiplayer match-creation flow) is in [`docs/architecture.md`](docs/architecture.md) — read it before making cross-layer changes rather than re-deriving the flow from scratch.
+`Basil.ArchitectureTests` enforces these boundaries.
 
-Key structural facts worth knowing up front:
+Read [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) before making a cross-layer change.
 
-- **Routing is host-based, not path-based.** `Basil.Web/Routing/Bancho/BanchoHostGroups.cs` maps every subdomain to its route group and holds two shared helpers (beatmapset archive/audio-preview building) reused by both the `b.` and `api.` hosts; the route registrations themselves live one file per host group: `BanchoProtocolRoutes.cs` (`c./ce./c4./c5./c6.` → bancho binary protocol), `OsuWebRoutes.cs` (`osu.` → `/web/osu-*.php` HTTP endpoints), `BeatmapAssetRoutes.cs` (`b.` → beatmap thumbnail/audio-preview requests, resized/trimmed on demand from local storage and cached, see the `b.` host bullet below), `AvatarRoutes.cs` (`a.` → local avatar files), and `Routing/Api/ApiHostRoutes.cs` (`api.` → tournament match report (TRT), file downloads, and admin-key-gated management CRUD). Every route carries `.WithGroupName`/`.WithSummary`/`.WithDescription`/`.WithTags` metadata feeding 5 generated OpenAPI documents (one per host group, since OpenAPI can't hold two operations at the same path+method and several groups share literal templates like `GET /`) — see the OpenAPI/Scalar docs site (`api.<domain>/docs/`, or GitHub Pages) for the full packet/endpoint reference instead of a hand-written Markdown file. Each match sub-resource (`/hosts`, `/refs`, `/ban`, `/slots`, `/timer`, `/abort`, `/close`) carries its own granular tag rather than a shared `"Match Actions"` tag, and the `basilapi` document's Scalar sidebar is grouped by resource (all `Matches`-prefixed tags adjacent, then `Users`, then `Beatmapsets`, etc.) via the `x-tagGroups` OpenAPI vendor extension (`BasilApiTagGroups` in `Program.cs`) — SSE-vs-plain-JSON is never its own tag or group. **SSE is never content-negotiated on a shared path** — every live channel is a dedicated, always-SSE `.../live` sibling of its JSON base resource (`GET /matches/{id}/live`, `GET /matches/{id}/settings/live`, etc. — see [`docs/sse.md`](docs/sse.md)), so no route ever branches on the `Accept` header. **kick moved to `DELETE /matches/{id}/slots` and invite to `POST /matches/{id}/slots`** (both tagged `Match Slots`, no longer standalone `/kick`/`/invite` actions); `/ban` is unchanged.
-- **`Basil.Application` is organized by feature, not by kind**, under `Packets/{Users,Channels,Spectating,Multiplayer}/`, `Abstractions/{Beatmaps,Scores,Users,Channels,Social,Multiplayer}/` (the ports Infrastructure implements), `Sessions/{Channels,Multiplayer,Spectating}/` (in-memory runtime state, including `IMatchLiveEvents`/`IPlayerInputEvents` — the non-blocking C#-event pub/sub feeding the `api.` host's live SSE layer), `Services/{Authentication,Beatmaps,Multiplayer,Scores,Spectating,Anticheat,Bot,Chat,Irc,Content,Users}/`. The namespace matches the folder path — an import tells you exactly where a file lives.
-- **`MatchSession.Lock` (a per-match `SemaphoreSlim(1,1)`) is the concurrency model for multiplayer state**, added because ASP.NET Core runs a real thread pool (unlike bancho.py's asyncio event loop, which the Python source implicitly relies on for atomicity between `await` points — there is no lock in the Python source to port). Any new handler or use case that reads-then-mutates a `MatchSession`'s slots must hold this lock across that whole read-mutate-broadcast sequence, matching every existing match packet handler. Don't hold it across an unrelated `await` (a DB call is fine; a long poll is not) — see the class's existing handlers for the pattern. Publishing to `IMatchLiveEvents`/`IPlayerInputEvents` while still holding the lock is fine — their `Publish*` methods just raise a C# event, and each SSE connection's own handler does a non-blocking `ChannelWriter.TryWrite` into its own buffer.
-- **Referee, host, and creator are three independent authority concepts on a `MatchSession`.** Referee (`_referees`, a `ConcurrentDictionary<int, byte>` keyed by persistent user id, same shape as `BannedIds`) grants `!mp` command authority and never depends on a live session — disconnecting, logging out, or leaving the room's slots leaves it untouched; only `!mp removeref`/the referee-removal API revokes it. Host (`MatchSession.HostId`) is unrelated: transient in-client settings control tied to being seated, transferred by `!mp host`/leaving. Creator (`MatchSession.CreatorId`, set once at room creation by `MatchMembershipService.CreateAsync`; stays `null` for a room created via `POST /matches` with no session behind it) is a third, permanent id — `MatchSession.IsReferee` ORs in `IsCreator`, so the creator holds full `!mp` authority for the room's whole lifetime regardless of referee-list membership, can never be kicked, banned, or removed as referee (`MatchControlService.RemoveOneRefereeAsync`/`SetRefereesAsync` guard this on both the chat command and the HTTP `/matches/{id}/refs` routes), and is the only one who can run `!mp addref`/`!mp removeref` from chat — those HTTP routes stay admin-key-only with no per-caller restriction, since there is no caller identity on that surface. A referee removed while not currently seated is also parted from the match's chat channel (`MatchControlService`'s `KickFromChatIfUnseated`), since losing referee status also loses their only standing in a match-room channel (see the JOIN-gate bullet in [`docs/irc.md`](docs/irc.md)).
-- **No pp calculation anywhere.** Star rating/difficulty and per-mode hit-object counts (`IOsuCalculator`/`PpyOsuCalculator`, `Basil.Infrastructure/Performance/`) are computed locally by referencing ppy's own osu!lazer ruleset NuGet packages directly, for **display only** — nothing in scoring, leaderboards, or match win conditions depends on it. Don't reintroduce a pp dependency into gameplay-affecting logic. `!mp condition` has no pp option for the same reason. `BeatmapAnalysis.TotalLength`/`MaxCombo`/`Bpm` are computed the same way, from the same `GetPlayableBeatmap()` result `PpyOsuCalculator.Analyze` already builds for star rating — **never** read `BeatmapInfo.Length`/`.MaxCombo`/`.BPM` off the raw `.osu` decode in `BeatmapIngestionService`, those fields are always zero (the legacy/lazer decoder doesn't walk hit-objects/timing-points to populate them; only the playable beatmap does).
-- **The `b.` host serves resized thumbnails and audio previews directly, computed on demand and cached** — not a redirect to `api.` host originals. `IImageResizer`/`ImageSharpResizer` (SixLabors.ImageSharp) resizes mapset backgrounds to 80×60/160×120 JPEGs; `IAudioPreviewExtractor`/`FFMpegAudioPreviewExtractor` (FFMpegCore, shells out to the `ffmpeg` binary) trims a 10s 128kbps mp3 clip from a beatmap's `AudioFile` starting at its `PreviewTime`. Both write through `IResponseCache`/`FileSystemResponseCache` (`Data/Cache/{endpoint}/{relativePath}`) so a repeat request doesn't re-resize/re-transcode. Running outside Docker (see below) requires `ffmpeg` on `PATH`; ImageSharp needs nothing extra since it's pure managed code.
-- **Every `api.` host JSON response is enveloped and its OpenAPI schema matches, every user/beatmap reference is embedded, hot single-row lookups are cached.** `Basil.Web/Middleware/EnvelopeMiddleware` wraps every `basilapi`-group response (file downloads and every `.../live` route excluded — an SSE route is recognized by its literal `live` path segment via `LiveSseRoutes.IsSseRoute`, no route branches on `Accept` anymore) in `{success, code, message, data, meta, errors, timestamp}`; every prior `204 No Content` route now returns `200` with a real body instead of `data: null`. `Basil.Web/OpenApi/EnvelopeSchemaTransformer` rewrites the *declared* response schema the same way (bare `T` → `Envelope<T>`), so generated clients see the real shape, not just the runtime body. Every user reference is a `UserBrief {id, name, country}` (`MatchLiveSnapshotBuilder.UserBrief`/`UserBriefResolver`, `Country` typed as the `Country` enum — see the enum-wire-convention bullet below), never a bare id; every beatmap reference embeds a `BeatmapView`-derived record (`BeatmapDetail`/`BeatmapInSet`, not the bare domain `Beatmap`), keyed by the stored `Md5` (never `Id` — an id can survive a re-ingestion that changes content, an md5 can't), `null` once that md5 no longer resolves. `Basil.Infrastructure/Caching/Caching{User,Map,Mapset}Repository` wrap the real Sqlite repositories behind an `IMemoryCache` (TTL + explicit invalidation on every write) so this embedding doesn't reintroduce an N+1 per response — see [`docs/response-envelope.md`](docs/response-envelope.md) for the full shape.
-- **Enum wire convention on every `api.` host record: keep the real enum type on the C# record, never substitute `int`/`string`.** Every enum (`UserPrivileges`, `Mods`, `GameMode`, `MatchTeam`, `SlotStatus`, `Grade`, `RankedStatus`, `MatchEventType`, ...) serializes to a plain number (System.Text.Json's default — no `JsonStringEnumConverter`); `Country` is the sole exception, serialized to its 2-letter lowercase acronym via `CountryJsonConverter` (`Basil.Application/Json/`, registered in `Program.cs` and shared with the SSE pipeline's `BasilJsonOptions`). Every `TimeSpan` field (e.g. `Difficulty.TotalLength`) is likewise serialized globally via `TimeSpanSecondsJsonConverter` (same location, same registration) as a plain integer of seconds — both converters live in `Basil.Application` rather than `Basil.Domain` specifically so a Domain record can carry a `Country`/`TimeSpan` field without needing either converter type in scope (Domain has zero project references). A PATCH-only request record's nullable properties need an explicit `= null` default (not just `T?`) or ASP.NET Core's OpenAPI generator still marks them schema-required. **A session's `Country` (`UserSession.Country`, created at login/bootstrap) always comes from the stored user record — never from request headers.** There is no geolocation plumbing: `Basil.Domain/Login/Geolocation.cs` is a static helper holding only the proxy-header *IP* resolver (`Geolocation.PhraseIpAddress`, used for the `IngameLogins` IP and the `RemoteIp` log scope); country and lat/long are never derived from proxy headers anymore. To change what country a player (or BasilBot) shows in-game, update the `Users.Country` column / `Bot:Country` option and relogin.
-- **`Priv`/"priv" is written out as `Privilege` everywhere** (`User.Privilege`, `PlayerSession.Privilege`/`BanchoPrivilege`, `Channel.ReadPrivilege`/`WritePrivilege`, the `Users.Privilege`/`Channels.ReadPrivilege`/`WritePrivilege` DB columns) — don't reintroduce the abbreviation in new code. `IsPrivate` is unrelated and untouched.
-- **Dapper + SQLite quirks to remember when touching `Basil.Infrastructure/Persistence/Repositories/`:** the connection string always carries `Foreign Keys=True` (SQLite disables FK enforcement per-connection by default) and `Default Timeout=5` (maps to `busy_timeout` — the server is deliberately multithreaded, see `MatchSession.Lock` below, so concurrent writers across different matches are expected and need to wait rather than throw `SQLITE_BUSY` immediately). Dapper can't materialize positional `record` types straight from a SQLite reader (column values come back as `Int64`/`string`, not the narrower `int`/`DateTime` a record's positional constructor expects) — every repository maps through a private mutable DTO class first (see any `Sqlite*Repository`'s `*Row`/`*RowDto` nested classes) instead of querying a public record type directly.
-- **The schema is offline-pivot SQLite** (`Persistence/Migrations/001_base.sql`), PascalCase tables/columns, ids auto-incrementing from 1 (no bancho.py-style gaps). `Matches`/`Rounds`/`Scores` replace per-score online-play bookkeeping; `UserStats` is seeded once at zero and never updated by score submission (no singleplayer ranking exists). The tournament match report (TRT) is never persisted — built at read time from those three tables (or from the live `MatchSession` for an in-progress match) by `MatchReportService`. Full detail in [`docs/database.md`](docs/database.md) and [`docs/multiplayer.md`](docs/multiplayer.md).
-- **Logging is Serilog, configured entirely in code** (`Basil.Web/Program.cs`'s `ConfigureSerilog`) — no standard ASP.NET Core `appsettings.json` `Logging` section; the only configurable knob is `Basil:Logging:MinimumLevel` (default `"Information"`, affects stdout + the full file only — the errors file is always Error+). Console + two daily-rolling file sinks (`Logs/full/`, Information+; `Logs/errors/`, Error+), each with a hardlink pointer (`Logs/latest.log`/`errors_latest.log`) recreated on every roll via `HardLinkFileLifecycleHooks`/`Basil.Infrastructure/Logging/HardLink.cs`. Correlation scopes (`RequestId`, `MatchId`/`UserId`/`PacketType` from `PacketDispatcher`, IRC's own `ConnectionId`, `ScoreId`, `!mp`'s `Subcommand`) and fixed `Category` tags (`Mapsets`/`Matches`/`Scores`/`Online`/`IRC`/`Database`/`Cache`/`Host`/`Api` — the last covering `ApiRequestLoggingMiddleware`'s per-request access lines on the `api.` host, which skip its live SSE channels — via `CategoryEnricher` matching on `SourceContext`, falling back to `App` — which `ConfigureSerilog` demotes to Warning+ only, since it's unclassified framework/library noise, not a domain event) are documented in full in [`docs/logging.md`](docs/logging.md) — read it before adding a new scope, a new category rule, or wondering why a log line is missing one. Domain-event log lines that track a resource's lifecycle (mapset/beatmap ingestion, match join/leave, login/logout, round completion, ...) are prefixed `+`/`-`/`~` (created/removed/modified) by convention — match it in new log lines rather than inventing another marker. `ConfigureKestrel` wraps TLS cert loading in try/catch — a bad `CertPath`/`CertPassword` logs `Fatal` (path only, never the password) and calls `Environment.Exit(1)` instead of crashing unclearly through the generic host's own handling. Multiplayer events log once, in the shared `MatchMembershipService`/`MatchControlService` methods — never re-logged in the packet handler/`!mp` subcommand/HTTP route that calls into them.
-- **Chat commands and the bot account use a *fresh* dispatch layer** (`ICommandDispatcher`/`CommandDispatcher`/`MpCommandService`), narrower than bancho.py's full set. The scrim engine (`MatchScoringService`) does not exist — don't build it without being asked. Which `!mp` subcommands exist (including `!mp make`, `!mp timer`/`aborttimer` — all implemented) versus are deliberately deferred (`!mp force`, the full mappool/scrim engine, personal commands like `!block`/`!changename`) is listed in [`docs/working-scopes.md`](docs/working-scopes.md) — read it before assuming a bancho.py chat command exists here.
+### Important invariants
+
+#### Multiplayer concurrency
+
+`MatchSession` is mutable shared state.
+
+Operations that read and then mutate match state must follow the match's existing synchronization model and hold the match lock across the complete state-transition and broadcast sequence.
+
+Do not introduce a second synchronization mechanism for the same state.
+
+Do not hold the match lock across long-lived or unrelated waits.
+
+See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) for the complete model.
+
+#### Authority
+
+Referee, host, and creator are separate concepts.
+
+Do not treat them as interchangeable.
+
+The creator has permanent match authority. Referee membership and host state have different lifecycles.
+
+See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) before changing match permissions or `!mp` authorization.
+
+#### No pp in gameplay
+
+Basil does not use performance points for scoring, leaderboards, or match win conditions.
+
+Locally calculated difficulty/star-rating information is display-only.
+
+Do not introduce pp-dependent gameplay behavior.
+
+#### Stable protocol
+
+Bancho packet layouts are wire contracts.
+
+Changes to packet encoding or decoding must be treated as protocol changes and covered by protocol tests.
+
+#### SSE
+
+Live HTTP streams use dedicated `/live` endpoints.
+
+Do not introduce content negotiation between JSON and SSE on the same route.
+
+See [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
+
+#### API responses
+
+The `api.` host uses a common response envelope for JSON responses.
+
+The generated OpenAPI schema must describe the same contract that the runtime returns.
+
+Do not manually work around the envelope in individual routes without first checking the API middleware and schema transformation rules.
+
+See [`docs/for-client/response-envelope.md`](docs/for-client/response-envelope.md).
+
+#### User-visible enums
+
+Keep API record properties typed as their actual enum types.
+
+Do not replace enums with `int` or `string` merely to influence serialization.
+
+Serialization behavior belongs to the API contract and is documented separately.
+
+#### Naming
+
+Use `Privilege`, not `Priv`, for new code and public models.
+
+Do not reintroduce the old abbreviation.
+
+## Scope
+
+Basil is deliberately smaller than bancho.py.
+
+Do not implement a bancho.py feature simply because it exists upstream.
+
+Before adding:
+
+* a chat command
+* a persistence model
+* an API surface
+* a social feature
+* a scoring feature
+* a compatibility endpoint
+
+check [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md).
+
+If the requested behavior conflicts with the documented scope, surface that conflict before coding.
+
+## Repository documentation
+
+Use [`docs/index.md`](docs/index.md) to find the authoritative document for a topic.
+
+Important developer documents:
+
+* [`architecture.md`](docs/for-developers/architecture.md) — architecture and dependency direction
+* [`working-scopes.md`](docs/for-developers/working-scopes.md) — feature scope
+* [`testing.md`](docs/for-developers/testing.md) — test policy
+* [`development.md`](docs/for-developers/development.md) — local development
+* [`multiplayer.md`](docs/for-developers/multiplayer.md) — match/session behavior
+* [`sse.md`](docs/for-developers/sse.md) — live HTTP streams
+* [`database.md`](docs/for-developers/database.md) — persistence design
+* [`logging.md`](docs/for-developers/logging.md) — logging design
+* [`docs-guideline.md`](docs/for-developers/docs-guideline.md) — documentation rules
+
+Technician documentation:
+
+* [`configuration.md`](docs/for-technicians/configuration.md) — configuration and data directories
+* [`https.md`](docs/for-technicians/https.md) — TLS requirements
+* [`docker.md`](docs/for-technicians/docker.md) — Docker deployment
+
+Agent documentation:
+
+* [`guidelines.md`](docs/for-agents/guidelines.md) — agent workflow
+* [`domain.md`](docs/for-agents/domain.md) — domain-modeling guidance
+* [`issue-tracker.md`](docs/for-agents/issue-tracker.md) — GitHub Issues workflow
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues live in GitHub Issues (thnhmai06/osuBasil), via `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for [`thnhmai06/osuBasil`](https://github.com/thnhmai06/osuBasil).
 
-### Domain docs
+See [`docs/for-agents/issue-tracker.md`](docs/for-agents/issue-tracker.md).
 
-Single-context: `CONTEXT.md` + `docs/adr/` at repo root (created lazily by `/domain-modeling`). See `docs/agents/domain.md`.
+### Domain modeling
+
+Domain-modeling work uses:
+
+```text
+CONTEXT.md
+docs/adr/
+```
+
+These files are created lazily by the `/domain-modeling` workflow.
+
+See [`docs/for-agents/domain.md`](docs/for-agents/domain.md).
+
+## Final verification
+
+Before considering a code change complete:
+
+1. Run the smallest relevant tests while iterating.
+2. Run the complete test suite for the final change.
+3. Run a Release build when the change affects production code.
+4. Check architecture tests for cross-layer changes.
+5. Update authoritative documentation when behavior or design changes.
+6. Review the final diff for unrelated changes.
+
+The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.

@@ -22,8 +22,8 @@ namespace Basil.Application.Services.Bot;
 /// </summary>
 /// <remarks>
 ///     The subcommand set is matched against the official osu! multiplayer server's own chat
-///     behavior; see docs/working-scopes.md for what is a deliberate Basil-only addition versus a
-///     real Bancho command. <c>makeprivate</c> is a Basil-only variant of <c>make</c> (see
+///     behavior; see docs/for-developers/working-scopes.md for what is a deliberate Basil-only
+///     addition versus a real Bancho command. <c>makeprivate</c> is a Basil-only variant of <c>make</c> (see
 ///     <see cref="MakeAsync" />) that creates the room already private; <c>!mp private [0|1]</c> is
 ///     the way to view or change privacy on a room that already exists. <c>!mp join &lt;id&gt;</c>
 ///     bypasses the referee gate; it is routed directly from <see cref="CommandDispatcher" />.

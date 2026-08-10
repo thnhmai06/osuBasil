@@ -6,8 +6,8 @@ namespace Basil.Infrastructure.Tests.Media;
 /// <summary>
 ///     Exercises the real ffmpeg binary (not a mock) — soft-skips if ffmpeg isn't reachable on PATH,
 ///     since that's an environment dependency this test suite doesn't otherwise require (see
-///     docs/run-deployment.md's Docker-vs-manual-publish split for where ffmpeg is expected to come
-///     from in a real deployment).
+///     docs/for-technicians/deployment.md for where ffmpeg is expected to come from in a real
+///     deployment).
 /// </summary>
 public class FfmpegAudioExtractorTests
 {

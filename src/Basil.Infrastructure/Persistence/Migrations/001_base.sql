@@ -253,7 +253,7 @@ create index MatchEvents_MatchId_index on MatchEvents (MatchId);
 -- directly by application code. Beatmapsets:Public excludes IsPrivate mapsets (what a non-admin caller's
 -- `GET /beatmapsets` sees); Beatmapsets:Total is unfiltered (what an admin caller sees). Scores are never
 -- hard-deleted (see the Scores table comment above), so Scores:Total only ever needs an insert
--- trigger. GET /matches and GET /users (admin) don't get a counter here — see docs/database.md
+-- trigger. GET /matches and GET /users (admin) don't get a counter here — see docs/for-developers/database.md
 -- for why (their totals are already cheaply available without one).
 create table Counters
 (
