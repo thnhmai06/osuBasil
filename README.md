@@ -14,7 +14,7 @@ faces the sun.</i></sub>
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
 [![Last commit](https://img.shields.io/github/last-commit/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil/commits/main)
 [![GitHub Release](https://img.shields.io/github/v/release/thnhmai06/osuBasil?sort=semver&logo=github&logoColor=white&style=flat-square)](https://github.com/thnhmai06/osuBasil/releases/latest)
-[![Docker Image Version](https://img.shields.io/docker/v/thanhmai06/osubasil?sort=semver&logo=docker&logoColor=white&style=flat-square)](https://hub.docker.com/repository/docker/thnhmai06/osubasil/)
+[![Docker Image Version](https://img.shields.io/docker/v/thnhmai06/osubasil?sort=semver&logo=docker&logoColor=white&style=flat-square)](https://hub.docker.com/repository/docker/thnhmai06/osubasil/)
 
 </div>
 
