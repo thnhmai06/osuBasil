@@ -10,7 +10,7 @@ faces the sun.</i></sub>
 **A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) server for tournaments and multiplayer.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
-[![GitHub Stars](https://img.shields.io/github/stars/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil)
+[![CodeFactor](https://www.codefactor.io/repository/github/thnhmai06/osubasil/badge/main?style=flat-square)](https://www.codefactor.io/repository/github/thnhmai06/osubasil/overview/main)
 [![License](https://img.shields.io/github/license/thnhmai06/osuBasil?style=flat-square)](LICENSE.md)
 [![Last commit](https://img.shields.io/github/last-commit/thnhmai06/osuBasil?style=flat-square)](https://github.com/thnhmai06/osuBasil/commits/main)
 [![GitHub Release](https://img.shields.io/github/v/release/thnhmai06/osuBasil?sort=semver&logo=github&logoColor=white&style=flat-square)](https://github.com/thnhmai06/osuBasil/releases/latest)
