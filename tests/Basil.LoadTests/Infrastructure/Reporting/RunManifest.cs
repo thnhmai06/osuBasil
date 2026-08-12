@@ -32,7 +32,10 @@ public sealed class RunManifest
 	/// <summary>The .NET runtime description, e.g. <c>.NET 10.0.0</c>.</summary>
 	public required string FrameworkDescription { get; init; }
 
-	/// <summary>The git commit the repository was at when this run started, or <see langword="null" /> if it could not be determined.</summary>
+	/// <summary>
+	///     The git commit the repository was at when this run started, or <see langword="null" /> if it could not be
+	///     determined.
+	/// </summary>
 	public string? GitCommit { get; init; }
 
 	/// <summary>The fully resolved profile this run used.</summary>

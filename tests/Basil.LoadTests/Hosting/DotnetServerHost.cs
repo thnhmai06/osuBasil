@@ -15,16 +15,16 @@ namespace Basil.LoadTests.Hosting;
 /// </summary>
 public sealed class DotnetServerHost : IServerHost
 {
-	private readonly ServerHostSettings _settings;
 	private readonly DotnetCountersSettings _countersSettings;
 	private readonly Action<string> _logWarning;
-	private readonly string _serverDirectory;
 	private readonly bool _processMetricsTrustworthy;
+	private readonly string _serverDirectory;
+	private readonly ServerHostSettings _settings;
+	private BasilHttpClientFactory? _clientFactory;
+	private DotnetRuntimeMetricsCollector? _countersSampler;
 
 	private Process? _process;
 	private ProcessResourceSampler? _processSampler;
-	private DotnetRuntimeMetricsCollector? _countersSampler;
-	private BasilHttpClientFactory? _clientFactory;
 
 	public DotnetServerHost(ServerHostSettings settings, DotnetCountersSettings countersSettings,
 		Action<string> logWarning)
@@ -39,10 +39,10 @@ public sealed class DotnetServerHost : IServerHost
 
 		Endpoint = new ServerEndpoint(settings.Domain, settings.Port, IPAddress.Loopback);
 		Capabilities = new ServerHostCapabilities(
-			CanMeasureStartupTime: true,
-			CanMeasureProcessMetrics: _processMetricsTrustworthy,
-			CanMeasureDotnetCounters: _processMetricsTrustworthy,
-			CanSnapshotDatabase: true);
+			true,
+			_processMetricsTrustworthy,
+			_processMetricsTrustworthy,
+			true);
 	}
 
 	public ServerHostCapabilities Capabilities { get; }
@@ -99,7 +99,6 @@ public sealed class DotnetServerHost : IServerHost
 		if (_countersSampler is not null) await _countersSampler.StopAsync(cancellationToken);
 
 		if (_process is { HasExited: false })
-		{
 			try
 			{
 				_process.CloseMainWindow();
@@ -112,7 +111,6 @@ public sealed class DotnetServerHost : IServerHost
 				_process.Kill(true);
 				await _process.WaitForExitAsync(cancellationToken);
 			}
-		}
 
 		_clientFactory?.Dispose();
 		_clientFactory = null;
@@ -149,34 +147,9 @@ public sealed class DotnetServerHost : IServerHost
 			// a locked log must never abort report writing, so retry briefly then skip with a warning.
 			var tail = await TryReadLogTailAsync(logPath, cancellationToken);
 			if (tail is not null)
-			{
 				await File.WriteAllLinesAsync(Path.Combine(reportFolder, "server-log-tail.txt"),
 					tail.TakeLast(500), cancellationToken);
-			}
 		}
-	}
-
-	/// <summary>Reads a log file with a short retry, returning <see langword="null" /> if it stays locked.</summary>
-	private async Task<string[]?> TryReadLogTailAsync(string path, CancellationToken cancellationToken)
-	{
-		for (var attempt = 0; attempt < 3; attempt++)
-		{
-			try
-			{
-				return await File.ReadAllLinesAsync(path, cancellationToken);
-			}
-			catch (IOException) when (attempt < 2)
-			{
-				await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
-			}
-			catch (IOException)
-			{
-				_logWarning($"Server log '{path}' is locked; its tail will not be included in the report.");
-				return null;
-			}
-		}
-
-		return null;
 	}
 
 	public Task<bool> SyncDatabaseSnapshotAsync(string snapshotPath, bool restoreIfPresent)
@@ -192,6 +165,27 @@ public sealed class DotnetServerHost : IServerHost
 		if (_countersSampler is not null) await _countersSampler.DisposeAsync();
 		if (_processSampler is not null) await _processSampler.DisposeAsync();
 		_process?.Dispose();
+	}
+
+	/// <summary>Reads a log file with a short retry, returning <see langword="null" /> if it stays locked.</summary>
+	private async Task<string[]?> TryReadLogTailAsync(string path, CancellationToken cancellationToken)
+	{
+		for (var attempt = 0; attempt < 3; attempt++)
+			try
+			{
+				return await File.ReadAllLinesAsync(path, cancellationToken);
+			}
+			catch (IOException) when (attempt < 2)
+			{
+				await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+			}
+			catch (IOException)
+			{
+				_logWarning($"Server log '{path}' is locked; its tail will not be included in the report.");
+				return null;
+			}
+
+		return null;
 	}
 
 	private string BuildServerArguments(string certPath)

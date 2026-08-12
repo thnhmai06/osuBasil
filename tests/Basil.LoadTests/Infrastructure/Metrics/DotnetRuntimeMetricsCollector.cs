@@ -15,11 +15,13 @@ namespace Basil.LoadTests.Infrastructure.Metrics;
 /// <param name="processId">The process id to attach to.</param>
 /// <param name="sampleIntervalSeconds">How often the runtime publishes counter-events.</param>
 /// <param name="logWarning">Sink for the single non-fatal degradation warning.</param>
-public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleIntervalSeconds,
+public sealed class DotnetRuntimeMetricsCollector(
+	int processId,
+	int sampleIntervalSeconds,
 	Action<string> logWarning) : IResourceSampler
 {
-	private readonly Lock _stateLock = new();
 	private readonly Dictionary<string, double> _latest = new();
+
 	private readonly List<EventPipeProvider> _providers =
 	[
 		new("System.Runtime", EventLevel.Informational, 0,
@@ -29,8 +31,10 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 			})
 	];
 
-	private EventPipeSession? _session;
+	private readonly Lock _stateLock = new();
 	private Task? _processingTask;
+
+	private EventPipeSession? _session;
 	private bool _warnedOnce;
 
 	public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -42,7 +46,7 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 			try
 			{
 				_session = new DiagnosticsClient(processId).StartEventPipeSession(_providers,
-					requestRundown: false);
+					false);
 				break;
 			}
 			catch (DiagnosticsClientException)
@@ -115,6 +119,7 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 				// The target process exited before the session could be stopped; the reader observes
 				// the stream end on its own (handled in ProcessEvents) and collection just stops.
 			}
+
 			session.Dispose();
 		}
 
@@ -128,6 +133,7 @@ public sealed class DotnetRuntimeMetricsCollector(int processId, int sampleInter
 			{
 				// The caller is shutting down; the event-processing task is a background daemon.
 			}
+
 			_processingTask = null;
 		}
 	}

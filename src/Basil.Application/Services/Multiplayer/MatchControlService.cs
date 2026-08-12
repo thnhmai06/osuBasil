@@ -33,12 +33,6 @@ public sealed class MatchControlService(
 	ISessionRegistry<IrcSession> ircRegistry,
 	ILogger<MatchControlService> logger)
 {
-	public enum AddRefereeResult : byte
-	{
-		Ok,
-		TargetIsBot
-	}
-
 	public enum AbortResult : byte
 	{
 		Ok,
@@ -49,6 +43,19 @@ public sealed class MatchControlService(
 	{
 		Ok,
 		NoTimerRunning
+	}
+
+	public enum AddRefereeResult : byte
+	{
+		Ok,
+		TargetIsBot
+	}
+
+	public enum BanResult : byte
+	{
+		Ok,
+		TargetIsReferee,
+		TargetIsBot
 	}
 
 	public enum ForceInviteResult : byte
@@ -71,13 +78,6 @@ public sealed class MatchControlService(
 	{
 		Ok,
 		TargetNotInMatch,
-		TargetIsReferee,
-		TargetIsBot
-	}
-
-	public enum BanResult : byte
-	{
-		Ok,
 		TargetIsReferee,
 		TargetIsBot
 	}
@@ -908,7 +908,6 @@ public sealed class MatchControlService(
 
 		var removedAny = false;
 		foreach (var session in OnlineSessions(targetUserId))
-		{
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
 				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
@@ -920,7 +919,6 @@ public sealed class MatchControlService(
 				matchMembership.LeaveMatchChat(session, match);
 				removedAny = true;
 			}
-		}
 
 		if (!removedAny) return KickResult.TargetNotInMatch;
 
@@ -966,7 +964,6 @@ public sealed class MatchControlService(
 		match.AddBan(targetUserId);
 
 		foreach (var session in OnlineSessions(targetUserId))
-		{
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
 				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
@@ -976,7 +973,6 @@ public sealed class MatchControlService(
 			{
 				matchMembership.LeaveMatchChat(session, match);
 			}
-		}
 
 		logger.LogInformation(
 			"User kicked: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId} Reason=Banned",

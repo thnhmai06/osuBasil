@@ -17,7 +17,6 @@ namespace Basil.Web.Auth;
 ///     than rejecting it outright. A request that carries one but the key is
 ///     malformed or wrong returns <see cref="AuthenticateResult.Fail(string)" />
 ///     instead, since an authentication attempt was actually made.
-///
 ///     Endpoints can optionally check
 ///     <c>User.IsInRole(AdminKeyDefaults.Role)</c> to reveal privileged
 ///     resources, while administrative endpoints should require

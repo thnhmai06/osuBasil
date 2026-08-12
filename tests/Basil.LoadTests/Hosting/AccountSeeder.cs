@@ -45,13 +45,13 @@ public sealed class AccountSeeder(BasilApiClient apiClient)
 	{
 		var failures = 0;
 		foreach (var account in accounts)
-		{
 			try
 			{
 				account.UserId =
 					await apiClient.EnsureUserAsync(account.Name, account.Password, "vn", cancellationToken);
 			}
-			catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+			catch (Exception ex) when (ex is not OperationCanceledException ||
+			                           !cancellationToken.IsCancellationRequested)
 			{
 				// A single flaky connection among thousands of sequential seed calls must never
 				// abort the whole run. One retry covers transient hiccup; a second failure is logged.
@@ -61,13 +61,12 @@ public sealed class AccountSeeder(BasilApiClient apiClient)
 						await apiClient.EnsureUserAsync(account.Name, account.Password, "vn", cancellationToken);
 				}
 				catch (Exception retryEx) when (retryEx is not OperationCanceledException ||
-				                                 !cancellationToken.IsCancellationRequested)
+				                                !cancellationToken.IsCancellationRequested)
 				{
 					failures++;
 					logWarning?.Invoke($"Failed to seed account '{account.Name}': {retryEx.Message}");
 				}
 			}
-		}
 
 		return failures;
 	}

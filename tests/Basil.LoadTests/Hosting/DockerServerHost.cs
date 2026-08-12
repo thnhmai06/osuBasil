@@ -25,18 +25,18 @@ namespace Basil.LoadTests.Hosting;
 public sealed class DockerServerHost(ServerHostSettings settings) : IServerHost
 {
 	private const string ComposeServiceLabel = "com.docker.compose.service";
+	private readonly DockerClient _client = new DockerClientConfiguration().CreateClient();
 
 	private readonly string _composeFile = RepoPaths.Resolve(settings.Docker.ComposeFile);
 	private readonly string _repoRoot = RepoPaths.RepoRoot;
-	private readonly DockerClient _client = new DockerClientConfiguration().CreateClient();
-	private string? _containerId;
 	private BasilHttpClientFactory? _clientFactory;
+	private string? _containerId;
 
 	public ServerHostCapabilities Capabilities { get; } = new(
-		CanMeasureStartupTime: true,
-		CanMeasureProcessMetrics: true, // CPU + working set only, via the Docker stats API
-		CanMeasureDotnetCounters: false,
-		CanSnapshotDatabase: true); // via the ./docker-data/Data bind mount
+		true,
+		true, // CPU + working set only, via the Docker stats API
+		false,
+		true); // via the ./docker-data/Data bind mount
 
 	public ServerEndpoint Endpoint { get; } = new(settings.Domain, settings.Port, IPAddress.Loopback);
 
@@ -60,6 +60,7 @@ public sealed class DockerServerHost(ServerHostSettings settings) : IServerHost
 			{
 				// The container is already gone; nothing to stop.
 			}
+
 			_containerId = null;
 		}
 

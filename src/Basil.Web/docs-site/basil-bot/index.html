@@ -253,7 +253,8 @@
 		<td>Granted via <code>!mp addref</code>, authorized to use <code>!mp</code> commands on that match.</td>
 		<td>Physically present in the room, can change settings directly in the client (not via chat).</td>
 		<td>Whoever created the room. Holds full <code>!mp</code> authority for the room's lifetime regardless of
-			referee status, and is the only one who can run <code>!mp addref</code>/<code>!mp removeref</code>.</td>
+			referee status, and is the only one who can run <code>!mp addref</code>/<code>!mp removeref</code>.
+		</td>
 	</tr>
 	<tr>
 		<td>Must be in the room?</td>
@@ -292,7 +293,8 @@
 <p>
 	Which match are you currently scoped to? By default, the match linked to the chat channel you're in.
 	Use <code>!mp in &lt;match_id&gt;</code> to control a match without being in its room &mdash; DM only,
-	refused (with a DM'd error) if run in any channel. Once set, this scope always takes priority over the current channel
+	refused (with a DM'd error) if run in any channel. Once set, this scope always takes priority over the current
+	channel
 	until changed. A scoped subcommand run anywhere except the match's own channel &mdash; a DM, or any
 	other channel like <code>#osu</code> &mdash; always replies privately (DM'd back to you, prefixed with
 	<code>[#id]</code>, with an unprefixed copy mirrored into the room) rather than posting into whatever
@@ -356,7 +358,8 @@
 	<tr>
 		<td>Join</td>
 		<td><code>!mp join &lt;id&gt; [password]</code></td>
-		<td>Join a public match by the id BasilBot replied with when it was created. Private rooms require an invite.</td>
+		<td>Join a public match by the id BasilBot replied with when it was created. Private rooms require an invite.
+		</td>
 	</tr>
 	<tr>
 		<td>In</td>
@@ -536,7 +539,8 @@
 		<td><code>!mp addref &lt;name&gt;</code> / <code>!mp removeref &lt;name&gt;</code></td>
 		<td><strong>Creator only</strong> — an ordinary referee cannot run either subcommand. A match must
 			always keep at least one referee: removing the last one is rejected, and the creator can never be
-			removed at all.</td>
+			removed at all.
+		</td>
 	</tr>
 	<tr>
 		<td>List referees</td>

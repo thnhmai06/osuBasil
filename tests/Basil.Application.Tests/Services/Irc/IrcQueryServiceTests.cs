@@ -5,10 +5,10 @@ using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Irc;
 
@@ -27,7 +27,8 @@ public class IrcQueryServiceTests
 	private IrcQueryService MakeService()
 	{
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
-		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), options);
+		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), options);
 		return new IrcQueryService(_channelRegistry, _gameRegistry, _ircRegistry, membership,
 			new MotdService(_settings), options);
 	}

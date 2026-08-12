@@ -34,7 +34,8 @@ public class SendPublicMessageHandlerTests
 
 	private SendPublicMessageHandler MakeHandler()
 	{
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership,
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);

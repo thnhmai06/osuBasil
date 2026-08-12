@@ -2,6 +2,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Sessions.Irc;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Sessions;
+using Basil.Protocol.Irc;
 
 namespace Basil.Infrastructure.Tests.Sessions;
 
@@ -131,6 +132,9 @@ public class IrcSessionRegistryTests
 	private sealed class FakeIrcConnection : IIrcConnection
 	{
 		public UserSession User => throw new NotImplementedException();
-		public void Send(Basil.Protocol.Irc.IrcMessage message) { }
+
+		public void Send(IrcMessage message)
+		{
+		}
 	}
 }

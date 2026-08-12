@@ -4,10 +4,18 @@ using Basil.LoadTests.Infrastructure.Metrics;
 
 namespace Basil.LoadTests.Scenarios;
 
-/// <summary>Startup time plus idle resource usage over repeated start/settle/stop cycles. Not an NBomber scenario — there is no load to simulate here.</summary>
-/// <param name="StartupTimes">One entry per iteration where the host could measure it; empty for a host that didn't start the server itself.</param>
+/// <summary>
+///     Startup time plus idle resource usage over repeated start/settle/stop cycles. Not an NBomber scenario — there
+///     is no load to simulate here.
+/// </summary>
+/// <param name="StartupTimes">
+///     One entry per iteration where the host could measure it; empty for a host that didn't start
+///     the server itself.
+/// </param>
 /// <param name="IdleSamples">Resource samples taken while the freshly started server sat idle.</param>
-public sealed record StartupBenchmarkResult(IReadOnlyList<TimeSpan> StartupTimes, IReadOnlyList<ResourceSample> IdleSamples);
+public sealed record StartupBenchmarkResult(
+	IReadOnlyList<TimeSpan> StartupTimes,
+	IReadOnlyList<ResourceSample> IdleSamples);
 
 /// <summary>Runs the Phase 1 startup/idle-resource benchmark.</summary>
 public static class StartupBenchmark

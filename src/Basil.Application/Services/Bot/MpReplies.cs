@@ -249,7 +249,10 @@ public static class MpReplies
 	/// <summary>Usage line for <c>!mp set</c>.</summary>
 	public const string SetUsage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
 
-	/// <summary>Reply after changing settings; <c>{0}</c> is the team type, <c>{1}</c> the win condition, <c>{2}</c> a size suffix.</summary>
+	/// <summary>
+	///     Reply after changing settings; <c>{0}</c> is the team type, <c>{1}</c> the win condition, <c>{2}</c> a size
+	///     suffix.
+	/// </summary>
 	public const string ChangedMatchSettings = "Changed match settings to {0}, {1}{2}";
 
 	// ── !mp map / mods ───────────────────────────────────────────────────────────────────────
@@ -394,10 +397,16 @@ public static class MpReplies
 	/// <summary>Reply listing the available FAQ entries; <c>{0}</c> is the comma-joined list.</summary>
 	public const string AvailableFaqEntries = "Available FAQ entries: {0}";
 
-	/// <summary>Reply rejecting a chain segment that is not an <c>!mp</c> command; <c>{0}</c> is the prefix, <c>{1}</c> the rejected text.</summary>
+	/// <summary>
+	///     Reply rejecting a chain segment that is not an <c>!mp</c> command; <c>{0}</c> is the prefix, <c>{1}</c> the
+	///     rejected text.
+	/// </summary>
 	public const string ChainMustBeMp = "Chained commands must all be `{0}mp <subcommand>` — rejected at: '{1}'.";
 
-	/// <summary>Reply rejecting a chain segment that cannot be chained; <c>{0}</c> is the prefix, <c>{1}</c> the subcommand, <c>{2}</c> the rejected text.</summary>
+	/// <summary>
+	///     Reply rejecting a chain segment that cannot be chained; <c>{0}</c> is the prefix, <c>{1}</c> the subcommand,
+	///     <c>{2}</c> the rejected text.
+	/// </summary>
 	public const string CannotChainMp = "`{0}mp {1}` can't be chained — rejected at: '{2}'.";
 
 	/// <summary>Reply to <c>!roll</c>; <c>{0}</c> is the sender's name, <c>{1}</c> the roll result.</summary>

@@ -5,7 +5,10 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Verifies the `MatchStart` handler starts the match, host-only, starting players with the map and skipping players without it.</summary>
+/// <summary>
+///     Verifies the `MatchStart` handler starts the match, host-only, starting players with the map and skipping
+///     players without it.
+/// </summary>
 public class MatchStartHandlerTests
 {
 	[Fact]

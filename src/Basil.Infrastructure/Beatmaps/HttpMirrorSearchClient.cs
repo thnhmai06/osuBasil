@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Microsoft.Extensions.Logging;
+
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 // ReSharper disable ClassNeverInstantiated.Local

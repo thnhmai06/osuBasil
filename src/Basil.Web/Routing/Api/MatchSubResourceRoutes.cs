@@ -130,14 +130,6 @@ internal static class MatchSubResourceRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
-	/// <summary>Request body for `POST /matches/{matchId}/chat`.</summary>
-	/// <param name="Text">The text BasilBot says in the room.</param>
-	public sealed record SendMatchChatRequest(string Text);
-
-	/// <summary>Confirmation body for `POST /matches/{matchId}/chat`.</summary>
-	/// <param name="Sent">The number of chat messages the text became.</param>
-	public sealed record MatchChatSentView(int Sent);
-
 	/// <summary>
 	///     Turns a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
 	///     consumes, translating each <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it
@@ -1234,6 +1226,14 @@ internal static class MatchSubResourceRoutes
 
 		return (targets, null);
 	}
+
+	/// <summary>Request body for `POST /matches/{matchId}/chat`.</summary>
+	/// <param name="Text">The text BasilBot says in the room.</param>
+	public sealed record SendMatchChatRequest(string Text);
+
+	/// <summary>Confirmation body for `POST /matches/{matchId}/chat`.</summary>
+	/// <param name="Sent">The number of chat messages the text became.</param>
+	public sealed record MatchChatSentView(int Sent);
 
 	/// <summary>Request body for `PUT /matches/{matchId}/hosts`.</summary>
 	public sealed record SetHostRequest(int UserId);

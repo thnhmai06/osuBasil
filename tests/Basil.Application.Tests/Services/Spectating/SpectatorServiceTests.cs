@@ -2,13 +2,13 @@ using Basil.Application.Configurations;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Spectating;
 
@@ -22,7 +22,8 @@ public class SpectatorServiceTests
 	private SpectatorService MakeService()
 	{
 		return new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance);
 	}
 
@@ -34,7 +35,7 @@ public class SpectatorServiceTests
 	private void RegisterAll(params GameSession[] sessions)
 	{
 		_gameRegistry.All.Returns(sessions);
-		
+
 		foreach (var session in sessions)
 		{
 			_gameRegistry.GetByUserId(session.Id).Returns(session);

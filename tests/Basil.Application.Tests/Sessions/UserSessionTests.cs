@@ -3,7 +3,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Tests.Sessions;
 
-/// <summary>Verifies `GameSession`'s online-player session state: privilege mapping (`BanchoPrivilege`/`Restricted`), name normalization, silence, packet queueing, and channel membership tracking.</summary>
+/// <summary>
+///     Verifies `GameSession`'s online-player session state: privilege mapping (`BanchoPrivilege`/`Restricted`), name
+///     normalization, silence, packet queueing, and channel membership tracking.
+/// </summary>
 public class UserSessionTests
 {
 	private static GameSession MakeSession(UserPrivileges priv)

@@ -37,15 +37,6 @@ public sealed class MatchMembershipService(
 	IUserRepository userRepo,
 	ILogger<MatchMembershipService> logger)
 {
-	private const int MaxMatchNameLength = 50;
-
-	/* "Match created in 15, invite in 10"
-	* Matches are usually created 15 minutes before start and players are invited
-	* 10 minutes later, so do not close empty rooms too aggressively.
-	*/
-	private const int EmptyRoomCloseSeconds = 15 * 60;
-	private const int EmptyRoomWarnAtSeconds = 5 * 60;
-
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
 	public enum JoinResult : byte
 	{
@@ -59,6 +50,15 @@ public sealed class MatchMembershipService(
 		NoFreeSlot,
 		BotCannotSeat
 	}
+
+	private const int MaxMatchNameLength = 50;
+
+	/* "Match created in 15, invite in 10"
+	 * Matches are usually created 15 minutes before start and players are invited
+	 * 10 minutes later, so do not close empty rooms too aggressively.
+	 */
+	private const int EmptyRoomCloseSeconds = 15 * 60;
+	private const int EmptyRoomWarnAtSeconds = 5 * 60;
 
 	/// <summary>Validates parsed match-create data against the expected host.</summary>
 	/// <param name="data">The parsed match-create data.</param>
@@ -98,7 +98,10 @@ public sealed class MatchMembershipService(
 	/// <param name="creator">The userSession creating the room.</param>
 	/// <param name="data">The parsed match-create data.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
-	/// <returns>The new <see cref="MatchSession" />, or <see langword="null" /> when a game-client creator could not be seated.</returns>
+	/// <returns>
+	///     The new <see cref="MatchSession" />, or <see langword="null" /> when a game-client creator could not be
+	///     seated.
+	/// </returns>
 	public async Task<MatchSession?> CreateAsync(UserSession creator, MatchState data,
 		CancellationToken cancellationToken = default)
 	{
@@ -158,7 +161,7 @@ public sealed class MatchMembershipService(
 		// right after this method returns, so the participant/referee check would reject this otherwise
 		// legitimate join. Idempotent for an already-seated creator (JoinChannel no-ops if already in).
 		if (channelRegistry.GetByName(match.ChatChannelName) is { } channel)
-			channelMembership.Join(creator, channel, bypassMatchGate: true);
+			channelMembership.Join(creator, channel, true);
 
 		return match;
 	}
@@ -312,7 +315,7 @@ public sealed class MatchMembershipService(
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		// bypassMatchGate: the slot isn't assigned until below, so the participant check would reject
 		// this legitimate seat — every prior gate in JoinAsync/ForceJoinAsync already authorized it.
-		if (channel is null || !channelMembership.Join(userSession, channel, bypassMatchGate: true)) return false;
+		if (channel is null || !channelMembership.Join(userSession, channel, true)) return false;
 
 		var lobby = channelRegistry.GetByName("#lobby");
 		if (lobby is not null && userSession.InChannel(lobby.Name)) channelMembership.Part(userSession, lobby);
@@ -389,7 +392,10 @@ public sealed class MatchMembershipService(
 				hostTransfer = true;
 				gameRegistry.GetByUserId(match.HostId)?.Enqueue(ServerPacketWriter.MatchTransferHost());
 			}
-			else match.HostId = MatchSession.NoHostId;
+			else
+			{
+				match.HostId = MatchSession.NoHostId;
+			}
 		}
 
 		await EnqueueStateAsync(match, cancellationToken: cancellationToken);

@@ -5,7 +5,10 @@ namespace Basil.LoadTests.Infrastructure.Reporting;
 /// <summary>Maps the profile's plain-string report format list onto NBomber's own <see cref="ReportFormat" />.</summary>
 public static class NBomberReportOptions
 {
-	/// <summary>Parses format names (e.g. <c>"Html"</c>, <c>"Csv"</c>) into <see cref="ReportFormat" /> values, skipping unknown ones.</summary>
+	/// <summary>
+	///     Parses format names (e.g. <c>"Html"</c>, <c>"Csv"</c>) into <see cref="ReportFormat" /> values, skipping
+	///     unknown ones.
+	/// </summary>
 	public static ReportFormat[] Parse(IEnumerable<string> formats)
 	{
 		return

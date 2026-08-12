@@ -8,9 +8,9 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Content;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
@@ -271,33 +271,6 @@ public class TcpIrcConnectionTests
 		listener.Stop();
 	}
 
-	/// <summary>Backs <see cref="JoiningAMatchRoomChannel_RequiresRefereeOrSeatedStanding" /> with a single fixed match.</summary>
-	private sealed class FakeMatchRegistry(MatchSession match) : IMatchRegistry
-	{
-		public IReadOnlyCollection<MatchSession> All => [match];
-
-		public MatchSession? GetById(int id)
-		{
-			return id == match.Id ? match : null;
-		}
-
-		public MatchSession? GetByDbId(int dbId)
-		{
-			return dbId == match.DbId ? match : null;
-		}
-
-		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
-			CancellationToken cancellationToken = default)
-		{
-			throw new NotSupportedException();
-		}
-
-		public void Remove(int id)
-		{
-			throw new NotSupportedException();
-		}
-	}
-
 	/// <summary>
 	///     Proves the cross-world seam: a "bancho" <see cref="UserSession" /> (no socket behind it,
 	///     exactly like a real one would look from the chat core's perspective) and a real IRC TCP
@@ -313,7 +286,7 @@ public class TcpIrcConnectionTests
 			HashPassword(hasher, "alice-key"));
 
 		var tokenGenerator = new GuidTokenGenerator();
-var gameRegistry = new GameSessionRegistry();
+		var gameRegistry = new GameSessionRegistry();
 		var ircRegistry = new IrcSessionRegistry();
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
@@ -442,6 +415,33 @@ var gameRegistry = new GameSessionRegistry();
 			if (line is null) throw new IOException("Connection closed before the expected line arrived.");
 
 			if (predicate(line)) return line;
+		}
+	}
+
+	/// <summary>Backs <see cref="JoiningAMatchRoomChannel_RequiresRefereeOrSeatedStanding" /> with a single fixed match.</summary>
+	private sealed class FakeMatchRegistry(MatchSession match) : IMatchRegistry
+	{
+		public IReadOnlyCollection<MatchSession> All => [match];
+
+		public MatchSession? GetById(int id)
+		{
+			return id == match.Id ? match : null;
+		}
+
+		public MatchSession? GetByDbId(int dbId)
+		{
+			return dbId == match.DbId ? match : null;
+		}
+
+		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public void Remove(int id)
+		{
+			throw new NotSupportedException();
 		}
 	}
 

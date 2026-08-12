@@ -37,7 +37,10 @@ public interface IServerHost : IAsyncDisposable
 	/// </summary>
 	Task<ResourceSample> CollectMetricsAsync(CancellationToken cancellationToken = default);
 
-	/// <summary>Writes the host-specific artifacts for this run (counters CSV, log tail, ...) into <paramref name="reportFolder" />.</summary>
+	/// <summary>
+	///     Writes the host-specific artifacts for this run (counters CSV, log tail, ...) into
+	///     <paramref name="reportFolder" />.
+	/// </summary>
 	Task ExportResultsAsync(string reportFolder, CancellationToken cancellationToken = default);
 
 	/// <summary>

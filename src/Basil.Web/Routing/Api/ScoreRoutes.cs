@@ -44,7 +44,8 @@ internal static class ScoreRoutes
 				var trimmed = Pagination.Trim(overqueried, p, ps, totalRecords);
 				var views = new List<ScoreDetailView>(trimmed.Items.Count);
 				foreach (var row in trimmed.Items)
-					views.Add(await BuildDetailView(row, gameRegistry, ircRegistry, users, beatmaps, cancellationToken));
+					views.Add(await BuildDetailView(row, gameRegistry, ircRegistry, users, beatmaps,
+						cancellationToken));
 				return Results.Json(new PagedResult<ScoreDetailView>(trimmed.Page, trimmed.PageSize,
 					trimmed.TotalRecords, views));
 			})

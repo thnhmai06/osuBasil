@@ -9,7 +9,10 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Verifies the `StatsRequest` handler enqueues the requested players' stats, excluding restricted targets and the requesting player.</summary>
+/// <summary>
+///     Verifies the `StatsRequest` handler enqueues the requested players' stats, excluding restricted targets and
+///     the requesting player.
+/// </summary>
 public class UserStatsRequestHandlerTests
 {
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();

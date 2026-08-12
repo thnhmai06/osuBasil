@@ -39,7 +39,9 @@ public static class ReportWriter
 		ResourceTimeline timeline, CancellationToken cancellationToken = default)
 	{
 		var aggregates = timeline.Aggregate();
-		var duration = manifest.FinishedUtc.HasValue ? manifest.FinishedUtc.Value - manifest.StartedUtc : (TimeSpan?)null;
+		var duration = manifest.FinishedUtc.HasValue
+			? manifest.FinishedUtc.Value - manifest.StartedUtc
+			: (TimeSpan?)null;
 
 		var lines = new List<string>
 		{
@@ -96,7 +98,8 @@ public static class ReportWriter
 		string key, string label, int decimals, double scale = 1.0)
 	{
 		var a = aggregates.TryGetValue(key, out var value) ? value : new FieldAggregate(null, null, null);
-		lines.Add($"| {label} | {Format(a.Min, decimals, scale)} | {Format(a.Mean, decimals, scale)} | {Format(a.Max, decimals, scale)} |");
+		lines.Add(
+			$"| {label} | {Format(a.Min, decimals, scale)} | {Format(a.Mean, decimals, scale)} | {Format(a.Max, decimals, scale)} |");
 	}
 
 	private static string Format(double? value, int decimals, double scale)

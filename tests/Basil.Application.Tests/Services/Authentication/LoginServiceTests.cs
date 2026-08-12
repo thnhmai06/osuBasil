@@ -11,6 +11,7 @@ using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
@@ -20,7 +21,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Authentication;
 
@@ -49,8 +49,9 @@ public class LoginServiceTests
 	public LoginServiceTests()
 	{
 		_spectatorService = new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), _channelRegistry,
-					Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
@@ -258,7 +259,11 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified, country: "jp");
 
 		GameSession? captured = null;
-		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
+		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci =>
+		{
+			captured = ci.Arg<GameSession>();
+			return true;
+		});
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -343,7 +348,11 @@ public class LoginServiceTests
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		GameSession? captured = null;
-		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
+		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci =>
+		{
+			captured = ci.Arg<GameSession>();
+			return true;
+		});
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
@@ -395,7 +404,11 @@ public class LoginServiceTests
 		]);
 
 		GameSession? captured = null;
-		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci => { captured = ci.Arg<GameSession>(); return true; });
+		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(ci =>
+		{
+			captured = ci.Arg<GameSession>();
+			return true;
+		});
 
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);

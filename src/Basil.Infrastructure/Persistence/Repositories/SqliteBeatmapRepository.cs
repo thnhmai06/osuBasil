@@ -240,8 +240,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		return new SqliteConnection(connectionString);
 	}
 
-	/// <summary>A row DTO matching the Beatmaps columns of the shared SELECT, split off from the
-	///     Beatmapsets columns so each half of the JOIN maps separately.</summary>
+	/// <summary>
+	///     A row DTO matching the Beatmaps columns of the shared SELECT, split off from the
+	///     Beatmapsets columns so each half of the JOIN maps separately.
+	/// </summary>
 	private sealed class BeatmapRow
 	{
 		public string Md5 { get; set; } = "";

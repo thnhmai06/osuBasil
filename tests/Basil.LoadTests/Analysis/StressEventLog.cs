@@ -16,9 +16,9 @@ public sealed class StressEventLog
 {
 	private readonly Lock _lock = new();
 	private readonly List<string> _rows = [];
-	private bool _hasTimeout;
 	private bool _hasConnectionFailure;
 	private bool _hasServerError;
+	private bool _hasTimeout;
 
 	/// <summary>Records the first request timeout, if not already recorded.</summary>
 	public void RecordTimeout(int concurrencyLevel)

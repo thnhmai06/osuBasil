@@ -18,10 +18,8 @@ namespace Basil.Application.Sessions.Channels;
 ///     Handles the shared join and part workflow for channels. This service is used by both
 ///     client-initiated CHANNEL_JOIN/CHANNEL_PART packets and server-managed memberships such as
 ///     spectator channels.
-///
 ///     Broadcast behavior depends on the channel type. Instance channels notify only their current
 ///     members, while ordinary channels notify every <see cref="GameSession" /> with read access.
-///
 ///     This class also provides the low-level IRC JOIN, PART, and PRIVMSG broadcast primitives.
 ///     It intentionally does not depend on <c>ICommandDispatcher</c>; command dispatch belongs to
 ///     <c>ChatDispatchService</c>, and introducing that dependency here would create a cycle
@@ -34,7 +32,6 @@ namespace Basil.Application.Sessions.Channels;
 ///     channel roster (<see cref="ChannelSession.MemberIds" />) stores each UserId only once,
 ///     regardless of how many sessions are present. <see cref="ChannelSession.Join" /> and
 ///     <see cref="ChannelSession.Part" /> indicate whether the roster actually changed.
-///
 ///     Only roster changes are broadcast to other members. Every joining or parting session still
 ///     receives its own confirmation, so additional sessions for an already-present UserId are
 ///     acknowledged locally without generating redundant JOIN or PART broadcasts.
@@ -54,32 +51,31 @@ public sealed class ChannelMembershipService(
 	/// <param name="userSession">The session of the user joining the channel.</param>
 	/// <param name="channel">The channel to join.</param>
 	/// <param name="bypassMatchGate">
-	/// Skips the default multiplayer channel membership gate for trusted internal callers
-	/// that have already performed equivalent authorization or are joining before the
-	/// match state is fully established.
-	///
-	/// <list type="bullet">
-	/// <item>
-	/// <description>
-	/// Occupying a slot before the slot assignment has been committed.
-	/// </description>
-	/// </item>
-	/// <item>
-	/// <description>
-	/// Joining the match creator before referee assignment has completed.
-	/// </description>
-	/// </item>
-	/// <item>
-	/// <description>
-	/// Tournament spectator sessions authorized by their own privilege checks.
-	/// </description>
-	/// </item>
-	/// <item>
-	/// <description>
-	/// Chat-only joins whose privacy, password, and ban checks have already been validated.
-	/// </description>
-	/// </item>
-	/// </list>
+	///     Skips the default multiplayer channel membership gate for trusted internal callers
+	///     that have already performed equivalent authorization or are joining before the
+	///     match state is fully established.
+	///     <list type="bullet">
+	///         <item>
+	///             <description>
+	///                 Occupying a slot before the slot assignment has been committed.
+	///             </description>
+	///         </item>
+	///         <item>
+	///             <description>
+	///                 Joining the match creator before referee assignment has completed.
+	///             </description>
+	///         </item>
+	///         <item>
+	///             <description>
+	///                 Tournament spectator sessions authorized by their own privilege checks.
+	///             </description>
+	///         </item>
+	///         <item>
+	///             <description>
+	///                 Chat-only joins whose privacy, password, and ban checks have already been validated.
+	///             </description>
+	///         </item>
+	///     </list>
 	/// </param>
 	/// <returns><see langword="true" /> if the user session was added to the channel; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
@@ -180,19 +176,15 @@ public sealed class ChannelMembershipService(
 			if (!userLeftRoster) continue;
 
 			if (userStillPresent)
-			{
 				BroadcastToOtherIrcMembers(channel, session.Id,
 					IrcMessageWriter.Part(session.Name, session.Id, channel.Name));
-			}
 			else
-			{
 				foreach (var memberId in channel.MemberIds)
 				{
 					if (memberId == session.Id || !quitNotified.Add(memberId)) continue;
 					if (ircRegistry.GetByUserId(memberId) is { } irc)
 						irc.IrcConnection.Send(quitMessage);
 				}
-			}
 		}
 	}
 

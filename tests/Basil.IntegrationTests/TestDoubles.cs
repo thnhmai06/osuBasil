@@ -29,7 +29,10 @@ internal static class TestDoubles
 		return repo;
 	}
 
-	/// <summary>Verifies against a single fixed "correct-md5" digest — used where a route needs a password check to succeed/fail deterministically without real bcrypt.</summary>
+	/// <summary>
+	///     Verifies against a single fixed "correct-md5" digest — used where a route needs a password check to
+	///     succeed/fail deterministically without real bcrypt.
+	/// </summary>
 	public static IPasswordHasher FixedPasswordHasher()
 	{
 		var hasher = Substitute.For<IPasswordHasher>();

@@ -6,11 +6,11 @@ using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Irc;
 
@@ -23,11 +23,11 @@ public class IrcAuthenticationServiceTests
 {
 	private const string Password = "hunter2";
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly ISessionRegistry<IrcSession> _sessionRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
-	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
-	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
+	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	public IrcAuthenticationServiceTests()
 	{

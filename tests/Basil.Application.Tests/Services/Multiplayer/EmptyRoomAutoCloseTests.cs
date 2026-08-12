@@ -26,16 +26,17 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 public class EmptyRoomAutoCloseTests
 {
 	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
-	private readonly MultiplayerTestSupport.FakeMatchRepository _matchRepository = new();
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+	private readonly MultiplayerTestSupport.FakeMatchRepository _matchRepository = new();
 	private MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = null!;
 
 	private MatchMembershipService MakeService()
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			_matchRepository, Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>(), NullLogger<MatchMembershipService>.Instance);
 	}

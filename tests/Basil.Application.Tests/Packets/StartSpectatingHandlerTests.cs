@@ -3,6 +3,7 @@ using Basil.Application.Packets.Spectating;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,7 +11,6 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
@@ -35,7 +35,9 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.GetByUserId(999).Returns((GameSession?)null);
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 		var player = MakePlayer(1, "alice");
@@ -55,7 +57,9 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.GetByUserId(1).Returns(player);
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 
@@ -75,7 +79,9 @@ public class StartSpectatingHandlerTests
 		_sessionRegistry.All.Returns([host, player]);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(), new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance);
 		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,
 			NullLogger<StartSpectatingHandler>.Instance);

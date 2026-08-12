@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Sockets;
 using Basil.LoadTests.Analysis;
 using Basil.LoadTests.Client;
@@ -43,7 +44,7 @@ public sealed class StressScenario : IBasilScenario
 		simulations.Add(Simulation.RampingConstant(0, settings.Ramp));
 
 		var boundaries = ComputeStepBoundaries(settings);
-		var clock = System.Diagnostics.Stopwatch.StartNew();
+		var clock = Stopwatch.StartNew();
 
 		var scenario = Scenario.Create(Id, async ctx =>
 			{

@@ -1,7 +1,9 @@
 namespace Basil.LoadTests.Models;
 
-/// <summary>One seeded account a virtual user logs in as. Claimed by exactly one virtual user per run,
-/// since a second concurrent session for the same username is rejected within 10 seconds of the first.</summary>
+/// <summary>
+///     One seeded account a virtual user logs in as. Claimed by exactly one virtual user per run,
+///     since a second concurrent session for the same username is rejected within 10 seconds of the first.
+/// </summary>
 public sealed class LoadAccount
 {
 	/// <summary>The account's stable position in the seeded pool.</summary>

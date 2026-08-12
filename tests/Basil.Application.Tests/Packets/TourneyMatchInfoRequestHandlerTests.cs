@@ -8,7 +8,10 @@ using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Verifies the `TourneyMatchInfoRequest` handler sends the current match state without its password, donator-only.</summary>
+/// <summary>
+///     Verifies the `TourneyMatchInfoRequest` handler sends the current match state without its password,
+///     donator-only.
+/// </summary>
 public class TourneyMatchInfoRequestHandlerTests
 {
 	private static PacketReader ReaderFor(int matchId)

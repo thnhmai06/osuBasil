@@ -49,10 +49,10 @@ public sealed class LoginService(
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
+	public const int ReloginGuardWindowSeconds = 10;
+
 	private static readonly string InactionableDiskSignatureMd5 =
 		Convert.ToHexStringLower(MD5.HashData("0"u8.ToArray()));
-
-	public const int ReloginGuardWindowSeconds = 10;
 
 	/// <summary>
 	///     Executes the login handshake for a raw osu! client login request.
@@ -214,7 +214,10 @@ public sealed class LoginService(
 			                 "https://github.com/thnhmai06/osuBasil";
 			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
-		else data.Add(ServerPacketWriter.MainMenuIcon(string.Empty, string.Empty));
+		else
+		{
+			data.Add(ServerPacketWriter.MainMenuIcon(string.Empty, string.Empty));
+		}
 
 		data.Add(ServerPacketWriter.FriendsList(friendIds));
 		data.Add(ServerPacketWriter.SilenceEnd((int)session.RemainingSilence.TotalSeconds));

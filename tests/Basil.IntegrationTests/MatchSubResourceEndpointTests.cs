@@ -568,12 +568,6 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	{
 		private readonly Dictionary<int, User> _byId = new();
 
-		/// <summary>Seeds a user row so a kick/ban route resolving it by id or name finds a real account.</summary>
-		public void Add(User user)
-		{
-			_byId[user.Id] = user;
-		}
-
 		public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult(_byId.GetValueOrDefault(id));
@@ -614,6 +608,12 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult<IReadOnlyList<User>>([]);
+		}
+
+		/// <summary>Seeds a user row so a kick/ban route resolving it by id or name finds a real account.</summary>
+		public void Add(User user)
+		{
+			_byId[user.Id] = user;
 		}
 	}
 }

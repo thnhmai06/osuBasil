@@ -56,6 +56,7 @@ public sealed class TcpIrcListener(
 				options.Value.Port);
 			return;
 		}
+
 		logger.LogInformation("IRC gateway is listening on port {Port}.", options.Value.Port);
 
 		try

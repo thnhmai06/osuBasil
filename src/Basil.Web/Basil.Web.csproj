@@ -50,82 +50,82 @@
 	<Target Name="RemoveUnusedOsuRulesetRuntimeFiles" AfterTargets="Publish">
 
 		<ItemGroup>
-			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Fx.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Mix.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Wasapi.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)bass.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)bass_fx.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)bassmix.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)basswasapi.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)alsa-sharp.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Fx.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Mix.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)ppy.ManagedBass.Wasapi.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)bass.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)bass_fx.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)bassmix.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)basswasapi.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)alsa-sharp.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)avcodec-*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)avformat-*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)avutil-*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)swscale-*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)FFmpeg.AutoGen.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)avcodec-*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)avformat-*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)avutil-*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)swscale-*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)FFmpeg.AutoGen.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)ppy.Veldrid*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Vortice.*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)SharpGen.Runtime*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)libveldrid-spirv.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)vk.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)StbiSharp.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)stbi.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)ppy.Veldrid*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Vortice.*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)SharpGen.Runtime*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)libveldrid-spirv.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)vk.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)StbiSharp.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)stbi.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)SDL2*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)SDL3*.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)SDL2*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)SDL3*.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)OpenTabletDriver*.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)HidSharpCore.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Commons.Music.Midi.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)OpenTabletDriver*.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)HidSharpCore.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Commons.Music.Midi.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)realm-wrappers.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)MongoDB.Bson.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Remotion.Linq.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)realm-wrappers.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)MongoDB.Bson.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Remotion.Linq.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Client.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Client.Core.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.Client.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.MessagePack.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.NewtonsoftJson.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)MessagePack.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)MessagePack.Annotations.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Client.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Client.Core.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.Client.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.MessagePack.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.NewtonsoftJson.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)MessagePack.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)MessagePack.Annotations.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)Markdig.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)HtmlAgilityPack.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)DiffPlex.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)SharpCompress.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)SharpFNT.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)osu.Game.Resources.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Humanizer.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)Markdig.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)HtmlAgilityPack.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)DiffPlex.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)SharpCompress.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)SharpFNT.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)osu.Game.Resources.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Humanizer.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)**/osu.Game.Resources.resources.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)**/Humanizer.resources.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)**/osu.Game.Resources.resources.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)**/Humanizer.resources.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.Toolkit.HighPerformance.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.Toolkit.HighPerformance.dll"/>
 
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.Json.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Common.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Core.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.Common.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Identity.dll" />
-			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Mvc.Razor.dll" />
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.Json.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Common.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Core.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.Common.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Identity.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Mvc.Razor.dll"/>
 		</ItemGroup>
 
-		<Message Importance="Normal" Text="Removing %(_UnusedRuntimeFile.Identity)" />
+		<Message Importance="Normal" Text="Removing %(_UnusedRuntimeFile.Identity)"/>
 
 		<!-- Directories that only hold the satellite/resource files being deleted below become empty afterwards. -->
 		<ItemGroup>
-			<_SatelliteResourceFile Include="$(PublishDir)**/osu.Game.Resources.resources.dll" />
-			<_SatelliteResourceFile Include="$(PublishDir)**/Humanizer.resources.dll" />
-			<_SatelliteResourceDirectory Include="@(_SatelliteResourceFile->'%(RootDir)%(Directory)')" />
+			<_SatelliteResourceFile Include="$(PublishDir)**/osu.Game.Resources.resources.dll"/>
+			<_SatelliteResourceFile Include="$(PublishDir)**/Humanizer.resources.dll"/>
+			<_SatelliteResourceDirectory Include="@(_SatelliteResourceFile->'%(RootDir)%(Directory)')"/>
 		</ItemGroup>
 
-		<Delete Files="@(_UnusedRuntimeFile)" />
-		<RemoveDir Directories="@(_SatelliteResourceDirectory)" />
+		<Delete Files="@(_UnusedRuntimeFile)"/>
+		<RemoveDir Directories="@(_SatelliteResourceDirectory)"/>
 
 	</Target>
 

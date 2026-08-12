@@ -396,7 +396,10 @@ internal static class MultiplayerTestSupport
 		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
 		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
-		public ISessionRegistry<IrcSession> IrcSessionRegistry { get; } = Substitute.For<ISessionRegistry<IrcSession>>();
+
+		public ISessionRegistry<IrcSession> IrcSessionRegistry { get; } =
+			Substitute.For<ISessionRegistry<IrcSession>>();
+
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>

@@ -18,15 +18,15 @@ public sealed class ExistingServerHost(
 	Action<string> logWarning)
 	: IServerHost
 {
-	private ProcessResourceSampler? _processSampler;
-	private DotnetRuntimeMetricsCollector? _countersSampler;
 	private BasilHttpClientFactory? _clientFactory;
+	private DotnetRuntimeMetricsCollector? _countersSampler;
+	private ProcessResourceSampler? _processSampler;
 
 	public ServerHostCapabilities Capabilities => new(
-		CanMeasureStartupTime: false,
-		CanMeasureProcessMetrics: settings.Existing.ProcessId.HasValue,
-		CanMeasureDotnetCounters: settings.Existing.ProcessId.HasValue,
-		CanSnapshotDatabase: false);
+		false,
+		settings.Existing.ProcessId.HasValue,
+		settings.Existing.ProcessId.HasValue,
+		false);
 
 	public ServerEndpoint Endpoint { get; } = new(settings.Domain, settings.Port,
 		IPAddress.Parse(settings.Existing.HostAddress));

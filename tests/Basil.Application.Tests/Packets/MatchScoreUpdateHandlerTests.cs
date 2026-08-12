@@ -4,7 +4,10 @@ using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;
 
-/// <summary>Verifies the `MatchScoreUpdate` handler forwards the raw score frame (with the slot id injected) and publishes the player's live score.</summary>
+/// <summary>
+///     Verifies the `MatchScoreUpdate` handler forwards the raw score frame (with the slot id injected) and publishes
+///     the player's live score.
+/// </summary>
 public class MatchScoreUpdateHandlerTests
 {
 	[Fact]

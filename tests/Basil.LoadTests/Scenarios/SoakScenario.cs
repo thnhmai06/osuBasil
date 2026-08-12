@@ -101,7 +101,7 @@ public sealed class SoakScenario : IBasilScenario
 					}
 				}
 				catch (Exception ex) when (ex is not OperationCanceledException ||
-				                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+				                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 				{
 					// A 12-24h unattended run must never let one transient failure propagate as an
 					// unhandled exception — always resolve to a counted failure and keep going.

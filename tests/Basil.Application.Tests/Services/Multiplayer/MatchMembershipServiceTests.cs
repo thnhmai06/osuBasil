@@ -28,11 +28,11 @@ public class MatchMembershipServiceTests
 	private readonly IBeatmapRepository _beatmapRepository = Substitute.For<IBeatmapRepository>();
 
 	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry;
 
 	private readonly FakeMatchRepository _matchRepository = new();
-	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
-	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -47,7 +47,8 @@ public class MatchMembershipServiceTests
 	private MatchMembershipService MakeService()
 	{
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			_matchRepository,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
@@ -70,7 +71,7 @@ public class MatchMembershipServiceTests
 	private void RegisterAll(params GameSession[] sessions)
 	{
 		_gameRegistry.All.Returns(sessions);
-		
+
 		foreach (var session in sessions)
 		{
 			_gameRegistry.GetByUserId(session.Id).Returns(session);
@@ -240,7 +241,8 @@ public class MatchMembershipServiceTests
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		membership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
@@ -254,7 +256,7 @@ public class MatchMembershipServiceTests
 		Assert.NotNull(match.EmptyRoomTimer);
 		lobbyMember.Dequeue(); // drain the lobby's UpdateMatch broadcast from the slot becoming empty
 
-		await service.CloseAsync(match, null, null);
+		await service.CloseAsync(match);
 
 		Assert.Null(_matchRegistry.GetById(match.Id));
 		Assert.Null(_channelRegistry.GetByName(match.ChatChannelName));
@@ -311,7 +313,8 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(),
+			Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await service.EnqueueStateAsync(match);
@@ -334,7 +337,9 @@ public class MatchMembershipServiceTests
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())), _matchRepository, events,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+			_matchRepository, events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 

@@ -85,11 +85,11 @@ public sealed class ApiScenario : IBasilScenario
 
 					var statusCode = ((int)response.StatusCode).ToString();
 					return response.IsSuccessStatusCode
-						? Response.Ok(statusCode: statusCode, sizeBytes: bytes.Length)
+						? Response.Ok(statusCode: statusCode, bytes.Length)
 						: Response.Fail(statusCode: statusCode);
 				}
 				catch (Exception ex) when (ex is not OperationCanceledException ||
-				                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+				                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 				{
 					return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 				}

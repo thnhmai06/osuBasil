@@ -26,6 +26,9 @@ public class PlayerLogoutServiceTests
 {
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+
 	private readonly MatchMembershipService _matchMembership = new(
 		Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
 		Substitute.For<ISessionRegistry<GameSession>>(),
@@ -36,9 +39,6 @@ public class PlayerLogoutServiceTests
 		Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
 		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
-
-	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
-	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
@@ -194,7 +194,7 @@ public class PlayerLogoutServiceTests
 		gameRegistry.All.Returns([host]);
 		gameRegistry.GetByUserId(1).Returns(host);
 		var match = (await matchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
-var channelMembership =
+		var channelMembership =
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var service = new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, _spectatorService,

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Basil.LoadTests.Analysis;
 using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
 using Basil.LoadTests.Helpers;
@@ -9,6 +10,7 @@ using Basil.LoadTests.Infrastructure.Metrics;
 using Basil.LoadTests.Infrastructure.Reporting;
 using Basil.LoadTests.Scenarios;
 using Microsoft.Extensions.Configuration;
+using NBomber.Contracts;
 using NBomber.CSharp;
 
 var profileName = GetArg(args, "--profile") ?? "quick";
@@ -89,8 +91,11 @@ if (host.Capabilities.CanSnapshotDatabase)
 		LogInfo($"No snapshot found; seeding {accounts.Count} account(s) (this pays bcrypt once)...");
 		int seedFailures;
 		using (var seedClientFactory = new BasilHttpClientFactory(host.Endpoint, profile.Client))
+		{
 			seedFailures = await new AccountSeeder(new BasilApiClient(seedClientFactory))
 				.SeedAsync(accounts, LogWarning);
+		}
+
 		if (seedFailures > 0) LogWarning($"{seedFailures} account(s) failed to seed after a retry.");
 
 		await host.StopAsync();
@@ -103,7 +108,7 @@ if (host.Capabilities.CanSnapshotDatabase)
 else
 {
 	manifest.Notes.Add("This host cannot snapshot the database; accounts were ensured to exist " +
-	                    "(tolerant of pre-existing accounts from a prior run) rather than restored from a snapshot.");
+	                   "(tolerant of pre-existing accounts from a prior run) rather than restored from a snapshot.");
 	LogInfo($"Host cannot snapshot the database; ensuring {accounts.Count} account(s) exist...");
 	using var seedClientFactory = new BasilHttpClientFactory(host.Endpoint, profile.Client);
 	var seedFailures = await new AccountSeeder(new BasilApiClient(seedClientFactory))
@@ -124,7 +129,8 @@ if (loginSettings is { Enabled: true, WarmBcryptCache: true })
 	// so settle past that guard before the scenario starts, or every account's first login fails.
 	if (loginSettings.PostWarmupSettle > TimeSpan.Zero)
 	{
-		LogInfo($"Settling {loginSettings.PostWarmupSettleSeconds:F0}s so warm-up sessions age past the relogin guard...");
+		LogInfo(
+			$"Settling {loginSettings.PostWarmupSettleSeconds:F0}s so warm-up sessions age past the relogin guard...");
 		await Task.Delay(loginSettings.PostWarmupSettle);
 	}
 }
@@ -150,7 +156,7 @@ foreach (var scenario in ScenarioCatalog.All)
 	if (scenarioFilter is not null && !string.Equals(scenario.Id, scenarioFilter, StringComparison.OrdinalIgnoreCase))
 		continue;
 
-	List<NBomber.Contracts.ScenarioProps> propsList;
+	List<ScenarioProps> propsList;
 	try
 	{
 		propsList = [.. scenario.Build(scenarioContext)];
@@ -195,9 +201,9 @@ foreach (var scenario in ScenarioCatalog.All)
 if (configuration.GetSection("Scenarios:soak").Get<SoakSettings>() is { Enabled: true } enabledSoakSettings)
 {
 	LogInfo("Running soak leak analysis...");
-	var verdicts = Basil.LoadTests.Analysis.SoakAnalyzer.Analyze(timeline, enabledSoakSettings.WarmUp,
+	var verdicts = SoakAnalyzer.Analyze(timeline, enabledSoakSettings.WarmUp,
 		enabledSoakSettings.LeakSlopeThresholds);
-	await Basil.LoadTests.Analysis.SoakAnalyzer.WriteReportAsync(reportFolder, verdicts);
+	await SoakAnalyzer.WriteReportAsync(reportFolder, verdicts);
 }
 
 await samplingCts.CancelAsync();

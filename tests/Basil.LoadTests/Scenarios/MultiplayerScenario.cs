@@ -46,7 +46,6 @@ public sealed class MultiplayerScenario : IBasilScenario
 
 		int? beatmapId = null;
 		if (!string.IsNullOrEmpty(settings.BeatmapsetFixture))
-		{
 			try
 			{
 				beatmapId = ResolveOrIngestBeatmapAsync(context).GetAwaiter().GetResult();
@@ -55,7 +54,6 @@ public sealed class MultiplayerScenario : IBasilScenario
 			{
 				context.LogWarning($"Beatmap fixture ingestion failed ({ex.Message}); rooms will run with MapId = 0.");
 			}
-		}
 
 		var props = new List<ScenarioProps>();
 
@@ -161,14 +159,15 @@ public sealed class MultiplayerScenario : IBasilScenario
 						return Response.Ok(statusCode: "completed");
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
-					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						// A failed host must not leave its room's followers waiting the full 30s
 						// join timeout for nothing.
 						if (isHost)
 							roomMatchIds
 								.GetOrAdd(roomIndex,
-									_ => new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously))
+									_ => new TaskCompletionSource<int>(TaskCreationOptions
+										.RunContinuationsAsynchronously))
 								.TrySetResult(-1);
 
 						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
@@ -192,35 +191,35 @@ public sealed class MultiplayerScenario : IBasilScenario
 	private static MatchPacket BuildEmptyMatch(string name, int hostId, int? mapId)
 	{
 		var slots = Enumerable.Range(0, 16)
-			.Select(_ => new MatchSlotPacket(Status: 0, Team: 0, Mods: 0, PlayerId: null))
+			.Select(_ => new MatchSlotPacket(0, 0, 0, null))
 			.ToArray();
 
 		return new MatchPacket(
-			Id: 0,
-			InProgress: false,
-			Mods: 0,
-			Name: name,
-			Password: "",
-			MapName: mapId.HasValue ? "Load Test Beatmap" : "",
-			MapId: mapId ?? 0,
-			MapMd5: "",
-			Slots: slots,
-			HostId: hostId,
-			Mode: 0,
-			WinCondition: 0,
-			TeamType: 0,
-			FreeMods: false,
-			Seed: 0);
+			0,
+			false,
+			0,
+			name,
+			"",
+			mapId.HasValue ? "Load Test Beatmap" : "",
+			mapId ?? 0,
+			"",
+			slots,
+			hostId,
+			0,
+			0,
+			0,
+			false,
+			0);
 	}
 
 	private static ScoreFrame BuildScoreFrame(int playerId)
 	{
 		return new ScoreFrame(
-			Time: Environment.TickCount,
-			Id: playerId,
-			Num300: 10, Num100: 1, Num50: 0, NumGeki: 5, NumKatu: 0, NumMiss: 0,
-			TotalScore: 100_000, MaxCombo: 50, CurrentCombo: 50,
-			Perfect: true, CurrentHp: 100, TagByte: 0, ScoreV2: false);
+			Environment.TickCount,
+			playerId,
+			10, 1, 0, 5, 0, 0,
+			100_000, 50, 50,
+			true, 100, 0, false);
 	}
 
 	private static int? ExtractMatchId(IEnumerable<ServerPacketFrame> frames)
@@ -263,10 +262,10 @@ public sealed class MultiplayerScenario : IBasilScenario
 	/// <summary>Per-room-count counters, since NBomber has no built-in "rounds completed" or per-packet-type latency metric.</summary>
 	private sealed class MultiplayerMetrics
 	{
+		private readonly Lock _lock = new();
+		private readonly List<double> _scoreUpdateLatenciesMs = [];
 		private long _roundsCompleted;
 		private long _scoreUpdateCount;
-		private readonly List<double> _scoreUpdateLatenciesMs = [];
-		private readonly Lock _lock = new();
 
 		public void RecordRoundCompleted()
 		{

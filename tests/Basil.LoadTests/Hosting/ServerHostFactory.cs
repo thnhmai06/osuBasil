@@ -2,8 +2,10 @@ using Basil.LoadTests.Configuration;
 
 namespace Basil.LoadTests.Hosting;
 
-/// <summary>Builds the <see cref="IServerHost" /> a profile asks for. This is the only place a scenario's
-/// choice of host kind is resolved — everything else in <c>Scenarios/</c> only ever sees <see cref="IServerHost" />.</summary>
+/// <summary>
+///     Builds the <see cref="IServerHost" /> a profile asks for. This is the only place a scenario's
+///     choice of host kind is resolved — everything else in <c>Scenarios/</c> only ever sees <see cref="IServerHost" />.
+/// </summary>
 public static class ServerHostFactory
 {
 	/// <summary>Creates the host implementation for <paramref name="settings" />.<see cref="ServerHostSettings.Kind" />.</summary>

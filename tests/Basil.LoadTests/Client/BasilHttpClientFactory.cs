@@ -24,6 +24,11 @@ public sealed class BasilHttpClientFactory : IDisposable
 		_sharedHandler = new Lazy<HttpMessageHandler>(CreateHandler);
 	}
 
+	public void Dispose()
+	{
+		if (_sharedHandler.IsValueCreated) _sharedHandler.Value.Dispose();
+	}
+
 	/// <summary>
 	///     Creates a client for one virtual user. Under <see cref="ConnectionMode.Shared" /> every caller
 	///     gets the same pooled handler; under <see cref="ConnectionMode.PerUser" /> each call gets its own
@@ -47,11 +52,6 @@ public sealed class BasilHttpClientFactory : IDisposable
 	{
 		var host = string.IsNullOrEmpty(subdomain) ? _endpoint.Domain : $"{subdomain}.{_endpoint.Domain}";
 		return new UriBuilder("https", host, _endpoint.Port, pathAndQuery).Uri;
-	}
-
-	public void Dispose()
-	{
-		if (_sharedHandler.IsValueCreated) _sharedHandler.Value.Dispose();
 	}
 
 	private SocketsHttpHandler CreateHandler()

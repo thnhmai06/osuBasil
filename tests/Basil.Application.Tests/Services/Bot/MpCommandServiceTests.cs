@@ -113,7 +113,8 @@ public class MpCommandServiceTests
 
 		Assert.True(match.IsLocked);
 		Assert.Equal(MpReplies.LockedMatch, reply);
-		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.NotEqual(MatchMembershipService.JoinResult.Ok,
+			await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		Assert.Null(other.Match);
 	}
 
@@ -492,7 +493,8 @@ public class MpCommandServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-				_fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+				_fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+				Options.Create(new IrcOptions()));
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		channelMembership.Join(session, channel);
 	}
@@ -559,17 +561,6 @@ public class MpCommandServiceTests
 				IrcMessageWriter.Privmsg("BasilBot", 0, match.ChatChannelName, line));
 			Assert.True(Encoding.UTF8.GetByteCount(wireLine) <= 512,
 				$"Line exceeds the 512-byte IRC wire limit once framed: {wireLine}");
-		}
-	}
-
-	private sealed class RecordingIrcConnection : IIrcConnection
-	{
-		public List<IrcMessage> Received { get; } = [];
-		public UserSession User => throw new NotImplementedException();
-
-		public void Send(IrcMessage message)
-		{
-			Received.Add(message);
 		}
 	}
 
@@ -1320,7 +1311,7 @@ public class MpCommandServiceTests
 		var sender = MultiplayerTestSupport.MakePlayer(1, "creator");
 		_fixture.RegisterAll(sender);
 
-		var reply = await RunMake(MakeService(), sender, ["Room"], isPrivate: true);
+		var reply = await RunMake(MakeService(), sender, ["Room"], true);
 
 		Assert.True(sender.Match!.IsPrivate);
 		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match.DbId, sender.Match.Name, " (private)"),
@@ -1721,6 +1712,17 @@ public class MpCommandServiceTests
 	private static User MakeUser(int id, string name)
 	{
 		return new User(id, name, Country.Xx, UserPrivileges.Unrestricted, default);
+	}
+
+	private sealed class RecordingIrcConnection : IIrcConnection
+	{
+		public List<IrcMessage> Received { get; } = [];
+		public UserSession User => throw new NotImplementedException();
+
+		public void Send(IrcMessage message)
+		{
+			Received.Add(message);
+		}
 	}
 
 	/// <summary>Captures what a command sent through <see cref="ICommandReplySink" /> instead of returning it.</summary>

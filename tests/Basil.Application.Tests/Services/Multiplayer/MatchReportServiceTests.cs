@@ -17,11 +17,11 @@ namespace Basil.Application.Tests.Services.Multiplayer;
 public class MatchReportServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 	private readonly IMatchRepository _matchRepository = Substitute.For<IMatchRepository>();
 	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
-	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
-	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
 	public MatchReportServiceTests()

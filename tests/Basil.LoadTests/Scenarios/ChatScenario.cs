@@ -78,7 +78,7 @@ public sealed class ChatScenario : IBasilScenario
 								new BanchoMessage(account.Name, text, settings.Channel, account.UserId ?? 0)));
 							await existing.PollAsync(ctx.ScenarioCancellationToken);
 							metrics.RecordSent();
-							return Response.Ok(statusCode: "sent", sizeBytes: text.Length);
+							return Response.Ok(statusCode: "sent", text.Length);
 						}
 
 						await Task.Delay(context.Profile.Client.PollInterval, ctx.ScenarioCancellationToken);
@@ -101,10 +101,10 @@ public sealed class ChatScenario : IBasilScenario
 							metrics.RecordReceived(latencyMs);
 						}
 
-						return Response.Ok(statusCode: "polled", sizeBytes: receivedBytes);
+						return Response.Ok(statusCode: "polled", receivedBytes);
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
-					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
@@ -124,14 +124,17 @@ public sealed class ChatScenario : IBasilScenario
 		return props;
 	}
 
-	/// <summary>Accumulates raw send/receive counters and latency samples for one concurrency level, since NBomber has no histogram metric to record them into directly.</summary>
+	/// <summary>
+	///     Accumulates raw send/receive counters and latency samples for one concurrency level, since NBomber has no
+	///     histogram metric to record them into directly.
+	/// </summary>
 	private sealed class ChatMetrics
 	{
-		private long _sequence;
-		private long _sent;
-		private long _received;
 		private readonly List<double> _latenciesMs = [];
 		private readonly Lock _lock = new();
+		private long _received;
+		private long _sent;
+		private long _sequence;
 
 		public long NextSequence()
 		{
@@ -178,7 +181,7 @@ public sealed class ChatScenario : IBasilScenario
 				$"- Sent: {sent}",
 				$"- Received (with a recognizable delivery marker): {received}",
 				$"- Undelivered at end of run: {Math.Max(0, sent - received)}",
-				$"- Note: the outbound packet queue is unbounded, so packets are never dropped by design — " +
+				"- Note: the outbound packet queue is unbounded, so packets are never dropped by design — " +
 				"this figure reflects timing (message sent near the run's end, or a receiver's last poll " +
 				"missing it), not loss."
 			};

@@ -204,7 +204,8 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(referee, match, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok,
+			await _fixture.MatchMembership.JoinAsync(referee, match, ""));
 		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
 		Assert.Contains(channel.Name, referee.Channels);
 		var control = MakeService();
@@ -302,7 +303,8 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, otherHost, target);
 		var match = _fixture.CreateMatch(host);
 		var otherMatch = _fixture.CreateMatch(otherHost);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, otherMatch, ""));
+		Assert.Equal(MatchMembershipService.JoinResult.Ok,
+			await _fixture.MatchMembership.JoinAsync(target, otherMatch, ""));
 		var control = MakeService();
 
 		var result = await control.ForceInviteAsync(match, target);

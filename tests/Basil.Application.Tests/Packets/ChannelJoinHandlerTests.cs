@@ -1,13 +1,13 @@
 using Basil.Application.Configurations;
-using Microsoft.Extensions.Options;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Packets;
 
@@ -22,7 +22,8 @@ public class ChannelJoinHandlerTests
 	{
 		return new ChannelJoinHandler(_channelRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())));
+				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+				Options.Create(new IrcOptions())));
 	}
 
 	private static PacketReader ChannelNameReader(string name)

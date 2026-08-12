@@ -22,6 +22,7 @@ public sealed class TourneyMatchInfoRequestHandler(
 	public ClientPackets PacketId => ClientPackets.TournamentMatchInfoRequest;
 
 	public bool AllowedWhenRestricted => false;
+
 	public Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{

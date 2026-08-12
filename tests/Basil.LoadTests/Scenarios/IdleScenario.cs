@@ -60,7 +60,7 @@ public sealed class IdleScenario : IBasilScenario
 						return Response.Ok(statusCode: "poll");
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
-					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}

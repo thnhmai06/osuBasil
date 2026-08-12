@@ -3,7 +3,10 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Verifies `Mods` conflict resolution (`FilterInvalidCombos`) and mod-string parsing (`FromModString`, `FromNowPlayingString`).</summary>
+/// <summary>
+///     Verifies `Mods` conflict resolution (`FilterInvalidCombos`) and mod-string parsing (`FromModString`,
+///     `FromNowPlayingString`).
+/// </summary>
 public class ModsTests
 {
 	[Theory]

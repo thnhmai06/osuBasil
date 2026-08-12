@@ -22,6 +22,12 @@ public sealed class BanchoClient(
 	/// <summary>Gets a value indicating whether this client currently holds a live session token.</summary>
 	public bool IsLoggedIn => _token is not null;
 
+	public async ValueTask DisposeAsync()
+	{
+		await LogoutAsync();
+		_http.Dispose();
+	}
+
 	/// <summary>
 	///     Logs in. Success is decided from the decoded <c>UserId</c> login-reply packet, never from the
 	///     HTTP status code — a failed login still returns <c>200 OK</c> with a failure reply and no
@@ -106,7 +112,6 @@ public sealed class BanchoClient(
 		if (!IsLoggedIn) return;
 
 		for (var attempt = 0; attempt < 3; attempt++)
-		{
 			try
 			{
 				Send(ClientPacketWriter.Logout());
@@ -118,12 +123,5 @@ public sealed class BanchoClient(
 			{
 				await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
 			}
-		}
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		await LogoutAsync();
-		_http.Dispose();
 	}
 }

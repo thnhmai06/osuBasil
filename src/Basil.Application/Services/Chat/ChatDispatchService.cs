@@ -259,14 +259,16 @@ public sealed class ChatDispatchService(
 			if (target.PmPrivate && relationship?.Type != RelationshipType.Friend)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=PmPrivate", sender.Id);
-				if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
+				if (sender is GameSession gameSender)
+					gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
 				return;
 			}
 
 			if (target.Silenced)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=TargetSilenced", sender.Id);
-				if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
+				if (sender is GameSession gameSender)
+					gameSender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
 				return;
 			}
 

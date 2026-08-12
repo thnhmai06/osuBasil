@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Backgrounds;
+using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
@@ -11,7 +12,6 @@ using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Application.Configurations;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -211,8 +211,8 @@ public class GhostDisconnectServiceTests
 	/// </summary>
 	private sealed class GameSessionRegistryTestDouble : ISessionRegistry<GameSession>
 	{
-		private readonly Dictionary<int, GameSession> _byUserId = [];
 		private readonly Dictionary<string, GameSession> _byToken = [];
+		private readonly Dictionary<int, GameSession> _byUserId = [];
 
 		public IReadOnlyCollection<GameSession> All => [.. _byToken.Values];
 

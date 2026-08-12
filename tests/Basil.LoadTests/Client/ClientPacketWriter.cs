@@ -66,7 +66,10 @@ public static class ClientPacketWriter
 		return Wrap(ClientPackets.ChannelPart, BinaryWriter.WriteString(channelName));
 	}
 
-	/// <summary>Field order (Sender, Text, Recipient, SenderId) matches <see cref="BanchoMessage" /> and <c>PacketReader.ReadMessage</c> exactly.</summary>
+	/// <summary>
+	///     Field order (Sender, Text, Recipient, SenderId) matches <see cref="BanchoMessage" /> and
+	///     <c>PacketReader.ReadMessage</c> exactly.
+	/// </summary>
 	public static byte[] SendPublicMessage(BanchoMessage message)
 	{
 		var payload = Concat(

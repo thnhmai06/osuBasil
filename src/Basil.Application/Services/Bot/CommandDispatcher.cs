@@ -56,7 +56,7 @@ public sealed class CommandDispatcher(
 	///     chain.
 	/// </summary>
 	private static readonly FrozenSet<string> NonChainableMpSubcommands =
-		new[]{ "", "help", "make", "makeprivate", "in", "join" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+		new[] { "", "help", "make", "makeprivate", "in", "join" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     The <c>!mp</c> subcommands reachable from <c>#lobby</c>.
@@ -68,7 +68,7 @@ public sealed class CommandDispatcher(
 	///     <c>!mp in</c> ends up reachable only via DM to the bot.
 	/// </remarks>
 	private static readonly FrozenSet<string> LobbyAllowedMpSubcommands =
-		new[]{ "make", "makeprivate" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+		new[] { "make", "makeprivate" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
 	private readonly FaqService _faq = new(storageOptions);
 

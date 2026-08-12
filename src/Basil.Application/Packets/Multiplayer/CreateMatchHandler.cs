@@ -46,7 +46,7 @@ public sealed class CreateMatchHandler(MatchMembershipService matchMembership) :
 			return;
 		}
 
-		var match = await matchMembership.CreateAsync(gameSession, matchData, cancellationToken: cancellationToken);
+		var match = await matchMembership.CreateAsync(gameSession, matchData, cancellationToken);
 		match?.AddReferee(gameSession.Id);
 	}
 }

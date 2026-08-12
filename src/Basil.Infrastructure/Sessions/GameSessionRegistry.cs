@@ -12,9 +12,9 @@ namespace Basil.Infrastructure.Sessions;
 /// </remarks>
 public sealed class GameSessionRegistry : ISessionRegistry<GameSession>
 {
+	private readonly ConcurrentDictionary<string, string> _bySafeName = new();
 	private readonly ConcurrentDictionary<string, GameSession> _byToken = new();
 	private readonly ConcurrentDictionary<int, string> _byUserId = new();
-	private readonly ConcurrentDictionary<string, string> _bySafeName = new();
 
 	/// <inheritdoc />
 	public IReadOnlyCollection<GameSession> All => (IReadOnlyCollection<GameSession>)_byToken.Values;

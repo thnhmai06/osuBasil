@@ -2,11 +2,11 @@ using Basil.Application.Configurations;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Sessions;
 

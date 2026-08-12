@@ -87,10 +87,10 @@ public sealed class SseScenario : IBasilScenario
 						}
 
 						metrics.RecordDisconnected(eventCount);
-						return Response.Ok(statusCode: "200", sizeBytes: eventCount);
+						return Response.Ok(statusCode: "200", eventCount);
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
-					                            !ctx.ScenarioCancellationToken.IsCancellationRequested)
+					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
 					{
 						metrics.RecordDisconnected(eventCount);
 						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
@@ -113,11 +113,11 @@ public sealed class SseScenario : IBasilScenario
 
 	private sealed class SseMetrics
 	{
-		private long _connected;
-		private long _totalEvents;
-		private readonly List<double> _timeToFirstEventMs = [];
 		private readonly List<double> _interEventGapMs = [];
 		private readonly Lock _lock = new();
+		private readonly List<double> _timeToFirstEventMs = [];
+		private long _connected;
+		private long _totalEvents;
 
 		public void RecordConnected()
 		{

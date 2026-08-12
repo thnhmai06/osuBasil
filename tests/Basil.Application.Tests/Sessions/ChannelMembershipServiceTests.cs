@@ -1,17 +1,17 @@
 using Basil.Application.Configurations;
-using Microsoft.Extensions.Options;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Irc;
+using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
+using Microsoft.Extensions.Options;
 using NSubstitute;
-using Basil.Application.Sessions.Multiplayer;
 
 namespace Basil.Application.Tests.Sessions;
 
@@ -26,8 +26,8 @@ public class ChannelMembershipServiceTests
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
-	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 	private readonly IMatchLiveEvents _matchLiveEvents = Substitute.For<IMatchLiveEvents>();
+	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 
 	private ChannelMembershipService MakeService()
 	{
@@ -306,7 +306,7 @@ public class ChannelMembershipServiceTests
 		Register(incoming);
 
 		Assert.False(MakeService().Join(incoming, room));
-		Assert.True(MakeService().Join(incoming, room, bypassMatchGate: true));
+		Assert.True(MakeService().Join(incoming, room, true));
 	}
 
 	[Fact]

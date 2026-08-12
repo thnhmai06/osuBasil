@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -16,7 +17,10 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 {
 	private const int DefaultLoadTestPrivilege = 19; // Unrestricted | Verified | Supporter
 
-	/// <summary>Creates a user via the admin API. Snapshot-first seeding means this is called once per fresh database, not per run.</summary>
+	/// <summary>
+	///     Creates a user via the admin API. Snapshot-first seeding means this is called once per fresh database, not per
+	///     run.
+	/// </summary>
 	/// <returns>The created user's id.</returns>
 	public async Task<int> CreateUserAsync(string name, string password, string country,
 		CancellationToken cancellationToken = default)
@@ -45,7 +49,7 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		using var response =
 			await client.PostAsync(clientFactory.BuildUri("api", "/users"), content, cancellationToken);
 
-		if (response.StatusCode != System.Net.HttpStatusCode.Conflict)
+		if (response.StatusCode != HttpStatusCode.Conflict)
 		{
 			response.EnsureSuccessStatusCode();
 			var created = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
@@ -60,7 +64,10 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		return existing.GetProperty("data").GetProperty("id").GetInt32();
 	}
 
-	/// <summary>Sets the admin key, taking the server out of bypass mode, so anonymous API reads no longer redact private data.</summary>
+	/// <summary>
+	///     Sets the admin key, taking the server out of bypass mode, so anonymous API reads no longer redact private
+	///     data.
+	/// </summary>
 	public async Task SetAdminKeyAsync(string key, CancellationToken cancellationToken = default)
 	{
 		using var client = clientFactory.CreateClient();

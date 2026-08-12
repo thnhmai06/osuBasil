@@ -50,8 +50,8 @@ public sealed class ResourceTimeline
 
 		using var writer = new StreamWriter(path);
 		writer.WriteLine("TimestampUtc,CpuPercent,WorkingSetBytes,PrivateMemoryBytes,GcHeapBytes," +
-		                  "Gen0Collections,Gen1Collections,Gen2Collections,AllocRateBytesPerSecond," +
-		                  "ThreadCount,HandleCount,ThreadPoolThreads,TcpConnections");
+		                 "Gen0Collections,Gen1Collections,Gen2Collections,AllocRateBytesPerSecond," +
+		                 "ThreadCount,HandleCount,ThreadPoolThreads,TcpConnections");
 
 		foreach (var s in _samples)
 			writer.WriteLine(string.Join(',',
