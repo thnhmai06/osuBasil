@@ -39,7 +39,7 @@ requiring third-party online services.
 * **Tournament support**: supports [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
   tournament-oriented `!mp` commands, live match state, and real-time reporting.
 * **osu! ecosystem compatibility**:
-  supports [osu!direct](https://osu.ppy.sh/community/forums/topics/1433039), [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)
+  supports [osu!direct](https://osu.ppy.sh/wiki/en/osu%21supporter#osu!direct), [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)
   (as BasilBot), and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
 * **Self-contained storage**: stores server data locally using SQLite; no external database server is required.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
