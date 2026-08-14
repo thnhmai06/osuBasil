@@ -1,0 +1,43 @@
+{
+	"Name": "verify-multiplayer",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "data/certs/basil.local.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 60,
+		"IdleSettleSeconds": 5,
+		"Dotnet": { "Mode": "Published", "PublishDirectory": ".loadtest/server", "AutoPublish": true }
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 128,
+		"RequestTimeoutSeconds": 20,
+		"PollIntervalSeconds": 5
+	},
+	"Accounts": { "Count": 16, "NamePrefix": "vmp", "Password": "loadtest-pw" },
+	"Metrics": { "SampleIntervalSeconds": 2, "DotnetCounters": { "Enabled": true, "RefreshIntervalSeconds": 1 } },
+	"Report": { "Folder": ".loadtest/reports", "Formats": ["Csv", "Md"] },
+	"Scenarios": {
+		"startup": { "Enabled": false },
+		"login": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+		"idle": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+		"chat": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+		"multiplayer": {
+			"Enabled": true,
+			"Rooms": [2, 4],
+			"PlayersPerRoom": 4,
+			"RoundsPerRoom": 2,
+			"ScoreUpdatesPerSecond": 2,
+			"BeatmapsetFixture": "fixtures/vivid.osz",
+			"DurationSeconds": 60
+		},
+		"api": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+		"sse": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0 },
+		"stress": { "Enabled": false, "ConcurrentUsers": [], "RampSeconds": 0, "HoldSeconds": 0, "MaxFailCount": 0, "UnusableSuccessRatePercent": 0, "UnusableForSeconds": 0, "SaturationCpuPercent": 0, "SaturationSeconds": 0 },
+		"soak": { "Enabled": false, "ConcurrentUsers": [], "DurationSeconds": 0, "WarmUpSeconds": 0, "ReportingIntervalSeconds": 0, "Weights": {}, "LeakSlopeThresholds": {} }
+	}
+}

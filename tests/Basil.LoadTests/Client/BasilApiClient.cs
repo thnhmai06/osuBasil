@@ -86,8 +86,12 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		return client;
 	}
 
-	/// <summary>Uploads an <c>.osz</c> beatmapset fixture and returns its assigned mapset id.</summary>
-	public async Task<int> UploadBeatmapsetAsync(byte[] oszBytes, string fileName, string adminKey,
+	/// <summary>
+	///     Uploads an <c>.osz</c> beatmapset fixture. The endpoint reconciles the whole mapset storage
+	///     folder and returns only <c>{ ingested }</c> (a count), not the new mapset's id — the caller
+	///     resolves the id afterward via <see cref="ResolveSampleBeatmapsetIdAsync" />.
+	/// </summary>
+	public async Task UploadBeatmapsetAsync(byte[] oszBytes, string fileName, string adminKey,
 		CancellationToken cancellationToken = default)
 	{
 		using var client = CreateAuthorizedClient(adminKey);
@@ -99,8 +103,6 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		using var response =
 			await client.PostAsync(clientFactory.BuildUri("api", "/beatmapsets"), content, cancellationToken);
 		response.EnsureSuccessStatusCode();
-		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-		return envelope.GetProperty("data").GetProperty("id").GetInt32();
 	}
 
 	/// <summary>Best-effort lookup of any existing match id, for <c>ApiScenario</c>'s <c>match_report</c> target.</summary>
@@ -138,6 +140,18 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 	/// <summary>Resolves a beatmap id belonging to the given mapset, for assigning to a multiplayer room.</summary>
 	public async Task<int?> ResolveFirstBeatmapIdAsync(int mapsetId, CancellationToken cancellationToken = default)
 	{
+		var beatmap = await ResolveFirstBeatmapAsync(mapsetId, cancellationToken);
+		return beatmap?.Id;
+	}
+
+	/// <summary>
+	///     Resolves the first beatmap under a mapset, including its md5 — <c>MatchChangeSettingsHandler</c>
+	///     re-resolves a room's beatmap by md5 against the local repository, not by id, so the id alone
+	///     is not enough to actually assign a map to a room.
+	/// </summary>
+	public async Task<(int Id, string Md5)?> ResolveFirstBeatmapAsync(int mapsetId,
+		CancellationToken cancellationToken = default)
+	{
 		using var client = clientFactory.CreateClient();
 		using var response =
 			await client.GetAsync(clientFactory.BuildUri("api", $"/beatmapsets/{mapsetId}"), cancellationToken);
@@ -145,6 +159,9 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 
 		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
 		var beatmaps = envelope.GetProperty("data").GetProperty("beatmaps");
-		return beatmaps.GetArrayLength() > 0 ? beatmaps[0].GetProperty("id").GetInt32() : null;
+		if (beatmaps.GetArrayLength() == 0) return null;
+
+		var first = beatmaps[0];
+		return (first.GetProperty("id").GetInt32(), first.GetProperty("md5").GetString() ?? "");
 	}
 }

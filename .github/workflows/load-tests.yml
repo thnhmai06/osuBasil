@@ -1,0 +1,116 @@
+name: Load tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Profile to run (quick, full, stress, soak)"
+        required: false
+        default: quick
+  schedule:
+    - cron: "0 2 * * *" # nightly, full profile
+
+jobs:
+  quick:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'quick')
+    runs-on: ubuntu-latest
+    # A shared 2-core GitHub runner cannot produce authoritative throughput numbers. This job
+    # exists to catch wiring/compile regressions and gross blowups in the load-test harness
+    # itself, not to gate merges on performance — never block a PR on this job's numbers.
+    continue-on-error: true
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+
+      - name: Install dotnet-counters
+        run: dotnet tool install -g dotnet-counters
+
+      - name: Run quick profile
+        run: dotnet run --project tests/Basil.LoadTests -c Release -- --profile quick
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-quick-report
+          path: .loadtest/reports/
+
+  full:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'full')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+
+      - name: Install dotnet-counters
+        run: dotnet tool install -g dotnet-counters
+
+      - name: Run full profile
+        run: dotnet run --project tests/Basil.LoadTests -c Release -- --profile full
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-full-report
+          path: .loadtest/reports/
+
+  # stress and soak are workflow_dispatch-only: a 5000-user ramp and a 12-24h soak on a shared
+  # runner produce numbers nobody should trust and would hold a runner hostage. They exist as
+  # one-click manual runs against a dedicated machine, not as scheduled or PR jobs.
+  stress:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'stress'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+
+      - name: Install dotnet-counters
+        run: dotnet tool install -g dotnet-counters
+
+      - name: Run stress profile
+        run: dotnet run --project tests/Basil.LoadTests -c Release -- --profile stress
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-stress-report
+          path: .loadtest/reports/
+
+  soak:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'soak'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1500 # 25h ceiling for a 24h soak
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+
+      - name: Install dotnet-counters
+        run: dotnet tool install -g dotnet-counters
+
+      - name: Run soak profile
+        run: dotnet run --project tests/Basil.LoadTests -c Release -- --profile soak
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-soak-report
+          path: .loadtest/reports/

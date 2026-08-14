@@ -66,7 +66,10 @@ public sealed class IdleScenario : IBasilScenario
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
-				.WithWarmUpDuration(settings.WarmUp)
+				// ponytail: see ChatScenario.cs — a warm-up phase running this same
+				// login-and-hold step leaves a live session bombing's fresh copies then can never log
+				// back into.
+				.WithoutWarmUp()
 				.WithMaxFailCount(settings.MaxFailCount)
 				.WithClean(async _ =>
 				{

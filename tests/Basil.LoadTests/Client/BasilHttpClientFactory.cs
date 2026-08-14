@@ -51,7 +51,16 @@ public sealed class BasilHttpClientFactory : IDisposable
 	public Uri BuildUri(string subdomain, string pathAndQuery)
 	{
 		var host = string.IsNullOrEmpty(subdomain) ? _endpoint.Domain : $"{subdomain}.{_endpoint.Domain}";
-		return new UriBuilder("https", host, _endpoint.Port, pathAndQuery).Uri;
+
+		// UriBuilder's (scheme, host, port, path) constructor treats its 4th argument as a pure
+		// path — a "?" or "&" in it gets percent-encoded rather than parsed as a query string,
+		// silently turning e.g. "/matches?status=all" into a 404. Path and query must be split
+		// and assigned to their own properties instead.
+		var separatorIndex = pathAndQuery.IndexOf('?');
+		var path = separatorIndex < 0 ? pathAndQuery : pathAndQuery[..separatorIndex];
+		var query = separatorIndex < 0 ? "" : pathAndQuery[(separatorIndex + 1)..];
+
+		return new UriBuilder("https", host, _endpoint.Port, path) { Query = query }.Uri;
 	}
 
 	private SocketsHttpHandler CreateHandler()

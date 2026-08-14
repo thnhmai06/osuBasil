@@ -73,7 +73,7 @@ LogInfo(manifest.StartupTime.HasValue
 
 var accounts = AccountSeeder.BuildAccounts(profile.Accounts);
 var snapshotPath = Path.Combine(RepoPaths.Resolve(".loadtest/snapshots"),
-	$"basil-{profile.Accounts.Count}-{Md5Hex.Of(profile.Accounts.Password)[..8]}.db");
+	$"basil-{profile.Accounts.NamePrefix}-{profile.Accounts.Count}-{Md5Hex.Of(profile.Accounts.Password)[..8]}.db");
 
 if (host.Capabilities.CanSnapshotDatabase)
 {

@@ -44,11 +44,11 @@ public sealed class MultiplayerScenario : IBasilScenario
 		var clientFactory = context.ClientFactory;
 		var reportFolder = context.ReportFolder;
 
-		int? beatmapId = null;
+		(int Id, string Md5)? beatmap = null;
 		if (!string.IsNullOrEmpty(settings.BeatmapsetFixture))
 			try
 			{
-				beatmapId = ResolveOrIngestBeatmapAsync(context).GetAwaiter().GetResult();
+				beatmap = ResolveOrIngestBeatmapAsync(context).GetAwaiter().GetResult();
 			}
 			catch (Exception ex)
 			{
@@ -79,7 +79,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 			var roomMatchIds = new ConcurrentDictionary<int, TaskCompletionSource<int>>();
 			var metrics = new MultiplayerMetrics();
 			var roomCountCaptured = roomCount;
-			var fixtureMapId = beatmapId;
+			var fixtureBeatmap = beatmap;
 
 			var scenario = Scenario.Create($"{Id}_{roomCount}", async ctx =>
 				{
@@ -102,12 +102,22 @@ public sealed class MultiplayerScenario : IBasilScenario
 						int matchId;
 						if (isHost)
 						{
-							var match = BuildEmptyMatch($"load-room-{roomIndex}", account.UserId ?? 0, fixtureMapId);
+							var match = BuildEmptyMatch($"load-room-{roomIndex}", account.UserId ?? 0, fixtureBeatmap);
 							client.Send(ClientPacketWriter.CreateMatch(match));
 							var frames = await client.PollAsync(ctx.ScenarioCancellationToken);
 							matchId = ExtractMatchId(frames) ?? -1;
 							roomReady.TrySetResult(matchId);
 							if (matchId < 0) return Response.Fail(statusCode: "create-match-failed");
+
+							// CreateMatch's own map fields are ignored server-side (MatchMembershipService
+							// .CreateAsync never applies them) — the beatmap only gets assigned via a
+							// follow-up MatchChangeSettings, which re-resolves it by md5.
+							if (fixtureBeatmap is not null)
+							{
+								client.Send(ClientPacketWriter.MatchChangeSettings(
+									BuildEmptyMatch($"load-room-{roomIndex}", account.UserId ?? 0, fixtureBeatmap)));
+								await client.PollAsync(ctx.ScenarioCancellationToken);
+							}
 						}
 						else
 						{
@@ -188,7 +198,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 		return props;
 	}
 
-	private static MatchPacket BuildEmptyMatch(string name, int hostId, int? mapId)
+	private static MatchPacket BuildEmptyMatch(string name, int hostId, (int Id, string Md5)? beatmap)
 	{
 		var slots = Enumerable.Range(0, 16)
 			.Select(_ => new MatchSlotPacket(0, 0, 0, null))
@@ -200,9 +210,9 @@ public sealed class MultiplayerScenario : IBasilScenario
 			0,
 			name,
 			"",
-			mapId.HasValue ? "Load Test Beatmap" : "",
-			mapId ?? 0,
-			"",
+			beatmap is null ? "" : "Load Test Beatmap",
+			beatmap?.Id ?? 0,
+			beatmap?.Md5 ?? "",
 			slots,
 			hostId,
 			0,
@@ -240,7 +250,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 	///     so multiplayer rooms have a real beatmap to assign instead of always running with
 	///     <c>MapId = 0</c>.
 	/// </summary>
-	private static async Task<int?> ResolveOrIngestBeatmapAsync(BasilScenarioContext context)
+	private static async Task<(int Id, string Md5)?> ResolveOrIngestBeatmapAsync(BasilScenarioContext context)
 	{
 		var osuFixturePath = RepoPaths.Resolve("tests/Basil.Infrastructure.Tests/Fixtures/vivid_with_setid.osu");
 		if (!File.Exists(osuFixturePath)) return null;
@@ -255,8 +265,18 @@ public sealed class MultiplayerScenario : IBasilScenario
 		}
 
 		var apiClient = new BasilApiClient(context.ClientFactory);
-		var mapsetId = await apiClient.UploadBeatmapsetAsync(zipStream.ToArray(), "vivid.osz", "");
-		return await apiClient.ResolveFirstBeatmapIdAsync(mapsetId);
+		await apiClient.UploadBeatmapsetAsync(zipStream.ToArray(), "vivid.osz", "");
+
+		// ponytail: the mapset list read can briefly lag the reconcile write; a few short
+		// retries beat hard-coding a fixed pre-delay for every profile.
+		for (var attempt = 0; attempt < 5; attempt++)
+		{
+			if (await apiClient.ResolveSampleBeatmapsetIdAsync() is { } mapsetId)
+				return await apiClient.ResolveFirstBeatmapAsync(mapsetId);
+			await Task.Delay(TimeSpan.FromMilliseconds(300));
+		}
+
+		return null;
 	}
 
 	/// <summary>Per-room-count counters, since NBomber has no built-in "rounds completed" or per-packet-type latency metric.</summary>

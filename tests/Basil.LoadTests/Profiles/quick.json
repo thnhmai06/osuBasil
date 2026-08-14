@@ -5,7 +5,7 @@
 		"Domain": "basil.local",
 		"Port": 8443,
 		"IrcPort": 16667,
-		"CertPath": "basil-cert.pfx",
+		"CertPath": "data/certs/basil.local.pfx",
 		"CertPassword": "your-password",
 		"StartupTimeoutSeconds": 60,
 		"IdleSettleSeconds": 5,

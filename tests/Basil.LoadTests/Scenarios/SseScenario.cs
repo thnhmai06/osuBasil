@@ -1,4 +1,8 @@
+using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
+using Basil.LoadTests.Models;
+using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Packets;
 using NBomber.Contracts;
 using NBomber.CSharp;
 
@@ -10,6 +14,15 @@ namespace Basil.LoadTests.Scenarios;
 ///     resources for as long as they're held — the honest place to watch handle/thread growth vs.
 ///     subscriber count (read from the shared resource timeline, not this scenario).
 /// </summary>
+/// <remarks>
+///     A <c>.../live</c> stream never flushes anything — not even response headers — until it has a
+///     snapshot to send (<c>LiveSseRoutes.SubscribeWithSnapshot</c> only yields once
+///     <c>readLatestSnapshot()</c> returns non-null); an idle target with no snapshot published yet
+///     hangs a subscriber forever. A user's gameplay stream only gets a snapshot once they actually
+///     play, so this scenario creates one throwaway multiplayer match up front (whose settings
+///     snapshot exists the instant it's created) and every subscriber follows that match's
+///     <c>/settings/live</c> stream instead of an arbitrary, likely-idle user.
+/// </remarks>
 public sealed class SseScenario : IBasilScenario
 {
 	public string Id => "sse";
@@ -20,8 +33,17 @@ public sealed class SseScenario : IBasilScenario
 		if (!settings.Enabled) return [];
 
 		var clientFactory = context.ClientFactory;
-		var sampleUserId = context.Accounts.FirstOrDefault(a => a.UserId.HasValue)?.UserId ?? 0;
 		var reportFolder = context.ReportFolder;
+
+		var anchorAccount = context.Accounts[^1];
+		var anchorClient = new BanchoClient(clientFactory, anchorAccount);
+		var anchorMatchId = CreateAnchorMatchAsync(anchorClient, anchorAccount, new BasilApiClient(clientFactory))
+			.GetAwaiter().GetResult();
+		if (anchorMatchId is null)
+		{
+			context.LogWarning($"'{Id}' could not create an anchor match; skipping.");
+			return [];
+		}
 
 		var props = new List<ScenarioProps>();
 
@@ -40,7 +62,7 @@ public sealed class SseScenario : IBasilScenario
 
 						var connectStart = DateTimeOffset.UtcNow;
 						using var response = await client.GetAsync(
-							clientFactory.BuildUri("api", $"/users/{sampleUserId}/live"),
+							clientFactory.BuildUri("api", $"/matches/{anchorMatchId}/settings/live"),
 							HttpCompletionOption.ResponseHeadersRead, ctx.ScenarioCancellationToken);
 
 						if (!response.IsSuccessStatusCode)
@@ -97,18 +119,61 @@ public sealed class SseScenario : IBasilScenario
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
-				.WithWarmUpDuration(settings.WarmUp)
+				// ponytail: no warm-up. Each iteration deliberately holds its connection open for
+				// up to settings.Duration (potentially far longer than a short warm-up window) —
+				// NBomber cancels warm-up iterations still in flight when the phase ends, and a
+				// KeepConstant warm-up retries a canceled iteration immediately, so a long-held
+				// connection spins into thousands of instant cancel-and-retry "failures" before
+				// bombing even starts.
+				.WithoutWarmUp()
 				.WithMaxFailCount(settings.MaxFailCount)
-				.WithClean(_ =>
+				.WithClean(async _ =>
 				{
 					metrics.WriteReport(reportFolder, n1);
-					return Task.CompletedTask;
+					// The anchor match/session is shared across every concurrency variant in this
+					// loop; only the last one tears it down.
+					if (n == settings.ConcurrentUsers[^1]) await anchorClient.DisposeAsync();
 				});
 
 			props.Add(scenario);
 		}
 
 		return props;
+	}
+
+	/// <summary>Logs in and creates a throwaway match, whose settings snapshot exists as soon as it's created.</summary>
+	/// <returns>
+	///     The new match's <b>database</b> id (what the REST <c>/matches/{id}/settings/live</c> endpoint
+	///     keys on via <c>IMatchRegistry.GetByDbId</c>) — deliberately not the bancho-protocol match id
+	///     from the <c>MatchJoinSuccess</c>/<c>NewMatch</c> packet (a separate, small 0-63 in-memory
+	///     slot-pool index), or <see langword="null" /> if login, creation, or resolving the id failed.
+	/// </summary>
+	private static async Task<int?> CreateAnchorMatchAsync(BanchoClient client, LoadAccount account,
+		BasilApiClient apiClient)
+	{
+		var outcome = await client.LoginAsync();
+		if (!outcome.Success) return null;
+
+		var slots = Enumerable.Range(0, 16)
+			.Select(_ => new MatchSlotPacket(Status: 0, Team: 0, Mods: 0, PlayerId: null))
+			.ToArray();
+		var match = new MatchPacket(
+			Id: 0, InProgress: false, Mods: 0, Name: "sse-anchor", Password: "",
+			MapName: "", MapId: 0, MapMd5: "", Slots: slots, HostId: account.UserId ?? 0,
+			Mode: 0, WinCondition: 0, TeamType: 0, FreeMods: false, Seed: 0);
+
+		client.Send(ClientPacketWriter.CreateMatch(match));
+		await client.PollAsync();
+
+		// ponytail: the match list read can briefly lag the write; a few short retries beat
+		// hard-coding a fixed pre-delay for every profile.
+		for (var attempt = 0; attempt < 5; attempt++)
+		{
+			if (await apiClient.ResolveSampleMatchIdAsync() is { } matchId) return matchId;
+			await Task.Delay(TimeSpan.FromMilliseconds(300));
+		}
+
+		return null;
 	}
 
 	private sealed class SseMetrics

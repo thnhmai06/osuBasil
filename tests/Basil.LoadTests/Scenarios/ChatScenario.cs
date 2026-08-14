@@ -58,8 +58,11 @@ public sealed class ChatScenario : IBasilScenario
 							if (!outcome.Success)
 								return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 
-							if (!string.Equals(settings.Channel, "#osu", StringComparison.OrdinalIgnoreCase))
-								client.Send(ClientPacketWriter.ChannelJoin(settings.Channel));
+							// The login bundle only lists auto-join channels for the client to join itself
+							// (LoginService.cs: "the client will attempt to join them") — server-side
+							// membership (channel.Contains(sender.Id), gating writes) is never registered
+							// by login alone, not even for #osu. Every channel needs an explicit join.
+							client.Send(ClientPacketWriter.ChannelJoin(settings.Channel));
 
 							clients.Add(client);
 							ctx.ScenarioInstanceData["client"] = client;
@@ -110,7 +113,11 @@ public sealed class ChatScenario : IBasilScenario
 					}
 				})
 				.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
-				.WithWarmUpDuration(settings.WarmUp)
+				// ponytail: no warm-up. The step's first call per virtual user logs in and holds the
+				// session in ScenarioInstanceData for the rest of the run; a warm-up phase runs that
+				// same first call, then bombing starts each copy over — the still-live warm-up session
+				// makes every bombing-phase login attempt fail with user-already-logged-in forever.
+				.WithoutWarmUp()
 				.WithMaxFailCount(settings.MaxFailCount)
 				.WithClean(async _ =>
 				{

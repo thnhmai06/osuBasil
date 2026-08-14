@@ -53,6 +53,12 @@ public sealed class SoakScenario : IBasilScenario
 						if (!outcome.Success)
 							return Response.Fail(message: outcome.FailureReason ?? "unknown-failure");
 
+						// Server-side channel membership is never registered by login alone (the auto-join
+						// bundle only tells the client which channels to join itself) — the chat action
+						// below writes to #osu, so this join is required or every send is silently dropped.
+						newClient.Send(ClientPacketWriter.ChannelJoin("#osu"));
+						await newClient.PollAsync(ctx.ScenarioCancellationToken);
+
 						clients.Add(newClient);
 						ctx.ScenarioInstanceData["client"] = newClient;
 						return Response.Ok(statusCode: "login");
@@ -109,7 +115,9 @@ public sealed class SoakScenario : IBasilScenario
 				}
 			})
 			.WithLoadSimulations(Simulation.KeepConstant(n, settings.Duration))
-			.WithWarmUpDuration(settings.WarmUp)
+			// ponytail: see ChatScenario.cs — a warm-up phase running this same login-and-hold
+			// step leaves a live session bombing's fresh copies then can never log back into.
+			.WithoutWarmUp()
 			.WithMaxFailCount(int.MaxValue)
 			.WithClean(async _ =>
 			{
