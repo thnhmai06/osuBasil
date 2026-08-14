@@ -3,4 +3,5 @@
 **/obj
 docker-data
 publish
+.loadtest
 *.md

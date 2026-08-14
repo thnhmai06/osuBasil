@@ -27,3 +27,6 @@ opencode.json
 
 # Load Tests
 .loadtest
+
+# Docker runtime data
+docker-data/
