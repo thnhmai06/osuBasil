@@ -27,6 +27,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
@@ -43,7 +44,6 @@ public sealed class Program
 
 	private const string BasilArt =
 		"""
-
 		                    _
 		                  _(_)_          ____            _wW̲w   _
 		      @@@@       (_)@(_)   vVVVv| __ )  __ _ ___(_) |) _(_)_
@@ -177,90 +177,84 @@ public sealed class Program
 	private static void LogStartupBanner(WebApplication app)
 	{
 		var logger = app.Services.GetRequiredService<ILogger<Program>>();
-		var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-			              ?.InformationalVersion
-		              ?? typeof(Program).Assembly.GetName().Version?.ToString()
-		              ?? "unknown";
+
+		var assembly = typeof(Program).Assembly;
+		var version =
+			assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+				?.InformationalVersion
+			?? assembly.GetName().Version?.ToString()
+			?? "unknown";
 		var gcInfo = GC.GetGCMemoryInfo();
 		var appDrive = new DriveInfo(Path.GetPathRoot(AppContext.BaseDirectory)!);
 
-		logger.LogInformation("{Art}", BasilArt);
+		LogLine(logger);
+
+		foreach (var line in BasilArt.Split('\n')) logger.LogInformation("{Art}", line.TrimEnd('\r'));
 		logger.LogInformation("Basil v{Version}", version);
-		logger.LogInformation(BasilDescription);
-		logger.LogInformation(BasilLicense);
+		logger.LogInformation("{Description}", BasilDescription);
+		logger.LogInformation("{License}", BasilLicense);
 		logger.LogInformation("Current time (UTC): {Time}", DateTimeOffset.UtcNow.ToString("O"));
+		logger.LogInformation(""); // \n
 
-		logger.LogInformation(
-			"""
-			System Information:
-			Environment:
-			  Machine              : {Machine}
-			  OS                   : {OsDescription}
-			  OS Version           : {OsVersion}
-			  OS Architecture      : {OsArchitecture}
-			  Runtime              : {Framework}
-			  Runtime Identifier   : {RuntimeIdentifier}
-			  CLR                  : {ClrVersion}
-			  Process Architecture : {ProcessArchitecture}
-			  Process ID           : {ProcessId}
-			  Process Name         : {ProcessName}
-			  Logical CPUs         : {LogicalCpuCount}
-			  64-bit OS            : {Is64BitOs}
-			  64-bit Process       : {Is64BitProcess}
-
-			GC:
-			  Server GC            : {ServerGc}
-			  Latency Mode         : {LatencyMode}
-			  Memory Limit         : {MemoryLimitGiB:F2} GiB
-			  Heap Size            : {HeapSizeMiB:F2} MiB
-
-			Localization:
-			  Time Zone            : {TimeZone}
-			  Time Zone Id         : {TimeZoneId}
-			  Culture              : {Culture}
-			  UI Culture           : {UiCulture}
-
-			Storage:
-			  Application Drive    : {DriveName}
-			  Drive Format         : {DriveFormat}
-			  Total Space          : {TotalSpaceGiB:F2} GiB
-			  Free Space           : {FreeSpaceGiB:F2} GiB
-
-			Paths:
-			  Working Directory    : {WorkingDirectory}
-			  Base Directory       : {BaseDirectory}
-			  Command Line         : {CommandLine}
-			""",
-			Environment.MachineName,
-			RuntimeInformation.OSDescription,
-			Environment.OSVersion.Version,
-			RuntimeInformation.OSArchitecture,
-			RuntimeInformation.FrameworkDescription,
-			RuntimeInformation.RuntimeIdentifier,
-			Environment.Version,
-			RuntimeInformation.ProcessArchitecture,
-			Environment.ProcessId,
+		LogSection(logger, "Environment");
+		LogValue(logger, "Machine", Environment.MachineName);
+		LogValue(logger, "OS", RuntimeInformation.OSDescription);
+		LogValue(logger, "OS Version", Environment.OSVersion.Version);
+		LogValue(logger, "OS Architecture", RuntimeInformation.OSArchitecture);
+		LogValue(logger, "Runtime", RuntimeInformation.FrameworkDescription);
+		LogValue(logger, "Runtime Identifier", RuntimeInformation.RuntimeIdentifier);
+		LogValue(logger, "CLR", Environment.Version);
+		LogValue(logger, "Process Architecture", RuntimeInformation.ProcessArchitecture);
+		LogValue(logger, "Process ID", Environment.ProcessId);
+		LogValue(logger, "Process Name",
 			Environment.ProcessPath is { } path
 				? Path.GetFileNameWithoutExtension(path)
-				: "Unknown",
-			Environment.ProcessorCount,
-			Environment.Is64BitOperatingSystem,
-			Environment.Is64BitProcess,
-			GCSettings.IsServerGC,
-			GCSettings.LatencyMode,
-			gcInfo.TotalAvailableMemoryBytes / 1024d / 1024 / 1024,
-			gcInfo.HeapSizeBytes / 1024d / 1024,
-			TimeZoneInfo.Local.DisplayName,
-			TimeZoneInfo.Local.Id,
-			CultureInfo.CurrentCulture.Name,
-			CultureInfo.CurrentUICulture.Name,
-			appDrive.Name,
-			appDrive.DriveFormat,
-			appDrive.TotalSize / 1024d / 1024 / 1024,
-			appDrive.AvailableFreeSpace / 1024d / 1024 / 1024,
-			Environment.CurrentDirectory,
-			AppContext.BaseDirectory,
-			Environment.CommandLine);
+				: "Unknown");
+		LogValue(logger, "Logical CPUs", Environment.ProcessorCount);
+		LogValue(logger, "64-bit OS", Environment.Is64BitOperatingSystem);
+		LogValue(logger, "64-bit Process", Environment.Is64BitProcess);
+
+		LogSection(logger, "GC");
+		LogValue(logger, "Server GC", GCSettings.IsServerGC);
+		LogValue(logger, "Latency Mode", GCSettings.LatencyMode);
+		LogValue(logger, "Memory Limit", $"{gcInfo.TotalAvailableMemoryBytes / 1024d / 1024 / 1024:F2} GiB");
+		LogValue(logger, "Heap Size", $"{gcInfo.HeapSizeBytes / 1024d / 1024:F2} MiB");
+
+		LogSection(logger, "Localization");
+		LogValue(logger, "Time Zone", TimeZoneInfo.Local.DisplayName);
+		LogValue(logger, "Time Zone ID", TimeZoneInfo.Local.Id);
+		LogValue(logger, "Culture", CultureInfo.CurrentCulture.Name);
+		LogValue(logger, "UI Culture", CultureInfo.CurrentUICulture.Name);
+
+		LogSection(logger, "Storage");
+		LogValue(logger, "Application Drive", appDrive.Name);
+		LogValue(logger, "Drive Format", appDrive.DriveFormat);
+		LogValue(logger, "Total Space", $"{appDrive.TotalSize / 1024d / 1024 / 1024:F2} GiB");
+		LogValue(logger, "Free Space", $"{appDrive.AvailableFreeSpace / 1024d / 1024 / 1024:F2} GiB");
+
+		LogSection(logger, "Paths");
+		LogValue(logger, "Working Directory", Environment.CurrentDirectory);
+		LogValue(logger, "Base Directory", AppContext.BaseDirectory);
+		LogValue(logger, "Command Line", Environment.CommandLine);
+
+		LogLine(logger);
+		return;
+
+		static void LogLine(ILogger logger)
+		{
+			logger.LogInformation(
+				"────────────────────────────────────────────────────────────────");
+		}
+
+		static void LogSection(ILogger logger, string name)
+		{
+			logger.LogInformation("{Section}:", name);
+		}
+
+		static void LogValue(ILogger logger, string key, object? value)
+		{
+			logger.LogInformation("\t{Key,-22} : {Value}", key, value);
+		}
 	}
 
 	/// <summary>
