@@ -61,7 +61,8 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
 					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
-					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
 					CachePath = Path.Combine(_dataDir, "Cache")
 				}));

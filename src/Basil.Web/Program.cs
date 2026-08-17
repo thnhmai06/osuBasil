@@ -620,7 +620,7 @@ public sealed class Program
 		foreach (var path in new[]
 		         {
 			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
-			         storageOptions.SeasonalsPath, storageOptions.FaqsPath
+			         storageOptions.MenuSeasonalsPath, storageOptions.FaqsPath
 		         })
 			Directory.CreateDirectory(path);
 		logger.LogInformation("Storage folders ready");

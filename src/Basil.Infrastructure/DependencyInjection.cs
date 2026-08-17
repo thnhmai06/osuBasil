@@ -62,7 +62,8 @@ public static class DependencyInjection
 			ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
 			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
 			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
-			SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
+			MenuSeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Seasonals"),
+			MenuBannersPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Banners"),
 			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
 			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));

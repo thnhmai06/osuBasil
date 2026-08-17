@@ -7,10 +7,10 @@ namespace Basil.Application.Services.Content;
 ///     Stores seasonal background images on disk.
 /// </summary>
 /// <remarks>
-///     All operations read and write the same <c>StorageOptions.SeasonalsPath</c> folder, including
+///     All operations read and write the same <c>StorageOptions.MenuSeasonalsPath</c> folder, including
 ///     the osu! client's seasonal background request and the administrative file-management flows.
 /// </remarks>
-public sealed class SeasonalService(IOptions<StorageOptions> storage)
+public sealed class MenuSeasonalService(IOptions<StorageOptions> storage)
 {
 	/// <summary>
 	///     Identifies the outcome of a seasonal image creation.
@@ -46,10 +46,10 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	/// </remarks>
 	public IReadOnlyList<string> ListFileNames()
 	{
-		Directory.CreateDirectory(storage.Value.SeasonalsPath);
+		Directory.CreateDirectory(storage.Value.MenuSeasonalsPath);
 		return
 		[
-			.. Directory.EnumerateFiles(storage.Value.SeasonalsPath)
+			.. Directory.EnumerateFiles(storage.Value.MenuSeasonalsPath)
 				.Select(path => Path.GetFileName(path))
 				.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
 		];
@@ -66,7 +66,7 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	/// </remarks>
 	public string? FindFilePath(string fileName)
 	{
-		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		var path = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(fileName));
 		return File.Exists(path) ? path : null;
 	}
 
@@ -80,8 +80,8 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	public async Task<CreateResult> CreateAsync(string fileName, Stream content,
 		CancellationToken cancellationToken = default)
 	{
-		Directory.CreateDirectory(storage.Value.SeasonalsPath);
-		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		Directory.CreateDirectory(storage.Value.MenuSeasonalsPath);
+		var path = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(fileName));
 		if (File.Exists(path)) return CreateResult.AlreadyExists;
 
 		await using var fileStream = File.Create(path);
@@ -99,7 +99,7 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	public async Task<ReplaceResult> ReplaceAsync(string fileName, Stream content,
 		CancellationToken cancellationToken = default)
 	{
-		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		var path = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(fileName));
 		if (!File.Exists(path)) return ReplaceResult.NotFound;
 
 		await using var fileStream = File.Create(path);
@@ -114,7 +114,7 @@ public sealed class SeasonalService(IOptions<StorageOptions> storage)
 	/// <returns><see langword="true" /> if the image was deleted; otherwise, <see langword="false" />.</returns>
 	public bool Delete(string fileName)
 	{
-		var path = Path.Combine(storage.Value.SeasonalsPath, Path.GetFileName(fileName));
+		var path = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(fileName));
 		if (!File.Exists(path)) return false;
 
 		File.Delete(path);

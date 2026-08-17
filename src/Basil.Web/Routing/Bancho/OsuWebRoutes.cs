@@ -414,9 +414,9 @@ internal static class OsuWebRoutes
 			{
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
 				var domain = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value.Domain;
-				Directory.CreateDirectory(storage.SeasonalsPath);
+				Directory.CreateDirectory(storage.MenuSeasonalsPath);
 
-				var files = Directory.EnumerateFiles(storage.SeasonalsPath)
+				var files = Directory.EnumerateFiles(storage.MenuSeasonalsPath)
 					.Select(path => $"https://osu.{domain}/seasonal/{Path.GetFileName(path)}")
 					.ToArray();
 				return Results.Json(files);
@@ -436,7 +436,7 @@ internal static class OsuWebRoutes
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
 				// Path.GetFileName strips any directory component the client could smuggle in
 				// (e.g. "../../appsettings.json") before it ever reaches Path.Combine.
-				var path = Path.Combine(storage.SeasonalsPath, Path.GetFileName(fileName));
+				var path = Path.Combine(storage.MenuSeasonalsPath, Path.GetFileName(fileName));
 				return !File.Exists(path) ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
 			})
 			.WithGroupName("osuweb")
