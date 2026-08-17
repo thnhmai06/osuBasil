@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
@@ -610,6 +611,8 @@ public sealed class Program
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
+		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);
+
 		var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
 		var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
 
@@ -667,5 +670,45 @@ public sealed class Program
 					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
 					"Configure an admin key immediately via PUT /adminkey.");
 		}
+	}
+
+	/// <summary>
+	///     Moves data from the pre-`Data/Menu/` folder layout into place, one time, on startup.
+	/// </summary>
+	/// <remarks>
+	///     Idempotent: each move is guarded by the old path existing and the new one not existing yet,
+	///     so a server that has already migrated (or was never on the old layout) does nothing.
+	///     <c>MenuIcon:Path</c> is rewritten only when it still points at the exact file being moved —
+	///     it defaults to an external URL, which this leaves untouched.
+	/// </remarks>
+	/// <param name="services">The scoped service provider used to update <c>MenuIcon:Path</c>.</param>
+	/// <param name="logger">The logger startup messages are written to.</param>
+	private static async Task MigrateLegacyMenuDataAsync(IServiceProvider services, ILogger logger)
+	{
+		var dataDir = Path.Combine(AppContext.BaseDirectory, "Data");
+		var menuDir = Path.Combine(dataDir, "Menu");
+		Directory.CreateDirectory(menuDir);
+
+		var oldSeasonals = Path.Combine(dataDir, "Seasonals");
+		var newSeasonals = Path.Combine(menuDir, "Seasonals");
+		if (Directory.Exists(oldSeasonals) && !Directory.Exists(newSeasonals))
+		{
+			Directory.Move(oldSeasonals, newSeasonals);
+			logger.LogInformation("Migrated legacy Data/Seasonals/ to Data/Menu/Seasonals/");
+		}
+
+		var oldIcon = Directory.Exists(dataDir)
+			? Directory.EnumerateFiles(dataDir, "MenuIcon.*").FirstOrDefault()
+			: null;
+		if (oldIcon is null) return;
+
+		var newIcon = Path.Combine(menuDir, $"Icon{Path.GetExtension(oldIcon)}");
+		if (File.Exists(newIcon)) return;
+
+		File.Move(oldIcon, newIcon);
+		var settings = services.GetRequiredService<ISettingsRepository>();
+		if (await settings.GetAsync("MenuIcon:Path") == oldIcon)
+			await settings.SetAsync("MenuIcon:Path", newIcon);
+		logger.LogInformation("Migrated legacy {Old} to {New}", oldIcon, newIcon);
 	}
 }
