@@ -487,8 +487,13 @@ public sealed class Program
 				// path), so the fixed crop size is injected here rather than read from the request.
 				options.OnParseCommandsAsync = ctx =>
 				{
-					if (BeatmapThumbnailImageProvider.TryGetSize(ctx.Context.Request.Path, out var width,
-						    out var height))
+					var matched = BeatmapThumbnailImageProvider.TryGetSize(ctx.Context.Request.Path, out var width,
+						out var height);
+					if (!matched)
+						matched = BeatmapsetBackgroundImageProvider.TryGetCoverSize(ctx.Context.Request.Path,
+							out width, out height);
+
+					if (matched)
 					{
 						ctx.Commands["width"] = width.ToString();
 						ctx.Commands["height"] = height.ToString();
@@ -517,7 +522,8 @@ public sealed class Program
 			.AddProvider<MenuAssetImageProvider>()
 			.AddProvider<MenuIconImageProvider>()
 			.AddProvider<BeatmapThumbnailImageProvider>()
-			.AddProvider<AvatarImageProvider>();
+			.AddProvider<AvatarImageProvider>()
+			.AddProvider<BeatmapsetBackgroundImageProvider>();
 	}
 
 	/// <summary>

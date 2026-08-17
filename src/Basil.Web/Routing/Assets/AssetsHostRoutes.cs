@@ -35,6 +35,7 @@ internal static class AssetsHostRoutes
 
 		group.MapMenuAssetRoutes();
 		group.MapMenuContentRoutes();
+		group.MapBeatmapsetAssetRoutes();
 	}
 
 	private sealed record HealthStatus(string Status);
