@@ -106,6 +106,7 @@ When two documents disagree, the authoritative document wins.
 | HTTPS and certificates                                 | [`for-technicians/https.md`](for-technicians/https.md)                 |
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
+| Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
 
@@ -138,6 +139,7 @@ This prevents the documentation from developing multiple competing versions of t
 ## See also
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
+* [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
