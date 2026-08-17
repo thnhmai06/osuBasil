@@ -456,7 +456,7 @@ public sealed class Program
 	}
 
 	/// <summary>
-	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapasets/avatar/basilapi).
+	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapasets/avatar/assets/basilapi).
 	/// </summary>
 	/// <param name="builder">The web application builder whose OpenAPI documents are added.</param>
 	private static void ConfigureOpenApi(WebApplicationBuilder builder)
@@ -484,6 +484,11 @@ public sealed class Program
 			"avatar",
 			"osu! Client API: Avatar Files",
 			"Locally hosted user avatar images.");
+		AddOpenApiDocument(
+			builder,
+			"assets",
+			"Basil Assets",
+			"Menu banner/icon/seasonal images and beatmapset covers, served through ImageSharp.Web.");
 		AddOpenApiDocument(
 			builder,
 			"basilapi",
