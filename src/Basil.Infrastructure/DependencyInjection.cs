@@ -119,7 +119,6 @@ public static class DependencyInjection
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
-		services.AddSingleton<IImageResizer, ImageSharpResizer>();
 		services.AddSingleton<IAudioExtractor, FfmpegAudioExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
 		services.AddSingleton<BeatmapIngestionService>();

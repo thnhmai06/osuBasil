@@ -30,8 +30,40 @@ public static class AssetsHost
 	/// <param name="configuredDomain">The server's configured apex domain.</param>
 	public static string[] AssetsHostsFor(string configuredDomain)
 	{
+		return HostsFor(configuredDomain, "assets");
+	}
+
+	/// <summary>
+	///     Builds the <c>b.</c> hostnames a provider should match, for the configured domain and the
+	///     <c>ppy.sh</c> fallback.
+	/// </summary>
+	/// <param name="configuredDomain">The server's configured apex domain.</param>
+	public static string[] BeatmapAssetHostsFor(string configuredDomain)
+	{
+		return HostsFor(configuredDomain, "b");
+	}
+
+	/// <summary>
+	///     Builds the <c>a.</c> hostnames a provider should match, for the configured domain and the
+	///     <c>ppy.sh</c> fallback.
+	/// </summary>
+	/// <param name="configuredDomain">The server's configured apex domain.</param>
+	public static string[] AvatarHostsFor(string configuredDomain)
+	{
+		return HostsFor(configuredDomain, "a");
+	}
+
+	/// <summary>
+	///     Builds the <c>{subdomain}.</c> hostnames a provider should match, for the configured domain
+	///     and the <c>ppy.sh</c> fallback — matching the pattern every host group registers under in
+	///     <c>BanchoHostGroups</c>.
+	/// </summary>
+	/// <param name="configuredDomain">The server's configured apex domain.</param>
+	/// <param name="subdomain">The subdomain prefix, e.g. <c>assets</c>, <c>b</c>, or <c>a</c>.</param>
+	private static string[] HostsFor(string configuredDomain, string subdomain)
+	{
 		return new[] { "ppy.sh", configuredDomain }.Distinct()
-			.Select(domain => $"assets.{domain}")
+			.Select(domain => $"{subdomain}.{domain}")
 			.ToArray();
 	}
 }

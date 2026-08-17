@@ -3,14 +3,14 @@ using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Bancho;
 
 /// <summary>
-///     Registers the `b.{domain}` host's routes: beatmapset thumbnails and audio previews, resized
-///     or trimmed on demand.
+///     Registers the `b.{domain}` host's routes: the beatmapset thumbnail mirror-fallback (the
+///     thumbnails themselves are served by <c>BeatmapThumbnailImageProvider</c>, ahead of routing)
+///     and audio previews, trimmed on demand.
 /// </summary>
 internal static class BeatmapAssetRoutes
 {
@@ -21,12 +21,13 @@ internal static class BeatmapAssetRoutes
 	public static void MapBeatmapAssetGroup(this RouteGroupBuilder group)
 	{
 		// The cover (80x60) and list-icon ("l", 160x120) thumbnails are resized directly from the
-		// beatmapset's locally stored background on the first request and cached under
-		// Data/Cache/thumb/ (see IResponseCache), instead of redirecting to the api. host's
-		// unresized background route. When the server runs in online mirror mode (see
-		// MirrorOptions.IsOnlineMode) and a set has no local background, the request redirects to
-		// b.ppy.sh instead of 404ing, matching that host's real public URL scheme — but only for
-		// sets with a genuine ppy id; a locally authored set has no ppy-hosted counterpart to redirect to.
+		// beatmapset's locally stored background by BeatmapThumbnailImageProvider (ImageSharp.Web),
+		// which runs ahead of routing and so handles a set with a local background on its own —
+		// these routes only run as a fallback: private/missing set, or no local background. When
+		// the server runs in online mirror mode (see MirrorOptions.IsOnlineMode) and a set has no
+		// local background, the request redirects to b.ppy.sh instead of 404ing, matching that
+		// host's real public URL scheme — but only for sets with a genuine ppy id; a locally
+		// authored set has no ppy-hosted counterpart to redirect to.
 		group.MapGet("/thumb/{setId:int}l.jpg", HandleThumbnailLarge)
 			.WithGroupName("beatmapassets")
 			.WithSummary("Retrieve a beatmapset list-icon thumbnail (160x120)")
@@ -59,51 +60,33 @@ internal static class BeatmapAssetRoutes
 			.WithTags("Beatmap Assets");
 	}
 
-	/// <summary>Serves the 80x60 cover thumbnail for a beatmapset, resized on demand and cached.</summary>
+	/// <summary>Serves the 80x60 cover thumbnail's mirror fallback (no local background).</summary>
 	private static Task<IResult> HandleThumbnailSmall(int setId, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror, IResponseCache cache,
-		IImageResizer resizer, HttpRequest request, CancellationToken cancellationToken)
+		IOptions<MirrorOptions> mirror, HttpRequest request, CancellationToken cancellationToken)
 	{
-		return HandleThumbnailAsync(setId, false, 80, 60, beatmapsetRepository, storage, mirror, cache, resizer,
-			request, cancellationToken);
+		return HandleThumbnailFallbackAsync(setId, beatmapsetRepository, mirror, request, cancellationToken);
 	}
 
-	/// <summary>Serves the 160x120 list-icon thumbnail for a beatmapset, resized on demand and cached.</summary>
+	/// <summary>Serves the 160x120 list-icon thumbnail's mirror fallback (no local background).</summary>
 	private static Task<IResult> HandleThumbnailLarge(int setId, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror, IResponseCache cache,
-		IImageResizer resizer, HttpRequest request, CancellationToken cancellationToken)
+		IOptions<MirrorOptions> mirror, HttpRequest request, CancellationToken cancellationToken)
 	{
-		return HandleThumbnailAsync(setId, true, 160, 120, beatmapsetRepository, storage, mirror, cache, resizer,
-			request, cancellationToken);
+		return HandleThumbnailFallbackAsync(setId, beatmapsetRepository, mirror, request, cancellationToken);
 	}
 
 	/// <summary>
-	///     Resizes the beatmapset's background image to a fixed size and serves it directly, rather than
-	///     redirecting to the `api.` host's own (unresized) background route, because a real osu! client
-	///     expects a thumb-sized image at this exact URL. Cached under `Data/Cache/thumb/` (see
-	///     <see cref="IResponseCache" />) so the resize only ever runs once per beatmapset per size.
+	///     Handles a thumbnail request that <c>BeatmapThumbnailImageProvider</c> didn't resolve: the
+	///     beatmapset doesn't exist, is private, or has no local background. A beatmapset with a local
+	///     background is always served by that provider instead — this handler never resizes anything.
 	/// </summary>
-	private static async Task<IResult> HandleThumbnailAsync(int setId, bool large, int width, int height,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		IResponseCache cache, IImageResizer resizer, HttpRequest request, CancellationToken cancellationToken)
+	private static async Task<IResult> HandleThumbnailFallbackAsync(int setId,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<MirrorOptions> mirror, HttpRequest request,
+		CancellationToken cancellationToken)
 	{
 		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
 
-		var cacheKey = ResponseCacheKeys.Thumb(setId, large);
-		var contentType = ContentTypes.Resolve(cacheKey);
-		var cached = await cache.GetAsync("thumb", cacheKey, cancellationToken);
-		if (cached is not null) return Results.File(cached, contentType);
-
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, mapset);
-		if (backgroundPath is null || !File.Exists(backgroundPath))
-			return MirrorFallback(mirror.Value, mapset, request);
-
-		var sourceBytes = await File.ReadAllBytesAsync(backgroundPath, cancellationToken);
-		var resized = await resizer.ResizeAsync(sourceBytes, width, height, cancellationToken);
-		await cache.PutAsync("thumb", cacheKey, resized, cancellationToken);
-
-		return Results.File(resized, contentType);
+		return MirrorFallback(mirror.Value, mapset, request);
 	}
 
 	/// <summary>
