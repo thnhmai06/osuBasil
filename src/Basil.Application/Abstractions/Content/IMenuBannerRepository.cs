@@ -20,14 +20,21 @@ public interface IMenuBannerRepository
 	/// <summary>Creates a new banner.</summary>
 	/// <param name="image">A locally stored filename or an external URL.</param>
 	/// <param name="url">The click-through URL.</param>
-	/// <param name="begins">The UTC instant the banner starts being current.</param>
-	/// <param name="expires">The UTC instant the banner stops being current.</param>
+	/// <param name="begins">The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound.</param>
+	/// <param name="expires">The UTC instant the banner stops being current, or <see langword="null" /> for no upper bound.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The created banner, with its assigned id.</returns>
-	Task<MenuBanner> CreateAsync(string image, string url, DateTime begins, DateTime expires,
+	Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>Updates an existing banner's fields, leaving any <see langword="null" /> argument unchanged.</summary>
+	/// <summary>
+	///     Updates an existing banner's fields, leaving any <see langword="null" /> argument unchanged.
+	/// </summary>
+	/// <remarks>
+	///     Because <see langword="null" /> means "leave unchanged" here, this cannot clear an existing
+	///     <paramref name="begins" />/<paramref name="expires" /> bound back to unset (permanent) —
+	///     delete and recreate the banner for that.
+	/// </remarks>
 	/// <param name="id">The banner's id.</param>
 	/// <param name="image">The new image value, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="url">The new click-through URL, or <see langword="null" /> to leave it unchanged.</param>

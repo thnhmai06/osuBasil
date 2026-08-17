@@ -27,7 +27,7 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 	}
 
 	/// <inheritdoc />
-	public async Task<MenuBanner> CreateAsync(string image, string url, DateTime begins, DateTime expires,
+	public async Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -82,8 +82,8 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 		public int Id { get; set; }
 		public string Image { get; set; } = "";
 		public string Url { get; set; } = "";
-		public DateTime Begins { get; set; }
-		public DateTime Expires { get; set; }
+		public DateTime? Begins { get; set; }
+		public DateTime? Expires { get; set; }
 		public DateTime CreatedAt { get; set; }
 
 		/// <summary>Builds a <see cref="MenuBanner" /> from this row.</summary>

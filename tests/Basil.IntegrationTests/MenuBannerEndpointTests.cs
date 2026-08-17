@@ -68,7 +68,7 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		return request;
 	}
 
-	private static HttpRequestMessage MakeCreateRequest(string image, string url, DateTime begins, DateTime expires)
+	private static HttpRequestMessage MakeCreateRequest(string image, string url, DateTime? begins, DateTime? expires)
 	{
 		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
 		request.Content = new StringContent(
@@ -196,5 +196,41 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 			.GetProperty("IsCurrent").GetBoolean());
 		Assert.False(images.Single(i => i.GetProperty("image").GetString()!.Contains("future"))
 			.GetProperty("IsCurrent").GetBoolean());
+	}
+
+	[Fact]
+	public async Task PostBanner_NullBeginsAndExpires_IsAlwaysCurrentWithNullBoundsInManifest()
+	{
+		var client = _factory.CreateClient();
+		var response = await client.SendAsync(
+			MakeCreateRequest("https://example.test/permanent.png", "https://example.test", null, null));
+		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		Assert.True(created!.Data!.GetProperty("isCurrent").GetBoolean());
+		Assert.Equal(JsonValueKind.Null, created.Data!.GetProperty("begins").ValueKind);
+		Assert.Equal(JsonValueKind.Null, created.Data!.GetProperty("expires").ValueKind);
+
+		var manifestResponse =
+			await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu-content.json", "assets.test.local", null));
+		var manifest = await manifestResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var image = manifest.GetProperty("images").EnumerateArray()
+			.Single(i => i.GetProperty("image").GetString()!.Contains("permanent"));
+
+		Assert.True(image.GetProperty("IsCurrent").GetBoolean());
+		Assert.Equal(JsonValueKind.Null, image.GetProperty("begins").ValueKind);
+		Assert.Equal(JsonValueKind.Null, image.GetProperty("expires").ValueKind);
+	}
+
+	[Fact]
+	public async Task PostBanner_OnlyExpiresSet_BeginsHasNoLowerBound()
+	{
+		var client = _factory.CreateClient();
+		var response = await client.SendAsync(MakeCreateRequest("https://example.test/expiring.png",
+			"https://example.test", null, DateTime.UtcNow.AddDays(1)));
+		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.True(created!.Data!.GetProperty("isCurrent").GetBoolean());
+		Assert.Equal(JsonValueKind.Null, created.Data!.GetProperty("begins").ValueKind);
 	}
 }

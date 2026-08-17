@@ -29,7 +29,7 @@ internal static class MenuContentRoutes
 				var all = await banners.FetchAllAsync(cancellationToken);
 				var images = all.Select(b => new MenuContentImage(
 					banners.ResolveImageUrl(b.Image), b.Url, b.IsCurrent(now),
-					b.Begins.ToString("O"), b.Expires.ToString("O")));
+					b.Begins?.ToString("O"), b.Expires?.ToString("O")));
 
 				return Results.Json(new MenuContentResponse([.. images]));
 			})
@@ -40,11 +40,14 @@ internal static class MenuContentRoutes
 	/// <summary>Response body for `GET /menu-content.json`.</summary>
 	private sealed record MenuContentResponse([property: JsonPropertyName("images")] IReadOnlyList<MenuContentImage> Images);
 
-	/// <summary>One entry in the `/menu-content.json` manifest.</summary>
+	/// <summary>
+	///     One entry in the `/menu-content.json` manifest. <c>begins</c>/<c>expires</c> are
+	///     <see langword="null" /> when the banner has no lower/upper display-window bound.
+	/// </summary>
 	private sealed record MenuContentImage(
 		[property: JsonPropertyName("image")] string Image,
 		[property: JsonPropertyName("url")] string Url,
 		[property: JsonPropertyName("IsCurrent")] bool IsCurrent,
-		[property: JsonPropertyName("begins")] string Begins,
-		[property: JsonPropertyName("expires")] string Expires);
+		[property: JsonPropertyName("begins")] string? Begins,
+		[property: JsonPropertyName("expires")] string? Expires);
 }

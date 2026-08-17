@@ -47,6 +47,8 @@ internal static class MenuBannerRoutes
 			.WithSummary("Create a main-menu banner.")
 			.WithDescription("""
 			                 Either a multipart upload (fields `file`, `url`, `begins`, `expires`) or a JSON body `{ image, url, begins, expires }` where `image` is an external URL.
+
+			                 `begins`/`expires` are each optional: a missing/null `begins` means no lower bound (already current), a missing/null `expires` means no upper bound (never expires), and omitting both makes the banner permanent — always current.
 			                 """ + AdminKeyNote)
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerView>(StatusCodes.Status201Created)
@@ -74,6 +76,8 @@ internal static class MenuBannerRoutes
 			.WithSummary("Update a main-menu banner.")
 			.WithDescription("""
 			                 Body: `{ image?, url?, begins?, expires? }`. Each field is applied only if present. Setting `image` here always means an external URL, replacing any uploaded file; use `POST /menu/banners/{bannerId}/image` to upload a file instead.
+
+			                 `begins`/`expires` follow the same "null = no bound" rule as `POST /menu/banners`, but since this route only applies a field when it's present, a missing `begins`/`expires` leaves the stored bound as-is rather than clearing it — to clear an existing bound back to permanent, delete and recreate the banner.
 
 			                 Returns `404 Not Found` if the banner doesn't exist.
 			                 """ + AdminKeyNote)
@@ -178,17 +182,33 @@ internal static class MenuBannerRoutes
 		return Results.Json(ToView(updated, banners));
 	}
 
+	/// <summary>
+	///     Parses the multipart form's <c>url</c>/<c>begins</c>/<c>expires</c> fields.
+	///     <c>begins</c>/<c>expires</c> are each optional — a missing or empty value means no bound.
+	/// </summary>
 	private static bool TryParseWindow(string? url, string? begins, string? expires, out string? outUrl,
-		out DateTime outBegins, out DateTime outExpires, out string? error)
+		out DateTime? outBegins, out DateTime? outExpires, out string? error)
 	{
 		outUrl = url;
-		outBegins = default;
-		outExpires = default;
+		outBegins = null;
+		outExpires = null;
 		error = null;
 
-		if (string.IsNullOrEmpty(url)) error = "Missing 'url' form field.";
-		else if (!DateTime.TryParse(begins, out outBegins)) error = "Missing or invalid 'begins' form field.";
-		else if (!DateTime.TryParse(expires, out outExpires)) error = "Missing or invalid 'expires' form field.";
+		if (string.IsNullOrEmpty(url))
+		{
+			error = "Missing 'url' form field.";
+		}
+		else if (!string.IsNullOrEmpty(begins))
+		{
+			if (!DateTime.TryParse(begins, out var parsedBegins)) error = "Invalid 'begins' form field.";
+			else outBegins = parsedBegins;
+		}
+
+		if (error is null && !string.IsNullOrEmpty(expires))
+		{
+			if (!DateTime.TryParse(expires, out var parsedExpires)) error = "Invalid 'expires' form field.";
+			else outExpires = parsedExpires;
+		}
 
 		return error is null;
 	}
@@ -207,14 +227,14 @@ internal static class MenuBannerRoutes
 	}
 
 	/// <summary>Response body for the `/menu/banners` read routes.</summary>
-	public sealed record MenuBannerView(int Id, string Image, string Url, DateTime Begins, DateTime Expires,
+	public sealed record MenuBannerView(int Id, string Image, string Url, DateTime? Begins, DateTime? Expires,
 		bool IsCurrent);
 
 	/// <summary>Confirmation body for `DELETE /menu/banners/{bannerId}`.</summary>
 	public sealed record MenuBannerDeletedView(int Id, bool Deleted);
 
 	/// <summary>Request body for `POST /menu/banners` (JSON, external-URL form).</summary>
-	public sealed record MenuBannerCreateBody(string Image, string Url, DateTime Begins, DateTime Expires);
+	public sealed record MenuBannerCreateBody(string Image, string Url, DateTime? Begins, DateTime? Expires);
 
 	/// <summary>Request body for `PUT`/`PATCH /menu/banners/{bannerId}`.</summary>
 	public sealed record MenuBannerUpdateBody(string? Image = null, string? Url = null, DateTime? Begins = null,

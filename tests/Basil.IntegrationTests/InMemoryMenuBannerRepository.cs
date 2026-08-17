@@ -23,7 +23,7 @@ internal sealed class InMemoryMenuBannerRepository : IMenuBannerRepository
 		return Task.FromResult(_banners.GetValueOrDefault(id));
 	}
 
-	public Task<MenuBanner> CreateAsync(string image, string url, DateTime begins, DateTime expires,
+	public Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
 		var banner = new MenuBanner(_nextId++, image, url, begins, expires, DateTime.UtcNow);

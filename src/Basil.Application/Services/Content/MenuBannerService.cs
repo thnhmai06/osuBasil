@@ -49,10 +49,10 @@ public sealed class MenuBannerService(IMenuBannerRepository repository, IOptions
 	/// <summary>Creates a banner whose image is an external URL.</summary>
 	/// <param name="image">The external image URL.</param>
 	/// <param name="url">The click-through URL.</param>
-	/// <param name="begins">The UTC instant the banner starts being current.</param>
-	/// <param name="expires">The UTC instant the banner stops being current.</param>
+	/// <param name="begins">The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound.</param>
+	/// <param name="expires">The UTC instant the banner stops being current, or <see langword="null" /> for no upper bound.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task<MenuBanner> CreateAsync(string image, string url, DateTime begins, DateTime expires,
+	public Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
 		return repository.CreateAsync(image, url, begins, expires, cancellationToken);
@@ -62,11 +62,11 @@ public sealed class MenuBannerService(IMenuBannerRepository repository, IOptions
 	/// <param name="content">The image content.</param>
 	/// <param name="extension">The file extension to store it under, including the leading dot.</param>
 	/// <param name="url">The click-through URL.</param>
-	/// <param name="begins">The UTC instant the banner starts being current.</param>
-	/// <param name="expires">The UTC instant the banner stops being current.</param>
+	/// <param name="begins">The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound.</param>
+	/// <param name="expires">The UTC instant the banner stops being current, or <see langword="null" /> for no upper bound.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	public async Task<MenuBanner> CreateFromUploadAsync(Stream content, string extension, string url,
-		DateTime begins, DateTime expires, CancellationToken cancellationToken = default)
+		DateTime? begins, DateTime? expires, CancellationToken cancellationToken = default)
 	{
 		var fileName = await SaveUploadAsync(content, extension, cancellationToken);
 		return await repository.CreateAsync(fileName, url, begins, expires, cancellationToken);
@@ -93,6 +93,9 @@ public sealed class MenuBannerService(IMenuBannerRepository repository, IOptions
 	/// <remarks>
 	///     Setting <paramref name="image" /> here always means an external URL; a local file already
 	///     stored under this banner is deleted, since <c>Image</c> can only point at one form at a time.
+	///     Because <see langword="null" /> means "leave unchanged", this cannot clear an existing
+	///     <paramref name="begins" />/<paramref name="expires" /> bound back to unset (permanent) —
+	///     delete and recreate the banner for that.
 	/// </remarks>
 	/// <param name="id">The banner's id.</param>
 	/// <param name="image">The new external image URL, or <see langword="null" /> to leave it unchanged.</param>
