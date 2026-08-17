@@ -29,6 +29,7 @@
 		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
 		<PackageReference Include="SixLabors.ImageSharp"/>
+		<PackageReference Include="SixLabors.ImageSharp.Web"/>
 	</ItemGroup>
 
 </Project>

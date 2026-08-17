@@ -15,6 +15,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Domain.Channels;
 using Basil.Infrastructure;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Media.Assets;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
 using Basil.Web.Logging;
@@ -27,6 +28,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
+using SixLabors.ImageSharp.Web.Caching;
+using SixLabors.ImageSharp.Web.DependencyInjection;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -144,6 +147,7 @@ public sealed class Program
 		ConfigureOpenApi(builder);
 		ConfigureAuth(builder);
 		ConfigureCors(builder);
+		ConfigureImageSharp(builder);
 
 		var app = builder.Build();
 		LogStartupBanner(app);
@@ -160,6 +164,7 @@ public sealed class Program
 		app.UseAuthorization();
 		app.UseMiddleware<EnvelopeMiddleware>();
 		app.UseMiddleware<ApiRequestLoggingMiddleware>();
+		app.UseImageSharp();
 
 		var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
 		BanchoHostGroups.MapAll(app, domain);
@@ -453,6 +458,29 @@ public sealed class Program
 				.AllowAnyOrigin()
 				.AllowAnyMethod()
 				.AllowAnyHeader()));
+	}
+
+	/// <summary>
+	///     Registers ImageSharp.Web, the request pipeline backing `assets.`'s (and, once migrated,
+	///     `b.`/`a.`'s) image serving.
+	/// </summary>
+	/// <remarks>
+	///     No providers are registered yet — each asset family (menu images, beatmapset covers,
+	///     beatmap thumbnails, avatars) adds its own <c>IImageProvider</c> as that part of the
+	///     migration lands, all gated to their own host via <see cref="AssetsHost.Matches"/>. The cache
+	///     lives under <c>Data/Cache/imagesharp/</c>, alongside the existing (audio-preview-only, once
+	///     beatmap thumbnails migrate) <c>Data/Cache/</c> folder.
+	/// </remarks>
+	/// <param name="builder">The web application builder whose ImageSharp.Web pipeline is configured.</param>
+	private static void ConfigureImageSharp(WebApplicationBuilder builder)
+	{
+		builder.Services.AddImageSharp(options => { options.CacheMaxAge = TimeSpan.FromDays(30); })
+			.Configure<PhysicalFileSystemCacheOptions>(o =>
+			{
+				o.CacheRootPath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache");
+				o.CacheFolder = "imagesharp";
+			})
+			.ClearProviders();
 	}
 
 	/// <summary>
