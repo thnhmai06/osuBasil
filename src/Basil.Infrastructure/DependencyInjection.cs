@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
@@ -110,6 +111,7 @@ public static class DependencyInjection
 			new CachingSettingsRepository(
 				new SqliteSettingsRepository(BuildConnectionString(sp)),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingSettingsRepository>>()));
+		services.AddSingleton<IMenuBannerRepository>(sp => new SqliteMenuBannerRepository(BuildConnectionString(sp)));
 
 		services.AddHttpClient<IMirrorSearchClient, HttpMirrorSearchClient>();
 
