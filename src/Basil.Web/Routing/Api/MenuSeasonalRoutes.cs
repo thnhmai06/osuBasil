@@ -1,6 +1,8 @@
+using Basil.Application.Configurations;
 using Basil.Application.Services.Content;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
+using Microsoft.Extensions.Options;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -29,16 +31,15 @@ internal static class MenuSeasonalRoutes
 	/// <param name="group">The `api.` host route group.</param>
 	public static void MapMenuSeasonalRoutes(this RouteGroupBuilder group)
 	{
-		group.MapGet("/menu/seasonals", (MenuSeasonalService seasonal) => Results.Json(seasonal.ListFileNames()))
+		group.MapGet("/menu/seasonals", (IOptions<ServerOptions> server) =>
+				Results.Redirect($"https://assets.{server.Value.Domain}/menu/seasonals"))
 			.WithGroupName("basilapi")
 			.WithName("listSeasonalBackgrounds")
 			.WithSummary("List seasonal backgrounds.")
-			.WithDescription("Returns the bare filenames, unlike the osu! client-facing " +
-			                 "`GET osu.<domain>/web/osu-getseasonal.php`, which returns full URLs for the same " +
-			                 "files.")
+			.WithDescription("Redirects to `GET assets.<domain>/menu/seasonals`, which returns the bare " +
+			                 "filenames.")
 			.WithTags("Seasonal Backgrounds")
-			.Produces<IReadOnlyList<string>>()
-			.WithExample(StatusCodes.Status200OK, new List<string> { "winter-2026.png", "summer-2026.jpg" });
+			.Produces(StatusCodes.Status302Found);
 
 		group.MapPost("/menu/seasonals", HandleCreate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -59,21 +60,15 @@ internal static class MenuSeasonalRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-2026.png' already exists."));
 
-		group.MapGet("/menu/seasonals/{fileName}", (string fileName, MenuSeasonalService seasonal) =>
-			{
-				var path = seasonal.FindFilePath(fileName);
-				return path is null ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
-			})
+		group.MapGet("/menu/seasonals/{fileName}", (string fileName, IOptions<ServerOptions> server) =>
+				Results.Redirect($"https://assets.{server.Value.Domain}/menu/seasonals/{fileName}"))
 			.WithGroupName("basilapi")
 			.WithName("downloadSeasonalBackground")
 			.WithSummary("Download a seasonal background.")
-			.WithDescription("""
-			                 Serves the image file. `{fileName}` is the full filename including extension. Content-Type is taken from the file extension.
-
-			                 Returns `404 Not Found` if the file doesn't exist.
-			                 """)
+			.WithDescription("Redirects to `GET assets.<domain>/menu/seasonals/{fileName}`, which serves " +
+			                 "the image file.")
 			.WithTags("Seasonal Backgrounds")
-			.ProducesProblem(StatusCodes.Status404NotFound);
+			.Produces(StatusCodes.Status302Found);
 
 		group.MapPut("/menu/seasonals/{fileName}", HandleReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)

@@ -209,37 +209,22 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	// ---- /menu/seasonals ----
 
 	[Fact]
-	public async Task GetSeasonalList_ReturnsFileNames()
+	public async Task GetSeasonalList_RedirectsToAssetsHost()
 	{
-		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3]);
-
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
 
-		Assert.Equal(["winter.png"], body!.Data!);
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/seasonals", response.Headers.Location?.ToString());
 	}
 
 	[Fact]
-	public async Task GetSeasonalFile_UnknownFileName_ReturnsNotFound()
+	public async Task GetSeasonalFile_RedirectsToAssetsHost()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/nope.png"));
+		var response =
+			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/winter.png"));
 
-		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-	}
-
-	[Fact]
-	public async Task GetSeasonalFile_Known_ReturnsBytesWithCorrectMimeType()
-	{
-		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3, 4]);
-
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/winter.png"));
-		var bytes = await response.Content.ReadAsByteArrayAsync();
-
-		response.EnsureSuccessStatusCode();
-		Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
-		Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/seasonals/winter.png", response.Headers.Location?.ToString());
 	}
 
 	[Fact]

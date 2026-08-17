@@ -21,4 +21,17 @@ public static class AssetsHost
 	{
 		return hosts.Contains(context.Request.Host.Host, StringComparer.OrdinalIgnoreCase);
 	}
+
+	/// <summary>
+	///     Builds the <c>assets.</c> hostnames a provider should match, for the configured domain and
+	///     the <c>ppy.sh</c> fallback — matching the pattern every other host group registers under in
+	///     <c>BanchoHostGroups</c>.
+	/// </summary>
+	/// <param name="configuredDomain">The server's configured apex domain.</param>
+	public static string[] AssetsHostsFor(string configuredDomain)
+	{
+		return new[] { "ppy.sh", configuredDomain }.Distinct()
+			.Select(domain => $"assets.{domain}")
+			.ToArray();
+	}
 }

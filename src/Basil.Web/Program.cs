@@ -106,8 +106,7 @@ public sealed class Program
 		]),
 		("Menu Icon",
 		[
-			("Menu Icon Image", "The in-game main menu icon image."),
-			("Menu Icon URL", "The URL opened when the main menu icon is clicked.")
+			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
 		]),
 		("Admin Key",
 		[
@@ -466,11 +465,11 @@ public sealed class Program
 	///     `b.`/`a.`'s) image serving.
 	/// </summary>
 	/// <remarks>
-	///     No providers are registered yet — each asset family (menu images, beatmapset covers,
-	///     beatmap thumbnails, avatars) adds its own <c>IImageProvider</c> as that part of the
-	///     migration lands, all gated to their own host via <see cref="AssetsHost.Matches"/>. The cache
-	///     lives under <c>Data/Cache/imagesharp/</c>, alongside the existing (audio-preview-only, once
-	///     beatmap thumbnails migrate) <c>Data/Cache/</c> folder.
+	///     Providers are added incrementally as each asset family migrates (menu images now; beatmap
+	///     thumbnails, avatars, and beatmapset covers later), each one gated to its own host via
+	///     <see cref="AssetsHost.Matches"/>. The cache lives under <c>Data/Cache/imagesharp/</c>,
+	///     alongside the existing (audio-preview-only, once beatmap thumbnails migrate)
+	///     <c>Data/Cache/</c> folder.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose ImageSharp.Web pipeline is configured.</param>
 	private static void ConfigureImageSharp(WebApplicationBuilder builder)
@@ -481,7 +480,9 @@ public sealed class Program
 				o.CacheRootPath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache");
 				o.CacheFolder = "imagesharp";
 			})
-			.ClearProviders();
+			.ClearProviders()
+			.AddProvider<MenuAssetImageProvider>()
+			.AddProvider<MenuIconImageProvider>();
 	}
 
 	/// <summary>
