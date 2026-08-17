@@ -31,6 +31,21 @@ public sealed class MenuBannerService(IMenuBannerRepository repository, IOptions
 		return IsExternalUrl(image) ? image : $"https://assets.{server.Value.Domain}/menu/banners/{image}";
 	}
 
+	/// <summary>Fetches every stored banner.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public Task<IReadOnlyList<MenuBanner>> FetchAllAsync(CancellationToken cancellationToken = default)
+	{
+		return repository.FetchAllAsync(cancellationToken);
+	}
+
+	/// <summary>Fetches a single banner by id.</summary>
+	/// <param name="id">The banner's id.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public Task<MenuBanner?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return repository.FetchByIdAsync(id, cancellationToken);
+	}
+
 	/// <summary>Creates a banner whose image is an external URL.</summary>
 	/// <param name="image">The external image URL.</param>
 	/// <param name="url">The click-through URL.</param>

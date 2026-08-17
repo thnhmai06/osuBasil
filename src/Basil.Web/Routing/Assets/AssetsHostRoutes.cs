@@ -34,6 +34,7 @@ internal static class AssetsHostRoutes
 			.WithExample(StatusCodes.Status200OK, new HealthStatus("ok"));
 
 		group.MapMenuAssetRoutes();
+		group.MapMenuContentRoutes();
 	}
 
 	private sealed record HealthStatus(string Status);
