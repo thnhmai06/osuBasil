@@ -21,18 +21,18 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     request falls through to the plain `assets.` route, which keeps the existing private-check/
 ///     local-only-fallback behavior.
 /// </remarks>
-public sealed partial class BeatmapsetBackgroundImageProvider : IImageProvider
+public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 {
 	private readonly IBeatmapRepository _beatmaps;
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly IOptions<StorageOptions> _storage;
 
-	/// <summary>Initializes a new instance of the <see cref="BeatmapsetBackgroundImageProvider" /> class.</summary>
+	/// <summary>Initializes a new instance of the <see cref="BeatmapsetBackgroundProvider" /> class.</summary>
 	/// <param name="beatmapsets">Resolves the beatmapset a background/cover request is for.</param>
-	/// <param name="beatmaps">Resolves an individual beatmap's background, when the request names one.</param>
+	/// <param name="beatmaps">Resolves an individual beatmap's background when the request names one.</param>
 	/// <param name="storage">The storage folders this provider resolves background files against.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `assets.` hosts.</param>
-	public BeatmapsetBackgroundImageProvider(IBeatmapsetRepository beatmapsets, IBeatmapRepository beatmaps,
+	public BeatmapsetBackgroundProvider(IBeatmapsetRepository beatmapsets, IBeatmapRepository beatmaps,
 		IOptions<StorageOptions> storage, IOptions<ServerOptions> server)
 	{
 		_beatmapsets = beatmapsets;
@@ -66,10 +66,10 @@ public sealed partial class BeatmapsetBackgroundImageProvider : IImageProvider
 		{
 			var mapsetId = int.Parse(beatmapMatch.Groups["mapsetId"].Value);
 			var beatmapId = int.Parse(beatmapMatch.Groups["beatmapId"].Value);
-			var bmap = await _beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, cancellationToken: cancellationToken);
-			if (bmap is null || bmap.Beatmapset.Id != mapsetId) return null;
+			var beatmap = await _beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, cancellationToken: cancellationToken);
+			if (beatmap is null || beatmap.Beatmapset.Id != mapsetId) return null;
 
-			return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, bmap));
+			return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmap));
 		}
 
 		var mapsetMatch = MapsetBackgroundRegex().Match(path);
@@ -86,7 +86,7 @@ public sealed partial class BeatmapsetBackgroundImageProvider : IImageProvider
 	private static Task<IImageResolver?> ResolveAsync(string? backgroundPath)
 	{
 		IImageResolver? resolver = backgroundPath is not null && File.Exists(backgroundPath)
-			? new PhysicalFileImageResolver(new FileInfo(backgroundPath))
+			? new PhysicalImageResolver(new FileInfo(backgroundPath))
 			: null;
 		return Task.FromResult(resolver);
 	}

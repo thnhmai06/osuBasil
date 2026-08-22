@@ -46,6 +46,6 @@ public sealed class MenuIconImageProvider : IImageProvider
 		var path = await _icon.GetPathAsync(context.RequestAborted);
 		if (path is null || MenuIconService.IsExternalUrl(path) || !File.Exists(path)) return null;
 
-		return new PhysicalFileImageResolver(new FileInfo(path));
+		return new PhysicalImageResolver(new FileInfo(path));
 	}
 }

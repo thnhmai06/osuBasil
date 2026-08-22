@@ -17,7 +17,7 @@ namespace Basil.Web.Routing.Assets;
 ///     audio, video, downloads, and storyboard.
 /// </summary>
 /// <remarks>
-///     `background` and `covers/{variant}.jpg` are served by <c>BeatmapsetBackgroundImageProvider</c>
+///     `background` and `covers/{variant}.jpg` are served by <c>BeatmapsetBackgroundProvider</c>
 ///     (ImageSharp.Web) ahead of routing for the common case; the handlers here only run as a
 ///     fallback (private beatmapset viewed by an admin, or no local background) and for the
 ///     non-image files (audio/video/downloads/storyboard), which ImageSharp.Web never touches.
@@ -225,7 +225,7 @@ internal static class BeatmapsetAssetRoutes
 		if (backgroundPath is null || !File.Exists(backgroundPath)) return LocalOnlyFallback(mirror.Value);
 
 		// This handler only serves the miss-path fallback (see class remarks) — an existing background
-		// is normally served, already cropped, by BeatmapsetBackgroundImageProvider before routing.
+		// is normally served, already cropped, by BeatmapsetBackgroundProvider before routing.
 		return Results.File(backgroundPath, BackgroundContentType(backgroundPath), enableRangeProcessing: true);
 	}
 

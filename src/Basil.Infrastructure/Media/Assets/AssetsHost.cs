@@ -62,8 +62,10 @@ public static class AssetsHost
 	/// <param name="subdomain">The subdomain prefix, e.g. <c>assets</c>, <c>b</c>, or <c>a</c>.</param>
 	private static string[] HostsFor(string configuredDomain, string subdomain)
 	{
-		return new[] { "ppy.sh", configuredDomain }.Distinct()
-			.Select(domain => $"{subdomain}.{domain}")
-			.ToArray();
+		return
+		[
+			.. new[] { "ppy.sh", configuredDomain }.Distinct()
+				.Select(domain => $"{subdomain}.{domain}")
+		];
 	}
 }

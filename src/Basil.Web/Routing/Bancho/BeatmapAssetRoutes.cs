@@ -9,7 +9,7 @@ namespace Basil.Web.Routing.Bancho;
 
 /// <summary>
 ///     Registers the `b.{domain}` host's routes: the beatmapset thumbnail mirror-fallback (the
-///     thumbnails themselves are served by <c>BeatmapThumbnailImageProvider</c>, ahead of routing)
+///     thumbnails themselves are served by <c>BeatmapThumbnailProvider</c>, ahead of routing)
 ///     and audio previews, trimmed on demand.
 /// </summary>
 internal static class BeatmapAssetRoutes
@@ -21,7 +21,7 @@ internal static class BeatmapAssetRoutes
 	public static void MapBeatmapAssetGroup(this RouteGroupBuilder group)
 	{
 		// The cover (80x60) and list-icon ("l", 160x120) thumbnails are resized directly from the
-		// beatmapset's locally stored background by BeatmapThumbnailImageProvider (ImageSharp.Web),
+		// beatmapset's locally stored background by BeatmapThumbnailProvider (ImageSharp.Web),
 		// which runs ahead of routing and so handles a set with a local background on its own —
 		// these routes only run as a fallback: private/missing set, or no local background. When
 		// the server runs in online mirror mode (see MirrorOptions.IsOnlineMode) and a set has no
@@ -75,7 +75,7 @@ internal static class BeatmapAssetRoutes
 	}
 
 	/// <summary>
-	///     Handles a thumbnail request that <c>BeatmapThumbnailImageProvider</c> didn't resolve: the
+	///     Handles a thumbnail request that <c>BeatmapThumbnailProvider</c> didn't resolve: the
 	///     beatmapset doesn't exist, is private, or has no local background. A beatmapset with a local
 	///     background is always served by that provider instead — this handler never resizes anything.
 	/// </summary>

@@ -21,16 +21,16 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     beatmapset is private, missing, or has no local background — the request falls through to the
 ///     plain `b.` route, which keeps the existing mirror-fallback behavior.
 /// </remarks>
-public sealed partial class BeatmapThumbnailImageProvider : IImageProvider
+public sealed partial class BeatmapThumbnailProvider : IImageProvider
 {
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly IOptions<StorageOptions> _storage;
 
-	/// <summary>Initializes a new instance of the <see cref="BeatmapThumbnailImageProvider" /> class.</summary>
+	/// <summary>Initializes a new instance of the <see cref="BeatmapThumbnailProvider" /> class.</summary>
 	/// <param name="beatmapsets">Resolves the beatmapset a thumbnail request is for.</param>
 	/// <param name="storage">The storage folders this provider resolves background files against.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `b.` hosts.</param>
-	public BeatmapThumbnailImageProvider(IBeatmapsetRepository beatmapsets, IOptions<StorageOptions> storage,
+	public BeatmapThumbnailProvider(IBeatmapsetRepository beatmapsets, IOptions<StorageOptions> storage,
 		IOptions<ServerOptions> server)
 	{
 		_beatmapsets = beatmapsets;
@@ -66,7 +66,7 @@ public sealed partial class BeatmapThumbnailImageProvider : IImageProvider
 		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(_storage.Value, mapset);
 		if (backgroundPath is null || !File.Exists(backgroundPath)) return null;
 
-		return new PhysicalFileImageResolver(new FileInfo(backgroundPath));
+		return new PhysicalImageResolver(new FileInfo(backgroundPath));
 	}
 
 	/// <summary>

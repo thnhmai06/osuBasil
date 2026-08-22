@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     rooted ahead of time doesn't fit.
 /// </remarks>
 /// <param name="file">The file to serve.</param>
-public sealed class PhysicalFileImageResolver(FileInfo file) : IImageResolver
+public sealed class PhysicalImageResolver(FileInfo file) : IImageResolver
 {
 	/// <inheritdoc />
 	public Task<ImageMetadata> GetMetaDataAsync()

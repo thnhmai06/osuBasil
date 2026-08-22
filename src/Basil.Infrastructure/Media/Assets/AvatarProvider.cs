@@ -17,14 +17,14 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     `Basil.Web`, which this Infrastructure-layer provider can't depend on — so those requests fall
 ///     through to the existing plain `a.` route, unchanged.
 /// </remarks>
-public sealed partial class AvatarImageProvider : IImageProvider
+public sealed partial class AvatarProvider : IImageProvider
 {
 	private readonly IOptions<StorageOptions> _storage;
 
-	/// <summary>Initializes a new instance of the <see cref="AvatarImageProvider" /> class.</summary>
+	/// <summary>Initializes a new instance of the <see cref="AvatarProvider" /> class.</summary>
 	/// <param name="storage">The storage folders this provider resolves avatar files against.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `a.` hosts.</param>
-	public AvatarImageProvider(IOptions<StorageOptions> storage, IOptions<ServerOptions> server)
+	public AvatarProvider(IOptions<StorageOptions> storage, IOptions<ServerOptions> server)
 	{
 		_storage = storage;
 
@@ -55,7 +55,7 @@ public sealed partial class AvatarImageProvider : IImageProvider
 		var file = Directory.EnumerateFiles(_storage.Value.AvatarsPath, $"{match.Groups["userId"].Value}.*")
 			.FirstOrDefault();
 
-		IImageResolver? resolver = file is not null ? new PhysicalFileImageResolver(new FileInfo(file)) : null;
+		IImageResolver? resolver = file is not null ? new PhysicalImageResolver(new FileInfo(file)) : null;
 		return Task.FromResult(resolver);
 	}
 

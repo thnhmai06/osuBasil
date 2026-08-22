@@ -12,7 +12,7 @@ namespace Basil.Web.Routing.Bancho;
 /// </summary>
 /// <remarks>
 ///     A user who actually has an uploaded avatar never reaches this handler — ImageSharp.Web's
-///     <c>AvatarImageProvider</c> (registered ahead of routing) serves that case directly. This route
+///     <c>AvatarProvider</c> (registered ahead of routing) serves that case directly. This route
 ///     stays registered for the fallback path and for the `avatar` OpenAPI document's shape, since
 ///     ImageSharp-handled requests aren't ASP.NET Core endpoints and so don't otherwise appear there.
 /// </remarks>
