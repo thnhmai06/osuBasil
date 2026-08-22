@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using Basil.Application;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
@@ -15,6 +16,7 @@ using Basil.Application.Sessions.Channels;
 using Basil.Domain.Channels;
 using Basil.Infrastructure;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Media.Assets;
 using Basil.Infrastructure.Persistence;
 using Basil.Web.Auth;
 using Basil.Web.Logging;
@@ -27,6 +29,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
+using SixLabors.ImageSharp.Web.Caching;
+using SixLabors.ImageSharp.Web.DependencyInjection;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -100,10 +104,13 @@ public sealed class Program
 		[
 			("Seasonal Backgrounds", "Public seasonal background images.")
 		]),
+		("Menu Banners",
+		[
+			("Menu Banners", "Main-menu promotional banners (assets.<domain>/menu-content.json).")
+		]),
 		("Menu Icon",
 		[
-			("Menu Icon Image", "The in-game main menu icon image."),
-			("Menu Icon URL", "The URL opened when the main menu icon is clicked.")
+			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
 		]),
 		("Admin Key",
 		[
@@ -144,6 +151,7 @@ public sealed class Program
 		ConfigureOpenApi(builder);
 		ConfigureAuth(builder);
 		ConfigureCors(builder);
+		ConfigureImageSharp(builder);
 
 		var app = builder.Build();
 		LogStartupBanner(app);
@@ -160,6 +168,7 @@ public sealed class Program
 		app.UseAuthorization();
 		app.UseMiddleware<EnvelopeMiddleware>();
 		app.UseMiddleware<ApiRequestLoggingMiddleware>();
+		app.UseImageSharp();
 
 		var domain = builder.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
 		BanchoHostGroups.MapAll(app, domain);
@@ -456,7 +465,70 @@ public sealed class Program
 	}
 
 	/// <summary>
-	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapasets/avatar/basilapi).
+	///     Registers ImageSharp.Web, the request pipeline backing `assets.`'s (and, once migrated,
+	///     `b.`/`a.`'s) image serving.
+	/// </summary>
+	/// <remarks>
+	///     Providers are added incrementally as each asset family migrates (menu images, beatmap
+	///     thumbnails, and avatars now; beatmapset covers later), each one gated to its own host via
+	///     <see cref="AssetsHost.Matches" />. The cache lives under <c>Data/Cache/imagesharp/</c>,
+	///     alongside the existing (audio-preview-only now that beatmap thumbnails have migrated)
+	///     <c>Data/Cache/</c> folder.
+	/// </remarks>
+	/// <param name="builder">The web application builder whose ImageSharp.Web pipeline is configured.</param>
+	private static void ConfigureImageSharp(WebApplicationBuilder builder)
+	{
+		builder.Services.AddImageSharp(options =>
+			{
+				options.CacheMaxAge = TimeSpan.FromDays(30);
+				options.BrowserMaxAge = TimeSpan.FromDays(7);
+
+				// b.<domain>/thumb/{id}.jpg carries no query string (the real osu! client hardcodes the
+				// path), so the fixed crop size is injected here rather than read from the request.
+				options.OnParseCommandsAsync = ctx =>
+				{
+					var matched = BeatmapThumbnailProvider.TryGetSize(ctx.Context.Request.Path, out var width,
+						out var height);
+					if (!matched)
+						matched = BeatmapsetBackgroundProvider.TryGetCoverSize(ctx.Context.Request.Path,
+							out width, out height);
+
+					if (matched)
+					{
+						ctx.Commands["width"] = width.ToString();
+						ctx.Commands["height"] = height.ToString();
+						ctx.Commands["rmode"] = "crop";
+					}
+
+					return Task.CompletedTask;
+				};
+
+				// Avatars change with user behavior (re-uploads), so they get a much shorter browser
+				// cache lifetime than the mostly-static menu/beatmap images above.
+				options.OnPrepareResponseAsync = context =>
+				{
+					if (context.Request.Host.Host.StartsWith("a.", StringComparison.OrdinalIgnoreCase))
+						context.Response.Headers.CacheControl = "public,max-age=300";
+
+					return Task.CompletedTask;
+				};
+			})
+			.Configure<PhysicalFileSystemCacheOptions>(o =>
+			{
+				o.CacheRootPath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache");
+				o.CacheFolder = "imagesharp";
+			})
+			.ClearProviders()
+			.AddProvider<MenuSeasonalsProvider>()
+			.AddProvider<MenuBannersProvider>()
+			.AddProvider<MenuIconProvider>()
+			.AddProvider<BeatmapThumbnailProvider>()
+			.AddProvider<AvatarProvider>()
+			.AddProvider<BeatmapsetBackgroundProvider>();
+	}
+
+	/// <summary>
+	///     Adds one OpenAPI document per host group (bancho/osuweb/beatmapasets/avatar/assets/basilapi).
 	/// </summary>
 	/// <param name="builder">The web application builder whose OpenAPI documents are added.</param>
 	private static void ConfigureOpenApi(WebApplicationBuilder builder)
@@ -484,6 +556,11 @@ public sealed class Program
 			"avatar",
 			"osu! Client API: Avatar Files",
 			"Locally hosted user avatar images.");
+		AddOpenApiDocument(
+			builder,
+			"assets",
+			"Basil Assets",
+			"Menu banner/icon/seasonal images and beatmapset covers, served through ImageSharp.Web.");
 		AddOpenApiDocument(
 			builder,
 			"basilapi",
@@ -577,6 +654,8 @@ public sealed class Program
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
+		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);
+
 		var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
 		var hasDatabase = !string.IsNullOrEmpty(dbOptions.Path);
 
@@ -584,7 +663,7 @@ public sealed class Program
 		foreach (var path in new[]
 		         {
 			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
-			         storageOptions.SeasonalsPath, storageOptions.FaqsPath
+			         storageOptions.MenuSeasonalsPath, storageOptions.FaqsPath
 		         })
 			Directory.CreateDirectory(path);
 		logger.LogInformation("Storage folders ready");
@@ -634,5 +713,45 @@ public sealed class Program
 					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
 					"Configure an admin key immediately via PUT /adminkey.");
 		}
+	}
+
+	/// <summary>
+	///     Moves data from the pre-`Data/Menu/` folder layout into place, one time, on startup.
+	/// </summary>
+	/// <remarks>
+	///     Idempotent: each move is guarded by the old path existing and the new one not existing yet,
+	///     so a server that has already migrated (or was never on the old layout) does nothing.
+	///     <c>MenuIcon:Path</c> is rewritten only when it still points at the exact file being moved —
+	///     it defaults to an external URL, which this leaves untouched.
+	/// </remarks>
+	/// <param name="services">The scoped service provider used to update <c>MenuIcon:Path</c>.</param>
+	/// <param name="logger">The logger startup messages are written to.</param>
+	private static async Task MigrateLegacyMenuDataAsync(IServiceProvider services, ILogger logger)
+	{
+		var dataDir = Path.Combine(AppContext.BaseDirectory, "Data");
+		var menuDir = Path.Combine(dataDir, "Menu");
+		Directory.CreateDirectory(menuDir);
+
+		var oldSeasonals = Path.Combine(dataDir, "Seasonals");
+		var newSeasonals = Path.Combine(menuDir, "Seasonals");
+		if (Directory.Exists(oldSeasonals) && !Directory.Exists(newSeasonals))
+		{
+			Directory.Move(oldSeasonals, newSeasonals);
+			logger.LogInformation("Migrated legacy Data/Seasonals/ to Data/Menu/Seasonals/");
+		}
+
+		var oldIcon = Directory.Exists(dataDir)
+			? Directory.EnumerateFiles(dataDir, "MenuIcon.*").FirstOrDefault()
+			: null;
+		if (oldIcon is null) return;
+
+		var newIcon = Path.Combine(menuDir, $"Icon{Path.GetExtension(oldIcon)}");
+		if (File.Exists(newIcon)) return;
+
+		File.Move(oldIcon, newIcon);
+		var settings = services.GetRequiredService<ISettingsRepository>();
+		if (await settings.GetAsync("MenuIcon:Path") == oldIcon)
+			await settings.SetAsync("MenuIcon:Path", newIcon);
+		logger.LogInformation("Migrated legacy {Old} to {New}", oldIcon, newIcon);
 	}
 }

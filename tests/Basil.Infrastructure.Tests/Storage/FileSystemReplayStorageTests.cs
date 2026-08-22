@@ -25,7 +25,8 @@ public class FileSystemReplayStorageTests
 					ReplaysPath = replaysPath,
 					AvatarsPath = replaysPath,
 					MapsetsPath = replaysPath,
-					SeasonalsPath = replaysPath,
+					MenuSeasonalsPath = replaysPath,
+					MenuBannersPath = replaysPath,
 					FaqsPath = replaysPath,
 					CachePath = replaysPath
 				}));

@@ -10,7 +10,7 @@ public sealed class MenuIconService(ISettingsRepository settings)
 	private const string PathKey = "MenuIcon:Path";
 	private const string UrlKey = "MenuIcon:Url";
 
-	private static readonly string DataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
+	private static readonly string MenuDirectory = Path.Combine(AppContext.BaseDirectory, "Data", "Menu");
 
 	/// <summary>Gets whether a stored icon path is an external URL rather than a local file path.</summary>
 	/// <param name="path">The stored <c>MenuIcon:Path</c> value.</param>
@@ -38,8 +38,8 @@ public sealed class MenuIconService(ISettingsRepository settings)
 	{
 		await DeleteStalePhysicalFileAsync(cancellationToken);
 
-		Directory.CreateDirectory(DataDirectory);
-		var path = Path.Combine(DataDirectory, $"MenuIcon{extension}");
+		Directory.CreateDirectory(MenuDirectory);
+		var path = Path.Combine(MenuDirectory, $"Icon{extension}");
 		await using (var fileStream = File.Create(path))
 		{
 			await content.CopyToAsync(fileStream, cancellationToken);
@@ -87,6 +87,14 @@ public sealed class MenuIconService(ISettingsRepository settings)
 	public Task SaveUrlAsync(string url, CancellationToken cancellationToken = default)
 	{
 		return settings.SetAsync(UrlKey, url, cancellationToken);
+	}
+
+	/// <summary>Deletes both the icon (image, whether uploaded or external) and the click-through URL.</summary>
+	/// <param name="cancellationToken">A token that cancels the deletion.</param>
+	public async Task ResetAsync(CancellationToken cancellationToken = default)
+	{
+		await DeleteIconAsync(cancellationToken);
+		await settings.SetAsync(UrlKey, null, cancellationToken);
 	}
 
 	/// <summary>Deletes the physical file the current <see cref="PathKey" /> points to, if it points to one.</summary>

@@ -109,16 +109,21 @@ Basil creates a `Data/` directory next to the executable on startup if it does n
 The contents of `Data/` are **server state** and must normally be preserved when moving or upgrading a Basil
 installation.
 
-| Path                  | Contents                                                                                                                          | Safe to delete?                                           |
-|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| `Data/Basil.db`       | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                    |
-| `Data/Replays/`       | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.  |
-| `Data/Avatars/`       | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.  |
-| `Data/Mapsets/`       | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps. |
-| `Data/Seasonals/`     | Seasonal background images used by the client's main menu.                                                                        | Optional                                                  |
-| `Data/Faqs/`          | Text files used by `!faq <entry>`.                                                                                                | Optional                                                  |
-| `Data/Cache/`         | Generated thumbnails and transcoded audio previews.                                                                               | **Yes**                                                   |
-| `Data/MenuIcon.{ext}` | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                |
+| Path                      | Contents                                                                                                                          | Safe to delete?                                            |
+|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
+| `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
+| `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
+| `Data/Mapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
+| `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
+| `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
+| `Data/Faqs/`              | Text files used by `!faq <entry>`.                                                                                                | Optional                                                     |
+| `Data/Cache/`             | Generated thumbnails, cover crops, and transcoded audio previews.                                                                 | **Yes**                                                     |
+
+`Data/Seasonals/` and `Data/MenuIcon.{ext}` are the pre-`assets.<domain>` locations of the two rows
+above; Basil moves them into place automatically on startup if found (see
+[`assets.md`](../for-developers/assets.md)).
 
 ### Database
 
@@ -169,7 +174,7 @@ on the `api.<domain>` host. This endpoint requires the admin key.
 
 `Data/Cache/` contains generated data such as:
 
-* resized thumbnails;
+* resized beatmap thumbnails and cover crops (`Data/Cache/imagesharp/`, managed by ImageSharp.Web);
 * transcoded audio previews.
 
 Cache files are regenerated automatically when required.
@@ -182,14 +187,15 @@ clearing cache.
 A custom menu icon may be stored as:
 
 ```text
-Data/MenuIcon.{ext}
+Data/Menu/Icon{ext}
 ```
 
 This file exists only when the icon was uploaded to Basil.
 
 The icon's enabled/disabled state and click-through URL are stored in the database, not in this file.
 
-Menu icons are managed through the `/menuicon/icon` and `/menuicon/url` endpoints on the `api.<domain>` host.
+Menu icons are managed through the `/menu/icon` and `/menu/icon/image` endpoints on the `api.<domain>` host, and served
+publicly from `assets.<domain>/menu/icon`. See [`assets.md`](../for-developers/assets.md).
 
 ---
 

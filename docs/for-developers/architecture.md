@@ -317,6 +317,7 @@ Add the route to the appropriate host group:
 ```text
 Basil.Web/Routing/Bancho/
 Basil.Web/Routing/Api/
+Basil.Web/Routing/Assets/
 ```
 
 Keep HTTP-specific concerns in Web and delegate application behaviour to Application services.
@@ -324,6 +325,8 @@ Keep HTTP-specific concerns in Web and delegate application behaviour to Applica
 For the `api.` host, update the OpenAPI contract as part of the route implementation rather than maintaining a separate handwritten endpoint specification.
 
 See [`response-envelope.md`](response-envelope.md) and the client-facing [`api.md`](../for-client/api/overview.md).
+
+For an image-serving route, see [`assets.md`](assets.md) — `assets.<domain>` handles those through ImageSharp.Web rather than hand-written `Results.File` calls.
 
 ### Adding an IRC command
 

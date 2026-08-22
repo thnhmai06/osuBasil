@@ -61,7 +61,8 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
 					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
-					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
 					CachePath = Path.Combine(_dataDir, "Cache")
 				}));
@@ -134,7 +135,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
 
-	// ---- api. host local-only asset routes (no mirror equivalent) ----
+	// ---- assets. host local-only asset routes (no mirror equivalent); api. just redirects here ----
 
 	[Fact]
 	public async Task ApiBackground_OnlineMode_MissingLocal_ReturnsServiceUnavailable()
@@ -142,7 +143,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		_mapset = new Beatmapset(700, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "api.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -153,12 +154,12 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		_mapset = new Beatmapset(701, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "api.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	// ---- api. host /beatmapsets/{id}/download (has a mirror equivalent) ----
+	// ---- assets. host /beatmapsets/{id}/download (has a mirror equivalent); api. just redirects here ----
 
 	[Fact]
 	public async Task ApiDownload_OnlineMode_GenuinePpyId_MissingLocal_RedirectsToMirror()
@@ -167,7 +168,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "api.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/800?n=1", response.Headers.Location!.ToString());
@@ -181,7 +182,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		var client = Configure("https://mirror.local/d").CreateClient();
 
 		var response = await client.SendAsync(
-			MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "api.test.local"));
+			MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -192,7 +193,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		_mapset = new Beatmapset(801, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "api.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -204,7 +205,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "api.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "assets.test.local"));
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/900?n=1", response.Headers.Location!.ToString());

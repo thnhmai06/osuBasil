@@ -16,7 +16,7 @@ internal static class AbbreviationRedirectRoutes
 		("m", "matches"),
 		("u", "users"),
 		("s", "scores"),
-		("ss", "seasonals")
+		("ss", "menu/seasonals")
 	];
 
 	/// <summary>
@@ -34,7 +34,7 @@ internal static class AbbreviationRedirectRoutes
 				.WithGroupName("basilapi")
 				.ExcludeFromDescription();
 
-			var targetTitle = char.ToUpperInvariant(target[0]) + target[1..];
+			var targetTitle = string.Concat(target.Split('/').Select(s => char.ToUpperInvariant(s[0]) + s[1..]));
 			// ReSharper disable once RouteTemplates.SyntaxError
 			group.MapGet($"/{prefix}/{{**rest}}", (string rest, HttpContext context) =>
 					Results.Redirect($"/{target}/{rest}{context.Request.QueryString}"))

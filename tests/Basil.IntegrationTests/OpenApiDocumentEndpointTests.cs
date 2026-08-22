@@ -56,7 +56,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	[InlineData("basilapi", "Basil API", new[]
 	{
 		"/matches/{matchId}", "/matches", "/beatmapsets/{mapsetId}", "/users", "/scores/{scoreId}",
-		"/faqs/{entry}", "/seasonals/{fileName}", "/health"
+		"/faqs/{entry}", "/menu/seasonals/{fileName}", "/health"
 	})]
 	public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,
 		string[] expectedPaths)

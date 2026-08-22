@@ -22,7 +22,10 @@ public sealed class StorageOptions
 	public required string MapsetsPath { get; init; }
 
 	/// <summary>Gets or sets the folder that stores seasonal background files.</summary>
-	public required string SeasonalsPath { get; init; }
+	public required string MenuSeasonalsPath { get; init; }
+
+	/// <summary>Gets or sets the folder that stores main-menu banner image files.</summary>
+	public required string MenuBannersPath { get; init; }
 
 	/// <summary>Gets or sets the folder that stores FAQ entry files.</summary>
 	public required string FaqsPath { get; init; }

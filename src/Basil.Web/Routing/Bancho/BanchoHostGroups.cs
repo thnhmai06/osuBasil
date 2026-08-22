@@ -6,6 +6,7 @@ using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Routing.Api;
+using Basil.Web.Routing.Assets;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Bancho;
@@ -26,6 +27,7 @@ internal sealed class BanchoHostGroupsLog;
 ///         <item><c>b.</c> for beatmap assets.</item>
 ///         <item><c>a.</c> for user avatars.</item>
 ///         <item><c>api.</c> for the Bancho REST API.</item>
+///         <item><c>assets.</c> for menu/beatmapset media served through ImageSharp.Web.</item>
 ///     </list>
 /// </remarks>
 public static class BanchoHostGroups
@@ -53,12 +55,14 @@ public static class BanchoHostGroups
 		var beatmapAssetHosts = domains.Select(domain => $"b.{domain}").ToArray();
 		var avatarHosts = domains.Select(domain => $"a.{domain}").ToArray();
 		var apiHosts = domains.Select(domain => $"api.{domain}").ToArray();
+		var assetsHosts = domains.Select(domain => $"assets.{domain}").ToArray();
 
 		app.MapGroup("/").RequireHost(banchoHosts).MapBanchoGroup();
 		app.MapGroup("/").RequireHost(osuWebHosts).MapOsuWebGroup();
 		app.MapGroup("/").RequireHost(beatmapAssetHosts).MapBeatmapAssetGroup();
 		app.MapGroup("/").RequireHost(avatarHosts).MapAvatarGroup();
 		app.MapGroup("/").RequireHost(apiHosts).MapApiGroup();
+		app.MapGroup("/").RequireHost(assetsHosts).MapAssetsGroup();
 	}
 
 	/// <summary>

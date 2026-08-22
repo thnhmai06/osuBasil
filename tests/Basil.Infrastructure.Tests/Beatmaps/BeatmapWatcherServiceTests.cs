@@ -47,7 +47,8 @@ public class BeatmapWatcherServiceTests : IDisposable
 			ReplaysPath = "",
 			AvatarsPath = "",
 			MapsetsPath = _mapsetsPath,
-			SeasonalsPath = "",
+			MenuSeasonalsPath = "",
+			MenuBannersPath = "",
 			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
 		});
 		var ingestion = new BeatmapIngestionService(_beatmaps, mapsets, new FakeOsuCalculator(), options,
@@ -130,7 +131,8 @@ public class BeatmapWatcherServiceTests : IDisposable
 					ReplaysPath = "",
 					AvatarsPath = "",
 					MapsetsPath = _mapsetsPath,
-					SeasonalsPath = "",
+					MenuSeasonalsPath = "",
+					MenuBannersPath = "",
 					FaqsPath = "", CachePath = ""
 				},
 				beatmap.Beatmapset);

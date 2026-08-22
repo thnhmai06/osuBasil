@@ -8,9 +8,14 @@ namespace Basil.Web.Routing.Bancho;
 // Files are stored flat as "{userId}.{ext}" under StorageOptions.AvatarsPath.
 
 /// <summary>
-///     Registers the `a.{domain}` host's per-user avatar route, serving a locally uploaded avatar
-///     or falling back to built-in images for BasilBot (user id 0) and users with no upload.
+///     Registers the `a.{domain}` host's per-user avatar route: the BasilBot/default fallback images.
 /// </summary>
+/// <remarks>
+///     A user who actually has an uploaded avatar never reaches this handler — ImageSharp.Web's
+///     <c>AvatarProvider</c> (registered ahead of routing) serves that case directly. This route
+///     stays registered for the fallback path and for the `avatar` OpenAPI document's shape, since
+///     ImageSharp-handled requests aren't ASP.NET Core endpoints and so don't otherwise appear there.
+/// </remarks>
 internal static class AvatarRoutes
 {
 	/// <summary>
@@ -23,11 +28,6 @@ internal static class AvatarRoutes
 			{
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
 				Directory.CreateDirectory(storage.AvatarsPath);
-
-				var match = Directory.EnumerateFiles(storage.AvatarsPath, $"{userId}.*").FirstOrDefault();
-				if (match is not null) return Results.File(match, ContentTypes.Resolve(match));
-
-				/* user doesn't have avatars */
 
 				// BasilBot
 				if (userId == BotBootstrapService.BotId)

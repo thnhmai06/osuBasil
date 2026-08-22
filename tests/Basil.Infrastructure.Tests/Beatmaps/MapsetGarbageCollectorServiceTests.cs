@@ -24,7 +24,8 @@ public class MapsetGarbageCollectorServiceTests : IDisposable
 			ReplaysPath = "",
 			AvatarsPath = "",
 			MapsetsPath = _mapsetsPath,
-			SeasonalsPath = "",
+			MenuSeasonalsPath = "",
+			MenuBannersPath = "",
 			FaqsPath = "", CachePath = ""
 		});
 		_service = new MapsetGarbageCollectorService(options, NullLogger<MapsetGarbageCollectorService>.Instance);
