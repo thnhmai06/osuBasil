@@ -1,4 +1,3 @@
-using Basil.Application.Services.Content;
 using Basil.Web.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global

@@ -13,7 +13,9 @@ namespace Basil.Application.Services.Content;
 ///     <c>StorageOptions.MenuBannersPath</c>) or an external <c>http(s)</c> URL; this service keeps
 ///     both the database row and any uploaded file in sync.
 /// </remarks>
-public sealed class MenuBannerService(IMenuBannerRepository repository, IOptions<StorageOptions> storage,
+public sealed class MenuBannerService(
+	IMenuBannerRepository repository,
+	IOptions<StorageOptions> storage,
 	IOptions<ServerOptions> server)
 {
 	/// <summary>Gets whether an image value is an external URL rather than a locally stored filename.</summary>

@@ -1,5 +1,4 @@
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;

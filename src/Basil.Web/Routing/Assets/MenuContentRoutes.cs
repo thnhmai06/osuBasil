@@ -38,7 +38,8 @@ internal static class MenuContentRoutes
 	}
 
 	/// <summary>Response body for `GET /menu-content.json`.</summary>
-	private sealed record MenuContentResponse([property: JsonPropertyName("images")] IReadOnlyList<MenuContentImage> Images);
+	private sealed record MenuContentResponse(
+		[property: JsonPropertyName("images")] IReadOnlyList<MenuContentImage> Images);
 
 	/// <summary>
 	///     One entry in the `/menu-content.json` manifest. <c>begins</c>/<c>expires</c> are
@@ -47,7 +48,9 @@ internal static class MenuContentRoutes
 	private sealed record MenuContentImage(
 		[property: JsonPropertyName("image")] string Image,
 		[property: JsonPropertyName("url")] string Url,
-		[property: JsonPropertyName("IsCurrent")] bool IsCurrent,
+		[property: JsonPropertyName("IsCurrent")]
+		bool IsCurrent,
 		[property: JsonPropertyName("begins")] string? Begins,
-		[property: JsonPropertyName("expires")] string? Expires);
+		[property: JsonPropertyName("expires")]
+		string? Expires);
 }

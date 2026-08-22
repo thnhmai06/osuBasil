@@ -471,7 +471,7 @@ public sealed class Program
 	/// <remarks>
 	///     Providers are added incrementally as each asset family migrates (menu images, beatmap
 	///     thumbnails, and avatars now; beatmapset covers later), each one gated to its own host via
-	///     <see cref="AssetsHost.Matches"/>. The cache lives under <c>Data/Cache/imagesharp/</c>,
+	///     <see cref="AssetsHost.Matches" />. The cache lives under <c>Data/Cache/imagesharp/</c>,
 	///     alongside the existing (audio-preview-only now that beatmap thumbnails have migrated)
 	///     <c>Data/Cache/</c> folder.
 	/// </remarks>

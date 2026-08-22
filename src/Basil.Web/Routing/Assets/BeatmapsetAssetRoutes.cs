@@ -5,7 +5,6 @@ using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
-using Basil.Web.OpenApi;
 using Basil.Web.Routing.Bancho;
 using Microsoft.Extensions.Options;
 
@@ -308,7 +307,8 @@ internal static class BeatmapsetAssetRoutes
 		var osbPath = folder is null
 			? null
 			: Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault();
-		if (osbPath is not null) return Results.File(osbPath, ContentTypes.Resolve(osbPath), enableRangeProcessing: true);
+		if (osbPath is not null)
+			return Results.File(osbPath, ContentTypes.Resolve(osbPath), enableRangeProcessing: true);
 
 		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
 		return mapset is null ? Results.NotFound() : LocalOnlyFallback(mirror.Value);

@@ -38,7 +38,7 @@ public sealed partial class BeatmapThumbnailImageProvider : IImageProvider
 
 		var hosts = AssetsHost.BeatmapAssetHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) &&
-		                    ThumbPathRegex().IsMatch(context.Request.Path.Value ?? "");
+		                   ThumbPathRegex().IsMatch(context.Request.Path.Value ?? "");
 	}
 
 	/// <inheritdoc />

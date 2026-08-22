@@ -30,7 +30,7 @@ public sealed partial class AvatarImageProvider : IImageProvider
 
 		var hosts = AssetsHost.AvatarHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) &&
-		                    AvatarPathRegex().IsMatch(context.Request.Path.Value ?? "");
+		                   AvatarPathRegex().IsMatch(context.Request.Path.Value ?? "");
 	}
 
 	/// <inheritdoc />

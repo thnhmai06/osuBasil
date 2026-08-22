@@ -144,7 +144,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "", MenuBannersPath = "", FaqsPath = "",
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
 			mapset);
@@ -174,7 +175,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "", MenuBannersPath = "", FaqsPath = "",
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
 			mapset!);
@@ -230,7 +232,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var folder = BeatmapIngestionService.MapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "", MenuBannersPath = "", FaqsPath = "",
+				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
 			mapset!);

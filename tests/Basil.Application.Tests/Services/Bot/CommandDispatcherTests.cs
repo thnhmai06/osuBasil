@@ -51,7 +51,8 @@ public class CommandDispatcherTests
 	{
 		return new StorageOptions
 		{
-			ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "", FaqsPath = faqsPath,
+			ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
+			FaqsPath = faqsPath,
 			CachePath = ""
 		};
 	}

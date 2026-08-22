@@ -227,7 +227,12 @@ internal static class MenuBannerRoutes
 	}
 
 	/// <summary>Response body for the `/menu/banners` read routes.</summary>
-	public sealed record MenuBannerView(int Id, string Image, string Url, DateTime? Begins, DateTime? Expires,
+	public sealed record MenuBannerView(
+		int Id,
+		string Image,
+		string Url,
+		DateTime? Begins,
+		DateTime? Expires,
 		bool IsCurrent);
 
 	/// <summary>Confirmation body for `DELETE /menu/banners/{bannerId}`.</summary>
@@ -237,6 +242,9 @@ internal static class MenuBannerRoutes
 	public sealed record MenuBannerCreateBody(string Image, string Url, DateTime? Begins, DateTime? Expires);
 
 	/// <summary>Request body for `PUT`/`PATCH /menu/banners/{bannerId}`.</summary>
-	public sealed record MenuBannerUpdateBody(string? Image = null, string? Url = null, DateTime? Begins = null,
+	public sealed record MenuBannerUpdateBody(
+		string? Image = null,
+		string? Url = null,
+		DateTime? Begins = null,
 		DateTime? Expires = null);
 }

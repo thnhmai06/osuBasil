@@ -38,8 +38,8 @@ public sealed class MenuAssetImageProvider : IImageProvider
 
 		var hosts = AssetsHost.AssetsHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) &&
-		                    (context.Request.Path.StartsWithSegments(SeasonalsPrefix.TrimEnd('/')) ||
-		                     context.Request.Path.StartsWithSegments(BannersPrefix.TrimEnd('/')));
+		                   (context.Request.Path.StartsWithSegments(SeasonalsPrefix.TrimEnd('/')) ||
+		                    context.Request.Path.StartsWithSegments(BannersPrefix.TrimEnd('/')));
 	}
 
 	/// <inheritdoc />
