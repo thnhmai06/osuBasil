@@ -14,14 +14,14 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     Doesn't match when the icon is set to an external URL or isn't set at all — the request falls
 ///     through to the plain `GET /menu/icon` endpoint, which redirects or 404s accordingly.
 /// </remarks>
-public sealed class MenuIconImageProvider : IImageProvider
+public sealed class MenuIconProvider : IImageProvider
 {
 	private readonly MenuIconService _icon;
 
-	/// <summary>Initializes a new instance of the <see cref="MenuIconImageProvider" /> class.</summary>
+	/// <summary>Initializes a new instance of the <see cref="MenuIconProvider" /> class.</summary>
 	/// <param name="icon">The service that resolves the current icon's path.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `assets.` hosts.</param>
-	public MenuIconImageProvider(MenuIconService icon, IOptions<ServerOptions> server)
+	public MenuIconProvider(MenuIconService icon, IOptions<ServerOptions> server)
 	{
 		_icon = icon;
 		var hosts = AssetsHost.AssetsHostsFor(server.Value.Domain);

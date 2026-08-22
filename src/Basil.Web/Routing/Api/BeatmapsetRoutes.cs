@@ -209,9 +209,7 @@ internal static class BeatmapsetRoutes
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetCover")
 			.WithSummary("Download a beatmapset cover variant.")
-			.WithDescription("""
-			                 Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/covers/{variant}.jpg`, which serves the set's preview background cropped to a fixed size for the given `{variant}`: `cover`, `card`, `list`, or `slimcover`.
-			                 """)
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/covers/{variant}.jpg`, which serves the set's preview background cropped to a fixed size for the given `{variant}`: `cover`, `card`, `list`, or `slimcover`.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 

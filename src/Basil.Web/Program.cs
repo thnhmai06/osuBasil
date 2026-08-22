@@ -521,7 +521,7 @@ public sealed class Program
 			.ClearProviders()
 			.AddProvider<MenuSeasonalsProvider>()
 			.AddProvider<MenuBannersProvider>()
-			.AddProvider<MenuIconImageProvider>()
+			.AddProvider<MenuIconProvider>()
 			.AddProvider<BeatmapThumbnailProvider>()
 			.AddProvider<AvatarProvider>()
 			.AddProvider<BeatmapsetBackgroundProvider>();

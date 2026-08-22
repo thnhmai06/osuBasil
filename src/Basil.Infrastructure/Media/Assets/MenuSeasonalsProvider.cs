@@ -16,7 +16,7 @@ namespace Basil.Infrastructure.Media.Assets;
 ///     Menu icon is handled separately: it has no filename in its URL (<c>/menu/icon</c>), and can be
 ///     an external URL instead of a local file, so resolving it needs the async
 ///     <see cref="MenuIconService" /> rather than a plain <see cref="IFileProvider" /> lookup — see
-///     <c>MenuIconImageProvider</c>.
+///     <c>MenuIconProvider</c>.
 /// </remarks>
 public sealed class MenuSeasonalsProvider : IImageProvider
 {

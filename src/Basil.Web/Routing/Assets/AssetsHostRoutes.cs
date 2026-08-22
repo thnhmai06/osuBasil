@@ -10,9 +10,9 @@ namespace Basil.Web.Routing.Assets;
 /// <remarks>
 ///     The `assets.` host is Basil's internal CDN-equivalent: menu banner/icon/seasonal images,
 ///     beatmapset covers, and other media served through ImageSharp.Web instead of `api.`'s
-///     hand-written file routes. The image requests themselves (`/menu/seasonals/{fileName}`,
+///     handwritten file routes. The image requests themselves (`/menu/seasonals/{fileName}`,
 ///     `/menu/banners/{fileName}`, and — when it's an uploaded file — `/menu/icon`) are handled by
-///     ImageSharp.Web providers before routing ever reaches this class; only the non-image requests
+///     ImageSharp.Web provider before routing ever reaches this class; only the non-image requests
 ///     (listings, and the icon's external-URL/not-set fallback) are registered here.
 /// </remarks>
 internal static class AssetsHostRoutes
@@ -33,7 +33,6 @@ internal static class AssetsHostRoutes
 			.WithExample(StatusCodes.Status200OK, new HealthStatus("ok"));
 
 		group.MapMenuAssetRoutes();
-		group.MapMenuContentRoutes();
 		group.MapBeatmapsetAssetRoutes();
 	}
 

@@ -40,9 +40,7 @@ internal static class MenuIconRoutes
 			.WithGroupName("basilapi")
 			.WithName("getMenuIcon")
 			.WithSummary("Get menu icon.")
-			.WithDescription("""
-			                 Returns `{ image, url }`. `image` is a full URL — either the configured external URL, or this server's own `assets.<domain>/menu/icon` when an image was uploaded — or `null` if no icon is set. `url` is the click-through URL, or `null` if none is set.
-			                 """)
+			.WithDescription("Returns `{ image, url }`. `image` is a full URL — either the configured external URL, or this server's own `assets.<domain>/menu/icon` when an image was uploaded — or `null` if no icon is set. `url` is the click-through URL, or `null` if none is set.")
 			.WithTags("Menu Icon")
 			.Produces<MenuIconView>()
 			.WithExample(StatusCodes.Status200OK,

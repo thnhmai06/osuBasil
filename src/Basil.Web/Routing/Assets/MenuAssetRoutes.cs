@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Basil.Application.Services.Content;
 using Basil.Web.OpenApi;
 
@@ -48,5 +49,35 @@ internal static class MenuAssetRoutes
 			.WithTags("Menu")
 			.Produces(StatusCodes.Status302Found)
 			.ProducesProblem(StatusCodes.Status404NotFound);
+
+		group.MapGet("/menu-content.json", async (MenuBannerService banners, CancellationToken cancellationToken) =>
+			{
+				var now = DateTime.UtcNow;
+				var all = await banners.FetchAllAsync(cancellationToken);
+				var images = all.Select(b => new MenuContentImage(
+					banners.ResolveImageUrl(b.Image), b.Url, b.IsCurrent(now),
+					b.Begins?.ToString("O"), b.Expires?.ToString("O")));
+
+				return Results.Json(new MenuContentResponse([.. images]));
+			})
+			.WithGroupName("assets")
+			.ExcludeFromDescription();
 	}
+
+	// <summary>Response body for `GET /menu-content.json`.</summary>
+	private sealed record MenuContentResponse(
+		[property: JsonPropertyName("images")] IReadOnlyList<MenuContentImage> Images);
+
+	/// <summary>
+	///     One entry in the `/menu-content.json` manifest. <c>begins</c>/<c>expires</c> are
+	///     <see langword="null" /> when the banner has no lower/upper display-window bound.
+	/// </summary>
+	private sealed record MenuContentImage(
+		[property: JsonPropertyName("image")] string Image,
+		[property: JsonPropertyName("url")] string Url,
+		[property: JsonPropertyName("IsCurrent")]
+		bool IsCurrent,
+		[property: JsonPropertyName("begins")] string? Begins,
+		[property: JsonPropertyName("expires")]
+		string? Expires);
 }

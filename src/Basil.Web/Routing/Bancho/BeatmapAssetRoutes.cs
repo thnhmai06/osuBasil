@@ -112,7 +112,7 @@ internal static class BeatmapAssetRoutes
 	/// <summary>
 	///     Redirects to `b.ppy.sh` when online mirror mode is active and the set has a genuine ppy id;
 	///     404 when offline (unchanged behavior); 503 when online but the set has no ppy id to
-	///     redirect with (a locally-authored set has no mirror counterpart).
+	///     redirect with (a locally authored set has no mirror counterpart).
 	/// </summary>
 	private static IResult MirrorFallback(MirrorOptions mirror, Beatmapset mapset, HttpRequest request)
 	{
