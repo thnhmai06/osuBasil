@@ -64,7 +64,7 @@ public sealed class MatchSession(
 	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
 	///     sequences on this match's slots and settings, held for the duration of any such sequence.
 	/// </summary>
-	public SemaphoreSlim Lock { get; } = new(1, 1);
+	public InstrumentedMatchLock Lock { get; } = new();
 
 	/// <summary>
 	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. See
