@@ -23,22 +23,22 @@ internal sealed class InMemoryMenuBannerRepository : IMenuBannerRepository
 		return Task.FromResult(_banners.GetValueOrDefault(id));
 	}
 
-	public Task<MenuBanner> CreateAsync(string source, string url, DateTime? begins, DateTime? expires,
+	public Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
-		var banner = new MenuBanner(_nextId++, source, url, begins, expires, DateTime.UtcNow);
+		var banner = new MenuBanner(_nextId++, image, url, begins, expires, DateTime.UtcNow);
 		_banners[banner.Id] = banner;
 		return Task.FromResult(banner);
 	}
 
-	public Task<MenuBanner?> UpdateAsync(int id, string? source, string? url, DateTime? begins, DateTime? expires,
+	public Task<MenuBanner?> UpdateAsync(int id, string? image, string? url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
 		if (!_banners.TryGetValue(id, out var existing)) return Task.FromResult<MenuBanner?>(null);
 
 		var updated = existing with
 		{
-			Source = source ?? existing.Source,
+			Image = image ?? existing.Image,
 			Url = url ?? existing.Url,
 			Begins = begins ?? existing.Begins,
 			Expires = expires ?? existing.Expires

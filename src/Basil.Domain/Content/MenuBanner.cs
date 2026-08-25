@@ -4,7 +4,7 @@ namespace Basil.Domain.Content;
 ///     Represents one main-menu promotional banner (`assets.&lt;domain&gt;/menu-content.json`).
 /// </summary>
 /// <param name="Id">The unique identifier of the banner.</param>
-/// <param name="Source">
+/// <param name="Image">
 ///     Either a locally stored filename (under `Data/Menu/Banners/`) or an external `http(s)` URL.
 /// </param>
 /// <param name="Url">The click-through URL opened when the banner is clicked.</param>
@@ -20,7 +20,7 @@ namespace Basil.Domain.Content;
 /// <param name="CreatedAt">The UTC instant the banner was created.</param>
 public sealed record MenuBanner(
 	int Id,
-	string Source,
+	string Image,
 	string Url,
 	DateTime? Begins,
 	DateTime? Expires,
