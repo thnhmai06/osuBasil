@@ -23,6 +23,8 @@ public sealed class DotnetServerHost : IServerHost
 	private BasilHttpClientFactory? _clientFactory;
 	private DotnetRuntimeMetricsCollector? _countersSampler;
 
+	private readonly TotalMachineCpuSampler _machineCpuSampler = new();
+
 	private Process? _process;
 	private ProcessResourceSampler? _processSampler;
 
@@ -127,13 +129,18 @@ public sealed class DotnetServerHost : IServerHost
 	public async Task<ResourceSample> CollectMetricsAsync(CancellationToken cancellationToken = default)
 	{
 		var now = DateTimeOffset.UtcNow;
-		if (_processSampler is null) return new ResourceSample(now);
+		// Machine-wide CPU is sampled unconditionally — it doesn't depend on the server process id, so
+		// it stays available even when process-level metrics (Attached mode) are not.
+		var machineSample = await _machineCpuSampler.SampleAsync(cancellationToken);
+
+		if (_processSampler is null) return new ResourceSample(now).MergeWith(machineSample);
 
 		var processSample = await _processSampler.SampleAsync(cancellationToken);
-		if (_countersSampler is null) return processSample;
+		var merged = processSample.MergeWith(machineSample);
+		if (_countersSampler is null) return merged;
 
 		var countersSample = await _countersSampler.SampleAsync(cancellationToken);
-		return processSample.MergeWith(countersSample);
+		return merged.MergeWith(countersSample);
 	}
 
 	public async Task ExportResultsAsync(string reportFolder, CancellationToken cancellationToken = default)
@@ -145,10 +152,14 @@ public sealed class DotnetServerHost : IServerHost
 		{
 			// The just-stopped server process can still hold the file open for a moment on Windows;
 			// a locked log must never abort report writing, so retry briefly then skip with a warning.
-			var tail = await TryReadLogTailAsync(logPath, cancellationToken);
-			if (tail is not null)
+			// The full log is copied uncut: a 500-line tail previously discarded the onset of a failure
+			// burst (2026-08-14's verify-stress report captured only 4 of 12 SQLITE_BUSY failures because
+			// the tail began 5.4s after the first one) — investigation needs the whole window, not
+			// whatever fits in an arbitrary cap.
+			var lines = await TryReadLogTailAsync(logPath, cancellationToken);
+			if (lines is not null)
 				await File.WriteAllLinesAsync(Path.Combine(reportFolder, "server-log-tail.txt"),
-					tail.TakeLast(500), cancellationToken);
+					lines, cancellationToken);
 		}
 	}
 
@@ -164,6 +175,7 @@ public sealed class DotnetServerHost : IServerHost
 		await StopAsync();
 		if (_countersSampler is not null) await _countersSampler.DisposeAsync();
 		if (_processSampler is not null) await _processSampler.DisposeAsync();
+		await _machineCpuSampler.DisposeAsync();
 		_process?.Dispose();
 	}
 

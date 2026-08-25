@@ -82,6 +82,9 @@ public static class ReportWriter
 		AddRow(lines, aggregates, "HandleCount", "Handle count", 0);
 		AddRow(lines, aggregates, "ThreadPoolThreads", "Threadpool threads", 0);
 		AddRow(lines, aggregates, "TcpConnections", "TCP connections", 0);
+		AddRow(lines, aggregates, "ThreadPoolQueueLength", "Threadpool queue length", 0);
+		AddRow(lines, aggregates, "GcPausePercent", "% time in GC", 2);
+		AddRow(lines, aggregates, "TotalMachineCpuPercent", "Total machine CPU %", 2);
 		lines.Add("");
 
 		if (manifest.Notes.Count > 0)

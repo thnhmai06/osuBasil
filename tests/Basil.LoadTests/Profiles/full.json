@@ -168,6 +168,7 @@
 			},
 			"LeakSlopeThresholds": {
 				"WorkingSetMbPerHour": 25,
+				"GcHeapMbPerHour": 25,
 				"ThreadsPerHour": 5,
 				"HandlesPerHour": 50,
 				"P95MsPerHour": 10

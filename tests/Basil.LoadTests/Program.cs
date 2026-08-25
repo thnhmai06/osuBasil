@@ -119,6 +119,18 @@ else
 using var clientFactory = new BasilHttpClientFactory(host.Endpoint, profile.Client);
 
 var loginSettings = configuration.GetSection("Scenarios:login").Get<LoginSettings>() ?? new LoginSettings();
+if (loginSettings.Enabled)
+	// Disclosed unconditionally (not just when it's false) — a reader must never have to infer this
+	// from the profile file. Warm measures steady-state login cost; cold measures the tournament-wave
+	// worst case, understated by every warm figure in this project's history until this note existed.
+	manifest.Notes.Add(loginSettings.WarmBcryptCache
+		? "Login scenario ran with the bcrypt-verify cache pre-warmed: reported login latency is the " +
+		  "steady-state cost, not first-login (cold cache) cost."
+		: "Login scenario ran with the bcrypt-verify cache cold (WarmBcryptCache=false): reported login " +
+		  "latency for the first concurrency level includes full bcrypt verify cost per login. Only the " +
+		  "first concurrency level in the run is genuinely cold — later levels reuse accounts already " +
+		  "warmed by it, since account slices overlap (Take(n) from a shared pool).");
+
 if (loginSettings is { Enabled: true, WarmBcryptCache: true })
 {
 	LogInfo("Warming the bcrypt-verify cache...");
@@ -201,7 +213,7 @@ foreach (var scenario in ScenarioCatalog.All)
 if (configuration.GetSection("Scenarios:soak").Get<SoakSettings>() is { Enabled: true } enabledSoakSettings)
 {
 	LogInfo("Running soak leak analysis...");
-	var verdicts = SoakAnalyzer.Analyze(timeline, enabledSoakSettings.WarmUp,
+	var verdicts = SoakAnalyzer.Analyze(timeline, enabledSoakSettings.WarmUp, enabledSoakSettings.Duration,
 		enabledSoakSettings.LeakSlopeThresholds);
 	await SoakAnalyzer.WriteReportAsync(reportFolder, verdicts);
 }
