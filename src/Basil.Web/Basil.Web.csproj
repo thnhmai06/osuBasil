@@ -31,6 +31,9 @@
 		<Content Include="..\..\data\certs\basil.local.pfx" Link="Data\basil.local.pfx">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<Content Include="..\..\assets\menu-banner-default.png" Link="Data\Menu\Banners\default-banner.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
