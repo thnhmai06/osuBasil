@@ -55,7 +55,7 @@ internal static class MenuAssetRoutes
 				var now = DateTime.UtcNow;
 				var all = await banners.FetchAllAsync(cancellationToken);
 				var images = all.Select(b => new MenuContentImage(
-					banners.ResolveImageUrl(b.Image), b.Url, b.IsCurrent(now),
+					banners.ResolveSourceUrl(b.Source), b.Url, b.IsCurrent(now),
 					b.Begins?.ToString("O"), b.Expires?.ToString("O")));
 
 				return Results.Json(new MenuContentResponse([.. images]));

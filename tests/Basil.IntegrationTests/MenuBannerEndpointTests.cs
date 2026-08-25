@@ -68,11 +68,27 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		return request;
 	}
 
-	private static HttpRequestMessage MakeCreateRequest(string image, string url, DateTime? begins, DateTime? expires)
+	private static HttpRequestMessage MakeCreateRequest(string source, string url, DateTime? begins,
+		DateTime? expires)
 	{
 		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
 		request.Content = new StringContent(
-			JsonSerializer.Serialize(new { image, url, begins, expires }), Encoding.UTF8, "application/json");
+			JsonSerializer.Serialize(new { source, url, begins, expires }), Encoding.UTF8, "application/json");
+		return request;
+	}
+
+	private static HttpRequestMessage MakeCreateFromUploadRequest(string url, DateTime? begins, DateTime? expires,
+		string fileName = "banner.png")
+	{
+		var request = MakeRequest(HttpMethod.Post, "/menu/banners/image");
+		var content = new MultipartFormDataContent
+		{
+			{ new ByteArrayContent([1, 2, 3]), "file", fileName },
+			{ new StringContent(url), "url" }
+		};
+		if (begins is not null) content.Add(new StringContent(begins.Value.ToString("O")), "begins");
+		if (expires is not null) content.Add(new StringContent(expires.Value.ToString("O")), "expires");
+		request.Content = content;
 		return request;
 	}
 
@@ -88,11 +104,11 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		var body = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
-		Assert.Equal("https://example.test/banner.png", body!.Data!.GetProperty("image").GetString());
+		Assert.Equal("https://example.test/banner.png", body!.Data!.GetProperty("source").GetString());
 	}
 
 	[Fact]
-	public async Task PostBanner_ImageNotAUrl_ReturnsBadRequest()
+	public async Task PostBanner_SourceNotAUrl_ReturnsBadRequest()
 	{
 		var response = await _factory.CreateClient()
 			.SendAsync(MakeCreateRequest("not-a-url", "https://example.test", DateTime.UtcNow, DateTime.UtcNow));
@@ -105,6 +121,43 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	{
 		var request = MakeCreateRequest("https://example.test/b.png", "https://example.test", DateTime.UtcNow,
 			DateTime.UtcNow);
+		request.Headers.Authorization = null;
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task PostBannerFromImage_Upload_CreatesEntryAndStoresFile()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeCreateFromUploadRequest("https://example.test/event", DateTime.UtcNow.AddDays(-1),
+				DateTime.UtcNow.AddDays(1)));
+		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		var source = created!.Data!.GetProperty("source").GetString();
+		Assert.StartsWith("https://assets.test.local/menu/banners/", source);
+		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
+	}
+
+	[Fact]
+	public async Task PostBannerFromImage_MissingFile_ReturnsBadRequest()
+	{
+		var request = MakeRequest(HttpMethod.Post, "/menu/banners/image");
+		request.Content = new MultipartFormDataContent
+			{ { new StringContent("https://example.test"), "url" } };
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task PostBannerFromImage_MissingAdminKey_ReturnsUnauthorized()
+	{
+		var request = MakeCreateFromUploadRequest("https://example.test", null, null);
 		request.Headers.Authorization = null;
 
 		var response = await _factory.CreateClient().SendAsync(request);
@@ -128,8 +181,8 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		var uploaded = await uploadResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
 
 		Assert.Equal(HttpStatusCode.OK, uploadResponse.StatusCode);
-		var image = uploaded!.Data!.GetProperty("image").GetString();
-		Assert.StartsWith("https://assets.test.local/menu/banners/", image);
+		var source = uploaded!.Data!.GetProperty("source").GetString();
+		Assert.StartsWith("https://assets.test.local/menu/banners/", source);
 		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
 	}
 

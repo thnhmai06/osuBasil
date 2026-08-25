@@ -27,37 +27,37 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 	}
 
 	/// <inheritdoc />
-	public async Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
+	public async Task<MenuBanner> CreateAsync(string source, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		var createdAt = DateTime.UtcNow;
 		var id = await connection.ExecuteScalarAsync<int>(
 			"""
-			INSERT INTO MenuBanners (Image, Url, Begins, Expires, CreatedAt)
-			VALUES (@Image, @Url, @Begins, @Expires, @CreatedAt);
+			INSERT INTO MenuBanners (Source, Url, Begins, Expires, CreatedAt)
+			VALUES (@Source, @Url, @Begins, @Expires, @CreatedAt);
 			SELECT last_insert_rowid();
 			""",
-			new { Image = image, Url = url, Begins = begins, Expires = expires, CreatedAt = createdAt });
+			new { Source = source, Url = url, Begins = begins, Expires = expires, CreatedAt = createdAt });
 
-		return new MenuBanner(id, image, url, begins, expires, createdAt);
+		return new MenuBanner(id, source, url, begins, expires, createdAt);
 	}
 
 	/// <inheritdoc />
-	public async Task<MenuBanner?> UpdateAsync(int id, string? image, string? url, DateTime? begins,
+	public async Task<MenuBanner?> UpdateAsync(int id, string? source, string? url, DateTime? begins,
 		DateTime? expires, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
 		await connection.ExecuteAsync(
 			"""
 			UPDATE MenuBanners
-			SET Image = COALESCE(@Image, Image),
+			SET Source = COALESCE(@Source, Source),
 			    Url = COALESCE(@Url, Url),
 			    Begins = COALESCE(@Begins, Begins),
 			    Expires = COALESCE(@Expires, Expires)
 			WHERE Id = @Id
 			""",
-			new { Id = id, Image = image, Url = url, Begins = begins, Expires = expires });
+			new { Id = id, Source = source, Url = url, Begins = begins, Expires = expires });
 
 		return await FetchByIdAsync(id, cancellationToken);
 	}
@@ -80,7 +80,7 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 	private sealed class MenuBannerRow
 	{
 		public int Id { get; set; }
-		public string Image { get; set; } = "";
+		public string Source { get; set; } = "";
 		public string Url { get; set; } = "";
 		public DateTime? Begins { get; set; }
 		public DateTime? Expires { get; set; }
@@ -89,7 +89,7 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 		/// <summary>Builds a <see cref="MenuBanner" /> from this row.</summary>
 		public MenuBanner ToMenuBanner()
 		{
-			return new MenuBanner(Id, Image, Url, Begins, Expires, CreatedAt);
+			return new MenuBanner(Id, Source, Url, Begins, Expires, CreatedAt);
 		}
 	}
 }

@@ -9,7 +9,7 @@ namespace Basil.Application.Services.Content;
 ///     Manages main-menu banner metadata and their uploaded image files.
 /// </summary>
 /// <remarks>
-///     A banner's <see cref="MenuBanner.Image" /> is either a locally stored filename (under
+///     A banner's <see cref="MenuBanner.Source" /> is either a locally stored filename (under
 ///     <c>StorageOptions.MenuBannersPath</c>) or an external <c>http(s)</c> URL; this service keeps
 ///     both the database row and any uploaded file in sync.
 /// </remarks>
@@ -18,19 +18,19 @@ public sealed class MenuBannerService(
 	IOptions<StorageOptions> storage,
 	IOptions<ServerOptions> server)
 {
-	/// <summary>Gets whether an image value is an external URL rather than a locally stored filename.</summary>
-	/// <param name="image">A <see cref="MenuBanner.Image" /> value.</param>
-	public static bool IsExternalUrl(string image)
+	/// <summary>Gets whether a source value is an external URL rather than a locally stored filename.</summary>
+	/// <param name="source">A <see cref="MenuBanner.Source" /> value.</param>
+	public static bool IsExternalUrl(string source)
 	{
-		return image.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-		       image.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+		return source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+		       source.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 	}
 
-	/// <summary>Resolves a banner's image to a full URL, for use in public API responses.</summary>
-	/// <param name="image">A <see cref="MenuBanner.Image" /> value.</param>
-	public string ResolveImageUrl(string image)
+	/// <summary>Resolves a banner's source to a full image URL, for use in public API responses.</summary>
+	/// <param name="source">A <see cref="MenuBanner.Source" /> value.</param>
+	public string ResolveSourceUrl(string source)
 	{
-		return IsExternalUrl(image) ? image : $"https://assets.{server.Value.Domain}/menu/banners/{image}";
+		return IsExternalUrl(source) ? source : $"https://assets.{server.Value.Domain}/menu/banners/{source}";
 	}
 
 	/// <summary>Fetches every stored banner.</summary>
@@ -48,19 +48,19 @@ public sealed class MenuBannerService(
 		return repository.FetchByIdAsync(id, cancellationToken);
 	}
 
-	/// <summary>Creates a banner whose image is an external URL.</summary>
-	/// <param name="image">The external image URL.</param>
+	/// <summary>Creates a banner whose source is an external URL.</summary>
+	/// <param name="source">The external image URL.</param>
 	/// <param name="url">The click-through URL.</param>
 	/// <param name="begins">The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound.</param>
 	/// <param name="expires">The UTC instant the banner stops being current, or <see langword="null" /> for no upper bound.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task<MenuBanner> CreateAsync(string image, string url, DateTime? begins, DateTime? expires,
+	public Task<MenuBanner> CreateAsync(string source, string url, DateTime? begins, DateTime? expires,
 		CancellationToken cancellationToken = default)
 	{
-		return repository.CreateAsync(image, url, begins, expires, cancellationToken);
+		return repository.CreateAsync(source, url, begins, expires, cancellationToken);
 	}
 
-	/// <summary>Creates a banner whose image is an uploaded file.</summary>
+	/// <summary>Creates a banner whose source is an uploaded file.</summary>
 	/// <param name="content">The image content.</param>
 	/// <param name="extension">The file extension to store it under, including the leading dot.</param>
 	/// <param name="url">The click-through URL.</param>
@@ -74,7 +74,7 @@ public sealed class MenuBannerService(
 		return await repository.CreateAsync(fileName, url, begins, expires, cancellationToken);
 	}
 
-	/// <summary>Replaces an existing banner's image with an uploaded file.</summary>
+	/// <summary>Replaces an existing banner's source with an uploaded file.</summary>
 	/// <param name="id">The banner's id.</param>
 	/// <param name="content">The new image content.</param>
 	/// <param name="extension">The file extension to store it under, including the leading dot.</param>
@@ -86,37 +86,37 @@ public sealed class MenuBannerService(
 		var existing = await repository.FetchByIdAsync(id, cancellationToken);
 		if (existing is null) return null;
 
-		DeleteLocalFileIfAny(existing.Image);
+		DeleteLocalFileIfAny(existing.Source);
 		var fileName = await SaveUploadAsync(content, extension, cancellationToken);
 		return await repository.UpdateAsync(id, fileName, null, null, null, cancellationToken);
 	}
 
 	/// <summary>Updates a banner's metadata fields, leaving any <see langword="null" /> argument unchanged.</summary>
 	/// <remarks>
-	///     Setting <paramref name="image" /> here always means an external URL; a local file already
-	///     stored under this banner is deleted, since <c>Image</c> can only point at one form at a time.
+	///     Setting <paramref name="source" /> here always means an external URL; a local file already
+	///     stored under this banner is deleted, since <c>Source</c> can only point at one form at a time.
 	///     Because <see langword="null" /> means "leave unchanged", this cannot clear an existing
 	///     <paramref name="begins" />/<paramref name="expires" /> bound back to unset (permanent) —
 	///     delete and recreate the banner for that.
 	/// </remarks>
 	/// <param name="id">The banner's id.</param>
-	/// <param name="image">The new external image URL, or <see langword="null" /> to leave it unchanged.</param>
+	/// <param name="source">The new external image URL, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="url">The new click-through URL, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="begins">The new start instant, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="expires">The new end instant, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The updated banner, or <see langword="null" /> when no such banner exists.</returns>
-	public async Task<MenuBanner?> UpdateAsync(int id, string? image, string? url, DateTime? begins,
+	public async Task<MenuBanner?> UpdateAsync(int id, string? source, string? url, DateTime? begins,
 		DateTime? expires, CancellationToken cancellationToken = default)
 	{
-		if (image is not null)
+		if (source is not null)
 		{
 			var existing = await repository.FetchByIdAsync(id, cancellationToken);
 			if (existing is null) return null;
-			DeleteLocalFileIfAny(existing.Image);
+			DeleteLocalFileIfAny(existing.Source);
 		}
 
-		return await repository.UpdateAsync(id, image, url, begins, expires, cancellationToken);
+		return await repository.UpdateAsync(id, source, url, begins, expires, cancellationToken);
 	}
 
 	/// <summary>Deletes a banner and its uploaded file, if any.</summary>
@@ -128,7 +128,7 @@ public sealed class MenuBannerService(
 		var existing = await repository.FetchByIdAsync(id, cancellationToken);
 		if (existing is null) return false;
 
-		DeleteLocalFileIfAny(existing.Image);
+		DeleteLocalFileIfAny(existing.Source);
 		return await repository.DeleteAsync(id, cancellationToken);
 	}
 
@@ -142,11 +142,11 @@ public sealed class MenuBannerService(
 		return fileName;
 	}
 
-	private void DeleteLocalFileIfAny(string image)
+	private void DeleteLocalFileIfAny(string source)
 	{
-		if (IsExternalUrl(image)) return;
+		if (IsExternalUrl(source)) return;
 
-		var path = Path.Combine(storage.Value.MenuBannersPath, image);
+		var path = Path.Combine(storage.Value.MenuBannersPath, source);
 		if (File.Exists(path)) File.Delete(path);
 	}
 }
