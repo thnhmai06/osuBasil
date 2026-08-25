@@ -78,6 +78,7 @@ For example:
 <server-ip> b.basil.local
 <server-ip> a.basil.local
 <server-ip> api.basil.local
+<server-ip> assets.basil.local
 ```
 
 Replace `basil.local` with the value configured in `Basil:Server:Domain`.
