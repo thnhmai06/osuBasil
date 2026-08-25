@@ -2,6 +2,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
+using Basil.Application.Diagnostics;
 using Basil.Application.Formats;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -325,9 +326,18 @@ internal static class LiveSseRoutes
 	{
 		var channel = Channel.CreateBounded<SseItem<string>>(
 			new BoundedChannelOptions(32) { FullMode = BoundedChannelFullMode.DropOldest });
+		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
 		var unsubscribe = subscribe(payload =>
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)));
-		cancellationToken.Register(unsubscribe);
+		{
+			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+		});
+		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		cancellationToken.Register(() =>
+		{
+			unsubscribe();
+			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+		});
 
 		return channel.Reader.ReadAllAsync(cancellationToken);
 	}
@@ -346,9 +356,18 @@ internal static class LiveSseRoutes
 		[EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateUnbounded<SseItem<string>>();
+		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
 		var unsubscribe = subscribe(payload =>
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)));
-		cancellationToken.Register(unsubscribe);
+		{
+			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+		});
+		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		cancellationToken.Register(() =>
+		{
+			unsubscribe();
+			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+		});
 
 		while (channel.Reader.TryRead(out _))
 		{
@@ -371,9 +390,18 @@ internal static class LiveSseRoutes
 		[EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateUnbounded<SseItem<string>>();
+		var streamTag = new KeyValuePair<string, object?>("stream", snapshotEventType);
 		var unsubscribe = subscribe((eventType, payload) =>
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)));
-		cancellationToken.Register(unsubscribe);
+		{
+			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+		});
+		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		cancellationToken.Register(() =>
+		{
+			unsubscribe();
+			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+		});
 
 		while (channel.Reader.TryRead(out _))
 		{
