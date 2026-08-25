@@ -155,7 +155,9 @@ public sealed class Program
 
 		// Order matters: authentication/authorization must run before EnvelopeMiddleware (which
 		// needs the resolved role to decide what a response reveals), which must run before
-		// ApiRequestLoggingMiddleware (which logs the final status code).
+		// ApiRequestLoggingMiddleware (which logs the final status code). RequestMetricsMiddleware
+		// runs first so its measured duration includes every other middleware's cost.
+		app.UseMiddleware<RequestMetricsMiddleware>();
 		app.UseMiddleware<RequestIdLoggingMiddleware>();
 		app.UseSerilogRequestLogging();
 		app.UseMiddleware<ExceptionLoggingMiddleware>();
