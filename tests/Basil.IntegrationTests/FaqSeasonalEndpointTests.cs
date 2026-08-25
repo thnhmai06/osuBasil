@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers the new `/faqs` and `/seasonals` routes: public reads, admin-key-gated writes, and the
+///     Covers the new `/faqs` and `/menu/seasonals` routes: public reads, admin-key-gated writes, and the
 ///     "no silent override" rule shared by both — `POST` only creates a brand-new entry/file (409 if
 ///     already taken), `PUT` only replaces an existing one (404 if it isn't). Real temp-directory
 ///     filesystem, no stubs — both resources are pure file storage with no database involvement.
@@ -44,7 +44,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
 					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
-					SeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
+					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
 					CachePath = Path.Combine(_dataDir, "Cache")
 				}));
@@ -205,46 +206,31 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Assert.False(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
 	}
 
-	// ---- /seasonals ----
+	// ---- /menu/seasonals ----
 
 	[Fact]
-	public async Task GetSeasonalList_ReturnsFileNames()
+	public async Task GetSeasonalList_RedirectsToAssetsHost()
 	{
-		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3]);
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals"));
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
-
-		Assert.Equal(["winter.png"], body!.Data!);
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/seasonals", response.Headers.Location?.ToString());
 	}
 
 	[Fact]
-	public async Task GetSeasonalFile_UnknownFileName_ReturnsNotFound()
+	public async Task GetSeasonalFile_RedirectsToAssetsHost()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/nope.png"));
+		var response =
+			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/winter.png"));
 
-		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-	}
-
-	[Fact]
-	public async Task GetSeasonalFile_Known_ReturnsBytesWithCorrectMimeType()
-	{
-		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "winter.png"), [1, 2, 3, 4]);
-
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/seasonals/winter.png"));
-		var bytes = await response.Content.ReadAsByteArrayAsync();
-
-		response.EnsureSuccessStatusCode();
-		Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
-		Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/seasonals/winter.png", response.Headers.Location?.ToString());
 	}
 
 	[Fact]
 	public async Task PostSeasonal_New_CreatesFile()
 	{
-		var request = MakeRequest(HttpMethod.Post, "/seasonals/", AdminKey);
+		var request = MakeRequest(HttpMethod.Post, "/menu/seasonals", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
@@ -259,7 +245,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Directory.CreateDirectory(SeasonalsDir);
 		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
 
-		var request = MakeRequest(HttpMethod.Post, "/seasonals/", AdminKey);
+		var request = MakeRequest(HttpMethod.Post, "/menu/seasonals", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
@@ -271,7 +257,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	[Fact]
 	public async Task PutSeasonal_NotFound_ReturnsNotFound()
 	{
-		var request = MakeRequest(HttpMethod.Put, "/seasonals/nope.png", AdminKey);
+		var request = MakeRequest(HttpMethod.Put, "/menu/seasonals/nope.png", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "nope.png" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
@@ -285,7 +271,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Directory.CreateDirectory(SeasonalsDir);
 		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
 
-		var request = MakeRequest(HttpMethod.Put, "/seasonals/spring.png", AdminKey);
+		var request = MakeRequest(HttpMethod.Put, "/menu/seasonals/spring.png", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
@@ -298,7 +284,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	public async Task DeleteSeasonal_NotFound_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/seasonals/nope.png", AdminKey));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/nope.png", AdminKey));
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -310,7 +296,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/seasonals/spring.png", AdminKey));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/spring.png", AdminKey));
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));

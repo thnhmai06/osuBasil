@@ -2,7 +2,6 @@ using Basil.LoadTests.Client;
 using Basil.LoadTests.Configuration;
 using Basil.LoadTests.Models;
 using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
 using NBomber.Contracts;
 using NBomber.CSharp;
 
@@ -109,7 +108,7 @@ public sealed class SseScenario : IBasilScenario
 						}
 
 						metrics.RecordDisconnected(eventCount);
-						return Response.Ok(statusCode: "200", eventCount);
+						return Response.Ok("200", eventCount);
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
 					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)
@@ -147,7 +146,7 @@ public sealed class SseScenario : IBasilScenario
 	///     keys on via <c>IMatchRegistry.GetByDbId</c>) — deliberately not the bancho-protocol match id
 	///     from the <c>MatchJoinSuccess</c>/<c>NewMatch</c> packet (a separate, small 0-63 in-memory
 	///     slot-pool index), or <see langword="null" /> if login, creation, or resolving the id failed.
-	/// </summary>
+	///     </summary>
 	private static async Task<int?> CreateAnchorMatchAsync(BanchoClient client, LoadAccount account,
 		BasilApiClient apiClient)
 	{
@@ -155,12 +154,12 @@ public sealed class SseScenario : IBasilScenario
 		if (!outcome.Success) return null;
 
 		var slots = Enumerable.Range(0, 16)
-			.Select(_ => new MatchSlotPacket(Status: 0, Team: 0, Mods: 0, PlayerId: null))
+			.Select(_ => new MatchSlotPacket(0, 0, 0, null))
 			.ToArray();
 		var match = new MatchPacket(
-			Id: 0, InProgress: false, Mods: 0, Name: "sse-anchor", Password: "",
-			MapName: "", MapId: 0, MapMd5: "", Slots: slots, HostId: account.UserId ?? 0,
-			Mode: 0, WinCondition: 0, TeamType: 0, FreeMods: false, Seed: 0);
+			0, false, 0, "sse-anchor", "",
+			"", 0, "", slots, account.UserId ?? 0,
+			0, 0, 0, false, 0);
 
 		client.Send(ClientPacketWriter.CreateMatch(match));
 		await client.PollAsync();

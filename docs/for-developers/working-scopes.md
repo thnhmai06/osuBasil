@@ -66,6 +66,17 @@ It includes:
 
 This is intentionally not a general-purpose replacement for osu-web's public API.
 
+### Assets host and main-menu banner
+
+`assets.<domain>` hosts the client-facing main-menu banner manifest
+(`GET /menu-content.json`, matching `assets.ppy.sh`'s real path and schema) plus the image serving
+for menu backgrounds/icon and beatmapset covers, all through ImageSharp.Web. See
+[`assets.md`](assets.md).
+
+This deliberately does not replicate `assets.ppy.sh`'s user-profile-cover, team, contest, or
+artist/media asset families — Basil has no public profile pages, teams, or contest system for them to
+back.
+
 ### In-game registration
 
 `POST /users` is supported for in-game account registration.

@@ -414,38 +414,20 @@ internal static class OsuWebRoutes
 			{
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
 				var domain = context.RequestServices.GetRequiredService<IOptions<ServerOptions>>().Value.Domain;
-				Directory.CreateDirectory(storage.SeasonalsPath);
+				Directory.CreateDirectory(storage.MenuSeasonalsPath);
 
-				var files = Directory.EnumerateFiles(storage.SeasonalsPath)
-					.Select(path => $"https://osu.{domain}/seasonal/{Path.GetFileName(path)}")
+				var files = Directory.EnumerateFiles(storage.MenuSeasonalsPath)
+					.Select(path => $"https://assets.{domain}/menu/seasonals/{Path.GetFileName(path)}")
 					.ToArray();
 				return Results.Json(files);
 			})
 			.WithGroupName("osuweb")
 			.WithSummary("List seasonal backgrounds")
 			.WithDescription("Returns a JSON array of full URLs for the login-screen seasonal backgrounds, " +
-			                 "one per image file added to this server, each pointing at `GET /seasonal/{fileName}` " +
-			                 "on this same host.\n\n" +
+			                 "one per image file added to this server, each pointing at " +
+			                 "`GET assets.<domain>/menu/seasonals/{fileName}`.\n\n" +
 			                 "Unlike most routes on this host, the response really is JSON, matching what the " +
 			                 "osu! client expects here.")
-			.WithTags("Seasonal Backgrounds");
-
-		// Serves the files listed by osu-getseasonal.php above.
-		group.MapGet("/seasonal/{fileName}", (string fileName, HttpContext context) =>
-			{
-				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-				// Path.GetFileName strips any directory component the client could smuggle in
-				// (e.g. "../../appsettings.json") before it ever reaches Path.Combine.
-				var path = Path.Combine(storage.SeasonalsPath, Path.GetFileName(fileName));
-				return !File.Exists(path) ? Results.NotFound() : Results.File(path, ContentTypes.Resolve(path));
-			})
-			.WithGroupName("osuweb")
-			.WithSummary("Download a seasonal background")
-			.WithDescription("`{fileName}` is one of the filenames returned by " +
-			                 "`GET /web/osu-getseasonal.php`.\n\n" +
-			                 "The response Content-Type is inferred from the extension (png/jpg/gif; anything " +
-			                 "else is returned as `application/octet-stream`).\n\n" +
-			                 "404 — The file does not exist.")
 			.WithTags("Seasonal Backgrounds");
 
 		// Deliberately unauthenticated: this is called before a bancho session exists, so there

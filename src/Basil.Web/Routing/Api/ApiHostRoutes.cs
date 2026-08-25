@@ -76,7 +76,9 @@ internal static class ApiHostRoutes
 
 		group.MapFaqRoutes();
 
-		group.MapSeasonalRoutes();
+		group.MapMenuSeasonalRoutes();
+
+		group.MapMenuBannerRoutes();
 
 		group.MapMenuIconRoutes();
 

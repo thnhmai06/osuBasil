@@ -20,6 +20,7 @@ osu.<domain>
 b.<domain>
 a.<domain>
 api.<domain>
+assets.<domain>
 ```
 
 The certificate must therefore contain these names as SANs (Subject Alternative Names).
@@ -183,7 +184,8 @@ $dnsNames = @(
 	"osu.$domain",
 	"b.$domain",
 	"a.$domain",
-	"api.$domain"
+	"api.$domain",
+	"assets.$domain"
 )
 
 $cert = New-SelfSignedCertificate `
@@ -229,7 +231,7 @@ openssl req -new -x509 -days 365 -nodes \
   -out basil-cert.pem \
   -keyout basil-key.pem \
   -subj "/CN=$domain" \
-  -addext "subjectAltName=DNS:$domain,DNS:c.$domain,DNS:ce.$domain,DNS:c4.$domain,DNS:c5.$domain,DNS:c6.$domain,DNS:osu.$domain,DNS:b.$domain,DNS:a.$domain,DNS:api.$domain"
+  -addext "subjectAltName=DNS:$domain,DNS:c.$domain,DNS:ce.$domain,DNS:c4.$domain,DNS:c5.$domain,DNS:c6.$domain,DNS:osu.$domain,DNS:b.$domain,DNS:a.$domain,DNS:api.$domain,DNS:assets.$domain"
 
 openssl pkcs12 -export \
   -out basil-cert.pfx \

@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Channels;
+using Basil.Application.Abstractions.Content;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Multiplayer;
@@ -62,7 +63,8 @@ public static class DependencyInjection
 			ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
 			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
 			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
-			SeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seasonals"),
+			MenuSeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Seasonals"),
+			MenuBannersPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Banners"),
 			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
 			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));
@@ -109,6 +111,7 @@ public static class DependencyInjection
 			new CachingSettingsRepository(
 				new SqliteSettingsRepository(BuildConnectionString(sp)),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingSettingsRepository>>()));
+		services.AddSingleton<IMenuBannerRepository>(sp => new SqliteMenuBannerRepository(BuildConnectionString(sp)));
 
 		services.AddHttpClient<IMirrorSearchClient, HttpMirrorSearchClient>();
 
@@ -116,7 +119,6 @@ public static class DependencyInjection
 		services.AddSingleton<IScoreDecryptor, RijndaelScoreDecryptor>();
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
-		services.AddSingleton<IImageResizer, ImageSharpResizer>();
 		services.AddSingleton<IAudioExtractor, FfmpegAudioExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
 		services.AddSingleton<BeatmapIngestionService>();

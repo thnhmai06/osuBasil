@@ -51,7 +51,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/m", "/matches")]
 	[InlineData("/u", "/users")]
 	[InlineData("/s", "/scores")]
-	[InlineData("/ss", "/seasonals")]
+	[InlineData("/ss", "/menu/seasonals")]
 	public async Task BarePrefix_RedirectsToCanonicalRoot(string prefix, string target)
 	{
 		var response = await MakeClient().SendAsync(MakeRequest(prefix));
@@ -65,7 +65,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/m/5", "/matches/5")]
 	[InlineData("/u/7", "/users/7")]
 	[InlineData("/s/42", "/scores/42")]
-	[InlineData("/ss/winter.png", "/seasonals/winter.png")]
+	[InlineData("/ss/winter.png", "/menu/seasonals/winter.png")]
 	public async Task PrefixWithRest_RedirectsToCanonicalPath(string path, string target)
 	{
 		var response = await MakeClient().SendAsync(MakeRequest(path));

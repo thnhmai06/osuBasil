@@ -81,7 +81,7 @@ public sealed class ChatScenario : IBasilScenario
 								new BanchoMessage(account.Name, text, settings.Channel, account.UserId ?? 0)));
 							await existing.PollAsync(ctx.ScenarioCancellationToken);
 							metrics.RecordSent();
-							return Response.Ok(statusCode: "sent", text.Length);
+							return Response.Ok("sent", text.Length);
 						}
 
 						await Task.Delay(context.Profile.Client.PollInterval, ctx.ScenarioCancellationToken);
@@ -104,7 +104,7 @@ public sealed class ChatScenario : IBasilScenario
 							metrics.RecordReceived(latencyMs);
 						}
 
-						return Response.Ok(statusCode: "polled", receivedBytes);
+						return Response.Ok("polled", receivedBytes);
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException ||
 					                           !ctx.ScenarioCancellationToken.IsCancellationRequested)

@@ -31,6 +31,9 @@
 		<Content Include="..\..\data\certs\basil.local.pfx" Link="Data\basil.local.pfx">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<Content Include="..\..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -41,6 +44,7 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.OpenApi"/>
 		<PackageReference Include="Scalar.AspNetCore"/>
+		<PackageReference Include="SixLabors.ImageSharp.Web"/>
 		<PackageReference Include="Serilog.AspNetCore"/>
 		<PackageReference Include="Serilog.Sinks.Console"/>
 		<PackageReference Include="Serilog.Sinks.File"/>
