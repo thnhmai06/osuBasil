@@ -1,3 +1,3 @@
 ﻿icon: https://kaiami.net/products/basil-omori-tulip-sticker
-banner: https://x.com/OMORI_GAME/status/1408319044617338889
-menuicon: https://x.com/OMORI_GAME/status/1581306918391291904
+github-banner: https://x.com/OMORI_GAME/status/1408319044617338889
+menu-banner: https://x.com/_omocat/status/1581072366133714947

@@ -145,8 +145,38 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		var image = created!.Data!.GetProperty("image").GetString();
-		Assert.StartsWith("https://assets.test.local/menu/banners/", image);
-		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
+		Assert.Equal("https://assets.test.local/menu/banners/banner.png", image);
+		Assert.True(File.Exists(Path.Combine(_dataDir, "Banners", "banner.png")));
+	}
+
+	[Fact]
+	public async Task PostBanner_UploadedFile_NameCollision_GetsNumericSuffix()
+	{
+		var client = _factory.CreateClient();
+		await client.SendAsync(MakeCreateFromUploadRequest("https://example.test/event", null, null));
+
+		var response = await client.SendAsync(MakeCreateFromUploadRequest("https://example.test/event", null, null));
+		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/banners/banner-1.png",
+			created!.Data!.GetProperty("image").GetString());
+		Assert.Equal(2, Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")).Count());
+	}
+
+	[Fact]
+	public async Task PostBanner_UploadedFile_NameCollisionWithDensitySuffix_InsertsNumberBeforeIt()
+	{
+		var client = _factory.CreateClient();
+		await client.SendAsync(MakeCreateFromUploadRequest("https://example.test/event", null, null, "banner@2x.png"));
+
+		var response = await client.SendAsync(
+			MakeCreateFromUploadRequest("https://example.test/event", null, null, "banner@2x.png"));
+		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		Assert.Equal("https://assets.test.local/menu/banners/banner-1@2x.png",
+			created!.Data!.GetProperty("image").GetString());
 	}
 
 	[Fact]

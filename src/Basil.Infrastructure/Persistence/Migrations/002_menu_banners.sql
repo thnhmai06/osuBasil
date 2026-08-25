@@ -14,5 +14,5 @@ create table MenuBanners
 );
 
 INSERT INTO MenuBanners (Id, Image, Url, Begins, Expires, CreatedAt)
-VALUES (1, 'default-banner.png', 'https://github.com/thnhmai06/osuBasil',
+VALUES (1, 'default-banner@2x.png', 'https://github.com/thnhmai06/osuBasil',
 		null, null, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));

@@ -139,8 +139,8 @@ internal static class MenuBannerRoutes
 		if (file is not null)
 		{
 			await using var stream = file.OpenReadStream();
-			created = await banners.CreateFromUploadAsync(stream, Path.GetExtension(file.FileName), url, begins,
-				expires, cancellationToken);
+			created = await banners.CreateFromUploadAsync(stream, file.FileName, url, begins, expires,
+				cancellationToken);
 		}
 		else
 		{
@@ -177,8 +177,8 @@ internal static class MenuBannerRoutes
 		if (file is not null)
 		{
 			await using var stream = file.OpenReadStream();
-			updated = await banners.ReplaceImageAsync(bannerId, stream, Path.GetExtension(file.FileName), url,
-				begins, expires, cancellationToken);
+			updated = await banners.ReplaceImageAsync(bannerId, stream, file.FileName, url, begins, expires,
+				cancellationToken);
 		}
 		else
 		{
