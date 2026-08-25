@@ -12,13 +12,13 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers `/menu/icon` (`GET`/`PUT`/`PATCH`/`DELETE`, metadata only) and `/menu/icon/image`
-///     (`POST`/`DELETE`, the uploaded-file form). Backed by a real, stateful
-///     <see cref="InMemorySettingsRepository" /> (not a canned substitute), since these tests need
-///     read-your-writes across write then read. An uploaded icon's bytes still land on disk under
-///     `Data/Menu/Icon.{ext}` (not a `StorageOptions` path, so — unlike avatar/seasonal tests — these
-///     tests share that fixed location and must clean it up themselves), even though the pointer to
-///     it lives in the (in-memory, per-test) Settings repository.
+///     Covers `/menu/icon` (`GET`/`PUT`/`PATCH`/`DELETE`) and `/menu/icon/image` (`DELETE`, clearing
+///     just the image). Backed by a real, stateful <see cref="InMemorySettingsRepository" /> (not a
+///     canned substitute), since these tests need read-your-writes across write then read. An uploaded
+///     icon's bytes still land on disk under `Data/Menu/Icon.{ext}` (not a `StorageOptions` path, so —
+///     unlike avatar/seasonal tests — these tests share that fixed location and must clean it up
+///     themselves), even though the pointer to it lives in the (in-memory, per-test) Settings
+///     repository.
 /// </summary>
 public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
@@ -68,10 +68,23 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 		return request;
 	}
 
+	/// <summary>Builds a multipart `PATCH /menu/icon` request with `image` as an uploaded file.</summary>
 	private static HttpRequestMessage MakeUploadRequest(string fileName = "icon.png")
 	{
-		var request = MakeRequest(HttpMethod.Post, "/menu/icon/image");
-		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", fileName } };
+		var request = MakeRequest(HttpMethod.Patch, "/menu/icon");
+		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "image", fileName } };
+		return request;
+	}
+
+	/// <summary>Builds a multipart `PATCH /menu/icon` request with `image`/`url` as plain-text fields.</summary>
+	private static HttpRequestMessage MakePatchRequest(string? image = null, string? url = null,
+		string? adminKey = AdminKey)
+	{
+		var request = MakeRequest(HttpMethod.Patch, "/menu/icon", adminKey);
+		var content = new MultipartFormDataContent();
+		if (image is not null) content.Add(new StringContent(image), "image");
+		if (url is not null) content.Add(new StringContent(url), "url");
+		request.Content = content;
 		return request;
 	}
 
@@ -87,12 +100,12 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	}
 
 	[Fact]
-	public async Task PostIconImage_ValidUpload_StoresFileAndIsReflectedInGet()
+	public async Task PatchIcon_UploadedFile_StoresFileAndIsReflectedInGet()
 	{
 		var client = _factory.CreateClient();
 
-		var postResponse = await client.SendAsync(MakeUploadRequest());
-		Assert.Equal(HttpStatusCode.OK, postResponse.StatusCode);
+		var patchResponse = await client.SendAsync(MakeUploadRequest());
+		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 		Assert.True(File.Exists(Path.Combine(MenuDir, "Icon.png")));
 
 		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
@@ -102,7 +115,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	}
 
 	[Fact]
-	public async Task PostIconImage_SecondUploadWithDifferentExtension_ReplacesFirstUpload_Upsert()
+	public async Task PatchIcon_SecondUploadWithDifferentExtension_ReplacesFirstUpload_Upsert()
 	{
 		var client = _factory.CreateClient();
 
@@ -115,10 +128,10 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	}
 
 	[Fact]
-	public async Task PostIconImage_MissingAdminKey_ReturnsUnauthorized()
+	public async Task PatchIcon_UploadedFile_MissingAdminKey_ReturnsUnauthorized()
 	{
-		var request = MakeRequest(HttpMethod.Post, "/menu/icon/image", null);
-		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "icon.png" } };
+		var request = MakeRequest(HttpMethod.Patch, "/menu/icon", null);
+		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "image", "icon.png" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
 
@@ -131,10 +144,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 		var client = _factory.CreateClient();
 		await client.SendAsync(MakeUploadRequest());
 
-		var patchRequest = MakeRequest(HttpMethod.Patch, "/menu/icon");
-		patchRequest.Content = new StringContent("""{"image":"https://example.test/icon.png"}""", Encoding.UTF8,
-			"application/json");
-		var patchResponse = await client.SendAsync(patchRequest);
+		var patchResponse = await client.SendAsync(MakePatchRequest("https://example.test/icon.png"));
 
 		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 		Assert.Empty(Directory.EnumerateFiles(MenuDir, "Icon.*"));
@@ -147,11 +157,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	[Fact]
 	public async Task PatchIcon_ImageNotAUrl_ReturnsBadRequest()
 	{
-		var client = _factory.CreateClient();
-
-		var request = MakeRequest(HttpMethod.Patch, "/menu/icon");
-		request.Content = new StringContent("""{"image":"not-a-url"}""", Encoding.UTF8, "application/json");
-		var response = await client.SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(MakePatchRequest("not-a-url"));
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -159,11 +165,8 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	[Fact]
 	public async Task PatchIcon_MissingAdminKey_ReturnsUnauthorized()
 	{
-		var request = MakeRequest(HttpMethod.Patch, "/menu/icon", null);
-		request.Content = new StringContent("""{"image":"https://example.test/icon.png"}""", Encoding.UTF8,
-			"application/json");
-
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient()
+			.SendAsync(MakePatchRequest("https://example.test/icon.png", adminKey: null));
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -174,10 +177,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 		var client = _factory.CreateClient();
 		await client.SendAsync(MakeUploadRequest());
 
-		var patchRequest = MakeRequest(HttpMethod.Patch, "/menu/icon");
-		patchRequest.Content = new StringContent("""{"url":"https://example.test/click"}""", Encoding.UTF8,
-			"application/json");
-		await client.SendAsync(patchRequest);
+		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"));
 
 		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
 		var body = await getResponse.Content.ReadAsStringAsync();
@@ -222,10 +222,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 		await client.SendAsync(MakeUploadRequest());
-		var patchRequest = MakeRequest(HttpMethod.Patch, "/menu/icon");
-		patchRequest.Content = new StringContent("""{"url":"https://example.test/click"}""", Encoding.UTF8,
-			"application/json");
-		await client.SendAsync(patchRequest);
+		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"));
 
 		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon/image"));
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);

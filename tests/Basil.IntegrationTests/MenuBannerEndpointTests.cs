@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using Basil.Application.Abstractions.Content;
 using Basil.Application.Configurations;
@@ -68,22 +67,30 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		return request;
 	}
 
-	private static HttpRequestMessage MakeCreateRequest(string source, string url, DateTime? begins,
+	/// <summary>Builds a multipart `POST /menu/banners` request with `image` as a plain-text URL.</summary>
+	private static HttpRequestMessage MakeCreateRequest(string image, string url, DateTime? begins,
 		DateTime? expires)
 	{
 		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
-		request.Content = new StringContent(
-			JsonSerializer.Serialize(new { source, url, begins, expires }), Encoding.UTF8, "application/json");
+		var content = new MultipartFormDataContent
+		{
+			{ new StringContent(image), "image" },
+			{ new StringContent(url), "url" }
+		};
+		if (begins is not null) content.Add(new StringContent(begins.Value.ToString("O")), "begins");
+		if (expires is not null) content.Add(new StringContent(expires.Value.ToString("O")), "expires");
+		request.Content = content;
 		return request;
 	}
 
+	/// <summary>Builds a multipart `POST /menu/banners` request with `image` as an uploaded file.</summary>
 	private static HttpRequestMessage MakeCreateFromUploadRequest(string url, DateTime? begins, DateTime? expires,
 		string fileName = "banner.png")
 	{
-		var request = MakeRequest(HttpMethod.Post, "/menu/banners/image");
+		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
 		var content = new MultipartFormDataContent
 		{
-			{ new ByteArrayContent([1, 2, 3]), "file", fileName },
+			{ new ByteArrayContent([1, 2, 3]), "image", fileName },
 			{ new StringContent(url), "url" }
 		};
 		if (begins is not null) content.Add(new StringContent(begins.Value.ToString("O")), "begins");
@@ -104,11 +111,11 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		var body = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
-		Assert.Equal("https://example.test/banner.png", body!.Data!.GetProperty("source").GetString());
+		Assert.Equal("https://example.test/banner.png", body!.Data!.GetProperty("image").GetString());
 	}
 
 	[Fact]
-	public async Task PostBanner_SourceNotAUrl_ReturnsBadRequest()
+	public async Task PostBanner_ImageNotAUrl_ReturnsBadRequest()
 	{
 		var response = await _factory.CreateClient()
 			.SendAsync(MakeCreateRequest("not-a-url", "https://example.test", DateTime.UtcNow, DateTime.UtcNow));
@@ -129,7 +136,7 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	}
 
 	[Fact]
-	public async Task PostBannerFromImage_Upload_CreatesEntryAndStoresFile()
+	public async Task PostBanner_UploadedFile_CreatesEntryAndStoresFile()
 	{
 		var response = await _factory.CreateClient()
 			.SendAsync(MakeCreateFromUploadRequest("https://example.test/event", DateTime.UtcNow.AddDays(-1),
@@ -137,15 +144,15 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		var created = await response.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-		var source = created!.Data!.GetProperty("source").GetString();
-		Assert.StartsWith("https://assets.test.local/menu/banners/", source);
+		var image = created!.Data!.GetProperty("image").GetString();
+		Assert.StartsWith("https://assets.test.local/menu/banners/", image);
 		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
 	}
 
 	[Fact]
-	public async Task PostBannerFromImage_MissingFile_ReturnsBadRequest()
+	public async Task PostBanner_MissingImage_ReturnsBadRequest()
 	{
-		var request = MakeRequest(HttpMethod.Post, "/menu/banners/image");
+		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
 		request.Content = new MultipartFormDataContent
 			{ { new StringContent("https://example.test"), "url" } };
 
@@ -155,35 +162,15 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	}
 
 	[Fact]
-	public async Task PostBannerFromImage_MissingAdminKey_ReturnsUnauthorized()
+	public async Task PostBanner_MissingUrl_ReturnsBadRequest()
 	{
-		var request = MakeCreateFromUploadRequest("https://example.test", null, null);
-		request.Headers.Authorization = null;
+		var request = MakeRequest(HttpMethod.Post, "/menu/banners");
+		request.Content = new MultipartFormDataContent
+			{ { new StringContent("https://example.test/b.png"), "image" } };
 
 		var response = await _factory.CreateClient().SendAsync(request);
 
-		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-	}
-
-	[Fact]
-	public async Task PostBannerImage_Upload_StoresFileAndResolvesToAssetsUrl()
-	{
-		var client = _factory.CreateClient();
-		var createResponse = await client.SendAsync(MakeCreateRequest("https://example.test/b.png",
-			"https://example.test", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(1)));
-		var created = await createResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
-		var id = created!.Data!.GetProperty("id").GetInt32();
-
-		var uploadRequest = MakeRequest(HttpMethod.Post, $"/menu/banners/{id}/image");
-		uploadRequest.Content = new MultipartFormDataContent
-			{ { new ByteArrayContent([1, 2, 3]), "file", "banner.png" } };
-		var uploadResponse = await client.SendAsync(uploadRequest);
-		var uploaded = await uploadResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
-
-		Assert.Equal(HttpStatusCode.OK, uploadResponse.StatusCode);
-		var source = uploaded!.Data!.GetProperty("source").GetString();
-		Assert.StartsWith("https://assets.test.local/menu/banners/", source);
-		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
 	[Fact]
@@ -195,7 +182,7 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	}
 
 	[Fact]
-	public async Task PatchBanner_UpdatesFields()
+	public async Task PatchBanner_UpdatesUrl()
 	{
 		var client = _factory.CreateClient();
 		var createResponse = await client.SendAsync(MakeCreateRequest("https://example.test/b.png",
@@ -204,13 +191,51 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		var id = created!.Data!.GetProperty("id").GetInt32();
 
 		var patchRequest = MakeRequest(HttpMethod.Patch, $"/menu/banners/{id}");
-		patchRequest.Content =
-			new StringContent("""{"url":"https://example.test/updated"}""", Encoding.UTF8, "application/json");
+		patchRequest.Content = new MultipartFormDataContent
+			{ { new StringContent("https://example.test/updated"), "url" } };
 		var patchResponse = await client.SendAsync(patchRequest);
 		var patched = await patchResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
 
 		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 		Assert.Equal("https://example.test/updated", patched!.Data!.GetProperty("url").GetString());
+	}
+
+	[Fact]
+	public async Task PatchBanner_UploadedFile_ReplacesImageAndStoresFile()
+	{
+		var client = _factory.CreateClient();
+		var createResponse = await client.SendAsync(MakeCreateRequest("https://example.test/b.png",
+			"https://example.test", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(1)));
+		var created = await createResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+		var id = created!.Data!.GetProperty("id").GetInt32();
+
+		var patchRequest = MakeRequest(HttpMethod.Patch, $"/menu/banners/{id}");
+		patchRequest.Content = new MultipartFormDataContent
+			{ { new ByteArrayContent([1, 2, 3]), "image", "banner.png" } };
+		var patchResponse = await client.SendAsync(patchRequest);
+		var patched = await patchResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+
+		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+		var image = patched!.Data!.GetProperty("image").GetString();
+		Assert.StartsWith("https://assets.test.local/menu/banners/", image);
+		Assert.Single(Directory.EnumerateFiles(Path.Combine(_dataDir, "Banners")));
+	}
+
+	[Fact]
+	public async Task PatchBanner_ImageNotAUrl_ReturnsBadRequest()
+	{
+		var client = _factory.CreateClient();
+		var createResponse = await client.SendAsync(MakeCreateRequest("https://example.test/b.png",
+			"https://example.test", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(1)));
+		var created = await createResponse.Content.ReadFromJsonAsync<Envelope<JsonElement>>();
+		var id = created!.Data!.GetProperty("id").GetInt32();
+
+		var patchRequest = MakeRequest(HttpMethod.Patch, $"/menu/banners/{id}");
+		patchRequest.Content = new MultipartFormDataContent
+			{ { new StringContent("not-a-url"), "image" } };
+		var patchResponse = await client.SendAsync(patchRequest);
+
+		Assert.Equal(HttpStatusCode.BadRequest, patchResponse.StatusCode);
 	}
 
 	[Fact]

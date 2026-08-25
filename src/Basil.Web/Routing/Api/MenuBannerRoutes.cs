@@ -16,17 +16,18 @@ internal sealed class MenuBannerRoutesLog;
 ///     Registers the REST endpoints for managing main-menu banners.
 /// </summary>
 /// <remarks>
-///     Reads are public; every write requires administrator authorization. A banner's image source is
-///     either an uploaded file or an external URL. Each input shape gets its own route rather than one
-///     route branching on content-type, so every request body is a plain typed model the OpenAPI
-///     generator can describe: `POST /menu/banners` creates from an external URL (JSON),
-///     `POST /menu/banners/image` creates from an upload (multipart), `PUT`/`PATCH
-///     /menu/banners/{bannerId}` update metadata including the external-URL form, and
-///     `POST /menu/banners/{bannerId}/image` replaces an existing banner's image with an upload.
+///     Reads are public; every write requires administrator authorization. A banner's image is either
+///     an uploaded file or an external URL. Both `POST /menu/banners` and `PUT`/`PATCH
+///     /menu/banners/{bannerId}` are multipart requests carrying an `image` field that is either the
+///     uploaded file or a plain-text external URL — the server tells them apart by how the field was
+///     sent, not by its name.
 /// </remarks>
 internal static class MenuBannerRoutes
 {
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
+
+	private const string ImageFieldNote = " `image` is either an uploaded file or a plain-text " +
+	                                      "external URL, told apart by how the field is sent.";
 
 	/// <summary>
 	///     Registers the `/menu/banners` read and admin-key-gated write routes on the `api.` host.
@@ -48,29 +49,18 @@ internal static class MenuBannerRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("createMenuBanner")
-			.WithSummary("Create a main-menu banner from an external image URL.")
-			.WithDescription("""
-			                 Body: `{ source, url, begins, expires }`, where `source` is an external URL. Use `POST /menu/banners/image` instead to create one from an uploaded file.
+			.WithSummary("Create a main-menu banner.")
+			.WithDescription($"""
+			                  Multipart request, fields `image`, `url`, `begins`, `expires`.{ImageFieldNote}
 
-			                 `begins`/`expires` are each optional: a missing/null `begins` means no lower bound (already current), a missing/null `expires` means no upper bound (never expires), and omitting both makes the banner permanent — always current.
-			                 """ + AdminKeyNote)
+			                  `begins`/`expires` are each optional: a missing/empty `begins` means no lower bound (already current), a missing/empty `expires` means no upper bound (never expires), and omitting both makes the banner permanent — always current.
+			                  """ + AdminKeyNote)
 			.WithTags("Menu Banners")
-			.Produces<MenuBannerView>(StatusCodes.Status201Created)
-			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status201Created, SampleView());
-
-		group.MapPost("/menu/banners/image", HandleCreateFromUpload)
-			.RequireAuthorization(AdminKeyDefaults.Policy)
-			.WithGroupName("basilapi")
-			.WithName("createMenuBannerFromImage")
-			.WithSummary("Create a main-menu banner from an uploaded image.")
-			.WithDescription("""
-			                 Multipart upload, fields `file`, `url`, `begins`, `expires`. Use `POST /menu/banners` instead to create one from an external URL.
-
-			                 `begins`/`expires` follow the same "empty = no bound" rule as `POST /menu/banners`.
-			                 """ + AdminKeyNote)
-			.WithTags("Menu Banners")
-			.WithMultipartFileUpload()
+			.WithMultipartBody(
+				MultipartField.FileOrText("image", true),
+				MultipartField.Text("url", true),
+				MultipartField.Text("begins", false),
+				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status201Created, SampleView());
@@ -94,15 +84,21 @@ internal static class MenuBannerRoutes
 			.WithGroupName("basilapi")
 			.WithName("updateMenuBanner")
 			.WithSummary("Update a main-menu banner.")
-			.WithDescription("""
-			                 Body: `{ source?, url?, begins?, expires? }`. Each field is applied only if present. Setting `source` here always means an external URL, replacing any uploaded file; use `POST /menu/banners/{bannerId}/image` to upload a file instead.
+			.WithDescription($"""
+			                  Multipart request, fields `image`, `url`, `begins`, `expires` — each applied only if present.{ImageFieldNote}
 
-			                 `begins`/`expires` follow the same "null = no bound" rule as `POST /menu/banners`, but since this route only applies a field when it's present, a missing `begins`/`expires` leaves the stored bound as-is rather than clearing it — to clear an existing bound back to permanent, delete and recreate the banner.
+			                  `begins`/`expires` follow the same "empty = no bound" rule as `POST /menu/banners`, but since this route only applies a field when it's present, a missing `begins`/`expires` leaves the stored bound as-is rather than clearing it — to clear an existing bound back to permanent, delete and recreate the banner.
 
-			                 Returns `404 Not Found` if the banner doesn't exist.
-			                 """ + AdminKeyNote)
+			                  Returns `404 Not Found` if the banner doesn't exist.
+			                  """ + AdminKeyNote)
 			.WithTags("Menu Banners")
+			.WithMultipartBody(
+				MultipartField.FileOrText("image", false),
+				MultipartField.Text("url", false),
+				MultipartField.Text("begins", false),
+				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
@@ -121,123 +117,109 @@ internal static class MenuBannerRoutes
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerDeletedView>()
 			.ProducesProblem(StatusCodes.Status404NotFound);
-
-		group.MapPost("/menu/banners/{bannerId:int}/image", HandleUploadImage)
-			.RequireAuthorization(AdminKeyDefaults.Policy)
-			.WithGroupName("basilapi")
-			.WithName("uploadMenuBannerImage")
-			.WithSummary("Upload a main-menu banner image.")
-			.WithDescription("Multipart upload, field name `file`. Replaces whatever source is currently " +
-			                 "set (uploaded file or external URL). Returns `404 Not Found` if the " +
-			                 "banner doesn't exist." + AdminKeyNote)
-			.WithTags("Menu Banners")
-			.WithMultipartFileUpload()
-			.Produces<MenuBannerView>()
-			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
-	private static async Task<IResult> HandleCreate(MenuBannerCreateBody body, MenuBannerService banners,
+	private static async Task<IResult> HandleCreate(HttpContext context, MenuBannerService banners,
 		ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken)
 	{
-		if (!MenuBannerService.IsExternalUrl(body.Source))
-			return Results.BadRequest(new ErrorResponse("'source' must start with http:// or https://."));
+		if (!context.Request.HasFormContentType)
+			return Results.BadRequest(new ErrorResponse("Expected a multipart form."));
 
-		var created = await banners.CreateAsync(body.Source, body.Url, body.Begins, body.Expires, cancellationToken);
+		var form = await context.Request.ReadFormAsync(cancellationToken);
+
+		var url = form["url"].ToString();
+		if (string.IsNullOrEmpty(url)) return Results.BadRequest(new ErrorResponse("Missing 'url' form field."));
+
+		if (!TryParseOptionalDate(form["begins"], "begins", out var begins, out var error) ||
+		    !TryParseOptionalDate(form["expires"], "expires", out var expires, out error))
+			return Results.BadRequest(new ErrorResponse(error!));
+
+		var file = form.Files.GetFile("image");
+		MenuBanner created;
+		if (file is not null)
+		{
+			await using var stream = file.OpenReadStream();
+			created = await banners.CreateFromUploadAsync(stream, Path.GetExtension(file.FileName), url, begins,
+				expires, cancellationToken);
+		}
+		else
+		{
+			var image = form["image"].ToString();
+			if (string.IsNullOrEmpty(image))
+				return Results.BadRequest(new ErrorResponse("Missing 'image' form field."));
+			if (!MenuBannerService.IsExternalUrl(image))
+				return Results.BadRequest(
+					new ErrorResponse("'image' must be an uploaded file or start with http:// or https://."));
+			created = await banners.CreateAsync(image, url, begins, expires, cancellationToken);
+		}
 
 		logger.LogInformation("Menu banner created via admin API: Id={Id}", created.Id);
 		return Results.Created($"/menu/banners/{created.Id}", ToView(created, banners));
 	}
 
-	private static async Task<IResult> HandleCreateFromUpload(HttpContext context, MenuBannerService banners,
+	private static async Task<IResult> HandleUpdate(int bannerId, HttpContext context, MenuBannerService banners,
 		ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		if (!context.Request.HasFormContentType)
-			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
+			return Results.BadRequest(new ErrorResponse("Expected a multipart form."));
 
 		var form = await context.Request.ReadFormAsync(cancellationToken);
-		var file = form.Files.GetFile("file");
-		if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
-		if (!TryParseWindow(form["url"], form["begins"], form["expires"], out var url, out var begins,
-			    out var expires, out var error))
+
+		if (!TryParseOptionalDate(form["begins"], "begins", out var begins, out var error) ||
+		    !TryParseOptionalDate(form["expires"], "expires", out var expires, out error))
 			return Results.BadRequest(new ErrorResponse(error!));
 
-		await using var stream = file.OpenReadStream();
-		var extension = Path.GetExtension(file.FileName);
-		var created = await banners.CreateFromUploadAsync(stream, extension, url!, begins, expires,
-			cancellationToken);
+		var urlRaw = form["url"].ToString();
+		var url = string.IsNullOrEmpty(urlRaw) ? null : urlRaw;
 
-		logger.LogInformation("Menu banner created from upload via admin API: Id={Id}", created.Id);
-		return Results.Created($"/menu/banners/{created.Id}", ToView(created, banners));
-	}
+		var file = form.Files.GetFile("image");
+		MenuBanner? updated;
+		if (file is not null)
+		{
+			await using var stream = file.OpenReadStream();
+			updated = await banners.ReplaceImageAsync(bannerId, stream, Path.GetExtension(file.FileName), url,
+				begins, expires, cancellationToken);
+		}
+		else
+		{
+			var imageRaw = form["image"].ToString();
+			var image = string.IsNullOrEmpty(imageRaw) ? null : imageRaw;
+			if (image is not null && !MenuBannerService.IsExternalUrl(image))
+				return Results.BadRequest(
+					new ErrorResponse("'image' must be an uploaded file or start with http:// or https://."));
+			updated = await banners.UpdateAsync(bannerId, image, url, begins, expires, cancellationToken);
+		}
 
-	private static async Task<IResult> HandleUpdate(int bannerId, MenuBannerUpdateBody body, MenuBannerService banners,
-		ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken)
-	{
-		if (body.Source is not null && !MenuBannerService.IsExternalUrl(body.Source))
-			return Results.BadRequest(new ErrorResponse("'source' must start with http:// or https://."));
-
-		var updated = await banners.UpdateAsync(bannerId, body.Source, body.Url, body.Begins, body.Expires,
-			cancellationToken);
 		if (updated is null) return Results.NotFound();
 
 		logger.LogInformation("Menu banner updated via admin API: Id={Id}", bannerId);
 		return Results.Json(ToView(updated, banners));
 	}
 
-	private static async Task<IResult> HandleUploadImage(int bannerId, HttpContext context, MenuBannerService banners,
-		ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken)
-	{
-		if (!context.Request.HasFormContentType)
-			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
-
-		var form = await context.Request.ReadFormAsync(cancellationToken);
-		var file = form.Files.GetFile("file");
-		if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
-
-		await using var stream = file.OpenReadStream();
-		var extension = Path.GetExtension(file.FileName);
-		var updated = await banners.ReplaceImageAsync(bannerId, stream, extension, cancellationToken);
-		if (updated is null) return Results.NotFound();
-
-		logger.LogInformation("Menu banner image uploaded via admin API: Id={Id}", bannerId);
-		return Results.Json(ToView(updated, banners));
-	}
-
 	/// <summary>
-	///     Parses the multipart form's <c>url</c>/<c>begins</c>/<c>expires</c> fields.
-	///     <c>begins</c>/<c>expires</c> are each optional — a missing or empty value means no bound.
+	///     Parses a multipart date field. A missing or empty value means "no bound" and succeeds with
+	///     <see langword="null" />.
 	/// </summary>
-	private static bool TryParseWindow(string? url, string? begins, string? expires, out string? outUrl,
-		out DateTime? outBegins, out DateTime? outExpires, out string? error)
+	private static bool TryParseOptionalDate(string? raw, string fieldName, out DateTime? parsed, out string? error)
 	{
-		outUrl = url;
-		outBegins = null;
-		outExpires = null;
+		parsed = null;
 		error = null;
 
-		if (string.IsNullOrEmpty(url))
+		if (string.IsNullOrEmpty(raw)) return true;
+
+		if (!DateTime.TryParse(raw, out var value))
 		{
-			error = "Missing 'url' form field.";
-		}
-		else if (!string.IsNullOrEmpty(begins))
-		{
-			if (!DateTime.TryParse(begins, out var parsedBegins)) error = "Invalid 'begins' form field.";
-			else outBegins = parsedBegins;
+			error = $"Invalid '{fieldName}' form field.";
+			return false;
 		}
 
-		if (error is null && !string.IsNullOrEmpty(expires))
-		{
-			if (!DateTime.TryParse(expires, out var parsedExpires)) error = "Invalid 'expires' form field.";
-			else outExpires = parsedExpires;
-		}
-
-		return error is null;
+		parsed = value;
+		return true;
 	}
 
 	private static MenuBannerView ToView(MenuBanner banner, MenuBannerService banners)
 	{
-		return new MenuBannerView(banner.Id, banners.ResolveSourceUrl(banner.Source), banner.Url, banner.Begins,
+		return new MenuBannerView(banner.Id, banners.ResolveImageUrl(banner.Image), banner.Url, banner.Begins,
 			banner.Expires, banner.IsCurrent(DateTime.UtcNow));
 	}
 
@@ -251,7 +233,7 @@ internal static class MenuBannerRoutes
 	/// <summary>Response body for the `/menu/banners` read routes.</summary>
 	public sealed record MenuBannerView(
 		int Id,
-		string Source,
+		string Image,
 		string Url,
 		DateTime? Begins,
 		DateTime? Expires,
@@ -259,14 +241,4 @@ internal static class MenuBannerRoutes
 
 	/// <summary>Confirmation body for `DELETE /menu/banners/{bannerId}`.</summary>
 	public sealed record MenuBannerDeletedView(int Id, bool Deleted);
-
-	/// <summary>Request body for `POST /menu/banners` (JSON, external-URL form).</summary>
-	public sealed record MenuBannerCreateBody(string Source, string Url, DateTime? Begins, DateTime? Expires);
-
-	/// <summary>Request body for `PUT`/`PATCH /menu/banners/{bannerId}`.</summary>
-	public sealed record MenuBannerUpdateBody(
-		string? Source = null,
-		string? Url = null,
-		DateTime? Begins = null,
-		DateTime? Expires = null);
 }
