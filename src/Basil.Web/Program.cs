@@ -104,12 +104,9 @@ public sealed class Program
 		[
 			("Seasonal Backgrounds", "Public seasonal background images.")
 		]),
-		("Menu Banners",
+		("Menu",
 		[
-			("Menu Banners", "Main-menu promotional banners (assets.<domain>/menu-content.json).")
-		]),
-		("Menu Icon",
-		[
+			("Menu Banners", "Main-menu promotional banners (assets.<domain>/menu-content.json)."),
 			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
 		]),
 		("Admin Key",
