@@ -38,7 +38,7 @@ public sealed class MenuBannersProvider : IImageProvider
 	}
 
 	/// <inheritdoc />
-	public ProcessingBehavior ProcessingBehavior => ProcessingBehavior.CommandOnly;
+	public ProcessingBehavior ProcessingBehavior => ProcessingBehavior.All;
 
 	/// <inheritdoc />
 	public Func<HttpContext, bool> Match { get; set; }
