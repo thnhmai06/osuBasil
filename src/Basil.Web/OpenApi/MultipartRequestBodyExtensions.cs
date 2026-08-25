@@ -28,7 +28,7 @@ internal readonly record struct MultipartField(string Name, bool Required, Multi
 }
 
 /// <summary>What kind of value a declared <see cref="MultipartField" /> carries.</summary>
-internal enum MultipartFieldKind
+internal enum MultipartFieldKind : byte
 {
 	/// <summary>A plain-text form value.</summary>
 	Text,
@@ -56,71 +56,72 @@ internal enum MultipartFieldKind
 /// </remarks>
 internal static class MultipartRequestBodyExtensions
 {
-	/// <summary>
-	///     Declares the route's request body as a required <c>multipart/form-data</c> upload carrying a
-	///     single binary file field.
-	/// </summary>
 	/// <param name="builder">The route to declare the multipart request body on.</param>
-	/// <param name="fieldName">The name of the multipart file field. The default is <c>"file"</c>.</param>
-	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
-	public static RouteHandlerBuilder WithMultipartFileUpload(this RouteHandlerBuilder builder,
-		string fieldName = "file")
+	extension(RouteHandlerBuilder builder)
 	{
-		return builder.WithMultipartBody(MultipartField.File(fieldName));
-	}
-
-	/// <summary>
-	///     Declares the route's request body as a required <c>multipart/form-data</c> upload carrying the
-	///     given fields.
-	/// </summary>
-	/// <param name="builder">The route to declare the multipart request body on.</param>
-	/// <param name="fields">Every field the multipart body carries.</param>
-	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
-	public static RouteHandlerBuilder WithMultipartBody(this RouteHandlerBuilder builder,
-		params MultipartField[] fields)
-	{
-		return builder.AddOpenApiOperationTransformer((operation, _, _) =>
+		/// <summary>
+		///     Declares the route's request body as a required <c>multipart/form-data</c> upload carrying a
+		///     single binary file field.
+		/// </summary>
+		/// <param name="fieldName">The name of the multipart file field. The default is <c>"file"</c>.</param>
+		/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
+		public RouteHandlerBuilder WithMultipartFileUpload(string fieldName = "file")
 		{
-			var required = new HashSet<string>();
-			var properties = new Dictionary<string, IOpenApiSchema>();
+			return builder.WithMultipartBody(MultipartField.File(fieldName));
+		}
 
-			foreach (var field in fields)
+		/// <summary>
+		///     Declares the route's request body as a required <c>multipart/form-data</c> upload carrying the
+		///     given fields.
+		/// </summary>
+		/// <param name="fields">Every field the multipart body carries.</param>
+		/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
+		public RouteHandlerBuilder WithMultipartBody(params MultipartField[] fields)
+		{
+			return builder.AddOpenApiOperationTransformer((operation, _, _) =>
 			{
-				if (field.Required) required.Add(field.Name);
+				var required = new HashSet<string>();
+				var properties = new Dictionary<string, IOpenApiSchema>();
 
-				properties[field.Name] = field.Kind switch
+				foreach (var field in fields)
 				{
-					MultipartFieldKind.File => new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" },
-					MultipartFieldKind.FileOrText => new OpenApiSchema
-					{
-						AnyOf =
-						[
-							new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" },
-							new OpenApiSchema { Type = JsonSchemaType.String }
-						]
-					},
-					_ => new OpenApiSchema { Type = JsonSchemaType.String }
-				};
-			}
+					if (field.Required) required.Add(field.Name);
 
-			operation.RequestBody = new OpenApiRequestBody
-			{
-				Required = true,
-				Content = new Dictionary<string, OpenApiMediaType>
-				{
-					["multipart/form-data"] = new()
+					properties[field.Name] = field.Kind switch
 					{
-						Schema = new OpenApiSchema
+						MultipartFieldKind.File => new OpenApiSchema
+							{ Type = JsonSchemaType.String, Format = "binary" },
+						MultipartFieldKind.FileOrText => new OpenApiSchema
 						{
-							Type = JsonSchemaType.Object,
-							Required = required,
-							Properties = properties
+							AnyOf =
+							[
+								new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" },
+								new OpenApiSchema { Type = JsonSchemaType.String }
+							]
+						},
+						_ => new OpenApiSchema { Type = JsonSchemaType.String }
+					};
+				}
+
+				operation.RequestBody = new OpenApiRequestBody
+				{
+					Required = true,
+					Content = new Dictionary<string, OpenApiMediaType>
+					{
+						["multipart/form-data"] = new()
+						{
+							Schema = new OpenApiSchema
+							{
+								Type = JsonSchemaType.Object,
+								Required = required,
+								Properties = properties
+							}
 						}
 					}
-				}
-			};
+				};
 
-			return Task.CompletedTask;
-		});
+				return Task.CompletedTask;
+			});
+		}
 	}
 }

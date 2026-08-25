@@ -41,7 +41,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				var settings = new InMemorySettingsRepository()
 					.Seed("AdminKey:Hash", new BCryptPasswordHasher().Hash(Encoding.UTF8.GetBytes(AdminKey)))
 					.Seed("AdminKey:LastChanged", DateTimeOffset.UtcNow.ToString("O"));
