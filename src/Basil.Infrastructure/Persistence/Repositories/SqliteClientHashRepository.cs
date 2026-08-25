@@ -23,40 +23,43 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	public async Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO ClientHashes (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences)
-			VALUES (@UserId, @OsuPathMd5, @Adapters, @UninstallId, @DiskSerial, datetime('now'), 1)
-			ON CONFLICT (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial)
-			DO UPDATE SET LastSeenAt = datetime('now'), Occurrences = Occurrences + 1
-			""",
-			new
-			{
-				UserId = userId,
-				OsuPathMd5 = osuPathMd5,
-				Adapters = adapters,
-				UninstallId = uninstallId,
-				DiskSerial = diskSerial
-			});
-		logger.LogDebug("ClientHash upserted for UserId={UserId}", userId);
+		return await SqliteInstrumentation.RecordAsync("clienthash.create", async () =>
+		{
+			await using var connection = Connect();
+			await connection.ExecuteAsync(
+				"""
+				INSERT INTO ClientHashes (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences)
+				VALUES (@UserId, @OsuPathMd5, @Adapters, @UninstallId, @DiskSerial, datetime('now'), 1)
+				ON CONFLICT (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial)
+				DO UPDATE SET LastSeenAt = datetime('now'), Occurrences = Occurrences + 1
+				""",
+				new
+				{
+					UserId = userId,
+					OsuPathMd5 = osuPathMd5,
+					Adapters = adapters,
+					UninstallId = uninstallId,
+					DiskSerial = diskSerial
+				});
+			logger.LogDebug("ClientHash upserted for UserId={UserId}", userId);
 
-		var row = await connection.QuerySingleAsync<ClientHashRow>(
-			"""
-			SELECT * FROM ClientHashes
-			WHERE UserId = @UserId AND OsuPathMd5 = @OsuPathMd5 AND Adapters = @Adapters
-			  AND UninstallId = @UninstallId AND DiskSerial = @DiskSerial
-			""",
-			new
-			{
-				UserId = userId,
-				OsuPathMd5 = osuPathMd5,
-				Adapters = adapters,
-				UninstallId = uninstallId,
-				DiskSerial = diskSerial
-			});
+			var row = await connection.QuerySingleAsync<ClientHashRow>(
+				"""
+				SELECT * FROM ClientHashes
+				WHERE UserId = @UserId AND OsuPathMd5 = @OsuPathMd5 AND Adapters = @Adapters
+				  AND UninstallId = @UninstallId AND DiskSerial = @DiskSerial
+				""",
+				new
+				{
+					UserId = userId,
+					OsuPathMd5 = osuPathMd5,
+					Adapters = adapters,
+					UninstallId = uninstallId,
+					DiskSerial = diskSerial
+				});
 
-		return row.ToClientHash();
+			return row.ToClientHash();
+		});
 	}
 
 	/// <inheritdoc />

@@ -22,24 +22,28 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 	public async Task<Login> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		var id = await connection.ExecuteScalarAsync<int>(
-			"""
-			INSERT INTO IngameLogins (UserId, Ip, OsuVersion, OsuStream, LoggedInAt)
-			VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'));
-			SELECT last_insert_rowid();
-			""",
-			new
-			{
-				UserId = userId, Ip = ip, OsuVersion = osuVersion.ToDateTime(TimeOnly.MinValue), OsuStream = osuStream
-			});
-		logger.LogDebug("IngameLogin created for UserId={UserId}", userId);
+		return await SqliteInstrumentation.RecordAsync("login.create", async () =>
+		{
+			await using var connection = Connect();
+			var id = await connection.ExecuteScalarAsync<int>(
+				"""
+				INSERT INTO IngameLogins (UserId, Ip, OsuVersion, OsuStream, LoggedInAt)
+				VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'));
+				SELECT last_insert_rowid();
+				""",
+				new
+				{
+					UserId = userId, Ip = ip, OsuVersion = osuVersion.ToDateTime(TimeOnly.MinValue),
+					OsuStream = osuStream
+				});
+			logger.LogDebug("IngameLogin created for UserId={UserId}", userId);
 
-		var row = await connection.QuerySingleAsync<IngameLoginRow>(
-			"SELECT * FROM IngameLogins WHERE Id = @Id",
-			new { Id = id });
+			var row = await connection.QuerySingleAsync<IngameLoginRow>(
+				"SELECT * FROM IngameLogins WHERE Id = @Id",
+				new { Id = id });
 
-		return row.ToIngameLogin();
+			return row.ToIngameLogin();
+		});
 	}
 
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>

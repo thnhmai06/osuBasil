@@ -31,21 +31,24 @@ public sealed class SqliteUserStatRepository(string connectionString) : IUserSta
 	public async Task IncrementAsync(int userId, GameMode mode, long totalScoreDelta, long rankedScoreDelta,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO UserStats (Id, Mode, TotalScore, RankedScore, Plays)
-			VALUES (@UserId, @Mode, @TotalScoreDelta, @RankedScoreDelta, 1)
-			ON CONFLICT(Id, Mode) DO UPDATE SET
-			    TotalScore = TotalScore + @TotalScoreDelta,
-			    RankedScore = RankedScore + @RankedScoreDelta,
-			    Plays = Plays + 1
-			""",
-			new
-			{
-				UserId = userId, Mode = (int)mode, TotalScoreDelta = totalScoreDelta,
-				RankedScoreDelta = rankedScoreDelta
-			});
+		await SqliteInstrumentation.RecordAsync("userstat.increment", async () =>
+		{
+			await using var connection = Connect();
+			await connection.ExecuteAsync(
+				"""
+				INSERT INTO UserStats (Id, Mode, TotalScore, RankedScore, Plays)
+				VALUES (@UserId, @Mode, @TotalScoreDelta, @RankedScoreDelta, 1)
+				ON CONFLICT(Id, Mode) DO UPDATE SET
+				    TotalScore = TotalScore + @TotalScoreDelta,
+				    RankedScore = RankedScore + @RankedScoreDelta,
+				    Plays = Plays + 1
+				""",
+				new
+				{
+					UserId = userId, Mode = (int)mode, TotalScoreDelta = totalScoreDelta,
+					RankedScoreDelta = rankedScoreDelta
+				});
+		});
 	}
 
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>

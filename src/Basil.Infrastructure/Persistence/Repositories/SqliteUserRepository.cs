@@ -66,11 +66,14 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	public async Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		await connection.ExecuteAsync(
-			"UPDATE Users SET Privilege = @Privilege WHERE Id = @Id",
-			new { Id = id, Privilege = (int)privilege });
-		logger.LogDebug("User row updated: Id={Id} Privilege={Privilege}", id, privilege);
+		await SqliteInstrumentation.RecordAsync("user.privileges.update", async () =>
+		{
+			await using var connection = Connect();
+			await connection.ExecuteAsync(
+				"UPDATE Users SET Privilege = @Privilege WHERE Id = @Id",
+				new { Id = id, Privilege = (int)privilege });
+			logger.LogDebug("User row updated: Id={Id} Privilege={Privilege}", id, privilege);
+		});
 	}
 
 	/// <inheritdoc />
