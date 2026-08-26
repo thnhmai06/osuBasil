@@ -37,6 +37,11 @@ public sealed class MatchTransferHostHandler(
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
+			// Host status is re-checked here, not just before the lock: it can only change under this
+			// same lock (a concurrent leave or transfer), so a sender who lost host while waiting for
+			// it must not still be treated as authoritative once the lock is acquired.
+			if (gameSession.Id != match.HostId) return;
+
 			var targetId = match.Slots[slotId].PlayerId;
 			if (targetId is null) return;
 

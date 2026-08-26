@@ -46,6 +46,10 @@ public sealed class MatchChangeSettingsHandler(
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
+			// Re-checked under the lock: host status can only change under this same lock, so a
+			// sender who lost host while waiting for it must not still act with host authority.
+			if (gameSession.Id != match.HostId) return;
+
 			var freemods = matchData.FreeMods;
 			if (freemods != match.Freemods)
 			{
