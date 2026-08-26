@@ -32,11 +32,11 @@ public sealed class CachingBeatmapRepository(
 		int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
 	{
 		if (id is not null && md5 is null && filename is null && setId is null)
-			return FetchCachedAsync(IdKey(id.Value),
+			return FetchCachedAsync(IdKey(id.Value, includePrivate),
 				() => inner.FetchOneAsync(id, includePrivate: includePrivate, cancellationToken: cancellationToken));
 
 		if (md5 is not null && id is null && filename is null && setId is null)
-			return FetchCachedAsync(Md5Key(md5),
+			return FetchCachedAsync(Md5Key(md5, includePrivate),
 				() => inner.FetchOneAsync(md5: md5, includePrivate: includePrivate,
 					cancellationToken: cancellationToken));
 
@@ -61,10 +61,16 @@ public sealed class CachingBeatmapRepository(
 	/// </remarks>
 	public async Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
 	{
-		cache.TryGetValue(Md5Key(md5), out Beatmap? cached);
+		if (!cache.TryGetValue(Md5Key(md5, true), out Beatmap? cached))
+			cache.TryGetValue(Md5Key(md5, false), out cached);
 		await inner.DeleteByMd5Async(md5, cancellationToken);
-		cache.Remove(Md5Key(md5));
-		if (cached is not null) cache.Remove(IdKey(cached.Id));
+		cache.Remove(Md5Key(md5, true));
+		cache.Remove(Md5Key(md5, false));
+		if (cached is not null)
+		{
+			cache.Remove(IdKey(cached.Id, true));
+			cache.Remove(IdKey(cached.Id, false));
+		}
 	}
 
 	/// <summary>Uncached: a discovery/listing surface, not a specific-row lookup.</summary>
@@ -86,7 +92,8 @@ public sealed class CachingBeatmapRepository(
 	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
 	{
 		await inner.UpdateDiffAsync(id, diff, cancellationToken);
-		cache.Remove(IdKey(id));
+		cache.Remove(IdKey(id, true));
+		cache.Remove(IdKey(id, false));
 	}
 
 	/// <summary>Uncached: a list-shaped call (every difficulty in a set), not a single-row lookup.</summary>
@@ -116,22 +123,32 @@ public sealed class CachingBeatmapRepository(
 		return beatmap;
 	}
 
-	/// <summary>Removes both the id- and md5-keyed entries for a beatmap.</summary>
+	/// <summary>Removes both the id- and md5-keyed entries for a beatmap, in both privacy variants.</summary>
 	private void Invalidate(Beatmap beatmap)
 	{
-		cache.Remove(IdKey(beatmap.Id));
-		cache.Remove(Md5Key(beatmap.Md5));
+		cache.Remove(IdKey(beatmap.Id, true));
+		cache.Remove(IdKey(beatmap.Id, false));
+		cache.Remove(Md5Key(beatmap.Md5, true));
+		cache.Remove(Md5Key(beatmap.Md5, false));
 	}
 
-	/// <summary>Builds the id-qualified cache key for a beatmap.</summary>
-	private static string IdKey(int id)
+	/// <summary>
+	///     Builds the id-qualified cache key for a beatmap, keyed separately per
+	///     <paramref name="includePrivate" /> so a private-inclusive lookup can never be served back to
+	///     a caller that asked to exclude private beatmaps.
+	/// </summary>
+	private static string IdKey(int id, bool includePrivate)
 	{
-		return $"Beatmap:Id:{id}";
+		return $"Beatmap:Id:{id}:{includePrivate}";
 	}
 
-	/// <summary>Builds the md5-qualified cache key for a beatmap.</summary>
-	private static string Md5Key(string md5)
+	/// <summary>
+	///     Builds the md5-qualified cache key for a beatmap, keyed separately per
+	///     <paramref name="includePrivate" /> so a private-inclusive lookup can never be served back to
+	///     a caller that asked to exclude private beatmaps.
+	/// </summary>
+	private static string Md5Key(string md5, bool includePrivate)
 	{
-		return $"Beatmap:Md5:{md5}";
+		return $"Beatmap:Md5:{md5}:{includePrivate}";
 	}
 }
