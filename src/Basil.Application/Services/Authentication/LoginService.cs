@@ -80,6 +80,29 @@ public sealed class LoginService(
 			return InvalidRequestFailure("invalid-adapters");
 		}
 
+		try
+		{
+			return await ExecuteAuthenticatedAsync(loginForm, request, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// Every prior branch returns a LoginResult with a real cho-token, so the bancho route
+			// handler can set the header unconditionally after awaiting this method — an exception
+			// escaping here was the one path that skipped it (see docs/for-developers/bancho.md and
+			// the 2026-08 investigation into missing cho-token headers under SQLite write
+			// contention). ErrorOccurred is the protocol's own "internal error" login-failure code.
+			logger.LogError(ex, "Login failed with an unexpected exception: Username={Username}",
+				loginForm.Username);
+			return new LoginResult("server-error", Concat(
+				ServerPacketWriter.Notification("A server error occurred while logging in. Please try again."),
+				ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)));
+		}
+	}
+
+	/// <summary>Runs the login checks and session setup once the raw request has parsed successfully.</summary>
+	private async Task<LoginResult> ExecuteAuthenticatedAsync(LoginForm loginForm, LoginRequest request,
+		CancellationToken cancellationToken)
+	{
 		var clientDetails = loginForm.ClientDetails;
 		if (!(clientDetails.IsRunningUnderWine || clientDetails.Adapters.Any(a => a.Length > 0)))
 			return InvalidRequestFailure("empty-adapters");
