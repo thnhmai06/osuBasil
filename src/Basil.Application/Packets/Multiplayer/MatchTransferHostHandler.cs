@@ -13,7 +13,7 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     current host may transfer the role, and the target slot must be occupied. The match's HostId is
 ///     updated, a <c>MatchTransferHost</c> packet is enqueued for the new host, the updated state is
 ///     broadcast, and a <c>HostGranted</c> match event is persisted through
-///     <see cref="IMatchRepository.CreateEventAsync" />, without awaiting the write. All of
+///     <see cref="IMatchRepository.CreateEventAsync" />. All of
 ///     this runs under the match's <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
 public sealed class MatchTransferHostHandler(
@@ -50,7 +50,7 @@ public sealed class MatchTransferHostHandler(
 			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
 			var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
-			_ = matchRepository.CreateEventAsync(new MatchEvent(
+			await matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, targetId, targetPlayer?.Name,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);

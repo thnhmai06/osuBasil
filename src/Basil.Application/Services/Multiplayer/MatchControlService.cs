@@ -246,7 +246,7 @@ public sealed class MatchControlService(
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
 		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
-		_ = matchRepository.CreateEventAsync(new MatchEvent(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.HostGranted,
 			prevHostId, prevHostName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);

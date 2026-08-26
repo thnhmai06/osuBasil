@@ -345,7 +345,7 @@ public sealed class MatchMembershipService(
 		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
 			match.DbId, userSession.Id, slotId);
 
-		_ = matchRepository.CreateEventAsync(new MatchEvent(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerJoined,
 			userSession.Id, userSession.Name, null,
 			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -405,7 +405,7 @@ public sealed class MatchMembershipService(
 
 		logger.LogInformation("- User left match: MatchId={MatchId} UserId={UserId}", match.DbId, userSession.Id);
 
-		_ = matchRepository.CreateEventAsync(new MatchEvent(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerLeft,
 			userSession.Id, userSession.Name, null,
 			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -422,7 +422,7 @@ public sealed class MatchMembershipService(
 			var newHostName = newHostId is not null
 				? gameRegistry.GetByUserId(newHostId.Value)?.Name
 				: null;
-			_ = matchRepository.CreateEventAsync(new MatchEvent(
+			await matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, newHostId, newHostName,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
