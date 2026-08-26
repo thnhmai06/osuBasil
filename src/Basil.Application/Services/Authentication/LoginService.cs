@@ -44,6 +44,7 @@ public sealed class LoginService(
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
+	PlayerLogoutService playerLogoutService,
 	MenuIconService menuIconService,
 	MotdService motdService,
 	IOptions<ServerOptions> serverOptions,
@@ -119,15 +120,17 @@ public sealed class LoginService(
 					ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
 					ServerPacketWriter.Notification("User already logged in.")));
 
-			// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
-			// the bot's spectating relationship on the departing session now, or a relogin would pile
-			// a dead member reference onto the channel the new session's own AddSpectator call
-			// below re-creates.
-			var staleBot = gameSessions.GetByUserId(BotBootstrapService.BotId);
-			if (staleBot is not null) spectatorService.RemoveSpectator(existingSession, staleBot);
-
+			// Routes through the same teardown as a normal logout (match leave under lock,
+			// spectator teardown including the bot's #spec_{userId} watch, channel parts, registry
+			// removal, offline broadcast) instead of only removing the session from the registry.
+			// The old bare Remove() left an evicted session's match slot permanently orphaned —
+			// GhostDisconnectService only scans the registries it's still in, so a session already
+			// evicted here could never be reaped — producing duplicate players after a taskkill
+			// reconnect, "match is locked" from a slot nobody can ever free, and !mp make appearing
+			// to kick its own creator (a stale Match reference tripping the AlreadyInMatch
+			// tolerance in MatchMembershipService.CreateAsync). See RC3 in the 2026 investigation.
 			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
-			gameSessions.Remove(existingSession);
+			await playerLogoutService.LogoutAsync(existingSession, cancellationToken);
 		}
 
 		var user = await users.FetchByNameAsync(loginForm.Username, cancellationToken);

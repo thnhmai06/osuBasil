@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Login;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
@@ -8,12 +10,15 @@ using Basil.Application.Configurations;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
@@ -41,6 +46,7 @@ public class LoginServiceTests
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 
+	private readonly PlayerLogoutService _playerLogoutService;
 	private readonly SpectatorService _spectatorService;
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
@@ -48,11 +54,17 @@ public class LoginServiceTests
 
 	public LoginServiceTests()
 	{
-		_spectatorService = new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-				_channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		_spectatorService = new SpectatorService(_channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
+		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), _channelRegistry,
+			_sessionRegistry, ircRegistry, channelMembership, Substitute.For<IMatchRepository>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users,
+			NullLogger<MatchMembershipService>.Instance);
+		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
+			_spectatorService, matchMembership, NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
 		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
@@ -67,7 +79,8 @@ public class LoginServiceTests
 	{
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService, _motdService,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _playerLogoutService,
+			_menuIconService, _motdService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -200,6 +213,35 @@ public class LoginServiceTests
 
 		Assert.Empty(existing.Spectators);
 		Assert.Null(bot.Spectating);
+	}
+
+	[Fact]
+	public async Task DuplicateExpiredSession_InMatch_LeavesMatchAndFreesSlot()
+	{
+		// RC3: relogin eviction used to bypass PlayerLogoutService and just remove the session
+		// from the registry, leaving its match slot occupied forever — GhostDisconnectService
+		// only reaps sessions still present in a registry, so the slot could never be freed
+		// (duplicate players after a taskkill reconnect, "match is locked", !mp make appearing
+		// to kick its own creator via a stale Match reference).
+		var match = new MatchSession(0, "test match", "", "Some Map", 100, new string('a', 32),
+			999, GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0, "#multiplayer");
+		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100),
+			Match = match
+		};
+		match.Slots[0].PlayerId = existing.Id;
+		match.Slots[0].Status = SlotStatus.NotReady;
+		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_users.FetchByNameAsync("cmyui").Returns((User?)null);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
+
+		await useCase.ExecuteAsync(request);
+
+		Assert.True(match.Slots[0].Empty);
+		Assert.Null(existing.Match);
 	}
 
 	[Fact]
