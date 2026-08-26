@@ -85,7 +85,7 @@ public sealed class DotnetServerHost : IServerHost
 
 		if (_processMetricsTrustworthy)
 		{
-			_processSampler = new ProcessResourceSampler(_process.Id, _settings.Port);
+			_processSampler = new ProcessResourceSampler(_process.Id, _settings.Port, _logWarning);
 
 			if (_countersSettings.Enabled)
 			{

@@ -10,8 +10,20 @@ namespace Basil.LoadTests.Infrastructure.Metrics;
 /// </summary>
 /// <param name="processId">The process id to sample.</param>
 /// <param name="serverPort">The server's listening port, used to count established TCP connections to it.</param>
-public sealed class ProcessResourceSampler(int processId, int serverPort) : IResourceSampler
+/// <param name="logWarning">Sink for the one-time PID-reuse warning; defaults to a no-op.</param>
+/// <remarks>
+///     Caches the target process's start time at construction and re-checks it on every sample.
+///     Windows (and Linux) recycle process ids once a process exits, so a bare <c>Process.GetProcessById</c>
+///     can silently start reporting an unrelated process's resource usage after the real target has
+///     died — see the 2026-08-25/26 Phase 0 baseline run, where the server crashed mid-run and this
+///     sampler kept reporting a climbing thread/handle count for the next three hours against whatever
+///     process later reused its PID, misread as a severe leak until traced back to this gap.
+/// </remarks>
+public sealed class ProcessResourceSampler(int processId, int serverPort, Action<string>? logWarning = null)
+	: IResourceSampler
 {
+	private readonly DateTime _expectedStartTime = TryGetStartTime(processId);
+	private bool _warnedOnce;
 	private TimeSpan _lastCpuTime = TimeSpan.Zero;
 	private DateTimeOffset _lastSampleTime = DateTimeOffset.UtcNow;
 
@@ -38,6 +50,23 @@ public sealed class ProcessResourceSampler(int processId, int serverPort) : IRes
 
 		using (process)
 		{
+			if (_expectedStartTime != DateTime.MinValue && process.StartTime != _expectedStartTime)
+			{
+				// Same PID, different process: the OS recycled it after the original target died.
+				// Reporting this process's numbers would silently attribute someone else's resource
+				// usage to the server under test.
+				if (!_warnedOnce)
+				{
+					_warnedOnce = true;
+					logWarning?.Invoke(
+						$"Process id {processId} no longer belongs to the sampled server (its start time " +
+						"changed) — the id was recycled by another process. Reporting an empty sample instead " +
+						"of misattributed data.");
+				}
+
+				return Task.FromResult(new ResourceSample(now));
+			}
+
 			process.Refresh();
 
 			double? cpuPercent = null;
@@ -75,6 +104,19 @@ public sealed class ProcessResourceSampler(int processId, int serverPort) : IRes
 	public ValueTask DisposeAsync()
 	{
 		return ValueTask.CompletedTask;
+	}
+
+	private static DateTime TryGetStartTime(int processId)
+	{
+		try
+		{
+			using var process = Process.GetProcessById(processId);
+			return process.StartTime;
+		}
+		catch (ArgumentException)
+		{
+			return DateTime.MinValue;
+		}
 	}
 
 	private int? CountTcpConnections()

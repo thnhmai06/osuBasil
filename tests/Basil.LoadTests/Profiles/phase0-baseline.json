@@ -1,5 +1,5 @@
 {
-	"Name": "full",
+	"Name": "phase0-baseline",
 	"ServerHost": {
 		"Kind": "Dotnet",
 		"Domain": "basil.local",
@@ -135,7 +135,7 @@
 			"WarmUpSeconds": 10
 		},
 		"stress": {
-			"Enabled": false,
+			"Enabled": true,
 			"ConcurrentUsers": [
 				100,
 				250,
@@ -153,11 +153,11 @@
 			"SaturationSeconds": 30
 		},
 		"soak": {
-			"Enabled": false,
+			"Enabled": true,
 			"ConcurrentUsers": [
 				750
 			],
-			"DurationSeconds": 43200,
+			"DurationSeconds": 10800,
 			"WarmUpSeconds": 300,
 			"ReportingIntervalSeconds": 300,
 			"Weights": {

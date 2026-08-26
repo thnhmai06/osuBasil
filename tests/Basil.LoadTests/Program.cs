@@ -185,6 +185,21 @@ foreach (var scenario in ScenarioCatalog.All)
 		continue;
 	}
 
+	// A dead server otherwise goes unnoticed until every remaining scenario finishes reporting
+	// 100% failures — including a multi-hour soak run against nothing. See the 2026-08-25/26 Phase 0
+	// baseline, where the server crashed mid-run and the harness spent the next three hours hammering
+	// a closed port before anyone noticed.
+	try
+	{
+		await ServerReadinessProbe.WaitAsync(clientFactory, TimeSpan.FromSeconds(10));
+	}
+	catch (TimeoutException)
+	{
+		LogWarning($"Server is not responding before scenario '{scenario.Id}' — aborting the remaining " +
+		           "run instead of measuring against a dead target.");
+		break;
+	}
+
 	for (var i = 0; i < propsList.Count; i++)
 	{
 		LogInfo($"Running scenario '{scenario.Id}' ({i + 1}/{propsList.Count})...");
