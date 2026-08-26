@@ -133,7 +133,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>

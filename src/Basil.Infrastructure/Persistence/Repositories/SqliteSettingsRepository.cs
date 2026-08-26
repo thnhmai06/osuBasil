@@ -14,7 +14,7 @@ public sealed class SqliteSettingsRepository(string connectionString) : ISetting
 	/// <inheritdoc />
 	public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
 	{
-		await using var connection = new SqliteConnection(connectionString);
+		await using var connection = SqliteConnectionFactory.Open(connectionString);
 		return await connection.QueryFirstOrDefaultAsync<string?>(
 			"SELECT Value FROM Settings WHERE Key = @Key", new { Key = key });
 	}
@@ -22,7 +22,7 @@ public sealed class SqliteSettingsRepository(string connectionString) : ISetting
 	/// <inheritdoc />
 	public async Task SetAsync(string key, string? value, CancellationToken cancellationToken = default)
 	{
-		await using var connection = new SqliteConnection(connectionString);
+		await using var connection = SqliteConnectionFactory.Open(connectionString);
 		await connection.ExecuteAsync(
 			"UPDATE Settings SET Value = @Value WHERE Key = @Key", new { Key = key, Value = value });
 	}

@@ -73,7 +73,7 @@ public sealed class SqliteMenuBannerRepository(string connectionString) : IMenuB
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>A mutable row DTO matching the MenuBanners table columns.</summary>

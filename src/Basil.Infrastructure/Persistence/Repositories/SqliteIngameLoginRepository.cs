@@ -25,11 +25,13 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 		return await SqliteInstrumentation.RecordAsync("login.create", async () =>
 		{
 			await using var connection = Connect();
-			var id = await connection.ExecuteScalarAsync<int>(
+			// RETURNING folds the id read-back into the insert itself — one write round trip instead
+			// of two, halving this call's contribution to write contention (see ADR-001).
+			var row = await connection.QuerySingleAsync<IngameLoginRow>(
 				"""
 				INSERT INTO IngameLogins (UserId, Ip, OsuVersion, OsuStream, LoggedInAt)
-				VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'));
-				SELECT last_insert_rowid();
+				VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'))
+				RETURNING *;
 				""",
 				new
 				{
@@ -38,10 +40,6 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 				});
 			logger.LogDebug("IngameLogin created for UserId={UserId}", userId);
 
-			var row = await connection.QuerySingleAsync<IngameLoginRow>(
-				"SELECT * FROM IngameLogins WHERE Id = @Id",
-				new { Id = id });
-
 			return row.ToIngameLogin();
 		});
 	}
@@ -49,7 +47,7 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>
