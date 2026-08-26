@@ -451,6 +451,32 @@ public class MatchMembershipServiceTests
 	}
 
 	[Fact]
+	public async Task StartAsync_NoBeatmapSelected_DoesNotStartAndAnnouncesError()
+	{
+		// Regression for RC4: MapId == 0 (no beatmap selected) previously skipped the beatmap-missing
+		// guard entirely and started the match anyway, leaving every slot permanently "Playing" since
+		// no client can complete a round for a map it never received — every later !mp start then
+		// returned AlreadyInProgress until someone ran !mp abort.
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		RegisterAll(host, bot);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id) with { MapId = 0 })!;
+		host.Dequeue();
+
+		var started = await service.StartAsync(match);
+
+		Assert.False(started);
+		Assert.False(match.InProgress);
+		Assert.Null(match.CurrentRoundId);
+		Assert.Contains(
+			ServerPacketWriter.SendMessage(bot.Name,
+				"Match cannot start because no beatmap has been selected.",
+				"#multiplayer", bot.Id),
+			Chunk(host.Dequeue()));
+	}
+
+	[Fact]
 	public async Task StartAsync_BeatmapMissingFromDb_DoesNotStartAndAnnouncesError()
 	{
 		var host = MakePlayer(1, "host");

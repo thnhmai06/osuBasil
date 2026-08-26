@@ -536,11 +536,22 @@ public sealed class MatchMembershipService(
 	/// </returns>
 	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var beatmap = match.MapId > 0
-			? await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
-			: null;
+		if (match.MapId <= 0)
+		{
+			// Without this, a match with no beatmap selected starts every occupied slot as Playing
+			// anyway. No client can ever send MatchLoadComplete/MatchComplete for a round it has no
+			// map for, so the round never finishes, and every later !mp start returns
+			// AlreadyInProgress until someone runs !mp abort — see the 2026 investigation's RC4.
+			logger.LogDebug("Match start aborted (no beatmap selected): MatchId={MatchId}", match.DbId);
+			var noMapBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
+			if (noMapBot is not null)
+				EnqueueChat(match, noMapBot.Name, noMapBot.Id,
+					"Match cannot start because no beatmap has been selected.");
+			return false;
+		}
 
-		if (match.MapId > 0 && beatmap is null)
+		var beatmap = await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken);
+		if (beatmap is null)
 		{
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
 				match.DbId, match.MapId);
