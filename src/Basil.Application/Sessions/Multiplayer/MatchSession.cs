@@ -55,7 +55,7 @@ public sealed class MatchSession(
 	private readonly ConcurrentDictionary<int, byte> _bannedIds = new();
 	private readonly ConcurrentDictionary<int, byte> _invitedIds = new();
 	private readonly ConcurrentDictionary<int, byte> _referees = new();
-	private readonly HashSet<int> _tourneyClients = [];
+	private readonly ConcurrentDictionary<int, byte> _tourneyClients = new();
 
 	/// <summary>The host id a match carries while nobody holds gameplay host.</summary>
 	public static int NoHostId => SystemUserIds.BasilBot;
@@ -279,7 +279,7 @@ public sealed class MatchSession(
 	public IReadOnlyCollection<int> Referees => (IReadOnlyCollection<int>)_referees.Keys;
 
 	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
-	public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
+	public IReadOnlyCollection<int> TourneyClients => (IReadOnlyCollection<int>)_tourneyClients.Keys;
 
 	/// <summary>Gets the ids of the players banned from this match.</summary>
 	public IReadOnlyCollection<int> BannedIds => (IReadOnlyCollection<int>)_bannedIds.Keys;
@@ -377,7 +377,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession whose connection is a tourney client.</param>
 	public void AddTourneyClient(int playerId)
 	{
-		_tourneyClients.Add(playerId);
+		_tourneyClients[playerId] = 0;
 	}
 
 	/// <summary>
@@ -386,7 +386,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession whose tourney-client connection is being removed.</param>
 	public void RemoveTourneyClient(int playerId)
 	{
-		_tourneyClients.Remove(playerId);
+		_tourneyClients.TryRemove(playerId, out _);
 	}
 
 	/// <summary>
