@@ -339,13 +339,17 @@ public sealed class Program
 	///     The section supplies <c>Port</c> (default 443), <c>CertPath</c>, and <c>CertPassword</c>;
 	///     the server binds exclusively on that port. Leaving <c>CertPath</c>/<c>CertPassword</c>
 	///     unset uses the dev cert or OS-level TLS. A bad cert path or password is logged at Critical
-	///     (path only, never the password) before the process exits with code 1.
+	///     (path only, never the password) before the process exits with code 1. The <c>Server</c>
+	///     response header is suppressed, since advertising the exact server software is unnecessary
+	///     reconnaissance information for an attacker.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose Kestrel options are configured.</param>
 	private static void ConfigureKestrel(WebApplicationBuilder builder)
 	{
 		builder.WebHost.ConfigureKestrel((context, options) =>
 		{
+			options.AddServerHeader = false;
+
 			var logger = options.ApplicationServices.GetService<ILoggerFactory>()?
 				.CreateLogger(typeof(Program).FullName ?? "Program");
 
