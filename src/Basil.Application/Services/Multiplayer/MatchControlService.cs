@@ -752,49 +752,59 @@ public sealed class MatchControlService(
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
 		var token = cts.Token;
-		Announce(match,
-			autoStart
-				? $"Queued the match to start in {totalSeconds} seconds"
-				: $"Started a {totalSeconds}-second countdown.");
 
-		var remaining = totalSeconds;
-		foreach (var checkpoint in ComputeAnnounceCheckpoints(totalSeconds, autoStart))
-		{
-			if (!await DelayAsync(remaining - checkpoint, token)) return;
-
-			Announce(match, autoStart
-				? $"Match starts in {checkpoint} seconds"
-				: $"{checkpoint} seconds remaining");
-			matchMembership.PublishTimer(match);
-			remaining = checkpoint;
-		}
-
-		if (!await DelayAsync(remaining, token)) return;
-
-		await match.Lock.WaitAsync(token);
+		// This loop is started fire-and-forget (see BeginCountdown); an exception here would
+		// otherwise fault a Task nobody observes, silently losing it instead of reaching the logs.
 		try
 		{
-			if (token.IsCancellationRequested) return;
-			match.PendingTimer = null;
-			match.PendingTimerIsAutoStart = false;
-			match.TimerStartedAt = null;
-			match.TimerTotalSeconds = null;
+			Announce(match,
+				autoStart
+					? $"Queued the match to start in {totalSeconds} seconds"
+					: $"Started a {totalSeconds}-second countdown.");
 
-			if (autoStart)
+			var remaining = totalSeconds;
+			foreach (var checkpoint in ComputeAnnounceCheckpoints(totalSeconds, autoStart))
 			{
-				var started = match.InProgress || await matchMembership.StartAsync(match, token);
-				if (started) Announce(match, "Good luck, have fun!");
-			}
-			else
-			{
-				Announce(match, "Countdown finished");
+				if (!await DelayAsync(remaining - checkpoint, token)) return;
+
+				Announce(match, autoStart
+					? $"Match starts in {checkpoint} seconds"
+					: $"{checkpoint} seconds remaining");
+				matchMembership.PublishTimer(match);
+				remaining = checkpoint;
 			}
 
-			matchMembership.PublishTimer(match);
+			if (!await DelayAsync(remaining, token)) return;
+
+			await match.Lock.WaitAsync(token);
+			try
+			{
+				if (token.IsCancellationRequested) return;
+				match.PendingTimer = null;
+				match.PendingTimerIsAutoStart = false;
+				match.TimerStartedAt = null;
+				match.TimerTotalSeconds = null;
+
+				if (autoStart)
+				{
+					var started = match.InProgress || await matchMembership.StartAsync(match, token);
+					if (started) Announce(match, "Good luck, have fun!");
+				}
+				else
+				{
+					Announce(match, "Countdown finished");
+				}
+
+				matchMembership.PublishTimer(match);
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
 		}
-		finally
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			match.Lock.Release();
+			logger.LogError(ex, "Countdown loop failed: MatchId={MatchId}", match.DbId);
 		}
 	}
 

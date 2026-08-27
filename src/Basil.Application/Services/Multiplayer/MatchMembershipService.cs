@@ -741,35 +741,44 @@ public sealed class MatchMembershipService(
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 		var token = cts.Token;
 
-		if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
-
-		await match.Lock.WaitAsync(token);
+		// This loop is started fire-and-forget (see SyncEmptyRoomTimer); an exception here would
+		// otherwise fault a Task nobody observes, silently losing it instead of reaching the logs.
 		try
 		{
-			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
-			match.EmptyRoomWarningSent = true;
-			AnnounceToRoomAndReferees(match,
-				$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+			if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
 
-		if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
+			await match.Lock.WaitAsync(token);
+			try
+			{
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				match.EmptyRoomWarningSent = true;
+				AnnounceToRoomAndReferees(match,
+					$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
 
-		await match.Lock.WaitAsync(token);
-		try
-		{
-			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
-			AnnounceToRoomAndReferees(match, "Closing the room — it stayed empty for 5 minutes.");
-			match.EmptyRoomTimer = null;
-			match.EmptyRoomWarningSent = false;
-			await CloseAsync(match, null, null, token);
+			if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
+
+			await match.Lock.WaitAsync(token);
+			try
+			{
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				AnnounceToRoomAndReferees(match, "Closing the room — it stayed empty for 5 minutes.");
+				match.EmptyRoomTimer = null;
+				match.EmptyRoomWarningSent = false;
+				await CloseAsync(match, null, null, token);
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
 		}
-		finally
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			match.Lock.Release();
+			logger.LogError(ex, "Empty-room close loop failed: MatchId={MatchId}", match.DbId);
 		}
 	}
 
