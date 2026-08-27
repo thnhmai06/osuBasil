@@ -153,4 +153,47 @@ public class MatchReportServiceTests
 		Assert.Equal(8, builtRound.Winner!.Id);
 		Assert.Null(builtRound.WinnerTeam);
 	}
+
+	/// <summary>
+	///     Regression test for the N+1 fix: the same player and the same beatmap recurring across
+	///     several rounds must each be resolved from the repositories only once per report build,
+	///     not once per round/score that references them.
+	/// </summary>
+	[Fact]
+	public async Task BuildAsync_SameUserAndBeatmapAcrossRounds_ResolvesEachOnlyOnce()
+	{
+		_matchRepository.FetchMatchAsync(5, Arg.Any<CancellationToken>()).Returns(MakeMatchRow());
+		var beatmapMd5 = new string('a', 32);
+		var round1 = new Round(10, 5, 1, beatmapMd5, 0, 0, 0, false, 0,
+			new DateTime(2026, 1, 1, 0, 0, 5, DateTimeKind.Utc), null);
+		var round2 = new Round(11, 5, 2, beatmapMd5, 0, 0, 0, false, 0,
+			new DateTime(2026, 1, 1, 0, 1, 5, DateTimeKind.Utc), null);
+		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Round>)[round1, round2]);
+		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<MatchEvent>)[]);
+		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
+
+		var score = new ScoreReport(1, 7, "player7", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S",
+			true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)[score]);
+		_scores.FetchByRoundAsync(11, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)[score]);
+
+		var mapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmap = new Beatmap(beatmapMd5, 100, mapset, "Normal", "diff.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+		_beatmaps.FetchOneAsync(null, beatmapMd5, null, null, true, Arg.Any<CancellationToken>()).Returns(beatmap);
+		_beatmaps.FetchAllBySetIdAsync(1, true, Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Beatmap>)[beatmap]);
+
+		var report = await MakeService().BuildAsync(5);
+
+		Assert.NotNull(report);
+		Assert.Equal(2, report.Rounds.Count);
+		await _users.Received(1).FetchByIdAsync(7, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.FetchOneAsync(null, beatmapMd5, null, null, true, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).FetchAllBySetIdAsync(1, true, Arg.Any<CancellationToken>());
+	}
 }
