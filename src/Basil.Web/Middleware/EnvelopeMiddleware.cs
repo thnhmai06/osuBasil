@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Formats;
 using Basil.Web.OpenApi;
 using Basil.Web.Routing.Api;
 
@@ -24,8 +25,13 @@ namespace Basil.Web.Middleware;
 /// </remarks>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
-	/// <summary>JSON options using web defaults, used to parse and reserialize the buffered envelope.</summary>
-	private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+	/// <summary>
+	///     JSON options used to parse and reserialize the buffered envelope — the shared instance
+	///     every response body serialization uses, so re-serializing the envelope here doesn't
+	///     re-escape a value (e.g. a literal <c>+</c>) differently than the route handler that
+	///     originally wrote it.
+	/// </summary>
+	private static readonly JsonSerializerOptions JsonWebOptions = BasilJsonOptions.Instance;
 
 	/// <summary>Envelopes the current response body when the matched endpoint belongs to the basilapi group.</summary>
 	/// <remarks>
