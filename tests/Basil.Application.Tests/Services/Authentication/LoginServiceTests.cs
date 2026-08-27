@@ -550,6 +550,33 @@ public class LoginServiceTests
 		Assert.DoesNotContain(Convert.ToHexString(unexpectedPacket), bodyHex);
 	}
 
+	/// <summary>
+	///     Regression test: the channel-info packet broadcast to every other online session used to
+	///     be rebuilt fresh per recipient even though its content (channel name/topic/player count)
+	///     never varies by recipient — pure allocation waste scaling with online session count on
+	///     every login. This pins that the broadcast content itself is unaffected by hoisting that
+	///     packet build out of the per-recipient loop.
+	/// </summary>
+	[Fact]
+	public async Task Login_BroadcastsChannelInfoToOtherOnlineSessions()
+	{
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
+		_channelRegistry.AutoJoinChannels.Returns([channel]);
+		var bystander =
+			new GameSession(99, "bystander", "tok", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.All.Returns([bystander]);
+
+		var useCase = MakeUseCase();
+		await useCase.ExecuteAsync(new LoginRequest(LoginBody(), IPAddress.Loopback));
+
+		// Login also broadcasts the new session's presence/stats to every other online session
+		// afterward, so the channel-info bytes only need to lead the bystander's queued packets.
+		var expected = ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
+		var actual = bystander.Dequeue();
+		Assert.Equal(expected, actual.Take(expected.Length));
+	}
+
 	private void SetUpHappyPath(out User user, UserPrivileges priv, int userId = 10, string country = "us")
 	{
 		user = MakeUser(userId, priv, country);

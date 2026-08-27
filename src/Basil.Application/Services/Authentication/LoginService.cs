@@ -208,11 +208,16 @@ public sealed class LoginService(
 		{
 			if (!channel.CanRead(user.Privilege) || channel.Name == "#lobby") continue;
 
-			data.Add(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+			// Built once and shared by reference: the packet's content is identical for every
+			// recipient (channel name/topic/player-count, not who's reading it), and Enqueue never
+			// mutates what it's given, so rebuilding it per recipient was pure allocation waste that
+			// scaled with online session count on every single login.
+			var channelInfo = ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
+			data.Add(channelInfo);
 
 			foreach (var other in gameSessions.All)
 				if (channel.CanRead(other.Privilege))
-					other.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+					other.Enqueue(channelInfo);
 		}
 
 		data.Add(ServerPacketWriter.ChannelInfoEnd());
