@@ -21,13 +21,22 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 	}
 
 	/// <inheritdoc />
-	/// <remarks>Creates the entry's parent folders when they do not yet exist, then writes the file.</remarks>
+	/// <remarks>
+	///     Creates the entry's parent folders when they do not yet exist, then writes to a
+	///     sibling temp file and renames it into place. The rename (not a direct write to
+	///     <paramref name="relativePath" />'s final path) is what makes this atomic: a concurrent
+	///     <see cref="GetAsync" /> for the same key always observes either the previous file or
+	///     the complete new one, never a partially-written one from two regenerations racing on a
+	///     cache miss.
+	/// </remarks>
 	public async Task PutAsync(string endpoint, string relativePath, byte[] content,
 		CancellationToken cancellationToken = default)
 	{
 		var path = PathFor(endpoint, relativePath);
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-		await File.WriteAllBytesAsync(path, content, cancellationToken);
+		var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+		await File.WriteAllBytesAsync(tempPath, content, cancellationToken);
+		File.Move(tempPath, path, true);
 	}
 
 	/// <inheritdoc />
