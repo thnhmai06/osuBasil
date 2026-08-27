@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
@@ -305,5 +307,29 @@ public class ScoreSubmissionServiceTests
 		await _replayStorage.Received(1)
 			.WriteAsync(555L, Arg.Any<Submission>(), "cookiezi", Arg.Any<OsuVersion>(),
 				replayBytes, Arg.Any<CancellationToken>());
+	}
+
+	/// <summary>
+	///     Regression test: every submission carries a distinct client checksum, so leaving its
+	///     per-checksum lock entry behind after use would grow the static lock dictionary without
+	///     bound for the server's whole lifetime. It must be removed once the submission completes.
+	/// </summary>
+	[Fact]
+	public async Task SubmitAsync_AfterCompletion_RemovesChecksumLockEntry()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		StubPersistence();
+		const string checksum = "eviction-test-checksum";
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(checksum: checksum)));
+
+		var field = typeof(ScoreSubmissionService)
+			.GetField("ChecksumLocks", BindingFlags.NonPublic | BindingFlags.Static)!;
+		var locks = (ConcurrentDictionary<string, SemaphoreSlim>)field.GetValue(null)!;
+		Assert.False(locks.ContainsKey(checksum));
 	}
 }

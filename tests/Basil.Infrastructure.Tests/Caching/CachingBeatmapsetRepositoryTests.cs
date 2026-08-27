@@ -111,6 +111,22 @@ public class CachingBeatmapsetRepositoryTests
 		Assert.Equal(2, inner.FetchByIdCalls);
 	}
 
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task FetchByIdAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var inner = new CountingBeatmapsetRepository { ById = { [1] = MakeMapset(1) } };
+		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingBeatmapsetRepository>.Instance);
+
+		var mapset = await repo.FetchByIdAsync(1);
+
+		Assert.NotNull(mapset);
+	}
+
 	private sealed class CountingBeatmapsetRepository : IBeatmapsetRepository
 	{
 		public int FetchByIdCalls { get; private set; }

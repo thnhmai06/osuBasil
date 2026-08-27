@@ -119,7 +119,8 @@ public sealed class CachingBeatmapRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var beatmap = await fetch();
-		if (beatmap is not null) cache.Set(key, beatmap, _ttl);
+		if (beatmap is not null)
+			cache.Set(key, beatmap, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return beatmap;
 	}
 

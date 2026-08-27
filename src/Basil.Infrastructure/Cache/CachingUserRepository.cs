@@ -39,7 +39,8 @@ public sealed class CachingUserRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByIdAsync(id, cancellationToken);
-		if (user is not null) cache.Set(key, user, _ttl);
+		if (user is not null)
+			cache.Set(key, user, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return user;
 	}
 
@@ -59,7 +60,8 @@ public sealed class CachingUserRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByNameAsync(name, cancellationToken);
-		if (user is not null) cache.Set(key, user, _ttl);
+		if (user is not null)
+			cache.Set(key, user, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return user;
 	}
 

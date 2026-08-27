@@ -37,7 +37,8 @@ public sealed class CachingBeatmapsetRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var mapset = await inner.FetchByIdAsync(id, cancellationToken);
-		if (mapset is not null) cache.Set(key, mapset, _ttl);
+		if (mapset is not null)
+			cache.Set(key, mapset, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return mapset;
 	}
 

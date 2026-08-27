@@ -69,7 +69,10 @@ public static class DependencyInjection
 			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));
 
-		services.AddMemoryCache();
+		// SizeLimit bounds the caching decorators sharing this instance (beatmap/beatmapset/user/settings
+		// lookups) to a fixed entry count regardless of catalog growth; each decorator's cache.Set call
+		// assigns Size = 1 accordingly.
+		services.AddMemoryCache(options => options.SizeLimit = 10_000);
 
 		services.AddSingleton<IUserRepository>(sp =>
 			new CachingUserRepository(

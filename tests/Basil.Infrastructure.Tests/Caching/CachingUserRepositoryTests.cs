@@ -97,6 +97,22 @@ public class CachingUserRepositoryTests
 		Assert.Equal(2, inner.FetchByIdCalls);
 	}
 
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task FetchByIdAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var inner = new CountingUserRepository { UserById = MakeUser(7, "Alice") };
+		var repo = new CachingUserRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingUserRepository>.Instance);
+
+		var user = await repo.FetchByIdAsync(7);
+
+		Assert.NotNull(user);
+	}
+
 	private sealed class CountingUserRepository : IUserRepository
 	{
 		public int FetchByIdCalls { get; private set; }

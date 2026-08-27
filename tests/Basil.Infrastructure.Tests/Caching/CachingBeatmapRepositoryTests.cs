@@ -129,6 +129,23 @@ public class CachingBeatmapRepositoryTests
 		Assert.Null(anonymous);
 	}
 
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task FetchOneAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository { ById = { [1] = beatmap } };
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		var result = await repo.FetchOneAsync(1);
+
+		Assert.NotNull(result);
+	}
+
 	/// <summary>Same leak as above, through the md5-keyed lookup path.</summary>
 	[Fact]
 	public async Task FetchOneAsync_ByMd5_PrivateResultNeverLeaksToNonPrivateCaller()
