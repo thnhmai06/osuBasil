@@ -661,6 +661,12 @@ public class TcpIrcConnectionTests
 		{
 			throw new NotSupportedException();
 		}
+
+		public Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+			bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 	}
 
 	/// <summary>No-op event bus — these tests never inspect the SSE live layer.</summary>

@@ -103,6 +103,13 @@ public sealed class CachingBeatmapRepository(
 		return inner.FetchAllBySetIdAsync(setId, includePrivate, cancellationToken);
 	}
 
+	/// <summary>Uncached: a batched, multi-set call, not a single-row lookup.</summary>
+	public Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default)
+	{
+		return inner.FetchCountsBySetIdsAsync(setIds, includePrivate, cancellationToken);
+	}
+
 	/// <summary>
 	///     Reads a keyed entry, falling back to the given fetch and caching its non-null result.
 	/// </summary>

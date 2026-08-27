@@ -221,5 +221,11 @@ public class CachingBeatmapRepositoryTests
 		{
 			return Task.FromResult<IReadOnlyList<Beatmap>>([]);
 		}
+
+		public Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+			bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyDictionary<int, int>>(new Dictionary<int, int>());
+		}
 	}
 }

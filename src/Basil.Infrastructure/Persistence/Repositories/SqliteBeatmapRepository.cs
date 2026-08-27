@@ -234,10 +234,38 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		return [.. rows];
 	}
 
+	/// <inheritdoc />
+	/// <remarks>Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />.</remarks>
+	public async Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default)
+	{
+		if (setIds.Count == 0) return new Dictionary<int, int>();
+
+		await using var connection = Connect();
+		var whereClause = includePrivate
+			? "WHERE b.MapsetId IN @SetIds"
+			: "WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<SetBeatmapCount>(
+			$"""
+			 SELECT b.MapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 {whereClause}
+			 GROUP BY b.MapsetId
+			 """,
+			new { SetIds = setIds });
+		return rows.ToDictionary(r => r.SetId, r => r.Count);
+	}
+
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
 		return SqliteConnectionFactory.Open(connectionString);
+	}
+
+	/// <summary>A row DTO for the grouped per-set beatmap count.</summary>
+	private sealed class SetBeatmapCount
+	{
+		public int SetId { get; set; }
+		public int Count { get; set; }
 	}
 
 	/// <summary>

@@ -123,4 +123,23 @@ public interface IBeatmapRepository
 	/// </remarks>
 	Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
 		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Counts each set's beatmaps in one query, for callers that need only the count (for
+	///     example a beatmapset listing page) and would otherwise call
+	///     <see cref="FetchAllBySetIdAsync" /> once per set just to read <c>.Count</c>.
+	/// </summary>
+	/// <param name="setIds">The ids of the sets to count.</param>
+	/// <param name="includePrivate">
+	///     <see langword="true" /> to include beatmaps under a private beatmapset in the count;
+	///     otherwise, <see langword="false" /> to exclude them.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     Each requested set's beatmap count, keyed by set id. A set with zero matching beatmaps
+	///     (including one absent from the store entirely) is simply missing from the result rather
+	///     than present with a zero count.
+	/// </returns>
+	Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default);
 }
