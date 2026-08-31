@@ -83,6 +83,29 @@ the lock-held caller, defeating the purpose) or when the consumer is behind at m
 (must drain before the match's in-memory state is discarded, or the last round's end never
 persists).
 
+> **Caveat found on review, not yet resolved:** the two writes this ADR targets are not
+> symmetric. `SetRoundEndedAsync(int roundId, …)` takes an existing id and returns nothing — it
+> is outbox-shaped as written above. `CreateRoundAsync(...)` returns the new `Task<int>` row id,
+> and `MatchMembershipService.StartAsync` uses that return value *synchronously*:
+> `match.CurrentRoundId = await matchRepository.CreateRoundAsync(...)`. `ScoreSubmissionService`
+> reads `match.CurrentRoundId` at submission time to link a score to its round. If round *start*
+> moves into an async outbox, `CurrentRoundId` doesn't exist yet when `StartAsync` returns, and
+> every score submitted before the consumer drains the queue gets `roundId = null` — a real,
+> silent audit-trail loss, exactly what the Constraints section above forbids. Option A as
+> originally written does not survive this for the start-write specifically. Two ways to resolve
+> it, neither picked here:
+> - **A1.** Only the round-*end* write goes through the outbox; round-*start* stays synchronous
+>   (in-lock, as today, or moved out via Option B/D below). Simpler, but leaves one of the three
+>   flagged call sites unaddressed by this ADR.
+> - **A2.** Pre-allocate the round id (an app-side monotonic sequence, or a value reserved from
+>   SQLite before enqueueing) so `match.CurrentRoundId` is known and set synchronously the moment
+>   `StartAsync` returns, and the outbox only has to persist the *row* for an id that's already
+>   decided. Keeps all three sites uniform, but adds a second id-allocation mechanism alongside
+>   SQLite's own autoincrement that must never collide with it.
+>
+> This must be resolved as part of the Decision, not deferred to the implementation plan — it
+> changes which sites Option A actually covers.
+
 **B. Fire back into the existing SQLite write path, but off the match lock, with an explicit
 per-match sequence number.**
 The lock-held section synchronously assigns a monotonic per-match sequence number (already

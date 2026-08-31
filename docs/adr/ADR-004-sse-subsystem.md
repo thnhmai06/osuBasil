@@ -98,16 +98,37 @@ inherited from the earlier investigation notes:
 
 ### Ownership
 
-- Each `MatchSession` owns its own set of live channels (already true structurally via the
-  per-match `SnapshotChannel<T>` instances and `SlotSnapshots` list). This ADR keeps that
-  ownership model: a hub of channels lives on the match, not on a separate global registry keyed
-  by match id.
-- `TeardownMatch` becomes the single place that ends every subscriber of that match: it must
-  complete (not just leave dangling) every channel the match owns, so every open
-  `IAsyncEnumerable<SseItem<string>>` for that match observes end-of-stream and the HTTP response
-  completes on its own, instead of waiting for the client to disconnect first.
-- A subscriber that disconnects (its own request `CancellationToken` fires) removes only its own
-  subscription — never affects other subscribers of the same match.
+- Each `MatchSession` owns its own set of *state* (already true structurally via the per-match
+  `SnapshotChannel<T>` instances and `SlotSnapshots` list — these hold the latest value + diff
+  logic, not a subscriber queue). This ADR keeps that ownership model for state.
+- `TeardownMatch` becomes the single place that ends every subscriber of that match.
+
+> **Correction found on review, not yet resolved:** the paragraph originally here said
+> `TeardownMatch` "must complete every channel the match owns," implying a `Complete()` call on
+> something the match already holds. It does not hold anything completable. The actual
+> per-connection `Channel<T>` queues that `IAsyncEnumerable<SseItem<string>>` reads from are
+> created **per HTTP request, inside `LiveSseRoutes`** (`Channel.CreateUnbounded<T>()` /
+> `CreateBounded<T>(...)`), local to that request's handler method — `MatchSession` never sees or
+> references them. `SnapshotChannel<T>` is a different thing entirely: a `_latest`-holding diff
+> engine with a `Publish` method, not a queue with a `Complete()`.
+>
+> So "the match completes its channels" is not a small addition to existing structure — it
+> requires a **new per-match subscriber registry** that does not exist today: on subscribe,
+> `LiveSseRoutes` must register the newly created `Channel<T>.Writer` (or an unsubscribe callback)
+> into a thread-safe collection owned by the `MatchSession`; on client disconnect, that
+> registration must be removed again (or teardown will try to complete a writer whose reader is
+> already gone); on `TeardownMatch`, that collection is iterated and every writer completed. This
+> also means concurrent add/remove/iterate on that registry needs its own synchronization
+> discipline decided here, not discovered mid-implementation — e.g. whether registration happens
+> under `MatchSession.Lock` (cheap, but reintroduces a lock-hold cost this ADR is otherwise trying
+> to remove) or a dedicated `ConcurrentDictionary`/similar (no lock coupling, but is itself a new
+> piece of shared mutable state to get right). This ADR recommends the latter (a dedicated
+> concurrent collection, not the match lock) but leaves the exact type to the implementation plan.
+> The Trade-offs section below previously undersold this as "small, contained" — it is a new
+> subsystem-owned mechanism, not a one-line addition to `TeardownMatch`.
+>
+> A subscriber that disconnects (its own request `CancellationToken` fires) must deregister itself
+> from that same registry — never affects other subscribers of the same match.
 
 ### Slow consumer / backpressure
 
@@ -138,6 +159,20 @@ inherited from the earlier investigation notes:
 | `chat` | Event | No — ordered, no drop without a gap marker |
 | per-slot `score` sub-event | Event | No |
 | per-slot `input` sub-event | Event (high-frequency) | No drop *of the frame boundary*, but this is the stream most likely to need its own bound/rate discussion in the implementation plan given its volume |
+
+> **Correction found on review:** "no drop" + "bounded" + "size left to the implementation plan"
+> cannot all hold simultaneously for `score`/`input` — a bounded channel that never drops is a
+> contradiction the moment the producer outpaces the consumer, which `input` (published at
+> gameplay tick rate by `MatchScoreUpdateHandler`) is exactly the case designed to stress. This
+> ADR must pick one of the two the Slow-consumer section already offers for event streams, not
+> leave both open for these two specifically:
+> - drop-oldest + an explicit gap marker (accepts loss, makes it visible), or
+> - stay unbounded for these two streams only (accepts the unbounded-growth risk already flagged
+>   as today's failure mode in Trade-offs, scoped to just `score`/`input`).
+>
+> Left to the implementation plan only as "which bound," not as "whether it drops" — the
+> drop-vs-never-drop choice is a client-observable behavior change under the Constraints section
+> and belongs in this ADR's Decision.
 
 A state-oriented stream only needs the client to converge on the current truth; an
 intermediate state a slow client never saw is not a defect once the next state supersedes it —
@@ -186,6 +221,17 @@ published must be captured (or its `SnapshotChannel<T>.Publish` call made) befor
 released if the freshly-mutated data is only safely readable under the lock; the network/queue
 write itself must not require holding it.
 
+> **Correction found on review:** the in-lock cost this ADR targets is not only the publish call.
+> `EnqueueStateAsync` (the method that runs under the lock after every packet mutation) *awaits*
+> `MatchLiveSnapshotBuilder.BuildMain(...)`/`BuildSettings(...)` — which do their own
+> user/beatmap repository lookups — before it ever reaches a `PublishXxx` call. An implementation
+> that hoists only the publish step outside the lock leaves this snapshot-building I/O, which is
+> at least as expensive as the O(subscribers) scan, still running under the lock. `BuildMain` and
+> `BuildSettings` (and any other `MatchLiveSnapshotBuilder` method invoked from inside
+> `EnqueueStateAsync`) are explicitly in scope for the same "move outside the lock" treatment as
+> the publish call itself — the implementation plan must build the snapshot from data captured
+> under the lock, then build and publish outside it.
+
 ### `slots` stream completeness
 
 Every slot-mutating call path (currently: `EnqueueStateAsync`'s per-index `PublishSlot`, plus the
@@ -203,6 +249,13 @@ independent, low-risk fix (a null-check in `DiffObjects`'s return, and a null-ch
 `channel.Writer.TryWrite` in `SnapshotChannel<T>.Publish`) that does not depend on any other
 decision in this ADR — it can land as its own commit ahead of, or independent from, the rest of
 Phase 3, since it changes only when a patch is sent, never what it contains when one is.
+
+> **Note found on review:** "when it's sent" is itself client-observable under the Constraints
+> section, not purely internal — a client using `{}` arrival as a liveness/keepalive signal (there
+> is no other heartbeat on these streams today) would see event frequency drop under this fix.
+> Confirm no known client relies on that before landing it as a no-behavior-change commit; if one
+> might, this needs its own explicit callout as a breaking change rather than the "independent,
+> low-risk" framing above.
 
 ### DTO alignment
 
@@ -243,8 +296,11 @@ redirected before implementation:
 
 ## Trade-offs
 
-Per-match channel ownership adds one more thing `TeardownMatch` must get right (completing every
-channel, not just cancelling timers) — a new invariant to test, but a small, contained one.
+Per-match channel ownership requires a new subscriber registry (see the correction in Ownership
+above) — not just one more line in `TeardownMatch`, but a new piece of concurrent shared state
+(register on subscribe, deregister on disconnect, iterate-and-complete on teardown) that has to
+get its own concurrency discipline right. This is real added surface area for Phase 3, weighed
+against removing a real bug (the leak/no-teardown defect in the Problem section).
 Bounded channels with `DropOldest` for state streams mean a very slow client can miss
 intermediate states entirely (already true today for the channels that are unbounded, in the
 opposite failure mode: an unbounded channel to a dead-but-not-yet-disconnected client grows
