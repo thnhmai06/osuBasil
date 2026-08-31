@@ -17,6 +17,18 @@ renames it into place — a rename is atomic on the same volume, so a concurrent
 the same key always observes either the previous complete file or the new complete one, never a
 torn one.
 
+> **Platform caveat found on review:** this guarantee is POSIX rename semantics. On Windows
+> (this project's primary dev/deploy target), `File.Move(tempPath, path, overwrite: true)`
+> replacing a destination that another handle currently has open can throw `IOException`
+> (sharing violation) instead of silently succeeding, depending on the reader's share mode and
+> the exact instant the two operations overlap — `GetAsync`'s `File.ReadAllBytesAsync` opens and
+> closes quickly, keeping the window narrow, but narrow is not zero. The failure mode this
+> produces is a **throw on the writer**, never a torn read on the reader — `GetAsync` itself
+> either fully succeeds against the pre- or post-rename file or isn't affected — so the atomicity
+> claim for readers holds; what's uncovered is that a concurrent writer can occasionally fail
+> with an exception rather than always succeeding silently. `PutAsync`'s caller should treat that
+> exception as retryable-or-logged, not assume it can't happen on this platform.
+
 ## Open items (confirmed by code reading, not implemented this session)
 
 - **`.osz` zip-on-demand.** Beatmap downloads decompress the archive into a `MemoryStream` and
@@ -56,5 +68,8 @@ others are either bigger design decisions (`.osz`, `ReconcileAllAsync`) or pure 
 
 Not applicable to the deferred items (no code changed). The atomic-write fix has direct test
 coverage (`FileSystemResponseCacheTests`) verifying behavior preservation and the absence of
-leftover temp files; true concurrent-read atomicity relies on the OS's rename guarantee rather
-than something a unit test can meaningfully simulate.
+leftover temp files, but only sequentially — no test exercises a `GetAsync` racing a `PutAsync`
+against the same key. True concurrent-access behavior relies on the OS's rename guarantee rather
+than something a unit test can meaningfully simulate, and on Windows specifically that guarantee
+is a possible writer-side sharing-violation exception under a tight race (see the caveat in
+Decision above), not a torn read — untested, not unsafe.

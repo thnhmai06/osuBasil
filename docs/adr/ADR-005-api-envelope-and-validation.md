@@ -23,6 +23,10 @@ sequence, needlessly bloating and obscuring any string field that contains one.
    writes a 500 envelope for the `api.` host specifically, provided the response hasn't started
    writing yet. Every other host group (bancho, osu-web, beatmap-assets, avatar) keeps its
    previous bare-response behavior unchanged; none of them carry an envelope contract to uphold.
+   The `HasStarted` guard is what makes this safe for the `api.` host's own non-enveloped routes
+   too: an SSE `/live` stream that has already flushed an event, or a file download mid-copy,
+   both have `HasStarted == true` by the time an exception reaches this middleware, so they fall
+   through to the unchanged rethrow rather than an attempted (and impossible) retroactive wrap.
 2. **One shared `JsonSerializerOptions` instance.** `EnvelopeMiddleware`'s own instance was
    replaced with `BasilJsonOptions.Instance`, the same instance every route handler already used
    to serialize its body. This was already the only other stray instance in the codebase
@@ -56,8 +60,11 @@ and confirming the test fails as expected, then restoring it — not just "it co
   `GetValue<int>()`) — still `SUPPORTED` (code trace only), never reproduced. Left as a known
   limitation; low risk since a route handler that returns malformed JSON or a schema mismatch
   here would be its own bug to fix at the source, not a gap in this middleware's own exception
-  safety (which the new `ExceptionLoggingMiddleware` mapping now also covers, since these throws
-  happen inside `next(context)` from `ExceptionLoggingMiddleware`'s perspective).
+  safety. This is covered by the new `ExceptionLoggingMiddleware` mapping regardless of exactly
+  where inside `EnvelopeMiddleware` the throw happens (both sites run after `await next(context)`
+  returns, not inside it) — `EnvelopeMiddleware.InvokeAsync` in its entirety *is*
+  `ExceptionLoggingMiddleware`'s `next`, so any exception anywhere in it, before or after its own
+  inner `next` call, is still caught by the outer middleware's `try`.
 - **Source-generated JSON** — considered per the original plan's mention, not pursued: no
   measured allocation/CPU problem in the JSON serialization path specifically (the confirmed
   bottleneck this whole investigation targets is the SQLite write path, RC1). Revisit only if a
