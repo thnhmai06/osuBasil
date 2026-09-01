@@ -8,16 +8,21 @@ public class JsonMergePatchTests
 {
 	private static readonly JsonSerializerOptions CamelCase = new(JsonSerializerDefaults.Web);
 
+	/// <summary>
+	///     Regression test (ADR-004 "{}" spam fix): Diff used to return an empty JsonObject for a
+	///     no-op comparison, which SnapshotChannel.Publish then serialized as a literal "{}" and
+	///     broadcast on every call regardless of whether anything changed. It now returns null so a
+	///     caller can skip publishing entirely.
+	/// </summary>
 	[Fact]
-	public void Diff_NoChanges_ReturnsEmptyPatch()
+	public void Diff_NoChanges_ReturnsNull()
 	{
 		var previous = new Sample("Alpha", 1, true);
 		var current = new Sample("Alpha", 1, true);
 
 		var patch = JsonMergePatch.Diff(previous, current, CamelCase);
 
-		Assert.IsType<JsonObject>(patch);
-		Assert.Empty((JsonObject)patch);
+		Assert.Null(patch);
 	}
 
 	[Fact]

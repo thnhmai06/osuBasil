@@ -48,7 +48,7 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 
 			matchMembership.Enqueue(match, packet, false);
 
-			if (eventBus.HasPlayerScoreSubscribers)
+			if (eventBus.HasPlayerScoreSubscribers(match.DbId))
 				try
 				{
 					var frame = new PacketReader(playData).ReadScoreFrame();

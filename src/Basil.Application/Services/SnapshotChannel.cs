@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Basil.Application.Formats;
 using Basil.Application.Services.Multiplayer;
 
@@ -31,14 +30,19 @@ public sealed class SnapshotChannel<T> where T : class
 	///     Computes the RFC 7396 JSON Merge Patch from the previously published state to
 	///     <paramref name="current" />, atomically stores <paramref name="current" /> as the new
 	///     latest snapshot, and returns the patch as UTF-8 JSON bytes to broadcast to
-	///     already-subscribed connections. The very first call (no previous state) has nothing to
-	///     diff against, so it returns <paramref name="current" /> serialized in full. That is
-	///     harmless even though no subscriber can realistically exist yet for a match's very first
-	///     state.
+	///     already-subscribed connections. Returns <see langword="null" /> when nothing in
+	///     <paramref name="current" /> actually differs from the previous snapshot, so a caller can
+	///     skip publishing a no-op patch instead of emitting an empty <c>{}</c> on every call. The
+	///     very first call (no previous state) has nothing to diff against, so it returns
+	///     <paramref name="current" /> serialized in full — never <see langword="null" />, even
+	///     though no subscriber can realistically exist yet for a match's very first state.
 	/// </remarks>
 	/// <param name="current">The new full state.</param>
-	/// <returns>The UTF-8 JSON bytes of the delta patch (or the full snapshot on first publication) to broadcast.</returns>
-	public byte[] Publish(T current)
+	/// <returns>
+	///     The UTF-8 JSON bytes of the delta patch (or the full snapshot on first publication) to
+	///     broadcast, or <see langword="null" /> when nothing changed.
+	/// </returns>
+	public byte[]? Publish(T current)
 	{
 		var jsonOptions = BasilJsonOptions.Instance;
 
@@ -47,6 +51,6 @@ public sealed class SnapshotChannel<T> where T : class
 			? JsonSerializer.SerializeToNode(current, jsonOptions)
 			: JsonMergePatch.Diff(previous, current, jsonOptions);
 		Volatile.Write(ref _latest, current);
-		return JsonSerializer.SerializeToUtf8Bytes(patch ?? new JsonObject(), jsonOptions);
+		return patch is null ? null : JsonSerializer.SerializeToUtf8Bytes(patch, jsonOptions);
 	}
 }

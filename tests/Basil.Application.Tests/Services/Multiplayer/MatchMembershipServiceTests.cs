@@ -35,6 +35,7 @@ public class MatchMembershipServiceTests
 
 	private readonly FakeMatchRepository _matchRepository = new();
 	private readonly MultiplayerTestSupport.FakeMatchRoundEndOutbox _roundEndOutbox = new();
+	private readonly MultiplayerTestSupport.FakeMatchLiveEvents _eventBus = new();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -52,7 +53,7 @@ public class MatchMembershipServiceTests
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 			_matchRepository, _roundEndOutbox,
-			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
+			_eventBus, _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
 	}
 
@@ -267,6 +268,29 @@ public class MatchMembershipServiceTests
 		// Regression test (ADR-003): teardown drains the match's round-end outbox before discarding
 		// its in-memory state, so the last round's end is never silently lost to a teardown race.
 		Assert.Contains(match.DbId, _roundEndOutbox.Drained);
+		// Regression test (ADR-004): teardown also drops the live-event hub's bookkeeping for this
+		// match, once every subscriber has been completed via SseSubscribers.CompleteAll().
+		Assert.Contains(match.DbId, _eventBus.Forgotten);
+	}
+
+	/// <summary>
+	///     Regression test (ADR-004): a client still connected to one of this match's live SSE
+	///     streams when it closes must observe end-of-stream right away — TeardownMatch completes
+	///     every subscriber registered on the match's <c>SseSubscribers</c> registry.
+	/// </summary>
+	[Fact]
+	public async Task CloseAsync_CompletesEverySseSubscriberRegisteredOnTheMatch()
+	{
+		var service = MakeService();
+		var host = MakePlayer(1, "host");
+		RegisterAll(host);
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var completed = false;
+		match.SseSubscribers.Subscribe(() => completed = true);
+
+		await service.CloseAsync(match);
+
+		Assert.True(completed);
 	}
 
 	[Fact]
@@ -352,16 +376,20 @@ public class MatchMembershipServiceTests
 		events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
 			.Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
 
+		// Create already published the initial full snapshot internally, so this first call has
+		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
+		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
+		// SnapshotChannelTests; this test covers the same behavior at EnqueueStateAsync's call site).
 		await service.EnqueueStateAsync(match);
+		Assert.Empty(payloads);
+
 		match.Name = "Renamed";
 		await service.EnqueueStateAsync(match);
 
-		Assert.Equal(2, payloads.Count);
-		Assert.Equal("{}", Encoding.UTF8.GetString(payloads[0]));
-
-		var secondJson = Encoding.UTF8.GetString(payloads[1]);
-		Assert.Contains("\"name\":\"Renamed\"", secondJson);
-		Assert.DoesNotContain("\"referees\"", secondJson);
+		var delta = Assert.Single(payloads);
+		var json = Encoding.UTF8.GetString(delta);
+		Assert.Contains("\"name\":\"Renamed\"", json);
+		Assert.DoesNotContain("\"referees\"", json);
 	}
 
 	/// <summary>

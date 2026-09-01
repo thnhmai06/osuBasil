@@ -33,6 +33,7 @@ public class SnapshotChannelTests
 
 		var patchBytes = channel.Publish(new Sample("Alpha", 2));
 
+		Assert.NotNull(patchBytes);
 		var json = JsonDocument.Parse(Encoding.UTF8.GetString(patchBytes));
 		var obj = json.RootElement;
 		Assert.Single(obj.EnumerateObject());
@@ -51,16 +52,20 @@ public class SnapshotChannelTests
 		Assert.Same(second, channel.Latest);
 	}
 
+	/// <summary>
+	///     Regression test (ADR-004 "{}" spam fix): Publish used to return a literal "{}" for a
+	///     no-op update, which SnapshotChannel.Publish's caller broadcast on every call regardless of
+	///     whether anything changed. It now returns null so a caller can skip publishing entirely.
+	/// </summary>
 	[Fact]
-	public void Publish_NoActualChange_ReturnsEmptyPatch()
+	public void Publish_NoActualChange_ReturnsNull()
 	{
 		var channel = new SnapshotChannel<Sample>();
 		channel.Publish(new Sample("Alpha", 1));
 
 		var patchBytes = channel.Publish(new Sample("Alpha", 1));
 
-		var json = JsonDocument.Parse(Encoding.UTF8.GetString(patchBytes));
-		Assert.Empty(json.RootElement.EnumerateObject());
+		Assert.Null(patchBytes);
 	}
 
 	private sealed record Sample(string Name, int Count);

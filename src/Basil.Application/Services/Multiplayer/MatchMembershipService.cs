@@ -617,8 +617,12 @@ public sealed class MatchMembershipService(
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
 	/// <remarks>
 	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
-	///     then rebuilds and publishes the main, settings, and per-slot snapshots through
-	///     <see cref="IMatchLiveEvents" />.
+	///     then rebuilds and publishes the main, settings, per-slot, and whole-arrangement slots
+	///     snapshots through <see cref="IMatchLiveEvents" />. This is the single call path every
+	///     slot-mutating operation (packet-driven or HTTP-driven) routes through, so <c>slot</c> and
+	///     <c>slots</c> always fire together (ADR-004) — no separate path publishes one without the
+	///     other. A channel whose <see cref="SnapshotChannel{T}.Publish" /> found nothing changed is
+	///     skipped rather than emitting a no-op patch.
 	/// </remarks>
 	/// <param name="match">The match whose state to broadcast.</param>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
@@ -636,18 +640,22 @@ public sealed class MatchMembershipService(
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
+		if (match.MainSnapshot.Publish(mainSnapshot) is { } mainDelta)
+			eventBus.PublishMain(match.DbId, mainDelta);
 
 		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		var settingsDelta = match.SettingsSnapshot.Publish(settings);
-		eventBus.PublishSettings(match.DbId, settingsDelta);
+		if (match.SettingsSnapshot.Publish(settings) is { } settingsDelta)
+			eventBus.PublishSettings(match.DbId, settingsDelta);
 
 		for (var i = 0; i < match.SlotSnapshots.Count; i++)
-		{
-			var slotDelta = match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]);
-			eventBus.PublishSlot(match.DbId, i, slotDelta);
-		}
+			if (match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]) is { } slotDelta)
+				eventBus.PublishSlot(match.DbId, i, slotDelta);
+
+		// Reuses mainSnapshot.Slots (already resolved above) instead of a second occupant-lookup
+		// pass — MatchSlotsView wraps the exact same per-slot view list BuildSlots itself produces.
+		if (match.SlotsSnapshot.Publish(new MatchSlotsView(mainSnapshot.Slots)) is { } slotsDelta)
+			eventBus.PublishSlots(match.DbId, slotsDelta);
 	}
 
 	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
@@ -657,8 +665,8 @@ public sealed class MatchMembershipService(
 	{
 		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		var delta = match.HostSnapshot.Publish(host);
-		eventBus.PublishHost(match.DbId, delta);
+		if (match.HostSnapshot.Publish(host) is { } delta)
+			eventBus.PublishHost(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
@@ -668,8 +676,8 @@ public sealed class MatchMembershipService(
 	{
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
 			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
-		var delta = match.RefsSnapshot.Publish(refs);
-		eventBus.PublishRefs(match.DbId, delta);
+		if (match.RefsSnapshot.Publish(refs) is { } delta)
+			eventBus.PublishRefs(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
@@ -679,27 +687,16 @@ public sealed class MatchMembershipService(
 	{
 		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		var delta = match.BansSnapshot.Publish(bans);
-		eventBus.PublishBans(match.DbId, delta);
+		if (match.BansSnapshot.Publish(bans) is { } delta)
+			eventBus.PublishBans(match.DbId, delta);
 	}
 
 	/// <summary>Republishes the countdown timer snapshot channel.</summary>
 	/// <param name="match">The match whose timer to publish.</param>
 	public void PublishTimer(MatchSession match)
 	{
-		var delta = match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match));
-		eventBus.PublishTimer(match.DbId, delta);
-	}
-
-	/// <summary>Rebuilds and republishes the slots' snapshot channel.</summary>
-	/// <param name="match">The match whose slots to publish.</param>
-	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
-	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
-	{
-		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, userRepo,
-			cancellationToken);
-		var delta = match.SlotsSnapshot.Publish(slots);
-		eventBus.PublishSlots(match.DbId, delta);
+		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match)) is { } delta)
+			eventBus.PublishTimer(match.DbId, delta);
 	}
 
 	/// <summary>
@@ -824,11 +821,14 @@ public sealed class MatchMembershipService(
 
 	/// <summary>
 	///     Cancels the match's timers, waits for any round-end write still queued for it to finish
-	///     persisting (or give up), then removes it from the registry and notifies the lobby.
+	///     persisting (or give up), ends every live SSE subscriber still connected to it, then
+	///     removes it from the registry and notifies the lobby.
 	/// </summary>
 	/// <remarks>
 	///     The drain (ADR-003) guarantees the last round's end is never discarded along with the
-	///     match's in-memory state — a match with no pending write returns immediately.
+	///     match's in-memory state — a match with no pending write returns immediately. The SSE
+	///     completion (ADR-004) guarantees a client still connected when the match closes observes
+	///     end-of-stream right away instead of its handler staying attached indefinitely.
 	/// </remarks>
 	private async Task TeardownMatch(MatchSession match, CancellationToken cancellationToken)
 	{
@@ -838,6 +838,12 @@ public sealed class MatchMembershipService(
 		match.EmptyRoomTimer = null;
 
 		await roundEndOutbox.DrainAsync(match.DbId, cancellationToken);
+
+		// Ends every subscriber still connected to this match's live SSE streams (ADR-004) — without
+		// this, a client connected when the match closes would keep its handler attached to the
+		// live-event hub indefinitely (or until it happens to disconnect on its own).
+		match.SseSubscribers.CompleteAll();
+		eventBus.Forget(match.DbId);
 
 		matchRegistry.Remove(match.Id);
 

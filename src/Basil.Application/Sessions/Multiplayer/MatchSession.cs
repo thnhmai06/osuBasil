@@ -67,6 +67,13 @@ public sealed class MatchSession(
 	public InstrumentedMatchLock Lock { get; } = new();
 
 	/// <summary>
+	///     Gets the registry of this match's live SSE subscribers, completed as a whole by
+	///     <c>TeardownMatch</c> (ADR-004) so a client still connected when the match closes observes
+	///     end-of-stream instead of hanging or leaking.
+	/// </summary>
+	public SseSubscriberRegistry SseSubscribers { get; } = new();
+
+	/// <summary>
 	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. See
 	///     <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded by
 	///     <see cref="Lock" />.

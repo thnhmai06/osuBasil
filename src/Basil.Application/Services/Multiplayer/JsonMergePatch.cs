@@ -42,7 +42,8 @@ public static class JsonMergePatch
 		return JsonNode.DeepEquals(previous, current) ? null : current?.DeepClone();
 	}
 
-	private static JsonObject DiffObjects(JsonObject previous, JsonObject current)
+	/// <summary>Diffs two JSON objects, returning <see langword="null" /> when nothing actually changed.</summary>
+	private static JsonObject? DiffObjects(JsonObject previous, JsonObject current)
 	{
 		var patch = new JsonObject();
 		foreach (var (key, _) in previous)
@@ -69,6 +70,6 @@ public static class JsonMergePatch
 				patch[key] = currentValue?.DeepClone();
 		}
 
-		return patch;
+		return patch.Count == 0 ? null : patch;
 	}
 }

@@ -330,7 +330,7 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return LiveSseRoutes.NotLive();
 
-		return LiveSseRoutes.HandleSettings(context, matchId, events,
+		return LiveSseRoutes.HandleSettings(context, match, events,
 			() => match.SettingsSnapshot.Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,
@@ -343,7 +343,7 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return LiveSseRoutes.NotLive();
 
-		return LiveSseRoutes.HandleMain(context, matchId, events,
+		return LiveSseRoutes.HandleMain(context, match, events,
 			() => match.MainSnapshot.Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,

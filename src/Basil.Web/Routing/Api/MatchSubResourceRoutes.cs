@@ -59,7 +59,7 @@ internal static class MatchSubResourceRoutes
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				return match is not null
-					? LiveSseRoutes.HandleChat(context, matchId, events, cancellationToken)
+					? LiveSseRoutes.HandleChat(context, match, events, cancellationToken)
 					: LiveSseRoutes.NotLive();
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -190,7 +190,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return LiveSseRoutes.NotLive();
 
-				return LiveSseRoutes.HandleHost(context, matchId, events,
+				return LiveSseRoutes.HandleHost(context, match, events,
 					() => match.HostSnapshot.Latest is { } snapshot
 						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 						: null,
@@ -326,7 +326,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return LiveSseRoutes.NotLive();
 
-				return LiveSseRoutes.HandleRefs(context, matchId, events,
+				return LiveSseRoutes.HandleRefs(context, match, events,
 					() => match.RefsSnapshot.Latest is { } snapshot
 						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 						: null,
@@ -537,7 +537,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return LiveSseRoutes.NotLive();
 
-				return LiveSseRoutes.HandleBans(context, matchId, events,
+				return LiveSseRoutes.HandleBans(context, match, events,
 					() => match.BansSnapshot.Latest is { } snapshot
 						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 						: null,
@@ -706,7 +706,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return LiveSseRoutes.NotLive();
 
-				return LiveSseRoutes.HandleSlots(context, matchId, events,
+				return LiveSseRoutes.HandleSlots(context, match, events,
 					() => match.SlotsSnapshot.Latest is { } snapshot
 						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 						: null,
@@ -1019,7 +1019,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return LiveSseRoutes.NotLive();
 
-				return LiveSseRoutes.HandleTimer(context, matchId, events,
+				return LiveSseRoutes.HandleTimer(context, match, events,
 					() => match.TimerSnapshot.Latest is { } snapshot
 						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 						: null,

@@ -1,7 +1,27 @@
 # ADR-004 — SSE subsystem design contract
 
-> Status: **Accepted.** Approved 2026-09-01 (user decision on every open sub-decision below,
-> including the subscriber-registry lifecycle design). Implementation follows this ADR.
+> Status: **Accepted, partially implemented.** Approved 2026-09-01 (user decision on every open
+> sub-decision below, including the subscriber-registry lifecycle design).
+>
+> **Implemented this session ("4a"):** `SseSubscriberRegistry` + `MatchSession.SseSubscribers`,
+> `TeardownMatch` completion; `IMatchLiveEvents` rewritten to per-match-keyed subscribe/publish
+> (Decision item 4's O(this match's subscribers) property, `HasPlayerScoreSubscribers` now takes
+> a `matchDbId`); `{}` spam fix (`JsonMergePatch.DiffObjects`/`SnapshotChannel.Publish` return
+> `null` on no-op, all 10 call sites skip publishing when null); `slots`/`slot` unification
+> (`EnqueueStateAsync` now also publishes the whole-arrangement view, `PublishSlotsAsync` removed,
+> the HTTP `SetSlotsAsync` path routes through `EnqueueStateAsync` like every packet-driven
+> mutation); `score`/`input` within `HandleLiveSlot` now bounded (64) with a manual drop-oldest +
+> distinct `event: gap` marker on eviction, since `DropOldest` mode alone gives no signal a drop
+> happened.
+>
+> **Deferred as "4b"** (a separate, larger change — see the split rationale below): moving
+> `MatchLiveSnapshotBuilder.BuildMain`/`BuildSettings` (and the publish calls themselves) outside
+> `MatchSession.Lock`. Every state-mutating call site currently holds the lock across its whole
+> read-mutate-then-`EnqueueStateAsync` sequence (~20+ sites, the same breadth as the `d4158ec`
+> TOCTOU audit) — changing that calling convention is structurally different work from 4a's
+> containable, independently-testable pieces, and doing both in one pass would make a failure in
+> either hard to attribute. 4b needs its own commit, its own test pass, and its own
+> revert-and-fail verification per call-site class.
 
 ## Problem
 

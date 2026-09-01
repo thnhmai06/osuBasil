@@ -287,99 +287,139 @@ internal static class MultiplayerTestSupport
 	}
 
 	/// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
+	/// <remarks>
+	///     Subscribe methods only record; no test currently subscribes through this fake and asserts
+	///     on delivery, so they return a trivial no-op handle rather than modeling real per-match
+	///     dispatch (see <see cref="Basil.Infrastructure.Sessions.MatchLiveEvents" /> for that).
+	/// </remarks>
 	public sealed class FakeMatchLiveEvents : IMatchLiveEvents
 	{
+		private sealed class NoOpSubscription : IDisposable
+		{
+			public void Dispose()
+			{
+			}
+		}
+
 		public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
 		public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
 		public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
-		public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> HostPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> RefsPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> BansPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> TimerPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> SlotsPublishes { get; } = [];
-
-		public event Action<int, byte[]>? MainPublished;
-		public event Action<int, string, byte[]>? PlayerScorePublished;
+		public List<int> Forgotten { get; } = [];
 
 		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
-		public bool HasPlayerScoreSubscribers => true;
+		public bool HasPlayerScoreSubscribers(int matchDbId)
+		{
+			return true;
+		}
 
-		public event Action<int, byte[]>? SettingsPublished;
-		public event Action<int, int, byte[]>? SlotPublished;
-		public event Action<int, byte[]>? HostPublished;
-		public event Action<int, byte[]>? RefsPublished;
-		public event Action<int, byte[]>? BansPublished;
-		public event Action<int, byte[]>? TimerPublished;
-		public event Action<int, byte[]>? SlotsPublished;
-		public event Action<int, byte[]>? ChatPublished;
+		public IDisposable SubscribeMain(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
+		}
 
 		public void PublishMain(int matchDbId, byte[] payload)
 		{
 			MainPublishes.Add((matchDbId, payload));
-			MainPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribePlayerScore(int matchDbId, Action<string, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
 		{
 			PlayerPublishes.Add((matchDbId, playerName, payload));
-			PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+		}
+
+		public IDisposable SubscribeSettings(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSettings(int matchDbId, byte[] payload)
 		{
 			SettingsPublishes.Add((matchDbId, payload));
-			SettingsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlot(int matchDbId, Action<int, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
 		{
 			SlotPublishes.Add((matchDbId, slotIndex, payload));
-			SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+		}
+
+		public IDisposable SubscribeHost(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishHost(int matchDbId, byte[] payload)
 		{
 			HostPublishes.Add((matchDbId, payload));
-			HostPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeRefs(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishRefs(int matchDbId, byte[] payload)
 		{
 			RefsPublishes.Add((matchDbId, payload));
-			RefsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeBans(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishBans(int matchDbId, byte[] payload)
 		{
 			BansPublishes.Add((matchDbId, payload));
-			BansPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeTimer(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishTimer(int matchDbId, byte[] payload)
 		{
 			TimerPublishes.Add((matchDbId, payload));
-			TimerPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlots(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlots(int matchDbId, byte[] payload)
 		{
 			SlotsPublishes.Add((matchDbId, payload));
-			SlotsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeChat(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishChat(int matchDbId, byte[] payload)
 		{
-			ChatPublished?.Invoke(matchDbId, payload);
 		}
 
-		public event Action<int, byte[]>? LivePublished;
-
-		public void PublishLive(int matchDbId, byte[] payload)
+		public void Forget(int matchDbId)
 		{
-			LivePublishes.Add((matchDbId, payload));
-			LivePublished?.Invoke(matchDbId, payload);
+			Forgotten.Add(matchDbId);
 		}
 	}
 

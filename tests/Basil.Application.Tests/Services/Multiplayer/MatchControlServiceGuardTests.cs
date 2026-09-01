@@ -526,4 +526,31 @@ public class MatchControlServiceGuardTests
 		Assert.Null(match.CurrentRoundId);
 		Assert.False(match.InProgress);
 	}
+
+	/// <summary>
+	///     Regression test (ADR-004 slots-stream unification): SetSlotsAsync used to call
+	///     PublishSlotsAsync alone, leaving the per-index `slot` and general `main`/`settings`
+	///     channels silent for HTTP-driven slot mutations. It now routes through EnqueueStateAsync,
+	///     the same path every packet-driven mutation uses, so all of them fire together.
+	/// </summary>
+	[Fact]
+	public async Task SetSlotsAsync_PublishesSlotsAndPerSlotAndMain()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		{
+			[hostSlot] = new(host.Id, "Red", null)
+		};
+
+		var result = await control.SetSlotsAsync(match, entries, false);
+
+		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.NotEmpty(_fixture.EventBus.SlotsPublishes);
+		Assert.NotEmpty(_fixture.EventBus.SlotPublishes);
+		Assert.NotEmpty(_fixture.EventBus.MainPublishes);
+	}
 }

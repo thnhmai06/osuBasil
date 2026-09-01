@@ -1201,7 +1201,10 @@ public sealed class MatchControlService(
 
 		logger.LogDebug("Room settings changed: MatchId={MatchId} SlotsChanged={SlotsChanged}", match.DbId,
 			entries.Count);
-		await matchMembership.PublishSlotsAsync(match, cancellationToken);
+		// Routes through the same call path every packet-driven slot mutation uses, so `slot` and
+		// `slots` (and main/settings) always fire together for this HTTP-driven path too (ADR-004) —
+		// previously this called PublishSlotsAsync alone, leaving the other channels silent.
+		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		return SetSlotsResult.Ok;
 	}
 
