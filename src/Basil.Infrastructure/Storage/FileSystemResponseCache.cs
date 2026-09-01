@@ -20,6 +20,9 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 		return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
 	}
 
+	/// <summary>Bounded retry budget for a rename that fails on a momentary sharing conflict (ADR-006).</summary>
+	private const int MaxRenameAttempts = 3;
+
 	/// <inheritdoc />
 	/// <remarks>
 	///     Creates the entry's parent folders when they do not yet exist, then writes to a
@@ -27,10 +30,12 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 	///     <paramref name="relativePath" />'s final path) is what makes this atomic: a concurrent
 	///     <see cref="GetAsync" /> for the same key always observes either the previous file or
 	///     the complete new one, never a partially-written one from two regenerations racing on a
-	///     cache miss. If the rename itself fails (e.g. the destination is momentarily locked by
-	///     another reader), the previous entry at <paramref name="relativePath" /> is left exactly
-	///     as it was and the temp file is removed before the exception propagates — a failed write
-	///     never leaves stray <c>*.tmp</c> files behind.
+	///     cache miss. A rename that fails because the destination is momentarily locked by
+	///     another reader is retried a bounded number of times with a short backoff before giving
+	///     up; once the retry budget is exhausted, the previous entry at
+	///     <paramref name="relativePath" /> is left exactly as it was and the temp file is removed
+	///     before the exception propagates — a failed write never leaves stray <c>*.tmp</c> files
+	///     behind.
 	/// </remarks>
 	public async Task PutAsync(string endpoint, string relativePath, byte[] content,
 		CancellationToken cancellationToken = default)
@@ -39,15 +44,23 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
 		await File.WriteAllBytesAsync(tempPath, content, cancellationToken);
-		try
-		{
-			File.Move(tempPath, path, true);
-		}
-		catch
-		{
-			File.Delete(tempPath);
-			throw;
-		}
+
+		for (var attempt = 1;; attempt++)
+			try
+			{
+				File.Move(tempPath, path, true);
+				return;
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException &&
+			                           attempt < MaxRenameAttempts)
+			{
+				await Task.Delay(TimeSpan.FromMilliseconds(20 * attempt), cancellationToken);
+			}
+			catch
+			{
+				File.Delete(tempPath);
+				throw;
+			}
 	}
 
 	/// <inheritdoc />
