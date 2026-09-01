@@ -2,6 +2,7 @@ using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
@@ -33,6 +34,7 @@ public class MatchMembershipServiceTests
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry;
 
 	private readonly FakeMatchRepository _matchRepository = new();
+	private readonly MultiplayerTestSupport.FakeMatchRoundEndOutbox _roundEndOutbox = new();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -49,7 +51,7 @@ public class MatchMembershipServiceTests
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			_matchRepository,
+			_matchRepository, _roundEndOutbox,
 			Substitute.For<IMatchLiveEvents>(), _beatmapRepository, _userRepository,
 			NullLogger<MatchMembershipService>.Instance);
 	}
@@ -262,6 +264,9 @@ public class MatchMembershipServiceTests
 		Assert.Null(_channelRegistry.GetByName(match.ChatChannelName));
 		Assert.Contains(ServerPacketWriter.DisposeMatch(match.Id), Chunk(lobbyMember.Dequeue()));
 		Assert.Contains(match.DbId, _matchRepository.EndedMatchIds);
+		// Regression test (ADR-003): teardown drains the match's round-end outbox before discarding
+		// its in-memory state, so the last round's end is never silently lost to a teardown race.
+		Assert.Contains(match.DbId, _roundEndOutbox.Drained);
 	}
 
 	[Fact]
@@ -339,7 +344,7 @@ public class MatchMembershipServiceTests
 		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			_matchRepository, events,
+			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), events,
 			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 

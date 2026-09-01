@@ -1,7 +1,10 @@
 # ADR-003 — Match state persistence ordering
 
-> Status: **Accepted.** Approved 2026-09-01 (user decision on every open sub-decision below).
-> Gated per the plan's rule 4 — implementation follows this ADR.
+> Status: **Accepted and implemented.** Approved 2026-09-01 (user decision on every open
+> sub-decision below). Implemented the same session: `MatchRoundEndOutbox`
+> (`src/Basil.Application/Backgrounds/MatchRoundEndOutbox.cs`), wired into
+> `MatchCompleteHandler`, `MatchControlService.AbortAsync`, and
+> `MatchMembershipService.TeardownMatch`.
 
 ## Problem
 

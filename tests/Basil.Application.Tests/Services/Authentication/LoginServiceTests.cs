@@ -6,6 +6,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
@@ -61,6 +62,7 @@ public class LoginServiceTests
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), _channelRegistry,
 			_sessionRegistry, ircRegistry, channelMembership, Substitute.For<IMatchRepository>(),
+			Substitute.For<IMatchRoundEndOutbox>(),
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users,
 			NullLogger<MatchMembershipService>.Instance);
 		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,

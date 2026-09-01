@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -259,6 +260,32 @@ internal static class MultiplayerTestSupport
 		}
 	}
 
+	/// <summary>
+	///     In-memory stand-in for the round-end outbox: <see cref="Enqueue" /> completes synchronously
+	///     (no background drain to wait for), matching how <see cref="FakeMatchRepository" /> itself
+	///     completes synchronously — keeps every existing synchronous test call site unchanged.
+	/// </summary>
+	public sealed class FakeMatchRoundEndOutbox : IMatchRoundEndOutbox
+	{
+		public List<RoundEndWrite> Enqueued { get; } = [];
+		public List<int> Drained { get; } = [];
+
+		/// <summary>When set, <see cref="Enqueue" /> throws instead of recording, simulating a full queue.</summary>
+		public bool ThrowFull { get; set; }
+
+		public void Enqueue(RoundEndWrite write)
+		{
+			if (ThrowFull) throw new MatchRoundEndOutboxFullException(write.MatchId, write.RoundId);
+			Enqueued.Add(write);
+		}
+
+		public Task DrainAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			Drained.Add(matchId);
+			return Task.CompletedTask;
+		}
+	}
+
 	/// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
 	public sealed class FakeMatchLiveEvents : IMatchLiveEvents
 	{
@@ -387,13 +414,14 @@ internal static class MultiplayerTestSupport
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				IrcSessionRegistry, ChannelMembership, MatchRepository, EventBus,
+				IrcSessionRegistry, ChannelMembership, MatchRepository, RoundEndOutbox, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
 		public FakeMatchRegistry MatchRegistry { get; }
 		public FakeMatchRepository MatchRepository { get; } = new();
+		public FakeMatchRoundEndOutbox RoundEndOutbox { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
 		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
 

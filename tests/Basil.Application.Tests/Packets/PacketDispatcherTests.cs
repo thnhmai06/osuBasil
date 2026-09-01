@@ -118,7 +118,7 @@ public class PacketDispatcherTests
 		var dispatcher = new PacketDispatcher(
 			[
 				new MatchScoreUpdateHandler(fixture.MatchMembership, fixture.EventBus),
-				new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
+				new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
 					NullLogger<MatchCompleteHandler>.Instance)
 			],
 			NullLogger<PacketDispatcher>.Instance);

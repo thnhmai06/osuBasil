@@ -23,6 +23,8 @@ public class ExceptionLoggingMiddlewareTests
 
 		var responseFeature = Substitute.For<IHttpResponseFeature>();
 		responseFeature.HasStarted.Returns(responseStarted);
+		responseFeature.StatusCode =
+			StatusCodes.Status200OK; // realistic starting point, not NSubstitute's int default (0)
 		context.Features.Set(responseFeature);
 
 		return context;

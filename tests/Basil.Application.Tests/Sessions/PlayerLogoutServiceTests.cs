@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
@@ -36,7 +37,7 @@ public class PlayerLogoutServiceTests
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-		Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
+		Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
 		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
 
@@ -186,7 +187,7 @@ public class PlayerLogoutServiceTests
 		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, gameRegistry, ircRegistry,
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			matchRepository,
+			matchRepository, Substitute.For<IMatchRoundEndOutbox>(),
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
 			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);

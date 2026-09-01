@@ -54,7 +54,7 @@ public class GhostDisconnectServiceTests
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry,
 			gameRegistry, ircRegistry,
-			channelMembership, Substitute.For<IMatchRepository>(),
+			channelMembership, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,

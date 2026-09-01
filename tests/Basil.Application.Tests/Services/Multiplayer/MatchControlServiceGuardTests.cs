@@ -17,7 +17,8 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchRepository, _fixture.BeatmapRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchRepository, _fixture.RoundEndOutbox,
+			_fixture.BeatmapRepository,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, NullLogger<MatchControlService>.Instance);
 	}
 
@@ -483,5 +484,46 @@ public class MatchControlServiceGuardTests
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.Equal(teamBefore, match.Slots[hostSlot].Team);
+	}
+
+	/// <summary>Regression test (ADR-003): abort now queues the round-end write instead of awaiting it inline.</summary>
+	[Fact]
+	public async Task AbortAsync_InProgress_QueuesRoundEndWriteAndClearsCurrentRoundId()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.InProgress = true;
+		match.CurrentRoundId = 5;
+		var control = MakeService();
+
+		var result = await control.AbortAsync(match);
+
+		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Null(match.CurrentRoundId);
+		Assert.False(match.InProgress);
+		Assert.Contains(_fixture.RoundEndOutbox.Enqueued, w => w.MatchId == match.DbId && w.RoundId == 5 && w.Aborted);
+	}
+
+	/// <summary>
+	///     Regression test (ADR-003): a full round-end outbox must not stop the abort from clearing
+	///     match state or broadcasting — only the database write is lost, loudly logged.
+	/// </summary>
+	[Fact]
+	public async Task AbortAsync_OutboxFull_StillClearsStateAndReturnsOk()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.InProgress = true;
+		match.CurrentRoundId = 5;
+		_fixture.RoundEndOutbox.ThrowFull = true;
+		var control = MakeService();
+
+		var result = await control.AbortAsync(match);
+
+		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Null(match.CurrentRoundId);
+		Assert.False(match.InProgress);
 	}
 }

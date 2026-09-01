@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
@@ -37,7 +38,8 @@ public class EmptyRoomAutoCloseTests
 		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			_matchRepository, Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
+			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>(), NullLogger<MatchMembershipService>.Instance);
 	}
 

@@ -8,6 +8,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Content;
@@ -365,6 +366,7 @@ public class TcpIrcConnectionTests
 		var matchMembership = new MatchMembershipService(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
 			gameRegistry, ircRegistry, channelMembership, new NotSupportedMatchRepository(),
+			new NoOpMatchRoundEndOutbox(),
 			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
 			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
@@ -670,6 +672,18 @@ public class TcpIrcConnectionTests
 	}
 
 	/// <summary>No-op event bus — these tests never inspect the SSE live layer.</summary>
+	private sealed class NoOpMatchRoundEndOutbox : IMatchRoundEndOutbox
+	{
+		public void Enqueue(RoundEndWrite write)
+		{
+		}
+
+		public Task DrainAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+	}
+
 	private sealed class NoOpMatchLiveEvents : IMatchLiveEvents
 	{
 		public bool HasPlayerScoreSubscribers => false;

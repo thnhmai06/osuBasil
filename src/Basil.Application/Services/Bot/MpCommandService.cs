@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -46,6 +47,7 @@ public sealed class MpCommandService(
 	MatchMembershipService matchMembership,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
+	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -113,7 +115,8 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchRepository, beatmapRepository, gameRegistry, ircRegistry, matchControlLogger);
+		new(matchMembership, matchRepository, roundEndOutbox, beatmapRepository, gameRegistry, ircRegistry,
+			matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.

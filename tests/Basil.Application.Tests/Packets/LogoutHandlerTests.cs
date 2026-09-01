@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Packets.Users;
 using Basil.Application.Services.Multiplayer;
@@ -47,7 +48,8 @@ public class LogoutHandlerTests
 					Substitute.For<ISessionRegistry<IrcSession>>(),
 					Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(),
 					Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
+				Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
+				Substitute.For<IMatchLiveEvents>(),
 				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 				NullLogger<MatchMembershipService>.Instance),
 			NullLogger<PlayerLogoutService>.Instance));

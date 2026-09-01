@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -32,6 +33,7 @@ public sealed class MatchMembershipService(
 	ISessionRegistry<IrcSession> ircRegistry,
 	ChannelMembershipService channelMembership,
 	IMatchRepository matchRepository,
+	IMatchRoundEndOutbox roundEndOutbox,
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
@@ -498,7 +500,7 @@ public sealed class MatchMembershipService(
 			player.Enqueue(ServerPacketWriter.MatchJoinFail());
 		}
 
-		TeardownMatch(match);
+		await TeardownMatch(match, cancellationToken);
 		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -820,12 +822,22 @@ public sealed class MatchMembershipService(
 		}
 	}
 
-	private void TeardownMatch(MatchSession match)
+	/// <summary>
+	///     Cancels the match's timers, waits for any round-end write still queued for it to finish
+	///     persisting (or give up), then removes it from the registry and notifies the lobby.
+	/// </summary>
+	/// <remarks>
+	///     The drain (ADR-003) guarantees the last round's end is never discarded along with the
+	///     match's in-memory state — a match with no pending write returns immediately.
+	/// </remarks>
+	private async Task TeardownMatch(MatchSession match, CancellationToken cancellationToken)
 	{
 		match.PendingTimer?.Cancel();
 		match.PendingTimer = null;
 		match.EmptyRoomTimer?.Cancel();
 		match.EmptyRoomTimer = null;
+
+		await roundEndOutbox.DrainAsync(match.DbId, cancellationToken);
 
 		matchRegistry.Remove(match.Id);
 

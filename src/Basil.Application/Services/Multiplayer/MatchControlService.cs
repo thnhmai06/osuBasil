@@ -1,5 +1,6 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
+using Basil.Application.Backgrounds;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -28,6 +29,7 @@ namespace Basil.Application.Services.Multiplayer;
 public sealed class MatchControlService(
 	MatchMembershipService matchMembership,
 	IMatchRepository matchRepository,
+	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -879,9 +881,18 @@ public sealed class MatchControlService(
 		var roundId = match.CurrentRoundId;
 		if (roundId is { } id)
 		{
-			await matchRepository.SetRoundEndedAsync(id, DateTimeOffset.UtcNow.UtcDateTime, true,
-				cancellationToken);
+			// The round ends here in memory regardless of whether the queued write persists —
+			// CurrentRoundId is cleared unconditionally, matching the prior synchronous behavior.
 			match.CurrentRoundId = null;
+			try
+			{
+				roundEndOutbox.Enqueue(new RoundEndWrite(match.DbId, id, DateTimeOffset.UtcNow.UtcDateTime, true));
+			}
+			catch (MatchRoundEndOutboxFullException ex)
+			{
+				logger.LogError(ex, "Round-end write rejected, outbox full: MatchId={MatchId} RoundId={RoundId}",
+					match.DbId, id);
+			}
 		}
 
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);

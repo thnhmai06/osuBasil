@@ -38,7 +38,7 @@ public class MpCommandServiceTests
 	private MpCommandService MakeService()
 	{
 		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchRepository,
-			_beatmaps,
+			_fixture.RoundEndOutbox, _beatmaps,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);

@@ -117,6 +117,10 @@ public static class DependencyInjection
 
 		services.AddHostedService<GhostDisconnectService>();
 
+		services.AddSingleton<MatchRoundEndOutbox>();
+		services.AddSingleton<IMatchRoundEndOutbox>(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
+		services.AddHostedService(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
+
 		return services;
 	}
 }
