@@ -61,6 +61,26 @@ public class FileSystemResponseCacheTests : IDisposable
 		Assert.DoesNotContain(Directory.GetFiles(entryDir), f => f.EndsWith(".tmp", StringComparison.Ordinal));
 	}
 
+	/// <summary>
+	///     Regression test: PutAsync's rename step used to have no failure handling, so a failed
+	///     `File.Move` (e.g. the destination is momentarily locked) left the temp file orphaned on
+	///     disk. It now deletes the temp file before rethrowing. Forces the failure by making the
+	///     destination a directory, which `File.Move` can never replace.
+	/// </summary>
+	[Fact]
+	public async Task PutAsync_RenameFails_DeletesTempFileAndRethrows()
+	{
+		var entryDir = Path.Combine(_cachePath, "thumbs");
+		Directory.CreateDirectory(Path.Combine(entryDir, "1.jpg"));
+
+		// Windows throws UnauthorizedAccessException for this specific case (destination is a
+		// directory); the sharing-violation case in the ADR-006 caveat is an IOException. Either
+		// way it's an I/O-layer failure, and the temp-file cleanup applies regardless of which.
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _cache.PutAsync("thumbs", "1.jpg", [1, 2, 3]));
+
+		Assert.DoesNotContain(Directory.GetFiles(entryDir), f => f.EndsWith(".tmp", StringComparison.Ordinal));
+	}
+
 	[Fact]
 	public async Task DeleteAsync_RemovesCachedEntry()
 	{

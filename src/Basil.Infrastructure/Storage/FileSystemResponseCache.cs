@@ -27,7 +27,10 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 	///     <paramref name="relativePath" />'s final path) is what makes this atomic: a concurrent
 	///     <see cref="GetAsync" /> for the same key always observes either the previous file or
 	///     the complete new one, never a partially-written one from two regenerations racing on a
-	///     cache miss.
+	///     cache miss. If the rename itself fails (e.g. the destination is momentarily locked by
+	///     another reader), the previous entry at <paramref name="relativePath" /> is left exactly
+	///     as it was and the temp file is removed before the exception propagates — a failed write
+	///     never leaves stray <c>*.tmp</c> files behind.
 	/// </remarks>
 	public async Task PutAsync(string endpoint, string relativePath, byte[] content,
 		CancellationToken cancellationToken = default)
@@ -36,7 +39,15 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
 		await File.WriteAllBytesAsync(tempPath, content, cancellationToken);
-		File.Move(tempPath, path, true);
+		try
+		{
+			File.Move(tempPath, path, true);
+		}
+		catch
+		{
+			File.Delete(tempPath);
+			throw;
+		}
 	}
 
 	/// <inheritdoc />

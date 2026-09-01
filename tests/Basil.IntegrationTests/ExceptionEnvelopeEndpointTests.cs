@@ -60,6 +60,7 @@ public class ExceptionEnvelopeEndpointTests : IClassFixture<WebApplicationFactor
 		var response = await client.SendAsync(MakeRequest("/users/7"));
 
 		Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+		Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
 		var envelope = await response.Content.ReadFromJsonAsync<Envelope<object?>>();
 		Assert.NotNull(envelope);
 		Assert.False(envelope.Success);
