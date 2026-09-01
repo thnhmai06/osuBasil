@@ -130,6 +130,29 @@ guarantees" bar without pushing ordering logic into SQL (Option B) or leaving th
 unaddressed (Option C). This is a recommendation, not a decision — reviewer to confirm or
 redirect before code changes.
 
+Option A is a direction, not a finished solution — the following are explicit open
+sub-decisions, each of which changes what gets implemented. None are picked here:
+
+1. **A1 vs A2** (see the caveat under Alternative A above) — does round-*start* stay
+   synchronous (A1), or does it move into the outbox behind a pre-allocated round id (A2)?
+2. **Backpressure**: when a match's outbox queue is full, does the enqueue call in the lock-held
+   section block (waiting for the consumer to drain — reintroduces the stall this ADR exists to
+   remove), drop the oldest queued write (risks the same silent-loss failure the Constraints
+   section forbids), or reject/error the triggering operation outright?
+3. **Teardown drain**: does `TeardownMatch`/`CloseAsync` block waiting for the outbox to fully
+   drain before discarding the match's in-memory state (guarantees the last round's end
+   persists, but adds a wait to match teardown), or does it hand off remaining items to some
+   other completion path?
+4. **Failure semantics**: when a queued write ultimately fails (SQLite error, not just a busy
+   retry), is it retried (how many times, what backoff), or surfaced as a known gap in the match
+   report (and if so, how — a flag on the round row, a logged event, something client-visible)?
+5. **Consumer lifecycle**: one background consumer per match, or one shared consumer draining
+   many matches' queues in turn? Who starts it, who stops it, and does its own failure (an
+   unhandled exception mid-drain) take down just that match's persistence or something wider?
+
+These are as consequential as the A1/A2 choice — the implementation plan should not silently
+default any of them.
+
 ## Trade-offs
 
 (To be finalized alongside the Decision.) For Option A: added moving parts (one queue +

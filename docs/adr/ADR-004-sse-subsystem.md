@@ -119,13 +119,20 @@ inherited from the earlier investigation notes:
 > registration must be removed again (or teardown will try to complete a writer whose reader is
 > already gone); on `TeardownMatch`, that collection is iterated and every writer completed. This
 > also means concurrent add/remove/iterate on that registry needs its own synchronization
-> discipline decided here, not discovered mid-implementation — e.g. whether registration happens
-> under `MatchSession.Lock` (cheap, but reintroduces a lock-hold cost this ADR is otherwise trying
-> to remove) or a dedicated `ConcurrentDictionary`/similar (no lock coupling, but is itself a new
-> piece of shared mutable state to get right). This ADR recommends the latter (a dedicated
-> concurrent collection, not the match lock) but leaves the exact type to the implementation plan.
+> discipline decided here, not discovered mid-implementation. This is an **open decision, not
+> yet settled** — two candidates, neither picked:
+> - a dedicated concurrent collection (e.g. `ConcurrentDictionary`) owned by the match, decoupled
+>   from `MatchSession.Lock` entirely — no lock coupling, but is itself a new piece of shared
+>   mutable state whose own correctness (register/deregister races, iterate-while-mutating during
+>   teardown) has to be got right independently;
+> - registration under `MatchSession.Lock` — reuses a synchronization primitive already proven
+>   correct for this match's other state, but reintroduces a lock-hold cost (subscribe/unsubscribe
+>   under the lock) this ADR is otherwise trying to remove, and couples subscriber churn to the
+>   same lock every packet handler contends on.
+>
 > The Trade-offs section below previously undersold this as "small, contained" — it is a new
-> subsystem-owned mechanism, not a one-line addition to `TeardownMatch`.
+> subsystem-owned mechanism, not a one-line addition to `TeardownMatch`, and which of the two
+> options above is chosen belongs in this ADR's Decision, not left implicit.
 >
 > A subscriber that disconnects (its own request `CancellationToken` fires) must deregister itself
 > from that same registry — never affects other subscribers of the same match.
@@ -208,6 +215,13 @@ changed to match a doc that was never accurate. (If the actual implementation pl
 this recommendation, that disagreement should be resolved here, before code, not discovered again
 during the rebuild.)
 
+> **Assumption to confirm, not verified here:** the recommendation above rests entirely on "no
+> current stream has viewer-dependent content." That was checked against the 9 streams' current
+> payload shapes, not against any planned or requested feature (e.g. a referee-only view, a
+> spectator-restricted view). If any near-term requirement needs a subscriber-specific view on a
+> channel that today broadcasts identically to everyone, this recommendation does not hold for
+> that channel and should be revisited before, not after, implementation commits to shared-diff.
+
 ### Publish never under the match lock
 
 Every `PublishXxx` call currently runs while `MatchSession.Lock` is held, and — per the Problem
@@ -231,6 +245,21 @@ write itself must not require holding it.
 > `EnqueueStateAsync`) are explicitly in scope for the same "move outside the lock" treatment as
 > the publish call itself — the implementation plan must build the snapshot from data captured
 > under the lock, then build and publish outside it.
+
+### Event gap marker — wire format (open decision)
+
+The Slow-consumer section above requires an explicit gap marker when an event stream's bound is
+exceeded, but does not fix its shape — that is itself a client-visible protocol decision, not an
+implementation detail, and is not made here. Two directions, neither picked:
+- a JSON payload on the existing event type carrying a marker field, e.g.
+  `{"type":"gap","dropped":12}`;
+- a distinct SSE event type (a separate `event:` line) the client can switch on without parsing
+  every payload to check for a marker field.
+
+Whichever is chosen must be documented as part of that stream's wire contract (`sse.md` and any
+OpenAPI/schema description of the stream) before Phase 3 ships it, the same way any other
+client-visible response shape is documented — this is a protocol addition, not an internal
+detail to decide silently during implementation.
 
 ### `slots` stream completeness
 
@@ -283,16 +312,25 @@ proportional to subscriber count and match size, with no compensating benefit.
 
 **Not yet made** — submitted for review. The author's recommendations, to be confirmed or
 redirected before implementation:
-1. Per-match owned channel hub; `TeardownMatch` completes every owned channel.
-2. Bounded channels everywhere, `DropOldest` for state streams, an explicit gap marker (not
-   silent drop) for event streams if their bound is ever exceeded.
+1. Per-match owned channel hub; `TeardownMatch` completes every owned channel. **Open:**
+   subscriber-registry concurrency model (dedicated concurrent collection vs. `MatchSession.Lock`
+   — see Ownership).
+2. Bounded channels everywhere, `DropOldest` for state streams. For `score`/`input`: **open**
+   choice between drop-oldest+gap-marker and staying unbounded (see the coalescing table's
+   correction) — and if gap markers are used anywhere, their wire format is **open** (see Event
+   gap marker above).
 3. Keep the shared-diff model; correct `sse.md` to describe it accurately instead of rebuilding
-   the code to match an inaccurate doc.
+   the code to match an inaccurate doc. **Assumption to confirm:** no near-term requirement needs
+   a per-viewer view on any of the 9 streams (see Per-connection state vs. global diff).
 4. Publish outside the match lock once channels are per-match (which alone removes the
-   O(global subscribers) cost currently inflating lock hold time).
+   O(global subscribers) cost currently inflating lock hold time) — and snapshot *building*
+   (`BuildMain`/`BuildSettings`), not only publish, moves out of the lock (see Publish never
+   under the match lock).
 5. Unify slot-arrangement publishing so `slots` and per-slot `slot` always fire together,
    packet-driven or HTTP-driven.
-6. Fix `{}` spam independently (low-risk, can land first).
+6. Fix `{}` spam independently — **needs confirmation first**: no known client uses `{}` arrival
+   as a liveness signal (see the note under `{}` spam); otherwise this is a breaking change, not
+   a low-risk independent fix.
 
 ## Trade-offs
 

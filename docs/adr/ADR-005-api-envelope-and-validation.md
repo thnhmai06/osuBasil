@@ -32,9 +32,15 @@ sequence, needlessly bloating and obscuring any string field that contains one.
    to serialize its body. This was already the only other stray instance in the codebase
    (`OpenApiExampleExtensions` already reused the shared one); there is now exactly one.
 3. **Relaxed JSON encoding.** `BasilJsonOptions.Instance` sets
-   `Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping`. Safe here: every consumer of this
-   API parses the response as JSON, never embeds it into an HTML document, so the HTML-safety
-   escaping the default encoder performs buys nothing and only bloats/obscures payloads.
+   `Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping`. Safe under this API's contract:
+   responses are documented and consumed as JSON, never embedded into an HTML document, so the
+   HTML-safety escaping the default encoder performs buys nothing and only bloats/obscures
+   payloads. Precisely: the *parsed* JSON value a client's deserializer produces is identical
+   either way — a string containing a literal plus sign decodes to the same value whether the
+   encoder wrote that character as-is or as its escaped Unicode form; what changes is only the
+   *raw wire representation* — a consumer doing anything below the JSON layer
+   (byte-for-byte diffing, hashing/checksumming the raw response body, log-grepping raw bytes)
+   would observe different bytes than before. No such consumer exists in this codebase today.
 4. **N+1 fixes** (not strictly "pipeline" but the two concretely-evidenced query-count bugs
    found in this scope): `GET /beatmapsets` batches every page item's beatmap count into one
    `IBeatmapRepository.FetchCountsBySetIdsAsync` call instead of one `FetchAllBySetIdAsync` per
@@ -69,6 +75,18 @@ and confirming the test fails as expected, then restoring it — not just "it co
   measured allocation/CPU problem in the JSON serialization path specifically (the confirmed
   bottleneck this whole investigation targets is the SQLite write path, RC1). Revisit only if a
   future profile shows serialization itself as a bottleneck.
+- **Test gap found on review, not yet written**: `ExceptionEnvelopeEndpointTests` covers the
+  case where a handler throws before writing anything. Missing: a regression test pinning that a
+  handler which has already started writing its response *before* throwing does **not** get a
+  retroactive envelope attempt (the `HasStarted` guard in `ExceptionLoggingMiddleware`) — this is
+  exactly the SSE/file-download carve-out described in Decision item 1 above, and it currently has
+  no test coverage of its own.
+- **Test gap found on review, verified**: `ExceptionEnvelopeEndpointTests.
+  RouteHandlerThrows_ReturnsEnvelopedServerError` asserts status code (500) and the deserialized
+  envelope's `Success`/`Code` fields, but never asserts the response's `Content-Type` header
+  explicitly (`ReadFromJsonAsync<T>` succeeds without requiring the header to be
+  `application/json`) — a regression that dropped or wrong-typed the header would not fail this
+  test today.
 
 ## Trade-offs
 

@@ -29,6 +29,55 @@ torn one.
 > with an exception rather than always succeeding silently. `PutAsync`'s caller should treat that
 > exception as retryable-or-logged, not assume it can't happen on this platform.
 
+> **Gap found on review — atomic ≠ single-writer:** the rename guarantee this fix provides is
+> only "a reader never sees a torn file." It says nothing about two concurrent writers. Two
+> `PutAsync` calls for the same key racing each other both write their own temp file and both
+> rename successfully (no contention between two *renames* the way there can be between a rename
+> and a concurrent *read*) — whichever rename lands last silently wins, with no ordering
+> guarantee between the two callers' content. Today nothing in this codebase requires
+> single-writer semantics for a cache regeneration (last-writer-wins is an acceptable outcome for
+> a response cache, not a durability violation), so this is not treated as a bug — but it is an
+> explicit gap, not an implied guarantee of this fix, and should be called out if any future
+> caller needs deduplication/single-flight around concurrent regeneration of the same key (the
+> same category of stampede guard already flagged as needed for `.osz`/ffmpeg below — that would
+> be a separate decision, not a corollary of the atomic-write fix).
+
+> **Gap found on review, not fixed in this pass — orphaned temp file on write failure:**
+> `PutAsync` writes `tempPath`, then calls `File.Move(tempPath, path, true)` with no
+> try/catch around the move. If the move throws (the Windows sharing-violation case above, or
+> any other I/O failure), `tempPath` is left on disk — nothing deletes it. This is a real,
+> uncorrected gap: the invariant "a failed write leaves no temp file behind" (asked for on
+> review) does **not** hold today. Separately, the invariant "a failed write leaves the previous
+> entry at `path` valid and untouched" **does** already hold as a structural consequence of using
+> `File.Move` (a failed move never partially applies — `path` is either the pre-existing file,
+> untouched, or the fully-renamed new one; there is no partial state), but this has no test
+> pinning it either. Both invariants are correctness requirements this ADR should have stated
+> explicitly rather than leaving implicit in the mechanism: **(a)** old entry survives a failed
+> `Put` unchanged, **(b)** a failed `Put` never leaves a `*.tmp` file behind. (a) holds by
+> construction; (b) does not and needs a fix (a try/catch around the `Move` call that deletes
+> `tempPath` on failure before rethrowing) plus a regression test — left for the implementation
+> pass that acts on this review, since this ADR review is documentation-only.
+
+> **Note found on review — mechanism vs. requirement:** this ADR's actual architectural
+> requirement is "replace an entry atomically, using whatever OS-level guarantee a rename
+> provides." `File.Move(..., overwrite: true)` is the specific API chosen to satisfy it, not
+> itself the requirement — a future implementation swapping it for `File.Replace` or another
+> atomic-rename primitive (e.g. if the orphaned-temp-file gap above is fixed by changing
+> mechanism rather than adding a catch block) is still satisfying this ADR's Decision, not
+> deviating from it. If a future change wants to lock in a specific API rather than "atomic
+> replacement" as the requirement, that should be raised as its own decision, not inferred from
+> this wording.
+
+> **Open decision found on review — retry contract for the writer-side exception:** the Windows
+> sharing-violation caveat above establishes that `PutAsync` can throw. What happens next is not
+> decided by this ADR and should not be silently defaulted: does `PutAsync` retry internally
+> (how many attempts, what backoff), does it propagate the exception and leave retry to the
+> caller (today's actual behavior, by omission rather than by decision), or does it log and
+> swallow (accepting a missed cache write as a non-fatal miss, since the cache is a
+> speed-up, not a source of truth)? This ADR is marked Accepted for the atomic-write mechanism
+> itself, but this specific question — the behavior contract for a failed write — needs an
+> explicit answer before being treated as settled.
+
 ## Open items (confirmed by code reading, not implemented this session)
 
 - **`.osz` zip-on-demand.** Beatmap downloads decompress the archive into a `MemoryStream` and
@@ -73,3 +122,12 @@ against the same key. True concurrent-access behavior relies on the OS's rename 
 than something a unit test can meaningfully simulate, and on Windows specifically that guarantee
 is a possible writer-side sharing-violation exception under a tight race (see the caveat in
 Decision above), not a torn read — untested, not unsafe.
+
+**Test gap found on review, not yet written:** an integration/stress test that runs `GetAsync`
+and `PutAsync` concurrently against the same key (many iterations, tight loop, on the actual
+filesystem rather than a mock) to observe real behavior under contention — specifically whether
+a `GetAsync` ever throws or returns anything other than a complete previous/new value, and
+whether `PutAsync` ever throws the Windows sharing-violation case in practice on this project's
+target filesystem. This is what would turn the sharing-violation caveat and the "readers never
+see a torn file" claim from code-reasoning into observed behavior. Left for the implementation
+pass, not written as part of this documentation-only review.
