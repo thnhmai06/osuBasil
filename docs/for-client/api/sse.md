@@ -111,7 +111,34 @@ the resulting client state becomes:
 }
 ```
 
-The patch is calculated independently for each connection.
+The same patch is sent to every connection subscribed to that resource. A connection that joins later still gets a
+correct starting point, because its own first event is always a full snapshot read at connect time — not a patch — so
+it does not matter that the patch wasn't computed specifically for it.
+
+A resource with no actual change does not emit an empty patch. If nothing observable changed, no event is sent.
+
+---
+
+## Gap events
+
+```text id="sl0t1v"
+GET /matches/{id}/live/{slotIndex}
+```
+
+streams score, input, and slot updates for one match slot on a single connection. If a client falls too far behind on
+this stream, the server drops the oldest queued updates rather than growing the backlog without bound, and sends a
+`gap` event to mark that a drop happened:
+
+```http id="gap0ev"
+event: gap
+data:
+```
+
+The `gap` event carries no meaningful payload — its event type alone is the signal. A client that sees `gap` should
+treat its state on this stream as possibly stale (for example, by re-fetching the current slot state) rather than
+assuming every prior event was delivered.
+
+Other live streams are not bounded this way.
 
 ---
 
@@ -210,6 +237,9 @@ Client                              Basil
 ```
 
 The connection remains open while the live resource is active.
+
+A match-scoped live connection closes as soon as its match closes — the server ends the stream rather than leaving it
+to the client to notice the resource is gone.
 
 Clients should be prepared for the connection to close and should reconnect when appropriate.
 

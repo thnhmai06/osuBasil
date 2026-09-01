@@ -12,7 +12,13 @@
 > the HTTP `SetSlotsAsync` path routes through `EnqueueStateAsync` like every packet-driven
 > mutation); `score`/`input` within `HandleLiveSlot` now bounded (64) with a manual drop-oldest +
 > distinct `event: gap` marker on eviction, since `DropOldest` mode alone gives no signal a drop
-> happened.
+> happened (eviction logic lives in `BoundedSseChannel.WriteWithGapMarker`, extracted for direct
+> unit testing — an earlier version of this eviction loop never terminated when the channel stayed
+> full with no reader, which would have spun forever on a packet-handler thread holding
+> `MatchSession.Lock`; see `BoundedSseChannelTests`). `sse.md` (both the server-side architecture
+> doc and the client-facing wire contract) corrected to describe the shared-diff model, the
+> registry lifecycle, and the `gap` event, replacing the now-inaccurate per-connection-diff
+> description.
 >
 > **Deferred as "4b"** (a separate, larger change — see the split rationale below): moving
 > `MatchLiveSnapshotBuilder.BuildMain`/`BuildSettings` (and the publish calls themselves) outside

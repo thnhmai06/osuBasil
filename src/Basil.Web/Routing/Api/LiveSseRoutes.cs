@@ -362,11 +362,8 @@ internal static class LiveSseRoutes
 		var streamTag = new KeyValuePair<string, object?>("stream", snapshotEventType);
 		var unsubscribe = subscribe((eventType, payload) =>
 		{
-			// Manual drop-oldest: BoundedChannelFullMode.DropOldest gives no signal that a drop
-			// happened, and a gap must be visible to the client, not silent.
-			while (channel.Reader.Count >= capacity && channel.Reader.TryRead(out _))
-				channel.Writer.TryWrite(new SseItem<string>("{}", "gap"));
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			BoundedSseChannel.WriteWithGapMarker(channel.Writer, channel.Reader, capacity, eventType,
+				Encoding.UTF8.GetString(payload));
 			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
