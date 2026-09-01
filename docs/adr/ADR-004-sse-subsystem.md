@@ -1,12 +1,7 @@
 # ADR-004 — SSE subsystem design contract
 
-> Status: **Proposed — pending review.** No production code in this ADR's scope has been
-> changed. This is the design contract required before Phase 3 (SSE rebuild) starts, per the
-> perf-investigation plan's decision-gate rule. Written from direct reading of the current
-> implementation (`IMatchLiveEvents`, `MatchLiveEvents`, `SnapshotChannel<T>`, `JsonMergePatch`,
-> `LiveSseRoutes`, `MatchMembershipService`'s publish methods, `TeardownMatch`), not from the
-> investigation's earlier secondhand notes — several details below correct or sharpen those
-> notes against the actual code.
+> Status: **Accepted.** Approved 2026-09-01 (user decision on every open sub-decision below,
+> including the subscriber-registry lifecycle design). Implementation follows this ADR.
 
 ## Problem
 
@@ -119,23 +114,57 @@ inherited from the earlier investigation notes:
 > registration must be removed again (or teardown will try to complete a writer whose reader is
 > already gone); on `TeardownMatch`, that collection is iterated and every writer completed. This
 > also means concurrent add/remove/iterate on that registry needs its own synchronization
-> discipline decided here, not discovered mid-implementation. This is an **open decision, not
-> yet settled** — two candidates, neither picked:
-> - a dedicated concurrent collection (e.g. `ConcurrentDictionary`) owned by the match, decoupled
->   from `MatchSession.Lock` entirely — no lock coupling, but is itself a new piece of shared
->   mutable state whose own correctness (register/deregister races, iterate-while-mutating during
->   teardown) has to be got right independently;
-> - registration under `MatchSession.Lock` — reuses a synchronization primitive already proven
->   correct for this match's other state, but reintroduces a lock-hold cost (subscribe/unsubscribe
->   under the lock) this ADR is otherwise trying to remove, and couples subscriber churn to the
->   same lock every packet handler contends on.
->
-> The Trade-offs section below previously undersold this as "small, contained" — it is a new
-> subsystem-owned mechanism, not a one-line addition to `TeardownMatch`, and which of the two
-> options above is chosen belongs in this ADR's Decision, not left implicit.
->
-> A subscriber that disconnects (its own request `CancellationToken` fires) must deregister itself
-> from that same registry — never affects other subscribers of the same match.
+> discipline decided here, not discovered mid-implementation. The Trade-offs section below
+> previously undersold this as "small, contained" — it is a new subsystem-owned mechanism, not a
+> one-line addition to `TeardownMatch`.
+
+**Decided mechanism: `SseSubscriberRegistry`, a plain `ConcurrentDictionary`-backed registry is
+*not sufficient on its own* — a bare concurrent collection still allows a subscribe-after-teardown
+race:**
+
+```text
+T1: TeardownMatch()                    T2: Subscribe()
+        │                                       │
+        ▼                                       │
+   read registry                                │
+        │                                       │
+        ▼                                       │
+   sees {A, B}                                  │
+        │                                       ▼
+        ▼                              Add(C) — registry not yet marked closed
+   complete A, B
+        │
+        ▼
+   "teardown done"                     C is now a subscriber the match
+                                        thinks is torn down — leaks exactly
+                                        like the original bug.
+```
+
+The registry must instead carry an explicit **lifecycle state** (`Open` → `Closed`), with
+`Subscribe` and the `Open`→`Closed` transition synchronized against each other so the two can
+never interleave the way the race above shows:
+
+- **`Subscribe(channel)`**: under the registry's own synchronization, check state.
+  - If `Closed`: do **not** register — complete the channel immediately (the match is already
+    gone; the caller observes end-of-stream right away instead of hanging).
+  - If `Open`: add the channel to the live set.
+- **`CompleteAll()`** (called once, from `TeardownMatch`): under the same synchronization,
+  transition `Open` → `Closed`, atomically snapshot the current subscriber set, clear it, then
+  release the synchronization *before* completing each subscriber (completing a channel should
+  not itself run under the registry's own lock — keep that section as short as an enqueue/dequeue,
+  not proportional to subscriber count).
+- The synchronization primitive for the state+collection pair can be a small dedicated lock (a
+  plain object/`SemaphoreSlim` guarding just this registry, not `MatchSession.Lock` — no coupling
+  to packet-handler contention) or an equivalent atomic-CAS-based construction; the requirement is
+  the state check and the collection mutation happen as one atomic step, not two, for both
+  `Subscribe` and `CompleteAll`.
+- A subscriber that disconnects (its own request `CancellationToken` fires) removes itself from
+  the live set the same way — under the same synchronization, a no-op if the registry is already
+  `Closed` (its entry was already swept by `CompleteAll`).
+
+This is the actual decided design — not "any concurrent collection," but this specific
+atomic-lifecycle-transition shape, since a bare `ConcurrentDictionary` alone (thread-safe per
+individual operation, not across the read-then-complete sequence) still permits the race above.
 
 ### Slow consumer / backpressure
 
@@ -167,19 +196,10 @@ inherited from the earlier investigation notes:
 | per-slot `score` sub-event | Event | No |
 | per-slot `input` sub-event | Event (high-frequency) | No drop *of the frame boundary*, but this is the stream most likely to need its own bound/rate discussion in the implementation plan given its volume |
 
-> **Correction found on review:** "no drop" + "bounded" + "size left to the implementation plan"
-> cannot all hold simultaneously for `score`/`input` — a bounded channel that never drops is a
-> contradiction the moment the producer outpaces the consumer, which `input` (published at
-> gameplay tick rate by `MatchScoreUpdateHandler`) is exactly the case designed to stress. This
-> ADR must pick one of the two the Slow-consumer section already offers for event streams, not
-> leave both open for these two specifically:
-> - drop-oldest + an explicit gap marker (accepts loss, makes it visible), or
-> - stay unbounded for these two streams only (accepts the unbounded-growth risk already flagged
->   as today's failure mode in Trade-offs, scoped to just `score`/`input`).
->
-> Left to the implementation plan only as "which bound," not as "whether it drops" — the
-> drop-vs-never-drop choice is a client-observable behavior change under the Constraints section
-> and belongs in this ADR's Decision.
+> **Decided:** `score`/`input` are bounded, `DropOldest`, with an explicit gap marker on loss —
+> same treatment as `chat`/match events, not left unbounded. The specific bound (capacity) is
+> still left to the implementation plan, informed by the SSE benchmark (see Measurements); only
+> "whether it drops" was the open question here, and it's resolved: it drops, visibly.
 
 A state-oriented stream only needs the client to converge on the current truth; an
 intermediate state a slow client never saw is not a defect once the next state supersedes it —
@@ -215,12 +235,8 @@ changed to match a doc that was never accurate. (If the actual implementation pl
 this recommendation, that disagreement should be resolved here, before code, not discovered again
 during the rebuild.)
 
-> **Assumption to confirm, not verified here:** the recommendation above rests entirely on "no
-> current stream has viewer-dependent content." That was checked against the 9 streams' current
-> payload shapes, not against any planned or requested feature (e.g. a referee-only view, a
-> spectator-restricted view). If any near-term requirement needs a subscriber-specific view on a
-> channel that today broadcasts identically to everyone, this recommendation does not hold for
-> that channel and should be revisited before, not after, implementation commits to shared-diff.
+> **Confirmed:** no near-term requirement needs a per-viewer view on any of the 9 streams —
+> shared-diff proceeds as recommended.
 
 ### Publish never under the match lock
 
@@ -248,18 +264,14 @@ write itself must not require holding it.
 
 ### Event gap marker — wire format (open decision)
 
-The Slow-consumer section above requires an explicit gap marker when an event stream's bound is
-exceeded, but does not fix its shape — that is itself a client-visible protocol decision, not an
-implementation detail, and is not made here. Two directions, neither picked:
-- a JSON payload on the existing event type carrying a marker field, e.g.
-  `{"type":"gap","dropped":12}`;
-- a distinct SSE event type (a separate `event:` line) the client can switch on without parsing
-  every payload to check for a marker field.
-
-Whichever is chosen must be documented as part of that stream's wire contract (`sse.md` and any
-OpenAPI/schema description of the stream) before Phase 3 ships it, the same way any other
-client-visible response shape is documented — this is a protocol addition, not an internal
-detail to decide silently during implementation.
+**Decided: a distinct SSE event type** — a separate `event:` line (e.g. `event: gap`) the client
+switches on, rather than a marker field on the existing payload shape. The client does not need
+to inspect every payload's contents to detect a gap; it only needs to branch on the SSE `event:`
+field it already reads to route the frame. This must be documented as part of each event
+stream's wire contract (`sse.md` and any OpenAPI/schema description of the stream) before
+Phase 3 ships it, the same way any other client-visible response shape is documented — the exact
+payload the `gap` event carries (e.g. a count of dropped items) is an implementation detail, not
+re-opened here.
 
 ### `slots` stream completeness
 
@@ -279,12 +291,8 @@ independent, low-risk fix (a null-check in `DiffObjects`'s return, and a null-ch
 decision in this ADR — it can land as its own commit ahead of, or independent from, the rest of
 Phase 3, since it changes only when a patch is sent, never what it contains when one is.
 
-> **Note found on review:** "when it's sent" is itself client-observable under the Constraints
-> section, not purely internal — a client using `{}` arrival as a liveness/keepalive signal (there
-> is no other heartbeat on these streams today) would see event frequency drop under this fix.
-> Confirm no known client relies on that before landing it as a no-behavior-change commit; if one
-> might, this needs its own explicit callout as a breaking change rather than the "independent,
-> low-risk" framing above.
+> **Confirmed:** no known client uses `{}` arrival as a liveness/keepalive signal. Safe to land as
+> a no-behavior-change fix, no breaking-change callout needed.
 
 ### DTO alignment
 
@@ -310,27 +318,23 @@ proportional to subscriber count and match size, with no compensating benefit.
 
 ## Decision
 
-**Not yet made** — submitted for review. The author's recommendations, to be confirmed or
-redirected before implementation:
-1. Per-match owned channel hub; `TeardownMatch` completes every owned channel. **Open:**
-   subscriber-registry concurrency model (dedicated concurrent collection vs. `MatchSession.Lock`
-   — see Ownership).
-2. Bounded channels everywhere, `DropOldest` for state streams. For `score`/`input`: **open**
-   choice between drop-oldest+gap-marker and staying unbounded (see the coalescing table's
-   correction) — and if gap markers are used anywhere, their wire format is **open** (see Event
-   gap marker above).
+**Decided**, every prior open item resolved:
+1. Per-match owned channel hub; `TeardownMatch` completes every owned channel via
+   `SseSubscriberRegistry`'s atomic `Open`→`Closed` lifecycle transition (see Ownership) —
+   not a bare concurrent collection.
+2. Bounded channels everywhere, `DropOldest` for state streams. `score`/`input`: bounded,
+   `DropOldest`, explicit gap marker (a distinct SSE `event:` type — see Event gap marker) on
+   loss, same as `chat`/match events — never left unbounded.
 3. Keep the shared-diff model; correct `sse.md` to describe it accurately instead of rebuilding
-   the code to match an inaccurate doc. **Assumption to confirm:** no near-term requirement needs
-   a per-viewer view on any of the 9 streams (see Per-connection state vs. global diff).
+   the code to match an inaccurate doc. Confirmed: no near-term per-viewer requirement.
 4. Publish outside the match lock once channels are per-match (which alone removes the
    O(global subscribers) cost currently inflating lock hold time) — and snapshot *building*
    (`BuildMain`/`BuildSettings`), not only publish, moves out of the lock (see Publish never
    under the match lock).
 5. Unify slot-arrangement publishing so `slots` and per-slot `slot` always fire together,
    packet-driven or HTTP-driven.
-6. Fix `{}` spam independently — **needs confirmation first**: no known client uses `{}` arrival
-   as a liveness signal (see the note under `{}` spam); otherwise this is a breaking change, not
-   a low-risk independent fix.
+6. Fix `{}` spam. Confirmed: no known client uses `{}` arrival as a liveness signal — no
+   breaking-change callout needed.
 
 ## Trade-offs
 

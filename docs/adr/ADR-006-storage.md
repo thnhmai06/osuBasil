@@ -1,6 +1,7 @@
 # ADR-006 — Storage
 
-> Status: **Accepted (partial).** Not a decision gate. Phase 5 of the perf-investigation plan is
+> Status: **Accepted (partial).** Retry contract for `PutAsync` decided 2026-09-01 (see Decision).
+> Not a decision gate. Phase 5 of the perf-investigation plan is
 > explicitly secondary: "storage rewrite is not a prerequisite for core concurrency scalability
 > unless profiling shows it contributes meaningfully to the capacity envelope" — that profiling
 > has not been run this session (Phase 6 is where re-profiling happens, and even there only for
@@ -68,15 +69,13 @@ torn one.
 > replacement" as the requirement, that should be raised as its own decision, not inferred from
 > this wording.
 
-> **Open decision found on review — retry contract for the writer-side exception:** the Windows
-> sharing-violation caveat above establishes that `PutAsync` can throw. What happens next is not
-> decided by this ADR and should not be silently defaulted: does `PutAsync` retry internally
-> (how many attempts, what backoff), does it propagate the exception and leave retry to the
-> caller (today's actual behavior, by omission rather than by decision), or does it log and
-> swallow (accepting a missed cache write as a non-fatal miss, since the cache is a
-> speed-up, not a source of truth)? This ADR is marked Accepted for the atomic-write mechanism
-> itself, but this specific question — the behavior contract for a failed write — needs an
-> explicit answer before being treated as settled.
+> **Decided — retry contract for the writer-side exception:** `PutAsync` retries internally, a
+> small bounded number of attempts with a short backoff, before letting the exception propagate.
+> This covers the narrow Windows sharing-violation race without pushing a retry decision onto
+> every caller — the cache is a speed-up, not a source of truth, so absorbing a transient
+> collision internally is appropriate; a failure that persists past the retry budget still
+> propagates rather than being silently swallowed, so a real, non-transient problem (disk full,
+> permissions) is still observable to the caller.
 
 ## Open items (confirmed by code reading, not implemented this session)
 

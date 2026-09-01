@@ -1,9 +1,7 @@
 # ADR-003 — Match state persistence ordering
 
-> Status: **Proposed — pending review.** No production code in this ADR's scope has been
-> changed. Written as part of the 2026 performance/correctness overhaul
-> (`chore/perf-investigation`), gated per that plan's rule 4 (decision gates need an approved
-> ADR before code).
+> Status: **Accepted.** Approved 2026-09-01 (user decision on every open sub-decision below).
+> Gated per the plan's rule 4 — implementation follows this ADR.
 
 ## Problem
 
@@ -122,36 +120,39 @@ answer this ADR's actual question.
 
 ## Decision
 
-**Not yet made.** This ADR is submitted for review before any implementation. The author's
-recommendation, given the constraints above, is Option A (per-match ordered outbox) — it gives
-FIFO ordering for free per match, keeps the durability failure mode explicit (a full queue is a
-visible signal, not a silent drop), and matches the "smallest change that satisfies the
-guarantees" bar without pushing ordering logic into SQL (Option B) or leaving the root cause
-unaddressed (Option C). This is a recommendation, not a decision — reviewer to confirm or
-redirect before code changes.
+**Option A (per-match ordered outbox), with every sub-decision resolved as follows:**
 
-Option A is a direction, not a finished solution — the following are explicit open
-sub-decisions, each of which changes what gets implemented. None are picked here:
+1. **A1** — round-*start* (`CreateRoundAsync`) stays synchronous, in-lock, exactly as today.
+   Only round-*end* (`SetRoundEndedAsync`, both the normal-completion and `!mp abort` call
+   sites) moves into the outbox. This leaves the round-start call site's lock-hold cost
+   unaddressed by this ADR — accepted, since round-start is one of two writes and the simpler
+   mechanism (no parallel id-allocation source) was preferred over A2's added complexity.
+2. **Backpressure**: reject. If a match's outbox is full when `SetRoundEndedAsync` would
+   enqueue, the enqueue fails immediately and the triggering call site (`MatchCompleteHandler`,
+   `MatchControlService.AbortAsync`) surfaces this as an error to its own caller rather than
+   blocking the lock-held section or silently dropping the write. A full queue is expected to be
+   an anomaly (round-end frequency is low), not a normal operating condition.
+3. **Teardown drain**: `TeardownMatch` blocks until the match's outbox is empty before
+   discarding the match's in-memory state, guaranteeing the last round's end is never lost to a
+   teardown race.
+4. **Failure semantics**: bounded retry with backoff on a write that ultimately fails (not a
+   transient busy-retry, an actual failure); once retries are exhausted, the failure is surfaced
+   as a known, visible gap rather than retried indefinitely or silently dropped.
+5. **Consumer lifecycle**: one shared consumer drains every match's queue in turn, matching
+   SQLite's own single-writer reality — avoids one background task per match.
 
-1. **A1 vs A2** (see the caveat under Alternative A above) — does round-*start* stay
-   synchronous (A1), or does it move into the outbox behind a pre-allocated round id (A2)?
-2. **Backpressure**: when a match's outbox queue is full, does the enqueue call in the lock-held
-   section block (waiting for the consumer to drain — reintroduces the stall this ADR exists to
-   remove), drop the oldest queued write (risks the same silent-loss failure the Constraints
-   section forbids), or reject/error the triggering operation outright?
-3. **Teardown drain**: does `TeardownMatch`/`CloseAsync` block waiting for the outbox to fully
-   drain before discarding the match's in-memory state (guarantees the last round's end
-   persists, but adds a wait to match teardown), or does it hand off remaining items to some
-   other completion path?
-4. **Failure semantics**: when a queued write ultimately fails (SQLite error, not just a busy
-   retry), is it retried (how many times, what backoff), or surfaced as a known gap in the match
-   report (and if so, how — a flag on the round row, a logged event, something client-visible)?
-5. **Consumer lifecycle**: one background consumer per match, or one shared consumer draining
-   many matches' queues in turn? Who starts it, who stops it, and does its own failure (an
-   unhandled exception mid-drain) take down just that match's persistence or something wider?
+## Implementation notes (non-normative, for the implementation)
 
-These are as consequential as the A1/A2 choice — the implementation plan should not silently
-default any of them.
+- Only `SetRoundEndedAsync` sites go through the outbox (2 call sites: `MatchCompleteHandler`,
+  `MatchControlService.AbortAsync`). `CreateRoundAsync`/`StartAsync` is untouched by this ADR.
+- The shared consumer must preserve **per-match FIFO order** even though it drains many matches'
+  queues — a round-end for match A must never be reordered relative to another round-end queued
+  earlier for match A, though interleaving with match B's items is fine.
+- "Surfaced as a known gap" needs a concrete shape decided during implementation (not fixed
+  here): a nullable/flag column on the round row, a logged error with enough context to
+  reconstruct it manually, or something client-visible in the match report — whichever is
+  chosen must be covered by a regression test asserting the gap is actually observable, not just
+  logged and forgotten.
 
 ## Trade-offs
 
