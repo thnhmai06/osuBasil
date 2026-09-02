@@ -74,9 +74,13 @@ public class FileSystemResponseCacheTests : IDisposable
 		Directory.CreateDirectory(Path.Combine(entryDir, "1.jpg"));
 
 		// Windows throws UnauthorizedAccessException for this specific case (destination is a
-		// directory); the sharing-violation case in the ADR-006 caveat is an IOException. Either
-		// way it's an I/O-layer failure, and the temp-file cleanup applies regardless of which.
-		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _cache.PutAsync("thumbs", "1.jpg", [1, 2, 3]));
+		// directory); Linux throws IOException ("Is a directory") for the same case. The
+		// sharing-violation case in the ADR-006 caveat is also an IOException on every platform.
+		// Either way it's an I/O-layer failure -- production code (PutAsync's catch clauses) treats
+		// both identically, and the temp-file cleanup applies regardless of which was thrown.
+		var exception = await Record.ExceptionAsync(() => _cache.PutAsync("thumbs", "1.jpg", [1, 2, 3]));
+		Assert.True(exception is IOException or UnauthorizedAccessException,
+			$"Expected IOException or UnauthorizedAccessException, got {exception?.GetType()}");
 
 		Assert.DoesNotContain(Directory.GetFiles(entryDir), f => f.EndsWith(".tmp", StringComparison.Ordinal));
 	}
