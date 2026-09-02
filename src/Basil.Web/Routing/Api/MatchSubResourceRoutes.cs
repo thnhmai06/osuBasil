@@ -447,36 +447,44 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("userId 21 is required and must be online."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/refs", async (int matchId, int? userId, IMatchRegistry matchRegistry,
-				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
-				IUserRepository users, MatchControlService matchControl,
+		group.MapDelete("/matches/{matchId:int}/refs", async (int matchId, [FromBody] RemoveRefereesRequest body,
+				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
+				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
-
-				if (userId is not { } uid) return Results.BadRequest(new ErrorResponse("userId is required."));
-				var target = (UserSession?)gameRegistry.GetByUserId(uid) ?? ircRegistry.GetByUserId(uid);
-				if (target is null)
-					return Results.BadRequest(new ErrorResponse("userId is required and must be online."));
+				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var result = await matchControl.RemoveOneRefereeAsync(null, null, match, target, cancellationToken);
-					return result switch
+					var results = new List<RefereeRemovalResult>();
+					foreach (var userId in body.UserIds)
 					{
-						MatchControlService.RemoveRefereeResult.WouldLeaveEmpty =>
-							Results.Conflict(new ErrorResponse("Refusing to leave the match with no referees.")),
-						MatchControlService.RemoveRefereeResult.NotAReferee =>
-							Results.BadRequest(new ErrorResponse("userId is not a referee of this match.")),
-						MatchControlService.RemoveRefereeResult.TargetIsCreator =>
-							Results.Conflict(
-								new ErrorResponse("Refusing to remove the match's creator from referees.")),
-						_ => Results.Json(await MatchLiveSnapshotBuilder.BuildRefs(match, gameRegistry, ircRegistry,
-							users,
-							cancellationToken))
-					};
+						var target = (UserSession?)gameRegistry.GetByUserId(userId) ?? ircRegistry.GetByUserId(userId);
+						if (target is null)
+						{
+							results.Add(new RefereeRemovalResult(userId, false, "Not online with the osu! client."));
+							continue;
+						}
+
+						var result =
+							await matchControl.RemoveOneRefereeAsync(null, null, match, target, cancellationToken);
+						results.Add(result switch
+						{
+							MatchControlService.RemoveRefereeResult.Ok => new RefereeRemovalResult(userId, true, null),
+							MatchControlService.RemoveRefereeResult.WouldLeaveEmpty =>
+								new RefereeRemovalResult(userId, false,
+									"Refusing to leave the match with no referees."),
+							MatchControlService.RemoveRefereeResult.TargetIsCreator =>
+								new RefereeRemovalResult(userId, false,
+									"Refusing to remove the match's creator from referees."),
+							_ => new RefereeRemovalResult(userId, false, "userId is not a referee of this match.")
+						});
+					}
+
+					return Results.Json(results);
 				}
 				finally
 				{
@@ -486,20 +494,21 @@ internal static class MatchSubResourceRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("removeMatchReferee")
-			.WithSummary("Remove a match referee.")
+			.WithSummary("Remove match referees.")
 			.WithDescription("""
-			                 Removes the referee identified by the `userId` query param and returns the updated list.
+			                 Removes `{ userIds: int[] }` from the match's referees, returning one `{ userId, ok, error }` result per target. A target must be online to be removed.
 
-			                 Returns `400 Bad Request` if `userId` isn't a referee or isn't online, `409 Conflict` if this would leave the match with no referees or `userId` is the match's creator, or `404 Not Found` if the match isn't currently live.
+			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if `userIds` is empty, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Referees")
-			.Produces<MatchRefereesView>()
+			.Produces<IReadOnlyList<RefereeRemovalResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchRefereesView([new UserBrief(13, "Erin", Country.Ie)]))
-			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not a referee of this match."))
-			.WithExample(StatusCodes.Status409Conflict,
-				new ErrorResponse("Refusing to leave the match with no referees."))
+			.WithExample(StatusCodes.Status200OK, new List<RefereeRemovalResult>
+			{
+				new(13, true, null),
+				new(21, false, "Refusing to leave the match with no referees.")
+			})
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userIds is required."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -648,24 +657,27 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 99 is not registered."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, int? userId, IMatchRegistry matchRegistry,
-				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
-				IUserRepository users, MatchControlService matchControl,
+		group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, [FromBody] RemoveBansRequest body,
+				IMatchRegistry matchRegistry, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
-
-				if (userId is not { } uid) return Results.BadRequest(new ErrorResponse("userId is required."));
+				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var result = await matchControl.UnbanAsync(match, uid, cancellationToken);
-					return result == MatchControlService.UnbanResult.NotBanned
-						? Results.BadRequest(new ErrorResponse("userId is not banned from this match."))
-						: Results.Json(await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
-							cancellationToken));
+					var results = new List<BanRemovalResult>();
+					foreach (var userId in body.UserIds)
+					{
+						var result = await matchControl.UnbanAsync(match, userId, cancellationToken);
+						results.Add(result == MatchControlService.UnbanResult.NotBanned
+							? new BanRemovalResult(userId, false, "userId is not banned from this match.")
+							: new BanRemovalResult(userId, true, null));
+					}
+
+					return Results.Json(results);
 				}
 				finally
 				{
@@ -675,17 +687,21 @@ internal static class MatchSubResourceRoutes
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("removeMatchBan")
-			.WithSummary("Remove a match ban.")
+			.WithSummary("Remove match bans.")
 			.WithDescription("""
-			                 Unbans the player identified by the `userId` query param and returns the updated list.
+			                 Unbans `{ userIds: int[] }`, returning one `{ userId, ok, error }` result per target. Ids need not be online.
 
-			                 Returns `400 Bad Request` if `userId` isn't banned from this match, or `404 Not Found` if the match isn't currently live.
+			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if `userIds` is empty, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Bans")
-			.Produces<MatchBansView>()
+			.Produces<IReadOnlyList<BanRemovalResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new MatchBansView([]))
-			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is not banned from this match."))
+			.WithExample(StatusCodes.Status200OK, new List<BanRemovalResult>
+			{
+				new(21, true, null),
+				new(22, false, "userId is not banned from this match.")
+			})
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userIds is required."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -1298,11 +1314,23 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Request body for `PATCH /matches/{matchId}/refs`: adds to the referee list.</summary>
 	public sealed record UpdateRefereesRequest(IReadOnlyList<int> UserIds);
 
+	/// <summary>Request body for `DELETE /matches/{matchId}/refs`: the targets to remove.</summary>
+	public sealed record RemoveRefereesRequest(IReadOnlyList<int> UserIds);
+
+	/// <summary>Per-target outcome returned by `DELETE /matches/{matchId}/refs`.</summary>
+	public sealed record RefereeRemovalResult(int UserId, bool Ok, string? Error);
+
 	/// <summary>Request body for `PUT /matches/{matchId}/ban`: replaces the whole ban list.</summary>
 	public sealed record ReplaceBansRequest(IReadOnlyList<int> UserIds);
 
 	/// <summary>Request body for `PATCH /matches/{matchId}/ban`: adds to the ban list.</summary>
 	public sealed record UpdateBansRequest(IReadOnlyList<int> UserIds);
+
+	/// <summary>Request body for `DELETE /matches/{matchId}/ban`: the targets to unban.</summary>
+	public sealed record RemoveBansRequest(IReadOnlyList<int> UserIds);
+
+	/// <summary>Per-target outcome returned by `DELETE /matches/{matchId}/ban`.</summary>
+	public sealed record BanRemovalResult(int UserId, bool Ok, string? Error);
 
 	/// <summary>Request body for `DELETE /matches/{matchId}/slots`: kicks the seated player.</summary>
 	public sealed record KickPlayerRequest(int UserId);

@@ -222,10 +222,15 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		putRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
 		(await client.SendAsync(putRequest)).EnsureSuccessStatusCode();
 
-		var deleteResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/refs?userId={referee.Id}"));
+		var deleteRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/refs");
+		deleteRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var deleteResponse = await client.SendAsync(deleteRequest);
 
-		Assert.Equal(HttpStatusCode.Conflict, deleteResponse.StatusCode);
+		deleteResponse.EnsureSuccessStatusCode();
+		var results = await deleteResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.False(result.GetProperty("ok").GetBoolean());
+		Assert.Equal("Refusing to leave the match with no referees.", result.GetProperty("error").GetString());
 	}
 
 	[Fact]
@@ -291,13 +296,19 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Contains(bannedView.GetProperty("data").GetProperty("bannedUsers").EnumerateArray(),
 			u => u.GetProperty("id").GetInt32() == 555);
 
-		var unbanResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban?userId=555"));
+		var unbanRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban");
+		unbanRequest.Content = JsonContent.Create(new { userIds = new[] { 555 } });
+		var unbanResponse = await client.SendAsync(unbanRequest);
 		unbanResponse.EnsureSuccessStatusCode();
+		var unbanResults = await unbanResponse.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.True(unbanResults.GetProperty("data").EnumerateArray().Single().GetProperty("ok").GetBoolean());
 
-		var unbanUnknownResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban?userId=555"));
-		Assert.Equal(HttpStatusCode.BadRequest, unbanUnknownResponse.StatusCode);
+		var unbanAgainRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban");
+		unbanAgainRequest.Content = JsonContent.Create(new { userIds = new[] { 555 } });
+		var unbanAgainResponse = await client.SendAsync(unbanAgainRequest);
+		unbanAgainResponse.EnsureSuccessStatusCode();
+		var unbanAgainResults = await unbanAgainResponse.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.False(unbanAgainResults.GetProperty("data").EnumerateArray().Single().GetProperty("ok").GetBoolean());
 	}
 
 	// ---- /kick ----
