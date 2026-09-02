@@ -173,7 +173,7 @@ public sealed class MatchControlService(
 	{
 		match.IsPrivate = isPrivate;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} IsPrivate={IsPrivate}", match.DbId, isPrivate);
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 
 	/// <summary>Applies a new room size, clamped to the 1 through 16 range, and broadcasts the resulting state.</summary>
@@ -185,7 +185,7 @@ public sealed class MatchControlService(
 		size = Math.Clamp(size, 1, 16);
 		ApplySize(match, size);
 		logger.LogDebug("Room settings changed: MatchId={MatchId} Size={Size}", match.DbId, size);
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 	}
 
@@ -229,7 +229,7 @@ public sealed class MatchControlService(
 
 		destSlot.CopyFrom(sourceSlot);
 		sourceSlot.Reset();
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		return MoveResult.Ok;
 	}
 
@@ -245,7 +245,8 @@ public sealed class MatchControlService(
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 			match.DbId, prevHostId, target.Id);
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		var version = match.NextStateVersion();
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 
 		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -253,7 +254,7 @@ public sealed class MatchControlService(
 			prevHostId, prevHostName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishHostAsync(match, cancellationToken);
+		await matchMembership.PublishHostAsync(match, version, cancellationToken);
 	}
 
 	/// <summary>
@@ -265,8 +266,9 @@ public sealed class MatchControlService(
 	public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
 		match.HostId = MatchSession.NoHostId;
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
-		await matchMembership.PublishHostAsync(match, cancellationToken);
+		var version = match.NextStateVersion();
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		await matchMembership.PublishHostAsync(match, version, cancellationToken);
 	}
 
 	/// <summary>
@@ -282,7 +284,7 @@ public sealed class MatchControlService(
 
 		match.Name = name;
 		matchMembership.SyncChannelTopic(match);
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 
 	/// <summary>Sets the room password and broadcasts the resulting state.</summary>
@@ -294,7 +296,7 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		match.Password = password;
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 
 	/// <summary>Sends a match invite to another userSession and records them as invited.</summary>
@@ -335,7 +337,7 @@ public sealed class MatchControlService(
 			actorId, actorName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishRefsAsync(match, cancellationToken);
+		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
 		return AddRefereeResult.Ok;
 	}
 
@@ -390,7 +392,7 @@ public sealed class MatchControlService(
 				null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 
-		await matchMembership.PublishRefsAsync(match, cancellationToken);
+		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
 		return SetRefereesResult.Ok;
 	}
 
@@ -415,7 +417,7 @@ public sealed class MatchControlService(
 				null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 
-		await matchMembership.PublishRefsAsync(match, cancellationToken);
+		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
 	}
 
 	/// <summary>Revokes referee status from a single userSession and records the removal as a match event.</summary>
@@ -456,7 +458,7 @@ public sealed class MatchControlService(
 			actorId, actorName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishRefsAsync(match, cancellationToken);
+		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
 		return RemoveRefereeResult.Ok;
 	}
 
@@ -499,7 +501,7 @@ public sealed class MatchControlService(
 		slot.Team = team;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} UserId={UserId} Team={Team}",
 			match.DbId, target.Id, team);
-		await matchMembership.EnqueueStateAsync(match, false, cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), false, cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 		return TeamResult.Ok;
 	}
@@ -550,7 +552,7 @@ public sealed class MatchControlService(
 			"Room settings changed: MatchId={MatchId} TeamType={TeamType} WinCondition={WinCondition} Size={Size}",
 			match.DbId, teamType, winCondition, size);
 
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 	}
 
@@ -575,7 +577,7 @@ public sealed class MatchControlService(
 		match.MapName = beatmap.FullName;
 		match.Mode = beatmap.Difficulty.Mode;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, beatmap.Id);
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
 		return (SetMapResult.Ok, beatmap);
 	}
@@ -602,7 +604,7 @@ public sealed class MatchControlService(
 
 		logger.LogDebug("Room settings changed: MatchId={MatchId} Mods={Mods} Freemod={Freemod}",
 			match.DbId, mods, match.Freemods);
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 
 	/// <summary>Switches the room into freemod mode, stripping speed-changing mods from every occupied slot.</summary>
@@ -727,7 +729,7 @@ public sealed class MatchControlService(
 		match.PendingTimerIsAutoStart = autoStart;
 		match.TimerStartedAt = DateTimeOffset.UtcNow;
 		match.TimerTotalSeconds = totalSeconds;
-		matchMembership.PublishTimer(match);
+		matchMembership.PublishTimer(match, match.NextStateVersion());
 		logger.LogDebug("Countdown queued: MatchId={MatchId} Seconds={Seconds} AutoStart={AutoStart}",
 			match.DbId, totalSeconds, autoStart);
 
@@ -772,7 +774,7 @@ public sealed class MatchControlService(
 				Announce(match, autoStart
 					? $"Match starts in {checkpoint} seconds"
 					: $"{checkpoint} seconds remaining");
-				matchMembership.PublishTimer(match);
+				matchMembership.PublishTimer(match, match.NextStateVersion());
 				remaining = checkpoint;
 			}
 
@@ -797,7 +799,7 @@ public sealed class MatchControlService(
 					Announce(match, "Countdown finished");
 				}
 
-				matchMembership.PublishTimer(match);
+				matchMembership.PublishTimer(match, match.NextStateVersion());
 			}
 			finally
 			{
@@ -859,7 +861,7 @@ public sealed class MatchControlService(
 		match.TimerStartedAt = null;
 		match.TimerTotalSeconds = null;
 		logger.LogDebug("Timer aborted: MatchId={MatchId}", match.DbId);
-		matchMembership.PublishTimer(match);
+		matchMembership.PublishTimer(match, match.NextStateVersion());
 		return AbortTimerResult.Ok;
 	}
 
@@ -898,7 +900,7 @@ public sealed class MatchControlService(
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 		matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
 		matchMembership.AnnounceToRoomAndReferees(match, "Match aborted.");
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		return AbortResult.Ok;
 	}
 
@@ -1005,7 +1007,7 @@ public sealed class MatchControlService(
 			actorId, actorName, targetUserId, targetName,
 			DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
-		await matchMembership.PublishBansAsync(match, cancellationToken);
+		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
 		return BanResult.Ok;
 	}
 
@@ -1024,7 +1026,7 @@ public sealed class MatchControlService(
 
 		match.RemoveBan(targetUserId);
 		logger.LogInformation("User unbanned: MatchId={MatchId} TargetId={TargetId}", match.DbId, targetUserId);
-		await matchMembership.PublishBansAsync(match, cancellationToken);
+		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
 		return UnbanResult.Ok;
 	}
 
@@ -1045,7 +1047,7 @@ public sealed class MatchControlService(
 		foreach (var id in toRemove) match.RemoveBan(id);
 		foreach (var id in toAdd) await AddBanAndKickIfSeated(match, id, cancellationToken);
 
-		await matchMembership.PublishBansAsync(match, cancellationToken);
+		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
 	}
 
 	/// <summary>Adds a batch of bans, kicking any newly banned players who are currently seated.</summary>
@@ -1062,7 +1064,7 @@ public sealed class MatchControlService(
 			await AddBanAndKickIfSeated(match, id, cancellationToken);
 		}
 
-		await matchMembership.PublishBansAsync(match, cancellationToken);
+		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
 	}
 
 	/// <summary>Adds a userSession to the banlist and kicks them from the match if they are currently seated.</summary>
@@ -1205,7 +1207,7 @@ public sealed class MatchControlService(
 		// Routes through the same call path every packet-driven slot mutation uses, so `slot` and
 		// `slots` (and main/settings) always fire together for this HTTP-driven path too (ADR-004) —
 		// previously this called PublishSlotsAsync alone, leaving the other channels silent.
-		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		return SetSlotsResult.Ok;
 	}
 

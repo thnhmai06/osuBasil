@@ -27,6 +27,7 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
 		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			// Re-checked under the lock: host status can only change under this same lock, so a
@@ -34,11 +35,13 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
 			if (gameSession.Id != match.HostId) return;
 
 			match.Password = matchData.Password;
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

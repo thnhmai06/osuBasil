@@ -1,7 +1,8 @@
 # ADR-004 — SSE subsystem design contract
 
-> Status: **Accepted, partially implemented.** Approved 2026-09-01 (user decision on every open
-> sub-decision below, including the subscriber-registry lifecycle design).
+> Status: **Accepted, implemented (4a and 4b).** Approved 2026-09-01 (user decision on every open
+> sub-decision below, including the subscriber-registry lifecycle design); 4b's design approved
+> 2026-09-02 and implemented the same session.
 >
 > **Implemented this session ("4a"):** `SseSubscriberRegistry` + `MatchSession.SseSubscribers`,
 > `TeardownMatch` completion; `IMatchLiveEvents` rewritten to per-match-keyed subscribe/publish
@@ -20,17 +21,35 @@
 > registry lifecycle, and the `gap` event, replacing the now-inaccurate per-connection-diff
 > description.
 >
-> **Deferred as "4b"** (a separate, larger change — see the split rationale below): moving
-> `MatchLiveSnapshotBuilder.BuildMain`/`BuildSettings` (and the publish calls themselves) outside
-> `MatchSession.Lock`. Every state-mutating call site currently holds the lock across its whole
-> read-mutate-then-`EnqueueStateAsync` sequence (~20+ sites, the same breadth as the `d4158ec`
-> TOCTOU audit) — changing that calling convention is structurally different work from 4a's
-> containable, independently-testable pieces, and doing both in one pass would make a failure in
-> either hard to attribute. 4b needs its own commit, its own test pass, and its own
-> revert-and-fail verification per call-site class.
+> **Implemented this session ("4b"):** moved `MatchLiveSnapshotBuilder.BuildMain`/`BuildSettings`/
+> `BuildHost`/`BuildRefs`/`BuildBans` (each awaits a DB-bound user lookup) and their corresponding
+> `SnapshotChannel<T>.Publish`/packet-broadcast calls outside `MatchSession.Lock`, at every
+> "flat" call site — one that mutates and publishes in the same stack frame the lock was acquired
+> in, with nothing after the publish call still touching match state. Each such site now shrinks
+> its lock scope to just the mutation: acquire, mutate, `var version = match.NextStateVersion()`,
+> release, then call the (now lock-free) publish method with that version.
 >
-> **A concurrency hazard 4b must resolve before touching call sites, found in post-review (not yet
-> designed or implemented):** `SnapshotChannel<T>.Publish` is a read-diff-write sequence
+> **Explicitly NOT hoisted, and why** — these keep the pre-4b calling convention (mutate, still
+> holding the lock, publish before release), because the "flat call site" precondition above does
+> not hold for them:
+> - `MatchMembershipService.OccupySlot`/`LeaveAsync`: reached from at least four different
+>   lock-acquiring frames (`JoinMatchHandler`, `CreateAsync`, `MpCommandService.JoinAsync`,
+>   `MatchControlService.ForceInviteAsync`, plus whoever calls `LeaveAsync`), and each has a
+>   trailing `SyncEmptyRoomTimer` call that itself reads/mutates match state and must stay locked.
+>   Restructuring these to hoist their publish would mean changing their contract from "seat/part
+>   and broadcast" to "seat/part, return a version, caller broadcasts" at every one of those call
+>   sites — a materially different, larger change than 4b's approved scope.
+> - `MatchMembershipService.StartAsync`: already awaits a DB write (`CreateRoundAsync`) under the
+>   lock per ADR-003's decision to keep round-start synchronous, so hoisting just the trailing
+>   publish would not meaningfully reduce lock hold time.
+> - `MatchControlService.CountdownLoopAsync`'s final tick (the one `PublishTimer` call inside its
+>   own `match.Lock.WaitAsync`/`Release` block): the surrounding mutation there is the loop's own
+>   lock-owning frame, not a caller passing a version in — kept as-is since it is already minimal.
+>
+> A future pass could restructure Join/Leave's contract to also hoist their publish, but that is
+> its own larger, separately-scoped change, not a 4b gap to silently leave unmentioned.
+>
+> **A concurrency hazard 4b had to resolve before touching call sites:** `SnapshotChannel<T>.Publish` is a read-diff-write sequence
 > (`previous = Latest; patch = Diff(previous, current); Latest = current`) with no synchronization
 > of its own — today it is safe only because every call happens while holding `MatchSession.Lock`,
 > which serializes it implicitly. Simply moving the `BuildMain`/`BuildSettings` + `Publish` calls
@@ -47,9 +66,47 @@
 > holding `MatchSession.Lock` (at the moment the mutation completes, before releasing it), then
 > have `Publish` drop any call whose sequence is not newer than the last one it actually applied.
 > That preserves true mutation order even though the diff/broadcast step runs unlocked and
-> out-of-order relative to other threads' unlocked work. This is a design decision, not yet
-> reviewed or approved — the next implementer should write it up and get it checked before coding,
-> the same way the rest of this ADR's decisions were.
+> out-of-order relative to other threads' unlocked work.
+>
+> **4b design (approved 2026-09-02, implemented the same session):**
+>
+> 1. **Scope**: all five hoisted methods in one pass — `EnqueueStateAsync` (main/settings/slot/slots)
+>    and `PublishHostAsync`/`PublishRefsAsync`/`PublishBansAsync`, since `BuildHost`/`BuildRefs`/
+>    `BuildBans` each await the same offline-user repository lookup `BuildMain`/`BuildSettings` do —
+>    leaving them un-hoisted would leave the identical DB-await-under-lock problem in three places
+>    this pass could have closed. `PublishTimer` has no DB-bound build (`BuildTimer` reads only
+>    in-memory `match` fields) so it needs no hoist, but takes the same version parameter for a
+>    uniform call shape.
+> 2. **Sequence allocation**: one counter per match (`MatchSession.NextStateVersion()`), not one per
+>    channel. Every channel touched by a single mutation shares the same version, which is correct
+>    since they all snapshot the same instant; each channel/gate still tracks its own independently
+>    applied version, so unrelated streams progressing at different rates never block each other.
+> 3. **Stale-drop observability**: a new `Counter<long>` metric (`basil.match.publish.stale_dropped`,
+>    tagged `stream`) increments whenever a publish is dropped for being superseded. Not logged per
+>    occurrence — this is an expected, benign race outcome under load, not a bug — but the counter
+>    lets an operator see whether it is actually happening at any real rate.
+> 4. **Packet broadcast scope**: the bancho `UpdateMatch` packet broadcast (currently synchronous,
+>    inside the lock, no DB awaits) gets the same treatment as the SSE snapshots — hoisted outside
+>    the lock and gated by the same per-match sequence, via its own `SequenceGate` (`MatchSession`
+>    gains one for this specifically). Reasoning: the packet broadcast carries the identical
+>    out-of-order-delivery risk as the SSE main snapshot (a full-state broadcast reflecting a
+>    mutation), so leaving it inside the lock while everything else moves out would be an
+>    inconsistency, not a simplification — a caller could still observe an older `UpdateMatch`
+>    packet delivered after a newer one whenever a future change also hoists something upstream of
+>    it. Building the packet (`match.ToPacket()`) is cheap and unlocked reads are already the norm
+>    elsewhere in this design, so there is no performance reason to special-case it as "stays
+>    locked".
+>
+> **Mechanism**: a new `SequenceGate` (`Basil.Application/Services/SequenceGate.cs`) is a small
+> lock-free monotonic gate — `TryAdvance(long sequence)` records and accepts a sequence only if it
+> is newer than the last one accepted, via compare-and-swap; used standalone for the packet
+> broadcast (`MatchSession.PacketBroadcastGate`), and composed inside `SnapshotChannel<T>` (which
+> already needs a lock around its own diff-then-store step, so its gate check happens inside that
+> same lock rather than as a separate CAS). `MatchSession.NextStateVersion()` uses
+> `Interlocked.Increment` rather than a plain field increment: `CountdownLoopAsync`'s periodic
+> announcements allocate a version without holding the lock at all (by design — the loop never
+> holds the lock across a `Task.Delay`), so the allocation itself has to be race-free independent
+> of whether any particular caller holds the lock.
 
 ## Problem
 

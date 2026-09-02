@@ -30,6 +30,7 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
 		if (match is null) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			if (match.Freemods)
@@ -49,11 +50,13 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
 				match.Mods = mods;
 			}
 
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

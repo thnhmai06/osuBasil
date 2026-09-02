@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Backgrounds;
+using Basil.Application.Diagnostics;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -341,7 +342,10 @@ public sealed class MatchMembershipService(
 		if (!match.HasGameplayHost) match.HostId = userSession.Id;
 
 		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// Runs under whatever lock the caller (JoinMatchHandler, CreateAsync, MpCommandService) already
+		// holds rather than hoisted per ADR-004 4b: OccupySlot is reached from several different
+		// lock-owning frames, and SyncEmptyRoomTimer right after still needs the same lock held.
+		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		SyncEmptyRoomTimer(match);
 
 		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
@@ -400,7 +404,10 @@ public sealed class MatchMembershipService(
 			}
 		}
 
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// Runs under the caller's already-held lock, not hoisted (ADR-004 4b) — same reasoning as
+		// OccupySlot: LeaveAsync is reached from several different lock-owning frames, and
+		// SyncEmptyRoomTimer right after still needs that same lock held.
+		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		SyncEmptyRoomTimer(match);
 
 		userSession.Match = null;
@@ -582,7 +589,10 @@ public sealed class MatchMembershipService(
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
 		Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// Not hoisted (ADR-004 4b): the round-start write above already holds the lock through a DB
+		// await per ADR-003's decision to keep round-start synchronous, so shrinking just this tail
+		// call's lock scope would not meaningfully reduce hold time.
+		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
 	}
@@ -614,6 +624,8 @@ public sealed class MatchMembershipService(
 			IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
 	}
 
+	private static readonly KeyValuePair<string, object?> PacketStreamTag = new("stream", "packet");
+
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
 	/// <remarks>
 	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
@@ -624,78 +636,100 @@ public sealed class MatchMembershipService(
 	///     other. A channel whose <see cref="SnapshotChannel{T}.Publish" /> found nothing changed is
 	///     skipped rather than emitting a no-op patch.
 	/// </remarks>
+	/// <remarks>
+	///     Runs entirely without holding <see cref="MatchSession.Lock" /> (ADR-004 4b) — every build
+	///     and broadcast here is gated by <paramref name="version" /> instead, so a call superseded
+	///     by a newer mutation's is dropped rather than reverting live state to something stale. The
+	///     caller must allocate <paramref name="version" /> from <see cref="MatchSession.NextStateVersion" />
+	///     while still holding the lock, at the point the mutation it is reporting completed.
+	/// </remarks>
 	/// <param name="match">The match whose state to broadcast.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
 	/// <param name="cancellationToken">A token that cancels the snapshot builds.</param>
-	public async Task EnqueueStateAsync(MatchSession match, bool lobby = true,
+	public async Task EnqueueStateAsync(MatchSession match, long version, bool lobby = true,
 		CancellationToken cancellationToken = default)
 	{
-		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null)
-			channelMembership.BroadcastToMembers(channel,
-				ServerPacketWriter.UpdateMatch(match.ToPacket()));
+		if (match.PacketBroadcastGate.TryAdvance(version))
+		{
+			var channel = channelRegistry.GetByName(match.ChatChannelName);
+			if (channel is not null)
+				channelMembership.BroadcastToMembers(channel,
+					ServerPacketWriter.UpdateMatch(match.ToPacket()));
 
-		if (!match.IsPrivate)
-			BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
+			if (!match.IsPrivate)
+				BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
+		}
+		else
+		{
+			BasilMetrics.StalePublishDropped.Add(1, PacketStreamTag);
+		}
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		if (match.MainSnapshot.Publish(mainSnapshot) is { } mainDelta)
+		if (match.MainSnapshot.Publish(mainSnapshot, version) is { } mainDelta)
 			eventBus.PublishMain(match.DbId, mainDelta);
 
 		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		if (match.SettingsSnapshot.Publish(settings) is { } settingsDelta)
+		if (match.SettingsSnapshot.Publish(settings, version) is { } settingsDelta)
 			eventBus.PublishSettings(match.DbId, settingsDelta);
 
 		for (var i = 0; i < match.SlotSnapshots.Count; i++)
-			if (match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]) is { } slotDelta)
+			if (match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i], version) is { } slotDelta)
 				eventBus.PublishSlot(match.DbId, i, slotDelta);
 
 		// Reuses mainSnapshot.Slots (already resolved above) instead of a second occupant-lookup
 		// pass — MatchSlotsView wraps the exact same per-slot view list BuildSlots itself produces.
-		if (match.SlotsSnapshot.Publish(new MatchSlotsView(mainSnapshot.Slots)) is { } slotsDelta)
+		if (match.SlotsSnapshot.Publish(new MatchSlotsView(mainSnapshot.Slots), version) is { } slotsDelta)
 			eventBus.PublishSlots(match.DbId, slotsDelta);
 	}
 
 	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose host to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
-	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishHostAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		if (match.HostSnapshot.Publish(host) is { } delta)
+		if (match.HostSnapshot.Publish(host, version) is { } delta)
 			eventBus.PublishHost(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose referees to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
-	public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishRefsAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
 			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
-		if (match.RefsSnapshot.Publish(refs) is { } delta)
+		if (match.RefsSnapshot.Publish(refs, version) is { } delta)
 			eventBus.PublishRefs(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose banlist to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
-	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishBansAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		if (match.BansSnapshot.Publish(bans) is { } delta)
+		if (match.BansSnapshot.Publish(bans, version) is { } delta)
 			eventBus.PublishBans(match.DbId, delta);
 	}
 
 	/// <summary>Republishes the countdown timer snapshot channel.</summary>
 	/// <param name="match">The match whose timer to publish.</param>
-	public void PublishTimer(MatchSession match)
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	public void PublishTimer(MatchSession match, long version)
 	{
-		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match)) is { } delta)
+		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match), version) is { } delta)
 			eventBus.PublishTimer(match.DbId, delta);
 	}
 

@@ -35,6 +35,7 @@ public sealed class MatchTransferHostHandler(
 		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			// Host status is re-checked here, not just before the lock: it can only change under this
@@ -52,17 +53,23 @@ public sealed class MatchTransferHostHandler(
 
 			var targetPlayer = sessionRegistry.GetByUserId(targetId.Value);
 			targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
+			// Reordered ahead of the (now unlocked, ADR-004 4b) state broadcast: this audit-trail write
+			// doesn't read or depend on live match state beyond values already captured above, so it
+			// runs here instead, still under the lock, rather than gating release on it.
 			var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
 			await matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, targetId, targetPlayer?.Name,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

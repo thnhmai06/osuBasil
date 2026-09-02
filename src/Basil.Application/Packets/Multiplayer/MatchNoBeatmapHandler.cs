@@ -25,17 +25,20 @@ public sealed class MatchNoBeatmapHandler(MatchMembershipService matchMembership
 		if (match is null) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			var slot = match.GetSlot(gameSession.Id);
 			if (slot is null) return;
 
 			slot.Status = SlotStatus.NoMap;
-			await matchMembership.EnqueueStateAsync(match, false, cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, false, cancellationToken);
 	}
 }

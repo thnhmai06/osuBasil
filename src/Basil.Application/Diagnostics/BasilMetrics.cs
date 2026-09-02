@@ -48,4 +48,16 @@ public static class BasilMetrics
 	public static readonly Histogram<int> SseBacklogDepth =
 		Meter.CreateHistogram<int>("basil.sse.backlog_depth", null,
 			"Channel backlog depth observed when publishing an SSE event.");
+
+	/// <summary>
+	///     Count of publishes dropped by a <see cref="Services.SequenceGate" /> for being superseded
+	///     by a newer one, tagged <c>stream</c>.
+	/// </summary>
+	/// <remarks>
+	///     Expected to be nonzero under real concurrent load (ADR-004 4b) — this is a benign,
+	///     by-design race outcome, not an error condition.
+	/// </remarks>
+	public static readonly Counter<long> StalePublishDropped =
+		Meter.CreateCounter<long>("basil.match.publish.stale_dropped", null,
+			"Publishes dropped for arriving out of order relative to a newer one already applied.");
 }

@@ -44,6 +44,7 @@ public sealed class MatchChangeSettingsHandler(
 		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			// Re-checked under the lock: host status can only change under this same lock, so a
@@ -142,11 +143,13 @@ public sealed class MatchChangeSettingsHandler(
 
 			match.Name = matchData.Name;
 			matchMembership.SyncChannelTopic(match);
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

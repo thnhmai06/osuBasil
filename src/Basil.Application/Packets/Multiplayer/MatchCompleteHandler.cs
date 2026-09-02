@@ -46,6 +46,7 @@ public sealed class MatchCompleteHandler(
 		}
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			var slot = match.GetSlot(gameSession.Id);
@@ -89,11 +90,13 @@ public sealed class MatchCompleteHandler(
 
 			logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

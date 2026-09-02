@@ -42,8 +42,8 @@ A publisher never writes directly to an HTTP response.
 
 Each connection owns its own delivery buffer, allowing state mutation to remain independent from network I/O.
 
-This is particularly important for multiplayer state changes because a publisher may execute while holding
-[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs). A slow SSE consumer must never extend the critical section.
+This matters for multiplayer state changes even though most publishing now runs after
+[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) has already been released (ADR-004 4b) — a few call sites still publish while holding it (see the ADR for exactly which, and why). A slow SSE consumer must never extend that critical section regardless of which case applies.
 
 ## Event sources
 
@@ -119,6 +119,27 @@ per-connection baseline to reconcile.
 A publish that produces no observable change (nothing in the diffed state actually differs) returns no patch at all,
 so a stream with no real activity emits no events — earlier revisions of this pipeline broadcast an empty `{}` patch
 on every publish regardless of whether anything changed; that is no longer the behavior.
+
+## Publishing after the lock is released
+
+Most publishing (ADR-004 4b) happens after `MatchSession.Lock` has already been released, not while holding it — the
+snapshot build and the diff/broadcast are the expensive part, and running them unlocked keeps the lock's hold time
+down to the mutation itself. This reopens a question the shared-diff model doesn't answer on its own: two publishes
+for the same stream can now run concurrently and finish in either order, so what stops an older mutation's publish
+from completing *after* a newer one's and reverting the shared state back to something stale?
+
+The answer is a version number, not a lock. Whoever mutates the match allocates a state version
+(`MatchSession.NextStateVersion()`) at the moment the mutation completes, while the lock is still held — so the
+version reflects true mutation order even though nothing after that point is ordered by the lock anymore. Each
+stream's `SnapshotChannel` (and the packet broadcast, via its own `SequenceGate`) only accepts a publish whose version
+is newer than the last one it actually applied; an older version arriving late is dropped instead of applied. A
+dropped publish is not an error — it means a newer version already reflects everything that one would have added — so
+it is only counted (`basil.match.publish.stale_dropped`), never logged as a failure.
+
+Not every call site needed to change to get this benefit. A few (seating and leaving a match, starting a round, a
+countdown's own final tick) still publish before releasing the lock, because hoisting them would require
+restructuring how several different callers share that lock, not just shrinking one function's hold time — see
+ADR-004 for exactly which call sites and why.
 
 ## Subscriber registry and match close
 

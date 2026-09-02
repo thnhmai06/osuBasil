@@ -29,6 +29,7 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
 		if (match is null || slotId is < 0 or >= 16) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
 			if (match.Slots[slotId].Status != SlotStatus.Open) return;
@@ -39,11 +40,13 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
 			match.Slots[slotId].CopyFrom(slot);
 			slot.Reset();
 
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }
