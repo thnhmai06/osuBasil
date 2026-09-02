@@ -214,7 +214,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var otherSlot = currentSlot == 0 ? 1 : 0;
 
 		// Warm SlotsSnapshot.Latest with a no-op re-team of the userSession's own current slot.
-		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+		var warmRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		warmRequest.Content = JsonContent.Create(new
 		{
 			slots = new[] { new { index = currentSlot, userId = player.Id } }
@@ -223,7 +223,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/slots/live", async () =>
 		{
-			var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+			var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 			request.Content = JsonContent.Create(new
 			{
 				slots = new[] { new { index = otherSlot, userId = player.Id } }

@@ -779,7 +779,7 @@ internal static class MatchSubResourceRoutes
 
 			                 Every currently seated player's id must appear exactly once across the payload (reassignment/team/lock only; nobody may be silently added or dropped). Omitted `team` leaves that slot's existing team unchanged.
 
-			                 Returns `400 Bad Request` if an entry sets both `userId` and `locked: true`, `409 Conflict` if the payload's player set doesn't match the match's current occupants exactly or any `userId` isn't currently seated somewhere in this match, or `404 Not Found` if the match isn't currently live.
+			                 Returns `400 Bad Request` if an entry sets both `userId` and `locked: true` or the same `userId` is assigned to more than one slot, `409 Conflict` if the payload's player set doesn't match the match's current occupants exactly or any `userId` isn't currently seated somewhere in this match, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Slots")
 			.Produces<MatchSlotsView>()
@@ -790,33 +790,6 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("An entry cannot set both userId and locked: true."))
 			.WithExample(StatusCodes.Status409Conflict,
 				new ErrorResponse("The payload's player set doesn't match this match's current occupants."))
-			.ProducesProblem(StatusCodes.Status404NotFound);
-
-		group.MapPatch("/matches/{matchId:numericid}/slots", (int matchId, UpdateSlotsRequest body,
-					IMatchRegistry matchRegistry,
-					ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
-					IUserRepository users, MatchControlService matchControl,
-					CancellationToken cancellationToken) =>
-				HandleSlotsWrite(matchId, body.Slots, false, matchRegistry, gameRegistry, ircRegistry, users,
-					matchControl, cancellationToken))
-			.RequireAuthorization(AdminKeyDefaults.Policy)
-			.WithGroupName("basilapi")
-			.WithName("updateMatchSlots")
-			.WithSummary("Update match slots.")
-			.WithDescription("""
-			                 Same body and rules as `PUT /matches/{matchId}/slots`, but only the slots actually given are validated and touched; not every current occupant needs to be listed.
-
-			                 Returns `400 Bad Request` if an entry sets both `userId` and `locked: true`, `409 Conflict` if a referenced `userId` isn't currently seated in this match, or `404 Not Found` if the match isn't currently live.
-			                 """ + AdminKeyNote)
-			.WithTags("Match Slots")
-			.Produces<MatchSlotsView>()
-			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleSlots())
-			.WithExample(StatusCodes.Status400BadRequest,
-				new ErrorResponse("An entry cannot set both userId and locked: true."))
-			.WithExample(StatusCodes.Status409Conflict,
-				new ErrorResponse("A referenced userId is not currently seated in this match."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapPost("/matches/{matchId:numericid}/slots", async (int matchId, InviteRequest body,
@@ -996,9 +969,9 @@ internal static class MatchSubResourceRoutes
 	}
 
 	/// <summary>
-	///     Shared implementation for `PUT`/`PATCH /matches/{matchId}/slots`: validates slot indexes,
-	///     converts the body to patch entries, and applies them under <see cref="MatchSession.Lock" />,
-	///     mapping <see cref="MatchControlService.SetSlotsAsync" /> results onto 200/400/409 responses.
+	///     Backs `PUT /matches/{matchId}/slots`: validates slot indexes, converts the body to patch
+	///     entries, and applies them under <see cref="MatchSession.Lock" />, mapping
+	///     <see cref="MatchControlService.SetSlotsAsync" /> results onto 200/400/409 responses.
 	/// </summary>
 	private static async Task<IResult> HandleSlotsWrite(int matchId, IReadOnlyList<SlotAssignment> slots,
 		bool isFullReplace, IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -1026,6 +999,8 @@ internal static class MatchSubResourceRoutes
 							"The payload's player set doesn't match this match's current occupants.")),
 				MatchControlService.SetSlotsResult.UnknownUserId =>
 					Results.Conflict(new ErrorResponse("A referenced userId is not currently seated in this match.")),
+				MatchControlService.SetSlotsResult.DuplicateUserId =>
+					Results.BadRequest(new ErrorResponse("A userId cannot be assigned to more than one slot.")),
 				MatchControlService.SetSlotsResult.SlotOccupiedAndLocked =>
 					Results.BadRequest(new ErrorResponse("An entry cannot set both userId and locked: true.")),
 				_ => Results.Json(
@@ -1348,15 +1323,9 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Request body for `POST /matches/{matchId}/timer`.</summary>
 	public sealed record StartTimerRequest(int Seconds, bool AutoStart);
 
-	/// <summary>
-	///     One per-slot entry shared by <see cref="ReplaceSlotsRequest" /> and <see cref="UpdateSlotsRequest" />:
-	///     a partial shape for a single slot, either way.
-	/// </summary>
+	/// <summary>One per-slot entry in a <see cref="ReplaceSlotsRequest" />.</summary>
 	public sealed record SlotAssignment(int Index, int? UserId = null, MatchTeam? Team = null, bool? Locked = null);
 
 	/// <summary>Request body for `PUT /matches/{matchId}/slots`: every seated player must appear exactly once.</summary>
 	public sealed record ReplaceSlotsRequest(IReadOnlyList<SlotAssignment> Slots);
-
-	/// <summary>Request body for `PATCH /matches/{matchId}/slots`: only the given slots are validated and touched.</summary>
-	public sealed record UpdateSlotsRequest(IReadOnlyList<SlotAssignment> Slots);
 }

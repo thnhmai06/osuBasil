@@ -7,7 +7,7 @@ namespace Basil.Web.Routing;
 ///     fits in <see cref="int" />.
 /// </summary>
 /// <remarks>
-///     <see cref="IntRouteConstraint" /> (the built-in <c>:int</c> constraint) rejects a route segment
+///     <c>IntRouteConstraint</c> (the built-in <c>:int</c> constraint) rejects a route segment
 ///     that overflows <see cref="int" /> as a non-match, which — when nothing else in the app matches
 ///     that path either — surfaces as a bare, empty 404 rather than a real error: routing fails before
 ///     any handler, or <c>EnvelopeMiddleware</c>, gets a chance to describe what went wrong. This

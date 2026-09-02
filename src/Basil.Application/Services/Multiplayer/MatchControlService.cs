@@ -118,7 +118,8 @@ public sealed class MatchControlService(
 		Ok,
 		PlayerCountMismatch,
 		UnknownUserId,
-		SlotOccupiedAndLocked
+		SlotOccupiedAndLocked,
+		DuplicateUserId
 	}
 
 	public enum StartResult : byte
@@ -1141,8 +1142,8 @@ public sealed class MatchControlService(
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the slot-view publication.</param>
 	/// <returns>
-	///     <see cref="SetSlotsResult.Ok" /> on success, or
-	///     <see cref="SetSlotsResult.SlotOccupiedAndLocked" />, <see cref="SetSlotsResult.UnknownUserId" />,
+	///     <see cref="SetSlotsResult.Ok" /> on success, or <see cref="SetSlotsResult.SlotOccupiedAndLocked" />,
+	///     <see cref="SetSlotsResult.UnknownUserId" />, <see cref="SetSlotsResult.DuplicateUserId" />,
 	///     or <see cref="SetSlotsResult.PlayerCountMismatch" /> on validation failure.
 	/// </returns>
 	public async Task<SetSlotsResult> SetSlotsAsync(MatchSession match,
@@ -1165,6 +1166,13 @@ public sealed class MatchControlService(
 
 		if (referencedUserIds.Any(uid => !currentOccupantIds.Contains(uid)))
 			return SetSlotsResult.UnknownUserId;
+
+		// PUT already rejects this indirectly (a duplicate collapses the referenced set below its
+		// full-occupant count, tripping PlayerCountMismatch), but PATCH has no equivalent guard --
+		// without this, the same userId assigned to two destination slots would leave both slots
+		// claiming that occupant instead of rejecting the payload outright.
+		if (referencedUserIds.Count != referencedUserIds.Distinct().Count())
+			return SetSlotsResult.DuplicateUserId;
 
 		if (isFullReplace)
 		{
@@ -1240,7 +1248,7 @@ public sealed class MatchControlService(
 		if (ircRegistry.GetByUserId(userId) is { } irc) yield return irc;
 	}
 
-	/// <summary>Represents one entry in a <c>PUT</c> or <c>PATCH /matches/{matchId}/slots</c> request.</summary>
+	/// <summary>Represents one entry in a <c>PUT /matches/{matchId}/slots</c> request.</summary>
 	/// <remarks>Each entry is keyed by a slot index (0-based) in the request dictionary.</remarks>
 	/// <param name="UserId">
 	///     The id of the userSession to move into the slot, or <see langword="null" /> to leave occupancy

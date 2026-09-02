@@ -199,7 +199,7 @@ public static class MatchLiveSnapshotBuilder
 		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart);
 	}
 
-	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>.</summary>
+	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT /matches/{matchId}/slots</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> occupants.</param>
 	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> occupants.</param>
@@ -514,7 +514,7 @@ public sealed record MatchSlotView(
 	bool? Loaded);
 
 /// <summary>
-///     The payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
+///     The payload for <c>GET/PUT /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
 ///     15.
 /// </summary>
 /// <param name="Slots">The slot views, index-aligned with the match's slots.</param>

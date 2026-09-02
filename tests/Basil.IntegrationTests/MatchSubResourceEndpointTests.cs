@@ -495,7 +495,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var slot = matchRegistry.GetByDbId(matchId)!.GetSlotId(player.Id)!.Value;
 
-		var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new
 		{
 			slots = new object[] { new { index = slot, userId = player.Id, locked = true } }

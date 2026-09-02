@@ -398,6 +398,32 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(MatchControlService.SetSlotsResult.UnknownUserId, result);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): PATCH's per-slot validation checked each entry independently, so
+	///     the same userId assigned to two destination slots in one payload was never rejected -- PUT
+	///     happened to catch this only indirectly (a duplicate collapses the referenced set below the
+	///     full-occupant count), and only when at least 2 players were seated. SetSlotsAsync now checks
+	///     for a duplicate directly, regardless of full-replace or occupant count.
+	/// </summary>
+	[Fact]
+	public async Task SetSlotsAsync_SameUserIdInTwoEntries_ReturnsDuplicateUserId()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+
+		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		{
+			[1] = new(host.Id, null, null),
+			[2] = new(host.Id, null, null)
+		};
+
+		var result = await control.SetSlotsAsync(match, entries, false);
+
+		Assert.Equal(MatchControlService.SetSlotsResult.DuplicateUserId, result);
+	}
+
 	[Fact]
 	public async Task SetSlotsAsync_Put_MissingCurrentOccupant_ReturnsPlayerCountMismatch()
 	{
