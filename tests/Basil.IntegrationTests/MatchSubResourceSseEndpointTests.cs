@@ -183,6 +183,9 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
+		var userRepository = (NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>();
+		userRepository.Add(new User(111, "warm", Country.Xx, UserPrivileges.Unrestricted, default));
+		userRepository.Add(new User(777, "target", Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		warmRequest.Content = JsonContent.Create(new { userIds = InputValue });
@@ -333,14 +336,22 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	/// </summary>
 	private sealed class NoopUserRepository : IUserRepository
 	{
+		private readonly Dictionary<int, User> _byId = new();
+
 		public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.GetValueOrDefault(id));
 		}
 
 		public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.Values.FirstOrDefault(u => u.Name == name));
+		}
+
+		/// <summary>Registers a user so <see cref="FetchByIdAsync" /> resolves it instead of "no account".</summary>
+		public void Add(User user)
+		{
+			_byId[user.Id] = user;
 		}
 
 		public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)

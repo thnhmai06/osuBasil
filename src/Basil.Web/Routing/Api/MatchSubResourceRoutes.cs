@@ -568,6 +568,10 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
+				var unknownId = await FirstUnknownUserIdAsync(body.UserIds, users, cancellationToken);
+				if (unknownId is { } bad)
+					return Results.BadRequest(new ErrorResponse($"userId {bad} is not registered."));
+
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
@@ -588,13 +592,15 @@ internal static class MatchSubResourceRoutes
 			.WithName("replaceMatchBans")
 			.WithSummary("Replace match bans.")
 			.WithDescription("""
-			                 Replaces the match's ban list with `{ userIds: int[] }` and returns the updated list. Ids need not be online. Any newly banned id that is currently seated is also kicked.
+			                 Replaces the match's ban list with `{ userIds: int[] }` and returns the updated list. Ids need not be online, but must be registered. Any newly banned id that is currently seated is also kicked.
 
-			                 Returns `404 Not Found` if the match isn't currently live.
+			                 Returns `400 Bad Request` if any id is not a registered user, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Bans")
 			.Produces<MatchBansView>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 99 is not registered."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, UpdateBansRequest body,
@@ -605,6 +611,10 @@ internal static class MatchSubResourceRoutes
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+
+				var unknownId = await FirstUnknownUserIdAsync(body.UserIds, users, cancellationToken);
+				if (unknownId is { } bad)
+					return Results.BadRequest(new ErrorResponse($"userId {bad} is not registered."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -626,14 +636,16 @@ internal static class MatchSubResourceRoutes
 			.WithName("addMatchBans")
 			.WithSummary("Add match bans.")
 			.WithDescription("""
-			                 Adds `{ userIds: int[] }` to the match's ban list and returns the updated list. Ids need not be online. Any newly banned id that is currently seated is also kicked.
+			                 Adds `{ userIds: int[] }` to the match's ban list and returns the updated list. Ids need not be online, but must be registered. Any newly banned id that is currently seated is also kicked.
 
-			                 Returns `404 Not Found` if the match isn't currently live.
+			                 Returns `400 Bad Request` if any id is not a registered user, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Bans")
 			.Produces<MatchBansView>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchBansView([new UserBrief(21, "Mallory", Country.Ca), new UserBrief(22, "Trent", Country.Au)]))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 99 is not registered."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, int? userId, IMatchRegistry matchRegistry,
@@ -1251,6 +1263,22 @@ internal static class MatchSubResourceRoutes
 		}
 
 		return (targets, null);
+	}
+
+	/// <summary>
+	///     Finds the first id in <paramref name="userIds" /> that does not belong to any registered
+	///     user. Unlike <see cref="ResolveOnlineTargets" />, this does not require the user to be
+	///     online -- bans intentionally target ids that need not be online, only registered.
+	/// </summary>
+	/// <returns>The first unregistered id, or <see langword="null" /> if every id resolves.</returns>
+	private static async Task<int?> FirstUnknownUserIdAsync(IReadOnlyCollection<int> userIds, IUserRepository users,
+		CancellationToken cancellationToken)
+	{
+		foreach (var userId in userIds)
+			if (await users.FetchByIdAsync(userId, cancellationToken) is null)
+				return userId;
+
+		return null;
 	}
 
 	/// <summary>Request body for `POST /matches/{matchId}/chat`.</summary>

@@ -260,11 +260,27 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		response.EnsureSuccessStatusCode();
 	}
 
+	/// <summary>Regression test (Issue #4): a userId that belongs to no registered account must be rejected.</summary>
+	[Fact]
+	public async Task Ban_Patch_UnregisteredUserId_ReturnsBadRequest()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
+		request.Content = JsonContent.Create(new { userIds = new[] { 424242 } });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task Ban_PatchThenUnban_ReflectsInGet()
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(555, "offline", Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		patchRequest.Content = JsonContent.Create(new { userIds = InputValue });
@@ -334,6 +350,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var free = new GameSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.TryAdd(banned);
 		sessionRegistry.TryAdd(free);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(banned.Id, banned.Name, Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var banRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		banRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id } });
