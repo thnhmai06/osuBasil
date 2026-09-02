@@ -15,9 +15,9 @@ public class MatchLiveSnapshotBuilderTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 
-	private static MatchSession MakeMatch(string mapMd5 = "")
+	private static MatchSession MakeMatch(string mapMd5 = "", int? mapId = 42)
 	{
-		return new MatchSession(0, "Grand Finals", "hunter2", "map", 42, mapMd5, 1, GameMode.Standard,
+		return new MatchSession(0, "Grand Finals", "hunter2", "map", mapId, mapMd5, 1, GameMode.Standard,
 				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
 			{ DbId = 5 };
 	}
@@ -48,6 +48,22 @@ public class MatchLiveSnapshotBuilderTests
 		Assert.Equal(42, live.MapId);
 		Assert.Equal(MatchTeamType.TeamVs, live.TeamType);
 		Assert.False(live.InProgress);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): `mapId` used to keep the osu! protocol's `-1` sentinel on the
+	///     wire even in JSON API responses. It is now `null` in the same case `Beatmap` is, matching
+	///     <see cref="MatchSession.MapId" />'s own domain representation.
+	/// </summary>
+	[Fact]
+	public async Task BuildRoomLive_NoMapChosen_MapIdIsNull()
+	{
+		var match = MakeMatch(mapId: null);
+
+		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
+
+		Assert.Null(live.MapId);
+		Assert.Null(live.Beatmap);
 	}
 
 	[Fact]

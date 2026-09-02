@@ -79,8 +79,14 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
 	private static MatchSession BuildNew(int id, int dbId, MatchState data, int hostId)
 	{
+		// data.MapId is the wire/protocol value: -1 is a real client's explicit "no beatmap chosen",
+		// and 0 is what an HTTP creation request leaves as an unused placeholder (ids in this schema
+		// auto-increment from 1, so 0 can never be a real beatmap either). Both mean "no map" at this
+		// wire-to-domain boundary; MatchSession.MapId itself is null in that case, not a sentinel.
+		var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
+
 		return new MatchSession(
-			id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+			id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
 			hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
 			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(dbId))
 		{

@@ -510,11 +510,11 @@ public sealed class MpCommandService(
 	private async Task<bool> SettingsAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		var beatmapLine = match.MapId > 0
-			? await beatmapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
+		var beatmapLine = match.MapId is { } mapId
+			? await beatmapRepository.FetchOneAsync(mapId, cancellationToken: cancellationToken) is { } bmap
 				? string.Format(MpReplies.SettingsBeatmap, bmap.Id, bmap.FullName)
 				: MpReplies.SettingsBeatmapNotFound
-			: string.Format(MpReplies.SettingsBeatmap, match.MapId, match.MapName);
+			: MpReplies.SettingsBeatmapNotSelected;
 
 		var lines = new List<string>
 		{

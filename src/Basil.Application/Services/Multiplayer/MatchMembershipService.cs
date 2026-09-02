@@ -547,7 +547,7 @@ public sealed class MatchMembershipService(
 	/// </returns>
 	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		if (match.MapId <= 0)
+		if (match.MapId is not { } mapId)
 		{
 			// Without this, a match with no beatmap selected starts every occupied slot as Playing
 			// anyway. No client can ever send MatchLoadComplete/MatchComplete for a round it has no
@@ -561,7 +561,7 @@ public sealed class MatchMembershipService(
 			return false;
 		}
 
-		var beatmap = await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken);
+		var beatmap = await beatmapRepo.FetchOneAsync(mapId, cancellationToken: cancellationToken);
 		if (beatmap is null)
 		{
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",

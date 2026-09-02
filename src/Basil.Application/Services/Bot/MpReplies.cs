@@ -101,6 +101,9 @@ public static class MpReplies
 	/// <summary>Beatmap line in <c>!mp settings</c> when the stored map id resolves to nothing.</summary>
 	public const string SettingsBeatmapNotFound = "Beatmap: Not found";
 
+	/// <summary>Beatmap line in <c>!mp settings</c> when no beatmap has been selected at all.</summary>
+	public const string SettingsBeatmapNotSelected = "Beatmap: None selected";
+
 	/// <summary>Second <c>!mp settings</c> line; <c>{0}</c> is the team type, <c>{1}</c> the win condition.</summary>
 	public const string SettingsTeamMode = "Team mode: {0}, Win condition: {1}";
 

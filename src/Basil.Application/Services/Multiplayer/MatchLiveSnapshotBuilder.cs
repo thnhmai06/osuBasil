@@ -311,9 +311,8 @@ public sealed record UserBrief(int Id, string Name, Country Country);
 /// </summary>
 /// <remarks>
 ///     The shape carries no membership (host, referees, or slots) and no rounds. <see cref="MapId" />
-///     keeps the osu! protocol's <c>-1</c> sentinel ("choosing beatmap" or "map not on this system")
-///     rather than going nullable; <see cref="Beatmap" /> (on each derived record) is
-///     <see langword="null" /> in both of those cases.
+///     is <see langword="null" /> in the same cases <see cref="Beatmap" /> (on each derived record) is
+///     -- no beatmap chosen, or the chosen one no longer resolves on this server.
 /// </remarks>
 /// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
@@ -321,7 +320,7 @@ public sealed record UserBrief(int Id, string Name, Country Country);
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -334,7 +333,7 @@ public abstract record MatchRoomCore(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -352,7 +351,7 @@ public abstract record MatchRoomCore(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -368,7 +367,7 @@ public sealed record MatchRoomLive(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -388,7 +387,7 @@ public sealed record MatchRoomLive(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -407,7 +406,7 @@ public sealed record MatchSettingsView(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -426,7 +425,7 @@ public sealed record MatchSettingsView(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -447,7 +446,7 @@ public sealed record MatchLiveSnapshot(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,

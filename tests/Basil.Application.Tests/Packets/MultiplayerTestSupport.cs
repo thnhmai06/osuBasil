@@ -159,8 +159,12 @@ internal static class MultiplayerTestSupport
 			while (_byId.ContainsKey(id)) id++;
 			var dbId = _nextDbId++;
 
+			// Mirrors InMemoryMatchRegistry.BuildNew: data.MapId is the wire value (0/-1 both mean
+			// "no map" at this boundary); MatchSession.MapId is null in that case, not a sentinel.
+			var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
+
 			var match = new MatchSession(
-				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+				id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
 				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
 				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
 			{

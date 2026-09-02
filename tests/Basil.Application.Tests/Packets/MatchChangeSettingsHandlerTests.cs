@@ -66,7 +66,7 @@ public class MatchChangeSettingsHandlerTests
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
 
-		Assert.Equal(-1, match.MapId);
+		Assert.Null(match.MapId);
 		Assert.Equal("", match.MapMd5);
 		Assert.Equal(SlotStatus.NotReady, match.Slots[0].Status);
 	}
@@ -78,7 +78,7 @@ public class MatchChangeSettingsHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.MapId = -1;
+		match.MapId = null;
 		var newMd5 = new string('b', 32);
 		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
@@ -104,7 +104,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = -1;
+		match.MapId = null;
 		var previousMd5 = match.MapMd5;
 		var previousName = match.MapName;
 		var newMd5 = new string('c', 32);
@@ -115,7 +115,7 @@ public class MatchChangeSettingsHandlerTests
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, newMd5, host.Id));
 
-		Assert.Equal(-1, match.MapId);
+		Assert.Null(match.MapId);
 		Assert.Equal(previousMd5, match.MapMd5);
 		Assert.Equal(previousName, match.MapName);
 		Assert.Contains(
@@ -132,7 +132,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = -1;
+		match.MapId = null;
 		var newMd5 = new string('c', 32);
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
 		var handler =
@@ -165,14 +165,14 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = -1;
+		match.MapId = null;
 		var md5 = new string('d', 32);
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
 		var handler =
 			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
-		Assert.Equal(-1, match.MapId);
+		Assert.Null(match.MapId);
 
 		// Beatmap gets ingested while the room sits idle — the next settings packet (any resend)
 		// must still attempt the lookup despite UnresolvedMapMd5 being set, not skip it.
@@ -196,7 +196,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = -1;
+		match.MapId = null;
 		var md5 = new string('e', 32);
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
 		var handler =
@@ -257,7 +257,7 @@ public class MatchChangeSettingsHandlerTests
 	public async Task Handle_MapResolvedSuccessfully_CancelsPendingAutoStart()
 	{
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
-		match.MapId = -1;
+		match.MapId = null;
 		var newMd5 = new string('d', 32);
 		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
@@ -283,7 +283,7 @@ public class MatchChangeSettingsHandlerTests
 		host.Dequeue();
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id, teamType: 2));
+			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id, teamType: 2));
 
 		AssertAutoStartCancelled(match, host, bot);
 	}
@@ -297,7 +297,7 @@ public class MatchChangeSettingsHandlerTests
 		host.Dequeue();
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id,
+			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id,
 				winCondition: 2));
 
 		AssertAutoStartCancelled(match, host, bot);
@@ -312,7 +312,7 @@ public class MatchChangeSettingsHandlerTests
 		var cts = match.PendingTimer;
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, "renamed", "", match.MapName, match.MapId, match.MapMd5, host.Id));
+			MatchRequestReader(0, "renamed", "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id));
 
 		Assert.Same(cts, match.PendingTimer);
 		Assert.True(match.PendingTimerIsAutoStart);
@@ -327,7 +327,7 @@ public class MatchChangeSettingsHandlerTests
 		var cts = match.PendingTimer;
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId, match.MapMd5, host.Id,
+			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id,
 				freeMods: true));
 
 		Assert.Same(cts, match.PendingTimer);

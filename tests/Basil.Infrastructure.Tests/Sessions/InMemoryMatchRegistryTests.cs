@@ -33,6 +33,33 @@ public class InMemoryMatchRegistryTests
 		Assert.Equal(0, match.Id);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): MatchSession.MapId is null domain-side, not the wire's 0/-1
+	///     sentinels. `0` is what an HTTP creation request leaves as an unused placeholder (see
+	///     MatchRoutes.HandleCreate); `-1` is a real client's explicit "no beatmap chosen".
+	/// </summary>
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-1)]
+	public async Task CreateAsync_WireMapIdIsZeroOrNegativeOne_DomainMapIdIsNull(int wireMapId)
+	{
+		var registry = MakeRegistry();
+
+		var match = await registry.CreateAsync(MakeMatchState() with { MapId = wireMapId }, 1);
+
+		Assert.Null(match.MapId);
+	}
+
+	[Fact]
+	public async Task CreateAsync_WireMapIdIsPositive_DomainMapIdMatches()
+	{
+		var registry = MakeRegistry();
+
+		var match = await registry.CreateAsync(MakeMatchState() with { MapId = 654 }, 1);
+
+		Assert.Equal(654, match.MapId);
+	}
+
 	[Fact]
 	public async Task CreateAsync_SkipsIdsAlreadyTaken()
 	{

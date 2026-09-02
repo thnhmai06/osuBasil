@@ -77,7 +77,7 @@ internal static class MatchRoutes
 			.WithDescription("""
 			                 Creates a new multiplayer match and returns its room settings.
 
-			                 Every field is required except `password`. A `mapId` of -1 means no beatmap has been chosen yet. The new match starts with host id 0 and no referees; set the host with `PUT /matches/{matchId}/hosts` and add referees with `PATCH /matches/{matchId}/refs`.
+			                 Every field is required except `password` and `mapId`; a `null` or omitted `mapId` means no beatmap has been chosen yet. The new match starts with host id 0 and no referees; set the host with `PUT /matches/{matchId}/hosts` and add referees with `PATCH /matches/{matchId}/refs`.
 			                 """ + AdminKeyNote)
 			.WithTags("Matches")
 			.Produces<MatchSettingsView>(StatusCodes.Status201Created)
@@ -161,7 +161,7 @@ internal static class MatchRoutes
 			.WithDescription("""
 			                 Replaces the match's entire room configuration and returns the updated settings.
 
-			                 Every field is required except `password`. A `mapId` of -1 clears or skips the beatmap selection. `freemod: true` enables FreeMod and ignores `mods` for that call; `mods` alone sets the room's fixed mod set.
+			                 Every field is required except `password` and `mapId`; a `null` or omitted `mapId` clears or skips the beatmap selection. `freemod: true` enables FreeMod and ignores `mods` for that call; `mods` alone sets the room's fixed mod set.
 
 			                 Returns `400 Bad Request` if `mapId` doesn't resolve to a known beatmap, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
@@ -433,19 +433,18 @@ internal static class MatchRoutes
 	/// <summary>
 	///     Shared by <see cref="HandleCreate" /> and <see cref="HandleSettingsReplace" />: both apply every
 	///     field unconditionally (PUT-style, no "was this given" check), unlike
-	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `-1` is the established
-	///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids in this
-	///     schema auto-increment from 1 (see CLAUDE.md), so 0 (JSON's default for an omitted field) can
-	///     never be a real beatmap either. Both are skipped entirely rather than attempted as a lookup,
-	///     which would otherwise fail with a confusing "beatmap not found" error for a caller correctly
-	///     signaling "no map".
+	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `null` means "no beatmap
+	///     chosen"; a caller still sending the legacy `-1` sentinel, or `0` (ids in this schema
+	///     auto-increment from 1, so 0 can never be a real beatmap), is treated the same way. All three
+	///     are skipped entirely rather than attempted as a lookup, which would otherwise fail with a
+	///     confusing "beatmap not found" error for a caller correctly signaling "no map".
 	/// </summary>
-	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int mapId,
+	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int? mapId,
 		MatchControlService matchControl, CancellationToken cancellationToken)
 	{
-		if (mapId <= 0) return null;
+		if (mapId is null or <= 0) return null;
 
-		var (result, _) = await matchControl.SetMapAsync(match, mapId, cancellationToken);
+		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken);
 		return result == MatchControlService.SetMapResult.BeatmapNotFound
 			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found on the server."))
 			: null;
@@ -567,14 +566,14 @@ internal static class MatchRoutes
 }
 
 /// <summary>
-///     Request body for `POST /matches`. Every field is required except `password`. A `mapId` of -1
-///     means no beatmap has been chosen yet.
+///     Request body for `POST /matches`. Every field is required except `password` and `mapId`; a
+///     `null` or omitted `mapId` means no beatmap has been chosen yet.
 /// </summary>
 public sealed record CreateMatchRequest(
 	string Name,
 	string? Password,
 	bool IsPrivate,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -583,7 +582,7 @@ public sealed record CreateMatchRequest(
 
 /// <summary>
 ///     Request body for `PUT /matches/{matchId}/settings`: full replace. Every field is required
-///     except `password`. A `mapId` of -1 means no beatmap has been chosen yet.
+///     except `password` and `mapId`; a `null` or omitted `mapId` means no beatmap has been chosen yet.
 /// </summary>
 public sealed record ReplaceMatchSettingsRequest(
 	string Name,
@@ -591,7 +590,7 @@ public sealed record ReplaceMatchSettingsRequest(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,

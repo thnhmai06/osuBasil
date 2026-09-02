@@ -26,7 +26,7 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// <param name="name">The room's name.</param>
 /// <param name="password">The room's password, used in its invitation url.</param>
 /// <param name="mapName">The name of the currently selected beatmap.</param>
-/// <param name="mapId">The id of the currently selected beatmap.</param>
+/// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
 /// <param name="hostId">The id of the userSession hosting the room.</param>
 /// <param name="mode">The game mode the room plays in.</param>
@@ -41,7 +41,7 @@ public sealed class MatchSession(
 	string name,
 	string password,
 	string mapName,
-	int mapId,
+	int? mapId,
 	string mapMd5,
 	int hostId,
 	GameMode mode,
@@ -159,15 +159,15 @@ public sealed class MatchSession(
 	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
 	public bool HasGameplayHost => HostId != NoHostId;
 
-	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
-	public int MapId { get; set; } = mapId;
+	/// <summary>Gets or sets the id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public int? MapId { get; set; } = mapId;
 
 	/// <summary>
 	///     Gets or sets the id of the beatmap that was selected before the current one, updated whenever the room's map
 	///     changes.
 	/// </summary>
 	// ReSharper disable once UnusedAutoPropertyAccessor.Global
-	public int PrevMapId { get; set; }
+	public int? PrevMapId { get; set; }
 
 	/// <summary>Gets or sets the md5 of the currently selected beatmap.</summary>
 	public string MapMd5 { get; set; } = mapMd5;

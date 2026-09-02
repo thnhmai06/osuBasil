@@ -370,7 +370,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var bmap = MultiplayerTestSupport.MakeBeatmap(match.MapId);
+		var bmap = MultiplayerTestSupport.MakeBeatmap(match.MapId!.Value);
 		_beatmaps.FetchOneAsync(match.MapId, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
 		var reply = await Run(MakeService(), host, match, "settings", []);

@@ -79,13 +79,13 @@ public sealed class MatchChangeSettingsHandler(
 			{
 				match.UnreadyPlayers();
 				match.PrevMapId = match.MapId;
-				match.MapId = -1;
+				match.MapId = null;
 				match.MapMd5 = "";
 				match.MapName = "";
 				match.UnresolvedMapMd5 = null;
 				matchMembership.CancelQueuedAutoStart(match);
 			}
-			else if (match.MapId == -1)
+			else if (match.MapId is null)
 			{
 				// Always re-attempt the lookup (not gated on UnresolvedMapMd5) so a beatmap ingested
 				// later while the room sits idle resolves silently on the next settings packet. Only
