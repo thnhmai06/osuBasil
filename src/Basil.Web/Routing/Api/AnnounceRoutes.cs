@@ -45,7 +45,7 @@ internal static class AnnounceRoutes
 			.WithTags("Announce")
 			.Produces<AnnounceResultView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(true, 3))
+			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(true, 3, "Server restarting in 5 minutes."))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Message must not be empty."));
 
 		group.MapGet("/announce/motd", async (MotdService motd, CancellationToken cancellationToken) =>
@@ -66,7 +66,8 @@ internal static class AnnounceRoutes
 			{
 				await motd.SetTextAsync(body.Text, cancellationToken);
 				logger.LogInformation("MOTD updated via admin API");
-				return Results.Json(new MotdChangedView(true, "MOTD updated."));
+				var stored = await motd.GetTextAsync(cancellationToken);
+				return Results.Json(new MotdChangedView(true, "MOTD updated.", stored));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -80,7 +81,7 @@ internal static class AnnounceRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("Motd")
 			.Produces<MotdChangedView>()
-			.WithExample(StatusCodes.Status200OK, new MotdChangedView(true, "MOTD updated."));
+			.WithExample(StatusCodes.Status200OK, new MotdChangedView(true, "MOTD updated.", "Welcome to Basil!"));
 	}
 
 	private static IResult HandleAnnounce(AnnounceBody body, ISessionRegistry<GameSession> sessionRegistry,
@@ -104,14 +105,14 @@ internal static class AnnounceRoutes
 		}
 
 		logger.LogInformation("Announcement sent via admin API: DeliveredCount={DeliveredCount}", deliveredCount);
-		return Results.Json(new AnnounceResultView(true, deliveredCount));
+		return Results.Json(new AnnounceResultView(true, deliveredCount, body.Message));
 	}
 
 	/// <summary>Request body for `POST /announce`.</summary>
 	public sealed record AnnounceBody(string Message, int[]? UserIds = null);
 
 	/// <summary>Confirmation body for `POST /announce`.</summary>
-	public sealed record AnnounceResultView(bool Success, int DeliveredCount);
+	public sealed record AnnounceResultView(bool Success, int DeliveredCount, string Text);
 
 	/// <summary>Response body for `GET /announce/motd`.</summary>
 	public sealed record MotdView(string? Text);
@@ -120,5 +121,5 @@ internal static class AnnounceRoutes
 	public sealed record MotdBody(string? Text);
 
 	/// <summary>Confirmation body for `PUT /announce/motd`.</summary>
-	public sealed record MotdChangedView(bool Success, string Message);
+	public sealed record MotdChangedView(bool Success, string Message, string? Text);
 }
