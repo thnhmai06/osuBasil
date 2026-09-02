@@ -836,14 +836,18 @@ public sealed class MpCommandService(
 		}
 
 		var result = await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		if (result == MatchControlService.AddRefereeResult.TargetIsBot)
+		switch (result)
 		{
-			sink.Reply(MpReplies.CannotAddBotReferee);
-			return false;
+			case MatchControlService.AddRefereeResult.TargetIsBot:
+				sink.Reply(MpReplies.CannotAddBotReferee);
+				return false;
+			case MatchControlService.AddRefereeResult.AlreadyReferee:
+				sink.Reply(string.Format(MpReplies.TargetIsAlreadyAReferee, target.Name));
+				return false;
+			default:
+				sink.Reply(string.Format(MpReplies.AddedReferee, target.Name));
+				return true;
 		}
-
-		sink.Reply(string.Format(MpReplies.AddedReferee, target.Name));
-		return true;
 	}
 
 	/// <summary>

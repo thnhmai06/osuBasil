@@ -114,6 +114,27 @@ public class MatchControlServiceGuardTests
 		Assert.DoesNotContain(oldRef.Id, match.Referees);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): AddRefereeAsync used to unconditionally add and report success
+	///     even when the target already held referee status. It now detects the no-op case up front
+	///     instead of mutating and reporting success for something that didn't change.
+	/// </summary>
+	[Fact]
+	public async Task AddRefereeAsync_TargetAlreadyReferee_ReturnsAlreadyReferee()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
+		var match = _fixture.CreateMatch(host, hostIsReferee: false);
+		match.AddReferee(referee.Id);
+		var control = MakeService();
+
+		var result = await control.AddRefereeAsync(null, null, match, referee);
+
+		Assert.Equal(MatchControlService.AddRefereeResult.AlreadyReferee, result);
+		Assert.Single(match.Referees);
+	}
+
 	[Fact]
 	public async Task AddRefereesAsync_AddsBatch_SkipsExisting()
 	{

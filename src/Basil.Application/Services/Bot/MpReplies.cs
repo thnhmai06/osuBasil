@@ -209,6 +209,9 @@ public static class MpReplies
 	/// <summary>Reply after adding a referee; <c>{0}</c> is the new referee's name.</summary>
 	public const string AddedReferee = "Added {0} to the match referees";
 
+	/// <summary>Reply when the target already holds referee status; <c>{0}</c> is the target.</summary>
+	public const string TargetIsAlreadyAReferee = "{0} is already a referee of this match.";
+
 	/// <summary>Usage line for <c>!mp removeref</c>.</summary>
 	public const string RemoveRefUsage = "Usage: !mp removeref <name/id>";
 

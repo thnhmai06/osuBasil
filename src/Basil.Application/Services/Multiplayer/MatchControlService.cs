@@ -50,7 +50,8 @@ public sealed class MatchControlService(
 	public enum AddRefereeResult : byte
 	{
 		Ok,
-		TargetIsBot
+		TargetIsBot,
+		AlreadyReferee
 	}
 
 	public enum BanResult : byte
@@ -323,10 +324,16 @@ public sealed class MatchControlService(
 	/// <param name="match">The match to update.</param>
 	/// <param name="target">The userSession to grant referee status.</param>
 	/// <param name="cancellationToken">A token that cancels the event writes and referee publication.</param>
+	/// <returns>
+	///     <see cref="AddRefereeResult.Ok" /> on success, <see cref="AddRefereeResult.TargetIsBot" />,
+	///     or <see cref="AddRefereeResult.AlreadyReferee" /> when the target already holds referee
+	///     status (a no-op: no event is recorded and nothing republishes).
+	/// </returns>
 	public async Task<AddRefereeResult> AddRefereeAsync(int? actorId, string? actorName, MatchSession match,
 		UserSession target, CancellationToken cancellationToken = default)
 	{
 		if (target.IsBot) return AddRefereeResult.TargetIsBot;
+		if (match.IsReferee(target.Id)) return AddRefereeResult.AlreadyReferee;
 
 		match.AddReferee(target.Id);
 		logger.LogInformation("Referee added: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
