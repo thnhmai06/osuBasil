@@ -68,7 +68,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status400BadRequest,
 				new ErrorResponse("Only .osz uploads are accepted."));
 
-		group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}", HandleGet)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapset")
 			.WithSummary("Get beatmapset details.")
@@ -84,7 +84,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleDetail())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPut("/beatmapsets/{mapsetId:int}", HandleReplace)
+		group.MapPut("/beatmapsets/{mapsetId:numericid}", HandleReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceBeatmapset")
@@ -107,7 +107,7 @@ internal static class BeatmapsetRoutes
 				new ErrorResponse("This beatmapset is frozen and cannot be modified."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/beatmapsets/{mapsetId:int}", HandleDelete)
+		group.MapDelete("/beatmapsets/{mapsetId:numericid}", HandleDelete)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteBeatmapset")
@@ -125,7 +125,7 @@ internal static class BeatmapsetRoutes
 				new ErrorResponse("This beatmapset is frozen and cannot be deleted."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/beatmapsets/{mapsetId:int}", HandlePatch)
+		group.MapPatch("/beatmapsets/{mapsetId:numericid}", HandlePatch)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateBeatmapset")
@@ -142,7 +142,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleDetail() with { IsFrozen = true })
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}", HandleBeatmapInfo)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}", HandleBeatmapInfo)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmap")
 			.WithSummary("Get beatmap details.")
@@ -158,7 +158,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/difficulty", HandleBeatmapDifficulty)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/difficulty", HandleBeatmapDifficulty)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapDifficulty")
 			.WithSummary("Get beatmap difficulty with mods.")
@@ -178,7 +178,7 @@ internal static class BeatmapsetRoutes
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/download", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmap")
 			.WithSummary("Download a beatmap.")
@@ -187,7 +187,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/background", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/background", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapBackground")
 			.WithSummary("Download a beatmap background.")
@@ -196,7 +196,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/background", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/background", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetBackground")
 			.WithSummary("Download beatmapset background.")
@@ -205,7 +205,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/covers/{variant}.jpg", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/covers/{variant}.jpg", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetCover")
 			.WithSummary("Download a beatmapset cover variant.")
@@ -214,7 +214,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/audio", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/audio", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapAudio")
 			.WithSummary("Download beatmap audio.")
@@ -223,7 +223,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/audio", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/audio", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetAudio")
 			.WithSummary("Download beatmapset audio.")
@@ -232,7 +232,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/video", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/video", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapVideo")
 			.WithSummary("Download beatmap video.")
@@ -241,7 +241,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/audiopreview", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/audiopreview", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapsetAudioPreview")
 			.WithSummary("Get beatmapset audio preview.")
@@ -251,7 +251,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/storyboard", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetStoryboard")
 			.WithSummary("Download beatmapset storyboard.")
@@ -260,7 +260,7 @@ internal static class BeatmapsetRoutes
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/download", RedirectToAssets)
+		group.MapGet("/beatmapsets/{mapsetId:numericid}/download", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapset")
 			.WithSummary("Download a beatmapset.")

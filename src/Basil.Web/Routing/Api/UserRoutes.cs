@@ -118,7 +118,7 @@ internal static class UserRoutes
 			.WithLink(StatusCodes.Status201Created, "DeleteUser", "deleteUser", "Soft-delete the newly created user.",
 				("userId", "$response.body#/data/id"));
 
-		admin.MapPut("/{userId:int}", async (int userId, ReplaceUserRequest body, IUserRepository users,
+		admin.MapPut("/{userId:numericid}", async (int userId, ReplaceUserRequest body, IUserRepository users,
 				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapService.BotId)
@@ -154,7 +154,7 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		admin.MapPatch("/{userId:int}", async (int userId, UpdateUserRequest body, IUserRepository users,
+		admin.MapPatch("/{userId:numericid}", async (int userId, UpdateUserRequest body, IUserRepository users,
 				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapService.BotId)
@@ -197,7 +197,7 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
+		admin.MapPut("/{userId:numericid}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
 				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger,
 				CancellationToken cancellationToken) =>
 			{
@@ -232,7 +232,7 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-		admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage,
+		admin.MapDelete("/{userId:numericid}/avatar", (int userId, IOptions<StorageOptions> storage,
 				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger) =>
 			{
 				if (Directory.Exists(storage.Value.AvatarsPath))
@@ -276,7 +276,7 @@ internal static class UserRoutes
 		// Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
 		// history referencing this user's id stays intact. It matches how restriction/ban already
 		// works in this server (a privilege bit, never a hard delete).
-		admin.MapDelete("/{userId:int}",
+		admin.MapDelete("/{userId:numericid}",
 				async (int userId, IUserRepository users, ILogger<UserRoutesLog> logger,
 					CancellationToken cancellationToken) =>
 				{

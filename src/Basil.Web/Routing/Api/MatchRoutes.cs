@@ -98,7 +98,7 @@ internal static class MatchRoutes
 				"Partially update the newly created match's room settings.",
 				("matchId", "$response.body#/data/id"));
 
-		group.MapGet("/matches/{matchId:int}", async (int matchId, MatchReportService reportService,
+		group.MapGet("/matches/{matchId:numericid}", async (int matchId, MatchReportService reportService,
 				CancellationToken cancellationToken) =>
 			{
 				var report = await reportService.BuildAsync(matchId, cancellationToken);
@@ -119,7 +119,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status200OK, SampleMatchReport())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/settings", HandleSettingsGet)
+		group.MapGet("/matches/{matchId:numericid}/settings", HandleSettingsGet)
 			.WithGroupName("basilapi")
 			.WithName("getMatchSettings")
 			.WithSummary("Get match settings.")
@@ -137,7 +137,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status200OK, SampleSettings())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/settings/live", HandleSettingsStream)
+		group.MapGet("/matches/{matchId:numericid}/settings/live", HandleSettingsStream)
 			.WithGroupName("basilapi")
 			.WithName("getMatchSettingsLive")
 			.WithSummary("Stream match settings.")
@@ -153,7 +153,7 @@ internal static class MatchRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, SampleSettings());
 
-		group.MapPut("/matches/{matchId:int}/settings", HandleSettingsReplace)
+		group.MapPut("/matches/{matchId:numericid}/settings", HandleSettingsReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchSettings")
@@ -172,7 +172,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/matches/{matchId:int}/settings", HandleSettingsUpdate)
+		group.MapPatch("/matches/{matchId:numericid}/settings", HandleSettingsUpdate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateMatchSettings")
@@ -189,7 +189,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/live", HandleMainLiveStream)
+		group.MapGet("/matches/{matchId:numericid}/live", HandleMainLiveStream)
 			.WithGroupName("basilapi")
 			.WithName("getMatchLive")
 			.WithSummary("Stream full match state.")
@@ -207,7 +207,7 @@ internal static class MatchRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, SampleLiveSnapshot());
 
-		group.MapGet("/matches/{matchId:int}/live/{slotIndex:int}", HandleLiveSlotStream)
+		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")
 			.WithName("getMatchSlotLiveStream")
 			.WithSummary("Stream one match slot.")

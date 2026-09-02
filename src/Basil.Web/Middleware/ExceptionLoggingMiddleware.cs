@@ -17,6 +17,11 @@ namespace Basil.Web.Middleware;
 ///     long-poll clients disconnect constantly, e.g., on game exit or network hiccup. That's
 ///     expected traffic noise, not a bug, so it's logged at Debug and swallowed, not logged as Error
 ///     and rethrown.
+///
+///     A request parameter that fails to bind (such as a route id overflowing <see cref="int" />)
+///     surfaces as <see cref="BadHttpRequestException" /> instead of a 500: it carries its own,
+///     already-correct client-error status code, so it is enveloped with that status and logged at
+///     Debug rather than Error.
 /// </remarks>
 public sealed class ExceptionLoggingMiddleware(RequestDelegate next, ILogger<ExceptionLoggingMiddleware> logger)
 {
@@ -39,6 +44,25 @@ public sealed class ExceptionLoggingMiddleware(RequestDelegate next, ILogger<Exc
 		catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
 		{
 			logger.LogDebug("Request aborted by client: {Method} {Path}", context.Request.Method, context.Request.Path);
+		}
+		catch (BadHttpRequestException exception) when (!context.Response.HasStarted &&
+		                                                context.Request.Host.Host.StartsWith("api.",
+			                                                StringComparison.OrdinalIgnoreCase))
+		{
+			// Route/query parameter binding (e.g. an int id overflowing Int32) fails gracefully in
+			// production, but throws this specific exception instead when the host's
+			// ThrowOnBadRequest is enabled (the framework's own dev/test-time default) -- a client
+			// input problem, not a server fault, so it's a client error (the exception's own
+			// StatusCode, normally 400) logged at Debug, not Error, and never a 500.
+			logger.LogDebug(exception, "Bad request on {Method} {Path}", context.Request.Method, context.Request.Path);
+
+			context.Response.Clear();
+			context.Response.StatusCode = exception.StatusCode;
+			context.Response.ContentType = "application/json; charset=utf-8";
+			var badRequestEnvelope = EnvelopeBuilder.Build(context.Response.StatusCode, context.Request.Method, null,
+				BasilJsonOptions.Instance);
+			await context.Response.WriteAsync(
+				JsonSerializer.Serialize(badRequestEnvelope, BasilJsonOptions.Instance), context.RequestAborted);
 		}
 		catch (Exception exception)
 		{

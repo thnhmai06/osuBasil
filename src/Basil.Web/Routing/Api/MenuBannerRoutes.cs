@@ -65,7 +65,7 @@ internal static class MenuBannerRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status201Created, SampleView());
 
-		group.MapGet("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
+		group.MapGet("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
 				CancellationToken cancellationToken) =>
 			{
 				var banner = await banners.FetchByIdAsync(bannerId, cancellationToken);
@@ -81,7 +81,7 @@ internal static class MenuBannerRoutes
 			.Produces<MenuBannerView>()
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapMethods("/menu/banners/{bannerId:int}", [HttpMethods.Put, HttpMethods.Patch], HandleUpdate)
+		group.MapMethods("/menu/banners/{bannerId:numericid}", [HttpMethods.Put, HttpMethods.Patch], HandleUpdate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateMenuBanner")
@@ -103,7 +103,7 @@ internal static class MenuBannerRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
+		group.MapDelete("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
 				ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (!await banners.DeleteAsync(bannerId, cancellationToken))

@@ -61,7 +61,7 @@ internal static class ScoreRoutes
 			.Produces<PagedResult<ScoreDetailView>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<ScoreDetailView>(1, 50, 1, [SampleScoreDetail()]));
 
-		group.MapGet("/scores/{scoreId:long}", async (long scoreId, IScoreRepository scores,
+		group.MapGet("/scores/{scoreId:numericid}", async (long scoreId, IScoreRepository scores,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, IBeatmapRepository beatmaps,
 				CancellationToken cancellationToken) =>
@@ -87,7 +87,7 @@ internal static class ScoreRoutes
 			.WithExample(StatusCodes.Status200OK, SampleScoreDetail())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/scores/{scoreId:long}/replay", async (long scoreId, ReplayService replayService,
+		group.MapGet("/scores/{scoreId:numericid}/replay", async (long scoreId, ReplayService replayService,
 				CancellationToken cancellationToken) =>
 			{
 				var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);

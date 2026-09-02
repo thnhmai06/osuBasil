@@ -55,7 +55,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/chat` stream and send routes.</summary>
 	private static void MapChat(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/chat/live", (int matchId, HttpContext context,
+		group.MapGet("/matches/{matchId:numericid}/chat/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -88,7 +88,7 @@ internal static class MatchSubResourceRoutes
 				new MatchChatMessage(new UserBrief(8, "Bob", Country.Gb), "glhf",
 					DateTimeOffset.Parse("2026-07-20T14:30:00Z")));
 
-		group.MapPost("/matches/{matchId:int}/chat", (int matchId, SendMatchChatRequest body,
+		group.MapPost("/matches/{matchId:numericid}/chat", (int matchId, SendMatchChatRequest body,
 				IMatchRegistry matchRegistry, IChannelRegistry channelRegistry, ChatDispatchService chatDispatch) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -158,7 +158,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/hosts` read and write routes.</summary>
 	private static void MapHosts(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/hosts", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/hosts", async (int matchId, IMatchRegistry matchRegistry,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
@@ -184,7 +184,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/hosts/live", (int matchId, HttpContext context,
+		group.MapGet("/matches/{matchId:numericid}/hosts/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
@@ -212,7 +212,7 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)));
 
-		group.MapPut("/matches/{matchId:int}/hosts", async (int matchId, SetHostRequest body,
+		group.MapPut("/matches/{matchId:numericid}/hosts", async (int matchId, SetHostRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -254,7 +254,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId is required and must be online."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/hosts", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapDelete("/matches/{matchId:numericid}/hosts", async (int matchId, IMatchRegistry matchRegistry,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
@@ -293,7 +293,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/refs` read and write routes.</summary>
 	private static void MapRefs(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/refs", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/refs", async (int matchId, IMatchRegistry matchRegistry,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
@@ -320,7 +320,7 @@ internal static class MatchSubResourceRoutes
 				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/refs/live", (int matchId, HttpContext context,
+		group.MapGet("/matches/{matchId:numericid}/refs/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
@@ -349,7 +349,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK,
 				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]));
 
-		group.MapPut("/matches/{matchId:int}/refs", async (int matchId, ReplaceRefereesRequest body,
+		group.MapPut("/matches/{matchId:numericid}/refs", async (int matchId, ReplaceRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -402,7 +402,7 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("Refusing to leave the match with no referees."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/matches/{matchId:int}/refs", async (int matchId, UpdateRefereesRequest body,
+		group.MapPatch("/matches/{matchId:numericid}/refs", async (int matchId, UpdateRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -447,7 +447,7 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("userId 21 is required and must be online."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/refs", async (int matchId, [FromBody] RemoveRefereesRequest body,
+		group.MapDelete("/matches/{matchId:numericid}/refs", async (int matchId, [FromBody] RemoveRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
@@ -515,7 +515,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/ban` read and write routes.</summary>
 	private static void MapBans(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/ban", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/ban", async (int matchId, IMatchRegistry matchRegistry,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
@@ -541,7 +541,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/ban/live", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/ban/live", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -568,7 +568,7 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]));
 
-		group.MapPut("/matches/{matchId:int}/ban", async (int matchId, ReplaceBansRequest body,
+		group.MapPut("/matches/{matchId:numericid}/ban", async (int matchId, ReplaceBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, MatchMembershipService matchMembership,
@@ -612,7 +612,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 99 is not registered."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, UpdateBansRequest body,
+		group.MapPatch("/matches/{matchId:numericid}/ban", async (int matchId, UpdateBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, MatchMembershipService matchMembership,
@@ -657,7 +657,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userId 99 is not registered."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/ban", async (int matchId, [FromBody] RemoveBansRequest body,
+		group.MapDelete("/matches/{matchId:numericid}/ban", async (int matchId, [FromBody] RemoveBansRequest body,
 				IMatchRegistry matchRegistry, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
@@ -708,7 +708,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/slots` read, reassign, kick, and invite routes.</summary>
 	private static void MapSlots(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/slots", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/slots", async (int matchId, IMatchRegistry matchRegistry,
 				ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
@@ -734,7 +734,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK, SampleSlots())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/slots/live", (int matchId, HttpContext context,
+		group.MapGet("/matches/{matchId:numericid}/slots/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
@@ -762,7 +762,7 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, SampleSlots());
 
-		group.MapPut("/matches/{matchId:int}/slots", (int matchId, ReplaceSlotsRequest body,
+		group.MapPut("/matches/{matchId:numericid}/slots", (int matchId, ReplaceSlotsRequest body,
 					IMatchRegistry matchRegistry,
 					ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 					IUserRepository users, MatchControlService matchControl,
@@ -791,7 +791,7 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("The payload's player set doesn't match this match's current occupants."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/matches/{matchId:int}/slots", (int matchId, UpdateSlotsRequest body,
+		group.MapPatch("/matches/{matchId:numericid}/slots", (int matchId, UpdateSlotsRequest body,
 					IMatchRegistry matchRegistry,
 					ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 					IUserRepository users, MatchControlService matchControl,
@@ -818,7 +818,7 @@ internal static class MatchSubResourceRoutes
 				new ErrorResponse("A referenced userId is not currently seated in this match."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPost("/matches/{matchId:int}/slots", async (int matchId, InviteRequest body,
+		group.MapPost("/matches/{matchId:numericid}/slots", async (int matchId, InviteRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, MatchControlService matchControl,
 				MatchMembershipService matchMembership, CancellationToken cancellationToken) =>
@@ -920,7 +920,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("userIds is required."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/slots", async (int matchId, [FromBody] KickPlayerRequest body,
+		group.MapDelete("/matches/{matchId:numericid}/slots", async (int matchId, [FromBody] KickPlayerRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 				MatchControlService matchControl, MatchMembershipService matchMembership,
@@ -1041,7 +1041,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `/matches/{matchId}/timer` read, start, and abort routes.</summary>
 	private static void MapTimer(RouteGroupBuilder group)
 	{
-		group.MapGet("/matches/{matchId:int}/timer", (int matchId, IMatchRegistry matchRegistry) =>
+		group.MapGet("/matches/{matchId:numericid}/timer", (int matchId, IMatchRegistry matchRegistry) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -1063,7 +1063,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 25, true))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/timer/live", (int matchId, HttpContext context,
+		group.MapGet("/matches/{matchId:numericid}/timer/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
@@ -1091,7 +1091,7 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 25, true));
 
-		group.MapPost("/matches/{matchId:int}/timer", async (int matchId, StartTimerRequest body,
+		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
 				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -1140,7 +1140,7 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is already in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:int}/timer", async (int matchId, IMatchRegistry matchRegistry,
+		group.MapDelete("/matches/{matchId:numericid}/timer", async (int matchId, IMatchRegistry matchRegistry,
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -1179,7 +1179,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `POST /matches/{matchId}/abort` route.</summary>
 	private static void MapAbort(RouteGroupBuilder group)
 	{
-		group.MapPost("/matches/{matchId:int}/abort", async (int matchId, HttpContext context,
+		group.MapPost("/matches/{matchId:numericid}/abort", async (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
@@ -1224,7 +1224,7 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `POST /matches/{matchId}/close` route.</summary>
 	private static void MapClose(RouteGroupBuilder group)
 	{
-		group.MapPost("/matches/{matchId:int}/close", async (int matchId, HttpContext context,
+		group.MapPost("/matches/{matchId:numericid}/close", async (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry, MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{

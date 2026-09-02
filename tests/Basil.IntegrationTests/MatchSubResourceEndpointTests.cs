@@ -101,6 +101,22 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): a matchId overflowing int32 used to fail the built-in `:int`
+	///     route constraint outright, surfacing as a bare, unenveloped 404 instead of a real error --
+	///     the request never reached a handler or EnvelopeMiddleware at all. The `:numericid` constraint
+	///     lets routing match on any all-digit id, so the framework's own model-binding failure (already
+	///     a proper enveloped 400 for other cases) handles this one too.
+	/// </summary>
+	[Fact]
+	public async Task GetMatch_OverflowingMatchId_ReturnsBadRequestNotBareNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/matches/99999999999999999999"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task PutHosts_MissingAdminKey_ReturnsUnauthorized()
 	{

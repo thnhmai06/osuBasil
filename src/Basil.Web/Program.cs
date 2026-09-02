@@ -22,6 +22,7 @@ using Basil.Web.Auth;
 using Basil.Web.Logging;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
+using Basil.Web.Routing;
 using Basil.Web.Routing.Bancho;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -144,6 +145,7 @@ public sealed class Program
 
 		builder.Services.AddInfrastructure(builder.Configuration);
 		builder.Services.AddApplication();
+		ConfigureRouting(builder);
 		ConfigureJson(builder);
 		ConfigureOpenApi(builder);
 		ConfigureAuth(builder);
@@ -425,6 +427,14 @@ public sealed class Program
 		builder.Services.AddAuthorizationBuilder()
 			.AddPolicy(AdminKeyDefaults.Policy,
 				policy => policy.RequireRole(AdminKeyDefaults.Role));
+	}
+
+	/// <summary>Registers the <c>:numericid</c> route constraint used by the `api.` host's id route parameters.</summary>
+	/// <param name="builder">The web application builder whose routing options are configured.</param>
+	private static void ConfigureRouting(WebApplicationBuilder builder)
+	{
+		builder.Services.Configure<RouteOptions>(options =>
+			options.ConstraintMap[NumericIdRouteConstraint.Token] = typeof(NumericIdRouteConstraint));
 	}
 
 	/// <summary>
