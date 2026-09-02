@@ -69,7 +69,9 @@ internal static class MenuBannerRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var banner = await banners.FetchByIdAsync(bannerId, cancellationToken);
-				return banner is null ? Results.NotFound() : Results.Json(ToView(banner, banners));
+				return banner is null
+					? Results.NotFound(new ErrorResponse("Banner not found."))
+					: Results.Json(ToView(banner, banners));
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMenuBanner")
@@ -104,7 +106,8 @@ internal static class MenuBannerRoutes
 		group.MapDelete("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
 				ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
-				if (!await banners.DeleteAsync(bannerId, cancellationToken)) return Results.NotFound();
+				if (!await banners.DeleteAsync(bannerId, cancellationToken))
+					return Results.NotFound(new ErrorResponse("Banner not found."));
 				logger.LogInformation("Menu banner deleted via admin API: Id={Id}", bannerId);
 				return Results.Json(new MenuBannerDeletedView(bannerId, true));
 			})
@@ -190,7 +193,7 @@ internal static class MenuBannerRoutes
 			updated = await banners.UpdateAsync(bannerId, image, url, begins, expires, cancellationToken);
 		}
 
-		if (updated is null) return Results.NotFound();
+		if (updated is null) return Results.NotFound(new ErrorResponse("Banner not found."));
 
 		logger.LogInformation("Menu banner updated via admin API: Id={Id}", bannerId);
 		return Results.Json(ToView(updated, banners));

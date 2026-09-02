@@ -92,13 +92,13 @@ internal static class MatchSubResourceRoutes
 				IMatchRegistry matchRegistry, IChannelRegistry channelRegistry, ChatDispatchService chatDispatch) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				if (string.IsNullOrWhiteSpace(body.Text))
 					return Results.BadRequest(new ErrorResponse("text must not be empty."));
 
 				var channel = channelRegistry.GetByName(match.ChatChannelName);
-				if (channel is null) return Results.NotFound();
+				if (channel is null) return Results.NotFound(new ErrorResponse("Match chat channel not found."));
 
 				var sent = chatDispatch.SendAsBot(channel, body.Text);
 				return sent == 0
@@ -163,7 +163,7 @@ internal static class MatchSubResourceRoutes
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
@@ -218,7 +218,7 @@ internal static class MatchSubResourceRoutes
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				var target = gameRegistry.GetByUserId(body.UserId);
 				if (target is null)
@@ -260,7 +260,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -298,7 +298,7 @@ internal static class MatchSubResourceRoutes
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildRefs(match, gameRegistry, ircRegistry, users,
@@ -355,7 +355,7 @@ internal static class MatchSubResourceRoutes
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
@@ -408,7 +408,7 @@ internal static class MatchSubResourceRoutes
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
@@ -453,7 +453,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				if (userId is not { } uid) return Results.BadRequest(new ErrorResponse("userId is required."));
 				var target = (UserSession?)gameRegistry.GetByUserId(uid) ?? ircRegistry.GetByUserId(uid);
@@ -511,7 +511,7 @@ internal static class MatchSubResourceRoutes
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
@@ -566,7 +566,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -604,7 +604,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -642,7 +642,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				if (userId is not { } uid) return Results.BadRequest(new ErrorResponse("userId is required."));
 
@@ -685,7 +685,7 @@ internal static class MatchSubResourceRoutes
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, users,
@@ -796,7 +796,7 @@ internal static class MatchSubResourceRoutes
 				MatchMembershipService matchMembership, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				var userIds = body.UserIds;
 				if (userIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
@@ -899,7 +899,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				var targetUser = await users.FetchByIdAsync(body.UserId, cancellationToken);
 				if (targetUser is null)
@@ -977,7 +977,7 @@ internal static class MatchSubResourceRoutes
 		MatchControlService matchControl, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		foreach (var slot in slots)
 			if (slot.Index is < 0 or > 15)
@@ -1016,7 +1016,7 @@ internal static class MatchSubResourceRoutes
 		group.MapGet("/matches/{matchId:int}/timer", (int matchId, IMatchRegistry matchRegistry) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
 			})
@@ -1067,7 +1067,7 @@ internal static class MatchSubResourceRoutes
 				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -1116,7 +1116,7 @@ internal static class MatchSubResourceRoutes
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -1156,7 +1156,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -1201,7 +1201,7 @@ internal static class MatchSubResourceRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound();
+				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try

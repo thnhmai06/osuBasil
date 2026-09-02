@@ -60,7 +60,9 @@ internal static class FaqRoutes
 		group.MapGet("/faqs/{entry}", async (string entry, FaqService faq, CancellationToken cancellationToken) =>
 			{
 				var content = await faq.ReadEntryAsync(entry, cancellationToken);
-				return content is null ? Results.NotFound() : Results.Text(content);
+				return content is null
+					? Results.NotFound(new ErrorResponse("FAQ entry not found."))
+					: Results.Text(content);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getFaq")
@@ -93,7 +95,7 @@ internal static class FaqRoutes
 
 		group.MapDelete("/faqs/{entry}", (string entry, FaqService faq, ILogger<FaqRoutesLog> logger) =>
 			{
-				if (!faq.DeleteEntry(entry)) return Results.NotFound();
+				if (!faq.DeleteEntry(entry)) return Results.NotFound(new ErrorResponse("FAQ entry not found."));
 				logger.LogDebug("FAQ entry deleted via admin API: Entry={Entry}", entry);
 				return Results.Json(new FaqDeletedView(entry, true));
 			})
@@ -153,7 +155,7 @@ internal static class FaqRoutes
 		var result = await faq.ReplaceEntryAsync(entry, stream, cancellationToken);
 		if (result is FaqService.ReplaceResult.NotFound or FaqService.ReplaceResult.InvalidName)
 			return result == FaqService.ReplaceResult.NotFound
-				? Results.NotFound()
+				? Results.NotFound(new ErrorResponse("FAQ entry not found."))
 				: Results.BadRequest(new ErrorResponse("Invalid entry name."));
 
 		logger.LogDebug("FAQ entry replaced via admin API: Entry={Entry}", entry);

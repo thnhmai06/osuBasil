@@ -124,7 +124,7 @@ internal static class UserRoutes
 				if (userId == BotBootstrapService.BotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
 				var before = await users.FetchByIdAsync(userId, cancellationToken);
-				if (before is null) return Results.NotFound();
+				if (before is null) return Results.NotFound(new ErrorResponse("User not found."));
 
 				if (!User.ValidateUsername(body.Name, out var usernameError))
 					return Results.BadRequest(new ErrorResponse(usernameError));
@@ -160,7 +160,7 @@ internal static class UserRoutes
 				if (userId == BotBootstrapService.BotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
 				var before = await users.FetchByIdAsync(userId, cancellationToken);
-				if (before is null) return Results.NotFound();
+				if (before is null) return Results.NotFound(new ErrorResponse("User not found."));
 
 				if (body.Name is not null)
 				{
@@ -282,7 +282,8 @@ internal static class UserRoutes
 				{
 					if (userId == BotBootstrapService.BotId)
 						return Results.BadRequest(new ErrorResponse("Cannot delete BasilBot."));
-					if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
+					if (await users.FetchByIdAsync(userId, cancellationToken) is null)
+						return Results.NotFound(new ErrorResponse("User not found."));
 
 					await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);
 					var deleted = await users.FetchByIdAsync(userId, cancellationToken);
@@ -340,7 +341,7 @@ internal static class UserRoutes
 		CancellationToken cancellationToken)
 	{
 		var user = await users.FetchByIdAsync(userId, cancellationToken);
-		return user is null ? Results.NotFound() : Results.Json(user.ToView());
+		return user is null ? Results.NotFound(new ErrorResponse("User not found.")) : Results.Json(user.ToView());
 	}
 
 	private static IResult HandleGetAvatar(int userId, IOptions<StorageOptions> storage)
@@ -348,7 +349,7 @@ internal static class UserRoutes
 		var match = Directory.Exists(storage.Value.AvatarsPath)
 			? Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*").FirstOrDefault()
 			: null;
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Avatar not found."));
 
 		return Results.File(match, ContentTypes.Resolve(match));
 	}

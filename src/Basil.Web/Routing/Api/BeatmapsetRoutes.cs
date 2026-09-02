@@ -357,10 +357,10 @@ internal static class BeatmapsetRoutes
 		IBeatmapRepository beatmapRepository, CancellationToken cancellationToken)
 	{
 		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound();
+		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		if (mapset.IsPrivate && !isAdmin) return Results.NotFound();
+		if (mapset.IsPrivate && !isAdmin) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		return Results.Json(mapset.ToDetail(beatmaps));
@@ -371,7 +371,7 @@ internal static class BeatmapsetRoutes
 		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound();
+		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 		if (mapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be modified."));
 
@@ -384,7 +384,7 @@ internal static class BeatmapsetRoutes
 			return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted."));
 
 		var targetFolder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
-		if (targetFolder is null) return Results.NotFound();
+		if (targetFolder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var tempOszPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.osz");
 		await using (var fileStream = File.Create(tempOszPath))
@@ -409,12 +409,12 @@ internal static class BeatmapsetRoutes
 		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound();
+		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 		if (mapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
 
 		var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
-		if (folder is null) return Results.NotFound();
+		if (folder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
 		try
@@ -436,7 +436,8 @@ internal static class BeatmapsetRoutes
 		ILogger<BeatmapsetRoutesLog> logger,
 		CancellationToken cancellationToken)
 	{
-		if (await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken) is null) return Results.NotFound();
+		if (await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken) is null)
+			return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		if (body.Frozen is not null)
 			await beatmapsetRepository.SetFrozenAsync(mapsetId, body.Frozen.Value, cancellationToken);
@@ -457,7 +458,7 @@ internal static class BeatmapsetRoutes
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
 		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Beatmapset.ToSummary(siblings.Count);
@@ -471,7 +472,7 @@ internal static class BeatmapsetRoutes
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
 		if (mode is < 0 or > 3)
 			return Results.BadRequest(new ErrorResponse(
@@ -480,7 +481,7 @@ internal static class BeatmapsetRoutes
 		var resolvedMods = ((Mods)(mods ?? 0)).FilterInvalidCombos(resolvedMode);
 
 		var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
-		if (!File.Exists(osuPath)) return Results.NotFound();
+		if (!File.Exists(osuPath)) return Results.NotFound(new ErrorResponse("Beatmap file not found."));
 
 		BeatmapAnalysis analysis;
 		try

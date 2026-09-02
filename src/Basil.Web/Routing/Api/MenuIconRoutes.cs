@@ -58,7 +58,7 @@ internal static class MenuIconRoutes
 			.WithName("updateMenuIcon")
 			.WithSummary("Update menu icon.")
 			.WithDescription($"""
-			                  Multipart request, fields `image`, `url` — each applied only if present.{ImageFieldNote}
+			                  Multipart request, fields `image`, `url` — each applied only if present. Sending `url` empty clears the click-through URL back to unset.{ImageFieldNote}
 			                  """ + LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon")
 			.WithMultipartBody(
@@ -153,8 +153,10 @@ internal static class MenuIconRoutes
 			}
 		}
 
-		var urlRaw = form["url"].ToString();
-		if (!string.IsNullOrEmpty(urlRaw)) await menuIcon.SaveUrlAsync(urlRaw, cancellationToken);
+		// A present-but-empty `url` field is a deliberate reset to unset, told apart from an absent
+		// field (which leaves the current URL untouched) by presence in the form, not by content.
+		if (form.TryGetValue("url", out var urlValues))
+			await menuIcon.SaveUrlAsync(urlValues.ToString(), cancellationToken);
 
 		logger.LogInformation("Menu icon updated via admin API");
 		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));

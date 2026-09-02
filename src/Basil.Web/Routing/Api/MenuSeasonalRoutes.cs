@@ -91,7 +91,8 @@ internal static class MenuSeasonalRoutes
 		group.MapDelete("/menu/seasonals/{fileName}", (string fileName, MenuSeasonalService seasonal,
 				ILogger<MenuSeasonalRoutesLog> logger) =>
 			{
-				if (!seasonal.Delete(fileName)) return Results.NotFound();
+				if (!seasonal.Delete(fileName))
+					return Results.NotFound(new ErrorResponse("Seasonal background not found."));
 				logger.LogDebug("Seasonal background deleted via admin API: FileName={FileName}", fileName);
 				return Results.Json(new MenuSeasonalDeletedView(fileName, true));
 			})
@@ -142,7 +143,8 @@ internal static class MenuSeasonalRoutes
 
 		await using var stream = file.OpenReadStream();
 		var result = await seasonal.ReplaceAsync(fileName, stream, cancellationToken);
-		if (result == MenuSeasonalService.ReplaceResult.NotFound) return Results.NotFound();
+		if (result == MenuSeasonalService.ReplaceResult.NotFound)
+			return Results.NotFound(new ErrorResponse("Seasonal background not found."));
 
 		logger.LogDebug("Seasonal background replaced via admin API: FileName={FileName}", fileName);
 		return Results.Json(new MenuSeasonalReplacedView(fileName, true));

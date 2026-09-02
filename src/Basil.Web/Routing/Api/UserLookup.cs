@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Users;
+using Basil.Web.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -33,6 +34,8 @@ internal static class UserLookup
 		if (int.TryParse(idOrName, out var id)) return await onId(id);
 
 		var user = await users.FetchByNameAsync(idOrName, cancellationToken);
-		return user is null ? Results.NotFound() : Results.Redirect(canonicalPath(user.Id));
+		return user is null
+			? Results.NotFound(new ErrorResponse("User not found."))
+			: Results.Redirect(canonicalPath(user.Id));
 	}
 }

@@ -102,7 +102,7 @@ internal static class MatchRoutes
 				CancellationToken cancellationToken) =>
 			{
 				var report = await reportService.BuildAsync(matchId, cancellationToken);
-				return report is null ? Results.NotFound() : Results.Json(report);
+				return report is null ? Results.NotFound(new ErrorResponse("Match not found.")) : Results.Json(report);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchReport")
@@ -322,7 +322,7 @@ internal static class MatchRoutes
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		return Results.Json(
 			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
@@ -378,7 +378,7 @@ internal static class MatchRoutes
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -412,7 +412,7 @@ internal static class MatchRoutes
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try

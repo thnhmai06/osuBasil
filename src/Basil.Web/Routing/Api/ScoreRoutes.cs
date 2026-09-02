@@ -68,7 +68,7 @@ internal static class ScoreRoutes
 			{
 				var score = await scores.FetchByIdAsync(scoreId, cancellationToken);
 				return score is null
-					? Results.NotFound()
+					? Results.NotFound(new ErrorResponse("Score not found."))
 					: Results.Json(await BuildDetailView(score, gameRegistry, ircRegistry, users, beatmaps,
 						cancellationToken));
 			})
@@ -92,7 +92,7 @@ internal static class ScoreRoutes
 			{
 				var result = await replayService.FetchReplayFileAsync(scoreId, cancellationToken);
 				return result.Code == ReplayFetchResultCode.NotFound
-					? Results.NotFound()
+					? Results.NotFound(new ErrorResponse("Replay not found."))
 					: Results.Bytes(result.Data!, "application/x-osu-replay");
 			})
 			.WithGroupName("basilapi")

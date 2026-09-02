@@ -81,12 +81,12 @@ public sealed class MenuIconService(ISettingsRepository settings)
 		return settings.GetAsync(UrlKey, cancellationToken);
 	}
 
-	/// <summary>Saves the click-through URL.</summary>
-	/// <param name="url">The URL to store.</param>
+	/// <summary>Saves the click-through URL, or clears it when given an empty value.</summary>
+	/// <param name="url">The URL to store, or an empty/<see langword="null" /> value to clear it back to unset.</param>
 	/// <param name="cancellationToken">A token that cancels the writing.</param>
-	public Task SaveUrlAsync(string url, CancellationToken cancellationToken = default)
+	public Task SaveUrlAsync(string? url, CancellationToken cancellationToken = default)
 	{
-		return settings.SetAsync(UrlKey, url, cancellationToken);
+		return settings.SetAsync(UrlKey, string.IsNullOrEmpty(url) ? null : url, cancellationToken);
 	}
 
 	/// <summary>Deletes both the icon (image, whether uploaded or external) and the click-through URL.</summary>
