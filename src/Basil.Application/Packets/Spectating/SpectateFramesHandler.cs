@@ -4,6 +4,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Spectating;
+using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.Packets.Spectating;
@@ -21,7 +22,10 @@ namespace Basil.Application.Packets.Spectating;
 ///     serialized with <see cref="BasilJsonOptions" /> and published to the userSession's live spectating
 ///     event channel, keyed by this userSession's id regardless of match membership. Decoding runs only
 ///     when <see cref="IPlayerInputEvents.HasSubscribers" /> is true, and a malformed bundle is
-///     swallowed so it never breaks the relay above.
+///     swallowed so it never breaks the relay above. Only a <see cref="ReplayAction.Standard" /> bundle
+///     is published -- the other actions (song change, skip, completion, fail, pause, and the like)
+///     carry no meaningful replay frames and would otherwise show up as empty/junk events on the
+///     spectating stream.
 /// </remarks>
 public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) : IPacketHandler
 {
@@ -44,6 +48,8 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 		try
 		{
 			var bundle = new PacketReader(rawData).ReadReplayFrameBundle();
+			if (bundle.Action != ReplayAction.Standard) return Task.CompletedTask;
+
 			var user = new UserBrief(gameSession.Id, gameSession.Name, gameSession.Country);
 			var payload = JsonSerializer.SerializeToUtf8Bytes(
 				new SpectateFramesEvent(user, bundle.Action, bundle.ExtraByte, bundle.Frames, bundle.ScoreFrame),
