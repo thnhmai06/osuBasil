@@ -26,6 +26,13 @@ namespace Basil.Web.Middleware;
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
 	/// <summary>
+	///     The <see cref="HttpContext.Items" /> key a route handler sets to override the envelope's
+	///     generic verb-derived success message (e.g. "Created successfully") with one that actually
+	///     describes what the endpoint did.
+	/// </summary>
+	public const string EnvelopeMessageKey = "EnvelopeMessage";
+
+	/// <summary>
 	///     JSON options used to parse and reserialize the buffered envelope — the shared instance
 	///     every response body serialization uses, so re-serializing the envelope here doesn't
 	///     re-escape a value (e.g. a literal <c>+</c>) differently than the route handler that
@@ -102,7 +109,9 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 
 		var statusCode = context.Response.StatusCode;
 		var body = buffer.Length == 0 ? null : await JsonNode.ParseAsync(buffer);
-		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
+		var messageOverride = context.Items[EnvelopeMessageKey] as string;
+		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions,
+			messageOverride);
 
 		context.Response.ContentType = "application/json; charset=utf-8";
 		var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonWebOptions);

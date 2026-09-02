@@ -12,6 +12,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Web.Auth;
+using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 
@@ -1150,8 +1151,9 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `POST /matches/{matchId}/abort` route.</summary>
 	private static void MapAbort(RouteGroupBuilder group)
 	{
-		group.MapPost("/matches/{matchId:int}/abort", async (int matchId, IMatchRegistry matchRegistry,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+		group.MapPost("/matches/{matchId:int}/abort", async (int matchId, HttpContext context,
+				IMatchRegistry matchRegistry, MatchControlService matchControl,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -1164,6 +1166,7 @@ internal static class MatchSubResourceRoutes
 					if (result == MatchControlService.AbortResult.NotInProgress)
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
 
+					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match aborted.";
 					return Results.Json(new MatchAbortedView(matchId, abortedAt));
 				}
 				finally
@@ -1193,8 +1196,9 @@ internal static class MatchSubResourceRoutes
 	/// <summary>Registers the `POST /matches/{matchId}/close` route.</summary>
 	private static void MapClose(RouteGroupBuilder group)
 	{
-		group.MapPost("/matches/{matchId:int}/close", async (int matchId, IMatchRegistry matchRegistry,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+		group.MapPost("/matches/{matchId:int}/close", async (int matchId, HttpContext context,
+				IMatchRegistry matchRegistry, MatchControlService matchControl,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -1204,6 +1208,7 @@ internal static class MatchSubResourceRoutes
 				{
 					var endedAt = DateTime.UtcNow;
 					await matchControl.CloseAsync(null, null, match, cancellationToken);
+					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match closed.";
 					return Results.Json(new MatchClosedView(matchId, endedAt));
 				}
 				finally

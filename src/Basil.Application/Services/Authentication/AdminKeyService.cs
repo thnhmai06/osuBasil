@@ -58,6 +58,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	{
 		var hash = hasher.Hash(Encoding.UTF8.GetBytes(newKey));
 		await settings.SetAsync(HashSettingKey, hash, cancellationToken);
+		await StampLastChangedAsync(cancellationToken);
 	}
 
 	/// <summary>Clears the stored hash, putting the server into bypass mode immediately.</summary>
@@ -65,5 +66,25 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	public async Task ClearAsync(CancellationToken cancellationToken = default)
 	{
 		await settings.SetAsync(HashSettingKey, null, cancellationToken);
+		await StampLastChangedAsync(cancellationToken);
+	}
+
+	/// <summary>
+	///     Writes the current time to <see cref="LastChangedSettingKey" /> through the same
+	///     <see cref="ISettingsRepository" /> every other read/write goes through.
+	/// </summary>
+	/// <remarks>
+	///     The base migration also stamps this same column via a SQL trigger on
+	///     <see cref="HashSettingKey" />'s row, as a safety net for a write that bypasses this service
+	///     entirely (a manual DB edit). That trigger's write is invisible to
+	///     <c>CachingSettingsRepository</c>, which only invalidates the key it was actually asked to
+	///     write — leaving a stale cached <see cref="LastChangedSettingKey" /> behind after every key
+	///     change until its TTL expires. Writing it explicitly here, through the same repository call
+	///     every other setting change uses, invalidates its cache entry correctly.
+	/// </remarks>
+	private async Task StampLastChangedAsync(CancellationToken cancellationToken)
+	{
+		await settings.SetAsync(LastChangedSettingKey,
+			DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), cancellationToken);
 	}
 }

@@ -30,20 +30,21 @@ internal static class AdminKeyRoutes
 		group.MapGet("/adminkey", async (AdminKeyService adminKey, CancellationToken cancellationToken) =>
 			{
 				var lastChanged = await adminKey.GetLastChangedAsync(cancellationToken);
-				return Results.Json(new AdminKeyStatusView(lastChanged));
+				var hasAdminKey = !await adminKey.IsBypassAsync(cancellationToken);
+				return Results.Json(new AdminKeyStatusView(hasAdminKey, lastChanged));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("getAdminKeyStatus")
 			.WithSummary("Get admin key status.")
 			.WithDescription("""
-			                 Returns when the admin key was last set or cleared, never the key or its hash.
+			                 Returns whether an admin key is currently configured, and when it was last set or cleared.
 
-			                 `lastChanged` is `null` on a never-configured install.
+			                 `lastChanged` is `null` on a never-configured install. `hasAdminKey` is `false` while the server is in bypass mode.
 			                 """ + AdminKeyNote)
 			.WithTags("Admin Key")
 			.Produces<AdminKeyStatusView>()
-			.WithExample(StatusCodes.Status200OK, new AdminKeyStatusView(DateTimeOffset.UtcNow));
+			.WithExample(StatusCodes.Status200OK, new AdminKeyStatusView(true, DateTimeOffset.UtcNow));
 
 		group.MapPut("/adminkey", HandleSetKey)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -97,7 +98,7 @@ internal static class AdminKeyRoutes
 	}
 
 	/// <summary>Response body for `GET /adminkey`.</summary>
-	public sealed record AdminKeyStatusView(DateTimeOffset? LastChanged);
+	public sealed record AdminKeyStatusView(bool HasAdminKey, DateTimeOffset? LastChanged);
 
 	/// <summary>Request body for `PUT /adminkey`.</summary>
 	public sealed record AdminKeyBody(string Key);

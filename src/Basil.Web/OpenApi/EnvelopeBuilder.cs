@@ -23,8 +23,14 @@ internal static class EnvelopeBuilder
 	/// <param name="httpMethod">The HTTP method of the operation, used to phrase the success message.</param>
 	/// <param name="body">The serialized response body, or <see langword="null" /> when there is none.</param>
 	/// <param name="options">The serializer options used to serialize pagination metadata.</param>
+	/// <param name="messageOverride">
+	///     A route-supplied success message to use instead of the generic verb-derived one (e.g. "Match
+	///     aborted." instead of "Created successfully" for a <c>POST</c> that doesn't create anything).
+	///     Ignored on an error response.
+	/// </param>
 	/// <returns>The envelope JSON object with success, code, message, data, meta, errors, and timestamp members.</returns>
-	public static JsonObject Build(int statusCode, string? httpMethod, JsonNode? body, JsonSerializerOptions options)
+	public static JsonObject Build(int statusCode, string? httpMethod, JsonNode? body, JsonSerializerOptions options,
+		string? messageOverride = null)
 	{
 		var success = statusCode < 400;
 		string message;
@@ -33,7 +39,7 @@ internal static class EnvelopeBuilder
 
 		if (success)
 		{
-			message = DescribeSuccess(httpMethod);
+			message = messageOverride ?? DescribeSuccess(httpMethod);
 			if (IsPagedShape(body, out var paged))
 			{
 				meta = JsonSerializer.SerializeToNode(BuildMeta(paged!), options);
