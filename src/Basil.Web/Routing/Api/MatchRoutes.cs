@@ -513,7 +513,7 @@ internal static class MatchRoutes
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, MatchTeam.Neutral, Mods.NoMod, false, false));
+			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, null, null, null, null));
 		slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red,
 			Mods.NoMod, true, true);
 

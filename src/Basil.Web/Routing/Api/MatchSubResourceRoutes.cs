@@ -541,7 +541,8 @@ internal static class MatchSubResourceRoutes
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:numericid}/ban/live", (int matchId, HttpContext context, IMatchRegistry matchRegistry,
+		group.MapGet("/matches/{matchId:numericid}/ban/live", (int matchId, HttpContext context,
+				IMatchRegistry matchRegistry,
 				IMatchLiveEvents events, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -985,12 +986,12 @@ internal static class MatchSubResourceRoutes
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, MatchTeam.Neutral, Mods.NoMod, false, false));
+			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, null, null, null, null));
 		slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.NotReady, MatchTeam.Red,
 			Mods.NoMod, false, false);
 		slots[1] = new MatchSlotView(1, new UserBrief(9, "Carol", Country.Ca), SlotStatus.Ready, MatchTeam.Blue,
 			Mods.NoMod, true, false);
-		slots[15] = new MatchSlotView(15, null, SlotStatus.Locked, MatchTeam.Neutral, Mods.NoMod, false, false);
+		slots[15] = new MatchSlotView(15, null, SlotStatus.Locked, null, null, null, null);
 		return new MatchSlotsView(slots);
 	}
 

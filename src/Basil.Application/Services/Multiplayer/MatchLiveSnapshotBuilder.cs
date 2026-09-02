@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Beatmaps;
@@ -230,8 +231,10 @@ public static class MatchLiveSnapshotBuilder
 			var user = slot.PlayerId is { } pid
 				? await ResolveOrPlaceholder(pid, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
-			slots.Add(new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
-				slot.Status == SlotStatus.Ready, slot.Loaded));
+			slots.Add(user is null
+				? new MatchSlotView(i, null, slot.Status, null, null, null, null)
+				: new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
+					slot.Status == SlotStatus.Ready, slot.Loaded));
 		}
 
 		return slots;
@@ -482,23 +485,33 @@ public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool Au
 /// <remarks>
 ///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> serialize as their numeric
 ///     enum values. <see cref="Ready" /> is true exactly when <see cref="Status" /> is
-///     <see cref="SlotStatus.Ready" />.
+///     <see cref="SlotStatus.Ready" />. <see cref="Team" />, <see cref="Mods" />, <see cref="Ready" />,
+///     and <see cref="Loaded" /> are occupant state and only meaningful with one present; each is
+///     omitted from the JSON entirely (not merely <see langword="null" />) on an empty slot.
+///     <see cref="Status" /> is not one of them -- an empty slot is still meaningfully
+///     <see cref="SlotStatus.Open" /> or <see cref="SlotStatus.Locked" />, so it always serializes.
 /// </remarks>
 /// <param name="Index">The 0-based slot index.</param>
 /// <param name="User">The occupant, or <see langword="null" /> for an empty slot.</param>
 /// <param name="Status">The slot's current status.</param>
-/// <param name="Team">The occupant's team.</param>
-/// <param name="Mods">The occupant's mods.</param>
-/// <param name="Ready">Whether the occupant is ready.</param>
-/// <param name="Loaded">Whether the occupant has finished loading the map.</param>
+/// <param name="Team">The occupant's team, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Mods">The occupant's mods, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Ready">Whether the occupant is ready, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Loaded">
+///     Whether the occupant has finished loading the map, or <see langword="null" /> for an empty slot.
+/// </param>
 public sealed record MatchSlotView(
 	int Index,
 	UserBrief? User,
 	SlotStatus Status,
-	MatchTeam Team,
-	Mods Mods,
-	bool Ready,
-	bool Loaded);
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	MatchTeam? Team,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	Mods? Mods,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	bool? Ready,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	bool? Loaded);
 
 /// <summary>
 ///     The payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through

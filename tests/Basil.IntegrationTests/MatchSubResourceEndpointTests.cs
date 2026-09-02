@@ -416,6 +416,31 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		for (var i = 0; i < 16; i++) Assert.Equal(i, slots[i].GetProperty("index").GetInt32());
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): an empty slot used to serialize `team`/`mods`/`ready`/`loaded`
+	///     as meaningless default values (0/false) alongside `user: null`. It now omits all four
+	///     fields entirely -- `status` stays, since Open/Locked is still meaningful without an
+	///     occupant.
+	/// </summary>
+	[Fact]
+	public async Task Slots_Get_EmptySlot_OmitsOccupantOnlyFields()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/slots"));
+		response.EnsureSuccessStatusCode();
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		var slot = body.GetProperty("data").GetProperty("slots")[0];
+		Assert.Equal(JsonValueKind.Null, slot.GetProperty("user").ValueKind);
+		Assert.True(slot.TryGetProperty("status", out _));
+		Assert.False(slot.TryGetProperty("team", out _));
+		Assert.False(slot.TryGetProperty("mods", out _));
+		Assert.False(slot.TryGetProperty("ready", out _));
+		Assert.False(slot.TryGetProperty("loaded", out _));
+	}
+
 	[Fact]
 	public async Task Slots_Put_SwapsTwoOccupants()
 	{
