@@ -5,6 +5,8 @@ using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Services.Multiplayer;
+using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
@@ -65,6 +67,26 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		Assert.Contains("true", data);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4, "CRITICAL: FULL MATCH SSE OMITS LIVE GAMEPLAY"): the main match
+	///     stream used to carry only room/slot state, with no way to see live scores without opening a
+	///     separate per-slot connection. It must also relay every player's live score updates as
+	///     `gameplay` events.
+	/// </summary>
+	[Fact]
+	public async Task LiveChannel_ReceivesGameplayEventsPublishedForThatMatch()
+	{
+		var matchId = await CreateMatchAsync();
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+
+		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			true);
+
+		Assert.Equal("gameplay", eventType);
+		Assert.Equal("score update", data);
+	}
+
 	[Fact]
 	public async Task LiveChannel_UnknownMatch_ReturnsConflictEnvelope()
 	{
@@ -90,6 +112,32 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var createResponse = await client.SendAsync(createRequest);
 		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
 		return created.GetProperty("data").GetProperty("id").GetInt32();
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): the per-slot live stream used to emit the occupant's live score
+	///     updates as a `score` event; it must match the main stream's renamed `gameplay` event so both
+	///     streams carry the same live-score contract.
+	/// </summary>
+	[Fact]
+	public async Task LiveSlotChannel_ReceivesGameplayEventForItsOccupant()
+	{
+		var matchId = await CreateMatchAsync();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
+		var match = matchRegistry.GetByDbId(matchId)!;
+		var occupant = new GameSession(9001, "alice", "t9001", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		sessionRegistry.TryAdd(occupant);
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
+
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1",
+			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			true);
+
+		Assert.Equal("gameplay", eventType);
+		Assert.Equal("score update", data);
 	}
 
 	[Fact]

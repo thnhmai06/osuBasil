@@ -43,18 +43,42 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Streams live match updates for the main match state.
+	///     Streams live match updates for the main match state, interleaved with every player's live
+	///     gameplay updates during a round.
 	/// </summary>
 	/// <remarks>
-	///     Clients receive the current state first, followed by incremental updates.
+	///     Clients receive the current state first (event <c>main</c>), followed by incremental state
+	///     updates (also <c>main</c>) and, during a round, one <c>gameplay</c> event per player per
+	///     score update. Bounded the same way the per-slot stream is (ADR-004): <c>gameplay</c> can be
+	///     high-frequency, so the channel emits a <c>gap</c> marker on eviction rather than growing
+	///     without bound.
 	/// </remarks>
 	public static IResult HandleMain(HttpContext context, MatchSession match, IMatchLiveEvents events,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(SubscribeWithSnapshot("main", match.SseSubscribers,
-			publish => events.SubscribeMain(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+		return TypedResults.ServerSentEvents(SubscribeMultiWithSnapshot(match.SseSubscribers,
+			publish =>
+			{
+				var unsubscribeMain = events.SubscribeMain(match.DbId, MainHandler);
+				var unsubscribeGameplay = events.SubscribePlayerScore(match.DbId, GameplayHandler);
+				return () =>
+				{
+					unsubscribeMain.Dispose();
+					unsubscribeGameplay.Dispose();
+				};
+
+				void MainHandler(byte[] payload)
+				{
+					publish("main", payload);
+				}
+
+				void GameplayHandler(string playerName, byte[] payload)
+				{
+					publish("gameplay", payload);
+				}
+			},
+			"main", readLatestSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -151,7 +175,7 @@ internal static class LiveSseRoutes
 	///     Streams all live updates for a match slot.
 	/// </summary>
 	/// <remarks>
-	///     The stream combines slot state, player score, and player input events into a
+	///     The stream combines slot state, live gameplay, and player input events into a
 	///     single Server-Sent Events stream.
 	/// </remarks>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
@@ -182,7 +206,7 @@ internal static class LiveSseRoutes
 					var occupantName = match.Slots[slotIndex].PlayerId is { } occupantId
 						? sessionRegistry.GetByUserId(occupantId)?.Name
 						: null;
-					if (occupantName is not null && occupantName == playerName) publish("score", payload);
+					if (occupantName is not null && occupantName == playerName) publish("gameplay", payload);
 				}
 
 				void InputHandler(int playerId, byte[] payload)

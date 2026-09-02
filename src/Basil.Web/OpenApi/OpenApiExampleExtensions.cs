@@ -90,6 +90,61 @@ internal static class OpenApiExampleExtensions
 	}
 
 	/// <summary>
+	///     Documents the two event payloads produced by the main match-live SSE endpoint (<c>main</c>
+	///     state snapshots/deltas and <c>gameplay</c> live score updates) by replacing its single
+	///     200-response schema with a <c>oneOf</c> union and attaching one named example per event type.
+	/// </summary>
+	/// <remarks>
+	///     Both components (<c>MatchLiveSnapshot</c> and <c>PlayerLiveScore</c>) are referenced by name
+	///     rather than reusing whatever this operation's own <c>mediaType.Schema</c> currently holds --
+	///     with two competing <c>.Produces&lt;T&gt;()</c> declarations on the same status code, only the
+	///     last one registered survives on <c>mediaType.Schema</c> by the time this transformer runs, so
+	///     reading it back would silently duplicate one type instead of pairing both. This mirrors the
+	///     explicit-reference half of <see cref="WithSlotLiveExamples" />'s pattern for the same reason
+	///     <c>PlayerLiveScore</c> is referenced there too.
+	/// </remarks>
+	/// <param name="builder">The route whose 200 response gets the two named examples.</param>
+	/// <param name="mainExample">The example <c>MatchLiveSnapshot</c> payload for the <c>main</c> event.</param>
+	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
+	public static RouteHandlerBuilder WithMainLiveExamples(this RouteHandlerBuilder builder, object mainExample)
+	{
+		return builder.AddOpenApiOperationTransformer((operation, context, _) =>
+		{
+			if (operation.Responses?.TryGetValue("200", out var response) != true ||
+			    response?.Content?.TryGetValue("application/json", out var mediaType) != true)
+				return Task.CompletedTask;
+
+			mediaType!.Schema = new OpenApiSchema
+			{
+				OneOf =
+				[
+					new OpenApiSchemaReference("MatchLiveSnapshot", context.Document),
+					new OpenApiSchemaReference("PlayerLiveScore", context.Document)
+				]
+			};
+
+			mediaType.Example = null;
+			mediaType.Examples = new Dictionary<string, IOpenApiExample>
+			{
+				["main"] = new OpenApiExample
+				{
+					Summary = "event: main",
+					Value = JsonSerializer.SerializeToNode(mainExample, JsonWebOptions)
+				},
+				["gameplay"] = new OpenApiExample
+				{
+					Summary = "event: gameplay",
+					Value = JsonSerializer.SerializeToNode(
+						new PlayerLiveScore(new UserBrief(7, "Alice", Country.Us), 45_000, 620, 40, 5, 0, 3, 1,
+							4_213_567, 812, 812, false, 98, false), JsonWebOptions)
+				}
+			};
+
+			return Task.CompletedTask;
+		});
+	}
+
+	/// <summary>
 	///     Documents the multiple event payloads produced by the slot-live SSE endpoint by replacing
 	///     its single 200-response schema with a <c>oneOf</c> union and attaching one named example
 	///     for each SSE event type.
@@ -99,7 +154,7 @@ internal static class OpenApiExampleExtensions
 	///         This customization is only required for
 	///         <c>GET /matches/{matchId}/live/{slotIndex}</c>, whose successful response can carry
 	///         three distinct JSON payloads depending on the emitted SSE <c>event:</c> name:
-	///         <c>slot</c>, <c>score</c>, or <c>input</c>.
+	///         <c>slot</c>, <c>gameplay</c>, or <c>input</c>.
 	///     </para>
 	///     <para>
 	///         The endpoint's existing <c>.Produces&lt;PlayerLiveScore&gt;()</c> declaration
@@ -143,9 +198,9 @@ internal static class OpenApiExampleExtensions
 						new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing,
 							MatchTeam.Red, Mods.NoMod, false, true), JsonWebOptions)
 				},
-				["score"] = new OpenApiExample
+				["gameplay"] = new OpenApiExample
 				{
-					Summary = "event: score",
+					Summary = "event: gameplay",
 					Value = JsonSerializer.SerializeToNode(
 						new PlayerLiveScore(new UserBrief(7, "Alice", Country.Us), 45_000, 620, 40, 5, 0, 3, 1,
 							4_213_567, 812, 812, false, 98, false), JsonWebOptions)

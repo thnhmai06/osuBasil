@@ -90,8 +90,9 @@ internal static class BanchoProtocolRoutes
 		- TournamentJoinMatchChannel
 		- TournamentLeaveMatchChannel
 
-		Live multiplayer score updates are also published through the Basil API's
-		`GET /matches/{matchId}/live/{slotIndex}` Server-Sent Events endpoint.
+		Live multiplayer score updates are also published as `gameplay` events through the Basil
+		API's `GET /matches/{matchId}/live` and `GET /matches/{matchId}/live/{slotIndex}`
+		Server-Sent Events endpoints.
 
 		The response body uses the same packet format and contains zero or more packets
 		queued for the client. An empty response body simply means no packets are

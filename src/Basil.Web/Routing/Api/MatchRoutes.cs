@@ -194,18 +194,22 @@ internal static class MatchRoutes
 			.WithName("getMatchLive")
 			.WithSummary("Stream full match state.")
 			.WithDescription("""
-			                 Server-Sent Events stream of the match's full live state: room config, host, referees, current beatmap, in-progress flag, and every slot.
+			                 Server-Sent Events stream of the match's full live state: room config, host, referees, current beatmap, in-progress flag, and every slot, interleaved with every player's live gameplay updates during a round.
 
-			                 The first event is the full current state; each later event carries only the fields that changed. This channel carries no per-player score data; use `GET /matches/{matchId}/live/{slotIndex}` for that.
+			                 Each event is one of two types, carried by the SSE `event` field:
 
-			                 For a one-shot snapshot including historical rounds and events, use `GET /matches/{matchId}`.
+			                 - `main`: the room's full state first, then only the fields that changed
+			                 - `gameplay`: one player's live score frames during a round
+
+			                 For per-slot player input frames, use `GET /matches/{matchId}/live/{slotIndex}`. For a one-shot snapshot including historical rounds and events, use `GET /matches/{matchId}`.
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
 			.WithTags("Match Live")
 			.Produces<MatchLiveSnapshot>()
+			.Produces<PlayerLiveScore>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleLiveSnapshot());
+			.WithMainLiveExamples(SampleLiveSnapshot());
 
 		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")

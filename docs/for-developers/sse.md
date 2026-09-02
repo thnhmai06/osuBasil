@@ -324,10 +324,11 @@ Patch generation belongs to the stream's shared [`SnapshotChannel`](../../src/Ba
 ### Backpressure is a per-stream decision
 
 A stream that only ever needs the *latest* state does not need a bound: a slow connection just falls behind on
-intermediate values and catches up when it reads. The `/matches/{id}/live/{slotIndex}` stream is different — it
-carries a mix of high-frequency score/input events and lower-frequency slot events on one connection, so it is bounded
-and evicts the oldest queued events once full, emitting a `gap` SSE event in their place so the client can tell that a
-drop happened instead of silently missing updates.
+intermediate values and catches up when it reads. The `/matches/{id}/live` and `/matches/{id}/live/{slotIndex}`
+streams are different — each carries a mix of high-frequency `gameplay` (and, for the slot stream, `input`) events
+alongside lower-frequency state events (`main`, `slot`) on one connection, so both are bounded and evict the oldest
+queued events once full, emitting a `gap` SSE event in their place so the client can tell that a drop happened
+instead of silently missing updates.
 
 Whether a given stream needs this treatment is decided per stream, not applied uniformly.
 

@@ -180,18 +180,24 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 			.GetProperty("responses").GetProperty("200").GetProperty("content")
 			.GetProperty("application/json");
 
-		// Bare $ref to the declared payload type (MatchLiveSnapshot), not an inline Envelope object —
-		// SSE payloads are never enveloped at runtime, so neither is their declared schema.
-		Assert.Equal("#/components/schemas/MatchLiveSnapshot", responseNode.GetProperty("schema")
-			.GetProperty("$ref").GetString());
+		// A oneOf of bare $refs to the two payload types this stream can carry (MatchLiveSnapshot for
+		// `main`, PlayerLiveScore for `gameplay`), not an inline Envelope object -- SSE payloads are
+		// never enveloped at runtime, so neither is their declared schema.
+		var refs = responseNode.GetProperty("schema").GetProperty("oneOf").EnumerateArray()
+			.Select(s => s.GetProperty("$ref").GetString()).ToHashSet();
+		Assert.Equal(["#/components/schemas/MatchLiveSnapshot", "#/components/schemas/PlayerLiveScore"], refs);
 
-		// The example must also stay unwrapped (no top-level "success"/"data" envelope keys) —
-		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions.WithExample
-		// must skip the same envelope-wrapping it applies to every other basilapi route.
-		var examplePropertyNames = responseNode.GetProperty("example").EnumerateObject()
-			.Select(p => p.Name).ToHashSet();
-		Assert.DoesNotContain("success", examplePropertyNames);
-		Assert.Contains("inProgress", examplePropertyNames);
+		// Both named examples must also stay unwrapped (no top-level "success"/"data" envelope keys) --
+		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions must skip
+		// the same envelope-wrapping it applies to every other basilapi route.
+		var mainExampleProps = responseNode.GetProperty("examples").GetProperty("main").GetProperty("value")
+			.EnumerateObject().Select(p => p.Name).ToHashSet();
+		Assert.DoesNotContain("success", mainExampleProps);
+		Assert.Contains("inProgress", mainExampleProps);
+
+		var gameplayExampleProps = responseNode.GetProperty("examples").GetProperty("gameplay").GetProperty("value")
+			.EnumerateObject().Select(p => p.Name).ToHashSet();
+		Assert.DoesNotContain("success", gameplayExampleProps);
 	}
 
 	[Fact]
