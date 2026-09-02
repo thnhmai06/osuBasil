@@ -399,6 +399,34 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.NotNull(free.Match);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): force-inviting a player already seated in a different match used
+	///     to be rejected outright ("Already in another match."). It must instead leave them from the old
+	///     match and seat them in the new one.
+	/// </summary>
+	[Fact]
+	public async Task Invite_Force_TargetInAnotherMatch_LeavesOldMatchAndSeatsInNew()
+	{
+		var client = _factory.CreateClient();
+		var oldMatchId = await CreateMatchAsync(client);
+		var newMatchId = await CreateMatchAsync(client);
+		var target = await SeatNewPlayer(3001, "mover", oldMatchId);
+
+		var inviteRequest = MakeRequest(HttpMethod.Post, $"/matches/{newMatchId}/slots");
+		inviteRequest.Content = JsonContent.Create(new { userIds = new[] { target.Id }, force = true });
+		var response = await client.SendAsync(inviteRequest);
+		response.EnsureSuccessStatusCode();
+
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.True(envelope.GetProperty("data")[0].GetProperty("ok").GetBoolean());
+
+		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var oldMatch = matchRegistry.GetByDbId(oldMatchId)!;
+		Assert.NotNull(target.Match);
+		Assert.Equal(newMatchId, target.Match!.DbId);
+		Assert.DoesNotContain(oldMatch.Slots, s => s.PlayerId == target.Id);
+	}
+
 	// ---- /slots ----
 
 	/// <summary>

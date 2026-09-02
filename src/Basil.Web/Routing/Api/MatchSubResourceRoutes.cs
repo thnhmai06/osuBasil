@@ -807,6 +807,30 @@ internal static class MatchSubResourceRoutes
 				var results = new List<InviteResult>();
 				var anySeated = false;
 
+				// Force-leave any target's current match before touching this match's lock. Two match
+				// locks are never held at once: this match's lock is acquired only after every old-match
+				// leave below has already released its own lock (see MatchMembershipService.LeaveAsync's
+				// lock-ownership contract).
+				if (body.Force)
+					foreach (var userId in userIds)
+					{
+						var target = gameRegistry.GetByUserId(userId);
+						if (target?.Match is not { } oldMatch || oldMatch == match) continue;
+
+						await oldMatch.Lock.WaitAsync(cancellationToken);
+						try
+						{
+							await matchMembership.LeaveAsync(target, oldMatch, cancellationToken);
+						}
+						finally
+						{
+							oldMatch.Lock.Release();
+						}
+
+						await matchMembership.EnqueueStateAsync(oldMatch, oldMatch.NextStateVersion(),
+							cancellationToken: cancellationToken);
+					}
+
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
@@ -878,7 +902,9 @@ internal static class MatchSubResourceRoutes
 			.WithDescription("""
 			                 Invites `{ userIds: int[], force }` to the match, returning one `{ userId, ok, error }` result per target.
 
-			                 Without `force`, sends a standing invite (same as `!mp invite`): the target still needs to join themselves, subject to the room's password/private/lock gating. With `force: true`, bypasses password/private/lock and seats the target directly. A banned target is still rejected regardless of `force`.
+			                 Without `force`, sends a standing invite (same as `!mp invite`): the target still needs to join themselves, subject to the room's password/private/lock gating. With `force: true`, bypasses password/private/lock and seats the target directly, moving them out of any other match they're currently in first. A banned target is still rejected regardless of `force`.
+
+			                 A target moved out of another match is briefly in no match at all; if this match fills up in that window, they end up seated nowhere (`error: "No free slot."`) rather than back in their old room.
 
 			                 Returns `200 OK` even if some targets failed.
 
