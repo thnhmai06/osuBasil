@@ -561,7 +561,8 @@ internal static class MatchSubResourceRoutes
 		group.MapPut("/matches/{matchId:int}/ban", async (int matchId, ReplaceBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+				MatchControlService matchControl, MatchMembershipService matchMembership,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -570,6 +571,8 @@ internal static class MatchSubResourceRoutes
 				try
 				{
 					await matchControl.SetBansAsync(match, body.UserIds, cancellationToken);
+					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+						cancellationToken: cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
@@ -596,7 +599,8 @@ internal static class MatchSubResourceRoutes
 		group.MapPatch("/matches/{matchId:int}/ban", async (int matchId, UpdateBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+				MatchControlService matchControl, MatchMembershipService matchMembership,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -605,6 +609,8 @@ internal static class MatchSubResourceRoutes
 				try
 				{
 					await matchControl.AddBansAsync(match, body.UserIds, cancellationToken);
+					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+						cancellationToken: cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
@@ -786,7 +792,7 @@ internal static class MatchSubResourceRoutes
 		group.MapPost("/matches/{matchId:int}/slots", async (int matchId, InviteRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, MatchControlService matchControl,
-				CancellationToken cancellationToken) =>
+				MatchMembershipService matchMembership, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -794,10 +800,12 @@ internal static class MatchSubResourceRoutes
 				var userIds = body.UserIds;
 				if (userIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
+				var results = new List<InviteResult>();
+				var anySeated = false;
+
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var results = new List<InviteResult>();
 					var sender = (UserSession?)gameRegistry.GetByUserId(match.HostId) ??
 					             ircRegistry.GetByUserId(match.HostId) ??
 					             (UserSession?)gameRegistry.GetByUserId(BotBootstrapService.BotId) ??
@@ -815,6 +823,7 @@ internal static class MatchSubResourceRoutes
 						if (body.Force)
 						{
 							var forceResult = await matchControl.ForceInviteAsync(match, target, cancellationToken);
+							if (forceResult == MatchControlService.ForceInviteResult.Ok) anySeated = true;
 							results.Add(forceResult switch
 							{
 								MatchControlService.ForceInviteResult.Ok => new InviteResult(userId, true, null),
@@ -846,13 +855,17 @@ internal static class MatchSubResourceRoutes
 							_ => new InviteResult(userId, true, null)
 						});
 					}
-
-					return Results.Json(results);
 				}
 				finally
 				{
 					match.Lock.Release();
 				}
+
+				if (anySeated)
+					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+						cancellationToken: cancellationToken);
+
+				return Results.Json(results);
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -881,7 +894,8 @@ internal static class MatchSubResourceRoutes
 		group.MapDelete("/matches/{matchId:int}/slots", async (int matchId, [FromBody] KickPlayerRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+				MatchControlService matchControl, MatchMembershipService matchMembership,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -890,27 +904,35 @@ internal static class MatchSubResourceRoutes
 				if (targetUser is null)
 					return Results.BadRequest(new ErrorResponse("userId is not registered."));
 
+				MatchControlService.KickResult result;
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var result = await matchControl.KickAsync(null, null, match, targetUser.Id, targetUser.Name,
+					result = await matchControl.KickAsync(null, null, match, targetUser.Id, targetUser.Name,
 						cancellationToken);
-					return result switch
-					{
-						MatchControlService.KickResult.TargetNotInMatch =>
-							Results.BadRequest(new ErrorResponse("userId is not in this match.")),
-						MatchControlService.KickResult.TargetIsReferee =>
-							Results.BadRequest(new ErrorResponse("userId is a referee; remove referee status first.")),
-						MatchControlService.KickResult.TargetIsBot =>
-							Results.BadRequest(new ErrorResponse("userId is BasilBot and cannot be kicked.")),
-						_ => Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry,
-							users,
-							cancellationToken))
-					};
 				}
 				finally
 				{
 					match.Lock.Release();
+				}
+
+				return result switch
+				{
+					MatchControlService.KickResult.TargetNotInMatch =>
+						Results.BadRequest(new ErrorResponse("userId is not in this match.")),
+					MatchControlService.KickResult.TargetIsReferee =>
+						Results.BadRequest(new ErrorResponse("userId is a referee; remove referee status first.")),
+					MatchControlService.KickResult.TargetIsBot =>
+						Results.BadRequest(new ErrorResponse("userId is BasilBot and cannot be kicked.")),
+					_ => await KickedResponseAsync()
+				};
+
+				async Task<IResult> KickedResponseAsync()
+				{
+					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+						cancellationToken: cancellationToken);
+					return Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry,
+						users, cancellationToken));
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)

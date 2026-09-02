@@ -136,10 +136,11 @@ is newer than the last one it actually applied; an older version arriving late i
 dropped publish is not an error — it means a newer version already reflects everything that one would have added — so
 it is only counted (`basil.match.publish.stale_dropped`), never logged as a failure.
 
-Not every call site needed to change to get this benefit. A few (seating and leaving a match, starting a round, a
-countdown's own final tick) still publish before releasing the lock, because hoisting them would require
-restructuring how several different callers share that lock, not just shrinking one function's hold time — see
-ADR-004 for exactly which call sites and why.
+Not every call site needed to change to get this benefit. A few (starting a round, a countdown's own final tick, and
+the `!mp kick`/`!mp ban` bot commands specifically) still publish before releasing the lock, because hoisting them
+would require restructuring how several different callers share that lock, not just shrinking one function's hold
+time — see ADR-004 for exactly which call sites and why. Seating and leaving a match (`OccupySlot`/`LeaveAsync`) no
+longer publish internally at all; every caller allocates a version and publishes itself after the mutation completes.
 
 ## Subscriber registry and match close
 

@@ -144,6 +144,10 @@ public sealed class MatchMembershipService(
 				await CloseAsync(match, creator.Id, creator.Name, cancellationToken);
 				return null;
 			}
+
+			// Only JoinResult.Ok actually seated the creator (AlreadyInMatch means nothing changed).
+			if (joined is JoinResult.Ok)
+				await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		}
 		else
 		{
@@ -342,10 +346,9 @@ public sealed class MatchMembershipService(
 		if (!match.HasGameplayHost) match.HostId = userSession.Id;
 
 		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
-		// Runs under whatever lock the caller (JoinMatchHandler, CreateAsync, MpCommandService) already
-		// holds rather than hoisted per ADR-004 4b: OccupySlot is reached from several different
-		// lock-owning frames, and SyncEmptyRoomTimer right after still needs the same lock held.
-		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
+		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
+		// lock instead, since a version allocated an instant later than the mutation is still correct.
 		SyncEmptyRoomTimer(match);
 
 		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
@@ -404,10 +407,9 @@ public sealed class MatchMembershipService(
 			}
 		}
 
-		// Runs under the caller's already-held lock, not hoisted (ADR-004 4b) — same reasoning as
-		// OccupySlot: LeaveAsync is reached from several different lock-owning frames, and
-		// SyncEmptyRoomTimer right after still needs that same lock held.
-		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
+		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
+		// lock instead, since a version allocated an instant later than the mutation is still correct.
 		SyncEmptyRoomTimer(match);
 
 		userSession.Match = null;
@@ -641,7 +643,9 @@ public sealed class MatchMembershipService(
 	///     and broadcast here is gated by <paramref name="version" /> instead, so a call superseded
 	///     by a newer mutation's is dropped rather than reverting live state to something stale. The
 	///     caller must allocate <paramref name="version" /> from <see cref="MatchSession.NextStateVersion" />
-	///     while still holding the lock, at the point the mutation it is reporting completed.
+	///     after the mutation it is reporting has completed; the lock does not need to still be held
+	///     at that point; allocating it slightly later can only produce a newer version, never a stale
+	///     one.
 	/// </remarks>
 	/// <param name="match">The match whose state to broadcast.</param>
 	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>

@@ -65,6 +65,9 @@ public sealed class PlayerLogoutService(
 			{
 				match.Lock.Release();
 			}
+
+			await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+				cancellationToken: cancellationToken);
 		}
 
 		if (game.Spectating is { } host) spectatorService.RemoveSpectator(host, game);

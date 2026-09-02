@@ -312,31 +312,35 @@ public sealed class MpCommandService(
 			return false;
 		}
 
+		MatchMembershipService.JoinResult joined;
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-			var joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
-			if (joined == MatchMembershipService.JoinResult.Ok)
-			{
-				sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
-				return true;
-			}
-
-			sink.Reply(joined switch
-			{
-				MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
-				MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
-				MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
-				MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
-				_ => MpReplies.FailedToJoinMatch
-			});
-			return false;
+			joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		if (joined == MatchMembershipService.JoinResult.Ok)
+		{
+			await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+				cancellationToken: cancellationToken);
+			sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
+			return true;
+		}
+
+		sink.Reply(joined switch
+		{
+			MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
+			MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
+			MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
+			MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
+			_ => MpReplies.FailedToJoinMatch
+		});
+		return false;
 	}
 
 	/// <summary>
@@ -1257,6 +1261,8 @@ public sealed class MpCommandService(
 				sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 				return false;
 			default:
+				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+					cancellationToken: cancellationToken);
 				sink.Reply(string.Format(MpReplies.KickedFromMatch, targetUser.Name));
 				return true;
 		}
@@ -1291,6 +1297,8 @@ public sealed class MpCommandService(
 				sink.Reply(string.Format(MpReplies.CannotBanReferee, targetUser.Name));
 				return false;
 			default:
+				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+					cancellationToken: cancellationToken);
 				sink.Reply(string.Format(MpReplies.BannedPlayerFromMatch, targetUser.Name));
 				return true;
 		}

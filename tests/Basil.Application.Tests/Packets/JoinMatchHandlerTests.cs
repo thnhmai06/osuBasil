@@ -67,6 +67,29 @@ public class JoinMatchHandlerTests
 		Assert.Same(match, guest.Match);
 	}
 
+	/// <summary>
+	///     Regression test for the ADR-004 4b follow-up: JoinAsync/OccupySlot no longer publish
+	///     internally, so the handler itself must publish after releasing the lock.
+	/// </summary>
+	[Fact]
+	public async Task Handle_CorrectPassword_PublishesUpdatedMainSnapshot()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var beforeJoin = match.MainSnapshot.Latest;
+
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+		Assert.NotNull(match.MainSnapshot.Latest);
+		Assert.NotSame(beforeJoin, match.MainSnapshot.Latest);
+	}
+
 	[Fact]
 	public async Task Handle_PrivateMatch_CorrectPassword_UninvitedRejected()
 	{

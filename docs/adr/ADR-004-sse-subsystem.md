@@ -1,8 +1,9 @@
 # ADR-004 — SSE subsystem design contract
 
-> Status: **Accepted, implemented (4a and 4b).** Approved 2026-09-01 (user decision on every open
-> sub-decision below, including the subscriber-registry lifecycle design); 4b's design approved
-> 2026-09-02 and implemented the same session.
+> Status: **Accepted, implemented (4a, 4b, and the Join/Leave publish-hoist follow-up).** Approved
+> 2026-09-01 (user decision on every open sub-decision below, including the subscriber-registry
+> lifecycle design); 4b's design approved 2026-09-02 and implemented the same session; the
+> Join/Leave follow-up implemented the same session immediately after.
 >
 > **Implemented this session ("4a"):** `SseSubscriberRegistry` + `MatchSession.SseSubscribers`,
 > `TeardownMatch` completion; `IMatchLiveEvents` rewritten to per-match-keyed subscribe/publish
@@ -32,22 +33,39 @@
 > **Explicitly NOT hoisted, and why** — these keep the pre-4b calling convention (mutate, still
 > holding the lock, publish before release), because the "flat call site" precondition above does
 > not hold for them:
-> - `MatchMembershipService.OccupySlot`/`LeaveAsync`: reached from at least four different
->   lock-acquiring frames (`JoinMatchHandler`, `CreateAsync`, `MpCommandService.JoinAsync`,
->   `MatchControlService.ForceInviteAsync`, plus whoever calls `LeaveAsync`), and each has a
->   trailing `SyncEmptyRoomTimer` call that itself reads/mutates match state and must stay locked.
->   Restructuring these to hoist their publish would mean changing their contract from "seat/part
->   and broadcast" to "seat/part, return a version, caller broadcasts" at every one of those call
->   sites — a materially different, larger change than 4b's approved scope.
 > - `MatchMembershipService.StartAsync`: already awaits a DB write (`CreateRoundAsync`) under the
 >   lock per ADR-003's decision to keep round-start synchronous, so hoisting just the trailing
->   publish would not meaningfully reduce lock hold time.
+>   publish would not meaningfully reduce lock hold time. No change made.
 > - `MatchControlService.CountdownLoopAsync`'s final tick (the one `PublishTimer` call inside its
 >   own `match.Lock.WaitAsync`/`Release` block): the surrounding mutation there is the loop's own
 >   lock-owning frame, not a caller passing a version in — kept as-is since it is already minimal.
+> - `MpCommandService.KickAsync`/`BanAsync` (the `!mp kick`/`!mp ban` command bodies): both run
+>   inside `RunLockedAsync`, a single generic lock-wrapper shared by ~20 unrelated `!mp` subcommands.
+>   Restructuring that wrapper to let one caller opt out of holding the lock across its own publish
+>   was not worth doing for two call sites — they still publish (see below), just before release.
 >
-> A future pass could restructure Join/Leave's contract to also hoist their publish, but that is
-> its own larger, separately-scoped change, not a 4b gap to silently leave unmentioned.
+> **Join/Leave publish-hoist follow-up (2026-09-02, same session as 4b):** `OccupySlot`/`LeaveAsync`
+> no longer publish internally at all — the `EnqueueStateAsync` call was removed from both, keeping
+> only `SyncEmptyRoomTimer` under the caller's lock. Every caller now allocates a version and
+> publishes itself, in most cases *after* releasing the lock: `PartMatchHandler`, `JoinMatchHandler`,
+> `PlayerLogoutService`, `MatchMembershipService.CreateAsync` (its own lock/release block, only when
+> the creator actually got seated), `MpCommandService`'s `!mp join` (its own lock/release block), and
+> the HTTP kick/invite/ban routes (`MatchSubResourceRoutes.cs`) — the kick route's own
+> `MatchLiveSnapshotBuilder.BuildSlots` response-body build moved out from under the lock too, the
+> same class of fix as 4b's for a single-purpose route. `MpCommandService.KickAsync`/`BanAsync` still
+> publish before release, for the `RunLockedAsync` reason above.
+>
+> Allocating the version *after* releasing the lock (rather than at the moment of mutation, still
+> locked, as 4b's flat-call-site pattern does) is still correct: the mutation already completed
+> under the lock by the time the caller reaches the publish call, so a version allocated an instant
+> later can only be newer than every version any concurrent mutation on the same match could have
+> allocated before it — never stale. `SequenceGate`/`SnapshotChannel`'s existing "accept only a
+> strictly newer sequence" rule handles the rest exactly as it does for 4b's flat call sites.
+>
+> Verified with two regression tests (`PartMatchHandlerTests`, `JoinMatchHandlerTests`) asserting
+> `MatchSession.MainSnapshot.Latest` is a new instance after a leave/join — confirmed each catches
+> the bug by temporarily removing its handler's publish call and observing the assertion fail with
+> the pre-fix symptom (no publish happened), then restored.
 >
 > **A concurrency hazard 4b had to resolve before touching call sites:** `SnapshotChannel<T>.Publish` is a read-diff-write sequence
 > (`previous = Latest; patch = Diff(previous, current); Latest = current`) with no synchronization
