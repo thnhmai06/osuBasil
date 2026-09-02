@@ -765,7 +765,8 @@ public sealed class MatchMembershipService(
 			try
 			{
 				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
-				AnnounceToRoomAndReferees(match, "Closing the room — it stayed empty for 5 minutes.");
+				AnnounceToRoomAndReferees(match,
+					$"Closing the room — it stayed empty for {EmptyRoomCloseSeconds / 60} minutes.");
 				match.EmptyRoomTimer = null;
 				match.EmptyRoomWarningSent = false;
 				await CloseAsync(match, null, null, token);
@@ -801,7 +802,7 @@ public sealed class MatchMembershipService(
 	///     Announces a message into the match's chat channel and, for any referee not already reached
 	///     through that channel, as a direct message.
 	/// </summary>
-	private void AnnounceToRoomAndReferees(MatchSession match, string text)
+	internal void AnnounceToRoomAndReferees(MatchSession match, string text)
 	{
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;

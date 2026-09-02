@@ -56,9 +56,9 @@ internal static class BeatmapsetRoutes
 			.WithName("createBeatmapset")
 			.WithSummary("Create a beatmapset.")
 			.WithDescription("""
-			                 Multipart upload, field name `file`, must be a `.osz` archive (a lone `.osu` file has no set context).
+			                 Multipart upload, field name `file`. Only .osz uploads are accepted.
 
-			                 Adds the archive's beatmaps to the server and returns `{ ingested }`, the number of beatmaps added or updated.
+			                 Adds the archive's beatmaps to the server and returns the number of beatmaps added or updated.
 			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.WithMultipartFileUpload()
@@ -66,7 +66,7 @@ internal static class BeatmapsetRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status201Created, new IngestResult(5))
 			.WithExample(StatusCodes.Status400BadRequest,
-				new ErrorResponse("Only .osz uploads are accepted (a single .osu file has no set context)."));
+				new ErrorResponse("Only .osz uploads are accepted."));
 
 		group.MapGet("/beatmapsets/{mapsetId:int}", HandleGet)
 			.WithGroupName("basilapi")
@@ -334,7 +334,7 @@ internal static class BeatmapsetRoutes
 		var extension = Path.GetExtension(file.FileName);
 		if (!string.Equals(extension, ".osz", StringComparison.OrdinalIgnoreCase))
 			return Results.BadRequest(
-				new ErrorResponse("Only .osz uploads are accepted (a single .osu file has no set context)."));
+				new ErrorResponse("Only .osz uploads are accepted."));
 
 		Directory.CreateDirectory(storage.Value.MapsetsPath);
 		var destinationName = $"{Guid.NewGuid():N}{extension}";
@@ -504,7 +504,7 @@ internal static class BeatmapsetRoutes
 	/// <summary>Request body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
 	public sealed record BeatmapsetPatchBody(bool? Frozen = null, bool? Private = null);
 
-	private sealed record IngestResult(int Ingested);
+	private sealed record IngestResult(int BeatmapsProcessed);
 
 	/// <summary>Response body for the asynchronous `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
 	public sealed record MapsetOperationAccepted(int MapsetId, string Operation);

@@ -897,6 +897,7 @@ public sealed class MatchControlService(
 
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 		matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
+		matchMembership.AnnounceToRoomAndReferees(match, "Match aborted.");
 		await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 		return AbortResult.Ok;
 	}

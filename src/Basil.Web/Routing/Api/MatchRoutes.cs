@@ -64,7 +64,10 @@ internal static class MatchRoutes
 			[
 				new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null,
 					SampleRoomLive())
-			]));
+			]))
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status400BadRequest,
+				new ErrorResponse("Invalid status 'foo'. Expected 'online', 'offline', or 'all'."));
 
 		group.MapPost("/matches", HandleCreate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -236,7 +239,9 @@ internal static class MatchRoutes
 	{
 		var (p, ps) = Pagination.Normalize(page, pageSize);
 		var mode = (status ?? "online").ToLowerInvariant();
-		if (mode is not ("online" or "offline" or "all")) mode = "online";
+		if (mode is not ("online" or "offline" or "all"))
+			return Results.BadRequest(
+				new ErrorResponse($"Invalid status '{status}'. Expected 'online', 'offline', or 'all'."));
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
 		var rows = await matchRepository.FetchAllMatchesAsync(cancellationToken);
@@ -500,7 +505,7 @@ internal static class MatchRoutes
 
 	private static MatchRoomLive SampleRoomLive()
 	{
-		return new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+		return new MatchRoomLive(true, false, false, 16, 654,
 			Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard,
 			true, SampleBeatmap());
 	}
@@ -546,7 +551,7 @@ internal static class MatchRoutes
 		var beatmap = new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
 			difficulty, objectCounts, false, beatmapset);
 
-		var live = new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+		var live = new MatchRoomLive(true, false, false, 16, 654,
 			Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard, false, beatmap);
 
 		var score = new MatchReportScore(new UserBrief(7, "Alice", Country.Vn), MatchTeam.Red, Mods.NoMod, 4_850_213,

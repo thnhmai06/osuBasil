@@ -153,6 +153,16 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	}
 
 	[Fact]
+	public async Task GetMatch_InvalidStatus_ReturnsBadRequestInsteadOfSilentlyDefaulting()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=notarealstatus"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
 	public async Task PatchSettings_UpdatesNameAndSize()
 	{
 		var client = _factory.CreateClient();

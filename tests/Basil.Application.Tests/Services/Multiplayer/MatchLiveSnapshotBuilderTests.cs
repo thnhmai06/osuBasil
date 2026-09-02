@@ -36,14 +36,14 @@ public class MatchLiveSnapshotBuilderTests
 	}
 
 	[Fact]
-	public async Task BuildRoomLive_ReflectsRoomCoreFieldsAndHasPassword()
+	public async Task BuildRoomLive_ReflectsRoomFieldsAndHasPassword()
 	{
 		var match = MakeMatch();
 
 		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
 
-		Assert.Equal(5, live.Id);
-		Assert.Equal("Grand Finals", live.Name);
+		// Id/Name are deliberately absent from MatchRoomLive -- every place it's embedded already
+		// carries those at its own top level (see the type's doc comment).
 		Assert.True(live.HasPassword);
 		Assert.Equal(42, live.MapId);
 		Assert.Equal(MatchTeamType.TeamVs, live.TeamType);

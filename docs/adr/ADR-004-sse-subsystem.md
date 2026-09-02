@@ -28,6 +28,28 @@
 > containable, independently-testable pieces, and doing both in one pass would make a failure in
 > either hard to attribute. 4b needs its own commit, its own test pass, and its own
 > revert-and-fail verification per call-site class.
+>
+> **A concurrency hazard 4b must resolve before touching call sites, found in post-review (not yet
+> designed or implemented):** `SnapshotChannel<T>.Publish` is a read-diff-write sequence
+> (`previous = Latest; patch = Diff(previous, current); Latest = current`) with no synchronization
+> of its own — today it is safe only because every call happens while holding `MatchSession.Lock`,
+> which serializes it implicitly. Simply moving the `BuildMain`/`BuildSettings` + `Publish` calls
+> outside the lock removes that serialization: two publishes racing can both read the same
+> `previous`, emit two patches that both assume the same starting state, and leave `Latest` set to
+> whichever wrote last — independent of which mutation actually happened later. A subscriber that
+> applies both patches in the order it received them ends up with state that has permanently
+> diverged from `Latest`, with no way to detect it happened.
+>
+> This needs a real fix before 4b's call-site hoist, not a bare `lock` inside `SnapshotChannel`
+> alone — mutual exclusion prevents torn reads but not out-of-order application (an older
+> mutation's publish call executing after a newer one's, reverting `Latest` to stale content). The
+> mechanism needs a monotonic, lock-ordered sequence: allocate a sequence number while still
+> holding `MatchSession.Lock` (at the moment the mutation completes, before releasing it), then
+> have `Publish` drop any call whose sequence is not newer than the last one it actually applied.
+> That preserves true mutation order even though the diff/broadcast step runs unlocked and
+> out-of-order relative to other threads' unlocked work. This is a design decision, not yet
+> reviewed or approved — the next implementer should write it up and get it checked before coding,
+> the same way the rest of this ADR's decisions were.
 
 ## Problem
 

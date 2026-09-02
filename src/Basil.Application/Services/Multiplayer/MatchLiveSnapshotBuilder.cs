@@ -76,7 +76,7 @@ public static class MatchLiveSnapshotBuilder
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
 		return new MatchRoomLive(
-			match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+			!string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
 			match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
 			match.InProgress, beatmap);
 	}
@@ -344,10 +344,10 @@ public abstract record MatchRoomCore(
 /// <summary>The <c>live</c> object embedded in a <c>GET /matches</c> list item and in a match report.</summary>
 /// <remarks>
 ///     Carries room configuration plus the current map and in-progress flag, with no slots, host,
-///     referees, or rounds.
+///     referees, or rounds. Deliberately omits <c>id</c>/<c>name</c> — every place this is embedded
+///     (<see cref="MatchListItem" />, <see cref="MatchReport" />) already carries
+///     those at its own top level, so repeating them here would be redundant.
 /// </remarks>
-/// <param name="Id">The match's id.</param>
-/// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
@@ -364,8 +364,6 @@ public abstract record MatchRoomCore(
 ///     resolves.
 /// </param>
 public sealed record MatchRoomLive(
-	int Id,
-	string Name,
 	bool HasPassword,
 	bool IsPrivate,
 	bool IsLocked,
@@ -377,9 +375,7 @@ public sealed record MatchRoomLive(
 	MatchWinCondition WinCondition,
 	GameMode Mode,
 	bool InProgress,
-	BeatmapDetail? Beatmap)
-	: MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
-		Mode);
+	BeatmapDetail? Beatmap);
 
 /// <summary>
 ///     The payload for the SSE <c>/match/{id}/settings</c> channel and the response body for
@@ -530,6 +526,11 @@ public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, Date
 /// <param name="MatchId">The closed match's id.</param>
 /// <param name="EndedAt">When the match was closed.</param>
 public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
+
+/// <summary>The response body for <c>POST /matches/{matchId}/abort</c>.</summary>
+/// <param name="MatchId">The aborted match's id.</param>
+/// <param name="AbortedAt">When the round was aborted.</param>
+public sealed record MatchAbortedView(int MatchId, DateTime AbortedAt);
 
 /// <summary>One player's live score frame on the SSE <c>/matches/{matchId}/live/{slotIndex}</c> channel.</summary>
 /// <param name="User">The player the score belongs to.</param>

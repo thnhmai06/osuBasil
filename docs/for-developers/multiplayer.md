@@ -298,7 +298,7 @@ An HTTP administrative operation therefore follows the same concurrency rules as
 
 ## Empty-room lifecycle
 
-A match with no seated players is automatically closed after five minutes.
+A match with no seated players is automatically closed after fifteen minutes.
 
 This applies regardless of how the room was created.
 
@@ -314,10 +314,10 @@ There is no separate permanent-room state.
 The empty-room timer:
 
 1. starts when the room has no seated players;
-2. announces a 60-second warning;
+2. after ten minutes still empty, announces a 5-minute warning;
 3. sends the warning to referees who are not currently in the room's channel;
-4. closes the room if nobody joins;
-5. is cancelled when a player joins after the warning.
+4. closes the room five minutes later if nobody joins;
+5. is cancelled when a player joins, whether before or after the warning.
 
 The room's creator still retains creator/referee authority even when no player is seated.
 

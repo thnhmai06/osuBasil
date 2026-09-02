@@ -1129,9 +1129,7 @@ internal static class MatchSubResourceRoutes
 	private static void MapAbort(RouteGroupBuilder group)
 	{
 		group.MapPost("/matches/{matchId:int}/abort", async (int matchId, IMatchRegistry matchRegistry,
-				MatchControlService matchControl, ISessionRegistry<GameSession> gameRegistry,
-				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				IBeatmapRepository beatmaps, CancellationToken cancellationToken) =>
+				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound();
@@ -1139,13 +1137,12 @@ internal static class MatchSubResourceRoutes
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
+					var abortedAt = DateTime.UtcNow;
 					var result = await matchControl.AbortAsync(match, cancellationToken);
 					if (result == MatchControlService.AbortResult.NotInProgress)
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
 
-					return Results.Json(
-						await MatchLiveSnapshotBuilder.BuildMain(match, gameRegistry, ircRegistry, users, beatmaps,
-							cancellationToken));
+					return Results.Json(new MatchAbortedView(matchId, abortedAt));
 				}
 				finally
 				{
@@ -1157,14 +1154,16 @@ internal static class MatchSubResourceRoutes
 			.WithName("abortMatch")
 			.WithSummary("Abort a match in progress.")
 			.WithDescription("""
-			                 Aborts the match's current round and returns the resulting live state.
+			                 Aborts the match's current round and returns a confirmation body with the abort time.
+
+			                 Players in the match are notified over both the multiplayer protocol and the match's chat channel.
 
 			                 Returns `409 Conflict` if the match is not in progress, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Abort")
-			.Produces<MatchLiveSnapshot>()
+			.Produces<MatchAbortedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, MatchRoutes.SampleLiveSnapshot())
+			.WithExample(StatusCodes.Status200OK, new MatchAbortedView(42, DateTime.Parse("2026-07-20T14:30:00Z")))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
