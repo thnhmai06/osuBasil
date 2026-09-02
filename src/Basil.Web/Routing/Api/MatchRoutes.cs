@@ -513,8 +513,8 @@ internal static class MatchRoutes
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, null, null, null, null));
-		slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red,
+			slots.Add(new MatchSlotView(i + 1, null, SlotStatus.Open, null, null, null, null));
+		slots[0] = new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red,
 			Mods.NoMod, true, true);
 
 		return new MatchLiveSnapshot(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,

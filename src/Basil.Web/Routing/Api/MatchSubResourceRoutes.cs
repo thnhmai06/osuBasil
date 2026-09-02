@@ -134,7 +134,8 @@ internal static class MatchSubResourceRoutes
 	/// <summary>
 	///     Turns a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
 	///     consumes, translating each <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it
-	///     expects (null for a neutral team).
+	///     expects (null for a neutral team), and each 1-based <see cref="SlotAssignment.Index" /> into
+	///     the 0-based index the internal slot array uses.
 	/// </summary>
 	/// <param name="slots">The slot assignments from the request body.</param>
 	private static IReadOnlyDictionary<int, MatchControlService.SlotPatchEntry> ToPatchEntries(
@@ -149,7 +150,7 @@ internal static class MatchSubResourceRoutes
 				MatchTeam.Blue => "Blue",
 				_ => null
 			};
-			entries[slot.Index] = new MatchControlService.SlotPatchEntry(slot.UserId, team, slot.Locked);
+			entries[slot.Index - 1] = new MatchControlService.SlotPatchEntry(slot.UserId, team, slot.Locked);
 		}
 
 		return entries;
@@ -724,7 +725,7 @@ internal static class MatchSubResourceRoutes
 			.WithName("getMatchSlots")
 			.WithSummary("Get match slots.")
 			.WithDescription("""
-			                 Returns the match's slots as `{ slots: [...] }`. Always 16 entries (index 0-15); `user` is null when the slot is empty.
+			                 Returns the match's slots as `{ slots: [...] }`. Always 16 entries (index 1-16, matching `!mp move`'s convention); `user` is null when the slot is empty.
 
 			                 For a live stream of the same data, use `GET /matches/{matchId}/slots/live`.
 
@@ -959,12 +960,12 @@ internal static class MatchSubResourceRoutes
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, null, null, null, null));
-		slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.NotReady, MatchTeam.Red,
+			slots.Add(new MatchSlotView(i + 1, null, SlotStatus.Open, null, null, null, null));
+		slots[0] = new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.NotReady, MatchTeam.Red,
 			Mods.NoMod, false, false);
-		slots[1] = new MatchSlotView(1, new UserBrief(9, "Carol", Country.Ca), SlotStatus.Ready, MatchTeam.Blue,
+		slots[1] = new MatchSlotView(2, new UserBrief(9, "Carol", Country.Ca), SlotStatus.Ready, MatchTeam.Blue,
 			Mods.NoMod, true, false);
-		slots[15] = new MatchSlotView(15, null, SlotStatus.Locked, null, null, null, null);
+		slots[15] = new MatchSlotView(16, null, SlotStatus.Locked, null, null, null, null);
 		return new MatchSlotsView(slots);
 	}
 
@@ -982,8 +983,8 @@ internal static class MatchSubResourceRoutes
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		foreach (var slot in slots)
-			if (slot.Index is < 0 or > 15)
-				return Results.BadRequest(new ErrorResponse($"Slot index {slot.Index} is out of range (0-15)."));
+			if (slot.Index is < 1 or > 16)
+				return Results.BadRequest(new ErrorResponse($"Slot index {slot.Index} is out of range (1-16)."));
 
 		var entries = ToPatchEntries(slots);
 
@@ -1324,6 +1325,10 @@ internal static class MatchSubResourceRoutes
 	public sealed record StartTimerRequest(int Seconds, bool AutoStart);
 
 	/// <summary>One per-slot entry in a <see cref="ReplaceSlotsRequest" />.</summary>
+	/// <param name="Index">The 1-based slot index (1 through 16), matching `!mp move`'s convention.</param>
+	/// <param name="UserId">The player id to assign, or <see langword="null" /> to leave the slot unassigned.</param>
+	/// <param name="Team">Either `"Red"` or `"Blue"`; any other value leaves the destination slot's existing team unchanged.</param>
+	/// <param name="Locked">Whether to lock the slot; cannot be combined with a non-null <see cref="UserId" />.</param>
 	public sealed record SlotAssignment(int Index, int? UserId = null, MatchTeam? Team = null, bool? Locked = null);
 
 	/// <summary>Request body for `PUT /matches/{matchId}/slots`: every seated player must appear exactly once.</summary>

@@ -232,8 +232,8 @@ public static class MatchLiveSnapshotBuilder
 				? await ResolveOrPlaceholder(pid, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
 			slots.Add(user is null
-				? new MatchSlotView(i, null, slot.Status, null, null, null, null)
-				: new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
+				? new MatchSlotView(i + 1, null, slot.Status, null, null, null, null)
+				: new MatchSlotView(i + 1, user, slot.Status, slot.Team, slot.Mods,
 					slot.Status == SlotStatus.Ready, slot.Loaded));
 		}
 
@@ -491,7 +491,7 @@ public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool Au
 ///     <see cref="Status" /> is not one of them -- an empty slot is still meaningfully
 ///     <see cref="SlotStatus.Open" /> or <see cref="SlotStatus.Locked" />, so it always serializes.
 /// </remarks>
-/// <param name="Index">The 0-based slot index.</param>
+/// <param name="Index">The 1-based slot index (1 through 16), matching `!mp move`'s convention.</param>
 /// <param name="User">The occupant, or <see langword="null" /> for an empty slot.</param>
 /// <param name="Status">The slot's current status.</param>
 /// <param name="Team">The occupant's team, or <see langword="null" /> for an empty slot.</param>
@@ -514,8 +514,8 @@ public sealed record MatchSlotView(
 	bool? Loaded);
 
 /// <summary>
-///     The payload for <c>GET/PUT /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
-///     15.
+///     The payload for <c>GET/PUT /matches/{matchId}/slots</c>, always 16 entries, indexes 1 through
+///     16.
 /// </summary>
 /// <param name="Slots">The slot views, index-aligned with the match's slots.</param>
 public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);

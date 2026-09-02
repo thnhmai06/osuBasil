@@ -401,6 +401,26 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 	// ---- /slots ----
 
+	/// <summary>
+	///     Regression test (Issue #4): slot indexes used to be 0-based (0-15); the wire contract is now
+	///     1-based (1-16, matching `!mp move`'s convention) on both the request and response sides.
+	///     Index 0 is now out of range; index 16 (the last slot) is valid.
+	/// </summary>
+	[Theory]
+	[InlineData(0, HttpStatusCode.BadRequest)]
+	[InlineData(16, HttpStatusCode.OK)]
+	public async Task Slots_Put_IndexBoundary_1Through16(int index, HttpStatusCode expected)
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
+		request.Content = JsonContent.Create(new { slots = new object[] { new { index, locked = true } } });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(expected, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task Slots_Get_ReturnsSixteenIndexedEntries()
 	{
@@ -413,7 +433,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 		var slots = body.GetProperty("data").GetProperty("slots").EnumerateArray().ToList();
 		Assert.Equal(16, slots.Count);
-		for (var i = 0; i < 16; i++) Assert.Equal(i, slots[i].GetProperty("index").GetInt32());
+		for (var i = 0; i < 16; i++) Assert.Equal(i + 1, slots[i].GetProperty("index").GetInt32());
 	}
 
 	/// <summary>
@@ -459,8 +479,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		{
 			slots = new object[]
 			{
-				new { index = slotA, userId = b.Id },
-				new { index = slotB, userId = a.Id }
+				new { index = slotA + 1, userId = b.Id },
+				new { index = slotB + 1, userId = a.Id }
 			}
 		});
 		var response = await client.SendAsync(request);
@@ -479,7 +499,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new
 		{
-			slots = new object[] { new { index = 0, userId = 999999 } }
+			slots = new object[] { new { index = 1, userId = 999999 } }
 		});
 		var response = await client.SendAsync(request);
 
@@ -498,7 +518,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new
 		{
-			slots = new object[] { new { index = slot, userId = player.Id, locked = true } }
+			slots = new object[] { new { index = slot + 1, userId = player.Id, locked = true } }
 		});
 		var response = await client.SendAsync(request);
 

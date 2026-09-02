@@ -217,7 +217,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var warmRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		warmRequest.Content = JsonContent.Create(new
 		{
-			slots = new[] { new { index = currentSlot, userId = player.Id } }
+			slots = new[] { new { index = currentSlot + 1, userId = player.Id } }
 		});
 		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
@@ -226,7 +226,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 			var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 			request.Content = JsonContent.Create(new
 			{
-				slots = new[] { new { index = otherSlot, userId = player.Id } }
+				slots = new[] { new { index = otherSlot + 1, userId = player.Id } }
 			});
 			(await client.SendAsync(request)).EnsureSuccessStatusCode();
 		});

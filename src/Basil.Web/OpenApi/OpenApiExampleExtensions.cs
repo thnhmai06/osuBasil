@@ -140,7 +140,7 @@ internal static class OpenApiExampleExtensions
 				{
 					Summary = "event: slot",
 					Value = JsonSerializer.SerializeToNode(
-						new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing,
+						new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing,
 							MatchTeam.Red, Mods.NoMod, false, true), JsonWebOptions)
 				},
 				["score"] = new OpenApiExample
