@@ -204,6 +204,24 @@ public static class MatchLiveSnapshotBuilder
 		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart, startTime, endTime);
 	}
 
+	/// <summary>
+	///     Builds the timer snapshot for the SSE stream: the same data as <see cref="BuildTimer" />,
+	///     minus <see cref="MatchTimerView.SecondsRemaining" />.
+	/// </summary>
+	/// <remarks>
+	///     A ticking counter would otherwise change on every announcement checkpoint, defeating the
+	///     stream's coalescing and pushing an update purely to report elapsed time (Issue #4: "Remove
+	///     `secondsRemaining` from the timer SSE stream to prevent network spam"). A subscriber
+	///     computes remaining time locally from <see cref="MatchTimerView.StartTime" />/
+	///     <see cref="MatchTimerView.EndTime" /> instead.
+	/// </remarks>
+	/// <param name="match">The match whose timer to snapshot.</param>
+	public static MatchTimerLiveView BuildTimerLive(MatchSession match)
+	{
+		var timer = BuildTimer(match);
+		return new MatchTimerLiveView(timer.Running, timer.AutoStart, timer.StartTime, timer.EndTime);
+	}
+
 	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT /matches/{matchId}/slots</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> occupants.</param>
@@ -497,6 +515,18 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 public sealed record MatchTimerView(
 	bool Running,
 	int? SecondsRemaining,
+	bool AutoStart,
+	DateTimeOffset? StartTime = null,
+	DateTimeOffset? EndTime = null);
+
+/// <summary>The payload for the SSE stream <c>GET /matches/{matchId}/timer/live</c>.</summary>
+/// <remarks>Omits <c>secondsRemaining</c>; see <see cref="MatchLiveSnapshotBuilder.BuildTimerLive" />.</remarks>
+/// <param name="Running">Whether a countdown is currently pending.</param>
+/// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
+/// <param name="StartTime">The time the countdown began, or <see langword="null" /> when no countdown is running.</param>
+/// <param name="EndTime">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+public sealed record MatchTimerLiveView(
+	bool Running,
 	bool AutoStart,
 	DateTimeOffset? StartTime = null,
 	DateTimeOffset? EndTime = null);

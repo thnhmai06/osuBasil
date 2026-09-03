@@ -2,6 +2,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using Basil.Application.Diagnostics;
 using Basil.Application.Formats;
@@ -237,16 +238,85 @@ internal static class LiveSseRoutes
 	/// <summary>
 	///     Streams the chat said in a match's own channel.
 	/// </summary>
+	/// <summary>
+	///     How often buffered chat lines are flushed to each connection (Issue #4: "Buffer messages
+	///     per connection and send them every second to reduce load").
+	/// </summary>
+	private static readonly TimeSpan ChatFlushInterval = TimeSpan.FromSeconds(1);
+
 	/// <remarks>
 	///     Only lines said from the moment the stream opens are delivered; chat is not stored, so
-	///     there is no earlier state to send first.
+	///     there is no earlier state to send first. Lines are buffered per connection and flushed as
+	///     one combined <c>chat</c> event at most once per <see cref="ChatFlushInterval" /> -- every
+	///     line is still delivered, in order, just batched to cut how many SSE writes a busy room's
+	///     chat produces.
 	/// </remarks>
 	public static IResult HandleChat(HttpContext context, MatchSession match, IMatchLiveEvents events,
 		CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(Subscribe("chat", match.SseSubscribers,
-			publish => events.SubscribeChat(match.DbId, publish).Dispose, cancellationToken));
+			BufferedPublish(publish => events.SubscribeChat(match.DbId, publish).Dispose, ChatFlushInterval,
+				cancellationToken),
+			cancellationToken));
+	}
+
+	/// <summary>
+	///     Wraps a subscribe function so that individual publishes are buffered and flushed as one
+	///     combined JSON array at most once per <paramref name="flushInterval" />, instead of one SSE
+	///     item per publish.
+	/// </summary>
+	/// <remarks>
+	///     Every buffered payload is preserved in order -- nothing is dropped or coalesced to only the
+	///     latest, unlike a state-oriented stream's snapshot; only the delivery cadence changes. A
+	///     flush with nothing buffered emits nothing.
+	/// </remarks>
+	/// <param name="subscribe">The underlying event source to wrap.</param>
+	/// <param name="flushInterval">How often to flush the buffer, if it holds anything.</param>
+	/// <param name="cancellationToken">The connection's cancellation token; stops the flush loop when it fires.</param>
+	private static Func<Action<byte[]>, Action> BufferedPublish(Func<Action<byte[]>, Action> subscribe,
+		TimeSpan flushInterval, CancellationToken cancellationToken)
+	{
+		return publish =>
+		{
+			var buffer = new List<JsonNode?>();
+			var bufferLock = new Lock();
+
+			var unsubscribe = subscribe(payload =>
+			{
+				lock (bufferLock) buffer.Add(JsonNode.Parse(payload));
+			});
+
+			var timer = new PeriodicTimer(flushInterval);
+			_ = Task.Run(async () =>
+			{
+				try
+				{
+					while (await timer.WaitForNextTickAsync(cancellationToken))
+					{
+						JsonNode?[] batch;
+						lock (bufferLock)
+						{
+							if (buffer.Count == 0) continue;
+							batch = [.. buffer];
+							buffer.Clear();
+						}
+
+						publish(JsonSerializer.SerializeToUtf8Bytes(new JsonArray(batch), BasilJsonOptions.Instance));
+					}
+				}
+				catch (OperationCanceledException)
+				{
+					// The connection closed; nothing left to flush to.
+				}
+			}, cancellationToken);
+
+			return () =>
+			{
+				timer.Dispose();
+				unsubscribe();
+			};
+		};
 	}
 
 	/// <summary>

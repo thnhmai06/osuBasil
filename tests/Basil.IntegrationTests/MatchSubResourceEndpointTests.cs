@@ -261,9 +261,36 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var response = await client.SendAsync(request);
 
 		response.EnsureSuccessStatusCode();
-		var view = await response.Content.ReadFromJsonAsync<JsonElement>();
-		Assert.Contains(view.GetProperty("data").GetProperty("referees").EnumerateArray(),
-			r => r.GetProperty("id").GetInt32() == referee.Id);
+		var results = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.Equal(referee.Id, result.GetProperty("userId").GetInt32());
+		Assert.True(result.GetProperty("ok").GetBoolean());
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Adding a player who is already a referee still reports success."
+	/// </summary>
+	[Fact]
+	public async Task Refs_Patch_AlreadyReferee_ReportsFailureForThatTarget()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var referee = await SeatNewPlayer(2004, "alreadyref", matchId);
+
+		var firstAdd = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
+		firstAdd.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		(await client.SendAsync(firstAdd)).EnsureSuccessStatusCode();
+
+		var secondAdd = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
+		secondAdd.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var response = await client.SendAsync(secondAdd);
+
+		response.EnsureSuccessStatusCode();
+		var results = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.Equal(referee.Id, result.GetProperty("userId").GetInt32());
+		Assert.False(result.GetProperty("ok").GetBoolean());
+		Assert.Equal("Already a referee of this match.", result.GetProperty("error").GetString());
 	}
 
 	// ---- /ban ----

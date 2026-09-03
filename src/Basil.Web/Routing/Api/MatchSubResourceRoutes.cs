@@ -405,8 +405,8 @@ internal static class MatchSubResourceRoutes
 
 		group.MapPatch("/matches/{matchId:numericid}/refs", async (int matchId, UpdateRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
-				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+				ISessionRegistry<IrcSession> ircRegistry, MatchControlService matchControl,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -417,10 +417,20 @@ internal static class MatchSubResourceRoutes
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					await matchControl.AddRefereesAsync(match, targets, cancellationToken);
-					return Results.Json(
-						await MatchLiveSnapshotBuilder.BuildRefs(match, gameRegistry, ircRegistry, users,
-							cancellationToken));
+					var results = new List<RefereeAdditionResult>();
+					foreach (var target in targets)
+					{
+						var result = await matchControl.AddRefereeAsync(null, null, match, target, cancellationToken);
+						results.Add(result switch
+						{
+							MatchControlService.AddRefereeResult.Ok => new RefereeAdditionResult(target.Id, true, null),
+							MatchControlService.AddRefereeResult.AlreadyReferee =>
+								new RefereeAdditionResult(target.Id, false, "Already a referee of this match."),
+							_ => new RefereeAdditionResult(target.Id, false, "Cannot make BasilBot a referee.")
+						});
+					}
+
+					return Results.Json(results);
 				}
 				finally
 				{
@@ -432,18 +442,18 @@ internal static class MatchSubResourceRoutes
 			.WithName("addMatchReferees")
 			.WithSummary("Add match referees.")
 			.WithDescription("""
-			                 Adds `{ userIds: int[] }` to the match's referee list and returns the updated list. Every id must be online.
+			                 Adds `{ userIds: int[] }` to the match's referees, returning one `{ userId, ok, error }` result per target. Every id must be online.
 
-			                 Returns `400 Bad Request` if any `userId` isn't online, or `404 Not Found` if the match isn't currently live.
+			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if any `userId` isn't online, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Referees")
-			.Produces<MatchRefereesView>()
+			.Produces<IReadOnlyList<RefereeAdditionResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK,
-				new MatchRefereesView([
-					new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie),
-					new UserBrief(9, "Carol", Country.Us)
-				]))
+			.WithExample(StatusCodes.Status200OK, new List<RefereeAdditionResult>
+			{
+				new(13, true, null),
+				new(9, false, "Already a referee of this match.")
+			})
 			.WithExample(StatusCodes.Status400BadRequest,
 				new ErrorResponse("userId 21 is required and must be online."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -1101,17 +1111,17 @@ internal static class MatchSubResourceRoutes
 			.WithName("getMatchTimerLive")
 			.WithSummary("Stream match timer.")
 			.WithDescription("""
-			                 Server-Sent Events stream of the same data as `GET /matches/{matchId}/timer`.
+			                 Server-Sent Events stream of `GET /matches/{matchId}/timer`'s `running`, `autoStart`, `startTime`, and `endTime` fields. Unlike the REST response, this stream omits `secondsRemaining`; compute remaining time locally from `startTime`/`endTime` instead of polling a value that only goes stale between updates.
 
 			                 A change is pushed at each announcement checkpoint `!mp timer`/`!mp start` uses, plus once more when the countdown finishes or is aborted.
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
 			.WithTags("Match Timer")
-			.Produces<MatchTimerView>()
+			.Produces<MatchTimerLiveView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
-				new MatchTimerView(true, 25, true, DateTime.Parse("2026-07-20T14:30:00Z"),
+				new MatchTimerLiveView(true, true, DateTime.Parse("2026-07-20T14:30:00Z"),
 					DateTime.Parse("2026-07-20T14:30:30Z")));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
@@ -1364,6 +1374,9 @@ internal static class MatchSubResourceRoutes
 
 	/// <summary>Per-target outcome returned by `DELETE /matches/{matchId}/refs`.</summary>
 	public sealed record RefereeRemovalResult(int UserId, bool Ok, string? Error);
+
+	/// <summary>Per-target outcome returned by `PATCH /matches/{matchId}/refs`.</summary>
+	public sealed record RefereeAdditionResult(int UserId, bool Ok, string? Error);
 
 	/// <summary>Request body for `PUT /matches/{matchId}/ban`: replaces the whole ban list.</summary>
 	public sealed record ReplaceBansRequest(IReadOnlyList<int> UserIds);

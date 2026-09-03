@@ -136,23 +136,6 @@ public class MatchControlServiceGuardTests
 	}
 
 	[Fact]
-	public async Task AddRefereesAsync_AddsBatch_SkipsExisting()
-	{
-		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var already = MultiplayerTestSupport.MakePlayer(2, "already");
-		var newRef = MultiplayerTestSupport.MakePlayer(3, "newref");
-		_fixture.RegisterAll(host, already, newRef);
-		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(already.Id);
-		var control = MakeService();
-
-		await control.AddRefereesAsync(match, [already, newRef]);
-
-		Assert.Equal(2, match.Referees.Count);
-		Assert.Contains(newRef.Id, match.Referees);
-	}
-
-	[Fact]
 	public async Task RemoveOneRefereeAsync_LastReferee_IsAlsoCreator_ReturnsTargetIsCreator()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");

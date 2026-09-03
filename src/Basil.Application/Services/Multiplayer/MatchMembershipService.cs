@@ -733,7 +733,7 @@ public sealed class MatchMembershipService(
 	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	public void PublishTimer(MatchSession match, long version)
 	{
-		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match), version) is { } delta)
+		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)
 			eventBus.PublishTimer(match.DbId, delta);
 	}
 

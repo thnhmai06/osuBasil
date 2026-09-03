@@ -132,7 +132,7 @@ public sealed class MatchSession(
 	public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new("bans");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's countdown-timer channel.</summary>
-	public SnapshotChannel<MatchTimerView> TimerSnapshot { get; } = new("timer");
+	public SnapshotChannel<MatchTimerLiveView> TimerSnapshot { get; } = new("timer");
 
 	/// <summary>
 	///     Gets the same lock-free full-snapshot and delta state, scoped to the match's slot channel:

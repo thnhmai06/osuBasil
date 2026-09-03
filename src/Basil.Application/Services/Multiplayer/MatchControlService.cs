@@ -404,30 +404,6 @@ public sealed class MatchControlService(
 		return SetRefereesResult.Ok;
 	}
 
-	/// <summary>Adds a batch of referees without removing any existing ones.</summary>
-	/// <remarks>
-	///     This is the PATCH variant. Since it only ever adds referees, it can never trigger the
-	///     empty guard.
-	/// </remarks>
-	/// <param name="match">The match whose referees to extend.</param>
-	/// <param name="targets">The players to grant referee status.</param>
-	/// <param name="cancellationToken">A token that cancels the event writes and the referee publishes.</param>
-	public async Task AddRefereesAsync(MatchSession match, IReadOnlyCollection<UserSession> targets,
-		CancellationToken cancellationToken = default)
-	{
-		foreach (var target in targets)
-		{
-			if (match.Referees.Contains(target.Id)) continue;
-
-			match.AddReferee(target.Id);
-			await matchRepository.CreateEventAsync(new MatchEvent(
-				match.DbId, (int)MatchEventType.RefAdded,
-				null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
-		}
-
-		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
-	}
-
 	/// <summary>Revokes referee status from a single userSession and records the removal as a match event.</summary>
 	/// <remarks>
 	///     A guard blocks removing the last referee, so a match can never reach zero referees through
