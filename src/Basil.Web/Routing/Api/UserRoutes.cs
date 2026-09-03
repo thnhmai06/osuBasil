@@ -12,6 +12,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -43,15 +44,23 @@ internal static class UserRoutes
 	{
 		var admin = group.MapGroup("/users").RequireAuthorization(AdminKeyDefaults.Policy);
 
-		admin.MapGet("", async (IUserRepository users, CancellationToken cancellationToken) =>
-				Results.Json((await users.FetchAllAsync(cancellationToken)).Select(u => u.ToView()).ToList()))
+		admin.MapGet("", async ([FromQuery] int? page, [FromQuery] int? pageSize, IUserRepository users,
+				CancellationToken cancellationToken) =>
+			{
+				var (p, ps) = Pagination.Normalize(page, pageSize);
+				var all = await users.FetchAllAsync(cancellationToken);
+				var overqueried = all.Skip((p - 1) * ps).Take(ps + 1).Select(u => u.ToView()).ToList();
+				return Results.Json(Pagination.Trim(overqueried, p, ps, all.Count));
+			})
 			.WithGroupName("basilapi")
 			.WithName("listUsers")
 			.WithSummary("List users.")
-			.WithDescription("Returns every user, unfiltered and unpaged." + AdminKeyNote)
+			.WithDescription("""
+			                 Returns every user, unfiltered, paginated with `page` (default 1) and `pageSize` (default 50).
+			                 """ + AdminKeyNote)
 			.WithTags("Users")
-			.Produces<IReadOnlyList<UserView>>()
-			.WithExample(StatusCodes.Status200OK, new List<UserView> { SampleUser().ToView() });
+			.Produces<PagedResult<UserView>>()
+			.WithExample(StatusCodes.Status200OK, new PagedResult<UserView>(1, 50, 1, [SampleUser().ToView()]));
 
 		group.MapGet("/users/{idOrName}", (string idOrName, IUserRepository users,
 					CancellationToken cancellationToken) =>

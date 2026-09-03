@@ -124,6 +124,26 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		response.EnsureSuccessStatusCode();
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "GET /users has no pagination metadata; verify whether it
+	///     currently returns all users." It did -- unfiltered and unpaged. Now returns the same
+	///     `PagedResult` shape every other list route (`GET /matches`, `GET /beatmapsets`) does.
+	/// </summary>
+	[Fact]
+	public async Task GetUsers_CorrectAdminKey_ReturnsPaginationMetadata()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users?page=1&pageSize=10", "correct-key"));
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		Assert.Equal(JsonValueKind.Array, body.GetProperty("data").ValueKind);
+		var meta = body.GetProperty("meta");
+		Assert.Equal(1, meta.GetProperty("page").GetInt32());
+		Assert.Equal(10, meta.GetProperty("pageSize").GetInt32());
+		Assert.True(meta.TryGetProperty("totalRecords", out _));
+	}
+
 	[Fact]
 	public async Task CreateUser_InvalidUsername_ReturnsBadRequest()
 	{
