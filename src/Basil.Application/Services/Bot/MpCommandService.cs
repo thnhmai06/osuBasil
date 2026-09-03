@@ -983,7 +983,7 @@ public sealed class MpCommandService(
 	/// </summary>
 	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		const string usage = MpReplies.SetUsage;
+		var usage = MpReplies.SetUsage;
 
 		if (args.Count < 1 || !TryParseTeamType(args[0], out var teamType))
 		{

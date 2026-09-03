@@ -57,6 +57,20 @@ certificate settings. See [`docker.md`](docker.md).
 
 ---
 
+## BasilBot and IRC reply text
+
+The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send lives in
+[`Data/Locale/replies.json`](../../src/Basil.Application/Data/Locale/replies.json), not hardcoded in
+the application. Edit the text for any reply there and restart Basil — no rebuild is required.
+
+The file has two top-level objects, `Mp` and `Irc`, each mapping a reply to its text. `{0}`, `{1}`,
+etc. are placeholders filled in when the reply is sent (for example, a player or match name) — keep
+every placeholder a reply currently uses when editing it, or the affected reply will render with a
+missing value. Every key in the file is required: removing one prevents Basil from starting, with a
+startup log message naming the missing key.
+
+---
+
 ## Admin Key
 
 The admin key protects administrative operations on the `api.<domain>` host and is also used as the secret for in-game

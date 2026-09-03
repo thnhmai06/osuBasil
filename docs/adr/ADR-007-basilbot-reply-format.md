@@ -1,10 +1,74 @@
 # ADR-007 — BasilBot reply format
 
-> Status: **Proposed 2026-09-03. Recommendation: do not implement broadly.** Written unattended
-> (user asleep, blanket "consider it all approved" authorization given beforehand) — this ADR
-> itself is the checkpoint: it recommends *against* the literal broad reading of the Issue #4 item
-> it responds to, so implementation was deliberately not started pending the user reading this and
-> either confirming the recommendation or overriding it with a narrower concrete scope.
+> Status: **Proposed 2026-09-03, recommended against a broad rewrite. User overrode that
+> recommendation 2026-09-04 and clarified the actual ask — implemented, see "What was actually
+> built" below.**
+>
+> The Decision section below is kept as written: it answers Issue #4's literal wording ("structured,
+> machine-parsable formats") and the reasoning for declining that broad reading still stands. When
+> asked to clarify, the user's real want turned out to be different from the issue's literal
+> wording — reply text moved out of C# source into an editable locale file, wording kept as natural
+> language. That is a smaller, well-scoped, non-breaking change and was implemented directly rather
+> than needing its own ADR.
+
+## What was actually built (2026-09-04)
+
+The user's clarification, verbatim intent: *"Vẫn tuân theo ngôn ngữ tự nhiên, chỉ là phản hồi cần tự
+nhiên và nhanh chóng nắm bắt được thông tin. Đề nghị tạo file ghi hết cách trả lời vào một chỗ (kiểu
+locale) thay vì cố định trong code"* — keep natural language, but move every reply's wording out of
+hardcoded C# into one locale-style file, editable without a rebuild.
+
+This is **not** Issue #4's "structured, machine-parsable formats" ask — the wire shape (plain
+natural-language strings, `string.Format` placeholders) is unchanged, so this ADR's Decision
+against a broad *format* rewrite still holds and Issue #4's literal item is **still open**. What
+changed is where the wording lives, not its shape.
+
+Implementation:
+
+- `src/Basil.Application/Data/Locale/replies.json` — single file, two top-level objects (`Mp`,
+  `Irc`), each mapping a reply's C# member name to its text. All 122 `MpReplies` members and all 32
+  `IrcReplies` members now live here; none are hardcoded string literals in the `.cs` files anymore.
+- `ReplyLocale` (`src/Basil.Application/Services/ReplyLocale.cs`) — loads the file once via
+  `AppContext.BaseDirectory` (not the working directory: this needs to resolve identically whether
+  the entry point is `Basil.Web`, `dotnet test` on a project that references `Basil.Application`, or
+  a published, self-contained executable — matching the existing `MenuIconService` precedent for
+  that exact resolution strategy). Exposes `ReplyLocale.Mp(key)`/`ReplyLocale.Irc(key)`, throwing a
+  clear exception naming the missing key and file path if a lookup fails.
+- `MpReplies`/`IrcReplies` — every `public const string X = "literal";` became
+  `public static readonly string X = ReplyLocale.Mp(nameof(X));` (or `.Irc(...)`). The public shape
+  is unchanged: same member names, same type, same call sites — none of the ~3,900 existing
+  references to these two classes across the codebase (production or test) needed to change. Using
+  `nameof(X)` as the lookup key means a member's name and the file's key can never drift apart by a
+  typo; a genuine mismatch (a renamed member, a deleted file entry) surfaces as a startup exception
+  naming exactly what's missing.
+- `Program.cs` touches one member of each class during `InitializeDataAsync`, before the app starts
+  accepting connections, specifically so a missing/malformed locale file is a boot-time failure
+  (loud, in the startup log) rather than one discovered whenever a live chat command first happens
+  to touch the affected reply.
+- `Basil.Application.csproj` ships the file via `CopyToOutputDirectory`, which — because MSBuild
+  propagates `Content` items with that metadata to every project that references it — is what makes
+  it appear next to every consumer's own build output (`Basil.Web`, and every test project), not
+  just `Basil.Web`'s.
+- Regression tests (`ReplyLocaleTests`): every `MpReplies`/`IrcReplies` member resolves to non-empty
+  text, and the file carries no key that no member reads (drift in either direction). Verified by
+  deleting one key from the file and re-running: `MpReplies`'s static constructor throws
+  `Reply locale file is missing 'Mp.CreateFailed' (expected at ...)`, cascading to every test that
+  touches the class (40/49 in that project failed) — confirming the failure is loud and points
+  straight at the cause, not a silent empty string.
+
+One caller needed a real code change beyond the mechanical rewrite: `MpCommandService.Set` declared
+`const string usage = MpReplies.SetUsage;` — a local `const` requires a compile-time constant, which
+`MpReplies.SetUsage` no longer is now that it's a `static readonly` field resolved at runtime.
+Changed to `var`; behavior identical.
+
+Not built (matches the "no i18n system" scope call from this same conversation): no culture
+selection, no fallback chain, no hot-reload, no pluralization. One file, one language, loaded once
+per process lifetime.
+
+Full suite: 1553 tests pass (was 1549, +4). Release build clean; verified the file reaches the
+`win-x64` publish output alongside the DLLs (`Data/Locale/replies.json`), and that ASP.NET Core's
+build-time OpenAPI doc generation — which runs the app — resolves it correctly, the same trap
+`ccc804f` (moving `appsettings.json`) hit earlier in this session.
 
 ## Problem
 

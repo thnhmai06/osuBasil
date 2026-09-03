@@ -6,114 +6,116 @@ namespace Basil.Application.Services.Irc;
 /// </summary>
 /// <remarks>
 ///     Every literal an IRC client can read — the registration handshake, query replies, and
-///     command-error messages — is a named constant here. Production services emit these constants,
-///     and tests assert against the same symbols, so the two cannot drift. Format strings use
-///     <see cref="string.Format(string, object?[])" /> placeholders; fixed strings are plain
-///     <see cref="string" /> constants. Deliberately changing the wording of a reply is a
-///     public-behavior change: a one-line edit to the constant here, and every test that pins it
-///     stays in sync.
+///     command-error messages — is a named member here. Production services read these members,
+///     and tests assert against the same symbols, so the two cannot drift. The wording itself lives
+///     outside the code, in <see cref="ReplyLocale" />'s locale file, so it can be edited without a
+///     rebuild; each member's name is the file's lookup key (via <see cref="ReplyLocale.Irc" />), so
+///     a member and its wording cannot silently fall out of sync. Format strings use
+///     <see cref="string.Format(string, object?[])" /> placeholders; fixed strings are plain text.
+///     Deliberately changing the wording of a reply is a public-behavior change: an edit to the
+///     locale file, and every test that pins it stays in sync.
 /// </remarks>
 public static class IrcReplies
 {
 	// ── registration handshake ──────────────────────────────────────────────────────────────
 	/// <summary>RPL_WELCOME text; <c>{0}</c> is the server name, <c>{1}</c> the user's nick.</summary>
-	public const string Welcome = "Welcome to {0} IRC, {1}";
+	public static readonly string Welcome = ReplyLocale.Irc(nameof(Welcome));
 
 	/// <summary>RPL_YOURHOST text; <c>{0}</c> is the server name, <c>{1}</c> the version.</summary>
-	public const string YourHost = "Your host is {0}, running version {1}";
+	public static readonly string YourHost = ReplyLocale.Irc(nameof(YourHost));
 
 	/// <summary>RPL_CREATED text; <c>{0}</c> is the server creation timestamp.</summary>
-	public const string ServerCreated = "This server was created {0}";
+	public static readonly string ServerCreated = ReplyLocale.Irc(nameof(ServerCreated));
 
 	/// <summary>Trailing parameter of the RPL_ISUPPORT line.</summary>
-	public const string AreSupportedByThisServer = "are supported by this server";
+	public static readonly string AreSupportedByThisServer = ReplyLocale.Irc(nameof(AreSupportedByThisServer));
 
 	// ── query replies ──────────────────────────────────────────────────────────────────────
 	/// <summary>RPL_ENDOFNAMES text.</summary>
-	public const string EndOfNames = "End of /NAMES list";
+	public static readonly string EndOfNames = ReplyLocale.Irc(nameof(EndOfNames));
 
 	/// <summary>RPL_ENDOFWHO text.</summary>
-	public const string EndOfWho = "End of /WHO list";
+	public static readonly string EndOfWho = ReplyLocale.Irc(nameof(EndOfWho));
 
 	/// <summary>RPL_ENDOFWHOIS text.</summary>
-	public const string EndOfWhoIs = "End of /WHOIS list";
+	public static readonly string EndOfWhoIs = ReplyLocale.Irc(nameof(EndOfWhoIs));
 
 	/// <summary>RPL_ENDOFLIST text.</summary>
-	public const string EndOfList = "End of /LIST";
+	public static readonly string EndOfList = ReplyLocale.Irc(nameof(EndOfList));
 
 	/// <summary>RPL_NOTOPIC text.</summary>
-	public const string NoTopicIsSet = "No topic is set";
+	public static readonly string NoTopicIsSet = ReplyLocale.Irc(nameof(NoTopicIsSet));
 
 	/// <summary>ERR_NOSUCHCHANNEL text.</summary>
-	public const string NoSuchChannel = "No such channel";
+	public static readonly string NoSuchChannel = ReplyLocale.Irc(nameof(NoSuchChannel));
 
 	/// <summary>ERR_NOSUCHNICK text.</summary>
-	public const string NoSuchNickChannel = "No such nick/channel";
+	public static readonly string NoSuchNickChannel = ReplyLocale.Irc(nameof(NoSuchNickChannel));
 
 	/// <summary>The server label reported in RPL_WHOISSERVER and RPL_VERSION.</summary>
-	public const string IrcGateway = "Basil IRC gateway";
+	public static readonly string IrcGateway = ReplyLocale.Irc(nameof(IrcGateway));
 
 	/// <summary>Trailing parameter of the RPL_WHOISIDLE line.</summary>
-	public const string SecondsIdleSignonTime = "seconds idle, signon time";
+	public static readonly string SecondsIdleSignonTime = ReplyLocale.Irc(nameof(SecondsIdleSignonTime));
 
 	/// <summary>ERR_CHANOPRIVSNEEDED text when a topic change is refused.</summary>
-	public const string TopicManagedByServer = "Channel topics are managed by the server";
+	public static readonly string TopicManagedByServer = ReplyLocale.Irc(nameof(TopicManagedByServer));
 
 	/// <summary>ERR_CHANOPRIVSNEEDED text when a mode change is refused.</summary>
-	public const string ModesManagedByServer = "Channel modes are managed by the server";
+	public static readonly string ModesManagedByServer = ReplyLocale.Irc(nameof(ModesManagedByServer));
 
 	// ── MOTD ───────────────────────────────────────────────────────────────────────────────
 	/// <summary>ERR_NOMOTD text.</summary>
-	public const string NoMotd = "The server has no MOTD.";
+	public static readonly string NoMotd = ReplyLocale.Irc(nameof(NoMotd));
 
 	/// <summary>RPL_MOTDSTART text; <c>{0}</c> is the server name.</summary>
-	public const string MotdStart = "- {0} Message of the Day -";
+	public static readonly string MotdStart = ReplyLocale.Irc(nameof(MotdStart));
 
 	/// <summary>RPL_ENDOFMOTD text.</summary>
-	public const string EndOfMotd = "End of /MOTD command.";
+	public static readonly string EndOfMotd = ReplyLocale.Irc(nameof(EndOfMotd));
 
 	// ── LUSERS ─────────────────────────────────────────────────────────────────────────────
 	/// <summary>RPL_LUSERCLIENT text; <c>{0}</c> is the account count.</summary>
-	public const string LusersClients = "There are {0} users and 0 invisible on 1 servers";
+	public static readonly string LusersClients = ReplyLocale.Irc(nameof(LusersClients));
 
 	/// <summary>RPL_LUSERCHANNELS trailing parameter.</summary>
-	public const string ChannelsFormed = "channels formed";
+	public static readonly string ChannelsFormed = ReplyLocale.Irc(nameof(ChannelsFormed));
 
 	/// <summary>RPL_LUSERME text; <c>{0}</c> is the client count.</summary>
-	public const string LusersMe = "I have {0} clients and 1 servers";
+	public static readonly string LusersMe = ReplyLocale.Irc(nameof(LusersMe));
 
 	// ── LIST / NAMES headers ───────────────────────────────────────────────────────────────
 	/// <summary>RPL_LISTSTART column header for the channel column.</summary>
-	public const string ListChannel = "Channel";
+	public static readonly string ListChannel = ReplyLocale.Irc(nameof(ListChannel));
 
 	/// <summary>RPL_LISTSTART column header for the user-count column.</summary>
-	public const string ListUsers = "Users  Name";
+	public static readonly string ListUsers = ReplyLocale.Irc(nameof(ListUsers));
 
 	// ── authentication and command errors ──────────────────────────────────────────────────
 	/// <summary>ERR_PASSWDMISMATCH text.</summary>
-	public const string PasswordIncorrect = "Password incorrect";
+	public static readonly string PasswordIncorrect = ReplyLocale.Irc(nameof(PasswordIncorrect));
 
 	/// <summary>ERR_NICKNAMEINUSE text.</summary>
-	public const string NicknameInUse = "Nickname is already in use";
+	public static readonly string NicknameInUse = ReplyLocale.Irc(nameof(NicknameInUse));
 
 	/// <summary>ERR_ERRONEUSNICKNAME text.</summary>
-	public const string ErroneousNickname = "Erroneous nickname";
+	public static readonly string ErroneousNickname = ReplyLocale.Irc(nameof(ErroneousNickname));
 
 	/// <summary>ERR_NOTREGISTERED text.</summary>
-	public const string YouHaveNotRegistered = "You have not registered";
+	public static readonly string YouHaveNotRegistered = ReplyLocale.Irc(nameof(YouHaveNotRegistered));
 
 	/// <summary>ERR_NEEDMOREPARAMS text.</summary>
-	public const string NotEnoughParameters = "Not enough parameters";
+	public static readonly string NotEnoughParameters = ReplyLocale.Irc(nameof(NotEnoughParameters));
 
 	/// <summary>ERR_INVITEONLYCHAN text.</summary>
-	public const string CannotJoinChannel = "Cannot join channel (no permission)";
+	public static readonly string CannotJoinChannel = ReplyLocale.Irc(nameof(CannotJoinChannel));
 
 	/// <summary>ERR_ALREADYREGISTERED text.</summary>
-	public const string NicknameChangeNotSupported = "Changing nickname is not supported";
+	public static readonly string NicknameChangeNotSupported = ReplyLocale.Irc(nameof(NicknameChangeNotSupported));
 
 	/// <summary>ERR_UNKNOWNCOMMAND text.</summary>
-	public const string UnknownCommand = "Unknown command";
+	public static readonly string UnknownCommand = ReplyLocale.Irc(nameof(UnknownCommand));
 
 	/// <summary>ERR_CANNOTSENDTOCHAN text.</summary>
-	public const string CannotSendToChannel = "Cannot send to channel";
+	public static readonly string CannotSendToChannel = ReplyLocale.Irc(nameof(CannotSendToChannel));
 }
