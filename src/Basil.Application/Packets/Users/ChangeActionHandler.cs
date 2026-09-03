@@ -1,4 +1,8 @@
+using System.Text.Json;
+using Basil.Application.Formats;
 using Basil.Application.Sessions;
+using Basil.Application.Sessions.Spectating;
+using Basil.Application.Services.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -15,9 +19,14 @@ namespace Basil.Application.Packets.Users;
 ///     <see cref="Mods" />, the <see cref="GameMode" />, and the beatmap id, then stores them all on
 ///     <see cref="GameSession.Status" />. When the user is not restricted, a rebuilt user-stats
 ///     packet is enqueued on every online session so the updated status reaches the other players'
-///     friends lists and main menus immediately.
+///     friends lists and main menus immediately. The same change is also published to the
+///     userSession's live status SSE channel (<see cref="IPlayerStatusEvents" />), gated on
+///     <see cref="IPlayerStatusEvents.HasSubscribers" /> so a request nobody is watching skips the
+///     serialization.
 /// </remarks>
-public sealed class ChangeActionHandler(ISessionRegistry<GameSession> sessionRegistry) : IPacketHandler
+public sealed class ChangeActionHandler(
+	ISessionRegistry<GameSession> sessionRegistry,
+	IPlayerStatusEvents statusEvents) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.ChangeAction;
 
@@ -40,6 +49,13 @@ public sealed class ChangeActionHandler(ISessionRegistry<GameSession> sessionReg
 		gameSession.Status.Mods = mods;
 		gameSession.Status.Mode = (GameMode)mode;
 		gameSession.Status.MapId = mapId;
+
+		if (statusEvents.HasSubscribers)
+		{
+			var payload = JsonSerializer.SerializeToUtf8Bytes(PlayerStatusView.Build(gameSession),
+				BasilJsonOptions.Instance);
+			statusEvents.PublishStatus(gameSession.Id, payload);
+		}
 
 		if (gameSession.Restricted) return Task.CompletedTask;
 

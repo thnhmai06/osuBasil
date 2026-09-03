@@ -18,6 +18,7 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
@@ -370,7 +371,7 @@ public class TcpIrcConnectionTests
 			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
 			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+			new NoOpPlayerStatusEvents(), NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(GameSession session)
@@ -794,6 +795,17 @@ public class TcpIrcConnectionTests
 		}
 
 		public void Forget(int matchDbId)
+		{
+		}
+	}
+
+	private sealed class NoOpPlayerStatusEvents : IPlayerStatusEvents
+	{
+		public bool HasSubscribers => false;
+
+		public event Action<int, byte[]>? StatusPublished;
+
+		public void PublishStatus(int playerId, byte[] payload)
 		{
 		}
 	}

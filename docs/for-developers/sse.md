@@ -8,10 +8,12 @@ The client-facing wire contract is documented in [`sse.md`](../for-client/api/ss
 server-side implementation: where live events are published, how connections maintain state, how patches are generated,
 and how the response pipeline keeps SSE streams unbuffered.
 
-The implementation has two event sources:
+The implementation has three event sources:
 
 * [`IMatchLiveEvents`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs) for match-scoped state.
 * [`IPlayerInputEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs) for a player's spectator input.
+* [`IPlayerStatusEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs) for a player's
+  online/offline and activity status.
 
 Each SSE connection subscribes to the relevant event source and maintains its own last-sent state.
 
@@ -70,6 +72,15 @@ response or a connection-specific patch.
 The event source is scoped to the player whose input is being observed rather than to a match as a whole.
 
 As with match events, publishers do not perform HTTP or SSE writes.
+
+### `IPlayerStatusEvents`
+
+`IPlayerStatusEvents` publishes a single player's online/offline transitions and in-game activity changes (login,
+logout, and the `ChangeAction` packet). Scoped to the player, the same shape as `IPlayerInputEvents`.
+
+`GET /users/{idOrName}/live` combines both player-scoped sources into one stream: `status` (state-oriented, a full
+snapshot on connect and on every change) alongside `input` (event-oriented, only while the player is playing) — the
+same state+event multiplexing the per-match `main` and per-slot streams use.
 
 ## Shared per-match state
 
@@ -154,8 +165,8 @@ When a match closes, its registry completes every currently registered connectio
 waiting for the client to disconnect on its own. This is what makes a match's live streams bounded in lifetime by the
 match itself rather than by client behavior.
 
-The per-player spectator input stream (`/spec/{playerId}/input`) is not match-scoped and is deliberately not registered
-with any match's registry — its lifetime is the player's session, not any one match.
+The per-player live stream (`GET /users/{idOrName}/live`, combining status and spectator input) is not match-scoped and
+is deliberately not registered with any match's registry — its lifetime is the player's session, not any one match.
 
 ## Snapshot consistency
 
@@ -367,6 +378,7 @@ If a change occurs while `MatchSession.Lock` is held, publishing must not wait f
 * [`Basil.Web/Middleware/EnvelopeMiddleware.cs`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs): JSON response wrapping and SSE bypass
 * [`Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs): match live event source
 * [`Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs): spectator input event source
+* [`Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs): player status event source
 * [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): live match state construction
 * [`Basil.Application/Services/SnapshotChannel.cs`](../../src/Basil.Application/Services/SnapshotChannel.cs): shared per-stream snapshot + diff
 * [`Basil.Application/Services/SseSubscriberRegistry.cs`](../../src/Basil.Application/Services/SseSubscriberRegistry.cs): per-match subscriber lifecycle, completed on match close

@@ -1,7 +1,10 @@
+using System.Text.Json;
+using Basil.Application.Formats;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Spectating;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +31,7 @@ public sealed class PlayerLogoutService(
 	ChannelMembershipService channelMembership,
 	SpectatorService spectatorService,
 	MatchMembershipService matchMembership,
+	IPlayerStatusEvents statusEvents,
 	ILogger<PlayerLogoutService> logger)
 {
 	/// <summary>
@@ -80,6 +84,10 @@ public sealed class PlayerLogoutService(
 
 		channelMembership.DisconnectFromChannels(game, "Logged out");
 		gameRegistry.Remove(game);
+
+		if (statusEvents.HasSubscribers)
+			statusEvents.PublishStatus(game.Id,
+				JsonSerializer.SerializeToUtf8Bytes(PlayerStatusView.Build(null), BasilJsonOptions.Instance));
 
 		if (!game.Restricted)
 			foreach (var other in gameRegistry.All)

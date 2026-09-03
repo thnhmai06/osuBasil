@@ -444,6 +444,23 @@ internal static class MultiplayerTestSupport
 		}
 	}
 
+	/// <summary>Records what would have been pushed to the /users/{id}/live SSE `status` subscribers.</summary>
+	public sealed class FakePlayerStatusEvents : IPlayerStatusEvents
+	{
+		public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
+
+		public event Action<int, byte[]>? StatusPublished;
+
+		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+		public bool HasSubscribers => true;
+
+		public void PublishStatus(int playerId, byte[] payload)
+		{
+			Publishes.Add((playerId, payload));
+			StatusPublished?.Invoke(playerId, payload);
+		}
+	}
+
 	/// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
 	public sealed class Fixture
 	{

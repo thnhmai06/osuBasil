@@ -6,6 +6,7 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Services.Users;
+using Basil.Application.Sessions;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
@@ -319,29 +320,33 @@ internal static class UserRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/users/{idOrName}/live", (string idOrName, IUserRepository users, HttpContext context,
-					IPlayerInputEvents events, CancellationToken cancellationToken) =>
+					IPlayerInputEvents inputEvents, IPlayerStatusEvents statusEvents,
+					ISessionRegistry<GameSession> gameRegistry, CancellationToken cancellationToken) =>
 				UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/live",
-					id => Task.FromResult(HandleGetLive(id, context, events, cancellationToken)), cancellationToken))
+					id => Task.FromResult(HandleGetLive(id, context, inputEvents, statusEvents, gameRegistry,
+						cancellationToken)), cancellationToken))
 			.WithGroupName("basilapi")
 			.WithName("spectateUser")
 			.WithSummary("Spectate a user.")
 			.WithDescription("""
-			                 Server-Sent Events stream (event name `frames`) of one user's decoded replay-frame bundles: button state, cursor position, and the trailing scoreframe per bundle.
+			                 Server-Sent Events stream of one user's live status and gameplay input.
 
-			                 The stream is live whenever that user is online and playing, tournament match or not. A nonexistent or offline user simply never receives any frames.
+			                 Each event is one of two types, carried by the SSE `event` field:
+
+			                 - `status`: online/offline and current activity (the full current status first, then on every change)
+			                 - `input`: decoded replay-frame bundles -- button state, cursor position, and the trailing scoreframe per bundle -- only while that user is online and playing, tournament match or not
 
 			                 A non-numeric `{idOrName}` is resolved via username lookup and redirected to the canonical form.
 
-			                 Returns `400 Bad Request` for user id 0 (BasilBot has no gameplay stream to expose).
+			                 Returns `400 Bad Request` for user id 0 (BasilBot has no live stream to expose).
 			                 """)
 			.WithTags("Users")
+			.Produces<PlayerStatusView>()
 			.Produces<SpectateFramesEvent>()
-			.WithExample(StatusCodes.Status200OK, new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us),
-				ReplayAction.Standard, 0, [new ReplayFrame(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
-				new ScoreFrame(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)))
+			.WithUserLiveExamples()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status400BadRequest,
-				new ErrorResponse("BasilBot has no gameplay stream to expose."));
+				new ErrorResponse("BasilBot has no live stream to expose."));
 	}
 
 	private static User SampleUser()
@@ -367,13 +372,14 @@ internal static class UserRoutes
 		return Results.File(match, ContentTypes.Resolve(match));
 	}
 
-	private static IResult HandleGetLive(int userId, HttpContext context, IPlayerInputEvents events,
+	private static IResult HandleGetLive(int userId, HttpContext context, IPlayerInputEvents inputEvents,
+		IPlayerStatusEvents statusEvents, ISessionRegistry<GameSession> gameRegistry,
 		CancellationToken cancellationToken)
 	{
 		if (userId == BotBootstrapService.BotId)
 			return LiveSseRoutes.SseError(StatusCodes.Status400BadRequest,
-				"BasilBot has no gameplay stream to expose.");
-		return LiveSseRoutes.HandleInput(context, userId, events, cancellationToken);
+				"BasilBot has no live stream to expose.");
+		return LiveSseRoutes.HandleInput(context, userId, inputEvents, statusEvents, gameRegistry, cancellationToken);
 	}
 }
 

@@ -1,16 +1,19 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Application.Packets;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
@@ -45,6 +48,7 @@ public sealed class LoginService(
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
 	PlayerLogoutService playerLogoutService,
+	IPlayerStatusEvents statusEvents,
 	MenuIconService menuIconService,
 	MotdService motdService,
 	IOptions<ServerOptions> serverOptions,
@@ -311,6 +315,10 @@ public sealed class LoginService(
 		// sends SpectateFrames packets while it believes it has >=1 spectator.
 		var bot = gameSessions.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
+
+		if (statusEvents.HasSubscribers)
+			statusEvents.PublishStatus(session.Id,
+				JsonSerializer.SerializeToUtf8Bytes(PlayerStatusView.Build(session), BasilJsonOptions.Instance));
 
 		logger.LogInformation("+ User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
 			session.Id, session.Name, request.Ip, session.Country);

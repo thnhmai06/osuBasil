@@ -16,6 +16,7 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
@@ -46,6 +47,7 @@ public class LoginServiceTests
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
+	private readonly IPlayerStatusEvents _statusEvents = Substitute.For<IPlayerStatusEvents>();
 
 	private readonly PlayerLogoutService _playerLogoutService;
 	private readonly SpectatorService _spectatorService;
@@ -66,7 +68,7 @@ public class LoginServiceTests
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users,
 			NullLogger<MatchMembershipService>.Instance);
 		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
-			_spectatorService, matchMembership, NullLogger<PlayerLogoutService>.Instance);
+			_spectatorService, matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
 		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
@@ -82,7 +84,7 @@ public class LoginServiceTests
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
 			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _playerLogoutService,
-			_menuIconService, _motdService,
+			_statusEvents, _menuIconService, _motdService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"

@@ -3,9 +3,11 @@ using System.Text.Json.Nodes;
 using Basil.Application.Formats;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Routing.Api;
 using Microsoft.OpenApi;
@@ -137,6 +139,61 @@ internal static class OpenApiExampleExtensions
 					Value = JsonSerializer.SerializeToNode(
 						new PlayerLiveScore(new UserBrief(7, "Alice", Country.Us), 45_000, 620, 40, 5, 0, 3, 1,
 							4_213_567, 812, 812, false, 98, false), JsonWebOptions)
+				}
+			};
+
+			return Task.CompletedTask;
+		});
+	}
+
+	/// <summary>
+	///     Documents the two event payloads produced by the per-player live SSE endpoint
+	///     (<c>GET /users/{idOrName}/live</c>) by replacing its single 200-response schema with a
+	///     <c>oneOf</c> union and attaching one named example per event type.
+	/// </summary>
+	/// <remarks>
+	///     Both components are referenced by name rather than reusing whatever this operation's own
+	///     <c>mediaType.Schema</c> currently holds -- the same explicit-reference reasoning
+	///     <see cref="WithMainLiveExamples" /> documents applies here too, since this route also
+	///     declares two competing <c>.Produces&lt;T&gt;()</c> calls on the same status code.
+	/// </remarks>
+	/// <param name="builder">The route whose 200 response gets the two named examples.</param>
+	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
+	public static RouteHandlerBuilder WithUserLiveExamples(this RouteHandlerBuilder builder)
+	{
+		return builder.AddOpenApiOperationTransformer((operation, context, _) =>
+		{
+			if (operation.Responses?.TryGetValue("200", out var response) != true ||
+			    response?.Content?.TryGetValue("application/json", out var mediaType) != true)
+				return Task.CompletedTask;
+
+			mediaType!.Schema = new OpenApiSchema
+			{
+				OneOf =
+				[
+					new OpenApiSchemaReference("PlayerStatusView", context.Document),
+					new OpenApiSchemaReference("SpectateFramesEvent", context.Document)
+				]
+			};
+
+			mediaType.Example = null;
+			mediaType.Examples = new Dictionary<string, IOpenApiExample>
+			{
+				["status"] = new OpenApiExample
+				{
+					Summary = "event: status",
+					Value = JsonSerializer.SerializeToNode(
+						new PlayerStatusView(true, UserActivity.Playing, "playing a map", 100, Mods.Hidden,
+							GameMode.Standard), JsonWebOptions)
+				},
+				["input"] = new OpenApiExample
+				{
+					Summary = "event: input",
+					Value = JsonSerializer.SerializeToNode(
+						new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us), ReplayAction.Standard, 0,
+							[new ReplayFrame(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
+							new ScoreFrame(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)),
+						JsonWebOptions)
 				}
 			};
 

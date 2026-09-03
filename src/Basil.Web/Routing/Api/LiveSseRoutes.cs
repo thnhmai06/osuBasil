@@ -1,10 +1,12 @@
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Diagnostics;
 using Basil.Application.Formats;
 using Basil.Application.Services;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
@@ -248,27 +250,47 @@ internal static class LiveSseRoutes
 	}
 
 	/// <summary>
-	///     Streams live spectator input for a player.
+	///     Streams a player's live status alongside their spectator input.
 	/// </summary>
 	/// <remarks>
 	///     Not match-scoped (a spectated player may not even be in a match), so this stream is not
 	///     registered with any <see cref="SseSubscriberRegistry" /> — its lifetime is the client's own
-	///     connection, same as before ADR-004.
+	///     connection, same as before ADR-004. Combines a coalescing state sub-event (<c>status</c>:
+	///     online/offline and current activity, present from the first event and on every change) with
+	///     an event-oriented one (<c>input</c>: raw replay frames, only while the player is playing),
+	///     the same multiplexed shape <see cref="HandleMain" />/<see cref="HandleLiveSlot" /> use for
+	///     their own state+event pairs.
 	/// </remarks>
-	public static IResult HandleInput(HttpContext context, int playerId, IPlayerInputEvents events,
+	public static IResult HandleInput(HttpContext context, int playerId, IPlayerInputEvents inputEvents,
+		IPlayerStatusEvents statusEvents, ISessionRegistry<GameSession> gameRegistry,
 		CancellationToken cancellationToken)
 	{
 		SetSseHeaders(context);
-		return TypedResults.ServerSentEvents(Subscribe("input", registry: null, publish =>
-		{
-			events.InputPublished += Handler;
-			return () => events.InputPublished -= Handler;
-
-			void Handler(int id, byte[] payload)
+		return TypedResults.ServerSentEvents(SubscribeMultiWithSnapshot(null,
+			publish =>
 			{
-				if (id == playerId) publish(payload);
-			}
-		}, cancellationToken));
+				void InputHandler(int id, byte[] payload)
+				{
+					if (id == playerId) publish("input", payload);
+				}
+
+				void StatusHandler(int id, byte[] payload)
+				{
+					if (id == playerId) publish("status", payload);
+				}
+
+				inputEvents.InputPublished += InputHandler;
+				statusEvents.StatusPublished += StatusHandler;
+				return () =>
+				{
+					inputEvents.InputPublished -= InputHandler;
+					statusEvents.StatusPublished -= StatusHandler;
+				};
+			},
+			"status",
+			() => JsonSerializer.SerializeToUtf8Bytes(
+				PlayerStatusView.Build(gameRegistry.GetByUserId(playerId)), BasilJsonOptions.Instance),
+			cancellationToken));
 	}
 
 	/// <summary>
@@ -409,10 +431,12 @@ internal static class LiveSseRoutes
 	///     exactly which kind of update was lost cannot, from this stream alone. The event-oriented
 	///     sub-events (<see cref="EventOrientedSubEventTypes" />) each get a monotonic per-connection
 	///     SSE <c>id:</c>; the state sub-event never does, for the same reason
-	///     <see cref="SubscribeWithSnapshot" /> omits one.
+	///     <see cref="SubscribeWithSnapshot" /> omits one. A <see langword="null" /> <paramref name="registry" />
+	///     (the per-player <c>/users/{idOrName}/live</c> stream) skips <see cref="SseSubscriberRegistry" />
+	///     registration entirely, same as <see cref="Subscribe" />.
 	/// </remarks>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(
-		SseSubscriberRegistry registry, Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType,
+		SseSubscriberRegistry? registry, Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType,
 		Func<byte[]?> readLatestSnapshot, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		const int capacity = 64;

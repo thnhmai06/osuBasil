@@ -77,13 +77,52 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	{
 		var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
+		// discardFirst: true — the stream now leads with a `status` snapshot (this test's player is
+		// offline, so `{"online":false,...}`) before any `input` this test publishes.
 		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync("/users/7/live",
-			() => events.PublishInput(7, [.. "frame-data"u8]));
+			() => events.PublishInput(7, [.. "frame-data"u8]), true);
 
 		Assert.Equal("input", eventType);
 		Assert.Equal("frame-data", data);
 		Assert.Equal("5000", retry);
 		Assert.Equal("1", eventId);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "GET /users/{id}/live should include status information in
+	///     addition to spectating information"): the stream leads with a `status` snapshot even for a
+	///     player who has never been online.
+	/// </summary>
+	[Fact]
+	public async Task SpecChannel_InitialSnapshotReportsOffline()
+	{
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Get, "/users/7/live") { Headers = { Host = "api.test.local" } };
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+		var (eventType, data, _, _) = await ConnectAndReadOneEventAsync(client, request, false, cts.Token);
+
+		Assert.Equal("status", eventType);
+		Assert.Contains("\"online\":false", data);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "GET /users/{id}/live should include status information"): a
+	///     status change (login, activity update) reaches an already-connected stream as a `status`
+	///     event, separate from `input`.
+	/// </summary>
+	[Fact]
+	public async Task SpecChannel_ReceivesPublishedStatusChanges()
+	{
+		var events = _factory.Services.GetRequiredService<IPlayerStatusEvents>();
+
+		var (eventType, data, _, retry) = await ReceiveAfterPublishAsync("/users/7/live",
+			() => events.PublishStatus(7, [.. "{\"online\":true,\"activity\":2}"u8]), true);
+
+		Assert.Equal("status", eventType);
+		Assert.Equal("{\"online\":true,\"activity\":2}", data);
+		Assert.Equal("5000", retry);
 	}
 
 	[Fact]
@@ -95,7 +134,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		{
 			events.PublishInput(8, [.. "not for userSession 7"u8]);
 			events.PublishInput(7, [.. "for userSession 7"u8]);
-		});
+		}, true);
 
 		Assert.Equal("for userSession 7", data);
 	}
@@ -143,14 +182,14 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	///     first write).
 	/// </summary>
 	private async Task<(string? EventType, string Data, string? EventId, string? Retry)> ReceiveAfterPublishAsync(
-		string path, Action publish)
+		string path, Action publish, bool discardFirst = false)
 	{
 		var client = _factory.CreateClient();
 		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
 		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-		var pipelineTask = ConnectAndReadOneEventAsync(client, request, cts.Token);
+		var pipelineTask = ConnectAndReadOneEventAsync(client, request, discardFirst, cts.Token);
 
 		while (!pipelineTask.IsCompleted)
 		{
@@ -163,7 +202,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 
 	private static async Task<(string? EventType, string Data, string? EventId, string? Retry)>
 		ConnectAndReadOneEventAsync(
-			HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
+			HttpClient client, HttpRequestMessage request, bool discardFirst, CancellationToken cancellationToken)
 	{
 		using var response =
 			await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -171,6 +210,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 		using var reader = new StreamReader(stream);
 
+		if (discardFirst) await ReadNextEventAsync(reader, cancellationToken);
 		return await ReadNextEventAsync(reader, cancellationToken);
 	}
 

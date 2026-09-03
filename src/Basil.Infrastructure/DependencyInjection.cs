@@ -133,6 +133,7 @@ public static class DependencyInjection
 		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
 		services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
+		services.AddSingleton<IPlayerStatusEvents, PlayerStatusEvents>();
 
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<BeatmapWatcherService>();

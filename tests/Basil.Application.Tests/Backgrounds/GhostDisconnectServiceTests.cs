@@ -9,6 +9,7 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -58,7 +59,7 @@ public class GhostDisconnectServiceTests
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+			Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -228,7 +229,7 @@ public class GhostDisconnectServiceTests
 			testChannelMembership,
 			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
 				NullLogger<SpectatorService>.Instance),
-			fixture.MatchMembership, NullLogger<PlayerLogoutService>.Instance);
+			fixture.MatchMembership, Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
 
 		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout,
 			NullLogger<GhostDisconnectService>.Instance).RunOnce();

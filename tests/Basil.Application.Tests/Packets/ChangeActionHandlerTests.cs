@@ -1,4 +1,7 @@
+using System.Text.Json;
+using Basil.Application.Formats;
 using Basil.Application.Packets.Users;
+using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
@@ -13,6 +16,7 @@ namespace Basil.Application.Tests.Packets;
 public class ChangeActionHandlerTests
 {
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly MultiplayerTestSupport.FakePlayerStatusEvents _statusEvents = new();
 
 	private static byte[] Payload(int action, string infoText, string mapMd5, uint mods, byte mode, int mapId)
 	{
@@ -35,7 +39,7 @@ public class ChangeActionHandlerTests
 			new PacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123", (uint)Mods.Hidden, 0,
 				42));
 
-		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
 
 		Assert.Equal(UserActivity.Playing, session.Status.UserActivity);
 		Assert.Equal("playing a map", session.Status.InfoText);
@@ -43,6 +47,28 @@ public class ChangeActionHandlerTests
 		Assert.Equal(Mods.Hidden, session.Status.Mods);
 		Assert.Equal(GameMode.Standard, session.Status.Mode);
 		Assert.Equal(42, session.Status.MapId);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4 follow-up: "GET /users/{id}/live should include status
+	///     information"): an activity change must publish the updated status to the userSession's live
+	///     status channel.
+	/// </summary>
+	[Fact]
+	public async Task Handle_PublishesUpdatedStatus()
+	{
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var reader = new PacketReader(Payload((int)UserActivity.Playing, "playing a map", "abc123",
+			(uint)Mods.Hidden, 0, 42));
+
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
+
+		var publish = Assert.Single(_statusEvents.Publishes);
+		Assert.Equal(1, publish.PlayerId);
+		var view = JsonSerializer.Deserialize<PlayerStatusView>(publish.Payload, BasilJsonOptions.Instance);
+		Assert.True(view!.Online);
+		Assert.Equal(UserActivity.Playing, view.Activity);
+		Assert.Equal(42, view.MapId);
 	}
 
 	[Fact]
@@ -53,7 +79,7 @@ public class ChangeActionHandlerTests
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader = new PacketReader(Payload(0, "", "", (uint)Mods.Relax, 0, 0));
 
-		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
 
 		Assert.Equal(GameMode.Standard, session.Status.Mode);
 		Assert.Equal(Mods.Relax, session.Status.Mods);
@@ -65,7 +91,7 @@ public class ChangeActionHandlerTests
 		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		var reader = new PacketReader(Payload(0, "", "", (uint)Mods.Autopilot, 3, 0));
 
-		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
 
 		Assert.Equal(GameMode.Mania, session.Status.Mode);
 		Assert.Equal(Mods.Autopilot, session.Status.Mods);
@@ -79,7 +105,7 @@ public class ChangeActionHandlerTests
 		_sessionRegistry.All.Returns([session, other]);
 		var reader = new PacketReader(Payload((int)UserActivity.Idle, "", "", 0, 0, 0));
 
-		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
 
 		Assert.NotEmpty(other.Dequeue());
 	}
@@ -93,7 +119,7 @@ public class ChangeActionHandlerTests
 		_sessionRegistry.All.Returns([session, other]);
 		var reader = new PacketReader(Payload(0, "", "", 0, 0, 0));
 
-		await new ChangeActionHandler(_sessionRegistry).HandleAsync(session, reader);
+		await new ChangeActionHandler(_sessionRegistry, _statusEvents).HandleAsync(session, reader);
 
 		Assert.Empty(other.Dequeue());
 	}
