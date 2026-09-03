@@ -278,6 +278,27 @@ public class LoginServiceTests
 		Assert.Equal("incorrect-credentials", result.OsuToken);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4-adjacent, user-directed follow-up on the soft-delete work):
+	///     a deleted account must never be able to log back in, even with a correct password.
+	///     Reported as ordinary incorrect credentials rather than a distinct reason, so an
+	///     unauthenticated caller can't use login to probe whether a username was deleted.
+	/// </summary>
+	[Fact]
+	public async Task DeletedAccount_CorrectPassword_ReturnsIncorrectCredentials()
+	{
+		var user = MakeUser(10, UserPrivileges.Unrestricted, deletedAt: DateTimeOffset.UnixEpoch);
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("incorrect-credentials", result.OsuToken);
+	}
+
 	[Fact]
 	public async Task TourneyStream_InsufficientPrivileges_ReturnsNo()
 	{
@@ -595,9 +616,9 @@ public class LoginServiceTests
 		_tokenGenerator.GenerateToken().Returns("generated-token");
 	}
 
-	private static User MakeUser(int id, UserPrivileges priv, string country = "us")
+	private static User MakeUser(int id, UserPrivileges priv, string country = "us", DateTimeOffset? deletedAt = null)
 	{
-		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default);
+		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default, deletedAt);
 	}
 
 	private static byte[] Concat(params byte[][] parts)

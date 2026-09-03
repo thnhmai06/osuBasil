@@ -130,6 +130,16 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <inheritdoc />
+	public async Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		await connection.ExecuteAsync(
+			"UPDATE Users SET DeletedAt = @DeletedAt WHERE Id = @Id",
+			new { Id = id, DeletedAt = deletedAt.UtcDateTime });
+		logger.LogDebug("User row soft-deleted: Id={Id} DeletedAt={DeletedAt}", id, deletedAt);
+	}
+
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
@@ -154,13 +164,14 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		public int Privilege { get; set; }
 		public string Country { get; set; } = "";
 		public DateTime SilenceEnd { get; set; }
+		public DateTime? DeletedAt { get; set; }
 
 		/// <summary>Builds a <see cref="User" /> from this row.</summary>
 		/// <returns>The domain user.</returns>
 		/// <remarks>
 		///     The stored country acronym is parsed back to a <see cref="Country" /> value, falling
-		///     back to <see cref="Country.Xx" /> when unrecognized, and the silence-end time is
-		///     reinterpreted as UTC before being exposed as an offset.
+		///     back to <see cref="Country.Xx" /> when unrecognized, and the silence-end and deletion
+		///     times are reinterpreted as UTC before being exposed as offsets.
 		/// </remarks>
 		public User ToUser()
 		{
@@ -168,7 +179,10 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 				? parsed
 				: Domain.Login.Country.Xx;
 			return new User(Id, Name, country, (UserPrivileges)Privilege,
-				new DateTimeOffset(DateTime.SpecifyKind(SilenceEnd, DateTimeKind.Utc)));
+				new DateTimeOffset(DateTime.SpecifyKind(SilenceEnd, DateTimeKind.Utc)),
+				DeletedAt is { } deletedAt
+					? new DateTimeOffset(DateTime.SpecifyKind(deletedAt, DateTimeKind.Utc))
+					: null);
 		}
 	}
 }

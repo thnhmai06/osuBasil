@@ -197,7 +197,8 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		admin.MapPut("/{userId:numericid}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
+		admin.MapPut("/{userId:numericid}/avatar", async (int userId, HttpContext context,
+				IOptions<StorageOptions> storage,
 				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger,
 				CancellationToken cancellationToken) =>
 			{
@@ -273,9 +274,11 @@ internal static class UserRoutes
 			.WithTags("Users")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		// Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
-		// history referencing this user's id stays intact. It matches how restriction/ban already
-		// works in this server (a privilege bit, never a hard delete).
+		// Soft delete: stamps DeletedAt and zeroes privileges (defense in depth) rather than removing
+		// the row, so score/social/anticheat history referencing this user's id stays intact, and the
+		// name stays reserved (Users_Name_uindex/Users_SafeName_uindex) so nobody can register it
+		// again. DeletedAt, not the zeroed privilege, is the authoritative "is this user deleted"
+		// signal everywhere else in the codebase (login, IRC login) -- see IUserRepository.SoftDeleteAsync.
 		admin.MapDelete("/{userId:numericid}",
 				async (int userId, IUserRepository users, ILogger<UserRoutesLog> logger,
 					CancellationToken cancellationToken) =>
@@ -285,6 +288,7 @@ internal static class UserRoutes
 					if (await users.FetchByIdAsync(userId, cancellationToken) is null)
 						return Results.NotFound(new ErrorResponse("User not found."));
 
+					await users.SoftDeleteAsync(userId, DateTimeOffset.UtcNow, cancellationToken);
 					await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);
 					var deleted = await users.FetchByIdAsync(userId, cancellationToken);
 					logger.LogInformation("User deleted via admin API: UserId={UserId}", userId);
@@ -294,14 +298,14 @@ internal static class UserRoutes
 			.WithName("deleteUser")
 			.WithSummary("Delete a user.")
 			.WithDescription("""
-			                 Soft-deletes the user and returns the updated row, with its `privilege` now zero. Score, social, and anticheat history referencing this user stays intact.
+			                 Soft-deletes the user and returns the updated row, with `deletedAt` now set. Score, social, and anticheat history referencing this user stays intact, and the username stays reserved -- nobody can register it again. A deleted user can no longer log in.
 
 			                 Returns `400 Bad Request` when targeting user id 0 (BasilBot), or `404 Not Found` if no user with this id exists.
 			                 """ + AdminKeyNote)
 			.WithTags("Users")
 			.Produces<UserView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, SampleUser().ToView() with { Privilege = 0 })
+			.WithExample(StatusCodes.Status200OK, SampleUser().ToView() with { DeletedAt = DateTimeOffset.UnixEpoch })
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 

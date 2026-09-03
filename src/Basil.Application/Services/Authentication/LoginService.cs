@@ -141,6 +141,16 @@ public sealed class LoginService(
 		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginForm.PasswordMd5), passwordHash))
 			return IncorrectCredentials(loginForm.Username, request.Ip);
 
+		// A deleted account must never be able to log back in, regardless of a correct password
+		// (Issue #4). Reported as ordinary incorrect credentials rather than a distinct reason, so an
+		// unauthenticated caller can't use login to probe whether a given username was deleted.
+		if (user.DeletedAt is not null)
+		{
+			logger.LogDebug("Login rejected: account deleted. UserId={UserId} Username={Username}",
+				user.Id, user.Name);
+			return IncorrectCredentials(loginForm.Username, request.Ip);
+		}
+
 		if (loginForm.OsuVersion.Stream == OsuStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
 		{

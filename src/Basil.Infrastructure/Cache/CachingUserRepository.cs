@@ -103,6 +103,20 @@ public sealed class CachingUserRepository(
 		cache.Remove(NameKey(name));
 	}
 
+	/// <inheritdoc cref="IUserRepository.SoftDeleteAsync" />
+	/// <remarks>
+	///     Invalidates both the id- and name-keyed entries after updating -- unlike the other update
+	///     methods here, a stale name-keyed hit would let a deleted account's login check
+	///     (<see cref="FetchByNameAsync" />) read a cached pre-deletion row and let them log back in.
+	/// </remarks>
+	public async Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
+	{
+		var before = await inner.FetchByIdAsync(id, cancellationToken);
+		await inner.SoftDeleteAsync(id, deletedAt, cancellationToken);
+		cache.Remove(IdKey(id));
+		if (before is not null) cache.Remove(NameKey(before.Name));
+	}
+
 	/// <inheritdoc cref="IUserRepository.CreateAsync" />
 	/// <remarks>Passes straight through: a brand-new user cannot already be cached.</remarks>
 	public Task<User?> CreateAsync(string name, string pwBcrypt, Country country, UserPrivileges? privilege = null,

@@ -17,7 +17,8 @@ public sealed record UserView(
 	string Name,
 	Country Country,
 	UserPrivileges Privilege,
-	DateTimeOffset SilenceEnd);
+	DateTimeOffset SilenceEnd,
+	DateTimeOffset? DeletedAt);
 
 /// <summary>
 ///     Maps domain <see cref="User" /> records to their API-facing <see cref="UserView" /> shape.
@@ -31,6 +32,6 @@ public static class UserViewMapper
 	/// <returns>The corresponding <see cref="UserView" />.</returns>
 	public static UserView ToView(this User user)
 	{
-		return new UserView(user.Id, user.Name, user.Country, user.Privilege, user.SilenceEnd);
+		return new UserView(user.Id, user.Name, user.Country, user.Privilege, user.SilenceEnd, user.DeletedAt);
 	}
 }

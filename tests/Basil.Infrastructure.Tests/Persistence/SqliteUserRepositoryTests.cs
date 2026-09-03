@@ -110,4 +110,33 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		Assert.Equal("renamed", updated!.Name);
 		Assert.Equal("renamed", User.MakeSafeName(updated.Name));
 	}
+
+	[Fact]
+	public async Task SoftDelete_PersistsDeletedAt()
+	{
+		var created = (await _repository.CreateAsync("delete test user", "hash", Country.Xx))!;
+		var deletedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+		await _repository.SoftDeleteAsync(created.Id, deletedAt);
+
+		var updated = await _repository.FetchByIdAsync(created.Id);
+		Assert.Equal(deletedAt, updated!.DeletedAt);
+	}
+
+	/// <summary>
+	///     Regression test (user-directed follow-up on Issue #4's soft-delete item): a soft-deleted
+	///     user's name must stay reserved forever -- <c>Users_Name_uindex</c>/<c>Users_SafeName_uindex</c>
+	///     are still enforced against the (never-removed) row, so a later registration attempting to
+	///     reuse the exact name fails the same way any other name collision does.
+	/// </summary>
+	[Fact]
+	public async Task SoftDeletedUser_NameStaysReserved_CreateReturnsNull()
+	{
+		var created = (await _repository.CreateAsync("claimed name", "hash", Country.Xx))!;
+		await _repository.SoftDeleteAsync(created.Id, DateTimeOffset.UtcNow);
+
+		var reclaimed = await _repository.CreateAsync("claimed name", "different-hash", Country.Xx);
+
+		Assert.Null(reclaimed);
+	}
 }

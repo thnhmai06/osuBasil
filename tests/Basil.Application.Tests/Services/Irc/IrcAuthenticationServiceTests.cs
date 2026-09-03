@@ -91,6 +91,25 @@ public class IrcAuthenticationServiceTests
 		Assert.False(outcome.Success);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4-adjacent, user-directed follow-up on the soft-delete work):
+	///     a deleted account must never be able to log back in via IRC either, even with a correct
+	///     password, matching the bancho login gate.
+	/// </summary>
+	[Fact]
+	public async Task AuthenticateAsync_DeletedAccount_CorrectPassword_Fails()
+	{
+		_users.FetchByNameAsync("alice", Arg.Any<CancellationToken>())
+			.Returns(new User(1, "alice", Country.Xx, UserPrivileges.Unrestricted, default, DateTimeOffset.UnixEpoch));
+		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+
+		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
+
+		Assert.False(outcome.Success);
+		Assert.Null(outcome.Session);
+	}
+
 	[Fact]
 	public async Task AuthenticateAsync_CorrectPassword_CreatesIrcSessionAndRegistersIt()
 	{

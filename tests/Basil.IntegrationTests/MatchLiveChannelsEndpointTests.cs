@@ -335,6 +335,11 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			return Task.CompletedTask;
 		}
 
+		public Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
 		public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
