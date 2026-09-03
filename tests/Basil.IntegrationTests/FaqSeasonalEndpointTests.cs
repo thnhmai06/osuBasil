@@ -280,6 +280,54 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png")));
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "Add a `PATCH` endpoint for renaming seasonal background files."
+	/// </summary>
+	[Fact]
+	public async Task PatchSeasonal_Existing_RenamesFileKeepingContent()
+	{
+		Directory.CreateDirectory(SeasonalsDir);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
+
+		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/spring.png", AdminKey);
+		request.Content = JsonContent.Create(new { newFileName = "spring-final.png" });
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
+		Assert.Equal(new byte[] { 1, 2, 3 },
+			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring-final.png")));
+	}
+
+	[Fact]
+	public async Task PatchSeasonal_NotFound_ReturnsNotFound()
+	{
+		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/nope.png", AdminKey);
+		request.Content = JsonContent.Create(new { newFileName = "still-nope.png" });
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task PatchSeasonal_TargetAlreadyExists_ReturnsConflict()
+	{
+		Directory.CreateDirectory(SeasonalsDir);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png"), [9, 9, 9]);
+
+		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/spring.png", AdminKey);
+		request.Content = JsonContent.Create(new { newFileName = "summer.png" });
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+		Assert.True(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
+		Assert.Equal(new byte[] { 9, 9, 9 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png")));
+	}
+
 	[Fact]
 	public async Task DeleteSeasonal_NotFound_ReturnsNotFound()
 	{
