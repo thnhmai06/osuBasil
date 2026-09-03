@@ -144,6 +144,25 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		Assert.True(meta.TryGetProperty("totalRecords", out _));
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "Invalid pagination ranges should return an empty result instead
+	///     of an error." A negative `page`/`pageSize` never reaches the underlying `Skip`/`Take` as
+	///     given -- `Pagination.Normalize` falls back to the page-1/pageSize-50 defaults for any
+	///     non-positive value, so this never throws regardless of what's requested.
+	/// </summary>
+	[Theory]
+	[InlineData("page=-1&pageSize=-1")]
+	[InlineData("page=0&pageSize=0")]
+	[InlineData("page=999999")]
+	public async Task GetUsers_OutOfRangePagination_ReturnsOkNotError(string query)
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/users?{query}", "correct-key"));
+
+		response.EnsureSuccessStatusCode();
+	}
+
 	[Fact]
 	public async Task CreateUser_InvalidUsername_ReturnsBadRequest()
 	{

@@ -89,6 +89,27 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 		Assert.Equal(HttpStatusCode.OK, withNewKey.StatusCode);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "Responses unnecessarily Unicode-escape string values, e.g.
+	///     GET /adminkey has `+` returned as `+`." `lastChanged` always carries a `+00:00` UTC
+	///     offset suffix (`DateTimeOffset`'s round-trip format never uses a bare `Z`), so this is where
+	///     the literal `+` Issue #4 saw comes from.
+	/// </summary>
+	[Fact]
+	public async Task SetKey_ThenGet_LastChangedPlusIsNotUnicodeEscaped()
+	{
+		var client = _factory.CreateClient();
+		var setRequest = MakeRequest(HttpMethod.Put, "/adminkey");
+		setRequest.Content = JsonContent.Create(new { key = "new-secret" });
+		await client.SendAsync(setRequest);
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/adminkey", "new-secret"));
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.DoesNotContain("\\u002B", body);
+		Assert.Contains("+00:00", body);
+	}
+
 	[Fact]
 	public async Task SetKey_TooLong_ReturnsBadRequest()
 	{
