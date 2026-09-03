@@ -62,8 +62,8 @@ internal static class MatchRoutes
 			.Produces<PagedResult<MatchListItem>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<MatchListItem>(1, 50, 1,
 			[
-				new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null,
-					SampleRoomLive())
+				new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTimeOffset.Parse("2026-07-20T12:00:00Z"),
+					null, SampleRoomLive())
 			]))
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status400BadRequest,
@@ -272,7 +272,8 @@ internal static class MatchRoutes
 			var live = matchLive is not null
 				? await MatchLiveSnapshotBuilder.BuildRoomLive(matchLive, beatmaps, cancellationToken)
 				: null;
-			items.Add(new MatchListItem(match.Id, match.Name, match.CreatedAt, match.EndedAt, live));
+			items.Add(new MatchListItem(match.Id, match.Name, match.CreatedAt.AsUtcOffset(),
+				match.EndedAt?.AsUtcOffset(), live));
 		}
 
 		var overqueried = items.Skip((p - 1) * ps).Take(ps + 1).ToList();

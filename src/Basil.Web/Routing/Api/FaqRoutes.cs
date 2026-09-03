@@ -53,7 +53,7 @@ internal static class FaqRoutes
 			.Produces<FaqCreatedView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status201Created, new FaqCreatedView("rules", true))
+			.WithExample(StatusCodes.Status201Created, new FaqCreatedView("rules"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'rules' already exists."));
 
@@ -89,7 +89,7 @@ internal static class FaqRoutes
 			.WithMultipartFileUpload()
 			.Produces<FaqReplacedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules", true))
+			.WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -97,7 +97,7 @@ internal static class FaqRoutes
 			{
 				if (!faq.DeleteEntry(entry)) return Results.NotFound(new ErrorResponse("FAQ entry not found."));
 				logger.LogDebug("FAQ entry deleted via admin API: Entry={Entry}", entry);
-				return Results.Json(new FaqDeletedView(entry, true));
+				return Results.Json(new FaqDeletedView(entry));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -110,7 +110,7 @@ internal static class FaqRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("FAQ")
 			.Produces<FaqDeletedView>()
-			.WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules", true))
+			.WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules"))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -138,7 +138,7 @@ internal static class FaqRoutes
 			};
 
 		logger.LogDebug("FAQ entry created via admin API: Entry={Entry}", entry);
-		return Results.Created($"/faqs/{entry}", new FaqCreatedView(entry, true));
+		return Results.Created($"/faqs/{entry}", new FaqCreatedView(entry));
 	}
 
 	private static async Task<IResult> HandleReplace(string entry, HttpContext context, FaqService faq,
@@ -159,15 +159,15 @@ internal static class FaqRoutes
 				: Results.BadRequest(new ErrorResponse("Invalid entry name."));
 
 		logger.LogDebug("FAQ entry replaced via admin API: Entry={Entry}", entry);
-		return Results.Json(new FaqReplacedView(entry, true));
+		return Results.Json(new FaqReplacedView(entry));
 	}
 
 	/// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
-	public sealed record FaqDeletedView(string Entry, bool Deleted);
+	public sealed record FaqDeletedView(string Entry);
 
 	/// <summary>Confirmation body for `POST /faqs/`.</summary>
-	public sealed record FaqCreatedView(string Entry, bool Created);
+	public sealed record FaqCreatedView(string Entry);
 
 	/// <summary>Confirmation body for `PUT /faqs/{entry}`.</summary>
-	public sealed record FaqReplacedView(string Entry, bool Replaced);
+	public sealed record FaqReplacedView(string Entry);
 }

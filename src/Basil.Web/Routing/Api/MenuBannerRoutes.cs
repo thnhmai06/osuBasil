@@ -1,3 +1,4 @@
+using Basil.Application.Formats;
 using Basil.Application.Services.Content;
 using Basil.Domain.Content;
 using Basil.Web.Auth;
@@ -109,7 +110,7 @@ internal static class MenuBannerRoutes
 				if (!await banners.DeleteAsync(bannerId, cancellationToken))
 					return Results.NotFound(new ErrorResponse("Banner not found."));
 				logger.LogInformation("Menu banner deleted via admin API: Id={Id}", bannerId);
-				return Results.Json(new MenuBannerDeletedView(bannerId, true));
+				return Results.Json(new MenuBannerDeletedView(bannerId));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -222,13 +223,13 @@ internal static class MenuBannerRoutes
 
 	private static MenuBannerView ToView(MenuBanner banner, MenuBannerService banners)
 	{
-		return new MenuBannerView(banner.Id, banners.ResolveImageUrl(banner.Image), banner.Url, banner.Begins,
-			banner.Expires, banner.IsCurrent(DateTime.UtcNow));
+		return new MenuBannerView(banner.Id, banners.ResolveImageUrl(banner.Image), banner.Url,
+			banner.Begins?.AsUtcOffset(), banner.Expires?.AsUtcOffset(), banner.IsCurrent(DateTime.UtcNow));
 	}
 
 	private static MenuBannerView SampleView()
 	{
-		var begins = DateTime.Parse("2026-06-01T00:00:00Z");
+		var begins = DateTimeOffset.Parse("2026-06-01T00:00:00Z");
 		return new MenuBannerView(1, "https://assets.example.com/menu/banners/summer.png",
 			"https://example.com/summer-event", begins, begins.AddDays(30), true);
 	}
@@ -238,10 +239,10 @@ internal static class MenuBannerRoutes
 		int Id,
 		string Image,
 		string Url,
-		DateTime? Begins,
-		DateTime? Expires,
+		DateTimeOffset? Begins,
+		DateTimeOffset? Expires,
 		bool IsCurrent);
 
 	/// <summary>Confirmation body for `DELETE /menu/banners/{bannerId}`.</summary>
-	public sealed record MenuBannerDeletedView(int Id, bool Deleted);
+	public sealed record MenuBannerDeletedView(int Id);
 }

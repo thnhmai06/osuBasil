@@ -212,14 +212,14 @@ public static class MatchLiveSnapshotBuilder
 	///     A ticking counter would otherwise change on every announcement checkpoint, defeating the
 	///     stream's coalescing and pushing an update purely to report elapsed time (Issue #4: "Remove
 	///     `secondsRemaining` from the timer SSE stream to prevent network spam"). A subscriber
-	///     computes remaining time locally from <see cref="MatchTimerView.StartTime" />/
-	///     <see cref="MatchTimerView.EndTime" /> instead.
+	///     computes remaining time locally from <see cref="MatchTimerView.StartedAt" />/
+	///     <see cref="MatchTimerView.EndsAt" /> instead.
 	/// </remarks>
 	/// <param name="match">The match whose timer to snapshot.</param>
 	public static MatchTimerLiveView BuildTimerLive(MatchSession match)
 	{
 		var timer = BuildTimer(match);
-		return new MatchTimerLiveView(timer.Running, timer.AutoStart, timer.StartTime, timer.EndTime);
+		return new MatchTimerLiveView(timer.Running, timer.AutoStart, timer.StartedAt, timer.EndsAt);
 	}
 
 	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT /matches/{matchId}/slots</c>.</summary>
@@ -506,30 +506,30 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="SecondsRemaining">The whole seconds remaining, or <see langword="null" /> when no countdown is running.</param>
 /// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
-/// <param name="StartTime">
+/// <param name="StartedAt">
 ///     The time the countdown began, or <see langword="null" /> when no countdown is running. Lets a
 ///     client compute remaining time locally from wall-clock time instead of only trusting
 ///     <see cref="SecondsRemaining" />, which is a snapshot that goes stale between updates.
 /// </param>
-/// <param name="EndTime">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+/// <param name="EndsAt">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
 public sealed record MatchTimerView(
 	bool Running,
 	int? SecondsRemaining,
 	bool AutoStart,
-	DateTimeOffset? StartTime = null,
-	DateTimeOffset? EndTime = null);
+	DateTimeOffset? StartedAt = null,
+	DateTimeOffset? EndsAt = null);
 
 /// <summary>The payload for the SSE stream <c>GET /matches/{matchId}/timer/live</c>.</summary>
 /// <remarks>Omits <c>secondsRemaining</c>; see <see cref="MatchLiveSnapshotBuilder.BuildTimerLive" />.</remarks>
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
-/// <param name="StartTime">The time the countdown began, or <see langword="null" /> when no countdown is running.</param>
-/// <param name="EndTime">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+/// <param name="StartedAt">The time the countdown began, or <see langword="null" /> when no countdown is running.</param>
+/// <param name="EndsAt">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
 public sealed record MatchTimerLiveView(
 	bool Running,
 	bool AutoStart,
-	DateTimeOffset? StartTime = null,
-	DateTimeOffset? EndTime = null);
+	DateTimeOffset? StartedAt = null,
+	DateTimeOffset? EndsAt = null);
 
 /// <summary>One slot in <c>GET /matches/{matchId}/slots</c>.</summary>
 /// <remarks>
@@ -582,17 +582,22 @@ public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 /// <param name="Live">
 ///     The current room configuration, or <see langword="null" /> once the room is no longer live.
 /// </param>
-public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
+public sealed record MatchListItem(
+	int Id,
+	string Name,
+	DateTimeOffset CreatedAt,
+	DateTimeOffset? EndedAt,
+	MatchRoomLive? Live);
 
 /// <summary>The response body for <c>POST /matches/{matchId}/close</c>.</summary>
 /// <param name="MatchId">The closed match's id.</param>
 /// <param name="EndedAt">When the match was closed.</param>
-public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
+public sealed record MatchClosedView(int MatchId, DateTimeOffset EndedAt);
 
 /// <summary>The response body for <c>POST /matches/{matchId}/abort</c>.</summary>
 /// <param name="MatchId">The aborted match's id.</param>
 /// <param name="AbortedAt">When the round was aborted.</param>
-public sealed record MatchAbortedView(int MatchId, DateTime AbortedAt);
+public sealed record MatchAbortedView(int MatchId, DateTimeOffset AbortedAt);
 
 /// <summary>One player's live score frame on the SSE <c>/matches/{matchId}/live/{slotIndex}</c> channel.</summary>
 /// <param name="User">The player the score belongs to.</param>

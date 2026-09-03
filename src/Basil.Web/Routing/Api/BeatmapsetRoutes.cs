@@ -279,7 +279,7 @@ internal static class BeatmapsetRoutes
 
 	private static BeatmapsetSummary SampleSummary()
 	{
-		var created = DateTime.Parse("2026-06-01T10:00:00Z");
+		var created = DateTimeOffset.Parse("2026-06-01T10:00:00Z");
 		return new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created,
 			false, false, BeatmapStatus.Approved, 1);
 	}
@@ -458,7 +458,8 @@ internal static class BeatmapsetRoutes
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound(new ErrorResponse("Beatmap not found."));
+		if (bmap is null || bmap.Beatmapset.Id != mapsetId)
+			return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
 		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Beatmapset.ToSummary(siblings.Count);
@@ -472,7 +473,8 @@ internal static class BeatmapsetRoutes
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound(new ErrorResponse("Beatmap not found."));
+		if (bmap is null || bmap.Beatmapset.Id != mapsetId)
+			return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
 		if (mode is < 0 or > 3)
 			return Results.BadRequest(new ErrorResponse(

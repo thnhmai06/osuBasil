@@ -183,7 +183,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var view = await response.Content.ReadFromJsonAsync<JsonElement>();
 
 		response.EnsureSuccessStatusCode();
-		Assert.Equal(2, view.GetProperty("data").GetProperty("sent").GetInt32());
+		Assert.Equal(2, view.GetProperty("data").GetProperty("deliveredCount").GetInt32());
 	}
 
 	// ---- /hosts ----
@@ -644,9 +644,9 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		startResponse.EnsureSuccessStatusCode();
 
 		var data = (await startResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-		var startTime = data.GetProperty("startTime").GetDateTimeOffset();
-		var endTime = data.GetProperty("endTime").GetDateTimeOffset();
-		Assert.Equal(120, (endTime - startTime).TotalSeconds);
+		var startedAt = data.GetProperty("startedAt").GetDateTimeOffset();
+		var endsAt = data.GetProperty("endsAt").GetDateTimeOffset();
+		Assert.Equal(120, (endsAt - startedAt).TotalSeconds);
 	}
 
 	/// <summary>

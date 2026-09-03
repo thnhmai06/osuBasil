@@ -59,7 +59,7 @@ internal static class AdminKeyRoutes
 			.WithTags("Admin Key")
 			.Produces<AdminKeyChangedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new AdminKeyChangedView(true, "Admin key updated."))
+			.WithExample(StatusCodes.Status200OK, new AdminKeyChangedView("Admin key updated."))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Key must be 1 to 72 bytes long."));
 
 		group.MapDelete("/adminkey", async (AdminKeyService adminKey, ILogger<AdminKeyRoutesLog> logger,
@@ -67,8 +67,8 @@ internal static class AdminKeyRoutes
 			{
 				await adminKey.ClearAsync(cancellationToken);
 				logger.LogInformation("Admin key cleared via admin API — server is now in bypass mode");
-				return Results.Json(new AdminKeyChangedView(true,
-					"Admin key cleared. The server is now in bypass mode."));
+				return Results.Json(
+					new AdminKeyChangedView("Admin key cleared. The server is now in bypass mode."));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -81,7 +81,7 @@ internal static class AdminKeyRoutes
 			.WithTags("Admin Key")
 			.Produces<AdminKeyChangedView>()
 			.WithExample(StatusCodes.Status200OK,
-				new AdminKeyChangedView(true, "Admin key cleared. The server is now in bypass mode."));
+				new AdminKeyChangedView("Admin key cleared. The server is now in bypass mode."));
 	}
 
 	private static async Task<IResult> HandleSetKey(AdminKeyBody body, AdminKeyService adminKey,
@@ -94,7 +94,7 @@ internal static class AdminKeyRoutes
 
 		await adminKey.SetKeyAsync(body.Key, cancellationToken);
 		logger.LogInformation("Admin key updated via admin API");
-		return Results.Json(new AdminKeyChangedView(true, "Admin key updated."));
+		return Results.Json(new AdminKeyChangedView("Admin key updated."));
 	}
 
 	/// <summary>Response body for `GET /adminkey`.</summary>
@@ -104,7 +104,7 @@ internal static class AdminKeyRoutes
 	public sealed record AdminKeyBody(string Key);
 
 	/// <summary>Confirmation body for the admin key write routes.</summary>
-	public sealed record AdminKeyChangedView(bool Success, string Message);
+	public sealed record AdminKeyChangedView(string Message);
 }
 
 /// <summary>A dedicated logger category marker for the static <see cref="AdminKeyRoutes" /> class.</summary>

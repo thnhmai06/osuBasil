@@ -45,8 +45,8 @@ internal static class AnnounceRoutes
 			.WithTags("Announce")
 			.Produces<AnnounceResultView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(true, 3, "Server restarting in 5 minutes."))
-			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Message must not be empty."));
+			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(3, "Server restarting in 5 minutes."))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Text must not be empty."));
 
 		group.MapGet("/announce/motd", async (MotdService motd, CancellationToken cancellationToken) =>
 			{
@@ -67,7 +67,7 @@ internal static class AnnounceRoutes
 				await motd.SetTextAsync(body.Text, cancellationToken);
 				logger.LogInformation("MOTD updated via admin API");
 				var stored = await motd.GetTextAsync(cancellationToken);
-				return Results.Json(new MotdChangedView(true, "MOTD updated.", stored));
+				return Results.Json(new MotdChangedView("MOTD updated.", stored));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -81,14 +81,14 @@ internal static class AnnounceRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("Motd")
 			.Produces<MotdChangedView>()
-			.WithExample(StatusCodes.Status200OK, new MotdChangedView(true, "MOTD updated.", "Welcome to Basil!"));
+			.WithExample(StatusCodes.Status200OK, new MotdChangedView("MOTD updated.", "Welcome to Basil!"));
 	}
 
 	private static IResult HandleAnnounce(AnnounceBody body, ISessionRegistry<GameSession> sessionRegistry,
 		ILogger<AnnounceRoutesLog> logger)
 	{
-		if (string.IsNullOrWhiteSpace(body.Message))
-			return Results.BadRequest(new ErrorResponse("Message must not be empty."));
+		if (string.IsNullOrWhiteSpace(body.Text))
+			return Results.BadRequest(new ErrorResponse("Text must not be empty."));
 
 		var targets = body.UserIds is null
 			? sessionRegistry.All.Where(s => s.Id != BotBootstrapService.BotId)
@@ -96,7 +96,7 @@ internal static class AnnounceRoutes
 				.Select(sessionRegistry.GetByUserId)
 				.Where(s => s is not null);
 
-		var packet = ServerPacketWriter.Notification(body.Message);
+		var packet = ServerPacketWriter.Notification(body.Text);
 		var deliveredCount = 0;
 		foreach (var session in targets)
 		{
@@ -105,14 +105,14 @@ internal static class AnnounceRoutes
 		}
 
 		logger.LogInformation("Announcement sent via admin API: DeliveredCount={DeliveredCount}", deliveredCount);
-		return Results.Json(new AnnounceResultView(true, deliveredCount, body.Message));
+		return Results.Json(new AnnounceResultView(deliveredCount, body.Text));
 	}
 
 	/// <summary>Request body for `POST /announce`.</summary>
-	public sealed record AnnounceBody(string Message, int[]? UserIds = null);
+	public sealed record AnnounceBody(string Text, int[]? UserIds = null);
 
 	/// <summary>Confirmation body for `POST /announce`.</summary>
-	public sealed record AnnounceResultView(bool Success, int DeliveredCount, string Text);
+	public sealed record AnnounceResultView(int DeliveredCount, string Text);
 
 	/// <summary>Response body for `GET /announce/motd`.</summary>
 	public sealed record MotdView(string? Text);
@@ -121,5 +121,5 @@ internal static class AnnounceRoutes
 	public sealed record MotdBody(string? Text);
 
 	/// <summary>Confirmation body for `PUT /announce/motd`.</summary>
-	public sealed record MotdChangedView(bool Success, string Message, string? Text);
+	public sealed record MotdChangedView(string Message, string? Text);
 }

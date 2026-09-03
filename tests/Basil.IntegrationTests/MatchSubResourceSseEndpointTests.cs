@@ -340,7 +340,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		Assert.Equal("timer", eventType);
 		Assert.DoesNotContain("secondsRemaining", data);
-		Assert.Contains("\"startTime\"", data);
+		Assert.Contains("\"startedAt\"", data);
 	}
 
 	/// <summary>

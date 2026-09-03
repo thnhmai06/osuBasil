@@ -1090,8 +1090,8 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Timer")
 			.Produces<MatchTimerView>()
 			.WithExample(StatusCodes.Status200OK,
-				new MatchTimerView(true, 25, true, DateTime.Parse("2026-07-20T14:30:00Z"),
-					DateTime.Parse("2026-07-20T14:30:30Z")))
+				new MatchTimerView(true, 25, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
+					DateTimeOffset.Parse("2026-07-20T14:30:30Z")))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/matches/{matchId:numericid}/timer/live", (int matchId, HttpContext context,
@@ -1111,7 +1111,7 @@ internal static class MatchSubResourceRoutes
 			.WithName("getMatchTimerLive")
 			.WithSummary("Stream match timer.")
 			.WithDescription("""
-			                 Server-Sent Events stream of `GET /matches/{matchId}/timer`'s `running`, `autoStart`, `startTime`, and `endTime` fields. Unlike the REST response, this stream omits `secondsRemaining`; compute remaining time locally from `startTime`/`endTime` instead of polling a value that only goes stale between updates.
+			                 Server-Sent Events stream of `GET /matches/{matchId}/timer`'s `running`, `autoStart`, `startedAt`, and `endsAt` fields. Unlike the REST response, this stream omits `secondsRemaining`; compute remaining time locally from `startedAt`/`endsAt` instead of polling a value that only goes stale between updates.
 
 			                 A change is pushed at each announcement checkpoint `!mp timer`/`!mp start` uses, plus once more when the countdown finishes or is aborted.
 
@@ -1121,8 +1121,8 @@ internal static class MatchSubResourceRoutes
 			.Produces<MatchTimerLiveView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
-				new MatchTimerLiveView(true, true, DateTime.Parse("2026-07-20T14:30:00Z"),
-					DateTime.Parse("2026-07-20T14:30:30Z")));
+				new MatchTimerLiveView(true, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
+					DateTimeOffset.Parse("2026-07-20T14:30:30Z")));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
 				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -1170,8 +1170,8 @@ internal static class MatchSubResourceRoutes
 			.Produces<MatchTimerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
-				new MatchTimerView(true, 30, true, DateTime.Parse("2026-07-20T14:30:00Z"),
-					DateTime.Parse("2026-07-20T14:30:30Z")))
+				new MatchTimerView(true, 30, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
+					DateTimeOffset.Parse("2026-07-20T14:30:30Z")))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is already in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -1226,7 +1226,7 @@ internal static class MatchSubResourceRoutes
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var abortedAt = DateTime.UtcNow;
+					var abortedAt = DateTimeOffset.UtcNow;
 					var result = await matchControl.AbortAsync(match, cancellationToken);
 					if (result == MatchControlService.AbortResult.NotInProgress)
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
@@ -1253,7 +1253,8 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Abort")
 			.Produces<MatchAbortedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchAbortedView(42, DateTime.Parse("2026-07-20T14:30:00Z")))
+			.WithExample(StatusCodes.Status200OK,
+				new MatchAbortedView(42, DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
@@ -1271,7 +1272,7 @@ internal static class MatchSubResourceRoutes
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
-					var endedAt = DateTime.UtcNow;
+					var endedAt = DateTimeOffset.UtcNow;
 					await matchControl.CloseAsync(null, null, match, cancellationToken);
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match closed.";
 					return Results.Json(new MatchClosedView(matchId, endedAt));
@@ -1292,7 +1293,7 @@ internal static class MatchSubResourceRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("Match Close")
 			.Produces<MatchClosedView>()
-			.WithExample(StatusCodes.Status200OK, new MatchClosedView(42, DateTime.Parse("2026-07-20T14:30:00Z")))
+			.WithExample(StatusCodes.Status200OK, new MatchClosedView(42, DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -1357,8 +1358,8 @@ internal static class MatchSubResourceRoutes
 	public sealed record SendMatchChatRequest(string Text);
 
 	/// <summary>Confirmation body for `POST /matches/{matchId}/chat`.</summary>
-	/// <param name="Sent">The number of chat messages the text became.</param>
-	public sealed record MatchChatSentView(int Sent);
+	/// <param name="DeliveredCount">The number of chat messages the text became.</param>
+	public sealed record MatchChatSentView(int DeliveredCount);
 
 	/// <summary>Request body for `PUT /matches/{matchId}/hosts`.</summary>
 	public sealed record SetHostRequest(int UserId);
