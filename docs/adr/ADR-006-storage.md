@@ -386,13 +386,32 @@ itself — it is folded into the Decision below, not discarded.
 
 ### Measurements
 
-Not run — this is a design-only pass, no code changed. Before implementing, per plan rule 6/the
-Definition of Done, this needs:
+**"Before" allocation/latency measured 2026-09-04** (`microbenchmarking` skill, BenchmarkDotNet,
+`[MemoryDiagnoser]`, standalone throwaway project — `BuildBeatmapsetArchiveAsync` is `internal`
+with no `InternalsVisibleTo` for a benchmark project, so its `MemoryStream` + `ZipArchive.Create` +
+per-entry `CopyToAsync` + `.ToArray()` shape was reproduced standalone rather than referenced
+directly; this measures that pattern's allocation shape, not literally the shipped method). Input:
+synthetic incompressible data (real `.osz` contents — mp3/jpg/png/mp4 — are already compressed, so
+random bytes approximate their DEFLATE behavior reasonably well), split across 6 files to exercise
+the same per-entry loop as a real set, seeded RNG for reproducibility.
 
-- A real before/after comparison of download-path allocation and latency (the ~200MB LOH
-  per-request claim is code-reasoning from `MemoryStream` growth semantics, not a captured
-  profile) — ideally using the `microbenchmarking` skill against a representative large set (the
-  ~100MB reference already used in this ADR's evidence).
+| Set size | Mean latency | Allocated | Gen2 collects/op |
+|---|---|---|---|
+| 10 MB | 226 ms | 42.2 MB (~4.2x) | 1.67 |
+| 100 MB | 2.28 s | 357.4 MB (~3.6x) | 3.0 |
+
+This **exceeds** the ADR's original ~2x/~200MB estimate — `MemoryStream`'s internal doubling
+growth plus the `ZipArchive`'s own buffering adds more than the naive "one copy of the raw bytes,
+one copy of the zipped bytes" reasoning accounted for. Gen2 collecting on every single call at
+both sizes (not just the 100MB one) confirms this is genuine large-object-heap pressure on the
+current per-request path, not a theoretical concern — this raises RC7's allocation-cost claim from
+`NEEDS EXPERIMENT` to **CONFIRMED** for the *allocation/latency* half specifically. This benchmark
+was development-feedback/throwaway per the skill's use-case guidance and was not committed to the
+repo.
+
+**Still not run** — before implementing the full Decision, per plan rule 6/the Definition of Done,
+this still needs:
+
 - Disk-usage measurement across a realistic mixed-popularity beatmapset library (many sets never
   requested outside ingest, a few "hot" ones) to confirm Alternative C's bound actually holds in
   practice rather than only in the worst-case reasoning above.
@@ -400,5 +419,11 @@ Definition of Done, this needs:
   a real tournament server's scale), since it runs on every startup until every set has both
   artifacts.
 - The stampede-guard's actual effect under concurrent load (N simultaneous requests for the same
-  cold cache entry), matching the same category of test ADR-006's existing atomic-write section
-  flags as not yet written for `FileSystemResponseCache`.
+  cold cache entry) for whatever mechanism the eventual `.osz`/extracted-asset cache uses — the
+  narrower ffmpeg-preview stampede case in this same ADR's "Open items" is now fixed and has this
+  test (`AudioPreviewSingleFlightTests`), but that guard is scoped to that one caller, not the
+  `.osz` cache this Decision proposes.
+
+One measurement closing does not unpark this Decision by itself — the disk-usage and migration-
+timing items above are still open, and the rewrite (canonical-store flip + deployment-data
+migration) stays parked until they are too.
