@@ -287,6 +287,13 @@ internal static class MatchRoutes
 		var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
 		if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
 
+		// Validated before the match is registered at all: a match that's created and then immediately
+		// rejected for a bad mapId would otherwise be left behind, orphaned and half-initialized, with
+		// no caller left to close it (Issue #4: "INVALID MATCH DATA CAN STILL CREATE A MATCH").
+		if (body.MapId is > 0 && await beatmaps.FetchOneAsync(body.MapId.Value, cancellationToken: cancellationToken)
+			    is null)
+			return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId} found locally."));
+
 		var data = new MatchState(
 			0, false, 0, 0, name, body.Password ?? "",
 			"", 0, "",
@@ -302,8 +309,8 @@ internal static class MatchRoutes
 			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
 			await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, cancellationToken);
 
-			var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
-			if (mapError is not null) return mapError;
+			// The mapId is already known-valid (checked above), so this cannot fail here.
+			await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
 
 			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
@@ -450,7 +457,7 @@ internal static class MatchRoutes
 
 		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken);
 		return result == MatchControlService.SetMapResult.BeatmapNotFound
-			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found on the server."))
+			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found locally."))
 			: null;
 	}
 

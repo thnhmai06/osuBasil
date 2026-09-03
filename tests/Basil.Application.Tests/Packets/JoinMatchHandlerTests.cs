@@ -1,4 +1,6 @@
 using Basil.Application.Packets.Multiplayer;
+using Basil.Application.Services.Multiplayer;
+using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
@@ -144,6 +146,29 @@ public class JoinMatchHandlerTests
 
 		Assert.Null(host.Match);
 		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(host.Dequeue()));
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "CRITICAL: MATCHES CREATED THROUGH THE API CANNOT BE JOINED").
+	///     Mirrors <c>POST /matches</c>' own creation call (<see cref="MatchMembershipService.CreateEmptyAsync" />,
+	///     no host, empty slot-state arrays) rather than the bancho <c>!mp make</c> path every other test
+	///     in this file uses, then joins through the real packet handler -- the same path a real client
+	///     takes -- instead of calling <see cref="MatchMembershipService.JoinAsync" /> directly.
+	/// </summary>
+	[Fact]
+	public async Task Handle_ApiCreatedMatch_GuestCanJoin()
+	{
+		var fixture = new Fixture();
+		var data = new MatchState(0, false, 0, 0, "API match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [], 0);
+		var match = await fixture.MatchMembership.CreateEmptyAsync(data);
+
+		var guest = MakePlayer(1, "guest");
+		fixture.RegisterAll(guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, ""));
+
+		Assert.Same(match, guest.Match);
 	}
 
 	[Fact]
