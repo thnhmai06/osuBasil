@@ -583,6 +583,12 @@ internal static class MatchSubResourceRoutes
 				if (unknownId is { } bad)
 					return Results.BadRequest(new ErrorResponse($"userId {bad} is not registered."));
 
+				var refereeId = FirstRefereeUserId(body.UserIds, match);
+				if (refereeId is { } refId)
+					return Results.BadRequest(
+						new ErrorResponse(
+							$"userId {refId} is a referee and cannot be banned. Remove referee status first."));
+
 				await match.Lock.WaitAsync(cancellationToken);
 				try
 				{
@@ -605,7 +611,9 @@ internal static class MatchSubResourceRoutes
 			.WithDescription("""
 			                 Replaces the match's ban list with `{ userIds: int[] }` and returns the updated list. Ids need not be online, but must be registered. Any newly banned id that is currently seated is also kicked.
 
-			                 Returns `400 Bad Request` if any id is not a registered user, or `404 Not Found` if the match isn't currently live.
+			                 A referee is immune to being banned; remove referee status first.
+
+			                 Returns `400 Bad Request` if any id is not a registered user or is a referee, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Bans")
 			.Produces<MatchBansView>()
@@ -626,6 +634,12 @@ internal static class MatchSubResourceRoutes
 				var unknownId = await FirstUnknownUserIdAsync(body.UserIds, users, cancellationToken);
 				if (unknownId is { } bad)
 					return Results.BadRequest(new ErrorResponse($"userId {bad} is not registered."));
+
+				var refereeId = FirstRefereeUserId(body.UserIds, match);
+				if (refereeId is { } refId)
+					return Results.BadRequest(
+						new ErrorResponse(
+							$"userId {refId} is a referee and cannot be banned. Remove referee status first."));
 
 				await match.Lock.WaitAsync(cancellationToken);
 				try
@@ -649,7 +663,9 @@ internal static class MatchSubResourceRoutes
 			.WithDescription("""
 			                 Adds `{ userIds: int[] }` to the match's ban list and returns the updated list. Ids need not be online, but must be registered. Any newly banned id that is currently seated is also kicked.
 
-			                 Returns `400 Bad Request` if any id is not a registered user, or `404 Not Found` if the match isn't currently live.
+			                 A referee is immune to being banned; remove referee status first.
+
+			                 Returns `400 Bad Request` if any id is not a registered user or is a referee, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Bans")
 			.Produces<MatchBansView>()
@@ -1295,6 +1311,24 @@ internal static class MatchSubResourceRoutes
 	{
 		foreach (var userId in userIds)
 			if (await users.FetchByIdAsync(userId, cancellationToken) is null)
+				return userId;
+
+		return null;
+	}
+
+	/// <summary>
+	///     Finds the first id in <paramref name="userIds" /> that is currently a referee of
+	///     <paramref name="match" />. A referee is immune to being banned (Issue #4); unlike the
+	///     single-target `!mp ban` bot command's own guard (<see cref="MatchControlService.BanAsync" />),
+	///     this bulk API path (<see cref="MatchControlService.SetBansAsync" />/
+	///     <see cref="MatchControlService.AddBansAsync" />) has no guard of its own, so the route
+	///     checks before ever mutating the banlist.
+	/// </summary>
+	/// <returns>The first referee id found among <paramref name="userIds" />, or <see langword="null" /> if none is.</returns>
+	private static int? FirstRefereeUserId(IReadOnlyCollection<int> userIds, MatchSession match)
+	{
+		foreach (var userId in userIds)
+			if (match.IsReferee(userId))
 				return userId;
 
 		return null;

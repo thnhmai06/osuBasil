@@ -295,6 +295,33 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "A banned referee can still control the match, and a referee can
+	///     ban themselves. Referees should not be affected by match bans." The single-target `!mp ban`
+	///     bot command already guards against this; the bulk API routes (PUT/PATCH) did not.
+	/// </summary>
+	[Theory]
+	[InlineData("PUT")]
+	[InlineData("PATCH")]
+	public async Task Ban_RefereeUserId_ReturnsBadRequest(string method)
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var referee = await SeatNewPlayer(2010, "banproofref", matchId);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(referee.Id, referee.Name, Country.Xx, UserPrivileges.Unrestricted, default));
+
+		var refsRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/refs");
+		refsRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		(await client.SendAsync(refsRequest)).EnsureSuccessStatusCode();
+
+		var banRequest = MakeRequest(new HttpMethod(method), $"/matches/{matchId}/ban");
+		banRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var response = await client.SendAsync(banRequest);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task Ban_PatchThenUnban_ReflectsInGet()
 	{

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Basil.Application.Configurations;
 using Basil.Domain.Users;
 using Basil.Web;
@@ -58,6 +59,25 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "401 responses for missing/invalid admin keys should include a
+	///     proper error body instead of being empty" -- the authorization middleware's challenge used
+	///     to write only the status code, leaving the body empty.
+	/// </summary>
+	[Theory]
+	[InlineData(null)]
+	[InlineData("wrong-key")]
+	public async Task DeleteUser_MissingOrWrongAdminKey_ReturnsEnvelopedErrorBody(string? adminKey)
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		Assert.False(body.GetProperty("success").GetBoolean());
+		Assert.Equal(401, body.GetProperty("code").GetInt32());
 	}
 
 	[Theory]
