@@ -151,7 +151,8 @@ internal static class MatchRoutes
 			.WithTags("Match Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleSettings());
+			.WithExample(StatusCodes.Status200OK, SampleSettings())
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/settings", HandleSettingsReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -209,7 +210,8 @@ internal static class MatchRoutes
 			.Produces<MatchLiveSnapshot>()
 			.Produces<PlayerLiveScore>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithMainLiveExamples(SampleLiveSnapshot());
+			.WithMainLiveExamples(SampleLiveSnapshot())
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")

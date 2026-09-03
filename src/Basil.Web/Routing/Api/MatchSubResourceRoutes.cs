@@ -86,7 +86,8 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchChatMessage(new UserBrief(8, "Bob", Country.Gb), "glhf",
-					DateTimeOffset.Parse("2026-07-20T14:30:00Z")));
+					DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/chat", (int matchId, SendMatchChatRequest body,
 				IMatchRegistry matchRegistry, IChannelRegistry channelRegistry, ChatDispatchService chatDispatch) =>
@@ -211,7 +212,8 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Hosts")
 			.Produces<MatchHostView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)));
+			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/hosts", async (int matchId, SetHostRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -348,7 +350,8 @@ internal static class MatchSubResourceRoutes
 			.Produces<MatchRefereesView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
-				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]));
+				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/refs", async (int matchId, ReplaceRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -578,7 +581,8 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Bans")
 			.Produces<MatchBansView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]));
+			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/ban", async (int matchId, ReplaceBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -788,7 +792,8 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Slots")
 			.Produces<MatchSlotsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleSlots());
+			.WithExample(StatusCodes.Status200OK, SampleSlots())
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/slots", (int matchId, ReplaceSlotsRequest body,
 					IMatchRegistry matchRegistry,
@@ -1122,7 +1127,8 @@ internal static class MatchSubResourceRoutes
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchTimerLiveView(true, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
-					DateTimeOffset.Parse("2026-07-20T14:30:30Z")));
+					DateTimeOffset.Parse("2026-07-20T14:30:30Z")))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
 				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>

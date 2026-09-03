@@ -64,7 +64,8 @@ internal static class MenuBannerRoutes
 				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status201Created, SampleView());
+			.WithExample(StatusCodes.Status201Created, SampleView())
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'url' form field."));
 
 		group.MapGet("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
 				CancellationToken cancellationToken) =>
@@ -80,6 +81,7 @@ internal static class MenuBannerRoutes
 			.WithDescription("Returns `404 Not Found` if the banner doesn't exist.")
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerView>()
+			.WithExample(StatusCodes.Status200OK, SampleView())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapMethods("/menu/banners/{bannerId:numericid}", [HttpMethods.Put, HttpMethods.Patch], HandleUpdate)
@@ -102,6 +104,8 @@ internal static class MenuBannerRoutes
 				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, SampleView())
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid 'begins' form field."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
@@ -120,6 +124,7 @@ internal static class MenuBannerRoutes
 			                 "if the banner doesn't exist." + AdminKeyNote)
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerDeletedView>()
+			.WithExample(StatusCodes.Status200OK, new MenuBannerDeletedView(1))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
