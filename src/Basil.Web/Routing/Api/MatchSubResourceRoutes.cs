@@ -1079,7 +1079,9 @@ internal static class MatchSubResourceRoutes
 			                 """)
 			.WithTags("Match Timer")
 			.Produces<MatchTimerView>()
-			.WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 25, true))
+			.WithExample(StatusCodes.Status200OK,
+				new MatchTimerView(true, 25, true, DateTime.Parse("2026-07-20T14:30:00Z"),
+					DateTime.Parse("2026-07-20T14:30:30Z")))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/matches/{matchId:numericid}/timer/live", (int matchId, HttpContext context,
@@ -1108,7 +1110,9 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Timer")
 			.Produces<MatchTimerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 25, true));
+			.WithExample(StatusCodes.Status200OK,
+				new MatchTimerView(true, 25, true, DateTime.Parse("2026-07-20T14:30:00Z"),
+					DateTime.Parse("2026-07-20T14:30:30Z")));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
 				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
@@ -1155,12 +1159,14 @@ internal static class MatchSubResourceRoutes
 			.WithTags("Match Timer")
 			.Produces<MatchTimerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, new MatchTimerView(true, 30, true))
+			.WithExample(StatusCodes.Status200OK,
+				new MatchTimerView(true, 30, true, DateTime.Parse("2026-07-20T14:30:00Z"),
+					DateTime.Parse("2026-07-20T14:30:30Z")))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is already in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/matches/{matchId:numericid}/timer", async (int matchId, IMatchRegistry matchRegistry,
-				MatchControlService matchControl, CancellationToken cancellationToken) =>
+		group.MapDelete("/matches/{matchId:numericid}/timer", async (int matchId, HttpContext context,
+				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -1169,9 +1175,11 @@ internal static class MatchSubResourceRoutes
 				try
 				{
 					var result = matchControl.AbortTimer(match);
-					return result == MatchControlService.AbortTimerResult.NoTimerRunning
-						? Results.Conflict(new ErrorResponse("No countdown is running."))
-						: Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
+					if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
+						return Results.Conflict(new ErrorResponse("No countdown is running."));
+
+					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Countdown aborted.";
+					return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
 				}
 				finally
 				{

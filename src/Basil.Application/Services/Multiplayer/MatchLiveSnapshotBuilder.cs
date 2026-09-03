@@ -194,9 +194,11 @@ public static class MatchLiveSnapshotBuilder
 		if (match.PendingTimer is null || match.TimerStartedAt is null || match.TimerTotalSeconds is null)
 			return new MatchTimerView(false, null, false);
 
-		var elapsed = (DateTimeOffset.UtcNow - match.TimerStartedAt.Value).TotalSeconds;
+		var startTime = match.TimerStartedAt.Value;
+		var endTime = startTime.AddSeconds(match.TimerTotalSeconds.Value);
+		var elapsed = (DateTimeOffset.UtcNow - startTime).TotalSeconds;
 		var remaining = Math.Max(0, match.TimerTotalSeconds.Value - (int)elapsed);
-		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart);
+		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart, startTime, endTime);
 	}
 
 	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT /matches/{matchId}/slots</c>.</summary>
@@ -479,7 +481,18 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="SecondsRemaining">The whole seconds remaining, or <see langword="null" /> when no countdown is running.</param>
 /// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
-public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
+/// <param name="StartTime">
+///     The time the countdown began, or <see langword="null" /> when no countdown is running. Lets a
+///     client compute remaining time locally from wall-clock time instead of only trusting
+///     <see cref="SecondsRemaining" />, which is a snapshot that goes stale between updates.
+/// </param>
+/// <param name="EndTime">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+public sealed record MatchTimerView(
+	bool Running,
+	int? SecondsRemaining,
+	bool AutoStart,
+	DateTimeOffset? StartTime = null,
+	DateTimeOffset? EndTime = null);
 
 /// <summary>One slot in <c>GET /matches/{matchId}/slots</c>.</summary>
 /// <remarks>

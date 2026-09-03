@@ -604,6 +604,45 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Equal(HttpStatusCode.Conflict, secondAbort.StatusCode);
 	}
 
+	/// <summary>Regression test (Issue #4): "GET /matches/{id}/timer should include startTime and endTime timestamps."</summary>
+	[Fact]
+	public async Task Timer_Start_ResponseIncludesStartAndEndTime()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
+		startRequest.Content = JsonContent.Create(new { seconds = 120 });
+		var startResponse = await client.SendAsync(startRequest);
+		startResponse.EnsureSuccessStatusCode();
+
+		var data = (await startResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+		var startTime = data.GetProperty("startTime").GetDateTimeOffset();
+		var endTime = data.GetProperty("endTime").GetDateTimeOffset();
+		Assert.Equal(120, (endTime - startTime).TotalSeconds);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "DELETE /matches/{id}/timer should return a clear
+	///     notification/message confirming the timer has been aborted" -- the envelope message used to
+	///     default to the generic DELETE-verb message ("Deleted successfully"), misleading since
+	///     nothing is deleted.
+	/// </summary>
+	[Fact]
+	public async Task Timer_Delete_EnvelopeMessageConfirmsAbort()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
+		startRequest.Content = JsonContent.Create(new { seconds = 120 });
+		(await client.SendAsync(startRequest)).EnsureSuccessStatusCode();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer"));
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		Assert.Equal("Countdown aborted.", envelope.GetProperty("message").GetString());
+	}
+
 	// ---- /abort, /close ----
 
 	[Fact]
