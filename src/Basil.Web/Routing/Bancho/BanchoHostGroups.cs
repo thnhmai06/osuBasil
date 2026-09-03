@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.IO.Compression;
 using Basil.Application.Abstractions.Beatmaps;
@@ -121,12 +122,17 @@ public static class BanchoHostGroups
 		return (zipStream.ToArray(), name);
 	}
 
+	/// <summary>Per-beatmapset single-flight lock guarding <see cref="BuildAudioPreviewAsync" />'s ffmpeg call.</summary>
+	private static readonly ConcurrentDictionary<int, SemaphoreSlim> AudioPreviewLocks = new();
+
 	/// <summary>
 	///     Generates the standard audio preview clip for a beatmapset.
 	/// </summary>
 	/// <remarks>
 	///     The preview is extracted from the beatmapset's configured preview time and is suitable
-	///     for serving through any endpoint-exposing audio previews.
+	///     for serving through any endpoint-exposing audio previews. Concurrent requests for the
+	///     same beatmapset's preview are serialized so a cache miss triggers at most one ffmpeg
+	///     process rather than one per concurrent request.
 	/// </remarks>
 	/// <returns>
 	///     The generated preview audio, or <see langword="null" /> with <c>Failed</c> false if the
@@ -145,31 +151,51 @@ public static class BanchoHostGroups
 		var cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
 		if (cached is not null) return (cached, false);
 
-		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, false, cancellationToken);
-		var preview = beatmaps.MinBy(b => b.Id);
-		if (preview?.AudioFile is null) return (null, false);
-
-		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, preview);
-		if (audioPath is null || !File.Exists(audioPath)) return (null, false);
-
-		// A -1/null PreviewTime means "no custom preview point set".
-		// osu! Bancho would cut that at 40% into the track; Basil just starts from the top of the file.
-		var startMs = preview.PreviewTime is > 0 ? preview.PreviewTime.Value : 0;
-		byte[] clip;
+		var previewLock = AudioPreviewLocks.GetOrAdd(setId, static _ => new SemaphoreSlim(1, 1));
+		await previewLock.WaitAsync(cancellationToken);
 		try
 		{
-			clip = await extractor.ExtractAsync(audioPath, startMs, TimeSpan.FromSeconds(10), cancellationToken);
-		}
-		catch (Exception ex) when (ex is not OperationCanceledException)
-		{
-			// Most commonly: no ffmpeg binary on PATH. Caught here rather than left to propagate,
-			// so a missing/broken ffmpeg installation degrades one endpoint instead of crashing the request
-			// pipeline with an unhandled exception.
-			logger.LogError(ex, "Audio preview extraction failed: BeatmapsetId={BeatmapsetId}", setId);
-			return (null, true);
-		}
+			// Re-check now that this call owns the lock: a concurrent request may have already
+			// populated the cache while this one was waiting.
+			cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
+			if (cached is not null) return (cached, false);
 
-		await cache.PutAsync("preview", cacheKey, clip, cancellationToken);
-		return (clip, false);
+			var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, false, cancellationToken);
+			var preview = beatmaps.MinBy(b => b.Id);
+			if (preview?.AudioFile is null) return (null, false);
+
+			var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, preview);
+			if (audioPath is null || !File.Exists(audioPath)) return (null, false);
+
+			// A -1/null PreviewTime means "no custom preview point set".
+			// osu! Bancho would cut that at 40% into the track; Basil just starts from the top of the file.
+			var startMs = preview.PreviewTime is > 0 ? preview.PreviewTime.Value : 0;
+			byte[] clip;
+			try
+			{
+				clip = await extractor.ExtractAsync(audioPath, startMs, TimeSpan.FromSeconds(10), cancellationToken);
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				// Most commonly: no ffmpeg binary on PATH. Caught here rather than left to propagate,
+				// so a missing/broken ffmpeg installation degrades one endpoint instead of crashing the request
+				// pipeline with an unhandled exception.
+				logger.LogError(ex, "Audio preview extraction failed: BeatmapsetId={BeatmapsetId}", setId);
+				return (null, true);
+			}
+
+			await cache.PutAsync("preview", cacheKey, clip, cancellationToken);
+			return (clip, false);
+		}
+		finally
+		{
+			previewLock.Release();
+			// Every beatmapset is a distinct key with no natural end-of-life event to remove it on,
+			// so leaving the entry behind would grow this dictionary without bound for the server's
+			// whole lifetime. Compare-and-remove (not a plain key removal) so a concurrent request
+			// that already looked up this exact SemaphoreSlim instance is never affected by it being
+			// dropped here.
+			AudioPreviewLocks.TryRemove(new KeyValuePair<int, SemaphoreSlim>(setId, previewLock));
+		}
 	}
 }

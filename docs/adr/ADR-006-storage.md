@@ -102,9 +102,16 @@ torn one.
   async/202-style response (matching `PUT`/`DELETE /beatmapsets/{id}`'s existing async pattern)
   or scoping the reconciliation to just the newly-uploaded archive instead of a full-disk sweep.
   Deferred pending that decision — not a same-session fix.
-- **ffmpeg thumbnail generation**: an N-miss workload spawns N processes with no stampede guard.
-  Same category of fix as the `.osz` stampede guard above; deferred alongside it since both need
-  the same single-flight mechanism and are natural to design together.
+- ~~**ffmpeg audio-preview generation**: an N-miss workload spawns N processes with no stampede
+  guard.~~ **Fixed 2026-09-04** (per-beatmapset single-flight lock around
+  `BanchoHostGroups.BuildAudioPreviewAsync`'s `extractor.ExtractAsync` call, matching
+  `ScoreSubmissionService`'s existing `ChecksumLocks` compare-and-remove pattern). This is the
+  method's only production `IResponseCache` get-miss-build-put caller, so it also closes the
+  general "`FileSystemResponseCache` has no stampede guard" gap noted above for the one case that
+  actually exists today — no other caller regenerates cache content on a miss, so no generic
+  cache-level guard was added on top (would be unused abstraction, CLAUDE.md rule 2). Regression
+  test `AudioPreviewSingleFlightTests.Preview_ConcurrentRequests_ExtractsOnlyOnce`, verified by
+  temporarily reverting the fix (5 concurrent requests → 5 extractions instead of 1).
 - **`noVideo` variant, osu!direct search improvements**: feature work from Issue #4, not a
   correctness or performance fix — out of this investigation's scope (see
   `working-scopes.md`-style triage: these are product features, not bugs).
