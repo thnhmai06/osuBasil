@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
@@ -317,6 +318,44 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "GET /beatmapsets/{id}/download should support No Video (?noVideo=1)."
+	/// </summary>
+	[Fact]
+	public async Task DownloadBeatmapset_NoVideoParam_OmitsVideoFileFromArchive()
+	{
+		var mapset = MakeMapset(310);
+		_setBeatmaps = [MakeBeatmap(1, mapset)];
+		var folder = MapsetFolder(310);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3]);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/310/download?noVideo=1", "assets.test.local"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		Assert.Contains(archive.Entries, e => e.Name == "diff.osu");
+		Assert.DoesNotContain(archive.Entries, e => e.Name == "bg.mp4");
+	}
+
+	[Fact]
+	public async Task DownloadBeatmapset_NoQueryParam_IncludesVideoFileInArchive()
+	{
+		var mapset = MakeMapset(320);
+		_setBeatmaps = [MakeBeatmap(1, mapset)];
+		var folder = MapsetFolder(320);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3]);
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/320/download", "assets.test.local"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		Assert.Contains(archive.Entries, e => e.Name == "bg.mp4");
 	}
 
 	// ---- GET /beatmapsets/{mapsetId}/background ----

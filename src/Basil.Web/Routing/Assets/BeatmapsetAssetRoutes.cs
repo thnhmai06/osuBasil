@@ -158,6 +158,8 @@ internal static class BeatmapsetAssetRoutes
 			.WithDescription("""
 			                 Serves a `.osz` archive containing every file in the beatmapset: audio, images, video, and every `.osu`/`.osb`. Served as `application/x-osu-beatmap-archive`.
 
+			                 Pass `?noVideo=1` to omit video files from the archive. Only applies when the beatmapset's files are stored locally; a mirror redirect always omits video regardless of this parameter.
+
 			                 Returns `404 Not Found` if the beatmapset has no files locally and either the server is offline or the beatmapset has no genuine ppy id to redirect a mirror lookup with. Otherwise, when the server runs in online mirror mode, redirects to the configured mirror.
 			                 """)
 			.WithTags("Beatmapsets")
@@ -316,10 +318,10 @@ internal static class BeatmapsetAssetRoutes
 
 	private static async Task<IResult> HandleDownloadArchive(int mapsetId, IBeatmapRepository beatmaps,
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken, int noVideo = 0)
 	{
-		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, mapsetId, false,
-			cancellationToken);
+		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, mapsetId,
+			noVideo != 0, cancellationToken);
 		if (osz is not null)
 			return Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName), osz.Value.FileName);
 
