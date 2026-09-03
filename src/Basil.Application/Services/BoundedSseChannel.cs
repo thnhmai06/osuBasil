@@ -24,8 +24,16 @@ public static class BoundedSseChannel
 	/// <param name="capacity">The channel's bound.</param>
 	/// <param name="eventType">The SSE event type of the payload being written.</param>
 	/// <param name="payload">The event data being written.</param>
+	/// <param name="eventId">
+	///     The SSE <c>id:</c> field for the payload event, or <see langword="null" /> to omit it (the
+	///     gap marker never carries one). Callers assign an id only for event-oriented sub-events
+	///     (ADR-004) — one whose individual items are each meaningful on their own, as opposed to a
+	///     coalescing state sub-event resumption can't meaningfully apply to.
+	/// </param>
+	/// <param name="reconnectionInterval">The SSE <c>retry:</c> field applied to both items written.</param>
 	public static void WriteWithGapMarker(ChannelWriter<SseItem<string>> writer, ChannelReader<SseItem<string>> reader,
-		int capacity, string eventType, string payload)
+		int capacity, string eventType, string payload, string? eventId = null,
+		TimeSpan? reconnectionInterval = null)
 	{
 		var full = reader.Count >= capacity;
 		if (full)
@@ -34,7 +42,11 @@ public static class BoundedSseChannel
 			}
 
 		if (full)
-			writer.TryWrite(new SseItem<string>("", "gap"));
-		writer.TryWrite(new SseItem<string>(payload, eventType));
+			writer.TryWrite(new SseItem<string>("", "gap") { ReconnectionInterval = reconnectionInterval });
+		writer.TryWrite(new SseItem<string>(payload, eventType)
+		{
+			EventId = eventId,
+			ReconnectionInterval = reconnectionInterval
+		});
 	}
 }

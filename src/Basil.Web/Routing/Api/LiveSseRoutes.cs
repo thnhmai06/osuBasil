@@ -29,6 +29,21 @@ namespace Basil.Web.Routing.Api;
 internal static class LiveSseRoutes
 {
 	/// <summary>
+	///     The SSE <c>retry:</c> hint sent with every event on every stream, telling a disconnected
+	///     client how long to wait before reconnecting.
+	/// </summary>
+	private static readonly TimeSpan ReconnectionInterval = TimeSpan.FromSeconds(5);
+
+	/// <summary>
+	///     Event types (ADR-004's "event-oriented" classification) that get an SSE <c>id:</c> on
+	///     <see cref="SubscribeMultiWithSnapshot" />'s multiplexed streams. The coalescing state
+	///     sub-events sharing those same streams (<c>main</c>, <c>slot</c>) are deliberately excluded:
+	///     an id implies resumption is meaningful, and a fresh snapshot always supersedes anything a
+	///     coalescing stream could have resumed from.
+	/// </summary>
+	private static readonly HashSet<string> EventOrientedSubEventTypes = ["gameplay", "input"];
+
+	/// <summary>
 	///     Determines whether a route template represents a live SSE endpoint.
 	/// </summary>
 	/// <param name="routePattern">The route template to examine.</param>
@@ -302,15 +317,26 @@ internal static class LiveSseRoutes
 	/// <summary>
 	///     Converts an event source into an SSE stream.
 	/// </summary>
+	/// <remarks>
+	///     Every stream built on this helper (<c>chat</c>, the standalone per-player <c>input</c>) is
+	///     entirely event-oriented (ADR-004) -- unlike the multiplexed streams, there is no coalescing
+	///     sub-event sharing the channel -- so every item gets a monotonic per-connection SSE
+	///     <c>id:</c>.
+	/// </remarks>
 	private static IAsyncEnumerable<SseItem<string>> Subscribe(string eventType, SseSubscriberRegistry? registry,
 		Func<Action<byte[]>, Action> subscribe, CancellationToken cancellationToken)
 	{
 		var channel = Channel.CreateBounded<SseItem<string>>(
 			new BoundedChannelOptions(32) { FullMode = BoundedChannelFullMode.DropOldest });
 		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
+		var nextEventId = 0L;
 		var unsubscribe = subscribe(payload =>
 		{
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)
+			{
+				EventId = Interlocked.Increment(ref nextEventId).ToString(),
+				ReconnectionInterval = ReconnectionInterval
+			});
 			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
@@ -331,7 +357,10 @@ internal static class LiveSseRoutes
 	/// <remarks>
 	///     The subscription is established before reading the snapshot so that no updates
 	///     published during initialization are missed. Any queued updates older than the
-	///     snapshot are discarded because they are already reflected in that snapshot.
+	///     snapshot are discarded because they are already reflected in that snapshot. Every stream
+	///     built on this helper is state-oriented (ADR-004): items get an SSE <c>retry:</c> hint but
+	///     never an <c>id:</c> -- a fresh snapshot always supersedes anything resumption from an id
+	///     could offer.
 	/// </remarks>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot(string eventType,
 		SseSubscriberRegistry registry, Func<Action<byte[]>, Action> subscribe, Func<byte[]?> readLatestSnapshot,
@@ -341,7 +370,8 @@ internal static class LiveSseRoutes
 		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
 		var unsubscribe = subscribe(payload =>
 		{
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType));
+			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)
+				{ ReconnectionInterval = ReconnectionInterval });
 			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
@@ -358,7 +388,8 @@ internal static class LiveSseRoutes
 		}
 
 		if (readLatestSnapshot() is { } snapshotBytes)
-			yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), eventType);
+			yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), eventType)
+				{ ReconnectionInterval = ReconnectionInterval };
 
 		await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
 			yield return item;
@@ -370,12 +401,15 @@ internal static class LiveSseRoutes
 	/// </summary>
 	/// <remarks>
 	///     Bounded with an explicit <c>gap</c> event on eviction (ADR-004): this stream carries the
-	///     high-frequency <c>score</c>/<c>input</c> sub-events alongside the lower-frequency
-	///     <c>slot</c> sub-event, so it must never grow without bound the way the plain snapshot
-	///     channels can stay unbounded. Because all three sub-events share this one physical queue,
-	///     an eviction is flagged generically (one <c>gap</c> event per drop) rather than attributed
-	///     to whichever sub-event happened to be evicted — a caller that needs to know exactly which
-	///     kind of update was lost cannot, from this stream alone.
+	///     high-frequency <c>gameplay</c>/<c>input</c> sub-events alongside the lower-frequency
+	///     state sub-event (<c>main</c> or <c>slot</c>), so it must never grow without bound the way
+	///     the plain snapshot channels can stay unbounded. Because every sub-event shares this one
+	///     physical queue, an eviction is flagged generically (one <c>gap</c> event per drop) rather
+	///     than attributed to whichever sub-event happened to be evicted — a caller that needs to know
+	///     exactly which kind of update was lost cannot, from this stream alone. The event-oriented
+	///     sub-events (<see cref="EventOrientedSubEventTypes" />) each get a monotonic per-connection
+	///     SSE <c>id:</c>; the state sub-event never does, for the same reason
+	///     <see cref="SubscribeWithSnapshot" /> omits one.
 	/// </remarks>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(
 		SseSubscriberRegistry registry, Func<Action<string, byte[]>, Action> subscribe, string snapshotEventType,
@@ -384,10 +418,14 @@ internal static class LiveSseRoutes
 		const int capacity = 64;
 		var channel = Channel.CreateBounded<SseItem<string>>(capacity);
 		var streamTag = new KeyValuePair<string, object?>("stream", snapshotEventType);
+		var nextEventId = 0L;
 		var unsubscribe = subscribe((eventType, payload) =>
 		{
+			var eventId = EventOrientedSubEventTypes.Contains(eventType)
+				? Interlocked.Increment(ref nextEventId).ToString()
+				: null;
 			BoundedSseChannel.WriteWithGapMarker(channel.Writer, channel.Reader, capacity, eventType,
-				Encoding.UTF8.GetString(payload));
+				Encoding.UTF8.GetString(payload), eventId, ReconnectionInterval);
 			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
@@ -404,7 +442,8 @@ internal static class LiveSseRoutes
 		}
 
 		if (readLatestSnapshot() is { } snapshotBytes)
-			yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), snapshotEventType);
+			yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), snapshotEventType)
+				{ ReconnectionInterval = ReconnectionInterval };
 
 		await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
 			yield return item;

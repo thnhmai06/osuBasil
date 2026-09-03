@@ -332,6 +332,24 @@ instead of silently missing updates.
 
 Whether a given stream needs this treatment is decided per stream, not applied uniformly.
 
+### `retry:` and `id:` follow the same event/state split as backpressure
+
+Every stream sends an SSE `retry:` hint, telling a disconnected client how long to wait before
+reconnecting.
+
+An SSE `id:` is different: it implies resumption is meaningful, so it's assigned only to
+event-oriented items (`chat`, `gameplay`, `input`) — a coalescing state item (`main`, `settings`,
+`hosts`, `refs`, `ban`, `timer`, `slots`, per-slot `slot`) never gets one, since a fresh snapshot
+always supersedes anything resumption from an id could offer. On the multiplexed streams
+(`/matches/{id}/live`, `/matches/{id}/live/{slotIndex}`), this means only some of the items
+sharing that one connection carry an id.
+
+The id is a monotonic counter, scoped to that one connection — not a durable sequence number, and
+not persisted. The server does not read an incoming `Last-Event-ID` on reconnect: `chat` (the
+stream this most plausibly applies to) is explicitly not stored, so there is nothing to replay
+from. Assigning the id is about giving the client something to reason about mid-connection (spot a
+gap, dedupe), not about building resumption.
+
 ### Do not perform network I/O inside match locks
 
 Any live notification mechanism must remain non-blocking from the perspective of match mutation.
