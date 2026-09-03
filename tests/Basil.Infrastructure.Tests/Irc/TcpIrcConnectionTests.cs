@@ -648,8 +648,14 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
-		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-			int amount, CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}

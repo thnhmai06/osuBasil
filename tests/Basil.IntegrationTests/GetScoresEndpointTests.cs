@@ -45,7 +45,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => call.ArgAt<string?>(1) == KnownMd5 ? Beatmap : null);
-		maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		maps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())

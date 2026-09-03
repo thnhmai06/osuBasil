@@ -50,7 +50,7 @@ internal static class TestDoubles
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmap?>(null));
 		repo.UpsertAsync(Arg.Any<Beatmap>(), Arg.Any<CancellationToken>())
 			.Returns(call => Task.FromResult(call.ArgAt<Beatmap>(0)));
-		repo.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		repo.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 		repo.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())

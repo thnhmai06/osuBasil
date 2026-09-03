@@ -57,13 +57,15 @@ public sealed class DirectSearchService(
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
 		DirectSearchRequest request, CancellationToken cancellationToken = default)
 	{
-		var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;
+		var filters = NonTextQueries.Contains(request.Query)
+			? BeatmapsetSearchFilters.Empty
+			: BeatmapsetSearchQueryParser.Parse(request.Query);
 		GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
 
-		var results = await beatmaps.SearchAsync(queryText, mode, request.PageNum * PageSize, PageSize,
+		var results = await beatmaps.SearchAsync(filters, mode, request.PageNum * PageSize, PageSize,
 			cancellationToken);
 		logger.LogDebug("osu!direct search: Query={Query} Mode={Mode} PageNum={PageNum} ResultCount={ResultCount}",
-			queryText, mode, request.PageNum, results.Count);
+			request.Query, mode, request.PageNum, results.Count);
 		return results;
 	}
 

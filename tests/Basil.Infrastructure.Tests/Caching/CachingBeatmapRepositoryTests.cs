@@ -200,10 +200,16 @@ public class CachingBeatmapRepositoryTests
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-			int amount, CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+		}
+
+		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
 		}
 
 		public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)

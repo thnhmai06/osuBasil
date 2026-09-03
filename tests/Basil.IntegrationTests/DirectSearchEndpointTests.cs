@@ -30,8 +30,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 	{
 		_beatmaps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _setInfo);
-		_beatmaps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
-			Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
+		_beatmaps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(),
+			Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
 
 		var users = Substitute.For<IUserRepository>();
 		users.FetchPasswordHashAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

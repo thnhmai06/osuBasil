@@ -40,6 +40,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	private Beatmap? _oneBeatmap;
 	private byte[]? _replayBytes;
 	private ScoreOwner? _scoreOwner;
+	private IReadOnlyList<IReadOnlyList<Beatmap>> _searchResults = [];
+	private int _searchTotal;
 	private IReadOnlyList<Beatmap> _setBeatmaps = [];
 
 	public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
@@ -52,9 +54,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 			.Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Beatmapset.Id == call.ArgAt<int>(0)
 				? _setBeatmaps
 				: []);
-		maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		maps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
-			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
+			.Returns(_ => _searchResults);
+		maps.SearchCountAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<CancellationToken>())
+			.Returns(_ => _searchTotal);
 
 		var mapsets = Substitute.For<IBeatmapsetRepository>();
 		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -495,5 +499,48 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
+	}
+
+	// ---- GET /beatmapsets/search ----
+
+	[Fact]
+	public async Task SearchBeatmapsets_InvalidMode_ReturnsBadRequest()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?mode=9"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task SearchBeatmapsets_MatchingSets_ReturnsPagedSummaries()
+	{
+		var mapset = MakeMapset(200);
+		_searchResults = [[MakeBeatmap(1, mapset), MakeBeatmap(2, mapset)]];
+		_searchTotal = 1;
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=camellia"));
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Contains("\"totalRecords\":1", body);
+		Assert.Contains("\"id\":200", body);
+		Assert.Contains("\"beatmapCount\":2", body);
+	}
+
+	[Fact]
+	public async Task SearchBeatmapsets_NoMatches_ReturnsEmptyPage()
+	{
+		_searchResults = [];
+		_searchTotal = 0;
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=stars%3E9"));
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Contains("\"totalRecords\":0", body);
+		Assert.Contains("\"data\":[]", body);
 	}
 }

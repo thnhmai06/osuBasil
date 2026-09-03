@@ -67,7 +67,10 @@ public interface IBeatmapRepository
 	/// <summary>
 	///     Searches beatmaps locally and returns the matching sets, grouped by setId.
 	/// </summary>
-	/// <param name="query">A free-text term matched against artist, title, and creator.</param>
+	/// <param name="filters">
+	///     The parsed search query -- free-text keywords plus any structured filters (star rating,
+	///     BPM, artist, etc.); see <see cref="BeatmapsetSearchFilters" />.
+	/// </param>
 	/// <param name="mode">An optional game mode that every returned beatmap must belong to.</param>
 	/// <param name="offset">The number of matching sets to skip before returning results.</param>
 	/// <param name="amount">The maximum number of sets to return.</param>
@@ -82,7 +85,18 @@ public interface IBeatmapRepository
 	///     excluded, since this is a discovery surface, not a specific-record lookup.
 	/// </remarks>
 	Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		string? query, GameMode? mode, int offset, int amount,
+		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Counts the sets that would be returned by <see cref="SearchAsync" /> for the same filters
+	///     and mode, ignoring paging.
+	/// </summary>
+	/// <param name="filters">The parsed search query -- see <see cref="SearchAsync" />.</param>
+	/// <param name="mode">An optional game mode that every counted beatmap must belong to.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The total number of matching sets, across every page.</returns>
+	Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>

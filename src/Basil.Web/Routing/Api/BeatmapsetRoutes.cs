@@ -50,6 +50,26 @@ internal static class BeatmapsetRoutes
 			.Produces<PagedResult<BeatmapsetSummary>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, [SampleSummary()]));
 
+		group.MapGet("/beatmapsets/search", HandleSearch)
+			.WithGroupName("basilapi")
+			.WithName("searchBeatmapsets")
+			.WithSummary("Search beatmapsets.")
+			.WithDescription("""
+			                 Returns a page of beatmapsets matching `q`, an osu!-style search query: free-text keywords plus optional `key<operator>value` filters, operators `: = < <= > >=`.
+
+			                 Supported filter keys: `stars`/`star`, `ar`, `hp`/`dr`, `cs`, `od`, `bpm`, `length` (seconds, or suffixed `s`/`m`/`h`/`ms`), `keys`/`key` (mania key count), `circles`, `sliders`, `creator`, `artist`, `title`, `difficulty`, `status` (`ranked`, `approved`, `qualified`, `loved`, `pending`/`graveyard`, by unambiguous prefix), `created`/`submitted`, `updated` (year, year-month, or year-month-day). A quoted value (`artist="foo bar"`) may contain spaces. An unrecognized filter key, or a value that fails to parse, falls back to a literal free-text keyword instead of erroring.
+
+			                 Query params: `q` (the search query, default empty), `mode` (optional game mode filter: 0 osu!, 1 taiko, 2 catch, 3 mania), `page` (default 1), `pageSize` (default 50).
+
+			                 A private beatmapset is always excluded from these results.
+			                 """)
+			.WithTags("Beatmapsets")
+			.Produces<PagedResult<BeatmapsetSummary>>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, new PagedResult<BeatmapsetSummary>(1, 50, 1, [SampleSummary()]))
+			.WithExample(StatusCodes.Status400BadRequest,
+				new ErrorResponse("Unknown mode '9'. Valid values: 0 (osu!), 1 (taiko), 2 (catch), 3 (mania)."));
+
 		group.MapPost("/beatmapsets", HandleCreate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -319,6 +339,25 @@ internal static class BeatmapsetRoutes
 			items.Add(m.ToSummary(counts.GetValueOrDefault(m.Id)));
 
 		return Results.Json(Pagination.Trim(items, p, ps, totalRecords));
+	}
+
+	private static async Task<IResult> HandleSearch([FromQuery] string? q, [FromQuery] int? mode,
+		[FromQuery] int? page, [FromQuery] int? pageSize, IBeatmapRepository beatmaps,
+		CancellationToken cancellationToken)
+	{
+		if (mode is < 0 or > 3)
+			return Results.BadRequest(new ErrorResponse(
+				$"Unknown mode '{mode}'. Valid values: 0 (osu!), 1 (taiko), 2 (catch), 3 (mania)."));
+		var resolvedMode = mode is { } m ? (GameMode)m : (GameMode?)null;
+
+		var (p, ps) = Pagination.Normalize(page, pageSize);
+		var filters = BeatmapsetSearchQueryParser.Parse(q);
+
+		var sets = await beatmaps.SearchAsync(filters, resolvedMode, (p - 1) * ps, ps, cancellationToken);
+		var total = await beatmaps.SearchCountAsync(filters, resolvedMode, cancellationToken);
+		var items = sets.Select(set => set[0].Beatmapset.ToSummary(set.Count)).ToList();
+
+		return Results.Json(new PagedResult<BeatmapsetSummary>(p, ps, total, items));
 	}
 
 	private static async Task<IResult> HandleCreate(HttpContext context, IOptions<StorageOptions> storage,

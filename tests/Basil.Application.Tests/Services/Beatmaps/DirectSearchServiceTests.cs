@@ -28,43 +28,47 @@ public class DirectSearchServiceTests
 	// puts on the wire, or the sentinel never matches and the filter/tab silently returns nothing.
 	[InlineData("Top Rated")]
 	[InlineData("Most Played")]
-	public async Task NonTextQuery_PassesNullQueryThrough(string query)
+	public async Task NonTextQuery_PassesEmptyFiltersThrough(string query)
 	{
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest(query, -1, 0));
 
-		await _beatmaps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
-	public async Task TextQuery_PassedThrough()
+	public async Task TextQuery_ParsedAsKeywords()
 	{
-		_beatmaps.SearchAsync("camellia", null, 0, 100).Returns([]);
+		var expected = new BeatmapsetSearchFilters("camellia");
+		_beatmaps.SearchAsync(expected, null, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("camellia", -1, 0));
 
-		await _beatmaps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync(expected, null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task ModeNotMinusOne_FiltersByMode()
 	{
-		_beatmaps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, GameMode.Taiko, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("Newest", 1, 0));
 
-		await _beatmaps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task PageNum_MultipliedByOneHundredForOffset()
 	{
-		_beatmaps.SearchAsync(null, null, 200, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 200, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("Newest", -1, 2));
 
-		await _beatmaps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, null, 200, 100, Arg.Any<CancellationToken>());
 	}
 
 	// ---- SearchFormattedAsync: orchestrates local vs. mirror ----
@@ -72,7 +76,8 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_NoSearchMirrorConfigured_UsesLocal()
 	{
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 
 		var response = await MakeService().SearchFormattedAsync(new DirectSearchRequest("Newest", -1, 0));
 
@@ -85,7 +90,8 @@ public class DirectSearchServiceTests
 	public async Task SearchFormattedAsync_MirrorConfiguredAndSucceeds_UsesMirrorNotLocal()
 	{
 		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		var mirrorSet = new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4,
 			"2020-01-01 00:00:00", 200, true, [new MirrorSearchBeatmap(5.5, "Insane", 4, 8, 9, 5, 0)]);
 		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
@@ -104,7 +110,8 @@ public class DirectSearchServiceTests
 	public async Task SearchFormattedAsync_MirrorConfiguredButFails_FallsBackToLocal()
 	{
 		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
 			.Returns((IReadOnlyList<MirrorSearchSet>?)null);
 

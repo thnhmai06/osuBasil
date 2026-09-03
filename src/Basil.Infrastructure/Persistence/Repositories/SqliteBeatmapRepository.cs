@@ -147,25 +147,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     star rating, and only sets whose id survived the first pass are included.
 	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		string? query, GameMode? mode, int offset, int amount,
+		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
-		var conditions = new List<string> { "m.IsPrivate = 0" };
-		var parameters = new DynamicParameters();
-
-		if (query is not null)
-		{
-			conditions.Add("(m.Artist LIKE @Query OR m.Title LIKE @Query OR m.Creator LIKE @Query)");
-			parameters.Add("Query", $"%{query}%");
-		}
-
-		if (mode is not null)
-		{
-			conditions.Add("b.Mode = @Mode");
-			parameters.Add("Mode", (int)mode);
-		}
-
-		var whereClause = $"WHERE {string.Join(" AND ", conditions)}";
+		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
 		parameters.Add("Offset", offset);
 		parameters.Add("Amount", amount);
 
@@ -194,6 +179,158 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			.ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)[.. g]);
 
 		return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
+	}
+
+	/// <inheritdoc />
+	public async Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+		CancellationToken cancellationToken = default)
+	{
+		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
+
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>(
+			$"""
+			 SELECT COUNT(DISTINCT b.MapsetId) FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 {whereClause}
+			 """,
+			parameters);
+	}
+
+	/// <summary>
+	///     Builds the shared `WHERE` clause and parameters for a beatmapset search, from the same
+	///     filters <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
+	/// </summary>
+	private static string BuildSearchWhereClause(BeatmapsetSearchFilters filters, GameMode? mode,
+		out DynamicParameters parameters)
+	{
+		var conditions = new List<string> { "m.IsPrivate = 0" };
+		parameters = new DynamicParameters();
+		var p = 0;
+
+		if (filters.Keywords is not null)
+		{
+			conditions.Add("(m.Artist LIKE @Query OR m.Title LIKE @Query OR m.Creator LIKE @Query)");
+			parameters.Add("Query", $"%{filters.Keywords}%");
+		}
+
+		if (mode is not null)
+		{
+			conditions.Add("b.Mode = @Mode");
+			parameters.Add("Mode", (int)mode);
+		}
+
+		AppendNumeric(conditions, parameters, ref p, "b.Sr", filters.Stars);
+		AppendNumeric(conditions, parameters, ref p, "b.Ar", filters.Ar);
+		AppendNumeric(conditions, parameters, ref p, "b.Hp", filters.Hp);
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Cs);
+		AppendNumeric(conditions, parameters, ref p, "b.Od", filters.Od);
+		AppendNumeric(conditions, parameters, ref p, "b.Bpm", filters.Bpm);
+		AppendNumeric(conditions, parameters, ref p, "b.TotalLength", filters.LengthSeconds);
+		// osu!mania's key count and every other mode's circle size share the same stored field,
+		// matching real osu!'s own convention -- see BeatmapsetSearchFilters.Keys's own remarks.
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Keys);
+		// Circles/sliders only exist on standard-mode beatmaps (BeatmapObjectCounts's polymorphic
+		// JSON shape); json_extract returns NULL for every other mode, which naturally excludes them
+		// from these comparisons rather than requiring a separate mode check.
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Circles')", filters.Circles);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Sliders')", filters.Sliders);
+		AppendDate(conditions, parameters, ref p, "m.CreatedAt", filters.Created);
+		AppendDate(conditions, parameters, ref p, "m.LastUpdate", filters.Updated);
+
+		if (filters.Creator is not null)
+		{
+			conditions.Add("m.Creator = @Creator COLLATE NOCASE");
+			parameters.Add("Creator", filters.Creator);
+		}
+
+		if (filters.Artist is not null)
+		{
+			conditions.Add("m.Artist LIKE @ArtistFilter");
+			parameters.Add("ArtistFilter", $"%{filters.Artist}%");
+		}
+
+		if (filters.Title is not null)
+		{
+			conditions.Add("m.Title LIKE @TitleFilter");
+			parameters.Add("TitleFilter", $"%{filters.Title}%");
+		}
+
+		if (filters.Difficulty is not null)
+		{
+			conditions.Add("b.Version LIKE @DifficultyFilter");
+			parameters.Add("DifficultyFilter", $"%{filters.Difficulty}%");
+		}
+
+		if (filters.Status is not null)
+		{
+			// Every set on this server reports the same status (Beatmapset.Status is a constant), so
+			// this either matches everything or nothing depending on which status was asked for.
+			conditions.Add(filters.Status == Beatmapset.Status ? "1 = 1" : "1 = 0");
+		}
+
+		return $"WHERE {string.Join(" AND ", conditions)}";
+	}
+
+	/// <summary>Appends a `column &lt;op&gt; @paramName` condition for a numeric search filter, if one was given.</summary>
+	private static void AppendNumeric<T>(List<string> conditions, DynamicParameters parameters, ref int paramIndex,
+		string column, ComparableFilter<T>? filter) where T : struct
+	{
+		if (filter is null) return;
+		var name = $"F{paramIndex++}";
+		conditions.Add($"{column} {ToSql(filter.Operator)} @{name}");
+		parameters.Add(name, filter.Value);
+	}
+
+	/// <summary>
+	///     Appends a condition for a date search filter, if one was given -- see
+	///     <see cref="DateFilter" />'s own remarks for how each operator maps to
+	///     <see cref="DateFilter.RangeStart" />/<see cref="DateFilter.RangeEnd" />.
+	/// </summary>
+	private static void AppendDate(List<string> conditions, DynamicParameters parameters, ref int paramIndex,
+		string column, DateFilter? filter)
+	{
+		if (filter is null) return;
+		var name = $"F{paramIndex++}";
+
+		switch (filter.Operator)
+		{
+			case ComparisonOperator.Equal:
+				conditions.Add($"{column} >= @{name}Start AND {column} < @{name}End");
+				parameters.Add($"{name}Start", filter.RangeStart.UtcDateTime);
+				parameters.Add($"{name}End", filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.GreaterThan:
+				conditions.Add($"{column} >= @{name}");
+				parameters.Add(name, filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.LessThanOrEqual:
+				conditions.Add($"{column} < @{name}");
+				parameters.Add(name, filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.GreaterThanOrEqual:
+				conditions.Add($"{column} >= @{name}");
+				parameters.Add(name, filter.RangeStart.UtcDateTime);
+				break;
+			case ComparisonOperator.LessThan:
+				conditions.Add($"{column} < @{name}");
+				parameters.Add(name, filter.RangeStart.UtcDateTime);
+				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(filter));
+		}
+	}
+
+	private static string ToSql(ComparisonOperator op)
+	{
+		return op switch
+		{
+			ComparisonOperator.Equal => "=",
+			ComparisonOperator.LessThan => "<",
+			ComparisonOperator.LessThanOrEqual => "<=",
+			ComparisonOperator.GreaterThan => ">",
+			ComparisonOperator.GreaterThanOrEqual => ">=",
+			_ => throw new ArgumentOutOfRangeException(nameof(op))
+		};
 	}
 
 	/// <inheritdoc />
