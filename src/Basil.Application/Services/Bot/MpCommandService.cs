@@ -10,6 +10,7 @@ using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -1052,7 +1053,14 @@ public sealed class MpCommandService(
 		return true;
 	}
 
-	/// <summary>Implements <c>!mp map &lt;beatmap id&gt;</c>, changing the match's selected map.</summary>
+	/// <summary>
+	///     Implements <c>!mp map &lt;beatmap id&gt; [playmode]</c>, changing the match's selected map.
+	/// </summary>
+	/// <remarks>
+	///     <paramref name="args" />'s optional second token is a playmode (0-3), only meaningful for a
+	///     beatmap whose own mode is osu!/convertible; see
+	///     <see cref="MatchControlService.SetMapAsync" />'s own remarks for the ignored-otherwise rule.
+	/// </remarks>
 	private async Task<bool> SetMapAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -1062,7 +1070,20 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, cancellationToken);
+		GameMode? playmode = null;
+		if (args.Count > 1)
+		{
+			if (!int.TryParse(args[1], out var playmodeValue) || playmodeValue is < 0 or > 3)
+			{
+				sink.Reply(MpReplies.MapUsage);
+				return false;
+			}
+
+			playmode = (GameMode)playmodeValue;
+		}
+
+		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, playmode,
+			cancellationToken: cancellationToken);
 		if (result == MatchControlService.SetMapResult.BeatmapNotFound || beatmap is null)
 		{
 			sink.Reply(string.Format(MpReplies.NoBeatmapWithId, beatmapId));
@@ -1112,7 +1133,10 @@ public sealed class MpCommandService(
 		}
 
 		await _matchControl.SetModsAsync(match, mods, freemod);
-		sink.Reply(DescribeModChange(before, mods, wasFreemod, match.Freemods));
+		// match.Mods, not the raw requested `mods`: SetModsAsync silently filters combinations invalid
+		// for the current gamemode (e.g. HTDT keeps only HT), and the reply must describe what was
+		// actually applied, not what was asked for.
+		sink.Reply(DescribeModChange(before, match.Mods, wasFreemod, match.Freemods));
 
 		return true;
 	}

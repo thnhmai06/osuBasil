@@ -206,6 +206,60 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		Assert.False(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
 	}
 
+	// ---- /faqs nested directories (Issue #4: "Allow reading files inside nested directories using `:`
+	// as the separator") ----
+
+	[Fact]
+	public async Task GetFaqList_NestedEntry_JoinsSegmentsWithColon()
+	{
+		Directory.CreateDirectory(Path.Combine(FaqsDir, "folder1", "folder2"));
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested");
+
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
+		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
+
+		Assert.Equal(["folder1:folder2:file3"], body!.Data!);
+	}
+
+	[Fact]
+	public async Task GetFaqEntry_NestedEntry_ReturnsContent()
+	{
+		Directory.CreateDirectory(Path.Combine(FaqsDir, "folder1", "folder2"));
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested content");
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/folder1:folder2:file3"));
+		var body = await response.Content.ReadAsStringAsync();
+
+		response.EnsureSuccessStatusCode();
+		Assert.Equal("nested content", body);
+	}
+
+	[Fact]
+	public async Task PostFaq_NestedEntry_CreatesNestedFile()
+	{
+		var file = new ByteArrayContent([.. "hello"u8])
+			{ Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
+		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
+		request.Content = new MultipartFormDataContent { { file, "file", "folder1:folder2:file3.txt" } };
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		Assert.True(File.Exists(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt")));
+	}
+
+	[Theory]
+	[InlineData(":file")]
+	[InlineData("file:")]
+	[InlineData("a::b")]
+	public async Task GetFaqEntry_MalformedNestedSeparator_ReturnsNotFound(string entry)
+	{
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, $"/faqs/{entry}"));
+
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+	}
+
 	// ---- /menu/seasonals ----
 
 	[Fact]

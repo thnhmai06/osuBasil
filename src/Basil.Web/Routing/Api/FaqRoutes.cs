@@ -33,7 +33,11 @@ internal static class FaqRoutes
 			.WithGroupName("basilapi")
 			.WithName("listFaqs")
 			.WithSummary("List FAQs.")
-			.WithDescription("Returns the bare entry names, matching the same identifiers `!faq` uses in chat.")
+			.WithDescription("""
+			                 Returns the bare entry names, matching the same identifiers `!faq` uses in chat.
+
+			                 An entry nested in a subdirectory joins its path segments with `:` instead of a slash (e.g. `folder1:folder2:file3` for `folder1/folder2/file3.txt` on disk), the same identifier every other `/faqs` route accepts and `!faq` uses in chat.
+			                 """)
 			.WithTags("FAQ")
 			.Produces<IReadOnlyList<string>>()
 			.WithExample(StatusCodes.Status200OK, new List<string> { "rules", "schedule", "how-to-join" });

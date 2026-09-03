@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Packets.Multiplayer;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Domain.Beatmaps;
@@ -69,6 +70,10 @@ public class MatchChangeSettingsHandlerTests
 		Assert.Null(match.MapId);
 		Assert.Equal("", match.MapMd5);
 		Assert.Equal(SlotStatus.NotReady, match.Slots[0].Status);
+		// Regression (Issue #4): "Beatmap should contain a clear message ... instead of only
+		// displaying 0" -- the wire MapName must never be left blank, misleadingly indistinguishable
+		// from a slow-to-load real title in the client's multiplayer room list.
+		Assert.Equal(MatchControlService.NoBeatmapSelectedName, match.MapName);
 	}
 
 	[Fact]
@@ -283,7 +288,8 @@ public class MatchChangeSettingsHandlerTests
 		host.Dequeue();
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id, teamType: 2));
+			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5, host.Id,
+				teamType: 2));
 
 		AssertAutoStartCancelled(match, host, bot);
 	}

@@ -81,7 +81,7 @@ public sealed class MatchChangeSettingsHandler(
 				match.PrevMapId = match.MapId;
 				match.MapId = null;
 				match.MapMd5 = "";
-				match.MapName = "";
+				match.MapName = MatchControlService.NoBeatmapSelectedName;
 				match.UnresolvedMapMd5 = null;
 				matchMembership.CancelQueuedAutoStart(match);
 			}

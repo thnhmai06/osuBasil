@@ -143,6 +143,17 @@ public sealed class MatchControlService(
 	}
 
 	public const int MaxMatchNameLength = 50;
+
+	/// <summary>
+	///     The match's beatmap-name field (both the bancho <c>Match</c> packet and the room-created
+	///     default) when no beatmap has been selected, or the previous selection was just cleared.
+	/// </summary>
+	/// <remarks>
+	///     A blank string here used to leave the client's multiplayer room list showing an empty
+	///     "Beatmap:" line, misleadingly indistinguishable from a slow-to-load real title.
+	/// </remarks>
+	public const string NoBeatmapSelectedName = "No beatmap selected.";
+
 	private const int PeriodicReminderIntervalSeconds = 60;
 	private const int NearTotalIgnoreWindowSeconds = 5;
 
@@ -544,13 +555,19 @@ public sealed class MatchControlService(
 	/// <remarks>Returns the resolved beatmap alongside the result, so callers do not need a second lookup.</remarks>
 	/// <param name="match">The match to update.</param>
 	/// <param name="beatmapId">The id of the beatmap to assign.</param>
+	/// <param name="playmode">
+	///     An optional converted game mode to play the beatmap as, instead of its own native mode.
+	///     Only takes effect when the beatmap's own mode is <see cref="GameMode.Standard" /> (the only
+	///     mode osu! can convert into every other ruleset); it is silently ignored for a beatmap
+	///     that's already mode-specific, which then always plays as its own native mode.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the beatmap lookup and state broadcast.</param>
 	/// <returns>
 	///     <see cref="SetMapResult.Ok" /> with the resolved beatmap, or
 	///     <see cref="SetMapResult.BeatmapNotFound" /> with <see langword="null" />.
 	/// </returns>
 	public async Task<(SetMapResult Result, Beatmap? Beatmap)> SetMapAsync(MatchSession match, int beatmapId,
-		CancellationToken cancellationToken = default)
+		GameMode? playmode = null, CancellationToken cancellationToken = default)
 	{
 		var beatmap = await beatmapRepository.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
 		if (beatmap is null) return (SetMapResult.BeatmapNotFound, null);
@@ -559,7 +576,9 @@ public sealed class MatchControlService(
 		match.MapId = beatmap.Id;
 		match.MapMd5 = beatmap.Md5;
 		match.MapName = beatmap.FullName;
-		match.Mode = beatmap.Difficulty.Mode;
+		match.Mode = playmode is not null && beatmap.Difficulty.Mode == GameMode.Standard
+			? playmode.Value
+			: beatmap.Difficulty.Mode;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, beatmap.Id);
 		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		matchMembership.CancelQueuedAutoStart(match);
@@ -644,6 +663,12 @@ public sealed class MatchControlService(
 			return StartResult.CountdownQueued;
 		}
 
+		// An immediate start must stop any countdown/timer already pending, or its background loop
+		// keeps running (and can still fire "Match starts in N seconds"/try to auto-start again) even
+		// though the match started right now through this call instead.
+		if (CancelPendingTimer(match, announce: false))
+			matchMembership.PublishTimer(match, match.NextStateVersion());
+
 		var started = await matchMembership.StartAsync(match, cancellationToken);
 		return started ? StartResult.Started : StartResult.BeatmapMissing;
 	}
@@ -706,7 +731,7 @@ public sealed class MatchControlService(
 	/// </param>
 	private void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart)
 	{
-		match.PendingTimer?.Cancel();
+		CancelPendingTimer(match, announce: true);
 
 		var cts = new CancellationTokenSource();
 		match.PendingTimer = cts;
@@ -724,6 +749,43 @@ public sealed class MatchControlService(
 		{
 			_ = CountdownLoopAsync(match, totalSeconds, autoStart, cts);
 		}
+	}
+
+	/// <summary>
+	///     Cancels the match's pending countdown/timer, if any, clearing its timer state.
+	/// </summary>
+	/// <remarks>
+	///     Does not itself publish the cleared timer state: <see cref="BeginCountdown" /> publishes
+	///     the replacement timer right after calling this, and an immediate <see cref="StartAsync" />
+	///     publishes separately, so publishing here too would just be a redundant extra broadcast.
+	/// </remarks>
+	/// <param name="match">The match whose pending countdown to cancel.</param>
+	/// <param name="announce">
+	///     <see langword="true" /> to post a chat message reporting how many seconds remained on the
+	///     cancelled countdown; otherwise, <see langword="false" /> to cancel silently.
+	/// </param>
+	/// <returns>
+	///     <see langword="true" /> if a countdown was actually pending and got cancelled; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
+	private bool CancelPendingTimer(MatchSession match, bool announce)
+	{
+		if (match.PendingTimer is not { } pending) return false;
+
+		pending.Cancel();
+		var remaining = match.TimerTotalSeconds is { } total && match.TimerStartedAt is { } startedAt
+			? Math.Max(0, total - (int)(DateTimeOffset.UtcNow - startedAt).TotalSeconds)
+			: 0;
+
+		match.PendingTimer = null;
+		match.PendingTimerIsAutoStart = false;
+		match.TimerStartedAt = null;
+		match.TimerTotalSeconds = null;
+
+		if (announce)
+			Announce(match, $"Cancelled the previous countdown ({remaining} seconds remaining).");
+
+		return true;
 	}
 
 	/// <summary>Runs a countdown, announcing at each checkpoint and optionally starting the match at zero.</summary>

@@ -687,6 +687,48 @@ public class MpCommandServiceTests
 		Assert.Equal(string.Format(MpReplies.NoBeatmapWithId, 999), reply);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4: "the `[playmode]` field is missing"): `!mp map <id> <mode>` picks
+	///     a converted ruleset for a beatmap whose own mode is osu!/convertible.
+	/// </summary>
+	[Fact]
+	public async Task HandleAsync_Map_StandardBeatmapWithPlaymode_SetsMatchModeToPlaymode()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+
+		await Run(MakeService(), host, match, "map", ["500", "3"]);
+
+		Assert.Equal(GameMode.Mania, match.Mode);
+	}
+
+	/// <summary>
+	///     A beatmap that is already mode-specific (not osu!/convertible) has no other ruleset to play
+	///     as -- a requested playmode is silently ignored and the match always plays it as its own mode.
+	/// </summary>
+	[Fact]
+	public async Task HandleAsync_Map_NonStandardBeatmapWithPlaymode_IgnoresPlaymodeUsesBeatmapsOwnMode()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
+			new Difficulty(GameMode.Taiko, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
+			new TaikoBeatmapObjectCounts { MaxCombo = 500 });
+		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+
+		await Run(MakeService(), host, match, "map", ["500", "3"]);
+
+		Assert.Equal(GameMode.Taiko, match.Mode);
+	}
+
 	[Fact]
 	public async Task HandleAsync_Mods_SetsMatchMods()
 	{
@@ -742,6 +784,26 @@ public class MpCommandServiceTests
 		Assert.True(match.Freemods);
 		Assert.Equal(Mods.Hidden, match.Slots[0].Mods);
 		Assert.Equal(string.Format(MpReplies.DisabledMods, Mods.Hidden) + ", " + MpReplies.EnabledFreemod, reply);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): the reply used to describe the raw requested mods, not what
+	///     `SetModsAsync` actually applied after filtering out combinations invalid for the match's
+	///     gamemode -- SpunOut is osu!-specific and gets silently dropped outside <c>Standard</c>, so
+	///     the old code would have wrongly announced "Enabled SpunOut" here.
+	/// </summary>
+	[Fact]
+	public async Task HandleAsync_Mods_InvalidForGamemode_ReplyDescribesWhatWasActuallyApplied()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.Mode = GameMode.Taiko;
+
+		var reply = await Run(MakeService(), host, match, "mods", ["SO"]);
+
+		Assert.Equal(Mods.NoMod, match.Mods);
+		Assert.Equal(MpReplies.NoModChanges, reply);
 	}
 
 	[Fact]
@@ -1012,6 +1074,69 @@ public class MpCommandServiceTests
 		var finishedPacket = ServerPacketWriter.SendMessage("BasilBot", "Countdown finished",
 			"#multiplayer", BotBootstrapService.BotId);
 		Assert.Contains(finishedPacket, MultiplayerTestSupport.Chunk(host.Dequeue()));
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "Overwriting an active timer should explicitly announce the
+	///     cancellation of the old timer (with remaining seconds) before starting the new countdown").
+	/// </summary>
+	[Fact]
+	public async Task HandleAsync_Timer_OverwritingPendingTimer_AnnouncesCancellationBeforeNewCountdown()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token",
+				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ IsBot = true };
+		_fixture.RegisterAll(host, bot);
+		var match = _fixture.CreateMatch(host);
+		host.Dequeue();
+		var service = MakeService();
+		await Run(service, host, match, "timer", ["60"]);
+		host.Dequeue();
+
+		await Run(service, host, match, "timer", ["5"]);
+
+		var cancelledPacket = ServerPacketWriter.SendMessage("BasilBot",
+			"Cancelled the previous countdown (60 seconds remaining).", "#multiplayer", BotBootstrapService.BotId);
+		var queuedPacket = ServerPacketWriter.SendMessage("BasilBot", "Started a 5-second countdown.",
+			"#multiplayer", BotBootstrapService.BotId);
+		var chunks = MultiplayerTestSupport.Chunk(host.Dequeue());
+		Assert.Contains(cancelledPacket, chunks);
+		Assert.Contains(queuedPacket, chunks);
+		// List<byte[]>.IndexOf compares by reference, not content -- SequenceEqual for a real
+		// structural search instead.
+		var cancelledIndex = chunks.FindIndex(c => c.SequenceEqual(cancelledPacket));
+		var queuedIndex = chunks.FindIndex(c => c.SequenceEqual(queuedPacket));
+		Assert.True(cancelledIndex < queuedIndex);
+
+		await match.PendingTimer!.CancelAsync();
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "Starting a match immediately while a timer or countdown is
+	///     active fails to stop the timer, causing it to continue counting down in the background").
+	/// </summary>
+	[Fact]
+	public async Task HandleAsync_Start_ImmediateWhileTimerPending_CancelsThePendingTimer()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
+		var service = MakeService();
+		await Run(service, host, match, "map", ["500"]);
+		await Run(service, host, match, "timer", ["60"]);
+		Assert.NotNull(match.PendingTimer);
+		var pendingTimer = match.PendingTimer;
+
+		await Run(service, host, match, "start", []);
+
+		Assert.Null(match.PendingTimer);
+		Assert.True(pendingTimer.IsCancellationRequested);
 	}
 
 	[Theory]
@@ -1430,6 +1555,25 @@ public class MpCommandServiceTests
 		var reply = RunSetScope(MakeService(), sender, []);
 
 		Assert.Contains($"#{match.DbId}", reply);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "Closed matches ... notifications should use `live` instead of
+	///     `exists`"): the scoped match's row still exists (it can be read back via
+	///     `GET /matches/{id}`), it's just no longer in the in-memory live registry -- the reply must
+	///     not claim it "no longer exists".
+	/// </summary>
+	[Fact]
+	public void SetScopeAsync_NoArgs_ScopedMatchNoLongerLive_ReportsNotLiveNotGone()
+	{
+		var sender = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(sender);
+		sender.MpScopeMatchId = 999;
+
+		var reply = RunSetScope(MakeService(), sender, []);
+
+		Assert.Equal(string.Format(MpReplies.WasScopedToGoneMatch, 999), reply);
+		Assert.DoesNotContain("no longer exists", reply);
 	}
 
 	[Fact]

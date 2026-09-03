@@ -67,8 +67,15 @@ public static class MpReplies
 	/// <summary>Reply when the sender has no stored scope and is not in any match.</summary>
 	public const string NotScopedToAnyMatch = "You're not scoped to any match.";
 
-	/// <summary>Reply when the stored scope points at a match that no longer exists; <c>{0}</c> is the id.</summary>
-	public const string WasScopedToGoneMatch = "You were scoped to match #{0}, but it no longer exists.";
+	/// <summary>
+	///     Reply when the stored scope points at a match that is no longer live; <c>{0}</c> is the id.
+	/// </summary>
+	/// <remarks>
+	///     Says "no longer live", not "no longer exists": the match's row still exists (it can be
+	///     read back via <c>GET /matches/{id}</c>), it's just no longer in the in-memory registry
+	///     this lookup checks.
+	/// </remarks>
+	public const string WasScopedToGoneMatch = "You were scoped to match #{0}, but it is no longer live.";
 
 	/// <summary>Reply reporting the current scope; <c>{0}</c> is the room id, <c>{1}</c> its name.</summary>
 	public const string CurrentlyScopedToMatch = "Currently scoped to match #{0} {1}.";
@@ -263,7 +270,7 @@ public static class MpReplies
 
 	// ── !mp map / mods ───────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!mp map</c>.</summary>
-	public const string MapUsage = "Usage: !mp map <beatmap id>";
+	public const string MapUsage = "Usage: !mp map <beatmap id> [playmode]";
 
 	/// <summary>Reply when no beatmap carries the requested id; <c>{0}</c> is the id.</summary>
 	public const string NoBeatmapWithId = "No beatmap with ID {0} found.";

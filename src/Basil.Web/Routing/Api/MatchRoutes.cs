@@ -299,7 +299,7 @@ internal static class MatchRoutes
 
 		var data = new MatchState(
 			0, false, 0, 0, name, body.Password ?? "",
-			"", 0, "",
+			MatchControlService.NoBeatmapSelectedName, 0, "",
 			[], [], [], 0, 0,
 			0, 0, false, [], 0);
 
@@ -458,7 +458,7 @@ internal static class MatchRoutes
 	{
 		if (mapId is null or <= 0) return null;
 
-		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken);
+		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken: cancellationToken);
 		return result == MatchControlService.SetMapResult.BeatmapNotFound
 			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found locally."))
 			: null;
@@ -490,7 +490,8 @@ internal static class MatchRoutes
 
 		if (body.MapId is not null)
 		{
-			var (result, _) = await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken);
+			var (result, _) =
+				await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken: cancellationToken);
 			if (result == MatchControlService.SetMapResult.BeatmapNotFound)
 				return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId.Value} found locally."));
 		}
