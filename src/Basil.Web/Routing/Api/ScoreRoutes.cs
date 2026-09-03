@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Formats;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Scores;
@@ -123,7 +124,8 @@ internal static class ScoreRoutes
 
 		return new ScoreDetailView(row.Id, user, beatmap!, row.Mode, row.Mods, row.Score, row.Accuracy,
 			row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
-			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
+			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime.AsUtcOffset(), row.SubmittedAt.AsUtcOffset(),
+			row.RoundId, row.Team);
 	}
 
 	private static ScoreDetailView SampleScoreDetail()
@@ -134,7 +136,7 @@ internal static class ScoreRoutes
 			"3f2504e04f8964dfa8807de37b2c73e1", DateTime.Parse("2026-07-20T12:38:01Z"));
 
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC",
-			DateTime.Parse("2026-06-01T10:00:00Z"), DateTime.Parse("2026-06-01T10:00:00Z"), false, false,
+			DateTimeOffset.Parse("2026-06-01T10:00:00Z"), DateTimeOffset.Parse("2026-06-01T10:00:00Z"), false, false,
 			BeatmapStatus.Loved, 1);
 		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme",
 			new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42),
@@ -144,6 +146,7 @@ internal static class ScoreRoutes
 
 		return new ScoreDetailView(row.Id, new UserBrief(9, "Carol", Country.Us), beatmap, row.Mode, row.Mods,
 			row.Score, row.Accuracy, row.MaxCombo, row.N300, row.N100, row.N50, row.NGeki, row.NKatu, row.NMiss,
-			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime, row.SubmittedAt, row.RoundId, row.Team);
+			Enum.Parse<Grade>(row.Grade), row.Perfect, row.PlayTime.AsUtcOffset(), row.SubmittedAt.AsUtcOffset(),
+			row.RoundId, row.Team);
 	}
 }

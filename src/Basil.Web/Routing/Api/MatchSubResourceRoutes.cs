@@ -504,7 +504,7 @@ internal static class MatchSubResourceRoutes
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
-			.WithName("removeMatchReferee")
+			.WithName("removeMatchReferees")
 			.WithSummary("Remove match referees.")
 			.WithDescription("""
 			                 Removes `{ userIds: int[] }` from the match's referees, returning one `{ userId, ok, error }` result per target. A target must be online to be removed.
@@ -714,7 +714,7 @@ internal static class MatchSubResourceRoutes
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
-			.WithName("removeMatchBan")
+			.WithName("removeMatchBans")
 			.WithSummary("Remove match bans.")
 			.WithDescription("""
 			                 Unbans `{ userIds: int[] }`, returning one `{ userId, ok, error }` result per target. Ids need not be online.

@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Formats;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -68,7 +69,8 @@ public sealed class MatchReportService(
 			var target = e.TargetUserId is { } targetId
 				? await ResolveUserCached(targetId, userCache, cancellationToken) ?? Placeholder(targetId)
 				: null;
-			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target, e.Timestamp, e.Detail));
+			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target,
+				e.Timestamp.AsUtcOffset(), e.Detail));
 		}
 
 		var live = matchRegistry.GetByDbId(matchId);
@@ -77,7 +79,7 @@ public sealed class MatchReportService(
 			: await MatchLiveSnapshotBuilder.BuildRoomLive(live, beatmaps, cancellationToken);
 
 		return new MatchReport(
-			matchRow.Id, matchRow.Name, matchRow.CreatedAt, matchRow.EndedAt,
+			matchRow.Id, matchRow.Name, matchRow.CreatedAt.AsUtcOffset(), matchRow.EndedAt?.AsUtcOffset(),
 			liveInfo, reportEvents, rounds);
 	}
 
@@ -214,14 +216,15 @@ public sealed class MatchReportService(
 			reportScores.Add(new MatchReportScore(
 				user, s.Team, s.Mods, s.Score, s.Accuracy, s.MaxCombo,
 				s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu,
-				Enum.Parse<Grade>(s.Grade), s.Perfect, s.SubmittedAt));
+				Enum.Parse<Grade>(s.Grade), s.Perfect, s.SubmittedAt.AsUtcOffset()));
 		}
 
 		var beatmap = await ResolveBeatmapCached(round.MapMd5, beatmapCache, cancellationToken);
 
 		return new MatchReportRound(
 			round.RoundIndex, round.MapMd5, beatmap,
-			round.Mode, round.WinCondition, round.TeamType, round.Mods, round.Aborted, round.StartedAt, round.EndedAt,
+			round.Mode, round.WinCondition, round.TeamType, round.Mods, round.Aborted,
+			round.StartedAt.AsUtcOffset(), round.EndedAt?.AsUtcOffset(),
 			winner, winnerTeam, winMetric, winDiff, reportScores);
 	}
 
@@ -258,8 +261,8 @@ public sealed class MatchReportService(
 public sealed record MatchReport(
 	int MatchId,
 	string Name,
-	DateTime CreatedAt,
-	DateTime? EndedAt,
+	DateTimeOffset CreatedAt,
+	DateTimeOffset? EndedAt,
 	MatchRoomLive? Live,
 	IReadOnlyList<MatchReportEvent> Events,
 	IReadOnlyList<MatchReportRound> Rounds);
@@ -274,7 +277,7 @@ public sealed record MatchReportEvent(
 	MatchEventType EventType,
 	UserBrief? Actor,
 	UserBrief? Target,
-	DateTime Timestamp,
+	DateTimeOffset Timestamp,
 	string? Detail);
 
 /// <summary>One beatmap played within a match.</summary>
@@ -311,8 +314,8 @@ public sealed record MatchReportRound(
 	MatchTeamType TeamType,
 	Mods Mods,
 	bool Aborted,
-	DateTime StartedAt,
-	DateTime? EndedAt,
+	DateTimeOffset StartedAt,
+	DateTimeOffset? EndedAt,
 	UserBrief? Winner,
 	MatchTeam? WinnerTeam,
 	MatchWinCondition? WinMetric,
@@ -350,4 +353,4 @@ public sealed record MatchReportScore(
 	int NumKatu,
 	Grade Grade,
 	bool Perfect,
-	DateTime SubmittedAt);
+	DateTimeOffset SubmittedAt);

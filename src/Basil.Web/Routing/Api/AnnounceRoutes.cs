@@ -57,7 +57,7 @@ internal static class AnnounceRoutes
 			.WithName("getMotd")
 			.WithSummary("Get the message-of-the-day.")
 			.WithDescription("Returns the message currently shown to a player on login, or `null` if none is set.")
-			.WithTags("Motd")
+			.WithTags("MOTD")
 			.Produces<MotdView>()
 			.WithExample(StatusCodes.Status200OK, new MotdView("Welcome to Basil!"));
 
@@ -79,7 +79,7 @@ internal static class AnnounceRoutes
 
 			                 Takes effect for players who log in after this change.
 			                 """ + AdminKeyNote)
-			.WithTags("Motd")
+			.WithTags("MOTD")
 			.Produces<MotdChangedView>()
 			.WithExample(StatusCodes.Status200OK, new MotdChangedView("MOTD updated.", "Welcome to Basil!"));
 	}

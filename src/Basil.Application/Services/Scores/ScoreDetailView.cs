@@ -56,7 +56,7 @@ public sealed record ScoreDetailView(
 	int NumMiss,
 	Grade Grade,
 	bool Perfect,
-	DateTime PlayTime,
-	DateTime SubmittedAt,
+	DateTimeOffset PlayTime,
+	DateTimeOffset SubmittedAt,
 	int? RoundId,
 	MatchTeam? Team);

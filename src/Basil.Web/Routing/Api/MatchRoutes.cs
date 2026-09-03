@@ -213,7 +213,7 @@ internal static class MatchRoutes
 
 		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")
-			.WithName("getMatchSlotLiveStream")
+			.WithName("getMatchSlotLive")
 			.WithSummary("Stream one match slot.")
 			.WithDescription("""
 			                 Server-Sent Events stream for a single slot, `{slotIndex}` in 1-16 (matching `!mp move`'s convention).
@@ -550,9 +550,9 @@ internal static class MatchRoutes
 
 	private static MatchReport SampleMatchReport()
 	{
-		var created = DateTime.Parse("2026-06-01T10:00:00Z");
-		var started = DateTime.Parse("2026-07-20T12:00:00Z");
-		var ended = DateTime.Parse("2026-07-20T12:04:30Z");
+		var created = DateTimeOffset.Parse("2026-06-01T10:00:00Z");
+		var started = DateTimeOffset.Parse("2026-07-20T12:00:00Z");
+		var ended = DateTimeOffset.Parse("2026-07-20T12:04:30Z");
 
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
 			created, false, false, BeatmapStatus.Loved, 1);

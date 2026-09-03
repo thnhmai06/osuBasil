@@ -117,7 +117,7 @@ public sealed class Program
 		("Announce",
 		[
 			("Announce", "Pushing an in-game notification to online players."),
-			("Motd", "The message shown to a player on login.")
+			("MOTD", "The message shown to a player on login.")
 		]),
 		("Abbreviation Redirects",
 		[
