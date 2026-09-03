@@ -36,10 +36,10 @@ public sealed class CachingBeatmapsetRepository(
 		}
 
 		logger.LogDebug("Cache miss {Key}", key);
-		var mapset = await inner.FetchByIdAsync(id, cancellationToken);
-		if (mapset is not null)
-			cache.Set(key, mapset, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
-		return mapset;
+		var beatmapset = await inner.FetchByIdAsync(id, cancellationToken);
+		if (beatmapset is not null)
+			cache.Set(key, beatmapset, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
+		return beatmapset;
 	}
 
 	/// <inheritdoc cref="IBeatmapsetRepository.UpsertAsync" />

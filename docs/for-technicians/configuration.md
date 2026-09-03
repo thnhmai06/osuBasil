@@ -1,4 +1,4 @@
-﻿# Configuration
+# Configuration
 
 This page is the authoritative reference for configuring and maintaining a Basil server. It covers application settings,
 the admin key, and persistent server data.
@@ -37,8 +37,8 @@ All settings below are under the `Basil` section.
 | `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
 | `Irc:Name`                | IRC server name.                                                                                                                                                                                   |
 | `Irc:Port`                | TCP port used by Basil's embedded IRC gateway. Defaults to `6667`.                                                                                                                                 |
-| `Mirror:DownloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local mapsets first. If a mapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror.       |
-| `Mirror:SearchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local mapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
+| `Mirror:DownloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local beatmapsets first. If a beatmapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror.       |
+| `Mirror:SearchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local beatmapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
 | `Logging:MinimumLevel`    | Minimum log level written to stdout and the full log file. Defaults to `Information`. See [`logging.md`](logging.md).                                                                              |
 
 ### Applying configuration changes
@@ -114,7 +114,7 @@ installation.
 | `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
 | `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Mapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Beatmapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
 | `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
@@ -147,19 +147,19 @@ Database migrations are applied automatically when Basil starts.
 Beatmaps are stored under:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
-Each mapset is stored as a directory containing the extracted contents of the original `.osz` archive, including audio,
+Each beatmapset is stored as a directory containing the extracted contents of the original `.osz` archive, including audio,
 images, video, and `.osu` files.
 
-You can add an `.osz` file directly to the `Data/Mapsets/` directory. Basil automatically extracts it into its mapset
+You can add an `.osz` file directly to the `Data/Beatmapsets/` directory. Basil automatically extracts it into its beatmapset
 directory.
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.
 
-Mapset changes are detected automatically while Basil is running. A background watcher normally processes additions,
+Beatmapset changes are detected automatically while Basil is running. A background watcher normally processes additions,
 changes, and deletions within approximately two seconds. Basil also performs a full reconciliation during startup.
 
 Administrators can upload `.osz` files through:

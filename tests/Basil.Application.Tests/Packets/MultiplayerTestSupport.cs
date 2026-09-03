@@ -86,8 +86,8 @@ internal static class MultiplayerTestSupport
 	public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
 	{
 		var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
-		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-		return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu",
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		return new Beatmap(actualMd5, id, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

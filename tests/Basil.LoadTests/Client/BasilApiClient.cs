@@ -87,8 +87,8 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 	}
 
 	/// <summary>
-	///     Uploads an <c>.osz</c> beatmapset fixture. The endpoint reconciles the whole mapset storage
-	///     folder and returns only <c>{ ingested }</c> (a count), not the new mapset's id — the caller
+	///     Uploads an <c>.osz</c> beatmapset fixture. The endpoint reconciles the whole beatmapset storage
+	///     folder and returns only <c>{ ingested }</c> (a count), not the new beatmapset's id — the caller
 	///     resolves the id afterward via <see cref="ResolveSampleBeatmapsetIdAsync" />.
 	/// </summary>
 	public async Task UploadBeatmapsetAsync(byte[] oszBytes, string fileName, string adminKey,
@@ -137,24 +137,24 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 			: null;
 	}
 
-	/// <summary>Resolves a beatmap id belonging to the given mapset, for assigning to a multiplayer room.</summary>
-	public async Task<int?> ResolveFirstBeatmapIdAsync(int mapsetId, CancellationToken cancellationToken = default)
+	/// <summary>Resolves a beatmap id belonging to the given beatmapset, for assigning to a multiplayer room.</summary>
+	public async Task<int?> ResolveFirstBeatmapIdAsync(int beatmapsetId, CancellationToken cancellationToken = default)
 	{
-		var beatmap = await ResolveFirstBeatmapAsync(mapsetId, cancellationToken);
+		var beatmap = await ResolveFirstBeatmapAsync(beatmapsetId, cancellationToken);
 		return beatmap?.Id;
 	}
 
 	/// <summary>
-	///     Resolves the first beatmap under a mapset, including its md5 — <c>MatchChangeSettingsHandler</c>
+	///     Resolves the first beatmap under a beatmapset, including its md5 — <c>MatchChangeSettingsHandler</c>
 	///     re-resolves a room's beatmap by md5 against the local repository, not by id, so the id alone
 	///     is not enough to actually assign a map to a room.
 	/// </summary>
-	public async Task<(int Id, string Md5)?> ResolveFirstBeatmapAsync(int mapsetId,
+	public async Task<(int Id, string Md5)?> ResolveFirstBeatmapAsync(int beatmapsetId,
 		CancellationToken cancellationToken = default)
 	{
 		using var client = clientFactory.CreateClient();
 		using var response =
-			await client.GetAsync(clientFactory.BuildUri("api", $"/beatmapsets/{mapsetId}"), cancellationToken);
+			await client.GetAsync(clientFactory.BuildUri("api", $"/beatmapsets/{beatmapsetId}"), cancellationToken);
 		if (!response.IsSuccessStatusCode) return null;
 
 		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);

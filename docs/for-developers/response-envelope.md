@@ -152,7 +152,7 @@ The infrastructure repositories provide cached wrappers:
 ```text
 CachingUserRepository
 CachingMapRepository
-CachingMapsetRepository
+CachingBeatmapsetRepository
         │
         ▼
 IMemoryCache
@@ -177,7 +177,7 @@ boundary keeps the optimization independent of individual endpoints.
 
 This also prevents each response builder from implementing its own cache and invalidation rules.
 
-Developers adding a new consumer of users, maps, or mapsets should use the existing repository abstraction rather than
+Developers adding a new consumer of users, maps, or beatmapsets should use the existing repository abstraction rather than
 querying SQLite directly.
 
 ## Beatmap identity
@@ -233,7 +233,7 @@ When adding a normal JSON endpoint:
 2. Register the route in the appropriate API route group.
 3. Return the underlying model/result rather than manually wrapping it.
 4. Verify that the endpoint is included in the expected OpenAPI group.
-5. If the response embeds users, beatmaps, or mapsets, use the existing repository abstractions so caching and
+5. If the response embeds users, beatmaps, or beatmapsets, use the existing repository abstractions so caching and
    invalidation remain centralized.
 6. Add explicit handling only if the endpoint intentionally produces a file or SSE stream.
 

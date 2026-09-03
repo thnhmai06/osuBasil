@@ -46,7 +46,7 @@ Basil deployment
 ├── Data/
 │   ├── database
 │   └── ...
-└── Mapsets/
+└── Beatmapsets/
 ```
 
 Moving a deployment to another machine does not require provisioning a database server.
@@ -65,7 +65,7 @@ The schema is divided conceptually into two groups:
 | Table                       | Purpose                                                                                                                                                                        |
 |-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Users`                     | User accounts, including name, password hash, privilege bits, country, and silence expiry. `Id = 0` is reserved for BasilBot. Deletion is soft: `DeletedAt` is the authoritative signal (never inferred from privilege bits), the row and its name are never removed, and the unique name constraints keep a deleted account's username permanently reserved.                                                  |
-| `Beatmapsets` / `Beatmaps`  | Locally ingested beatmapsets and their difficulties. Each difficulty is identified by content hash. These tables mirror the local `Mapsets/` data. See [`beatmap-ingestion.md`](beatmap-ingestion.md). |
+| `Beatmapsets` / `Beatmaps`  | Locally ingested beatmapsets and their difficulties. Each difficulty is identified by content hash. These tables mirror the local `Beatmapsets/` data. See [`beatmap-ingestion.md`](beatmap-ingestion.md). |
 | `Channels`                  | Static chat channel catalog such as `#osu` and `#lobby`, including read/write privilege gates and auto-join state.                                                             |
 | `Relationships`             | Friend and block relationships between users.                                                                                                                                  |
 | `ClientHashes`              | Hardware fingerprint history associated with logins, used by the authentication and ban checks described in [`authentication.md`](../for-client/bancho/authentication.md).     |
@@ -90,7 +90,7 @@ Not every database table is the authoritative representation of its data.
 For locally ingested beatmaps:
 
 ```text
-Mapsets/
+Beatmapsets/
     │
     ▼
 filesystem

@@ -55,7 +55,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	[InlineData("avatar", "osu! Client API: Avatar Files", new[] { "/{userId}" })]
 	[InlineData("basilapi", "Basil API", new[]
 	{
-		"/matches/{matchId}", "/matches", "/beatmapsets/{mapsetId}", "/users", "/scores/{scoreId}",
+		"/matches/{matchId}", "/matches", "/beatmapsets/{beatmapsetId}", "/users", "/scores/{scoreId}",
 		"/faqs/{entry}", "/menu/seasonals/{fileName}", "/health"
 	})]
 	public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,

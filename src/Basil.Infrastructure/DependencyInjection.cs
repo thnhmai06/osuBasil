@@ -42,7 +42,7 @@ public static class DependencyInjection
 	///     Registers every Infrastructure service into the container: the port implementations
 	///     (SQLite repositories, caching decorators, media processors, the osu!lazer calculator, the
 	///     password hasher and score decryptor, session registries, and storage providers) plus the
-	///     background services that watch the mapsets folder and reclaim folders marked for deletion.
+	///     background services that watch the beatmapsets folder and reclaim folders marked for deletion.
 	/// </summary>
 	/// <param name="services">The service collection to register into.</param>
 	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
@@ -62,7 +62,7 @@ public static class DependencyInjection
 		{
 			ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
 			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
-			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
+			BeatmapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Beatmapsets"),
 			MenuSeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Seasonals"),
 			MenuBannersPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Banners"),
 			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
@@ -137,7 +137,7 @@ public static class DependencyInjection
 
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<BeatmapWatcherService>();
-		services.AddHostedService<MapsetGarbageCollectorService>();
+		services.AddHostedService<BeatmapsetGarbageCollectorService>();
 
 		return services;
 

@@ -89,8 +89,8 @@ public static class BanchoHostGroups
 		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(setId, cancellationToken: cancellationToken);
 		if (beatmaps.Count == 0) return null;
 
-		var mapset = beatmaps[0].Beatmapset;
-		var folder = BeatmapIngestionService.FindMapsetFolder(storage, setId);
+		var beatmapset = beatmaps[0].Beatmapset;
+		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage, setId);
 		if (folder is null) return null;
 
 		using var zipStream = new MemoryStream();
@@ -117,7 +117,7 @@ public static class BanchoHostGroups
 
 		if (!wroteAny) return null;
 
-		var name = $"{mapset.Id} {mapset.Artist} - {mapset.Title}{(suffixed ? " [no video]" : "")}.osz";
+		var name = $"{beatmapset.Id} {beatmapset.Artist} - {beatmapset.Title}{(suffixed ? " [no video]" : "")}.osz";
 		return (zipStream.ToArray(), name);
 	}
 
@@ -138,8 +138,8 @@ public static class BanchoHostGroups
 		IOptions<StorageOptions> storage, IResponseCache cache, IAudioExtractor extractor,
 		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
-		if (mapset is null || mapset.IsPrivate) return (null, false);
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
+		if (beatmapset is null || beatmapset.IsPrivate) return (null, false);
 
 		var cacheKey = ResponseCacheKeys.Preview(setId);
 		var cached = await cache.GetAsync("preview", cacheKey, cancellationToken);
@@ -165,7 +165,7 @@ public static class BanchoHostGroups
 			// Most commonly: no ffmpeg binary on PATH. Caught here rather than left to propagate,
 			// so a missing/broken ffmpeg installation degrades one endpoint instead of crashing the request
 			// pipeline with an unhandled exception.
-			logger.LogError(ex, "Audio preview extraction failed: MapsetId={MapsetId}", setId);
+			logger.LogError(ex, "Audio preview extraction failed: BeatmapsetId={BeatmapsetId}", setId);
 			return (null, true);
 		}
 

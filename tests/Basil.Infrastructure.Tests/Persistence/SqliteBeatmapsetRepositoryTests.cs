@@ -12,7 +12,7 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	private readonly SqliteBeatmapsetRepository _beatmapsetRepository =
 		new(fixture.ConnectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 
-	private static Beatmapset MakeMapset(int id, bool isPrivate = false)
+	private static Beatmapset MakeBeatmapset(int id, bool isPrivate = false)
 	{
 		return new Beatmapset(id, "Camellia", "Exit This Earth's Atomosphere", "cmyui",
 			new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -20,14 +20,14 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	}
 
 	[Fact]
-	public async Task UpsertThenFetchById_ReturnsMapset()
+	public async Task UpsertThenFetchById_ReturnsBeatmapset()
 	{
-		var mapset = MakeMapset(9001);
+		var beatmapset = MakeBeatmapset(9001);
 
-		await _beatmapsetRepository.UpsertAsync(mapset);
-		var fetched = await _beatmapsetRepository.FetchByIdAsync(mapset.Id);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
+		var fetched = await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id);
 
-		Assert.Equal(mapset, fetched);
+		Assert.Equal(beatmapset, fetched);
 	}
 
 	[Fact]
@@ -39,38 +39,38 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	[Fact]
 	public async Task Upsert_ExistingId_ReplacesRow()
 	{
-		var mapset = MakeMapset(9002);
-		await _beatmapsetRepository.UpsertAsync(mapset);
+		var beatmapset = MakeBeatmapset(9002);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
 
-		var updated = mapset with { Artist = "Updated Artist" };
+		var updated = beatmapset with { Artist = "Updated Artist" };
 		await _beatmapsetRepository.UpsertAsync(updated);
 
-		var fetched = await _beatmapsetRepository.FetchByIdAsync(mapset.Id);
+		var fetched = await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id);
 		Assert.Equal("Updated Artist", fetched!.Artist);
 	}
 
 	[Fact]
 	public async Task DeleteAsync_CascadesToBeatmaps()
 	{
-		var mapset = MakeMapset(9003);
-		await _beatmapsetRepository.UpsertAsync(mapset);
+		var beatmapset = MakeBeatmapset(9003);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
 
-		var beatmap = new Beatmap(new string('z', 32), 9003001, mapset, "Hyper", "z.osu",
+		var beatmap = new Beatmap(new string('z', 32), 9003001, beatmapset, "Hyper", "z.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 		await _beatmapRepository.UpsertAsync(beatmap);
 
-		await _beatmapsetRepository.DeleteAsync(mapset.Id);
+		await _beatmapsetRepository.DeleteAsync(beatmapset.Id);
 
-		Assert.Null(await _beatmapsetRepository.FetchByIdAsync(mapset.Id));
+		Assert.Null(await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id));
 		Assert.Null(await _beatmapRepository.FetchOneAsync(beatmap.Id, includePrivate: true));
 	}
 
 	[Fact]
 	public async Task FetchMaxIdAsync_ReturnsHighestId()
 	{
-		await _beatmapsetRepository.UpsertAsync(MakeMapset(9010));
-		await _beatmapsetRepository.UpsertAsync(MakeMapset(9011));
+		await _beatmapsetRepository.UpsertAsync(MakeBeatmapset(9010));
+		await _beatmapsetRepository.UpsertAsync(MakeBeatmapset(9011));
 
 		var maxId = await _beatmapsetRepository.FetchMaxIdAsync();
 
@@ -80,8 +80,8 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	[Fact]
 	public async Task FetchAllIdsAsync_IncludesUpsertedIds()
 	{
-		await _beatmapsetRepository.UpsertAsync(MakeMapset(9020));
-		await _beatmapsetRepository.UpsertAsync(MakeMapset(9021));
+		await _beatmapsetRepository.UpsertAsync(MakeBeatmapset(9020));
+		await _beatmapsetRepository.UpsertAsync(MakeBeatmapset(9021));
 
 		var ids = await _beatmapsetRepository.FetchAllIdsAsync();
 
@@ -92,21 +92,21 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	[Fact]
 	public async Task SetFrozenAsync_TogglesIsFrozen()
 	{
-		var mapset = MakeMapset(9030);
-		await _beatmapsetRepository.UpsertAsync(mapset);
+		var beatmapset = MakeBeatmapset(9030);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
 
-		await _beatmapsetRepository.SetFrozenAsync(mapset.Id, true);
-		Assert.True((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+		await _beatmapsetRepository.SetFrozenAsync(beatmapset.Id, true);
+		Assert.True((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsFrozen);
 
-		await _beatmapsetRepository.SetFrozenAsync(mapset.Id, false);
-		Assert.False((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+		await _beatmapsetRepository.SetFrozenAsync(beatmapset.Id, false);
+		Assert.False((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsFrozen);
 	}
 
 	[Fact]
-	public async Task FetchPageAsync_OnlyWithVisibleBeatmaps_ExcludesPrivateMapsets()
+	public async Task FetchPageAsync_OnlyWithVisibleBeatmaps_ExcludesPrivateBeatmapsets()
 	{
-		var visible = MakeMapset(9040);
-		var privateOnly = MakeMapset(9041, true);
+		var visible = MakeBeatmapset(9040);
+		var privateOnly = MakeBeatmapset(9041, true);
 		await _beatmapsetRepository.UpsertAsync(visible);
 		await _beatmapsetRepository.UpsertAsync(privateOnly);
 		await _beatmapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
@@ -126,67 +126,67 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 	}
 
 	[Fact]
-	public async Task Upsert_ExistingFrozenMapset_ReingestionDoesNotClearFreeze()
+	public async Task Upsert_ExistingFrozenBeatmapset_ReingestionDoesNotClearFreeze()
 	{
-		var mapset = MakeMapset(9031);
-		await _beatmapsetRepository.UpsertAsync(mapset);
-		await _beatmapsetRepository.SetFrozenAsync(mapset.Id, true);
+		var beatmapset = MakeBeatmapset(9031);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
+		await _beatmapsetRepository.SetFrozenAsync(beatmapset.Id, true);
 
-		var reingested = await _beatmapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+		var reingested = await _beatmapsetRepository.UpsertAsync(beatmapset with { Artist = "Re-ingested Artist" });
 
 		Assert.True(reingested.IsFrozen);
-		Assert.True((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsFrozen);
+		Assert.True((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsFrozen);
 	}
 
 	[Fact]
 	public async Task SetPrivateAsync_TogglesIsPrivate()
 	{
-		var mapset = MakeMapset(9032);
-		await _beatmapsetRepository.UpsertAsync(mapset);
+		var beatmapset = MakeBeatmapset(9032);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
 
-		await _beatmapsetRepository.SetPrivateAsync(mapset.Id, true);
-		Assert.True((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsPrivate);
+		await _beatmapsetRepository.SetPrivateAsync(beatmapset.Id, true);
+		Assert.True((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsPrivate);
 
-		await _beatmapsetRepository.SetPrivateAsync(mapset.Id, false);
-		Assert.False((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsPrivate);
+		await _beatmapsetRepository.SetPrivateAsync(beatmapset.Id, false);
+		Assert.False((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsPrivate);
 	}
 
 	[Fact]
-	public async Task Upsert_ExistingPrivateMapset_ReingestionDoesNotClearPrivate()
+	public async Task Upsert_ExistingPrivateBeatmapset_ReingestionDoesNotClearPrivate()
 	{
-		var mapset = MakeMapset(9033);
-		await _beatmapsetRepository.UpsertAsync(mapset);
-		await _beatmapsetRepository.SetPrivateAsync(mapset.Id, true);
+		var beatmapset = MakeBeatmapset(9033);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
+		await _beatmapsetRepository.SetPrivateAsync(beatmapset.Id, true);
 
-		var reingested = await _beatmapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+		var reingested = await _beatmapsetRepository.UpsertAsync(beatmapset with { Artist = "Re-ingested Artist" });
 
 		Assert.True(reingested.IsPrivate);
-		Assert.True((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.IsPrivate);
+		Assert.True((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.IsPrivate);
 	}
 
 	[Fact]
 	public async Task SetBackgroundFileAsync_SetsAndClearsValue()
 	{
-		var mapset = MakeMapset(9034);
-		await _beatmapsetRepository.UpsertAsync(mapset);
+		var beatmapset = MakeBeatmapset(9034);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
 
-		await _beatmapsetRepository.SetBackgroundFileAsync(mapset.Id, "bg.jpg");
-		Assert.Equal("bg.jpg", (await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+		await _beatmapsetRepository.SetBackgroundFileAsync(beatmapset.Id, "bg.jpg");
+		Assert.Equal("bg.jpg", (await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.BackgroundFile);
 
-		await _beatmapsetRepository.SetBackgroundFileAsync(mapset.Id, null);
-		Assert.Null((await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+		await _beatmapsetRepository.SetBackgroundFileAsync(beatmapset.Id, null);
+		Assert.Null((await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.BackgroundFile);
 	}
 
 	[Fact]
 	public async Task Upsert_ExistingBackgroundFile_ReingestionDoesNotClearIt()
 	{
-		var mapset = MakeMapset(9035);
-		await _beatmapsetRepository.UpsertAsync(mapset);
-		await _beatmapsetRepository.SetBackgroundFileAsync(mapset.Id, "bg.jpg");
+		var beatmapset = MakeBeatmapset(9035);
+		await _beatmapsetRepository.UpsertAsync(beatmapset);
+		await _beatmapsetRepository.SetBackgroundFileAsync(beatmapset.Id, "bg.jpg");
 
-		var reingested = await _beatmapsetRepository.UpsertAsync(mapset with { Artist = "Re-ingested Artist" });
+		var reingested = await _beatmapsetRepository.UpsertAsync(beatmapset with { Artist = "Re-ingested Artist" });
 
 		Assert.Equal("bg.jpg", reingested.BackgroundFile);
-		Assert.Equal("bg.jpg", (await _beatmapsetRepository.FetchByIdAsync(mapset.Id))!.BackgroundFile);
+		Assert.Equal("bg.jpg", (await _beatmapsetRepository.FetchByIdAsync(beatmapset.Id))!.BackgroundFile);
 	}
 }

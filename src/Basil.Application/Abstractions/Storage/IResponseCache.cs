@@ -57,24 +57,24 @@ public static class ResponseCacheKeys
 	/// <summary>
 	///     Builds the cache key for a beatmapset's thumbnail.
 	/// </summary>
-	/// <param name="mapsetId">The id of the beatmapset.</param>
+	/// <param name="beatmapsetId">The id of the beatmapset.</param>
 	/// <param name="large">
 	///     <see langword="true" /> for the large 160x120 thumbnail; otherwise, <see langword="false" />
 	///     for the small 80x60 one.
 	/// </param>
 	/// <returns>The relative cache path for the thumbnail.</returns>
-	public static string Thumb(int mapsetId, bool large)
+	public static string Thumb(int beatmapsetId, bool large)
 	{
-		return large ? $"{mapsetId}l.jpg" : $"{mapsetId}.jpg";
+		return large ? $"{beatmapsetId}l.jpg" : $"{beatmapsetId}.jpg";
 	}
 
 	/// <summary>
 	///     Builds the cache key for a beatmapset's audio preview.
 	/// </summary>
-	/// <param name="mapsetId">The id of the beatmapset.</param>
+	/// <param name="beatmapsetId">The id of the beatmapset.</param>
 	/// <returns>The relative cache path for the audio preview.</returns>
-	public static string Preview(int mapsetId)
+	public static string Preview(int beatmapsetId)
 	{
-		return $"{mapsetId}.mp3";
+		return $"{beatmapsetId}.mp3";
 	}
 }

@@ -80,9 +80,9 @@ public class MatchChangeSettingsHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.MapId = null;
 		var newMd5 = new string('b', 32);
-		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
-			newMd5, 500, mapset, "V", "map.osu",
+			newMd5, 500, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
@@ -176,8 +176,8 @@ public class MatchChangeSettingsHandlerTests
 
 		// Beatmap gets ingested while the room sits idle — the next settings packet (any resend)
 		// must still attempt the lookup despite UnresolvedMapMd5 being set, not skip it.
-		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
-		var bmap = new Beatmap(md5, 777, mapset, "V", "map.osu",
+		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var bmap = new Beatmap(md5, 777, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns(bmap);
@@ -259,9 +259,9 @@ public class MatchChangeSettingsHandlerTests
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
 		match.MapId = null;
 		var newMd5 = new string('d', 32);
-		var mapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
-			newMd5, 500, mapset, "V", "map.osu",
+			newMd5, 500, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);

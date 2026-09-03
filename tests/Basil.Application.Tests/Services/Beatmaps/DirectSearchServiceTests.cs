@@ -123,11 +123,11 @@ public class DirectSearchServiceTests
 	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",
 		string title = "Title")
 	{
-		var mapset = new Beatmapset(setId, artist, title, "cmyui",
+		var beatmapset = new Beatmapset(setId, artist, title, "cmyui",
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc),
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc));
 		return new Beatmap(
-			new string('0', 32), id, mapset, version, "file.osu",
+			new string('0', 32), id, beatmapset, version, "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

@@ -62,9 +62,9 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
 	private static Beatmap MakeBeatmap(int id, int setId)
 	{
-		var mapset = new Beatmapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapset = new Beatmapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
-			new string('0', 32), id, mapset, "Version", "file.osu",
+			new string('0', 32), id, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

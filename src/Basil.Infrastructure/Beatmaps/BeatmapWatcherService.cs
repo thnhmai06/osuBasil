@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Live-syncs the DB with <see cref="StorageOptions.MapsetsPath" /> after startup: any creation,
+///     Live-syncs the DB with <see cref="StorageOptions.BeatmapsetsPath" /> after startup: any creation,
 ///     change, delete, or rename under that folder is debounced (a dragged-in beatmapset fires many
 ///     rapid events for the same folder, so only the last one after a quiet period actually
 ///     reconciles) and handed to <see cref="BeatmapIngestionService" />'s per-folder methods. The
@@ -31,13 +31,13 @@ public sealed class BeatmapWatcherService(
 
 	/// <summary>
 	///     Runs the filesystem watch loop until shutdown: installs a recursive
-	///     <see cref="FileSystemWatcher" /> on the mapsets path, then waits indefinitely. On shutdown,
+	///     <see cref="FileSystemWatcher" /> on the beatmapsets path, then waits indefinitely. On shutdown,
 	///     disposes any armed-but-not-yet-fired timers and awaits any reconciliation still in flight,
 	///     so the DB is never mutated while the host is stopping.
 	/// </summary>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		var path = options.Value.MapsetsPath;
+		var path = options.Value.BeatmapsetsPath;
 		Directory.CreateDirectory(path);
 
 		using var watcher = new FileSystemWatcher(path);
@@ -67,7 +67,7 @@ public sealed class BeatmapWatcherService(
 		await Task.WhenAll(_inFlightSettles.Keys);
 	}
 
-	/// <summary>Resolves any changed path back to the top-level entry directly under MapsetsPath it belongs to.</summary>
+	/// <summary>Resolves any changed path back to the top-level entry directly under BeatmapsetsPath it belongs to.</summary>
 	private static string? AffectedPath(string root, string fullPath)
 	{
 		var relative = Path.GetRelativePath(root, fullPath);
@@ -180,7 +180,7 @@ public sealed class BeatmapWatcherService(
 		}
 		catch (Exception ex)
 		{
-			logger.LogWarning(ex, "Failed to reconcile Mapsets path {Path} after a filesystem change.", affected);
+			logger.LogWarning(ex, "Failed to reconcile Beatmapsets path {Path} after a filesystem change.", affected);
 		}
 	}
 }

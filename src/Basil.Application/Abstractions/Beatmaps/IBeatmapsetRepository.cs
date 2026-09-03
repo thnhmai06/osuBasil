@@ -70,7 +70,7 @@ public interface IBeatmapsetRepository
 	Task<IReadOnlyList<int>> FetchAllIdsAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Fetches a page of mapsets, newest id first.
+	///     Fetches a page of beatmapsets, newest id first.
 	/// </summary>
 	/// <param name="offset">The number of sets to skip before returning results.</param>
 	/// <param name="limit">The maximum number of sets to return.</param>
@@ -79,7 +79,7 @@ public interface IBeatmapsetRepository
 	///     otherwise, <see langword="false" /> to return every set regardless of privacy.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The requested page of mapsets.</returns>
+	/// <returns>The requested page of beatmapsets.</returns>
 	/// <remarks>
 	///     Pass <paramref name="onlyWithVisibleBeatmaps" /> as <see langword="true" /> for a
 	///     public, non-admin caller, who sees only non-private sets, and <see langword="false" />
@@ -145,7 +145,7 @@ public interface IBeatmapsetRepository
 	Task SetAudioFileAsync(int id, string? audioFile, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Gets the total number of mapsets in the database.
+	///     Gets the total number of beatmapsets in the database.
 	/// </summary>
 	/// <param name="includePrivate">
 	///     <see langword="true" /> to count every beatmapset including private ones; otherwise,

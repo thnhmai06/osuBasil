@@ -10,8 +10,8 @@ public class CachingBeatmapRepositoryTests
 {
 	private static Beatmap MakeBeatmap(int id, string md5)
 	{
-		var mapset = new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
-		return new Beatmap(md5, id, mapset, "Normal", "map.osu",
+		var beatmapset = new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
+		return new Beatmap(md5, id, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

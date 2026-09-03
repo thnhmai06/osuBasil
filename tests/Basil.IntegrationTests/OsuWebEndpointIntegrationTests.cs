@@ -39,7 +39,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullMapRepository());
-				services.AddSingleton(TestDoubles.NullMapsetRepository());
+				services.AddSingleton(TestDoubles.NullBeatmapsetRepository());
 				services.AddSingleton(TestDoubles.NullUserRepository());
 			});
 		});
@@ -220,7 +220,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 	}
 
 	[Fact]
-	public async Task BeatmapAssetHost_UnknownMapset_ReturnsNotFound()
+	public async Task BeatmapAssetHost_UnknownBeatmapset_ReturnsNotFound()
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 

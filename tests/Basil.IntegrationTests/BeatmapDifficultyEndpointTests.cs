@@ -16,7 +16,7 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty` end-to-end against a real
+///     Covers `GET /beatmapsets/{beatmapsetId}/{beatmapId}/difficulty` end-to-end against a real
 ///     analyzable `.osu` file (the same fixture <c>PpyOsuCalculatorTests</c> uses, so the recorded
 ///     NoMod/HardRock star ratings there double as a cross-check here) — not just route wiring, since
 ///     this endpoint's whole point is running the real ppy.osu.Game difficulty calculator.
@@ -171,7 +171,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-difficulty-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
 	private Beatmap? _beatmap;
-	private Beatmapset? _mapset;
+	private Beatmapset? _beatmapset;
 
 	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Program> factory)
 	{
@@ -186,9 +186,9 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(_ => _beatmap is null ? [] : [_beatmap]);
 
-		var mapsets = Substitute.For<IBeatmapsetRepository>();
-		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(_ => _mapset?.Id == _beatmap?.Beatmapset.Id ? _mapset : null);
+		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(_ => _beatmapset?.Id == _beatmap?.Beatmapset.Id ? _beatmapset : null);
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -205,12 +205,12 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
-				services.AddSingleton(mapsets);
+				services.AddSingleton(beatmapsets);
 				services.AddSingleton(Options.Create(new StorageOptions
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					BeatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets"),
 					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
 					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
@@ -230,14 +230,14 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		return new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
 	}
 
-	private void SeedBeatmap(int mapsetId, int beatmapId, bool isPrivate = false)
+	private void SeedBeatmap(int beatmapsetId, int beatmapId, bool isPrivate = false)
 	{
-		_mapset = new Beatmapset(mapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
+		_beatmapset = new Beatmapset(beatmapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
 			DateTime.UnixEpoch, IsPrivate: isPrivate);
-		_beatmap = new Beatmap(new string('a', 32), beatmapId, _mapset, "Insane", "vivid.osu",
+		_beatmap = new Beatmap(new string('a', 32), beatmapId, _beatmapset, "Insane", "vivid.osu",
 			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
 
-		var folder = Path.Combine(_dataDir, "Mapsets", $"{mapsetId} FAIRY FORE - Vivid");
+		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{beatmapsetId} FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.WriteAllText(Path.Combine(folder, "vivid.osu"), FixtureOsuContent);
 	}
@@ -295,7 +295,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	}
 
 	[Fact]
-	public async Task GetDifficulty_PrivateMapsetWithoutAdminKey_ReturnsNotFound()
+	public async Task GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound()
 	{
 		SeedBeatmap(9005, 5, true);
 		using var client = _factory.CreateClient();

@@ -43,7 +43,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Prog
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					BeatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets"),
 					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
 					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),

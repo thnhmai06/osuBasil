@@ -88,14 +88,14 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status400BadRequest,
 				new ErrorResponse("Only .osz uploads are accepted."));
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}", HandleGet)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}", HandleGet)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapset")
 			.WithSummary("Get beatmapset details.")
 			.WithDescription("""
 			                 Returns the beatmapset's metadata plus `beatmaps`, the full list of difficulties under it.
 
-			                 For a single difficulty's full detail, use `GET /beatmapsets/{mapsetId}/{beatmapId}`.
+			                 For a single difficulty's full detail, use `GET /beatmapsets/{beatmapsetId}/{beatmapId}`.
 
 			                 Returns `404 Not Found` if the beatmapset doesn't exist, or it's private and the caller isn't admin.
 			                 """)
@@ -104,7 +104,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleDetail())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPut("/beatmapsets/{mapsetId:numericid}", HandleReplace)
+		group.MapPut("/beatmapsets/{beatmapsetId:numericid}", HandleReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceBeatmapset")
@@ -114,20 +114,20 @@ internal static class BeatmapsetRoutes
 
 			                 Asynchronous: returns `202 Accepted` immediately, and the change becomes visible shortly after.
 
-			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{mapsetId}`), or `404 Not Found` if the beatmapset doesn't exist.
+			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{beatmapsetId}`), or `404 Not Found` if the beatmapset doesn't exist.
 			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.WithMultipartFileUpload()
-			.Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
+			.Produces<BeatmapsetOperationAccepted>(StatusCodes.Status202Accepted)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status202Accepted, new MapsetOperationAccepted(321, "replace"))
+			.WithExample(StatusCodes.Status202Accepted, new BeatmapsetOperationAccepted(321, "replace"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Only .osz uploads are accepted."))
 			.WithExample(StatusCodes.Status409Conflict,
 				new ErrorResponse("This beatmapset is frozen and cannot be modified."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/beatmapsets/{mapsetId:numericid}", HandleDelete)
+		group.MapDelete("/beatmapsets/{beatmapsetId:numericid}", HandleDelete)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("deleteBeatmapset")
@@ -135,17 +135,17 @@ internal static class BeatmapsetRoutes
 			.WithDescription("""
 			                 Asynchronous: returns `202 Accepted` immediately, and the beatmapset disappears shortly after.
 
-			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{mapsetId}`) or its files are currently in use, or `404 Not Found` if the beatmapset doesn't exist.
+			                 Returns `409 Conflict` if the beatmapset is frozen (see `PATCH /beatmapsets/{beatmapsetId}`) or its files are currently in use, or `404 Not Found` if the beatmapset doesn't exist.
 			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
-			.Produces<MapsetOperationAccepted>(StatusCodes.Status202Accepted)
+			.Produces<BeatmapsetOperationAccepted>(StatusCodes.Status202Accepted)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status202Accepted, new MapsetOperationAccepted(321, "delete"))
+			.WithExample(StatusCodes.Status202Accepted, new BeatmapsetOperationAccepted(321, "delete"))
 			.WithExample(StatusCodes.Status409Conflict,
 				new ErrorResponse("This beatmapset is frozen and cannot be deleted."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/beatmapsets/{mapsetId:numericid}", HandlePatch)
+		group.MapPatch("/beatmapsets/{beatmapsetId:numericid}", HandlePatch)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateBeatmapset")
@@ -153,7 +153,7 @@ internal static class BeatmapsetRoutes
 			.WithDescription("""
 			                 Body: `{ frozen?, private? }`. Each field is applied only if present, and the updated beatmapset info is returned.
 
-			                 `frozen` is a write-lock: while set, `PUT` and `DELETE /beatmapsets/{mapsetId}` are rejected with `409 Conflict` (this route itself is exempt, so unfreezing is always possible). `private` hides the beatmapset and every beatmap under it from non-admin listings and lookups.
+			                 `frozen` is a write-lock: while set, `PUT` and `DELETE /beatmapsets/{beatmapsetId}` are rejected with `409 Conflict` (this route itself is exempt, so unfreezing is always possible). `private` hides the beatmapset and every beatmap under it from non-admin listings and lookups.
 
 			                 Returns `404 Not Found` if the beatmapset doesn't exist.
 			                 """ + AdminKeyNote)
@@ -162,14 +162,14 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleDetail() with { IsFrozen = true })
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}", HandleBeatmapInfo)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}", HandleBeatmapInfo)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmap")
 			.WithSummary("Get beatmap details.")
 			.WithDescription("""
 			                 Returns the beatmap's difficulty and object-count metadata plus its parent beatmapset.
 
-			                 For the background image, use `GET /beatmapsets/{mapsetId}/{beatmapId}/background`.
+			                 For the background image, use `GET /beatmapsets/{beatmapsetId}/{beatmapId}/background`.
 
 			                 Returns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, or the parent beatmapset is private and the caller isn't admin.
 			                 """)
@@ -178,7 +178,7 @@ internal static class BeatmapsetRoutes
 			.WithExample(StatusCodes.Status200OK, SampleBeatmap().ToDetail(SampleSummary()))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/difficulty", HandleBeatmapDifficulty)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}/difficulty", HandleBeatmapDifficulty)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapDifficulty")
 			.WithSummary("Get beatmap difficulty with mods.")
@@ -198,93 +198,93 @@ internal static class BeatmapsetRoutes
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/download", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}/download", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmap")
 			.WithSummary("Download a beatmap.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/{beatmapId}/download`, " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/{beatmapId}/download`, " +
 			                 "which serves the raw `.osu` difficulty file.")
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/background", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}/background", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapBackground")
 			.WithSummary("Download a beatmap background.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/{beatmapId}/background`, " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/{beatmapId}/background`, " +
 			                 "which serves the image, resized on request (see `covers/{variant}.jpg` for fixed sizes).")
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/background", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/background", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetBackground")
 			.WithSummary("Download beatmapset background.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/background`, which " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/background`, which " +
 			                 "serves the preview background image for this set: the lowest-id beatmap's background.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/covers/{variant}.jpg", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/covers/{variant}.jpg", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetCover")
 			.WithSummary("Download a beatmapset cover variant.")
 			.WithDescription(
-				"Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/covers/{variant}.jpg`, which serves the set's preview background cropped to a fixed size for the given `{variant}`: `cover`, `card`, `list`, or `slimcover`.")
+				"Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/covers/{variant}.jpg`, which serves the set's preview background cropped to a fixed size for the given `{variant}`: `cover`, `card`, `list`, or `slimcover`.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/audio", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}/audio", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapAudio")
 			.WithSummary("Download beatmap audio.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/{beatmapId}/audio`, " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/{beatmapId}/audio`, " +
 			                 "which serves the beatmap's audio file.")
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/audio", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/audio", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetAudio")
 			.WithSummary("Download beatmapset audio.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/audio`, which serves " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/audio`, which serves " +
 			                 "the preview audio file for this set: the lowest-id beatmap's audio.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/{beatmapId:numericid}/video", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/{beatmapId:numericid}/video", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapVideo")
 			.WithSummary("Download beatmap video.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/{beatmapId}/video`, " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/{beatmapId}/video`, " +
 			                 "which serves the beatmap's video file.")
 			.WithTags("Beatmaps")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/audiopreview", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/audiopreview", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("getBeatmapsetAudioPreview")
 			.WithSummary("Get beatmapset audio preview.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/audiopreview`, which " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/audiopreview`, which " +
 			                 "serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's " +
 			                 "audio file, starting at its recorded preview time.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/storyboard", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/storyboard", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapsetStoryboard")
 			.WithSummary("Download beatmapset storyboard.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/storyboard`, which " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/storyboard`, which " +
 			                 "serves the beatmapset's `.osb` storyboard file.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
 
-		group.MapGet("/beatmapsets/{mapsetId:numericid}/download", RedirectToAssets)
+		group.MapGet("/beatmapsets/{beatmapsetId:numericid}/download", RedirectToAssets)
 			.WithGroupName("basilapi")
 			.WithName("downloadBeatmapset")
 			.WithSummary("Download a beatmapset.")
-			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{mapsetId}/download`, which " +
+			.WithDescription("Redirects to `GET assets.<domain>/beatmapsets/{beatmapsetId}/download`, which " +
 			                 "serves a `.osz` archive containing every file in the beatmapset.")
 			.WithTags("Beatmapsets")
 			.Produces(StatusCodes.Status302Found);
@@ -314,11 +314,11 @@ internal static class BeatmapsetRoutes
 	private static Beatmap SampleBeatmap()
 	{
 		var created = DateTime.Parse("2026-06-01T10:00:00Z");
-		var mapset = new Beatmapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
+		var beatmapset = new Beatmapset(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created, created);
 		var difficulty = new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42);
 		var objectCounts = new OsuBeatmapObjectCounts
 			{ Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 };
-		return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, mapset, "Extreme",
+		return new Beatmap("d41d8cd98f00b204e9800998ecf8427e", 654, beatmapset, "Extreme",
 			"camellia - exit this earth's atmosphere (rlc) [extreme].osu",
 			difficulty, objectCounts);
 	}
@@ -375,9 +375,9 @@ internal static class BeatmapsetRoutes
 			return Results.BadRequest(
 				new ErrorResponse("Only .osz uploads are accepted."));
 
-		Directory.CreateDirectory(storage.Value.MapsetsPath);
+		Directory.CreateDirectory(storage.Value.BeatmapsetsPath);
 		var destinationName = $"{Guid.NewGuid():N}{extension}";
-		var destination = Path.Combine(storage.Value.MapsetsPath, Path.GetFileName(destinationName));
+		var destination = Path.Combine(storage.Value.BeatmapsetsPath, Path.GetFileName(destinationName));
 		await using (var fileStream = File.Create(destination))
 		{
 			await file.CopyToAsync(fileStream, cancellationToken);
@@ -391,27 +391,27 @@ internal static class BeatmapsetRoutes
 		return Results.Json(new IngestResult(ingested), statusCode: StatusCodes.Status201Created);
 	}
 
-	private static async Task<IResult> HandleGet(int mapsetId, HttpContext context,
+	private static async Task<IResult> HandleGet(int beatmapsetId, HttpContext context,
 		IBeatmapsetRepository beatmapsetRepository,
 		IBeatmapRepository beatmapRepository, CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		if (beatmapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		if (mapset.IsPrivate && !isAdmin) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+		if (beatmapset.IsPrivate && !isAdmin) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
-		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
-		return Results.Json(mapset.ToDetail(beatmaps));
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(beatmapsetId, isAdmin, cancellationToken);
+		return Results.Json(beatmapset.ToDetail(beatmaps));
 	}
 
-	private static async Task<IResult> HandleReplace(int mapsetId, HttpContext context,
+	private static async Task<IResult> HandleReplace(int beatmapsetId, HttpContext context,
 		IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
-		if (mapset.IsFrozen)
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		if (beatmapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+		if (beatmapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be modified."));
 
 		if (!context.Request.HasFormContentType)
@@ -422,7 +422,7 @@ internal static class BeatmapsetRoutes
 		if (!string.Equals(Path.GetExtension(file.FileName), ".osz", StringComparison.OrdinalIgnoreCase))
 			return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted."));
 
-		var targetFolder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
+		var targetFolder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
 		if (targetFolder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var tempOszPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.osz");
@@ -440,19 +440,19 @@ internal static class BeatmapsetRoutes
 			File.Delete(tempOszPath);
 		}
 
-		logger.LogInformation("Beatmapset replace accepted via admin API: MapsetId={MapsetId}", mapsetId);
-		return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "replace"));
+		logger.LogInformation("Beatmapset replace accepted via admin API: BeatmapsetId={BeatmapsetId}", beatmapsetId);
+		return Results.Accepted(value: new BeatmapsetOperationAccepted(beatmapsetId, "replace"));
 	}
 
-	private static async Task<IResult> HandleDelete(int mapsetId, IBeatmapsetRepository beatmapsetRepository,
+	private static async Task<IResult> HandleDelete(int beatmapsetId, IBeatmapsetRepository beatmapsetRepository,
 		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
-		if (mapset.IsFrozen)
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		if (beatmapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+		if (beatmapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
 
-		var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
+		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
 		if (folder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
@@ -466,53 +466,53 @@ internal static class BeatmapsetRoutes
 				new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
 		}
 
-		logger.LogInformation("Beatmapset delete accepted via admin API: MapsetId={MapsetId}", mapsetId);
-		return Results.Accepted(value: new MapsetOperationAccepted(mapsetId, "delete"));
+		logger.LogInformation("Beatmapset delete accepted via admin API: BeatmapsetId={BeatmapsetId}", beatmapsetId);
+		return Results.Accepted(value: new BeatmapsetOperationAccepted(beatmapsetId, "delete"));
 	}
 
-	private static async Task<IResult> HandlePatch(int mapsetId, BeatmapsetPatchBody body,
+	private static async Task<IResult> HandlePatch(int beatmapsetId, BeatmapsetPatchBody body,
 		IBeatmapsetRepository beatmapsetRepository, IBeatmapRepository beatmapRepository,
 		ILogger<BeatmapsetRoutesLog> logger,
 		CancellationToken cancellationToken)
 	{
-		if (await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken) is null)
+		if (await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken) is null)
 			return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
 		if (body.Frozen is not null)
-			await beatmapsetRepository.SetFrozenAsync(mapsetId, body.Frozen.Value, cancellationToken);
+			await beatmapsetRepository.SetFrozenAsync(beatmapsetId, body.Frozen.Value, cancellationToken);
 		if (body.Private is not null)
-			await beatmapsetRepository.SetPrivateAsync(mapsetId, body.Private.Value, cancellationToken);
-		logger.LogInformation("Beatmapset updated via admin API: MapsetId={MapsetId} Frozen={Frozen} Private={Private}",
-			mapsetId, body.Frozen, body.Private);
+			await beatmapsetRepository.SetPrivateAsync(beatmapsetId, body.Private.Value, cancellationToken);
+		logger.LogInformation("Beatmapset updated via admin API: BeatmapsetId={BeatmapsetId} Frozen={Frozen} Private={Private}",
+			beatmapsetId, body.Frozen, body.Private);
 
-		var updated = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(mapsetId, true,
+		var updated = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		var beatmaps = await beatmapRepository.FetchAllBySetIdAsync(beatmapsetId, true,
 			cancellationToken);
 		return Results.Json(updated!.ToDetail(beatmaps));
 	}
 
-	private static async Task<IResult> HandleBeatmapInfo(int mapsetId, int beatmapId, HttpContext context,
+	private static async Task<IResult> HandleBeatmapInfo(int beatmapsetId, int beatmapId, HttpContext context,
 		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId)
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId)
 			return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
-		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var siblings = await beatmaps.FetchAllBySetIdAsync(beatmapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Beatmapset.ToSummary(siblings.Count);
 		return Results.Json(bmap.ToDetail(beatmapset));
 	}
 
-	private static async Task<IResult> HandleBeatmapDifficulty(int mapsetId, int beatmapId,
+	private static async Task<IResult> HandleBeatmapDifficulty(int beatmapsetId, int beatmapId,
 		[FromQuery] int? mode, [FromQuery] uint? mods, HttpContext context, IBeatmapRepository beatmaps,
 		IOsuCalculator calculator, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId)
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId)
 			return Results.NotFound(new ErrorResponse("Beatmap not found."));
 
 		if (mode is < 0 or > 3)
@@ -535,7 +535,7 @@ internal static class BeatmapsetRoutes
 				$"Beatmap can't be analyzed as mode {resolvedMode}: likely an unsupported ruleset conversion."));
 		}
 
-		var siblings = await beatmaps.FetchAllBySetIdAsync(mapsetId, isAdmin, cancellationToken);
+		var siblings = await beatmaps.FetchAllBySetIdAsync(beatmapsetId, isAdmin, cancellationToken);
 		var beatmapset = bmap.Beatmapset.ToSummary(siblings.Count);
 		var detail = new BeatmapDetail(bmap.Md5, bmap.Id, bmap.Version, analysis.Difficulty,
 			analysis.ObjectCounts, bmap.IsLocallyIngested, beatmapset);
@@ -543,16 +543,16 @@ internal static class BeatmapsetRoutes
 		return Results.Json(new BeatmapDifficultyResult(resolvedMods, detail));
 	}
 
-	/// <summary>Request body for `PATCH /beatmapsets/{mapsetId}`: each field is applied only if present.</summary>
+	/// <summary>Request body for `PATCH /beatmapsets/{beatmapsetId}`: each field is applied only if present.</summary>
 	public sealed record BeatmapsetPatchBody(bool? Frozen = null, bool? Private = null);
 
 	private sealed record IngestResult(int BeatmapsProcessed);
 
-	/// <summary>Response body for the asynchronous `PUT`/`DELETE /beatmapsets/{mapsetId}` 202 responses.</summary>
-	public sealed record MapsetOperationAccepted(int MapsetId, string Operation);
+	/// <summary>Response body for the asynchronous `PUT`/`DELETE /beatmapsets/{beatmapsetId}` 202 responses.</summary>
+	public sealed record BeatmapsetOperationAccepted(int BeatmapsetId, string Operation);
 
 	/// <summary>
-	///     Response for `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty`. The `mods` field echoes the
+	///     Response for `GET /beatmapsets/{beatmapsetId}/{beatmapId}/difficulty`. The `mods` field echoes the
 	///     actually applied mod combination, which can differ from the raw `mods` query param the caller sent
 	///     because conflicting pairs like `EZ+HR` are silently resolved.
 	/// </summary>

@@ -83,7 +83,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	[Theory]
 	[InlineData(null)]
 	[InlineData("wrong-key")]
-	public async Task DeleteMapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+	public async Task DeleteBeatmapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
 	{
 		var client = _factory.CreateClient();
 

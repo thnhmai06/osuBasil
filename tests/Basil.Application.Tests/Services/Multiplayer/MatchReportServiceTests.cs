@@ -86,8 +86,8 @@ public class MatchReportServiceTests
 		live.Slots[0].PlayerId = 7;
 		_matchRegistry.GetByDbId(5).Returns(live);
 
-		var mapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
-		var beatmap = new Beatmap("md5", 42, mapset, "Normal", "diff.osu",
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmap = new Beatmap("md5", 42, beatmapset, "Normal", "diff.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(null, "md5", null, null, true, Arg.Any<CancellationToken>()).Returns(beatmap);
@@ -185,8 +185,8 @@ public class MatchReportServiceTests
 		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)[score]);
 		_scores.FetchByRoundAsync(11, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)[score]);
 
-		var mapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
-		var beatmap = new Beatmap(beatmapMd5, 100, mapset, "Normal", "diff.osu",
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmap = new Beatmap(beatmapMd5, 100, beatmapset, "Normal", "diff.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(null, beatmapMd5, null, null, true, Arg.Any<CancellationToken>()).Returns(beatmap);

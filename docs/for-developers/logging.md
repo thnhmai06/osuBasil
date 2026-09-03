@@ -68,7 +68,7 @@ The category is derived from the namespace of the class producing the log rather
 
 The currently recognized application categories include:
 
-* `Mapsets`
+* `Beatmapsets`
 * `Matches`
 * `Scores`
 * `Online`
@@ -135,7 +135,7 @@ Logs that represent a resource lifecycle transition use a prefix marker:
 Examples include:
 
 ```text
-+ Mapset ...
++ Beatmapset ...
 ~ Match ...
 - User ...
 ```

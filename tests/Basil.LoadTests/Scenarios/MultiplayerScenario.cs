@@ -267,12 +267,12 @@ public sealed class MultiplayerScenario : IBasilScenario
 		var apiClient = new BasilApiClient(context.ClientFactory);
 		await apiClient.UploadBeatmapsetAsync(zipStream.ToArray(), "vivid.osz", "");
 
-		// ponytail: the mapset list read can briefly lag the reconcile write; a few short
+		// ponytail: the beatmapset list read can briefly lag the reconcile write; a few short
 		// retries beat hard-coding a fixed pre-delay for every profile.
 		for (var attempt = 0; attempt < 5; attempt++)
 		{
-			if (await apiClient.ResolveSampleBeatmapsetIdAsync() is { } mapsetId)
-				return await apiClient.ResolveFirstBeatmapAsync(mapsetId);
+			if (await apiClient.ResolveSampleBeatmapsetIdAsync() is { } beatmapsetId)
+				return await apiClient.ResolveFirstBeatmapAsync(beatmapsetId);
 			await Task.Delay(TimeSpan.FromMilliseconds(300));
 		}
 

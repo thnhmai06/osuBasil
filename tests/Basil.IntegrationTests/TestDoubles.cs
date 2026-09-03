@@ -59,7 +59,7 @@ internal static class TestDoubles
 	}
 
 	/// <summary>Every beatmapset unknown — used where routing doesn't care about beatmapsets.</summary>
-	public static IBeatmapsetRepository NullMapsetRepository()
+	public static IBeatmapsetRepository NullBeatmapsetRepository()
 	{
 		var repo = Substitute.For<IBeatmapsetRepository>();
 		repo.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(null));

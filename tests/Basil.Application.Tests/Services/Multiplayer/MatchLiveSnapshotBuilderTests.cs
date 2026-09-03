@@ -91,8 +91,8 @@ public class MatchLiveSnapshotBuilderTests
 	public async Task BuildRoomLive_ResolvableMapMd5_MapIdPresent()
 	{
 		var match = MakeMatch("d41d8cd98f00b204e9800998ecf8427e");
-		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-		var beatmap = new Beatmap(match.MapMd5, 42, mapset, "Normal", "map.osu",
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmap = new Beatmap(match.MapMd5, 42, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(md5: match.MapMd5, includePrivate: true,

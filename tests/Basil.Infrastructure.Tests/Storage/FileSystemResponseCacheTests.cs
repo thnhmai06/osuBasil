@@ -13,7 +13,7 @@ public class FileSystemResponseCacheTests : IDisposable
 	{
 		_cache = new FileSystemResponseCache(Options.Create(new StorageOptions
 		{
-			ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
+			ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
 			FaqsPath = "", CachePath = _cachePath
 		}));
 	}

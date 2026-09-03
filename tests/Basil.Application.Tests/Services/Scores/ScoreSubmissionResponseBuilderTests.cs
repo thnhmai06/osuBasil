@@ -39,9 +39,9 @@ public class ScoreSubmissionResponseBuilderTests
 
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Beatmapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapset = new Beatmapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
-			"md5", 1, mapset, "c", "f.osu",
+			"md5", 1, beatmapset, "c", "f.osu",
 			new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

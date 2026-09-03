@@ -83,10 +83,10 @@ internal static class BeatmapAssetRoutes
 		IBeatmapsetRepository beatmapsetRepository, IOptions<MirrorOptions> mirror, HttpRequest request,
 		CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
-		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
+		if (beatmapset is null || beatmapset.IsPrivate) return Results.NotFound();
 
-		return MirrorFallback(mirror.Value, mapset, request);
+		return MirrorFallback(mirror.Value, beatmapset, request);
 	}
 
 	/// <summary>
@@ -98,15 +98,15 @@ internal static class BeatmapAssetRoutes
 		IResponseCache cache, IAudioExtractor extractor, HttpRequest request,
 		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
-		var mapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
-		if (mapset is null || mapset.IsPrivate) return Results.NotFound();
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
+		if (beatmapset is null || beatmapset.IsPrivate) return Results.NotFound();
 
 		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(setId, beatmaps, beatmapsetRepository,
 			storage, cache, extractor, logger, cancellationToken);
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, ContentTypes.Resolve(ResponseCacheKeys.Preview(setId)));
 
-		return MirrorFallback(mirror.Value, mapset, request);
+		return MirrorFallback(mirror.Value, beatmapset, request);
 	}
 
 	/// <summary>
@@ -114,11 +114,11 @@ internal static class BeatmapAssetRoutes
 	///     404 when offline (unchanged behavior); 503 when online but the set has no ppy id to
 	///     redirect with (a locally authored set has no mirror counterpart).
 	/// </summary>
-	private static IResult MirrorFallback(MirrorOptions mirror, Beatmapset mapset, HttpRequest request)
+	private static IResult MirrorFallback(MirrorOptions mirror, Beatmapset beatmapset, HttpRequest request)
 	{
 		if (!mirror.IsOnlineMode) return Results.NotFound();
 
-		if (!mapset.IsLocallyIngested)
+		if (!beatmapset.IsLocallyIngested)
 			return Results.Redirect($"https://b.ppy.sh{request.Path}{request.QueryString}", true);
 
 		return Results.Problem("This endpoint is not available while the server runs in online mirror mode.",

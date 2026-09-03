@@ -60,10 +60,10 @@ public sealed partial class BeatmapThumbnailProvider : IImageProvider
 		if (!match.Success) return null;
 
 		var setId = int.Parse(match.Groups["id"].Value);
-		var mapset = await _beatmapsets.FetchByIdAsync(setId, context.RequestAborted);
-		if (mapset is null || mapset.IsPrivate) return null;
+		var beatmapset = await _beatmapsets.FetchByIdAsync(setId, context.RequestAborted);
+		if (beatmapset is null || beatmapset.IsPrivate) return null;
 
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(_storage.Value, mapset);
+		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmapset);
 		if (backgroundPath is null || !File.Exists(backgroundPath)) return null;
 
 		return new PhysicalImageResolver(new FileInfo(backgroundPath));

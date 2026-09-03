@@ -125,7 +125,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	}
 
 	[Fact]
-	public async Task Authenticated_KnownMap_ReturnsMapsetRankedStatus()
+	public async Task Authenticated_KnownMap_ReturnsBeatmapsetRankedStatus()
 	{
 		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		sessionRegistry.TryAdd(new GameSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted,

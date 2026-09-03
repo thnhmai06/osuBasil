@@ -87,7 +87,7 @@ docker compose logs -f
 First check whether the beatmapset exists in:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 Basil supports both local storage and optional external mirrors.
@@ -104,11 +104,11 @@ is not configured, Basil uses local storage.
 
 Check that:
 
-* the `.osz` was added to `Data/Mapsets/`;
+* the `.osz` was added to `Data/Beatmapsets/`;
 * Basil had time to ingest it;
 * the beatmapset appears after restarting Basil if it was added while the server was offline.
 
-Basil watches the mapset directory while running and also performs a full reconciliation during startup.
+Basil watches the beatmapset directory while running and also performs a full reconciliation during startup.
 
 ### Mirror mode
 
@@ -362,7 +362,7 @@ Do not replace or delete this file unless you intentionally want to create a new
 For beatmaps, check:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 For other data locations, see [`configuration.md`](configuration.md).

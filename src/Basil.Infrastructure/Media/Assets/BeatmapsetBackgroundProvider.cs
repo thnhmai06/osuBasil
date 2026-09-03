@@ -64,23 +64,23 @@ public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 		var beatmapMatch = BeatmapBackgroundRegex().Match(path);
 		if (beatmapMatch.Success)
 		{
-			var mapsetId = int.Parse(beatmapMatch.Groups["mapsetId"].Value);
+			var beatmapsetId = int.Parse(beatmapMatch.Groups["beatmapsetId"].Value);
 			var beatmapId = int.Parse(beatmapMatch.Groups["beatmapId"].Value);
-			var beatmap = await _beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, cancellationToken: cancellationToken);
-			if (beatmap is null || beatmap.Beatmapset.Id != mapsetId) return null;
+			var beatmap = await _beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, cancellationToken: cancellationToken);
+			if (beatmap is null || beatmap.Beatmapset.Id != beatmapsetId) return null;
 
 			return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmap));
 		}
 
-		var mapsetMatch = MapsetBackgroundRegex().Match(path);
+		var beatmapsetMatch = BeatmapsetBackgroundRegex().Match(path);
 		var coverMatch = CoverRegex().Match(path);
-		var id = mapsetMatch.Success ? mapsetMatch.Groups["mapsetId"].Value : coverMatch.Groups["mapsetId"].Value;
-		if (!mapsetMatch.Success && !coverMatch.Success) return null;
+		var id = beatmapsetMatch.Success ? beatmapsetMatch.Groups["beatmapsetId"].Value : coverMatch.Groups["beatmapsetId"].Value;
+		if (!beatmapsetMatch.Success && !coverMatch.Success) return null;
 
-		var mapset = await _beatmapsets.FetchByIdAsync(int.Parse(id), cancellationToken);
-		if (mapset is null || mapset.IsPrivate) return null;
+		var beatmapset = await _beatmapsets.FetchByIdAsync(int.Parse(id), cancellationToken);
+		if (beatmapset is null || beatmapset.IsPrivate) return null;
 
-		return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, mapset));
+		return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmapset));
 	}
 
 	private static Task<IImageResolver?> ResolveAsync(string? backgroundPath)
@@ -94,7 +94,7 @@ public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 	private static bool IsBackgroundPath(PathString path)
 	{
 		var value = path.Value ?? "";
-		return BeatmapBackgroundRegex().IsMatch(value) || MapsetBackgroundRegex().IsMatch(value) ||
+		return BeatmapBackgroundRegex().IsMatch(value) || BeatmapsetBackgroundRegex().IsMatch(value) ||
 		       CoverRegex().IsMatch(value);
 	}
 
@@ -130,12 +130,12 @@ public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 		return false;
 	}
 
-	[GeneratedRegex(@"^/beatmapsets/(?<mapsetId>\d+)/(?<beatmapId>\d+)/background$")]
+	[GeneratedRegex(@"^/beatmapsets/(?<beatmapsetId>\d+)/(?<beatmapId>\d+)/background$")]
 	private static partial Regex BeatmapBackgroundRegex();
 
-	[GeneratedRegex(@"^/beatmapsets/(?<mapsetId>\d+)/background$")]
-	private static partial Regex MapsetBackgroundRegex();
+	[GeneratedRegex(@"^/beatmapsets/(?<beatmapsetId>\d+)/background$")]
+	private static partial Regex BeatmapsetBackgroundRegex();
 
-	[GeneratedRegex(@"^/beatmapsets/(?<mapsetId>\d+)/covers/(?<variant>cover|card|list|slimcover)\.jpg$")]
+	[GeneratedRegex(@"^/beatmapsets/(?<beatmapsetId>\d+)/covers/(?<variant>cover|card|list|slimcover)\.jpg$")]
 	private static partial Regex CoverRegex();
 }

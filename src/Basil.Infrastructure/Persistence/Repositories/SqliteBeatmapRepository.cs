@@ -57,19 +57,19 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		if (setId is not null)
 		{
-			conditions.Add("b.MapsetId = @MapsetId");
-			parameters.Add("MapsetId", setId);
+			conditions.Add("b.BeatmapsetId = @BeatmapsetId");
+			parameters.Add("BeatmapsetId", setId);
 		}
 
 		if (!includePrivate) conditions.Add("m.IsPrivate = 0");
 
 		await using var connection = Connect();
-		var beatmaps = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+		var beatmaps = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 WHERE {string.Join(" AND ", conditions)}
 			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
 			parameters,
 			splitOn: "Id");
 		return beatmaps.FirstOrDefault();
@@ -99,10 +99,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await connection.ExecuteAsync(
 			"""
 			REPLACE INTO Beatmaps (
-			    Md5, Id, MapsetId, Version, Filename, TotalLength,
+			    Md5, Id, BeatmapsetId, Version, Filename, TotalLength,
 			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
 			) VALUES (
-			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength,
+			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @TotalLength,
 			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
 			)
 			""",
@@ -110,7 +110,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			{
 				resolved.Md5,
 				resolved.Id,
-				MapsetId = resolved.Beatmapset.Id,
+				BeatmapsetId = resolved.Beatmapset.Id,
 				resolved.Version,
 				resolved.Filename,
 				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
@@ -157,21 +157,21 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		var setIds = (await connection.QueryAsync<int>(
 			$"""
-			 SELECT DISTINCT b.MapsetId FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT DISTINCT b.BeatmapsetId FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 {whereClause}
-			 ORDER BY b.MapsetId DESC LIMIT @Amount OFFSET @Offset
+			 ORDER BY b.BeatmapsetId DESC LIMIT @Amount OFFSET @Offset
 			 """,
 			parameters)).ToList();
 
 		if (setIds.Count == 0) return [];
 
-		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
-			 WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0
 			 ORDER BY b.Sr ASC
 			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
 			new { SetIds = setIds },
 			splitOn: "Id");
 
@@ -190,7 +190,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<int>(
 			$"""
-			 SELECT COUNT(DISTINCT b.MapsetId) FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT COUNT(DISTINCT b.BeatmapsetId) FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 {whereClause}
 			 """,
 			parameters);
@@ -358,15 +358,15 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	{
 		await using var connection = Connect();
 		var whereClause = includePrivate
-			? "WHERE b.MapsetId = @MapsetId"
-			: "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
-		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+			? "WHERE b.BeatmapsetId = @BeatmapsetId"
+			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 {whereClause}
 			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
-			new { MapsetId = setId },
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
+			new { BeatmapsetId = setId },
 			splitOn: "Id");
 		return [.. rows];
 	}
@@ -380,13 +380,13 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		await using var connection = Connect();
 		var whereClause = includePrivate
-			? "WHERE b.MapsetId IN @SetIds"
-			: "WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0";
+			? "WHERE b.BeatmapsetId IN @SetIds"
+			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0";
 		var rows = await connection.QueryAsync<SetBeatmapCount>(
 			$"""
-			 SELECT b.MapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT b.BeatmapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 {whereClause}
-			 GROUP BY b.MapsetId
+			 GROUP BY b.BeatmapsetId
 			 """,
 			new { SetIds = setIds });
 		return rows.ToDictionary(r => r.SetId, r => r.Count);
@@ -451,7 +451,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     A mutable row DTO matching the Beatmapsets columns of the shared SELECT, the other half
 	///     of the JOIN.
 	/// </summary>
-	private sealed class MapsetRow
+	private sealed class BeatmapsetRow
 	{
 		public int Id { get; set; }
 		public string Artist { get; set; } = "";
@@ -464,7 +464,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		/// <summary>Builds a <see cref="Beatmapset" /> from this row.</summary>
 		/// <returns>The domain beatmapset.</returns>
-		public Beatmapset ToMapset()
+		public Beatmapset ToBeatmapset()
 		{
 			return new Beatmapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
 		}

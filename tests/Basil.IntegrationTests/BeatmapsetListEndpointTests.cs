@@ -28,9 +28,9 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<P
 
 	public BeatmapsetListEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		var mapsets = Substitute.For<IBeatmapsetRepository>();
-		mapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _sets.Count);
-		mapsets.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		beatmapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _sets.Count);
+		beatmapsets.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => (IReadOnlyList<Beatmapset>)
 				[.. _sets.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
 
@@ -53,7 +53,7 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<P
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
-				services.AddSingleton(mapsets);
+				services.AddSingleton(beatmapsets);
 				services.AddSingleton(_maps);
 			});
 		});
@@ -64,7 +64,7 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<P
 		return new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
 	}
 
-	private static Beatmapset MakeMapset(int id)
+	private static Beatmapset MakeBeatmapset(int id)
 	{
 		return new Beatmapset(id, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 	}
@@ -72,7 +72,7 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<P
 	[Fact]
 	public async Task GetBeatmapsets_BatchesCountsInsteadOfOnePerItem()
 	{
-		_sets = [MakeMapset(1), MakeMapset(2), MakeMapset(3)];
+		_sets = [MakeBeatmapset(1), MakeBeatmapset(2), MakeBeatmapset(3)];
 
 		var response = await _factory.CreateClient().SendAsync(MakeRequest("/beatmapsets"));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<List<BeatmapsetSummary>>>();

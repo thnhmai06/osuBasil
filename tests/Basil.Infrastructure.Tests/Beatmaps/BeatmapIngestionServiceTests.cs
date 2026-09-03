@@ -21,7 +21,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	private readonly SqliteBeatmapRepository _beatmaps;
 	private readonly SqliteBeatmapsetRepository _beatmapsetRepository;
 	private readonly IResponseCache _cache;
-	private readonly string _mapsetsPath;
+	private readonly string _beatmapsetsPath;
 	private readonly BeatmapIngestionService _service;
 
 	public BeatmapIngestionServiceTests(SqliteFixture fixture)
@@ -29,16 +29,16 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		_beatmaps = new SqliteBeatmapRepository(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 		_beatmapsetRepository =
 			new SqliteBeatmapsetRepository(fixture.ConnectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
-		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
-		Directory.CreateDirectory(_mapsetsPath);
+		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-ingest-tests-" + Guid.NewGuid());
+		Directory.CreateDirectory(_beatmapsetsPath);
 		var options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "",
 			AvatarsPath = "",
-			MapsetsPath = _mapsetsPath,
+			BeatmapsetsPath = _beatmapsetsPath,
 			MenuSeasonalsPath = "",
 			MenuBannersPath = "",
-			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
+			FaqsPath = "", CachePath = Path.Combine(_beatmapsetsPath, "Cache")
 		});
 		_cache = new FileSystemResponseCache(options);
 		_service = new BeatmapIngestionService(_beatmaps, _beatmapsetRepository, new FakeOsuCalculator(), options,
@@ -51,13 +51,13 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 
 	public void Dispose()
 	{
-		Directory.Delete(_mapsetsPath, true);
+		Directory.Delete(_beatmapsetsPath, true);
 	}
 
 	[Fact]
 	public async Task ReconcileAllAsync_LooseOsuFileAtRoot_IsIgnored()
 	{
-		File.Copy(FixtureSourcePath, Path.Combine(_mapsetsPath, "dropped-in-by-admin.osu"));
+		File.Copy(FixtureSourcePath, Path.Combine(_beatmapsetsPath, "dropped-in-by-admin.osu"));
 
 		var ingested = await _service.ReconcileAllAsync();
 
@@ -65,9 +65,9 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	}
 
 	[Fact]
-	public async Task ReconcileAllAsync_MapsetFolder_IngestsBeatmapAndMapset()
+	public async Task ReconcileAllAsync_BeatmapsetFolder_IngestsBeatmapAndBeatmapset()
 	{
-		var folder = Path.Combine(_mapsetsPath, "900000000 FAIRY FORE - Vivid");
+		var folder = Path.Combine(_beatmapsetsPath, "900000000 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 
@@ -89,7 +89,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileFolderAsync_UnchangedFolder_ReingestsSameRowWithSameId()
 	{
-		var folder = Path.Combine(_mapsetsPath, "900000001 FAIRY FORE - Vivid");
+		var folder = Path.Combine(_beatmapsetsPath, "900000001 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 
@@ -107,7 +107,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileAllAsync_LooseOsz_ExtractsFullContentsAndDeletesArchive()
 	{
-		var oszPath = Path.Combine(_mapsetsPath, "dropped.osz");
+		var oszPath = Path.Combine(_beatmapsetsPath, "dropped.osz");
 		await using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
 		{
 			await archive.CreateEntryFromFileAsync(FixtureSourcePath, "vivid_osu_file.osu");
@@ -121,34 +121,34 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.Equal(1, ingested);
 		Assert.False(File.Exists(oszPath));
 
-		var createdFolder = Directory.EnumerateDirectories(_mapsetsPath).FirstOrDefault();
+		var createdFolder = Directory.EnumerateDirectories(_beatmapsetsPath).FirstOrDefault();
 		Assert.NotNull(createdFolder);
 		Assert.True(File.Exists(Path.Combine(createdFolder, "vivid_osu_file.osu")));
 		Assert.True(File.Exists(Path.Combine(createdFolder, "bg.jpg")));
 	}
 
 	[Fact]
-	public async Task ReconcileDeletedFolderAsync_RemovesMapsetAndBeatmap()
+	public async Task ReconcileDeletedFolderAsync_RemovesBeatmapsetAndBeatmap()
 	{
 		// ReconcileDeletedFolderAsync parses the Beatmapset id from the folder's own leading digits, so
 		// the folder must be renamed to its actually-resolved id first (a fresh ingestion doesn't
 		// reuse whatever number a human happened to type in the folder name).
-		var tempFolder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
+		var tempFolder = Path.Combine(_beatmapsetsPath, "unresolved FAIRY FORE - Vivid");
 		Directory.CreateDirectory(tempFolder);
 		File.Copy(FixtureSourcePath, Path.Combine(tempFolder, "vivid_osu_file.osu"));
 		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
 		Assert.NotNull(setId);
 
-		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
-		Assert.NotNull(mapset);
-		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
+		var beatmapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
+		Assert.NotNull(beatmapset);
+		var resolvedFolder = BeatmapIngestionService.BeatmapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = _beatmapsetsPath, MenuSeasonalsPath = "",
 				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
-			mapset);
+			beatmapset);
 		Directory.Move(tempFolder, resolvedFolder);
 		Directory.Delete(resolvedFolder, true);
 
@@ -161,7 +161,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileDeletedFolderAsync_InvalidatesThumbAndPreviewCache()
 	{
-		var tempFolder = Path.Combine(_mapsetsPath, "unresolved2 FAIRY FORE - Vivid");
+		var tempFolder = Path.Combine(_beatmapsetsPath, "unresolved2 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(tempFolder);
 		File.Copy(FixtureSourcePath, Path.Combine(tempFolder, "vivid_osu_file.osu"));
 		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
@@ -171,15 +171,15 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		await _cache.PutAsync("thumb", ResponseCacheKeys.Thumb(setId.Value, true), [1]);
 		await _cache.PutAsync("preview", ResponseCacheKeys.Preview(setId.Value), [1]);
 
-		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
-		var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
+		var beatmapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
+		var resolvedFolder = BeatmapIngestionService.BeatmapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = _beatmapsetsPath, MenuSeasonalsPath = "",
 				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
-			mapset!);
+			beatmapset!);
 		Directory.Move(tempFolder, resolvedFolder);
 		Directory.Delete(resolvedFolder, true);
 
@@ -193,7 +193,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	[Fact]
 	public async Task ReconcileFolderAsync_DifficultyRemoved_DeletesItButKeepsOthers()
 	{
-		var folder = Path.Combine(_mapsetsPath, "900000003 FAIRY FORE - Vivid");
+		var folder = Path.Combine(_beatmapsetsPath, "900000003 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 		var removedPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
@@ -220,23 +220,23 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	{
 		// Every file's content is about to change (there's only one), so the beatmapset resolver can't
 		// match by content-hash on the second pass and falls back to the folder's own leading-id
-		// name — so, like ReconcileDeletedFolderAsync_RemovesMapsetAndBeatmap above, the folder must
+		// name — so, like ReconcileDeletedFolderAsync_RemovesBeatmapsetAndBeatmap above, the folder must
 		// be renamed to its actually-resolved id first rather than an arbitrary placeholder number.
-		var tempFolder = Path.Combine(_mapsetsPath, "unresolved4 FAIRY FORE - Vivid");
+		var tempFolder = Path.Combine(_beatmapsetsPath, "unresolved4 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(tempFolder);
 		File.Copy(FixtureSourcePath, Path.Combine(tempFolder, "vivid_osu_file.osu"));
 		var (_, setId) = await _service.ReconcileFolderAsync(tempFolder);
 		Assert.NotNull(setId);
 
-		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
-		var folder = BeatmapIngestionService.MapsetFolderPath(
+		var beatmapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
+		var folder = BeatmapIngestionService.BeatmapsetFolderPath(
 			new StorageOptions
 			{
-				ReplaysPath = "", AvatarsPath = "", MapsetsPath = _mapsetsPath, MenuSeasonalsPath = "",
+				ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = _beatmapsetsPath, MenuSeasonalsPath = "",
 				MenuBannersPath = "", FaqsPath = "",
 				CachePath = ""
 			},
-			mapset!);
+			beatmapset!);
 		Directory.Move(tempFolder, folder);
 		var osuPath = Path.Combine(folder, "vivid_osu_file.osu");
 
@@ -258,9 +258,9 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	}
 
 	[Fact]
-	public async Task ReconcileFolderAsync_MultipleDifficulties_SetsMapsetPreviewToLowestIdBeatmapsBackground()
+	public async Task ReconcileFolderAsync_MultipleDifficulties_SetsBeatmapsetPreviewToLowestIdBeatmapsBackground()
 	{
-		var folder = Path.Combine(_mapsetsPath, "900000005 FAIRY FORE - Vivid");
+		var folder = Path.Combine(_beatmapsetsPath, "900000005 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 		var secondPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
@@ -277,14 +277,14 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		var beatmaps = await _beatmaps.FetchAllBySetIdAsync(setId.Value, true);
 		var lowest = beatmaps.MinBy(b => b.Id)!;
 
-		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
-		Assert.Equal(lowest.BackgroundFile, mapset!.BackgroundFile);
+		var beatmapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
+		Assert.Equal(lowest.BackgroundFile, beatmapset!.BackgroundFile);
 	}
 
 	[Fact]
 	public async Task ReconcileFolderAsync_LowestIdDifficultyRemoved_PreviewFallsBackToNextLowest()
 	{
-		var folder = Path.Combine(_mapsetsPath, "900000006 FAIRY FORE - Vivid");
+		var folder = Path.Combine(_beatmapsetsPath, "900000006 FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.Copy(FixtureSourcePath, Path.Combine(folder, "vivid_osu_file.osu"));
 		var secondPath = Path.Combine(folder, "vivid_osu_file_hard.osu");
@@ -302,8 +302,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		File.Delete(Path.Combine(folder, lowest.Filename));
 		await _service.ReconcileFolderAsync(folder);
 
-		var mapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
-		Assert.Equal(remaining.BackgroundFile, mapset!.BackgroundFile);
+		var beatmapset = await _beatmapsetRepository.FetchByIdAsync(setId.Value);
+		Assert.Equal(remaining.BackgroundFile, beatmapset!.BackgroundFile);
 	}
 
 	/// <summary>Writes a copy of the fixture .osu with AudioLeadIn tweaked so its content (and md5) differs.</summary>

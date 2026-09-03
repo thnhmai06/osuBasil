@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Tests.Caching;
 
 public class CachingBeatmapsetRepositoryTests
 {
-	private static Beatmapset MakeMapset(int id)
+	private static Beatmapset MakeBeatmapset(int id)
 	{
 		return new Beatmapset(id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 	}
@@ -20,7 +20,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -39,7 +39,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -59,7 +59,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -79,7 +79,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -96,7 +96,7 @@ public class CachingBeatmapsetRepositoryTests
 	public async Task UpsertAsync_InvalidatesCachedEntry()
 	{
 		var inner = new CountingBeatmapsetRepository();
-		var original = MakeMapset(1);
+		var original = MakeBeatmapset(1);
 		inner.ById[1] = original;
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapsetRepository>.Instance);
@@ -118,13 +118,13 @@ public class CachingBeatmapsetRepositoryTests
 	[Fact]
 	public async Task FetchByIdAsync_AgainstSizeLimitedCache_DoesNotThrow()
 	{
-		var inner = new CountingBeatmapsetRepository { ById = { [1] = MakeMapset(1) } };
+		var inner = new CountingBeatmapsetRepository { ById = { [1] = MakeBeatmapset(1) } };
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
 			NullLogger<CachingBeatmapsetRepository>.Instance);
 
-		var mapset = await repo.FetchByIdAsync(1);
+		var beatmapset = await repo.FetchByIdAsync(1);
 
-		Assert.NotNull(mapset);
+		Assert.NotNull(beatmapset);
 	}
 
 	private sealed class CountingBeatmapsetRepository : IBeatmapsetRepository

@@ -291,7 +291,7 @@ public sealed class Program
 			.Enrich.With<CategoryEnricher>()
 			.MinimumLevel.Is(minimumLevel)
 			.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-			// Anything the CategoryEnricher couldn't place in a curated scope (Mapsets/Matches/Scores/
+			// Anything the CategoryEnricher couldn't place in a curated scope (Beatmapsets/Matches/Scores/
 			// Online/IRC/Host/Database/Cache) is generic framework/library chatter, not a domain event
 			// worth Information-level noise; only Warning+ from it shows by default. Curated categories,
 			// and anything at Warning+ regardless of category, are never touched here.
@@ -675,7 +675,7 @@ public sealed class Program
 		var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
 		foreach (var path in new[]
 		         {
-			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
+			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.BeatmapsetsPath,
 			         storageOptions.MenuSeasonalsPath, storageOptions.FaqsPath
 		         })
 			Directory.CreateDirectory(path);
