@@ -319,7 +319,7 @@ If the problem affects only IRC clients, troubleshoot the IRC TCP connection sep
 
 Basil reads configuration when the process starts.
 
-After changing [`appsettings.json`](../../src/Basil.Web/appsettings.json):
+After changing [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json):
 
 1. Save the file.
 2. Stop Basil.

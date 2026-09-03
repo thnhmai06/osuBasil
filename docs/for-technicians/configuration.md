@@ -9,7 +9,7 @@ If this document conflicts with another document, **this document takes preceden
 
 ### Configuration file
 
-Basil's configuration is stored in [`appsettings.json`](../../src/Basil.Web/appsettings.json), under the `Basil` section.
+Basil's configuration is stored in [`Data/appsettings.json`](../../src/Basil.Web/Data/appsettings.json), under the `Basil` section. It lives under `Data/` (not next to the executable) so it moves along with the rest of the server's persistent state when relocating a deployment.
 
 The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core framework setting.
 
@@ -17,10 +17,10 @@ The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core fra
 
 Basil loads configuration from multiple sources. Later sources override earlier ones:
 
-1. `appsettings.json`
-2. `appsettings.{Environment}.json`, if present
+1. `Data/appsettings.json`
+2. `Data/appsettings.{Environment}.json`, if present
 
-This is commonly used in container deployments to override values from a mounted `appsettings.json`.
+This is commonly used in container deployments to override values from a mounted `Data/appsettings.json`.
 
 ### Available settings
 
@@ -43,10 +43,10 @@ All settings below are under the `Basil` section.
 
 ### Applying configuration changes
 
-For changes made to `appsettings.json`:
+For changes made to `Data/appsettings.json`:
 
 1. Stop Basil.
-2. Edit `appsettings.json`.
+2. Edit `Data/appsettings.json`.
 3. Start Basil again.
 4. Check the startup log for configuration or certificate errors.
 
@@ -111,6 +111,7 @@ installation.
 
 | Path                      | Contents                                                                                                                          | Safe to delete?                                            |
 |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `Data/appsettings.json`   | Server configuration; see [Configuration file](#configuration-file) above.                                                       | **No**                                                       |
 | `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
 | `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
@@ -213,7 +214,7 @@ To move Basil to another server:
 
 1. Stop Basil on the source server.
 2. Copy the entire Basil executable directory to the target.
-3. Make sure `appsettings.json` and the complete `Data/` directory are included.
+3. Make sure the complete `Data/` directory is included — it carries both server state and `appsettings.json`.
 4. Do **not** copy `Logs/` unless you specifically need the old log history.
 5. Verify the target's configuration, especially domain, HTTPS certificate, and ports.
 6. Start Basil on the target.
@@ -225,16 +226,15 @@ If the target already contains the correct Basil executable:
 
 1. Stop Basil.
 2. Replace the executable files with the new version.
-3. Preserve the existing `Data/` directory.
-4. Preserve or update `appsettings.json` as required.
-5. Start Basil.
-6. Check the startup log and verify the server is responding.
+3. Preserve the existing `Data/` directory (this carries `appsettings.json` too).
+4. Start Basil.
+5. Check the startup log and verify the server is responding.
 
-**Never replace `Data/` with an empty directory during an upgrade.** It contains the database, beatmaps, avatars,
-replays, and other persistent state.
+**Never replace `Data/` with an empty directory during an upgrade.** It contains the configuration, database,
+beatmaps, avatars, replays, and other persistent state.
 
 If you intentionally want to preserve the target's existing configuration and data, copy only the new application files
-and leave `appsettings.json` and `Data/` untouched.
+and leave `Data/` untouched.
 
 ---
 

@@ -18,7 +18,7 @@ Use Docker Compose when the Basil repository is available on the deployment mach
 Before the first run, edit:
 
 ```text
-appsettings.json
+src/Basil.Web/Data/appsettings.json
 ```
 
 Configure the settings required by the deployment, especially:
@@ -33,9 +33,9 @@ requirements.
 The Compose setup bind-mounts this file into the container as read-only:
 
 ```text
-appsettings.json
+src/Basil.Web/Data/appsettings.json
         │
-        └──► /app/appsettings.json
+        └──► /app/Data/appsettings.json
 ```
 
 ### 2. Start Basil
@@ -119,7 +119,7 @@ Run the container:
 
 ```bash
 docker run -d --name basil -p 443:443 \
-  -v "$PWD/appsettings.json:/app/appsettings.json:ro" \
+  -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<version>
@@ -132,12 +132,12 @@ deployment:
 
 ```text
 /app/
-├── appsettings.json
 ├── Data/
+│   └── appsettings.json
 └── Logs/
 ```
 
-Mount [`appsettings.json`](../../src/Basil.Web/appsettings.json) and `Data/` from the host so configuration and server state survive container replacement.
+Mount `appsettings.json` (into `/app/Data/appsettings.json`) and `Data/` from the host so configuration and server state survive container replacement.
 
 ---
 
@@ -174,7 +174,7 @@ docker rm basil
 docker pull thanhmai06/osubasil:<new-version>
 
 docker run -d --name basil -p 443:443 \
-  -v "$PWD/appsettings.json:/app/appsettings.json:ro" \
+  -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<new-version>

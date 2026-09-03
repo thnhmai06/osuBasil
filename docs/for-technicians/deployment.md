@@ -77,8 +77,8 @@ For example:
 ```text
 /opt/basil/
 ├── Basil.Web
-├── appsettings.json
 ├── Data/
+│   └── appsettings.json
 └── Logs/
 ```
 
@@ -90,7 +90,7 @@ If you are building Basil yourself instead of using a release, see [`development
 
 ### 2. Configure Basil
 
-Edit [`appsettings.json`](../../src/Basil.Web/appsettings.json) next to the Basil executable.
+Edit [`Data/appsettings.json`](../../src/Basil.Web/Data/appsettings.json) under the Basil executable's `Data/` directory.
 
 See [`configuration.md`](configuration.md) for the complete configuration reference.
 
@@ -296,12 +296,11 @@ PATCH /users/{userId}
 
 Basil's deployment consists of three important categories:
 
-| Item               | Purpose                 | Copy during migration?                          |
-|--------------------|-------------------------|-------------------------------------------------|
-| Executable files   | Basil application       | If the target machine doesn't have              |
-| `appsettings.json` | Server configuration    | If the source configuration should be preserved |
-| `Data/`            | Persistent server state | If the source state should be migrated          |
-| `Logs/`            | Operational history     | Normally no                                     |
+| Item             | Purpose                                     | Copy during migration?                          |
+|------------------|----------------------------------------------|--------------------------------------------------|
+| Executable files | Basil application                           | If the target machine doesn't have               |
+| `Data/`          | Persistent server state, including `appsettings.json` | If the source state should be migrated |
+| `Logs/`          | Operational history                         | Normally no                                       |
 
 ### Full migration
 
@@ -309,7 +308,7 @@ To move an existing Basil server to another machine:
 
 1. Stop Basil on the source machine.
 2. Copy the complete executable directory to the target.
-3. Make sure `appsettings.json` and `Data/` are included. `Logs/` does not need to be copied.
+3. Make sure `Data/` is included. `Logs/` does not need to be copied.
 4. Verify the configuration on the target, especially:
 	* `Basil:Server:Domain`
 	* HTTPS certificate settings
@@ -317,8 +316,8 @@ To move an existing Basil server to another machine:
 5. Start Basil on the target.
 6. Verify the server using the connectivity check above.
 
-The `Data/` directory contains the database and other persistent state. **Do not omit it if the intention is to preserve
-the existing server.**
+The `Data/` directory contains the configuration, database, and other persistent state. **Do not omit it if the
+intention is to preserve the existing server.**
 
 ### Upgrade an existing installation
 
@@ -326,10 +325,9 @@ If the target already contains a Basil installation:
 
 1. Stop Basil.
 2. Replace the application files with the new release.
-3. Keep the existing `Data/` directory.
-4. Keep the existing `appsettings.json`, unless configuration changes are required.
-5. Start Basil.
-6. Check the startup log for errors.
+3. Keep the existing `Data/` directory (this carries `appsettings.json` too, unless configuration changes are required).
+4. Start Basil.
+5. Check the startup log for errors.
 
 Do **not** replace `Data/` with the empty `Data/` directory from a release archive.
 
