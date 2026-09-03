@@ -76,10 +76,13 @@ public static class MatchLiveSnapshotBuilder
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
+		// mapId mirrors beatmap's presence rather than match.MapId directly (Issue #4): "beatmap"
+		// already represents the assigned map, so a mapId alongside a null beatmap would be a
+		// redundant, inconsistent id nobody can resolve to anything.
 		return new MatchRoomLive(
 			!string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
-			match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
-			match.InProgress, beatmap);
+			beatmap is not null ? match.MapId : null, match.Mods, match.Freemods, match.TeamType,
+			match.WinCondition, match.Mode, match.InProgress, beatmap);
 	}
 
 	/// <summary>Builds the per-userSession live score payload for the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
@@ -356,7 +359,11 @@ public abstract record MatchRoomCore(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
+/// <param name="MapId">
+///     The assigned beatmap id, or <see langword="null" /> when none is chosen or <see cref="Beatmap" />
+///     doesn't resolve -- mirrors <see cref="Beatmap" />'s presence rather than the room's raw selection,
+///     since a mapId nothing can resolve to is not useful on its own.
+/// </param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>

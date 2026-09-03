@@ -86,6 +86,12 @@ public class MatchReportServiceTests
 		live.Slots[0].PlayerId = 7;
 		_matchRegistry.GetByDbId(5).Returns(live);
 
+		var mapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmap = new Beatmap("md5", 42, mapset, "Normal", "diff.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+		_beatmaps.FetchOneAsync(null, "md5", null, null, true, Arg.Any<CancellationToken>()).Returns(beatmap);
+
 		var report = await MakeService().BuildAsync(5);
 
 		Assert.NotNull(report);
