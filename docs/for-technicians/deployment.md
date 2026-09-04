@@ -78,7 +78,9 @@ For example:
 /opt/basil/
 ├── Basil.Web
 ├── Data/
-│   └── appsettings.json
+│   ├── appsettings.json
+│   └── Locale/
+│       └── replies.json
 └── Logs/
 ```
 

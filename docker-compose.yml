@@ -8,6 +8,7 @@ services:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
       - ./src/Basil.Web/Data/appsettings.json:/app/Data/appsettings.json:ro
+      - ./src/Basil.Application/Data/Locale/replies.json:/app/Data/Locale/replies.json:ro
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     restart: unless-stopped

@@ -38,6 +38,11 @@ src/Basil.Web/Data/appsettings.json
         └──► /app/Data/appsettings.json
 ```
 
+`src/Basil.Application/Data/Locale/replies.json` (BasilBot/IRC reply text, see [`configuration.md`](configuration.md))
+is bind-mounted the same way, so it can be edited on the host and survives container recreation just like
+`appsettings.json` — without this mount, the broader `docker-data/Data` volume below would shadow the copy of the file
+built into the image, and Basil would fail to start.
+
 ### 2. Start Basil
 
 From the repository root:
@@ -105,11 +110,18 @@ Pull a specific version:
 docker pull thanhmai06/osubasil:<version>
 ```
 
-Prepare the configuration file and persistent directories on the host:
+Prepare the configuration file and persistent directories on the host. `appsettings.json` is written from scratch
+using [`configuration.md`](configuration.md)'s setting reference; `replies.json` is not — extract the image's copy
+once instead of writing 150+ reply strings by hand:
+
+```bash
+docker run --rm --entrypoint cat thanhmai06/osubasil:<version> /app/Data/Locale/replies.json > replies.json
+```
 
 ```text
 ./
 ├── appsettings.json
+├── replies.json
 └── docker-data/
     ├── Data/
     └── Logs/
@@ -120,6 +132,7 @@ Run the container:
 ```bash
 docker run -d --name basil -p 443:443 \
   -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
+  -v "$PWD/replies.json:/app/Data/Locale/replies.json:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<version>
@@ -133,11 +146,16 @@ deployment:
 ```text
 /app/
 ├── Data/
-│   └── appsettings.json
+│   ├── appsettings.json
+│   └── Locale/
+│       └── replies.json
 └── Logs/
 ```
 
-Mount `appsettings.json` (into `/app/Data/appsettings.json`) and `Data/` from the host so configuration and server state survive container replacement.
+Mount `appsettings.json` and `replies.json` (into their paths above) and `Data/` from the host so configuration,
+reply text, and server state survive container replacement. Both files must be mounted individually, not just
+`Data/`: the broader `Data/` mount would otherwise shadow the image's own copies of them, and a missing
+`replies.json` specifically prevents Basil from starting at all (see [`configuration.md`](configuration.md)).
 
 ---
 
@@ -175,12 +193,13 @@ docker pull thanhmai06/osubasil:<new-version>
 
 docker run -d --name basil -p 443:443 \
   -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
+  -v "$PWD/replies.json:/app/Data/Locale/replies.json:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<new-version>
 ```
 
-The existing `appsettings.json` and `docker-data/` are reused.
+The existing `appsettings.json`, `replies.json`, and `docker-data/` are reused.
 
 Basil applies database migrations automatically when the new version starts.
 
