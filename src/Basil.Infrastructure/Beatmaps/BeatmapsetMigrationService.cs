@@ -91,6 +91,13 @@ public sealed partial class BeatmapsetMigrationService(
 		// Cheap skip check (~17.5us/set measured against real data): already migrated, nothing to do.
 		if (BeatmapIngestionService.FindBeatmapsetOsz(options.Value, id) is not null) return false;
 
+		// A folder with no ".osu" file at all isn't a beatmapset (the same definition
+		// BeatmapIngestionService.ReconcileFolderAsync already uses). Zipping it anyway would hand the
+		// live watcher a canonical ".osz" whose own ReconcileOszAsync pass immediately deletes it as
+		// unparseable, wasting the zip and racing this pass's asset-cache pre-warm for nothing.
+		if (Directory.EnumerateFiles(folder, "*.osu", SearchOption.TopDirectoryOnly).FirstOrDefault() is null)
+			return false;
+
 		var beatmapset = await beatmapsets.FetchByIdAsync(id, cancellationToken);
 		if (beatmapset is null)
 		{

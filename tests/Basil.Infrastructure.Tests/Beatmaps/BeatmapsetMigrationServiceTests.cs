@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Basil.Application.Configurations;
+using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Persistence.Repositories;
@@ -193,6 +194,35 @@ public sealed class BeatmapsetMigrationServiceTests : IDisposable
 		await using (var archive = await ZipFile.OpenReadAsync(canonicalOszPath))
 			Assert.Contains(archive.Entries, e => e.Name == "VividCrash.osu");
 		Assert.False(File.Exists(canonicalOszPath + ".tmp"));
+	}
+
+	/// <summary>
+	///     A folder with no ".osu" file at all isn't a beatmapset (same rule
+	///     <see cref="BeatmapIngestionService.ReconcileFolderAsync" /> already applies). Regression for a
+	///     bug where migration zipped such a folder anyway: the live watcher's own reconcile of that
+	///     freshly-created ".osz" (see <see cref="BeatmapWatcherServiceTests" />) would then find zero
+	///     decoded ".osu" entries and delete it as unparseable, discarding the pre-warmed asset cache
+	///     right along with it.
+	/// </summary>
+	[Fact]
+	public async Task LegacyFolderWithNoOsuFile_IsSkippedRatherThanZippedEmpty()
+	{
+		const int setId = 123456;
+		await _beatmapsets.UpsertAsync(new Beatmapset(setId, "Artist", "Title", "creator", DateTime.UtcNow,
+			DateTime.UtcNow));
+		var folder = Path.Combine(_beatmapsetsPath, $"{setId} Artist - Title");
+		Directory.CreateDirectory(folder);
+		await File.WriteAllTextAsync(Path.Combine(folder, "not-a-beatmap.txt"), "no .osu content here");
+
+		await RunToCompletionAsync(MakeService(_cachePath));
+
+		Assert.True(Directory.Exists(folder));
+		Assert.Null(BeatmapIngestionService.FindBeatmapsetOsz(
+			new StorageOptions
+			{
+				ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = _beatmapsetsPath, MenuSeasonalsPath = "",
+				MenuBannersPath = "", FaqsPath = "", CachePath = _cachePath
+			}, setId));
 	}
 
 	[Fact]
