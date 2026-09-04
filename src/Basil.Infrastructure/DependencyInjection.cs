@@ -139,6 +139,7 @@ public static class DependencyInjection
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<BeatmapWatcherService>();
 		services.AddHostedService<BeatmapsetGarbageCollectorService>();
+		services.AddHostedService<BeatmapsetMigrationService>();
 
 		return services;
 

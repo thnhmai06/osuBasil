@@ -23,9 +23,11 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 public class BeatmapWatcherServiceTests : IDisposable
 {
 	private readonly SqliteBeatmapRepository _beatmaps;
+	private readonly SqliteBeatmapsetRepository _beatmapsets;
 	private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
 	private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
 	private readonly string _beatmapsetsPath;
+	private readonly IOptions<StorageOptions> _options;
 	private readonly BeatmapWatcherService _watcher;
 	private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
@@ -38,12 +40,12 @@ public class BeatmapWatcherServiceTests : IDisposable
 		SqlMigrationRunner.RunMigrations(connectionString);
 
 		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		var beatmapsets =
+		_beatmapsets =
 			new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_beatmapsetsPath);
 
-		var options = Options.Create(new StorageOptions
+		_options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "",
 			AvatarsPath = "",
@@ -52,9 +54,9 @@ public class BeatmapWatcherServiceTests : IDisposable
 			MenuBannersPath = "",
 			FaqsPath = "", CachePath = Path.Combine(_beatmapsetsPath, "Cache")
 		});
-		var ingestion = new BeatmapIngestionService(_beatmaps, beatmapsets, new FakeOsuCalculator(), options,
-			new FileSystemResponseCache(options), new BeatmapsetAssetCache(options), _ingestionLog);
-		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
+		var ingestion = new BeatmapIngestionService(_beatmaps, _beatmapsets, new FakeOsuCalculator(), _options,
+			new FileSystemResponseCache(_options), new BeatmapsetAssetCache(_options), _ingestionLog);
+		_watcher = new BeatmapWatcherService(ingestion, _options, _watcherLog);
 	}
 
 	public void Dispose()
@@ -204,6 +206,87 @@ public class BeatmapWatcherServiceTests : IDisposable
 			var survived = await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true);
 			Assert.True(survived is not null,
 				"Beatmapset was deleted after its own .osz's post-extraction self-delete. Ingestion log: " +
+				string.Join(" | ", _ingestionLog.Messages) +
+				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+		}
+		finally
+		{
+			await _watcher.StopAsync(CancellationToken.None);
+		}
+	}
+
+	/// <summary>
+	///     Regression test for the live-migration/watcher interaction found on advisor review of
+	///     phase 3: <see cref="BeatmapsetMigrationService" /> makes a legacy folder disappear (renamed
+	///     into the asset cache, or dropped once its contents are already there) the moment it
+	///     publishes that id's canonical ".osz" — with no <see cref="BeatmapIngestionService.DeletedFolderInfix" />
+	///     marker, since it isn't a deletion. The live watcher sees that same disappearance and, without
+	///     <see cref="BeatmapIngestionService.ReconcileDeletedFolderAsync" />'s canonical-archive guard,
+	///     would treat it as the beatmapset being deleted and drop its just-migrated row.
+	/// </summary>
+	[Fact]
+	public async Task MigratingALegacyFolder_WhileTheWatcherIsLive_DoesNotDeleteTheJustMigratedSet()
+	{
+		await _watcher.StartAsync(CancellationToken.None);
+		try
+		{
+			// FileSystemWatcher can silently miss the very first filesystem event after a process's
+			// first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
+			// event before the real payload avoids that race.
+			await File.WriteAllTextAsync(Path.Combine(_beatmapsetsPath, "warmup.txt"), "");
+			await Task.Delay(300);
+			File.Delete(Path.Combine(_beatmapsetsPath, "warmup.txt"));
+
+			var folder = Path.Combine(_beatmapsetsPath, "900002 FAIRY FORE - VividLiveMigrate");
+			Directory.CreateDirectory(folder);
+			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu"),
+				Path.Combine(folder, "vivid_with_setid.osu"));
+			// vivid_with_setid.osu declares BeatmapSetID:900000, not 900002 -- the folder's own
+			// leading-id naming is cosmetic here; ResolveBeatmapsetAsync resolves the real id from the
+			// file's online id, matching how DroppingOsz_SelfDeletingAfterExtraction... already relies
+			// on the same fixture's embedded id rather than the path.
+			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
+			while (DateTime.UtcNow < ingestDeadline &&
+			       await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true) is null)
+				await Task.Delay(200);
+
+			var ingested = await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true);
+			Assert.True(ingested is not null,
+				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
+				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+
+			// The watcher renamed the folder to match the resolved id as part of its own ingestion?
+			// No -- ReconcileFolderAsync (unlike ReconcileOszAsync) never renames the folder it was
+			// given, so the folder is still sitting at its original, off-convention name. Rename it to
+			// what BeatmapsetMigrationService's own folder scan expects, matching every other test
+			// here that relies on the same lookup.
+			var resolvedFolder = BeatmapIngestionService.BeatmapsetFolderPath(_options.Value, ingested!.Beatmapset);
+			Directory.Move(folder, resolvedFolder);
+
+			// Run the migration pass live, on the same directory the watcher above is already
+			// watching -- this is the scenario under test.
+			var migration = new BeatmapsetMigrationService(_beatmapsets, _options,
+				new BeatmapsetAssetCache(_options), NullLogger<BeatmapsetMigrationService>.Instance);
+			await migration.StartAsync(CancellationToken.None);
+			try
+			{
+				var migrateDeadline = DateTime.UtcNow.AddSeconds(10);
+				while (DateTime.UtcNow < migrateDeadline && migration.ExecuteTask is { IsCompleted: false })
+					await Task.Delay(50);
+			}
+			finally
+			{
+				await migration.StopAsync(CancellationToken.None);
+			}
+
+			Assert.NotNull(BeatmapIngestionService.FindBeatmapsetOsz(_options.Value, 900000));
+
+			// Give the watcher's own debounce window (2s) plus margin to process whatever Deleted/
+			// Renamed events the migration's folder move fired, then assert the row is still there.
+			await Task.Delay(TimeSpan.FromSeconds(4));
+			var survived = await _beatmaps.FetchOneAsync(setId: 900000, includePrivate: true);
+			Assert.True(survived is not null,
+				"Beatmapset was deleted by the live watcher after being successfully migrated. Ingestion log: " +
 				string.Join(" | ", _ingestionLog.Messages) +
 				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
 		}

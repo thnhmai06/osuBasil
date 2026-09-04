@@ -4,6 +4,7 @@ using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Web.Routing.Bancho;
@@ -95,15 +96,15 @@ internal static class BeatmapAssetRoutes
 	///     produced, or 503 when audio extraction itself fails.
 	/// </summary>
 	private static async Task<IResult> HandleAudioPreview(int setId, IBeatmapRepository beatmaps,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, MirrorService mirror,
-		IResponseCache cache, IAudioExtractor extractor, HttpRequest request,
-		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, MirrorService mirror, IResponseCache cache, IAudioExtractor extractor,
+		HttpRequest request, ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (beatmapset is null || beatmapset.IsPrivate) return Results.NotFound();
 
 		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(setId, beatmaps, beatmapsetRepository,
-			storage, cache, extractor, logger, cancellationToken);
+			storage, assetCache, cache, extractor, logger, cancellationToken);
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, ContentTypes.Resolve(ResponseCacheKeys.Preview(setId)));
 

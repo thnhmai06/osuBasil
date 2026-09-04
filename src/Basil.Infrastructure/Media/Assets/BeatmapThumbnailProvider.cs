@@ -23,6 +23,7 @@ namespace Basil.Infrastructure.Media.Assets;
 /// </remarks>
 public sealed partial class BeatmapThumbnailProvider : IImageProvider
 {
+	private readonly BeatmapsetAssetCache _assetCache;
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly IOptions<StorageOptions> _storage;
 
@@ -30,11 +31,13 @@ public sealed partial class BeatmapThumbnailProvider : IImageProvider
 	/// <param name="beatmapsets">Resolves the beatmapset a thumbnail request is for.</param>
 	/// <param name="storage">The storage folders this provider resolves background files against.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `b.` hosts.</param>
+	/// <param name="assetCache">Resolves a background file for a beatmapset that's only stored as a canonical `.osz`.</param>
 	public BeatmapThumbnailProvider(IBeatmapsetRepository beatmapsets, IOptions<StorageOptions> storage,
-		IOptions<ServerOptions> server)
+		IOptions<ServerOptions> server, BeatmapsetAssetCache assetCache)
 	{
 		_beatmapsets = beatmapsets;
 		_storage = storage;
+		_assetCache = assetCache;
 
 		var hosts = AssetsHost.BeatmapAssetHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) &&
@@ -63,7 +66,8 @@ public sealed partial class BeatmapThumbnailProvider : IImageProvider
 		var beatmapset = await _beatmapsets.FetchByIdAsync(setId, context.RequestAborted);
 		if (beatmapset is null || beatmapset.IsPrivate) return null;
 
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmapset);
+		var backgroundPath = await BeatmapIngestionService.BackgroundFilePathAsync(_storage.Value, _assetCache,
+			beatmapset, context.RequestAborted);
 		if (backgroundPath is null || !File.Exists(backgroundPath)) return null;
 
 		return new PhysicalImageResolver(new FileInfo(backgroundPath));

@@ -141,8 +141,8 @@ public static class BanchoHostGroups
 	/// </returns>
 	internal static async Task<(byte[]? Clip, bool Failed)> BuildAudioPreviewAsync(int setId,
 		IBeatmapRepository beatmapRepository, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<StorageOptions> storage, IResponseCache cache, IAudioExtractor extractor,
-		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
+		IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache, IResponseCache cache,
+		IAudioExtractor extractor, ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (beatmapset is null || beatmapset.IsPrivate) return (null, false);
@@ -164,7 +164,8 @@ public static class BanchoHostGroups
 			var preview = beatmaps.MinBy(b => b.Id);
 			if (preview?.AudioFile is null) return (null, false);
 
-			var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, preview);
+			var audioPath =
+				await BeatmapIngestionService.AudioFilePathAsync(storage.Value, assetCache, preview, cancellationToken);
 			if (audioPath is null || !File.Exists(audioPath)) return (null, false);
 
 			// A -1/null PreviewTime means "no custom preview point set".

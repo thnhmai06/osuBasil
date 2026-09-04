@@ -415,8 +415,9 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleReplace(int beatmapsetId, HttpContext context,
-		IBeatmapsetRepository beatmapsetRepository,
-		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, BeatmapIngestionService ingestion,
+		ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
 		if (beatmapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
@@ -441,22 +442,43 @@ internal static class BeatmapsetRoutes
 		if (!string.Equals(Path.GetExtension(file.FileName), ".osz", StringComparison.OrdinalIgnoreCase))
 			return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted."));
 
+		// A not-yet-migrated set (legacy extracted folder) has the upload extracted directly over its
+		// existing folder. A set already on the canonical ".osz" layout has no such folder: its archive
+		// is replaced wholesale instead, going through the exact same replace-collision path (cache
+		// invalidation included) ReconcileOszAsync already uses for a freshly-uploaded archive that
+		// resolves onto an existing id.
 		var targetFolder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
-		if (targetFolder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+		if (targetFolder is not null)
+		{
+			var tempOszPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.osz");
+			await using (var fileStream = File.Create(tempOszPath))
+			{
+				await file.CopyToAsync(fileStream, cancellationToken);
+			}
 
-		var tempOszPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.osz");
-		await using (var fileStream = File.Create(tempOszPath))
-		{
-			await file.CopyToAsync(fileStream, cancellationToken);
+			try
+			{
+				await BeatmapIngestionService.ExtractOszIntoFolderAsync(tempOszPath, targetFolder, cancellationToken);
+			}
+			finally
+			{
+				File.Delete(tempOszPath);
+			}
 		}
+		else
+		{
+			var canonicalOszPath = BeatmapIngestionService.BeatmapsetOszPath(storage.Value, beatmapset);
+			if (!File.Exists(canonicalOszPath)) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 
-		try
-		{
-			await BeatmapIngestionService.ExtractOszIntoFolderAsync(tempOszPath, targetFolder, cancellationToken);
-		}
-		finally
-		{
-			File.Delete(tempOszPath);
+			var tempOszPath = canonicalOszPath + ".tmp";
+			await using (var fileStream = File.Create(tempOszPath))
+			{
+				await file.CopyToAsync(fileStream, cancellationToken);
+			}
+
+			assetCache.Invalidate(beatmapsetId);
+			File.Move(tempOszPath, canonicalOszPath, true);
+			await ingestion.ReconcileOszAsync(canonicalOszPath, cancellationToken);
 		}
 
 		logger.LogInformation("Beatmapset replace accepted via admin API: BeatmapsetId={BeatmapsetId}", beatmapsetId);
@@ -464,25 +486,49 @@ internal static class BeatmapsetRoutes
 	}
 
 	private static async Task<IResult> HandleDelete(int beatmapsetId, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<StorageOptions> storage, ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
+		IOptions<StorageOptions> storage, BeatmapIngestionService ingestion,
+		ILogger<BeatmapsetRoutesLog> logger, CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
 		if (beatmapset is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
 		if (beatmapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
 
+		// A not-yet-migrated set (legacy extracted folder) deletes asynchronously: the rename below is
+		// picked up by BeatmapWatcherService, which resolves the DB row's removal (and so must not be
+		// duplicated here). A set already on the canonical ".osz" layout has no such folder to rename,
+		// so its deletion runs directly -- a single file delete has no equivalent "locked mid-recursive-
+		// delete" concern the async folder path exists to avoid.
 		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
-		if (folder is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
-
-		var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
-		try
+		if (folder is not null)
 		{
-			Directory.Move(folder, deletedFolder);
+			var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
+			try
+			{
+				Directory.Move(folder, deletedFolder);
+			}
+			catch (IOException)
+			{
+				return Results.Conflict(
+					new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
+			}
 		}
-		catch (IOException)
+		else
 		{
-			return Results.Conflict(
-				new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
+			var oszPath = BeatmapIngestionService.FindBeatmapsetOsz(storage.Value, beatmapsetId);
+			if (oszPath is null) return Results.NotFound(new ErrorResponse("Beatmapset not found."));
+
+			try
+			{
+				File.Delete(oszPath);
+			}
+			catch (IOException)
+			{
+				return Results.Conflict(
+					new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
+			}
+
+			await ingestion.DeleteBeatmapsetAsync(beatmapsetId, cancellationToken);
 		}
 
 		logger.LogInformation("Beatmapset delete accepted via admin API: BeatmapsetId={BeatmapsetId}", beatmapsetId);
@@ -527,7 +573,8 @@ internal static class BeatmapsetRoutes
 
 	private static async Task<IResult> HandleBeatmapDifficulty(int beatmapsetId, int beatmapId,
 		[FromQuery] int? mode, [FromQuery] uint? mods, HttpContext context, IBeatmapRepository beatmaps,
-		IOsuCalculator calculator, IOptions<StorageOptions> storage, CancellationToken cancellationToken)
+		IOsuCalculator calculator, IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache,
+		CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
@@ -541,8 +588,10 @@ internal static class BeatmapsetRoutes
 		var resolvedMode = mode is { } m ? (GameMode)m : bmap.Difficulty.Mode;
 		var resolvedMods = ((Mods)(mods ?? 0)).FilterInvalidCombos(resolvedMode);
 
-		var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
-		if (!File.Exists(osuPath)) return Results.NotFound(new ErrorResponse("Beatmap file not found."));
+		var osuPath =
+			await BeatmapIngestionService.OsuFilePathAsync(storage.Value, assetCache, bmap, cancellationToken);
+		if (osuPath is null || !File.Exists(osuPath))
+			return Results.NotFound(new ErrorResponse("Beatmap file not found."));
 
 		BeatmapAnalysis analysis;
 		try

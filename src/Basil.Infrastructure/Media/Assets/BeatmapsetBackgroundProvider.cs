@@ -23,6 +23,7 @@ namespace Basil.Infrastructure.Media.Assets;
 /// </remarks>
 public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 {
+	private readonly BeatmapsetAssetCache _assetCache;
 	private readonly IBeatmapRepository _beatmaps;
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly IOptions<StorageOptions> _storage;
@@ -32,12 +33,14 @@ public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 	/// <param name="beatmaps">Resolves an individual beatmap's background when the request names one.</param>
 	/// <param name="storage">The storage folders this provider resolves background files against.</param>
 	/// <param name="server">The server's configured domain, used to scope this provider to `assets.` hosts.</param>
+	/// <param name="assetCache">Resolves a background file for a beatmapset that's only stored as a canonical `.osz`.</param>
 	public BeatmapsetBackgroundProvider(IBeatmapsetRepository beatmapsets, IBeatmapRepository beatmaps,
-		IOptions<StorageOptions> storage, IOptions<ServerOptions> server)
+		IOptions<StorageOptions> storage, IOptions<ServerOptions> server, BeatmapsetAssetCache assetCache)
 	{
 		_beatmapsets = beatmapsets;
 		_beatmaps = beatmaps;
 		_storage = storage;
+		_assetCache = assetCache;
 
 		var hosts = AssetsHost.AssetsHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) && IsBackgroundPath(context.Request.Path);
@@ -66,21 +69,26 @@ public sealed partial class BeatmapsetBackgroundProvider : IImageProvider
 		{
 			var beatmapsetId = int.Parse(beatmapMatch.Groups["beatmapsetId"].Value);
 			var beatmapId = int.Parse(beatmapMatch.Groups["beatmapId"].Value);
-			var beatmap = await _beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, cancellationToken: cancellationToken);
+			var beatmap =
+				await _beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, cancellationToken: cancellationToken);
 			if (beatmap is null || beatmap.Beatmapset.Id != beatmapsetId) return null;
 
-			return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmap));
+			return await ResolveAsync(await BeatmapIngestionService.BackgroundFilePathAsync(_storage.Value,
+				_assetCache, beatmap, cancellationToken));
 		}
 
 		var beatmapsetMatch = BeatmapsetBackgroundRegex().Match(path);
 		var coverMatch = CoverRegex().Match(path);
-		var id = beatmapsetMatch.Success ? beatmapsetMatch.Groups["beatmapsetId"].Value : coverMatch.Groups["beatmapsetId"].Value;
+		var id = beatmapsetMatch.Success
+			? beatmapsetMatch.Groups["beatmapsetId"].Value
+			: coverMatch.Groups["beatmapsetId"].Value;
 		if (!beatmapsetMatch.Success && !coverMatch.Success) return null;
 
 		var beatmapset = await _beatmapsets.FetchByIdAsync(int.Parse(id), cancellationToken);
 		if (beatmapset is null || beatmapset.IsPrivate) return null;
 
-		return await ResolveAsync(BeatmapIngestionService.BackgroundFilePath(_storage.Value, beatmapset));
+		return await ResolveAsync(await BeatmapIngestionService.BackgroundFilePathAsync(_storage.Value, _assetCache,
+			beatmapset, cancellationToken));
 	}
 
 	private static Task<IImageResolver?> ResolveAsync(string? backgroundPath)

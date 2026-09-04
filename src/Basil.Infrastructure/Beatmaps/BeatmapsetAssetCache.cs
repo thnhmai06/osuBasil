@@ -92,6 +92,17 @@ public sealed class BeatmapsetAssetCache(IOptions<StorageOptions> options)
 		if (Directory.Exists(dir)) Directory.Delete(dir, true);
 	}
 
+	/// <summary>
+	///     The directory <paramref name="beatmapsetId" />'s cached entries live under. Exposed for
+	///     <see cref="BeatmapsetMigrationService" />, which pre-warms this cache by moving a legacy
+	///     extracted folder's contents here directly instead of re-extracting them through
+	///     <see cref="ResolveAsync" />.
+	/// </summary>
+	public string SetDirectoryFor(int beatmapsetId)
+	{
+		return SetDirectory(beatmapsetId);
+	}
+
 	/// <summary>Builds the absolute cache path for one beatmapset's asset entry.</summary>
 	private string PathFor(int beatmapsetId, string entryName)
 	{

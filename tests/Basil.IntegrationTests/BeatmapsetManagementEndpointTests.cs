@@ -272,8 +272,18 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
+	/// <summary>
+	///     Covers the observable contract (202 Accepted, the new archive's content is what's actually
+	///     served), not which of the two storage layouts backed it: see
+	///     <see cref="DeleteBeatmapset_Valid_RemovesTheBeatmapsetsLocalFilesAndReturns202" />'s remarks
+	///     on why a folder seeded before the shared host's first request may already be migrated to the
+	///     canonical ".osz" layout by the time this PUT request runs. On that layout, HandleReplace does
+	///     a clean swap (old content invalidated, not merged with the new archive) rather than the
+	///     legacy folder path's overlay-extract, so a stale file that predates the upload is not
+	///     expected to survive here the way it would for an un-migrated folder.
+	/// </summary>
 	[Fact]
-	public async Task PutBeatmapset_Valid_ExtractsIntoResolvedFolderAndReturns202()
+	public async Task PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202()
 	{
 		_beatmapset = new Beatmapset(701, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = BeatmapsetFolder(701);
@@ -286,8 +296,11 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var response = await _factory.CreateClient().SendAsync(request);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-		Assert.True(File.Exists(Path.Combine(folder, "replacement.osu")));
-		Assert.True(File.Exists(Path.Combine(folder, "old.osu")));
+		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
+		var canonicalOsz = Directory.EnumerateFiles(beatmapsetsPath, "701 *.osz").SingleOrDefault();
+		Assert.NotNull(canonicalOsz);
+		await using var archive = await ZipFile.OpenReadAsync(canonicalOsz);
+		Assert.Contains(archive.Entries, e => e.Name == "replacement.osu");
 	}
 
 	// ---- DELETE /beatmapsets/{beatmapsetId} ----
@@ -300,8 +313,16 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
+	/// <summary>
+	///     The frozen check rejects the request before either of <c>HandleDelete</c>'s storage-layout
+	///     branches run, so the beatmapset's local files must survive regardless of which layout
+	///     backed it by the time this request ran -- see
+	///     <see cref="DeleteBeatmapset_Valid_RemovesTheBeatmapsetsLocalFilesAndReturns202" />'s remarks
+	///     on why a folder seeded before the shared host's first request may already be migrated to the
+	///     canonical ".osz" layout.
+	/// </summary>
 	[Fact]
-	public async Task DeleteBeatmapset_Frozen_ReturnsConflict_FolderUntouched()
+	public async Task DeleteBeatmapset_Frozen_ReturnsConflict_LocalFilesUntouched()
 	{
 		_beatmapset = new Beatmapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
 		var folder = BeatmapsetFolder(800);
@@ -309,11 +330,24 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"));
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-		Assert.True(Directory.Exists(folder));
+		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
+		var stillHasCanonicalOsz = Directory.EnumerateFiles(beatmapsetsPath, "800 *.osz").Any();
+		Assert.True(Directory.Exists(folder) || stillHasCanonicalOsz,
+			"Beatmapset's local files were removed despite the frozen check rejecting the delete.");
 	}
 
+	/// <summary>
+	///     Covers the observable contract (202 Accepted, the beatmapset's on-disk files are gone), not
+	///     which of the two storage layouts backed it: the shared <c>WebApplicationFactory</c> host runs
+	///     <see cref="BeatmapsetMigrationService" /> as a hosted service, which converts any legacy
+	///     folder it finds to the canonical ".osz" layout the moment the host starts (on this test's own
+	///     first HTTP call) -- so a folder seeded before that first call is not guaranteed to still be a
+	///     folder by the time this DELETE request runs. Both of <c>HandleDelete</c>'s branches (rename a
+	///     still-legacy folder to the deleted-marker convention for the watcher to reconcile
+	///     asynchronously; delete a canonical ".osz" directly) leave no local files behind either way.
+	/// </summary>
 	[Fact]
-	public async Task DeleteBeatmapset_Valid_RenamesToDeletedMarkerAndReturns202()
+	public async Task DeleteBeatmapset_Valid_RemovesTheBeatmapsetsLocalFilesAndReturns202()
 	{
 		_beatmapset = new Beatmapset(801, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = BeatmapsetFolder(801);
@@ -322,9 +356,9 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		Assert.False(Directory.Exists(folder));
-		var renamed = Directory.EnumerateDirectories(Path.Combine(_dataDir, "Beatmapsets"))
-			.FirstOrDefault(d => d.Contains(BeatmapIngestionService.DeletedFolderInfix));
-		Assert.NotNull(renamed);
+		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
+		Assert.DoesNotContain(Directory.EnumerateFiles(beatmapsetsPath, "*.osz"),
+			f => Path.GetFileName(f).StartsWith("801 "));
 	}
 
 	// ---- PATCH /beatmapsets/{beatmapsetId} ----

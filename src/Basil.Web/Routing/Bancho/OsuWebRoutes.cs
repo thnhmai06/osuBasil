@@ -235,8 +235,10 @@ internal static class OsuWebRoutes
 				if (bmap is null) return Results.NotFound();
 
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-				var osuPath = BeatmapIngestionService.OsuFilePath(storage, bmap);
-				return File.Exists(osuPath)
+				var assetCache = context.RequestServices.GetRequiredService<BeatmapsetAssetCache>();
+				var osuPath =
+					await BeatmapIngestionService.OsuFilePathAsync(storage, assetCache, bmap, cancellationToken);
+				return osuPath is not null && File.Exists(osuPath)
 					? Results.File(osuPath, ContentTypes.Resolve(osuPath))
 					: Results.NotFound();
 			})
@@ -571,8 +573,10 @@ internal static class OsuWebRoutes
 				if (bmap is null) return Results.NotFound();
 
 				var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-				var osuPath = BeatmapIngestionService.OsuFilePath(storage, bmap);
-				if (!File.Exists(osuPath))
+				var assetCache = context.RequestServices.GetRequiredService<BeatmapsetAssetCache>();
+				var osuPath =
+					await BeatmapIngestionService.OsuFilePathAsync(storage, assetCache, bmap, cancellationToken);
+				if (osuPath is null || !File.Exists(osuPath))
 					return Results.Text("Beatmap file not available.", "text/html", Encoding.UTF8);
 
 				var requestedMods = (Mods)mods;

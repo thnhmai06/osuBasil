@@ -113,57 +113,78 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Resolves the path to a beatmap's `.osu` file on disk, or <see langword="null" /> when its
-	///     beatmapset folder can't be found.
+	///     Resolves one beatmapset entry's real path on disk: the legacy extracted folder when the set
+	///     hasn't been migrated yet, else an on-demand extraction from the canonical `.osz` via
+	///     <paramref name="assetCache" />. Null when the set exists under neither layout, or the entry
+	///     isn't present in the archive.
 	/// </summary>
-	public static string? OsuFilePath(StorageOptions storage, Beatmap beatmap)
+	private static async Task<string?> ResolveAssetPathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		int beatmapsetId, string entryName, CancellationToken cancellationToken)
 	{
-		var folder = FindBeatmapsetFolder(storage, beatmap.Beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, beatmap.Filename);
+		var folder = FindBeatmapsetFolder(storage, beatmapsetId);
+		if (folder is not null) return Path.Combine(folder, entryName);
+
+		var oszPath = FindBeatmapsetOsz(storage, beatmapsetId);
+		return oszPath is null
+			? null
+			: await assetCache.ResolveAsync(beatmapsetId, entryName, oszPath, cancellationToken);
 	}
 
-	/// <summary>Null if the beatmap has no recorded background filename or its beatmapset folder can't be found.</summary>
-	public static string? BackgroundFilePath(StorageOptions storage, Beatmap beatmap)
+	/// <summary>Resolves the path to a beatmap's `.osu` file on disk, or <see langword="null" /> when its beatmapset can't be found.</summary>
+	public static Task<string?> OsuFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
-		if (beatmap.BackgroundFile is null) return null;
-		var folder = FindBeatmapsetFolder(storage, beatmap.Beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, beatmap.BackgroundFile);
+		return ResolveAssetPathAsync(storage, assetCache, beatmap.Beatmapset.Id, beatmap.Filename, cancellationToken);
 	}
 
-	/// <summary>Null if the beatmapset has no recorded preview background or its folder can't be found.</summary>
-	public static string? BackgroundFilePath(StorageOptions storage, Beatmapset beatmapset)
+	/// <summary>Null if the beatmap has no recorded background filename or its beatmapset can't be found.</summary>
+	public static Task<string?> BackgroundFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
-		if (beatmapset.BackgroundFile is null) return null;
-		var folder = FindBeatmapsetFolder(storage, beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, beatmapset.BackgroundFile);
+		return beatmap.BackgroundFile is null
+			? Task.FromResult<string?>(null)
+			: ResolveAssetPathAsync(storage, assetCache, beatmap.Beatmapset.Id, beatmap.BackgroundFile,
+				cancellationToken);
 	}
 
-	/// <summary>Null if the beatmap has no recorded audio filename or its beatmapset folder can't be found.</summary>
-	public static string? AudioFilePath(StorageOptions storage, Beatmap beatmap)
+	/// <summary>Null if the beatmapset has no recorded preview background or it can't be found.</summary>
+	public static Task<string?> BackgroundFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmapset beatmapset, CancellationToken cancellationToken = default)
 	{
-		if (beatmap.AudioFile is null) return null;
-		var folder = FindBeatmapsetFolder(storage, beatmap.Beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, beatmap.AudioFile);
+		return beatmapset.BackgroundFile is null
+			? Task.FromResult<string?>(null)
+			: ResolveAssetPathAsync(storage, assetCache, beatmapset.Id, beatmapset.BackgroundFile, cancellationToken);
 	}
 
-	/// <summary>Null if the beatmapset has no recorded preview audio or its folder can't be found.</summary>
-	public static string? AudioFilePath(StorageOptions storage, Beatmapset beatmapset)
+	/// <summary>Null if the beatmap has no recorded audio filename or its beatmapset can't be found.</summary>
+	public static Task<string?> AudioFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
-		if (beatmapset.AudioFile is null) return null;
-		var folder = FindBeatmapsetFolder(storage, beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, beatmapset.AudioFile);
+		return beatmap.AudioFile is null
+			? Task.FromResult<string?>(null)
+			: ResolveAssetPathAsync(storage, assetCache, beatmap.Beatmapset.Id, beatmap.AudioFile, cancellationToken);
+	}
+
+	/// <summary>Null if the beatmapset has no recorded preview audio or it can't be found.</summary>
+	public static Task<string?> AudioFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmapset beatmapset, CancellationToken cancellationToken = default)
+	{
+		return beatmapset.AudioFile is null
+			? Task.FromResult<string?>(null)
+			: ResolveAssetPathAsync(storage, assetCache, beatmapset.Id, beatmapset.AudioFile, cancellationToken);
 	}
 
 	/// <summary>
-	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing on disk, or
-	///     its beatmapset folder can't be found. Unlike <see cref="BackgroundFilePath(StorageOptions,Beatmap)" />/
-	///     <see cref="AudioFilePath(StorageOptions,Beatmap)" />, video has no ingestion-time DB column:
-	///     the filename is re-derived from the `.osu`'s own <see cref="Storyboard" /> via
-	///     <see cref="Storyboard.PrimaryVideo" /> on every call.
+	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing, or its
+	///     beatmapset can't be found. Unlike <see cref="BackgroundFilePathAsync(StorageOptions,BeatmapsetAssetCache,Beatmap,CancellationToken)" />/
+	///     <see cref="AudioFilePathAsync(StorageOptions,BeatmapsetAssetCache,Beatmap,CancellationToken)" />, video has
+	///     no ingestion-time DB column: the filename is re-derived from the `.osu`'s own
+	///     <see cref="Storyboard" /> via <see cref="Storyboard.PrimaryVideo" /> on every call.
 	/// </summary>
-	public static string? VideoFilePath(StorageOptions storage, Beatmap beatmap)
+	public static async Task<string?> VideoFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
+		Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
-		var osuPath = OsuFilePath(storage, beatmap);
+		var osuPath = await OsuFilePathAsync(storage, assetCache, beatmap, cancellationToken);
 		if (osuPath is null || !File.Exists(osuPath)) return null;
 
 		using var stream = File.OpenRead(osuPath);
@@ -172,8 +193,8 @@ public sealed partial class BeatmapIngestionService(
 		var videoFilename = storyboard.PrimaryVideo?.Path;
 		if (videoFilename is null) return null;
 
-		var folder = FindBeatmapsetFolder(storage, beatmap.Beatmapset.Id);
-		return folder is null ? null : Path.Combine(folder, videoFilename);
+		return await ResolveAssetPathAsync(storage, assetCache, beatmap.Beatmapset.Id, videoFilename,
+			cancellationToken);
 	}
 
 	/// <summary>
@@ -450,13 +471,23 @@ public sealed partial class BeatmapIngestionService(
 
 	/// <summary>
 	///     A beatmapset folder vanished from the disk: drop its DB row (Beatmaps cascade via FK) if its
-	///     leading id is still parseable and known.
+	///     leading id is still parseable and known, unless that id's canonical ".osz" now exists.
 	/// </summary>
+	/// <remarks>
+	///     The canonical-archive check exists because a legacy folder disappearing is not always a
+	///     deletion: <see cref="BeatmapsetMigrationService" /> running live makes a folder vanish (moved
+	///     into <see cref="BeatmapsetAssetCache" />, or dropped once its contents are already there) the
+	///     moment it publishes that id's ".osz", which fires this same watcher path. Without the guard,
+	///     every set the migration pass converts while the server is up would have its row deleted right
+	///     after being successfully migrated.
+	/// </remarks>
 	public async Task ReconcileDeletedFolderAsync(string folderPath, CancellationToken cancellationToken = default)
 	{
 		var name = Path.GetFileName(folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 		var match = LeadingIdPattern.Match(name);
 		if (!match.Success || !int.TryParse(match.Groups[1].Value, out var id)) return;
+
+		if (FindBeatmapsetOsz(options.Value, id) is not null) return; // migrated, not deleted
 
 		if (await beatmapsetRepository.FetchByIdAsync(id, cancellationToken) is not null)
 			await DeleteBeatmapsetAsync(id, cancellationToken);
@@ -465,16 +496,18 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Drops the beatmapset's DB row (Beatmaps cascade via FK) and its resize/transcode cache
-	///     entries (thumb small/large, audio preview; see <see cref="ResponseCacheKeys" />), so stale
-	///     bytes can't be served for a beatmapset id that no longer exists. This is the single call
-	///     site both <see cref="ReconcileAllAsync" />'s orphan sweep and
-	///     <see cref="ReconcileDeletedFolderAsync" />'s watcher path go through, so cache invalidation
-	///     can't be forgotten at one but not the other.
+	///     Drops the beatmapset's DB row (Beatmaps cascade via FK), its cached extracted assets (see
+	///     <see cref="BeatmapsetAssetCache.Invalidate" />), and its resize/transcode cache entries
+	///     (thumb small/large, audio preview; see <see cref="ResponseCacheKeys" />), so stale bytes
+	///     can't be served for a beatmapset id that no longer exists. This is the single call site
+	///     <see cref="ReconcileAllAsync" />'s orphan sweep, <see cref="ReconcileDeletedFolderAsync" />'s
+	///     watcher path, and the `DELETE /beatmapsets/{id}` route's canonical-`.osz` branch all go
+	///     through, so cache invalidation can't be forgotten at one but not the others.
 	/// </summary>
-	private async Task DeleteBeatmapsetAsync(int id, CancellationToken cancellationToken)
+	public async Task DeleteBeatmapsetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await beatmapsetRepository.DeleteAsync(id, cancellationToken);
+		assetCache.Invalidate(id);
 		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, false), cancellationToken);
 		await cache.DeleteAsync("thumb", ResponseCacheKeys.Thumb(id, true), cancellationToken);
 		await cache.DeleteAsync("preview", ResponseCacheKeys.Preview(id), cancellationToken);
