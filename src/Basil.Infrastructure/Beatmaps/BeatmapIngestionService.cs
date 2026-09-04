@@ -16,11 +16,16 @@ using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 namespace Basil.Infrastructure.Beatmaps;
 
 /// <summary>
-///     Keeps the DB in sync with <see cref="StorageOptions.BeatmapsetsPath" />: one subfolder per
-///     beatmapset (<c>"{BeatmapsetId} {Artist} - {Title}"</c>, holding the full original .osz contents,
-///     audio/images/backgrounds/video/.osu, as extracted, not renamed), or a loose ".osz" at the
-///     root waiting to be extracted. A single loose ".osu" file has no set context on its own and
-///     is never ingested. <see cref="BeatmapWatcherService" /> is the incremental caller (per-folder
+///     Keeps the DB in sync with <see cref="StorageOptions.BeatmapsetsPath" />: a beatmapset is a
+///     single loose <c>"{BeatmapsetId} {Artist} - {Title}.osz"</c> archive, kept permanently
+///     (ADR-006's ".osz direct storage" design) — individual assets (backgrounds, audio, .osu
+///     files) are extracted on demand into <see cref="BeatmapsetAssetCache" /> rather than into a
+///     folder. A beatmapset extracted before this design (one subfolder per set, holding the full
+///     original .osz contents as-is) is still recognized and reconciled during the migration
+///     window covered by the background migration pass; both a loose <c>.osz</c> and a
+///     legacy extracted folder count as "this beatmapset still exists" until migration converts
+///     the folder. A single loose ".osu" file has no set context on its own and is never ingested.
+///     <see cref="BeatmapWatcherService" /> is the incremental caller (per-file/per-folder
 ///     reconciliation on every filesystem change); <see cref="ReconcileAllAsync" /> is the full-pass
 ///     caller.
 /// </summary>
@@ -30,6 +35,7 @@ public sealed partial class BeatmapIngestionService(
 	IOsuCalculator osuCalculator,
 	IOptions<StorageOptions> options,
 	IResponseCache cache,
+	BeatmapsetAssetCache assetCache,
 	ILogger<BeatmapIngestionService> logger)
 {
 	/// <summary>
@@ -72,6 +78,37 @@ public sealed partial class BeatmapIngestionService(
 	{
 		return Directory.Exists(storage.BeatmapsetsPath)
 			? Directory.EnumerateDirectories(storage.BeatmapsetsPath, $"{beatmapsetId} *").FirstOrDefault()
+			: null;
+	}
+
+	/// <summary>
+	///     Builds the conventional canonical-archive name for a beatmapset:
+	///     <c>"{Id} {Artist} - {Title}.osz"</c>, with characters invalid in filenames stripped out.
+	/// </summary>
+	public static string BeatmapsetOszName(Beatmapset beatmapset)
+	{
+		return BeatmapsetFolderName(beatmapset) + ".osz";
+	}
+
+	/// <summary>
+	///     Combines <see cref="BeatmapsetOszName" /> with <see cref="StorageOptions.BeatmapsetsPath" /> to
+	///     get the path a beatmapset's canonical archive is expected to live at.
+	/// </summary>
+	public static string BeatmapsetOszPath(StorageOptions storage, Beatmapset beatmapset)
+	{
+		return Path.Combine(storage.BeatmapsetsPath, BeatmapsetOszName(beatmapset));
+	}
+
+	/// <summary>
+	///     Resolves a beatmapset's canonical <c>.osz</c> on disk by leading-id prefix, the same way
+	///     <see cref="FindBeatmapsetFolder" /> resolves the legacy extracted-folder layout. Null if no
+	///     archive with that leading id exists — either the set hasn't been migrated from a legacy
+	///     folder yet, or it doesn't exist at all.
+	/// </summary>
+	public static string? FindBeatmapsetOsz(StorageOptions storage, int beatmapsetId)
+	{
+		return Directory.Exists(storage.BeatmapsetsPath)
+			? Directory.EnumerateFiles(storage.BeatmapsetsPath, $"{beatmapsetId} *.osz").FirstOrDefault()
 			: null;
 	}
 
@@ -140,9 +177,10 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Full pass: extracts every loose ".osz" at the storage root, reconciles every subfolder that
-	///     looks like a beatmapset (".osu" files at depth 1), then deletes any Beatmapset row whose folder no
-	///     longer exists on disk. Returns the number of beatmaps added or updated this pass.
+	///     Full pass: reconciles every loose ".osz" at the storage root (the canonical layout) and
+	///     every subfolder that looks like a beatmapset (".osu" files at depth 1 — the legacy,
+	///     not-yet-migrated layout), then deletes any Beatmapset row present under neither layout.
+	///     Returns the number of beatmaps added or updated this pass.
 	/// </summary>
 	public async Task<int> ReconcileAllAsync(CancellationToken cancellationToken = default)
 	{
@@ -151,20 +189,25 @@ public sealed partial class BeatmapIngestionService(
 
 		var ingested = 0;
 		var seenSetIds = new HashSet<int>();
-		// Folders present before osz extraction: a folder extracted by ReconcileOszAsync below
-		// is already reconciled internally, so the second loop must skip it to avoid double-counting.
-		var preExistingFolders = Directory.EnumerateDirectories(path).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-		foreach (var oszPath in Directory.EnumerateFiles(path, "*.osz"))
+		// Snapshotted before iterating: ReconcileOszAsync below moves a loose .osz to its canonical
+		// filename within this same directory (it no longer deletes it, per ADR-006), and a lazily
+		// evaluated Directory.EnumerateFiles is not guaranteed safe against a rename of an
+		// already-yielded entry mid-enumeration.
+		foreach (var oszPath in Directory.EnumerateFiles(path, "*.osz").ToList())
 		{
 			var (count, setId) = await ReconcileOszAsync(oszPath, cancellationToken);
 			ingested += count;
 			if (setId is not null) seenSetIds.Add(setId.Value);
 		}
 
-		foreach (var folder in Directory.EnumerateDirectories(path))
+		// A set not yet migrated to the canonical .osz layout (an existing deployment's pre-upgrade
+		// data, or one the background migration pass hasn't reached yet) still lives as an extracted
+		// folder. Reconciling it here — not just relying on the migration pass — keeps the orphan
+		// sweep below from treating a not-yet-migrated set as gone: it is "seen" under whichever
+		// layout it currently has, for the whole migration window, not only after migration completes.
+		foreach (var folder in Directory.EnumerateDirectories(path).ToList())
 		{
-			if (!preExistingFolders.Contains(folder)) continue;
 			if (Path.GetFileName(folder).Contains(DeletedFolderInfix, StringComparison.OrdinalIgnoreCase)) continue;
 
 			var (count, setId) = await ReconcileFolderAsync(folder, cancellationToken);
@@ -187,13 +230,23 @@ public sealed partial class BeatmapIngestionService(
 	}
 
 	/// <summary>
-	///     Extracts every entry of a loose ".osz" (audio/images/video/.osu, as-is) into its resolved beatmapset folder, then
-	///     reconciles that folder.
+	///     Decodes every ".osu" entry of a loose ".osz", resolves/creates its Beatmapset, moves the
+	///     archive to its canonical filename (kept permanently — ADR-006's ".osz direct storage"
+	///     design, no longer extracted into a folder and deleted), then upserts each decoded beatmap,
+	///     eagerly extracting every ".osu" file plus the set's preview background/audio into
+	///     <see cref="BeatmapsetAssetCache" /> as it goes (needed for analysis regardless, and for
+	///     the difficulty-recompute route's arbitrary-time re-reads). An archive with no valid ".osu"
+	///     content is deleted rather than kept, since it isn't a beatmapset.
 	/// </summary>
 	public async Task<(int Ingested, int? SetId)> ReconcileOszAsync(string oszPath,
 		CancellationToken cancellationToken = default)
 	{
 		var decoded = new List<DecodedFile>();
+		// .osu entries are conventionally at the archive root, but this maps each decoded file's
+		// basename back to the entry's full in-archive name regardless, so BeatmapsetAssetCache's
+		// lookup (matched against ZipArchiveEntry.FullName) is correct even for an archive that
+		// nests them.
+		var entryFullNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		await using (var archive = await ZipFile.OpenReadAsync(oszPath, cancellationToken))
 		{
 			foreach (var entry in archive.Entries)
@@ -209,6 +262,7 @@ public sealed partial class BeatmapIngestionService(
 				if (parsed is null) continue;
 
 				decoded.Add(new DecodedFile(entry.Name, osuCalculator.ComputeBeatmapMd5(osuBytes), parsed));
+				entryFullNames[entry.Name] = entry.FullName;
 			}
 		}
 
@@ -218,14 +272,33 @@ public sealed partial class BeatmapIngestionService(
 			return (0, null);
 		}
 
-		var beatmapset = await ResolveBeatmapsetAsync(decoded, Path.GetFileNameWithoutExtension(oszPath), cancellationToken);
-		var targetFolder = BeatmapsetFolderPath(options.Value, beatmapset);
-		await ExtractOszIntoFolderAsync(oszPath, targetFolder, cancellationToken);
+		var beatmapset =
+			await ResolveBeatmapsetAsync(decoded, Path.GetFileNameWithoutExtension(oszPath), cancellationToken);
 
-		File.Delete(oszPath);
+		var canonicalOszPath = BeatmapsetOszPath(options.Value, beatmapset);
+		if (!string.Equals(Path.GetFullPath(oszPath), Path.GetFullPath(canonicalOszPath),
+			    StringComparison.OrdinalIgnoreCase))
+		{
+			Directory.CreateDirectory(options.Value.BeatmapsetsPath);
+			// A stale canonical archive at this id (e.g., a prior ingest's content this upload's
+			// MD5/leading-id resolution matched onto) is replaced, not merged with.
+			if (File.Exists(canonicalOszPath)) File.Delete(canonicalOszPath);
+			File.Move(oszPath, canonicalOszPath);
+		}
 
-		var (count, _) = await ReconcileFolderAsync(targetFolder, cancellationToken);
-		return (count, beatmapset.Id);
+		var (ingested, previewBackground, previewAudio) = await UpsertDecodedBeatmapsAsync(decoded, beatmapset,
+			async (file, ct) =>
+			{
+				var fullName = entryFullNames.GetValueOrDefault(file.OriginalFilename, file.OriginalFilename);
+				return await assetCache.ResolveAsync(beatmapset.Id, fullName, canonicalOszPath, ct);
+			}, cancellationToken);
+
+		if (previewBackground is not null)
+			await assetCache.ResolveAsync(beatmapset.Id, previewBackground, canonicalOszPath, cancellationToken);
+		if (previewAudio is not null)
+			await assetCache.ResolveAsync(beatmapset.Id, previewAudio, canonicalOszPath, cancellationToken);
+
+		return (ingested, beatmapset.Id);
 	}
 
 	/// <summary>
@@ -275,6 +348,33 @@ public sealed partial class BeatmapIngestionService(
 		if (decoded.Count == 0) return (0, null);
 
 		var beatmapset = await ResolveBeatmapsetAsync(decoded, Path.GetFileName(folderPath), cancellationToken);
+		var (ingested, _, _) = await UpsertDecodedBeatmapsAsync(decoded, beatmapset,
+			(file, _) => Task.FromResult<string?>(Path.Combine(folderPath, file.OriginalFilename)), cancellationToken);
+
+		return (ingested, beatmapset.Id);
+	}
+
+	/// <summary>
+	///     Upserts every decoded ".osu" file against <paramref name="beatmapset" />, drops any
+	///     previously-known beatmap no longer present, and records the resulting preview
+	///     background/audio filenames on the set. Shared between the legacy folder-based reconcile
+	///     path and the canonical archive-based one, which differ only in how a decoded file's real
+	///     path for difficulty analysis is resolved (a direct folder-relative path for the former, an
+	///     on-demand <see cref="BeatmapsetAssetCache" /> extraction for the latter).
+	/// </summary>
+	/// <param name="decoded">Every ".osu" file already decoded for this pass.</param>
+	/// <param name="beatmapset">The beatmapset every decoded file belongs to.</param>
+	/// <param name="resolveAnalysisPath">
+	///     Resolves a decoded file's real path for <see cref="TryAnalyze" />, or <see langword="null" />
+	///     when it can't be resolved. Called for every file regardless of whether re-analysis is
+	///     actually needed, so a cache-backed resolver still gets the chance to ensure the file is
+	///     extracted for later on-demand reads (e.g., the difficulty-recompute route).
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private async Task<(int Ingested, string? PreviewBackground, string? PreviewAudio)> UpsertDecodedBeatmapsAsync(
+		IReadOnlyList<DecodedFile> decoded, Beatmapset beatmapset,
+		Func<DecodedFile, CancellationToken, Task<string?>> resolveAnalysisPath, CancellationToken cancellationToken)
+	{
 		var ingested = 0;
 
 		foreach (var file in decoded)
@@ -290,9 +390,12 @@ public sealed partial class BeatmapIngestionService(
 			// every reconciling pass (server startup, watcher); otherwise compute it, which also
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } && existingByPath.Md5 == file.Md5;
+			var analysisPath = await resolveAnalysisPath(file, cancellationToken);
 			var analysis = cacheHit
 				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts)
-				: TryAnalyze(Path.Combine(folderPath, file.OriginalFilename), mode);
+				: analysisPath is null
+					? EmptyAnalysis(mode)
+					: TryAnalyze(analysisPath, mode);
 			var backgroundFile = cacheHit ? existingByPath!.BackgroundFile : info.Metadata.BackgroundFile;
 			var audioFile = cacheHit ? existingByPath!.AudioFile : info.Metadata.AudioFile;
 			var previewTime = cacheHit ? existingByPath!.PreviewTime : info.Metadata.PreviewTime;
@@ -313,10 +416,12 @@ public sealed partial class BeatmapIngestionService(
 			ingested++;
 
 			if (existingByPath is null)
-				logger.LogInformation("+ Beatmap ingested: {Filename} (Beatmapset {BeatmapsetId})", file.OriginalFilename,
+				logger.LogInformation("+ Beatmap ingested: {Filename} (Beatmapset {BeatmapsetId})",
+					file.OriginalFilename,
 					beatmapset.Id);
 			else if (!cacheHit)
-				logger.LogInformation("~ Beatmap updated: {Filename} (Beatmapset {BeatmapsetId})", file.OriginalFilename,
+				logger.LogInformation("~ Beatmap updated: {Filename} (Beatmapset {BeatmapsetId})",
+					file.OriginalFilename,
 					beatmapset.Id);
 		}
 
@@ -325,17 +430,18 @@ public sealed partial class BeatmapIngestionService(
 		foreach (var gone in known.Where(k => !onDisk.Contains(k.Filename)))
 		{
 			await beatmaps.DeleteByMd5Async(gone.Md5, cancellationToken);
-			logger.LogInformation("- Beatmap removed: {Filename} (Beatmapset {BeatmapsetId})", gone.Filename, beatmapset.Id);
+			logger.LogInformation("- Beatmap removed: {Filename} (Beatmapset {BeatmapsetId})", gone.Filename,
+				beatmapset.Id);
 		}
 
-		// decoded.Count > 0 (checked above) guarantees at least one beatmap survives this pass, so
-		// there's always a lowest-id one to derive the set's preview from.
+		// decoded.Count > 0 (checked by both callers) guarantees at least one beatmap survives this
+		// pass, so there's always a lowest-id one to derive the set's preview from.
 		var remaining = known.Where(k => onDisk.Contains(k.Filename)).ToList();
 		var preview = remaining.MinBy(b => b.Id);
 		await beatmapsetRepository.SetBackgroundFileAsync(beatmapset.Id, preview?.BackgroundFile, cancellationToken);
 		await beatmapsetRepository.SetAudioFileAsync(beatmapset.Id, preview?.AudioFile, cancellationToken);
 
-		return (ingested, beatmapset.Id);
+		return (ingested, preview?.BackgroundFile, preview?.AudioFile);
 	}
 
 	/// <summary>
@@ -423,7 +529,8 @@ public sealed partial class BeatmapIngestionService(
 			existing?.CreatedAt ?? now);
 
 		if (existing is null)
-			logger.LogInformation("+ Beatmapset created: {BeatmapsetId} {Artist} - {Title}", beatmapset.Id, beatmapset.Artist,
+			logger.LogInformation("+ Beatmapset created: {BeatmapsetId} {Artist} - {Title}", beatmapset.Id,
+				beatmapset.Artist,
 				beatmapset.Title);
 
 		return await beatmapsetRepository.UpsertAsync(beatmapset, cancellationToken);
@@ -445,17 +552,28 @@ public sealed partial class BeatmapIngestionService(
 			// hitobjects) still gets ingested; it just keeps Sr at 0 and empty object counts instead
 			// of aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
-			var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
-			BeatmapObjectCounts emptyObjectCounts = mode switch
-			{
-				GameMode.Standard => new OsuBeatmapObjectCounts(),
-				GameMode.Taiko => new TaikoBeatmapObjectCounts(),
-				GameMode.Catch => new CatchBeatmapObjectCounts(),
-				GameMode.Mania => new ManiaBeatmapObjectCounts(),
-				_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
-			};
-			return new BeatmapAnalysis(emptyDifficulty, emptyObjectCounts);
+			return EmptyAnalysis(mode);
 		}
+	}
+
+	/// <summary>
+	///     An all-zero difficulty and empty object counts for <paramref name="mode" />, used both by
+	///     <see cref="TryAnalyze" />'s failure fallback and when a decoded file's real path for
+	///     analysis can't be resolved at all (e.g., an archive entry vanished between decode and
+	///     extraction).
+	/// </summary>
+	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
+	{
+		var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
+		BeatmapObjectCounts emptyObjectCounts = mode switch
+		{
+			GameMode.Standard => new OsuBeatmapObjectCounts(),
+			GameMode.Taiko => new TaikoBeatmapObjectCounts(),
+			GameMode.Catch => new CatchBeatmapObjectCounts(),
+			GameMode.Mania => new ManiaBeatmapObjectCounts(),
+			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
+		};
+		return new BeatmapAnalysis(emptyDifficulty, emptyObjectCounts);
 	}
 
 	private static LazerBeatmap? TryDecode(byte[] osuBytes)

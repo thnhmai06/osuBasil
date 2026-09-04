@@ -38,7 +38,8 @@ public class BeatmapWatcherServiceTests : IDisposable
 		SqlMigrationRunner.RunMigrations(connectionString);
 
 		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		var beatmapsets = new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
+		var beatmapsets =
+			new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_beatmapsetsPath);
 
@@ -52,7 +53,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 			FaqsPath = "", CachePath = Path.Combine(_beatmapsetsPath, "Cache")
 		});
 		var ingestion = new BeatmapIngestionService(_beatmaps, beatmapsets, new FakeOsuCalculator(), options,
-			new FileSystemResponseCache(options), _ingestionLog);
+			new FileSystemResponseCache(options), new BeatmapsetAssetCache(options), _ingestionLog);
 		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
 	}
 

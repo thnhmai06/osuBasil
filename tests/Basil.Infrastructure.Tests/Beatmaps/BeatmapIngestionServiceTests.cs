@@ -42,7 +42,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		});
 		_cache = new FileSystemResponseCache(options);
 		_service = new BeatmapIngestionService(_beatmaps, _beatmapsetRepository, new FakeOsuCalculator(), options,
-			_cache,
+			_cache, new BeatmapsetAssetCache(options),
 			NullLogger<BeatmapIngestionService>.Instance);
 	}
 
@@ -105,26 +105,83 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	}
 
 	[Fact]
-	public async Task ReconcileAllAsync_LooseOsz_ExtractsFullContentsAndDeletesArchive()
+	public async Task ReconcileOszAsync_LooseOsz_KeepsCanonicalArchiveAndEagerlyPopulatesTheAssetCache()
 	{
 		var oszPath = Path.Combine(_beatmapsetsPath, "dropped.osz");
 		await using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
 		{
 			await archive.CreateEntryFromFileAsync(FixtureSourcePath, "vivid_osu_file.osu");
-			var dummyEntry = archive.CreateEntry("bg.jpg");
+			// The fixture's own [Events] line declares "Chocobos.jpg" as its background -- must match
+			// for the preview-background eager-cache step below to find it.
+			var dummyEntry = archive.CreateEntry("Chocobos.jpg");
 			await using var entryStream = await dummyEntry.OpenAsync();
 			await entryStream.WriteAsync("not a real image"u8.ToArray());
 		}
 
-		var ingested = await _service.ReconcileAllAsync();
+		var (ingested, setId) = await _service.ReconcileOszAsync(oszPath);
 
 		Assert.Equal(1, ingested);
+		Assert.NotNull(setId);
+		// The upload's temp name is moved to the canonical one, not deleted -- ADR-006's ".osz
+		// direct storage" design keeps the archive permanently instead of extracting it into a
+		// folder and discarding it.
 		Assert.False(File.Exists(oszPath));
+		var canonicalOsz = Directory.EnumerateFiles(_beatmapsetsPath, "*.osz").SingleOrDefault();
+		Assert.NotNull(canonicalOsz);
+		Assert.StartsWith(setId!.Value.ToString(), Path.GetFileName(canonicalOsz));
+		// "Cache" itself is expected (this fixture roots CachePath under _beatmapsetsPath); no legacy
+		// beatmapset folder should exist alongside it.
+		Assert.DoesNotContain(Directory.EnumerateDirectories(_beatmapsetsPath), d => Path.GetFileName(d) != "Cache");
 
-		var createdFolder = Directory.EnumerateDirectories(_beatmapsetsPath).FirstOrDefault();
-		Assert.NotNull(createdFolder);
-		Assert.True(File.Exists(Path.Combine(createdFolder, "vivid_osu_file.osu")));
-		Assert.True(File.Exists(Path.Combine(createdFolder, "bg.jpg")));
+		// Eagerly cached at ingest, not extracted into a folder: the .osu (needed for analysis
+		// regardless) and the set's own preview background (this single beatmap's background is
+		// also the set's preview).
+		var setCacheDir = Path.Combine(_beatmapsetsPath, "Cache", "beatmapset-assets", setId.Value.ToString());
+		Assert.True(File.Exists(Path.Combine(setCacheDir, "vivid_osu_file.osu")));
+		Assert.True(File.Exists(Path.Combine(setCacheDir, "Chocobos.jpg")));
+	}
+
+	/// <summary>
+	///     Regression test for the orphan-sweep bug found on ADR-006 review: once ingestion treats a
+	///     loose .osz as the canonical layout, a set still sitting as a legacy extracted folder (not
+	///     yet reached by the background migration pass) must still count as "seen" by
+	///     <see cref="BeatmapIngestionService.ReconcileAllAsync" />'s orphan sweep, or it gets
+	///     mass-deleted on the very first startup after upgrade.
+	/// </summary>
+	[Fact]
+	public async Task ReconcileAllAsync_MixOfCanonicalOszAndLegacyFolder_OrphanSweepKeepsBoth()
+	{
+		// A legacy, not-yet-migrated folder-based set, already known from a prior run (mirrors a
+		// real deployment: this set was ingested before this session's upgrade, so its row already
+		// exists in the DB before the ReconcileAllAsync pass under test below). Genuinely different
+		// content (different MD5) from the .osz below, so it resolves to a distinct Beatmapset.
+		var legacyFolder = Path.Combine(_beatmapsetsPath, "unresolved FAIRY FORE - VividTwo");
+		Directory.CreateDirectory(legacyFolder);
+		var legacyContent = (await File.ReadAllTextAsync(FixtureSourcePath)).Replace("Title:Vivid", "Title:VividTwo");
+		await File.WriteAllTextAsync(Path.Combine(legacyFolder, "vivid_two.osu"), legacyContent);
+		var (_, legacySetId) = await _service.ReconcileFolderAsync(legacyFolder);
+		Assert.NotNull(legacySetId);
+		// ReconcileFolderAsync doesn't rename the folder to match its resolved id -- rename it here
+		// to the convention ReconcileAllAsync's own folder loop expects, matching how a real
+		// legacy folder would already be named from its own original ingestion.
+		var renamedLegacyFolder = Path.Combine(_beatmapsetsPath, $"{legacySetId} FAIRY FORE - VividTwo");
+		Directory.Move(legacyFolder, renamedLegacyFolder);
+
+		// A canonical .osz-based upload, dropped in after the legacy set already existed.
+		var oszPath = Path.Combine(_beatmapsetsPath, "dropped.osz");
+		await using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
+			await archive.CreateEntryFromFileAsync(FixtureSourcePath, "vivid_osu_file.osu");
+
+		var ingested = await _service.ReconcileAllAsync();
+
+		Assert.Equal(2, ingested);
+		var oszSetId = int.Parse(Path.GetFileName(Directory.EnumerateFiles(_beatmapsetsPath, "*.osz").Single())
+			.Split(' ')[0]);
+		Assert.NotNull(await _beatmapsetRepository.FetchByIdAsync(oszSetId));
+		// The actual regression being pinned: the legacy set's row must survive this pass' orphan
+		// sweep even though it exists only under the legacy layout, not as an .osz.
+		Assert.NotNull(await _beatmapsetRepository.FetchByIdAsync(legacySetId!.Value));
+		Assert.True(Directory.Exists(renamedLegacyFolder), "the legacy folder is untouched until migration reaches it");
 	}
 
 	[Fact]
