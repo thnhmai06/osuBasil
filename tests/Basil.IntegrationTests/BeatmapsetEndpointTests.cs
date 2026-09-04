@@ -131,6 +131,27 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		return folder;
 	}
 
+	/// <summary>
+	///     Writes a canonical ".osz" directly (no legacy folder involved), so download tests against the
+	///     already-migrated layout don't race BeatmapsetMigrationService/BeatmapWatcherService the way a
+	///     legacy-folder fixture would.
+	/// </summary>
+	private async Task<string> BeatmapsetOsz(int setId, params (string Name, byte[] Content)[] entries)
+	{
+		Directory.CreateDirectory(Path.Combine(_dataDir, "Beatmapsets"));
+		var oszPath = Path.Combine(_dataDir, "Beatmapsets", $"{setId} Artist - Title.osz");
+		await using var stream = File.Create(oszPath);
+		using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+		foreach (var (name, content) in entries)
+		{
+			var entry = archive.CreateEntry(name);
+			await using var entryStream = entry.Open();
+			await entryStream.WriteAsync(content);
+		}
+
+		return oszPath;
+	}
+
 	// ---- GET /beatmapsets/{beatmapsetId} ----
 
 	[Fact]
@@ -360,6 +381,42 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
 		Assert.Contains(archive.Entries, e => e.Name == "bg.mp4");
+	}
+
+	/// <summary>
+	///     Covers the canonical ".osz" storage layout: with no `noVideo` param, the archive's own bytes
+	///     are returned as-is rather than being rebuilt entry by entry.
+	/// </summary>
+	[Fact]
+	public async Task DownloadBeatmapset_CanonicalOsz_NoQueryParam_ReturnsArchiveBytesAsIs()
+	{
+		var beatmapset = MakeBeatmapset(330);
+		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
+		var oszPath = await BeatmapsetOsz(330, ("diff.osu", "osu file format v14"u8.ToArray()),
+			("bg.mp4", [1, 2, 3]));
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/330/download", "assets.test.local"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		Assert.Equal(await File.ReadAllBytesAsync(oszPath), await response.Content.ReadAsByteArrayAsync());
+	}
+
+	/// <summary>Covers the canonical ".osz" storage layout's `noVideo` param: rebuilt without video entries.</summary>
+	[Fact]
+	public async Task DownloadBeatmapset_CanonicalOsz_NoVideoParam_OmitsVideoFileFromArchive()
+	{
+		var beatmapset = MakeBeatmapset(331);
+		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
+		await BeatmapsetOsz(331, ("diff.osu", "osu file format v14"u8.ToArray()), ("bg.mp4", [1, 2, 3]));
+
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/331/download?noVideo=1", "assets.test.local"));
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		Assert.Contains(archive.Entries, e => e.Name == "diff.osu");
+		Assert.DoesNotContain(archive.Entries, e => e.Name == "bg.mp4");
 	}
 
 	// ---- GET /beatmapsets/{beatmapsetId}/background ----

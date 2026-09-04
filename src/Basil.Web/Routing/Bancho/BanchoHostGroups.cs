@@ -5,6 +5,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
+using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Routing.Api;
 using Basil.Web.Routing.Assets;
@@ -91,9 +92,19 @@ public static class BanchoHostGroups
 		if (beatmaps.Count == 0) return null;
 
 		var beatmapset = beatmaps[0].Beatmapset;
-		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage, setId);
-		if (folder is null) return null;
 
+		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage, setId);
+		if (folder is not null)
+			return await BuildFromFolderAsync(folder, beatmapset, noVideo, cancellationToken);
+
+		var oszPath = BeatmapIngestionService.FindBeatmapsetOsz(storage, setId);
+		return oszPath is null ? null : await BuildFromOszAsync(oszPath, beatmapset, noVideo, cancellationToken);
+	}
+
+	/// <summary>Builds the download archive from a legacy extracted beatmapset folder.</summary>
+	private static async Task<(byte[] Bytes, string FileName)?> BuildFromFolderAsync(string folder,
+		Beatmapset beatmapset, bool noVideo, CancellationToken cancellationToken)
+	{
 		using var zipStream = new MemoryStream();
 		var wroteAny = false;
 		var suffixed = false;
@@ -112,6 +123,51 @@ public static class BanchoHostGroups
 				await using var entryStream = await entry.OpenAsync(cancellationToken);
 				await using var fileStream = File.OpenRead(filePath);
 				await fileStream.CopyToAsync(entryStream, cancellationToken);
+				wroteAny = true;
+			}
+		}
+
+		if (!wroteAny) return null;
+
+		var name = $"{beatmapset.Id} {beatmapset.Artist} - {beatmapset.Title}{(suffixed ? " [no video]" : "")}.osz";
+		return (zipStream.ToArray(), name);
+	}
+
+	/// <summary>
+	///     Builds the download archive from a beatmapset's canonical ".osz". When
+	///     <paramref name="noVideo" /> is <see langword="false" />, the archive is already exactly what
+	///     the caller wants, so its bytes are returned as-is rather than being rebuilt entry by entry.
+	/// </summary>
+	private static async Task<(byte[] Bytes, string FileName)?> BuildFromOszAsync(string oszPath,
+		Beatmapset beatmapset, bool noVideo, CancellationToken cancellationToken)
+	{
+		if (!noVideo)
+		{
+			var bytes = await File.ReadAllBytesAsync(oszPath, cancellationToken);
+			return (bytes, $"{beatmapset.Id} {beatmapset.Artist} - {beatmapset.Title}.osz");
+		}
+
+		using var zipStream = new MemoryStream();
+		var wroteAny = false;
+		var suffixed = false;
+		await using (var source = await ZipFile.OpenReadAsync(oszPath, cancellationToken))
+		await using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+		{
+			foreach (var sourceEntry in source.Entries)
+			{
+				if (sourceEntry.Name.Length == 0) continue; // directory entry
+
+				var isVideo = VideoExtensions.Contains(Path.GetExtension(sourceEntry.Name).ToLowerInvariant());
+				if (isVideo)
+				{
+					suffixed = true;
+					continue;
+				}
+
+				var entry = archive.CreateEntry(sourceEntry.FullName);
+				await using var entryStream = await entry.OpenAsync(cancellationToken);
+				await using var sourceStream = await sourceEntry.OpenAsync(cancellationToken);
+				await sourceStream.CopyToAsync(entryStream, cancellationToken);
 				wroteAny = true;
 			}
 		}
