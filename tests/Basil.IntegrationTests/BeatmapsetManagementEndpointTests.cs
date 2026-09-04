@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
@@ -41,15 +42,26 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		beatmapsets.WhenForAnyArgs(m => m.SetFrozenAsync(default, default))
 			.Do(call =>
 			{
-				if (_beatmapset?.Id == call.ArgAt<int>(0)) _beatmapset = _beatmapset with { IsFrozen = call.ArgAt<bool>(1) };
+				if (_beatmapset?.Id == call.ArgAt<int>(0))
+					_beatmapset = _beatmapset with { IsFrozen = call.ArgAt<bool>(1) };
 			});
 		beatmapsets.WhenForAnyArgs(m => m.SetPrivateAsync(default, default))
 			.Do(call =>
 			{
-				if (_beatmapset?.Id == call.ArgAt<int>(0)) _beatmapset = _beatmapset with { IsPrivate = call.ArgAt<bool>(1) };
+				if (_beatmapset?.Id == call.ArgAt<int>(0))
+					_beatmapset = _beatmapset with { IsPrivate = call.ArgAt<bool>(1) };
 			});
 		beatmapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => _beatmapset is not null && (call.ArgAt<bool>(0) || !_beatmapset.IsPrivate) ? 1 : 0);
+		// Unstubbed NSubstitute methods return null for a reference type -- POST /beatmapsets'
+		// ingestion path resolves/creates a Beatmapset via UpsertAsync and needs a real instance back,
+		// or BeatmapIngestionService.BeatmapsetFolderName throws a NullReferenceException on it.
+		beatmapsets.UpsertAsync(Arg.Any<Beatmapset>(), Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				_beatmapset = call.ArgAt<Beatmapset>(0);
+				return Task.FromResult(_beatmapset);
+			});
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -113,6 +125,109 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		return stream.ToArray();
 	}
 
+	/// <summary>
+	///     Unlike <see cref="MakeMinimalOszAsync" />, this ".osu" content actually decodes -- ingestion
+	///     (`BeatmapIngestionService.ReconcileOszAsync`) silently skips a ".osu" entry it can't decode
+	///     (`TryDecode`'s catch-all), so a route that needs to observe a real ingested beatmap count
+	///     needs a genuinely parseable file, not just any bytes ending in ".osu".
+	/// </summary>
+	private static async Task<byte[]> MakeDecodableOszAsync(string title)
+	{
+		var content = $"""
+		               osu file format v14
+
+		               [General]
+		               AudioFilename: audio.mp3
+
+		               [Metadata]
+		               Title:{title}
+		               Artist:Test Artist
+		               Creator:Test Creator
+		               Version:Normal
+
+		               [Difficulty]
+		               HPDrainRate:5
+		               CircleSize:5
+		               OverallDifficulty:5
+		               ApproachRate:5
+		               SliderMultiplier:1.4
+		               SliderTickRate:1
+
+		               [TimingPoints]
+		               0,500,4,2,0,100,1,0
+
+		               [HitObjects]
+		               256,192,0,1,0,0:0:0:0:
+		               """;
+
+		using var stream = new MemoryStream();
+		await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
+		{
+			var entry = archive.CreateEntry("beatmap.osu");
+			await using var entryStream = await entry.OpenAsync();
+			await entryStream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(content));
+		}
+
+		return stream.ToArray();
+	}
+
+	// ---- POST /beatmapsets ----
+
+	/// <summary>
+	///     Pins that upload reconciles only the uploaded archive (`BeatmapIngestionService.ReconcileOszAsync`),
+	///     not a full-directory sweep (`ReconcileAllAsync`) -- a stray, unrelated `.osz` already sitting in
+	///     `BeatmapsetsPath` (simulating one the watcher hasn't picked up yet) is left exactly as-is by an
+	///     unrelated upload.
+	/// </summary>
+	[Fact]
+	public async Task PostBeatmapset_Valid_ReconcilesOnlyTheUpload_LeavesUnrelatedStrayOszUntouched()
+	{
+		var beatmapsetsDir = Path.Combine(_dataDir, "Beatmapsets");
+		Directory.CreateDirectory(beatmapsetsDir);
+		var strayOszPath = Path.Combine(beatmapsetsDir, "stray.osz");
+		await File.WriteAllBytesAsync(strayOszPath, await MakeMinimalOszAsync());
+
+		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
+		request.Content = new MultipartFormDataContent
+			{ { new ByteArrayContent(await MakeDecodableOszAsync("Uploaded Set")), "file", "set.osz" } };
+
+		var response = await _factory.CreateClient().SendAsync(request);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+		Assert.Equal(1, body.GetProperty("data").GetProperty("beatmapsProcessed").GetInt32());
+		Assert.True(File.Exists(strayOszPath));
+	}
+
+	[Fact]
+	public async Task PostBeatmapset_MissingFile_ReturnsBadRequest()
+	{
+		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
+		request.Content = new MultipartFormDataContent { { new StringContent("no file here"), "note" } };
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	/// <summary>
+	///     Regression test: a truly empty <see cref="MultipartFormDataContent" /> (no parts at all) isn't
+	///     a well-formed multipart body ASP.NET Core's form parser accepts -- it throws
+	///     <see cref="InvalidDataException" /> from inside `ReadFormAsync`, which `HandleCreate` didn't
+	///     catch, surfacing as an unhandled 500 instead of a 400. Found via this exact test; fixed by
+	///     catching it alongside the missing-file/wrong-extension checks.
+	/// </summary>
+	[Fact]
+	public async Task PostBeatmapset_MalformedMultipart_ReturnsBadRequest()
+	{
+		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
+		request.Content = new MultipartFormDataContent();
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	// ---- PUT /beatmapsets/{beatmapsetId} ----
 
 	[Fact]
@@ -140,6 +255,21 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var response = await _factory.CreateClient().SendAsync(request);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+	}
+
+	/// <summary>Same malformed-multipart guard as `POST /beatmapsets`; `HandleReplace` has the identical gap.</summary>
+	[Fact]
+	public async Task PutBeatmapset_MalformedMultipart_ReturnsBadRequest()
+	{
+		_beatmapset = new Beatmapset(702, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		BeatmapsetFolder(702);
+
+		var request = MakeRequest(HttpMethod.Put, "/beatmapsets/702");
+		request.Content = new MultipartFormDataContent();
+
+		var response = await _factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
 	[Fact]

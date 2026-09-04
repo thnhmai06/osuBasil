@@ -94,14 +94,32 @@ torn one.
   flight around a concurrent stampede on a cold cache) that deserves its own design pass before
   code, not a quick patch — **design written 2026-09-03, see "`.osz` direct storage — design
   [GATE]" below; still not implemented, awaiting approval.**
-- **`ReconcileAllAsync` runs inside a request.** `POST /beatmapsets` (`HandleCreate`) calls
-  `BeatmapIngestionService.ReconcileAllAsync`, a full-disk reconciliation pass, synchronously as
-  part of handling a single upload, and returns its result (`{ ingested }`) as the response body.
-  Moving this off the request path is not just a threading change: the response contract
-  currently depends on the full reconciliation's count. A redesign needs to decide either an
-  async/202-style response (matching `PUT`/`DELETE /beatmapsets/{id}`'s existing async pattern)
-  or scoping the reconciliation to just the newly-uploaded archive instead of a full-disk sweep.
-  Deferred pending that decision — not a same-session fix.
+- ~~**`ReconcileAllAsync` runs inside a request.**~~ **Fixed 2026-09-04.** `POST /beatmapsets`
+  (`HandleCreate`) called `BeatmapIngestionService.ReconcileAllAsync`, a full-disk reconciliation
+  pass, synchronously as part of handling a single upload — an accident of implementation
+  convenience (the full-pass method happens to also reconcile the new file) rather than an
+  intentional "opportunistically re-sync everything on every upload" design: `BeatmapWatcherService`
+  already handles live incremental changes, and a full pass already runs at startup. Presented two
+  options to the user (scope the reconciliation to just the uploaded archive, keeping a synchronous
+  response; or an async/202-style response matching `PUT`/`DELETE /beatmapsets/{id}`, keeping the
+  full sweep but changing the response contract); the user chose the narrower scope. `HandleCreate`
+  now calls `ReconcileOszAsync(destination, cancellationToken)` — the single-file reconcile
+  `ReconcileAllAsync` already builds on internally — directly, so upload no longer touches any file
+  it didn't itself receive. No response-contract change: still `201 Created` with the same
+  `{ beatmapsProcessed }` shape, now counting only the uploaded archive's own beatmaps. Regression
+  test `PostBeatmapset_Valid_ReconcilesOnlyTheUpload_LeavesUnrelatedStrayOszUntouched` (a stray,
+  unrelated `.osz` already sitting in `BeatmapsetsPath` is left untouched by an unrelated upload),
+  verified by reverting to the old `ReconcileAllAsync()` call and confirming the ingested count
+  changes (1 → 2, the stray file now swept in too).
+
+  Writing this test's coverage surfaced an unrelated pre-existing gap in the same handler: a
+  genuinely empty `MultipartFormDataContent` (no parts at all, as opposed to one missing the `file`
+  field specifically) isn't well-formed multipart body ASP.NET Core's form parser accepts —
+  `ReadFormAsync` throws `InvalidDataException`, uncaught, surfacing as an unhandled 500 instead of
+  a 400. Fixed in both `HandleCreate` and the identically-shaped `HandleReplace` (`PUT`) by catching
+  that exception alongside the existing missing-file/wrong-extension checks. Regression tests for
+  both handlers: `PostBeatmapset_MalformedMultipart_ReturnsBadRequest` and
+  `PutBeatmapset_MalformedMultipart_ReturnsBadRequest`.
 - ~~**ffmpeg audio-preview generation**: an N-miss workload spawns N processes with no stampede
   guard.~~ **Fixed 2026-09-04** (per-beatmapset single-flight lock around
   `BanchoHostGroups.BuildAudioPreviewAsync`'s `extractor.ExtractAsync` call, matching

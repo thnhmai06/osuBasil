@@ -78,7 +78,7 @@ internal static class BeatmapsetRoutes
 			.WithDescription("""
 			                 Multipart upload, field name `file`. Only .osz uploads are accepted.
 
-			                 Adds the archive's beatmaps to the server and returns the number of beatmaps added or updated.
+			                 Adds the archive's beatmaps to the server and returns the number of beatmaps added or updated by this upload specifically.
 			                 """ + AdminKeyNote)
 			.WithTags("Beatmapsets")
 			.WithMultipartFileUpload()
@@ -366,7 +366,16 @@ internal static class BeatmapsetRoutes
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
 
-		var form = await context.Request.ReadFormAsync(cancellationToken);
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(cancellationToken);
+		}
+		catch (InvalidDataException)
+		{
+			return Results.BadRequest(new ErrorResponse("Malformed multipart upload."));
+		}
+
 		var file = form.Files.GetFile("file");
 		if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 
@@ -383,11 +392,11 @@ internal static class BeatmapsetRoutes
 			await file.CopyToAsync(fileStream, cancellationToken);
 		}
 
-		var ingested = await ingestion.ReconcileAllAsync(cancellationToken);
+		var (ingested, _) = await ingestion.ReconcileOszAsync(destination, cancellationToken);
 		logger.LogInformation("Beatmapset created via admin API: IngestedCount={IngestedCount}", ingested);
-		// No single canonical Location: one .osz upload can ingest/update more than one beatmapset via the
-		// full reconciliation pass, so this can't point at one specific created resource like a normal
-		// 201 would.
+		// No single canonical Location: the uploaded archive can hold more than one difficulty (and,
+		// via ResolveBeatmapsetAsync's content-hash match, could even resolve to an existing set), so
+		// this can't point at one specific created resource like a normal 201 would.
 		return Results.Json(new IngestResult(ingested), statusCode: StatusCodes.Status201Created);
 	}
 
@@ -416,7 +425,17 @@ internal static class BeatmapsetRoutes
 
 		if (!context.Request.HasFormContentType)
 			return Results.BadRequest(new ErrorResponse("Expected a multipart file upload."));
-		var form = await context.Request.ReadFormAsync(cancellationToken);
+
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(cancellationToken);
+		}
+		catch (InvalidDataException)
+		{
+			return Results.BadRequest(new ErrorResponse("Malformed multipart upload."));
+		}
+
 		var file = form.Files.GetFile("file");
 		if (file is null) return Results.BadRequest(new ErrorResponse("Missing 'file' form field."));
 		if (!string.Equals(Path.GetExtension(file.FileName), ".osz", StringComparison.OrdinalIgnoreCase))
@@ -482,7 +501,8 @@ internal static class BeatmapsetRoutes
 			await beatmapsetRepository.SetFrozenAsync(beatmapsetId, body.Frozen.Value, cancellationToken);
 		if (body.Private is not null)
 			await beatmapsetRepository.SetPrivateAsync(beatmapsetId, body.Private.Value, cancellationToken);
-		logger.LogInformation("Beatmapset updated via admin API: BeatmapsetId={BeatmapsetId} Frozen={Frozen} Private={Private}",
+		logger.LogInformation(
+			"Beatmapset updated via admin API: BeatmapsetId={BeatmapsetId} Frozen={Frozen} Private={Private}",
 			beatmapsetId, body.Frozen, body.Private);
 
 		var updated = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
