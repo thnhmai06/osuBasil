@@ -116,7 +116,7 @@ public sealed class Program
 		("Settings",
 		[
 			("Admin Key", "The server's admin key: status, rotation, and bypass mode."),
-			("Settings", "The server's beatmap mirror endpoints.")
+			("Mirror", "The server's beatmap mirror endpoints.")
 		]),
 		("Announce",
 		[

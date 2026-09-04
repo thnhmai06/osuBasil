@@ -17,6 +17,7 @@ public sealed class MirrorService(
 {
 	private const string DownloadEndpointSettingKey = "Mirror:DownloadEndpoint";
 	private const string SearchEndpointSettingKey = "Mirror:SearchEndpoint";
+	private const string SeededSettingKey = "Mirror:Seeded";
 
 	/// <summary>Gets the currently configured download and search mirror endpoints.</summary>
 	/// <param name="cancellationToken">A token that cancels the read.</param>
@@ -42,28 +43,34 @@ public sealed class MirrorService(
 	}
 
 	/// <summary>
-	///     One-time upgrade path: if no mirror endpoint has ever been stored in the database, seeds it
-	///     from <c>appsettings.json</c>'s legacy <see cref="MirrorOptions" /> section, so an existing
-	///     deployment's mirror keeps working after upgrading without an operator re-entering it.
+	///     One-time upgrade path: the first time this ever runs, seeds the stored endpoints from
+	///     <c>appsettings.json</c>'s legacy <see cref="MirrorOptions" /> section (if either is set), so
+	///     an existing deployment's mirror keeps working after upgrading without an operator
+	///     re-entering it. A no-op on every later startup, even if an operator has since cleared both
+	///     endpoints through <see cref="SetAsync" /> -- otherwise a deliberate clear would silently come
+	///     back on the next restart.
 	/// </summary>
-	/// <param name="cancellationToken">A token that cancels the read and, if needed, the write.</param>
+	/// <param name="cancellationToken">A token that cancels the reads and, if needed, the writes.</param>
 	/// <remarks>
 	///     <c>appsettings.json</c>'s <c>Basil:Mirror</c> section is never read again after this runs
 	///     once; <see cref="GetAsync" /> is the only source of truth from then on.
 	/// </remarks>
 	public async Task SeedFromConfigIfUnsetAsync(CancellationToken cancellationToken = default)
 	{
-		var current = await GetAsync(cancellationToken);
-		if (current.DownloadEndpoint is not null || current.SearchEndpoint is not null) return;
+		var alreadySeeded = await settings.GetAsync(SeededSettingKey, cancellationToken);
+		if (!string.IsNullOrEmpty(alreadySeeded)) return;
 
 		var seed = configSeed.Value;
-		if (seed.DownloadEndpoint is null && seed.SearchEndpoint is null) return;
+		if (seed.DownloadEndpoint is not null || seed.SearchEndpoint is not null)
+		{
+			await SetAsync(seed.DownloadEndpoint, seed.SearchEndpoint, cancellationToken);
+			logger.LogInformation(
+				"Seeded mirror settings from appsettings.json's Basil:Mirror section into the database " +
+				"(one-time upgrade path). Manage mirror endpoints via PUT /settings/mirror from now on -- " +
+				"Basil:Mirror in appsettings.json is no longer read.");
+		}
 
-		await SetAsync(seed.DownloadEndpoint, seed.SearchEndpoint, cancellationToken);
-		logger.LogInformation(
-			"Seeded mirror settings from appsettings.json's Basil:Mirror section into the database " +
-			"(one-time upgrade path). Manage mirror endpoints via PUT /settings/mirror from now on -- " +
-			"Basil:Mirror in appsettings.json is no longer read.");
+		await settings.SetAsync(SeededSettingKey, "true", cancellationToken);
 	}
 
 	private static string? NullIfEmpty(string? value)

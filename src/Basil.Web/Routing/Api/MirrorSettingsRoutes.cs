@@ -34,7 +34,7 @@ internal static class MirrorSettingsRoutes
 			                 Returns the download and search mirror endpoints currently in effect. A `null` value
 			                 means beatmaps or search fall back to local storage only for that path.
 			                 """ + AdminKeyNote)
-			.WithTags("Settings")
+			.WithTags("Mirror")
 			.Produces<MirrorSettingsView>()
 			.WithExample(StatusCodes.Status200OK,
 				new MirrorSettingsView("https://catboy.best/d", "https://catboy.best/api/v2/search"));
@@ -56,7 +56,7 @@ internal static class MirrorSettingsRoutes
 
 			                 Takes effect immediately for every subsequent request, no restart required.
 			                 """ + AdminKeyNote)
-			.WithTags("Settings")
+			.WithTags("Mirror")
 			.Produces<MirrorSettingsView>()
 			.WithExample(StatusCodes.Status200OK, new MirrorSettingsView("https://catboy.best/d", null));
 	}

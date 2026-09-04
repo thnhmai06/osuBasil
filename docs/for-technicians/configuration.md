@@ -157,6 +157,9 @@ An install upgrading from a release that configured `Basil:Mirror:DownloadEndpoi
 automatically, once, the first time Basil starts after the upgrade — the `Basil:Mirror` section itself
 is no longer read afterward and can be removed from `Data/appsettings.json`.
 
+Unlike every other setting in this document, `Basil:Mirror` therefore stops responding to a config-file
+or environment-variable change after that first boot — use `PUT /settings/mirror` instead.
+
 ---
 
 ## Persistent data

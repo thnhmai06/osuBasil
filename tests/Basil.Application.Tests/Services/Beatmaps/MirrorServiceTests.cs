@@ -63,7 +63,7 @@ public class MirrorServiceTests
 	}
 
 	[Fact]
-	public async Task SeedFromConfigIfUnsetAsync_NothingStoredAndConfigHasValue_SeedsFromConfig()
+	public async Task SeedFromConfigIfUnsetAsync_NeverSeededAndConfigHasValue_SeedsFromConfigAndMarksSeeded()
 	{
 		_configSeed = new MirrorOptions { DownloadEndpoint = "https://config.local/d" };
 
@@ -71,25 +71,39 @@ public class MirrorServiceTests
 
 		await _settings.Received(1)
 			.SetAsync("Mirror:DownloadEndpoint", "https://config.local/d", Arg.Any<CancellationToken>());
+		await _settings.Received(1).SetAsync("Mirror:Seeded", "true", Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
-	public async Task SeedFromConfigIfUnsetAsync_AlreadyStored_DoesNotOverwrite()
+	public async Task SeedFromConfigIfUnsetAsync_NeverSeededAndConfigEmpty_WritesNoEndpointButMarksSeeded()
 	{
-		_settings.GetAsync("Mirror:DownloadEndpoint", Arg.Any<CancellationToken>()).Returns("https://stored.local/d");
+		await MakeService().SeedFromConfigIfUnsetAsync();
+
+		await _settings.DidNotReceive()
+			.SetAsync("Mirror:DownloadEndpoint", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+		await _settings.DidNotReceive()
+			.SetAsync("Mirror:SearchEndpoint", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+		await _settings.Received(1).SetAsync("Mirror:Seeded", "true", Arg.Any<CancellationToken>());
+	}
+
+	/// <summary>
+	///     Regression test: seeding used to be gated on "is an endpoint currently unset", which meant an
+	///     operator's own deliberate clear (both endpoints set back to null) looked identical to "never
+	///     seeded" and the old config value would silently reappear on the next restart. Gating on a
+	///     dedicated marker instead means a clear stays cleared.
+	/// </summary>
+	[Fact]
+	public async Task SeedFromConfigIfUnsetAsync_AlreadySeeded_DoesNotReseedEvenIfEndpointsAreNowCleared()
+	{
+		_settings.GetAsync("Mirror:Seeded", Arg.Any<CancellationToken>()).Returns("true");
+		_settings.GetAsync("Mirror:DownloadEndpoint", Arg.Any<CancellationToken>()).Returns((string?)null);
 		_configSeed = new MirrorOptions { DownloadEndpoint = "https://config.local/d" };
 
 		await MakeService().SeedFromConfigIfUnsetAsync();
 
 		await _settings.DidNotReceive()
 			.SetAsync("Mirror:DownloadEndpoint", Arg.Any<string?>(), Arg.Any<CancellationToken>());
-	}
-
-	[Fact]
-	public async Task SeedFromConfigIfUnsetAsync_NothingStoredAndConfigEmpty_WritesNothing()
-	{
-		await MakeService().SeedFromConfigIfUnsetAsync();
-
-		await _settings.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+		await _settings.DidNotReceive()
+			.SetAsync("Mirror:Seeded", Arg.Any<string?>(), Arg.Any<CancellationToken>());
 	}
 }

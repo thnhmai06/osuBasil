@@ -66,7 +66,8 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 
 		var setRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
 		setRequest.Content =
-			JsonContent.Create(new { downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
+			JsonContent.Create(new
+				{ downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
 		await client.SendAsync(setRequest);
 
 		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
@@ -84,7 +85,8 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 
 		var setRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
 		setRequest.Content =
-			JsonContent.Create(new { downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
+			JsonContent.Create(new
+				{ downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
 		await client.SendAsync(setRequest);
 
 		var clearRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
@@ -96,5 +98,34 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 
 		Assert.Contains("\"downloadEndpoint\":\"https://mirror.local/d\"", body);
 		Assert.Contains("\"searchEndpoint\":null", body);
+	}
+
+	/// <summary>
+	///     Regression test: the one-time appsettings.json seed used to be gated on "is an endpoint
+	///     currently unset", so an operator's deliberate clear looked identical to "never seeded" and
+	///     the old config value silently came back on the next restart. Two separately built hosts
+	///     (each running startup, including the seed check, once) sharing the same underlying
+	///     <see cref="InMemorySettingsRepository" /> simulate that restart.
+	/// </summary>
+	[Fact]
+	public async Task RestartAfterClearingSeededEndpoint_DoesNotReseedFromConfig()
+	{
+		var mirrorConfig = Options.Create(new MirrorOptions { DownloadEndpoint = "https://config.local/d" });
+		var withMirrorConfig = new Action<IServiceCollection>(services => services.AddSingleton(mirrorConfig));
+
+		var firstBoot = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(withMirrorConfig));
+		var firstClient = firstBoot.CreateClient();
+		var seeded = await firstClient.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
+		Assert.Contains("\"downloadEndpoint\":\"https://config.local/d\"", await seeded.Content.ReadAsStringAsync());
+
+		var clearRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
+		clearRequest.Content = JsonContent.Create(new { });
+		await firstClient.SendAsync(clearRequest);
+
+		var secondBoot = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(withMirrorConfig));
+		var response = await secondBoot.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
+		var body = await response.Content.ReadAsStringAsync();
+
+		Assert.Contains("\"downloadEndpoint\":null", body);
 	}
 }
