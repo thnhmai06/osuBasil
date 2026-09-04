@@ -46,8 +46,11 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 		return new HttpRequestMessage(method, path) { Headers = { Host = "api.test.local" } };
 	}
 
+	// Named for the fake InMemorySettingsRepository's starting state, not a claim about a real
+	// deployment: a fresh database's "Motd" row already carries a non-null default (see
+	// SqliteSettingsRepositorySeedTests and configuration.md's "Message of the day" section).
 	[Fact]
-	public async Task GetMotd_Unconfigured_ReturnsNull()
+	public async Task GetMotd_EmptyBackingStore_ReturnsNull()
 	{
 		var client = _factory.CreateClient();
 
