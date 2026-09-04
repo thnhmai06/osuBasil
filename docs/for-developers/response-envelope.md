@@ -77,6 +77,22 @@ with an SSE-related `Accept` header as a stream.
 A route that produces JSON should not manually construct `Envelope<T>` unless it has a specific reason to bypass the
 normal middleware pipeline.
 
+### Error paths
+
+`EnvelopeMiddleware` only sees requests that already matched a `basilapi`-tagged endpoint. Two error paths never
+reach it that way, and are covered separately so the `api.` host's envelope contract still holds for them:
+
+* **A route that never matches at all** (a 404 with no route found, a 405 method mismatch, or a route-constraint
+  overflow such as an `{id:int}` too large for `Int32`) resolves no endpoint at all. `EnvelopeMiddleware` treats an
+  unmatched endpoint on the `api.` host as equivalent to a matched `basilapi` one for envelope purposes, so these
+  responses are still wrapped instead of falling through as a bare, empty body.
+* **An unhandled application exception** is caught by a separate middleware (`ExceptionLoggingMiddleware`, registered
+  before routing) that logs it and, on the `api.` host only, maps it to an enveloped `500` -- provided the response
+  hasn't already started writing. `BadHttpRequestException` (parameter-binding failures, e.g. that same route-id
+  overflow) is treated as its own already-correct client-error status rather than a `500`. Every other host group
+  keeps its previous bare-response behavior on an unhandled exception; only `api.` has an envelope contract to
+  uphold.
+
 ## OpenAPI schema transformation
 
 `EnvelopeSchemaTransformer` keeps the generated OpenAPI contract consistent with the runtime behavior.
@@ -273,6 +289,7 @@ Use an enveloped `200` response with `data: null` instead.
 ## Related code
 
 * [`Basil.Web/Middleware/EnvelopeMiddleware.cs`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs): runtime response wrapping
+* [`Basil.Web/Middleware/ExceptionLoggingMiddleware.cs`](../../src/Basil.Web/Middleware/ExceptionLoggingMiddleware.cs): unhandled-exception logging and the `api.` host's 500-envelope mapping
 * [`Basil.Web/OpenApi/EnvelopeBuilder.cs`](../../src/Basil.Web/OpenApi/EnvelopeBuilder.cs): envelope schema construction
 * [`Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs`](../../src/Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs): OpenAPI response transformation
 * [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): `UserBrief` embedding

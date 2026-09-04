@@ -45,7 +45,9 @@ A publisher never writes directly to an HTTP response.
 Each connection owns its own delivery buffer, allowing state mutation to remain independent from network I/O.
 
 This matters for multiplayer state changes even though most publishing now runs after
-[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) has already been released (ADR-004 4b) — a few call sites still publish while holding it (see the ADR for exactly which, and why). A slow SSE consumer must never extend that critical section regardless of which case applies.
+[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) has already been released
+— a few call sites still publish while holding it (see "Publishing after the lock is released" below for exactly
+which, and why). A slow SSE consumer must never extend that critical section regardless of which case applies.
 
 ## Event sources
 
@@ -133,7 +135,7 @@ on every publish regardless of whether anything changed; that is no longer the b
 
 ## Publishing after the lock is released
 
-Most publishing (ADR-004 4b) happens after `MatchSession.Lock` has already been released, not while holding it — the
+Most publishing happens after `MatchSession.Lock` has already been released, not while holding it — the
 snapshot build and the diff/broadcast are the expensive part, and running them unlocked keeps the lock's hold time
 down to the mutation itself. This reopens a question the shared-diff model doesn't answer on its own: two publishes
 for the same stream can now run concurrently and finish in either order, so what stops an older mutation's publish
@@ -150,8 +152,8 @@ it is only counted (`basil.match.publish.stale_dropped`), never logged as a fail
 Not every call site needed to change to get this benefit. A few (starting a round, a countdown's own final tick, and
 the `!mp kick`/`!mp ban` bot commands specifically) still publish before releasing the lock, because hoisting them
 would require restructuring how several different callers share that lock, not just shrinking one function's hold
-time — see ADR-004 for exactly which call sites and why. Seating and leaving a match (`OccupySlot`/`LeaveAsync`) no
-longer publish internally at all; every caller allocates a version and publishes itself after the mutation completes.
+time. Seating and leaving a match (`OccupySlot`/`LeaveAsync`) no longer publish internally at all; every caller
+allocates a version and publishes itself after the mutation completes.
 
 ## Subscriber registry and match close
 

@@ -273,19 +273,27 @@ Basil explicitly enables it through the connection configuration.
 Do not assume that declaring a foreign key in the schema is sufficient by itself; enforcement must remain enabled on
 every database connection.
 
-### Busy timeout
+### Write configuration
 
 SQLite permits concurrent readers but serializes conflicting writes.
 
-Basil therefore configures a short busy timeout.
+Every connection is opened through a single factory that applies two per-connection PRAGMAs before the connection is
+handed to a repository:
 
-This is deliberate because Basil runs on a normal thread pool rather than the single-threaded execution model of the
-original server. Concurrent writes from independent matches are expected.
+* `busy_timeout = 5000` — SQLite's own bounded-wait-with-backoff busy handler. A blocked write waits up to 5 seconds
+  for the lock rather than failing immediately, since Basil runs on a normal thread pool (not the single-threaded
+  execution model of the original server) and concurrent writes from independent matches are expected.
+* `synchronous = NORMAL` — safe under `journal_mode=WAL` (set once, persistently, when the database is migrated):
+  durable against process crashes, with only a very recent commit at risk on an OS-level power failure, and the
+  database file itself is never corrupted.
 
-A short wait is preferable to immediately failing a transaction when another write has temporarily acquired the SQLite
-lock.
+Both PRAGMAs are session-scoped, not persisted like `journal_mode`, so they are applied on every new connection
+rather than once at startup.
 
-The timeout should remain short: it is intended to absorb normal contention, not hide persistent database bottlenecks.
+The busy timeout should remain short: it is intended to absorb normal contention, not hide persistent database
+bottlenecks. A request whose writes are on the hot path for match state (round-end persistence in particular) does
+not wait on this timeout directly -- see [`multiplayer.md`](multiplayer.md) for the ordered, outside-the-match-lock
+persistence queue that decouples a match's round-end write from the request that triggered it.
 
 ### Dapper row mapping
 
