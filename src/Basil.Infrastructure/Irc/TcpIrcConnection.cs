@@ -245,7 +245,7 @@ public sealed class TcpIrcConnection(
 				break;
 
 			case "MOTD":
-				SendAll(await ircQueries.BuildMotdReplyAsync(User, cancellationToken));
+				SendAll(ircQueries.BuildMotdReply(User));
 				break;
 
 			case "VERSION":

@@ -5,7 +5,6 @@ using System.Text;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Backgrounds;
@@ -354,8 +353,7 @@ public class TcpIrcConnectionTests
 		ISessionRegistry<IrcSession> ircRegistry, IChannelRegistry channelRegistry,
 		ChannelMembershipService channelMembership)
 	{
-		return new IrcQueryService(channelRegistry, gameRegistry, ircRegistry, channelMembership,
-			new MotdService(new EmptySettingsRepository()), _fakeIrcOptions);
+		return new IrcQueryService(channelRegistry, gameRegistry, ircRegistry, channelMembership, _fakeIrcOptions);
 	}
 
 	private static PlayerLogoutService MakePlayerLogoutService(ISessionRegistry<GameSession> gameRegistry,
@@ -505,20 +503,6 @@ public class TcpIrcConnectionTests
 			_byName[User.MakeSafeName(user.Name)] = user;
 			if (pwBcrypt is not null)
 				_passwordHashes[user.Id] = pwBcrypt;
-		}
-	}
-
-	/// <summary>No MOTD is ever configured in these tests, so every key reads back unset.</summary>
-	private sealed class EmptySettingsRepository : ISettingsRepository
-	{
-		public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
-		{
-			return Task.FromResult<string?>(null);
-		}
-
-		public Task SetAsync(string key, string? value, CancellationToken cancellationToken = default)
-		{
-			throw new NotSupportedException();
 		}
 	}
 

@@ -57,17 +57,33 @@ certificate settings. See [`docker.md`](docker.md).
 
 ---
 
-## BasilBot and IRC reply text
+## Localization
 
-The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send lives in
-[`Data/Locale/replies.json`](../../src/Basil.Application/Data/Locale/replies.json), not hardcoded in
-the application. Edit the text for any reply there and restart Basil — no rebuild is required.
+The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send, plus the
+message-of-the-day, is not hardcoded in the application — it lives in three files under
+[`Data/Localization/`](../../src/Basil.Application/Data/Localization):
 
-The file has two top-level objects, `Mp` and `Irc`, each mapping a reply to its text. `{0}`, `{1}`,
+| File            | Covers                                                          |
+|------------------|------------------------------------------------------------------|
+| `BasilBot.json`  | `!mp` and general chat command replies (`!where`, `!faq`, `!roll`, `!help`). |
+| `Irc.json`       | The IRC gateway's replies — registration, queries, and command errors.       |
+| `Server.json`    | The message-of-the-day (see below).                                          |
+
+Edit the text for any reply there and restart Basil — no rebuild is required.
+
+Each file is a two-level object: a category, then a member within it, mapping to that reply's text
+(for example, `BasilBot.json`'s `"Join"` category holds every `!mp join`-related reply). `{0}`, `{1}`,
 etc. are placeholders filled in when the reply is sent (for example, a player or match name) — keep
 every placeholder a reply currently uses when editing it, or the affected reply will render with a
-missing value. Every key in the file is required: removing one prevents Basil from starting, with a
-startup log message naming the missing key.
+missing value. Every key is required: removing one prevents Basil from starting, with a startup log
+message naming the missing key.
+
+### Message of the day
+
+The message shown to a player as a login notification, and returned by the IRC gateway's `/MOTD`
+command, is `Server.json`'s `Motd.Text` — a single string, blank by default. It is edited the same
+way as any other localization entry (edit the file, restart Basil) and is **not** managed through the
+API: there is no endpoint to read or set it at runtime.
 
 ---
 
@@ -126,7 +142,7 @@ installation.
 | Path                      | Contents                                                                                                                          | Safe to delete?                                            |
 |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
 | `Data/appsettings.json`   | Server configuration; see [Configuration file](#configuration-file) above.                                                       | **No**                                                       |
-| `Data/Locale/replies.json` | BasilBot/IRC reply text; see [BasilBot and IRC reply text](#basilbot-and-irc-reply-text) above.                                 | **No**                                                       |
+| `Data/Localization/*.json` | Reply text and the message-of-the-day; see [Localization](#localization) above.                                                | **No**                                                       |
 | `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
 | `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |

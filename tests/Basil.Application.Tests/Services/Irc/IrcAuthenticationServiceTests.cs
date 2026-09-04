@@ -42,7 +42,7 @@ public class IrcAuthenticationServiceTests
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
-			new MotdService(Substitute.For<ISettingsRepository>()), options);
+			options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
 			queries, options, _passwordHasher, _tokenGenerator);
 	}

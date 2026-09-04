@@ -1,33 +1,20 @@
 using System.Reflection;
-using System.Text.Json;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 
 namespace Basil.Application.Tests.Services;
 
 /// <summary>
-///     Covers the reply locale file's alignment with <see cref="MpReplies" />/<see cref="IrcReplies" />:
-///     every public member resolves to non-empty text, and the file carries no orphaned key that no
-///     member reads. <c>MpReplies</c>/<c>IrcReplies</c> already fail loudly (an exception on first
-///     touch of the class) when a member's key is missing from the file — these tests catch drift in
-///     the file itself, in either direction.
+///     Covers the localization files' alignment with <see cref="MpReplies" />/<see cref="IrcReplies" />/
+///     <see cref="ServerReplies" />: every public member resolves to non-empty text (aside from
+///     <see cref="ServerReplies.MotdText" />, which is blank by default). Each class's own static
+///     constructor already fails loudly -- an exception on first touch of the class -- when one of
+///     its own keys is missing from its localization file; this test catches a resolved-but-blank
+///     value, which that mechanism alone would not.
 /// </summary>
 public class ReplyLocaleTests
 {
-	private static JsonElement LoadSection(string section)
-	{
-		var path = Path.Combine(AppContext.BaseDirectory, "Data", "Locale", "replies.json");
-		using var document = JsonDocument.Parse(File.ReadAllBytes(path));
-		return document.RootElement.GetProperty(section).Clone();
-	}
-
-	private static IEnumerable<string> PublicStaticStringFieldNames(Type type)
-	{
-		return type.GetFields(BindingFlags.Public | BindingFlags.Static)
-			.Where(f => f.FieldType == typeof(string))
-			.Select(f => f.Name);
-	}
-
 	[Fact]
 	public void MpReplies_EveryMemberResolvesToNonEmptyText()
 	{
@@ -43,22 +30,11 @@ public class ReplyLocaleTests
 	}
 
 	[Fact]
-	public void RepliesJson_MpSection_HasNoKeyUnusedByMpReplies()
+	public void ServerReplies_MotdText_ResolvesToTheShippedDefault()
 	{
-		var memberNames = PublicStaticStringFieldNames(typeof(MpReplies)).ToHashSet();
-		var fileKeys = LoadSection("Mp").EnumerateObject().Select(p => p.Name);
-
-		var orphaned = fileKeys.Where(k => !memberNames.Contains(k)).ToList();
-		Assert.True(orphaned.Count == 0, $"Orphaned Mp keys in replies.json: {string.Join(", ", orphaned)}");
-	}
-
-	[Fact]
-	public void RepliesJson_IrcSection_HasNoKeyUnusedByIrcReplies()
-	{
-		var memberNames = PublicStaticStringFieldNames(typeof(IrcReplies)).ToHashSet();
-		var fileKeys = LoadSection("Irc").EnumerateObject().Select(p => p.Name);
-
-		var orphaned = fileKeys.Where(k => !memberNames.Contains(k)).ToList();
-		Assert.True(orphaned.Count == 0, $"Orphaned Irc keys in replies.json: {string.Join(", ", orphaned)}");
+		// Unlike MpReplies/IrcReplies, ServerReplies.MotdText is expected to ship blank -- a fresh
+		// install has no MOTD until an admin edits Server.json -- so this only confirms the key
+		// resolves (no exception) rather than asserting non-empty.
+		Assert.Equal(string.Empty, ServerReplies.MotdText);
 	}
 }

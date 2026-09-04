@@ -70,7 +70,7 @@ The schema is divided conceptually into two groups:
 | `Relationships`             | Friend and block relationships between users.                                                                                                                                  |
 | `ClientHashes`              | Hardware fingerprint history associated with logins, used by the authentication and ban checks described in [`authentication.md`](../for-client/bancho/authentication.md).     |
 | `IngameLogins` / `UserLogs` | Append-only audit data. `IngameLogins` records login information such as IP and client version; `UserLogs` records administrative actions between users.                       |
-| `Settings`                  | Key-value server state such as the admin key hash, last-changed timestamp, client menu icon, and MOTD.                                                                         |
+| `Settings`                  | Key-value server state such as the admin key hash, last-changed timestamp, and client menu icon.                                                                               |
 
 ### Tournament flow
 

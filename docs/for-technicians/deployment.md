@@ -79,8 +79,10 @@ For example:
 ├── Basil.Web
 ├── Data/
 │   ├── appsettings.json
-│   └── Locale/
-│       └── replies.json
+│   └── Localization/
+│       ├── BasilBot.json
+│       ├── Irc.json
+│       └── Server.json
 └── Logs/
 ```
 

@@ -1,6 +1,4 @@
-using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
-using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -22,15 +20,13 @@ public class IrcQueryServiceTests
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
-	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 
 	private IrcQueryService MakeService()
 	{
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), options);
-		return new IrcQueryService(_channelRegistry, _gameRegistry, _ircRegistry, membership,
-			new MotdService(_settings), options);
+		return new IrcQueryService(_channelRegistry, _gameRegistry, _ircRegistry, membership, options);
 	}
 
 	private static IrcSession MakeIrc(int id, string name, UserPrivileges privilege = UserPrivileges.Unrestricted)
@@ -177,16 +173,26 @@ public class IrcQueryServiceTests
 	}
 
 	[Fact]
-	public async Task BuildMotdReplyAsync_ReportsEachConfiguredLineOrThatNoneIsSet()
+	public void BuildMotdReply_NoTextConfigured_ReportsNoMotd()
 	{
 		var alice = MakeIrc(1, "alice");
 		var service = MakeService();
 
-		Assert.Equal(["422"], (await service.BuildMotdReplyAsync(alice)).Select(m => m.Command));
+		// ServerReplies.MotdText comes from Server.json (Data/Localization/), which ships with an
+		// empty Motd.Text and can't be overridden per test (it's resolved once at class load) --
+		// this exercises the shipped default rather than a mocked one.
+		Assert.Equal(["422"], service.BuildMotdReply(alice).Select(m => m.Command));
+	}
 
-		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns("first\nsecond");
+	[Fact]
+	public void BuildMotdReply_TextConfigured_ReportsEachLine()
+	{
+		var alice = MakeIrc(1, "alice");
+		var service = MakeService();
 
-		Assert.Equal(["375", "372", "372", "376"], (await service.BuildMotdReplyAsync(alice)).Select(m => m.Command));
+		var reply = service.BuildMotdReply(alice, "first\nsecond");
+
+		Assert.Equal(["375", "372", "372", "376"], reply.Select(m => m.Command));
 	}
 
 	[Fact]

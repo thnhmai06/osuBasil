@@ -42,7 +42,6 @@ public class LoginServiceTests
 	private readonly IClientHashRepository _clientHashes = Substitute.For<IClientHashRepository>();
 	private readonly ILoginRepository _loginRepository = Substitute.For<ILoginRepository>();
 	private readonly MenuIconService _menuIconService;
-	private readonly MotdService _motdService;
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
@@ -70,10 +69,6 @@ public class LoginServiceTests
 		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
 			_spectatorService, matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
-		_motdService = new MotdService(_settings);
-		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
-		// this explicitly so every test's happy path matches "no MOTD configured" unless overridden.
-		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns((string?)null);
 		// TryAdd's unconfigured NSubstitute default is false — stub it true so the happy
 		// path doesn't spuriously hit the "user-already-logged-in" branch.
 		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(true);
@@ -84,7 +79,7 @@ public class LoginServiceTests
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
 			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _playerLogoutService,
-			_statusEvents, _menuIconService, _motdService,
+			_statusEvents, _menuIconService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -489,23 +484,11 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task MotdText_WhenSet_SendsNotification()
-	{
-		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns("Test message of the day!");
-		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
-
-		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
-		var result = await useCase.ExecuteAsync(request);
-
-		var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
-		var bodyHex = Convert.ToHexString(result.ResponseBody);
-		Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
-	}
-
-	[Fact]
 	public async Task MotdText_WhenUnset_SendsNoNotification()
 	{
+		// ServerReplies.MotdText comes from Server.json (Data/Localization/), which ships with an
+		// empty Motd.Text -- no per-test override is possible for a value resolved once at class
+		// load, so this exercises the shipped default rather than a mocked one.
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
 
 		var useCase = MakeUseCase();

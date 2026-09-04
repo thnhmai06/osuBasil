@@ -11,6 +11,7 @@ using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
@@ -117,8 +118,7 @@ public sealed class Program
 		]),
 		("Announce",
 		[
-			("Announce", "Pushing an in-game notification to online players."),
-			("MOTD", "The message shown to a player on login.")
+			("Announce", "Pushing an in-game notification to online players.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -670,12 +670,13 @@ public sealed class Program
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-		// Forces MpReplies/IrcReplies to fully resolve every member from ReplyLocale's locale
-		// file now, at boot, rather than lazily on whichever member a live chat command or IRC
-		// reply first happens to touch -- a missing key is a startup failure, not one discovered
-		// mid-tournament.
+		// Forces MpReplies/IrcReplies/ServerReplies to fully resolve every member from
+		// ReplyLocale's localization files now, at boot, rather than lazily on whichever member a
+		// live chat command, IRC reply, or login first happens to touch -- a missing key is a
+		// startup failure, not one discovered mid-tournament.
 		_ = MpReplies.CreateFailed;
 		_ = IrcReplies.Welcome;
+		_ = ServerReplies.MotdText;
 		logger.LogInformation("Reply locale loaded");
 
 		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);

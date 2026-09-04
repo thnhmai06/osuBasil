@@ -13,12 +13,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- ReplyLocale (Services/ReplyLocale.cs) reads this next to the running assembly via
+		<!-- ReplyLocale (Services/ReplyLocale.cs) reads these next to the running assembly via
 		     AppContext.BaseDirectory. CopyToOutputDirectory here, not just a plain glob-included
 		     None item, is what makes every project that references Basil.Application, including
 		     the test projects (which never run through Basil.Web's own content-root setup), get
-		     a real copy of it alongside their own build output. -->
-		<Content Include="Data\Locale\replies.json">
+		     a real copy of them alongside their own build output. -->
+		<Content Include="Data\Localization\**\*.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>

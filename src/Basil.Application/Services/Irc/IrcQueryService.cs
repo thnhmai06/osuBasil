@@ -26,7 +26,6 @@ public sealed class IrcQueryService(
 	ISessionRegistry<GameSession> gameSessions,
 	ISessionRegistry<IrcSession> ircSessions,
 	ChannelMembershipService channelMembership,
-	MotdService motd,
 	IOptions<IrcOptions> options)
 {
 	/// <summary>The hostname half of every hostmask the gateway reports.</summary>
@@ -218,12 +217,15 @@ public sealed class IrcQueryService(
 
 	/// <summary>Builds the message of the day, or the numeric reporting that none is configured.</summary>
 	/// <param name="requester">The session the reply is addressed to.</param>
-	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <param name="motdTextOverride">
+	///     Overrides <see cref="ServerReplies.MotdText" /> for this call. Exists so the multi-line
+	///     wire-format logic below is testable independently of <see cref="ServerReplies.MotdText" />
+	///     being a value resolved once at class load; production callers never pass this.
+	/// </param>
 	/// <returns>The numerics that form the /MOTD reply in wire order.</returns>
-	public async Task<IReadOnlyList<IrcMessage>> BuildMotdReplyAsync(UserSession requester,
-		CancellationToken cancellationToken = default)
+	public IReadOnlyList<IrcMessage> BuildMotdReply(UserSession requester, string? motdTextOverride = null)
 	{
-		var text = await motd.GetTextAsync(cancellationToken);
+		var text = motdTextOverride ?? ServerReplies.MotdText;
 		if (string.IsNullOrWhiteSpace(text))
 			return [Reply(IrcNumeric.ErrNoMotd, requester.Name, IrcReplies.NoMotd)];
 

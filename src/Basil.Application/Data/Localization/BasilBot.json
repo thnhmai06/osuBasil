@@ -1,7 +1,9 @@
 {
-	"Mp": {
+	"Make": {
 		"CreateFailed": "Couldn't create the match — please try again.",
-		"CreatedMatch": "Created the match #{0} {1}{2}. You're now targeting it, and have been added as a referee.",
+		"CreatedMatch": "Created the match #{0} {1}{2}. You're now targeting it, and have been added as a referee."
+	},
+	"Join": {
 		"JoinUsage": "Usage: !mp join <id> [password]",
 		"NoActiveMatchWithId": "No active match with id {0}.",
 		"PrivateRoomJoinDenied": "Cannot join match #{0} — the room is private. Ask a referee for an invite.",
@@ -13,7 +15,9 @@
 		"MatchIsLocked": "The match is locked.",
 		"FailedToJoinMatch": "Failed to join the match.",
 		"FailedToJoinMatchChat": "Failed to join the match chat.",
-		"JoinedMatchChat": "Joined match #{0} {1}'s chat.",
+		"JoinedMatchChat": "Joined match #{0} {1}'s chat."
+	},
+	"In": {
 		"NotScopedToAnyMatch": "You aren't targeting any match right now.",
 		"WasScopedToGoneMatch": "You were targeting match #{0}, but it's no longer live.",
 		"CurrentlyScopedToMatch": "Currently targeting match #{0} {1}.",
@@ -21,7 +25,9 @@
 		"InUsage": "Usage: !mp in [match_id]",
 		"NoActiveMatchWithHashId": "No active match with id #{0}.",
 		"NotARefereeOfMatch": "You're not a referee of match #{0}.",
-		"NowTargetingMatch": "Now targeting match #{0} {1}.",
+		"NowTargetingMatch": "Now targeting match #{0} {1}."
+	},
+	"Settings": {
 		"SettingsRoomName": "Room name: {0} (#{1})",
 		"SettingsBeatmap": "Beatmap: {0} {1}",
 		"SettingsBeatmapNotFound": "Beatmap: Not found",
@@ -30,11 +36,15 @@
 		"SettingsActiveMods": "Active mods: {0}",
 		"SettingsCreator": "Creator: #{0} {1}",
 		"SettingsPlayers": "Players: ({0})",
-		"SettingsIrc": "IRC: ({0})",
+		"SettingsIrc": "IRC: ({0})"
+	},
+	"Lock": {
 		"LockedMatch": "Locked the match",
 		"UnlockedMatch": "Unlocked the match",
 		"SizeUsage": "Usage: !mp size <1-16>",
-		"ChangedMatchSize": "Changed match to size {0}",
+		"ChangedMatchSize": "Changed match to size {0}"
+	},
+	"Move": {
 		"MoveUsage": "Usage: !mp move <name/id> <slot 1-16>",
 		"UserNotInMatchOrUnregistered": "User is not in this match or not registered.",
 		"DestinationSlotNotOpen": "Destination slot is not open.",
@@ -42,7 +52,9 @@
 		"MovedToSlot": "Moved {0} into slot {1}",
 		"HostUsage": "Usage: !mp host <name/id>",
 		"ChangedMatchHost": "Changed match host to {0}",
-		"ClearedMatchHost": "Cleared match host",
+		"ClearedMatchHost": "Cleared match host"
+	},
+	"Name": {
 		"NameUsage": "Usage: !mp name <text>",
 		"RoomNameUpdated": "Room name updated to \"{0}\"",
 		"RemovedMatchPassword": "Removed the match password",
@@ -50,12 +62,16 @@
 		"MatchIsPrivateNow": "This match is {0}.",
 		"MatchNowPrivate": "The match is now private. It will be hidden from the lobby and open only to invited players.",
 		"MatchNowPublic": "The match is now public.",
-		"PrivateUsage": "Usage: !mp private [0|1]",
+		"PrivateUsage": "Usage: !mp private [0|1]"
+	},
+	"Invite": {
 		"InviteUsage": "Usage: !mp invite <name/id>",
 		"InviteRequiresClient": "User must be connected via the osu! client to be invited.",
 		"UserAlreadyInRoom": "User is already in the room",
 		"CannotInviteBot": "Cannot invite BasilBot.",
-		"InvitedToRoom": "Invited {0} to the room",
+		"InvitedToRoom": "Invited {0} to the room"
+	},
+	"Referee": {
 		"AddRefUsage": "Usage: !mp addref <name/id>",
 		"UserNotFound": "User not found",
 		"CannotAddBotReferee": "Cannot add BasilBot as a referee.",
@@ -69,12 +85,16 @@
 		"NoReferees": "No referees",
 		"MatchReferees": "Match referees:",
 		"NoBannedPlayers": "No banned players",
-		"MatchBans": "Match bans:",
+		"MatchBans": "Match bans:"
+	},
+	"Team": {
 		"TeamUsage": "Usage: !mp team <name/id> <red|blue>",
 		"TeamUsageName": "Usage: !mp team <name> <red|blue>",
 		"MovedToTeam": "Moved {0} to team {1}",
 		"SetUsage": "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]",
-		"ChangedMatchSettings": "Changed match settings to {0}, {1}{2}",
+		"ChangedMatchSettings": "Changed match settings to {0}, {1}{2}"
+	},
+	"Map": {
 		"MapUsage": "Usage: !mp map <beatmap id> [playmode]",
 		"NoBeatmapWithId": "No beatmap with ID {0} found.",
 		"ChangedBeatmap": "Changed beatmap to {0} - {1} [{2}]",
@@ -83,7 +103,9 @@
 		"DisabledMods": "Disabled {0}",
 		"DisabledFreemod": "Disabled FreeMod",
 		"EnabledFreemod": "Enabled FreeMod",
-		"NoModChanges": "No mod changes",
+		"NoModChanges": "No mod changes"
+	},
+	"Start": {
 		"MatchAlreadyInProgress": "Match is already in progress.",
 		"MatchStartsInSeconds": "Match starts in {0} seconds",
 		"MatchStarted": "Match started",
@@ -92,7 +114,9 @@
 		"NoCountdownRunning": "No countdown is running.",
 		"CountdownAborted": "Countdown aborted",
 		"MatchNotInProgress": "Match is not in progress.",
-		"AbortedMatch": "Aborted the match",
+		"AbortedMatch": "Aborted the match"
+	},
+	"Moderation": {
 		"KickUsage": "Usage: !mp kick <name/id>",
 		"CannotKickBot": "Cannot kick BasilBot.",
 		"CannotKickReferee": "Cannot kick {0} — they're a referee. Remove referee status first with !mp removeref.",
@@ -105,13 +129,17 @@
 		"UnbanUsage": "Usage: !mp unban <name/id>",
 		"NotBannedFromMatch": "{0} is not banned from this match.",
 		"UnbannedFromMatch": "Unbanned {0} from the match",
-		"ClosedMatch": "Closed the match",
+		"ClosedMatch": "Closed the match"
+	},
+	"Dispatch": {
 		"NotScopedToAnyMatchHint": "You aren't targeting a match — use !mp make, !mp join <id>, or !mp in <id> first.",
 		"UnknownMpSubcommand": "Unknown !mp subcommand: {0}. Use !mp help to list available subcommands.",
 		"CreatorOnlyMp": "Only the match's creator can run {0}.",
 		"MpNotUsableFromLobby": "!mp {0} can't be used from #lobby.",
 		"MpChainNotUsableFromLobby": "Chained !mp commands can't be used from #lobby.",
-		"MpInDmOnly": "!mp in only works in a DM to BasilBot.",
+		"MpInDmOnly": "!mp in only works in a DM to BasilBot."
+	},
+	"General": {
 		"WhereUsage": "Usage: !where <username>",
 		"NotRegistered": "{0} is not registered.",
 		"WhereIsIn": "{0} is in {1}",
@@ -122,39 +150,5 @@
 		"ChainMustBeMp": "Chained commands must all be `{0}mp <subcommand>` — rejected at: '{1}'.",
 		"CannotChainMp": "`{0}mp {1}` can't be chained — rejected at: '{2}'.",
 		"RollResult": "{0} rolls {1} point(s)"
-	},
-	"Irc": {
-		"Welcome": "Welcome to {0} IRC, {1}",
-		"YourHost": "Your host is {0}, running version {1}",
-		"ServerCreated": "This server was created {0}",
-		"AreSupportedByThisServer": "are supported by this server",
-		"EndOfNames": "End of /NAMES list",
-		"EndOfWho": "End of /WHO list",
-		"EndOfWhoIs": "End of /WHOIS list",
-		"EndOfList": "End of /LIST",
-		"NoTopicIsSet": "No topic is set",
-		"NoSuchChannel": "No such channel",
-		"NoSuchNickChannel": "No such nick/channel",
-		"IrcGateway": "Basil IRC gateway",
-		"SecondsIdleSignonTime": "seconds idle, signon time",
-		"TopicManagedByServer": "Channel topics are managed by the server",
-		"ModesManagedByServer": "Channel modes are managed by the server",
-		"NoMotd": "The server has no MOTD.",
-		"MotdStart": "- {0} Message of the Day -",
-		"EndOfMotd": "End of /MOTD command.",
-		"LusersClients": "There are {0} users and 0 invisible on 1 servers",
-		"ChannelsFormed": "channels formed",
-		"LusersMe": "I have {0} clients and 1 servers",
-		"ListChannel": "Channel",
-		"ListUsers": "Users  Name",
-		"PasswordIncorrect": "Password incorrect",
-		"NicknameInUse": "Nickname is already in use",
-		"ErroneousNickname": "Erroneous nickname",
-		"YouHaveNotRegistered": "You have not registered",
-		"NotEnoughParameters": "Not enough parameters",
-		"CannotJoinChannel": "Cannot join channel (no permission)",
-		"NicknameChangeNotSupported": "Changing nickname is not supported",
-		"UnknownCommand": "Unknown command",
-		"CannotSendToChannel": "Cannot send to channel"
 	}
 }

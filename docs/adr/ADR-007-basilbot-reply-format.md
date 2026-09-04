@@ -70,6 +70,72 @@ Full suite: 1553 tests pass (was 1549, +4). Release build clean; verified the fi
 build-time OpenAPI doc generation — which runs the app — resolves it correctly, the same trap
 `ccc804f` (moving `appsettings.json`) hit earlier in this session.
 
+## Follow-up: split by category, plus MOTD (2026-09-04)
+
+The user asked for three refinements to the mechanism above, once it existed to refine:
+
+1. Split the single locale file into one per surface — `BasilBot.json`, `Irc.json`, `Server.json`
+   — under a directory renamed `Data/Localization/` (was `Data/Locale/`).
+2. Group each file's entries by category (a nested object) instead of one flat list, keyed
+   `"Category.Member"` — matching each class's existing `// ──` comment groupings (`Make`, `Join`,
+   `In`, `Settings`, ... for `MpReplies`; `Registration`, `Query`, `Motd`, ... for `IrcReplies`).
+3. Move the message-of-the-day out of the database/`GET`+`PUT /announce/motd` and into the new
+   `Server.json`, dropping API management of it entirely.
+
+A named library was raised for this (`AspNetCore.Localizer.Json`) and evaluated before writing any
+code: it requires DI-injected `IJsonStringLocalizer<T>` per consumer with no static/non-DI access
+path, and its documentation shows no evidence of nested/dotted-key lookup (only flat top-level
+keys). Adopting it as designed would have meant injecting a localizer into every one of the ~15
+services that currently reference `MpReplies`/`IrcReplies` as bare static members and rewriting
+every call site — directly undoing the "public shape unchanged, zero callers touched" property this
+same ADR's initial implementation was built around — while not clearly delivering the nested-key
+behavior that was the actual ask. Presented this finding and the trade-off to the user before
+proceeding; they chose keeping the hand-rolled `ReplyLocale` loader, extended for the new
+requirements, over adding the dependency.
+
+Implementation changes from the mechanism described above:
+
+- `ReplyLocale` now loads three `Lazy<JsonDocument>`s (one per file) instead of one, and its key
+  format changed from a bare member name to `"Category.Member"`, split on the first `.` and resolved
+  as a two-level property lookup. Renamed its BasilBot-facing method `Mp` → `BasilBot` (matching the
+  new file name; `MpReplies` the C# class keeps its existing name — only its data source is renamed).
+- Every `MpReplies`/`IrcReplies` field's initializer gained a category prefix:
+  `ReplyLocale.BasilBot($"Make.{nameof(CreateFailed)}")` — done mechanically with a script that reads
+  the existing flat file and each class's own comment-group boundaries, then verified the resulting
+  key counts matched exactly (122 `MpReplies`, 32 `IrcReplies`) before applying.
+- New `ServerReplies` (`src/Basil.Application/Services/Content/ServerReplies.cs`), the same static
+  pattern, currently holding one member: `MotdText`, reading `Server.json`'s `Motd.Text`. Ships blank
+  by default (a fresh install has no MOTD until an admin edits the file) — matching the prior
+  database-backed default exactly.
+- `MotdService` deleted outright (was the sole owner of the "Motd" `Settings` table key).
+  `GET`/`PUT /announce/motd` and their DTOs (`MotdView`, `MotdBody`, `MotdChangedView`) deleted from
+  `AnnounceRoutes`; the "MOTD" OpenAPI tag removed since no route uses it anymore. `LoginService`'s
+  `WelcomeNotification` and `IrcQueryService`'s `BuildMotdReplyAsync` (renamed `BuildMotdReply`, no
+  longer `async` — nothing left to `await` once the read is a static field, not a database call) now
+  read `ServerReplies.MotdText` directly instead of taking `MotdService` as a dependency.
+- Test-coverage trade-off, stated plainly: two existing tests (`LoginServiceTests`'s
+  `MotdText_WhenSet_SendsNotification`, and half of `IrcQueryServiceTests`'s
+  `BuildMotdReplyAsync_ReportsEachConfiguredLineOrThatNoneIsSet`) varied the MOTD text per test case
+  via a mocked `ISettingsRepository`. A `static readonly` field resolved once at class load can't be
+  varied that way. The `LoginServiceTests` case was dropped (the branch it covered is a one-line
+  ternary, not complex enough on its own to need a seam preserved solely for testability). The
+  `IrcQueryService` case covered real wire-protocol-ordering logic (multi-line MOTD → `375`/`372`×N/
+  `376` in sequence) worth keeping, so `BuildMotdReply` gained an internal-use-only optional
+  parameter (`motdTextOverride`, defaulting to `ServerReplies.MotdText`) as a testability seam;
+  production callers never pass it.
+- `docker-compose.yml` and `docs/for-technicians/{docker,configuration,deployment}.md` and
+  `docs/for-developers/database.md` updated throughout for the rename, the file split, and the
+  removed `Settings` table MOTD row. The Docker bind-mount now covers the whole
+  `Data/Localization/` directory rather than a single file.
+
+Full suite: 1552 tests pass (was 1553 net: -1 `LoginServiceTests`, +1 `IrcQueryServiceTests` split,
+-1 `ReplyLocaleTests`' now-dropped orphaned-key check — replaced with a simpler non-empty-value
+check per class, since the orphaned-key check's only implementation that worked required parsing
+the `.cs` source files back out at test time, which was judged too fragile for the value it added).
+Release build clean; verified all three files reach both the test-project and `win-x64` publish
+output directories, and that revert-and-fail on a `BasilBot.json` key still produces the same class
+of clear startup exception as before.
+
 ## Problem
 
 Issue #4 (BasilBot): *"✨ Replace natural language bot responses with structured, easily
