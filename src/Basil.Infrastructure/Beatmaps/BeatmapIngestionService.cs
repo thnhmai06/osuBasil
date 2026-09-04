@@ -281,8 +281,12 @@ public sealed partial class BeatmapIngestionService(
 		{
 			Directory.CreateDirectory(options.Value.BeatmapsetsPath);
 			// A stale canonical archive at this id (e.g., a prior ingest's content this upload's
-			// MD5/leading-id resolution matched onto) is replaced, not merged with.
+			// MD5/leading-id resolution matched onto) is replaced, not merged with. The asset cache
+			// must be invalidated here too: it keys purely on beatmapsetId and never checks the
+			// archive's own contents, so a stale cached entry would otherwise keep serving the old
+			// archive's assets alongside the new archive's metadata indefinitely.
 			if (File.Exists(canonicalOszPath)) File.Delete(canonicalOszPath);
+			assetCache.Invalidate(beatmapset.Id);
 			File.Move(oszPath, canonicalOszPath);
 		}
 

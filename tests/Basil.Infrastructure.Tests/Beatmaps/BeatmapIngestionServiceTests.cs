@@ -142,6 +142,52 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 	}
 
 	/// <summary>
+	///     Regression test for the stale-asset-cache bug found on advisor review: replacing a stale
+	///     canonical .osz at an already-resolved id (e.g., a re-upload matched onto the same online
+	///     BeatmapSetID) must invalidate that id's asset cache before the new archive is populated, or
+	///     <see cref="BeatmapsetAssetCache.ResolveAsync" />'s "already extracted" check keeps serving
+	///     bytes from the archive that was just replaced.
+	/// </summary>
+	[Fact]
+	public async Task ReconcileOszAsync_ReplacesStaleCanonicalArchiveAtSameId_InvalidatesTheOldArchivesCachedAssets()
+	{
+		var setIdFixture = Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_with_setid.osu");
+
+		var firstOsz = Path.Combine(_beatmapsetsPath, "first.osz");
+		await using (var archive = await ZipFile.OpenAsync(firstOsz, ZipArchiveMode.Create))
+		{
+			await archive.CreateEntryFromFileAsync(setIdFixture, "vivid_with_setid.osu");
+			var bg = archive.CreateEntry("Chocobos.jpg");
+			await using var bgStream = await bg.OpenAsync();
+			await bgStream.WriteAsync("OLD BACKGROUND"u8.ToArray());
+		}
+
+		var (_, firstSetId) = await _service.ReconcileOszAsync(firstOsz);
+		Assert.Equal(900000, firstSetId);
+		var setCacheDir = Path.Combine(_beatmapsetsPath, "Cache", "beatmapset-assets", "900000");
+		Assert.Equal("OLD BACKGROUND", await File.ReadAllTextAsync(Path.Combine(setCacheDir, "Chocobos.jpg")));
+
+		// A different upload resolving onto the same online BeatmapSetID (900000): distinct MD5 (Title
+		// changed) so it isn't treated as an unchanged re-ingest, distinct background bytes so a stale
+		// cache hit is observable.
+		var secondOsz = Path.Combine(_beatmapsetsPath, "second.osz");
+		var replacedContent = (await File.ReadAllTextAsync(setIdFixture)).Replace("Title:Vivid", "Title:VividTwo");
+		var secondOsuPath = Path.Combine(_beatmapsetsPath, "vivid_with_setid_two.osu");
+		await File.WriteAllTextAsync(secondOsuPath, replacedContent);
+		await using (var archive = await ZipFile.OpenAsync(secondOsz, ZipArchiveMode.Create))
+		{
+			await archive.CreateEntryFromFileAsync(secondOsuPath, "vivid_with_setid.osu");
+			var bg = archive.CreateEntry("Chocobos.jpg");
+			await using var bgStream = await bg.OpenAsync();
+			await bgStream.WriteAsync("NEW BACKGROUND"u8.ToArray());
+		}
+
+		var (_, secondSetId) = await _service.ReconcileOszAsync(secondOsz);
+		Assert.Equal(firstSetId, secondSetId);
+		Assert.Equal("NEW BACKGROUND", await File.ReadAllTextAsync(Path.Combine(setCacheDir, "Chocobos.jpg")));
+	}
+
+	/// <summary>
 	///     Regression test for the orphan-sweep bug found on ADR-006 review: once ingestion treats a
 	///     loose .osz as the canonical layout, a set still sitting as a legacy extracted folder (not
 	///     yet reached by the background migration pass) must still count as "seen" by
