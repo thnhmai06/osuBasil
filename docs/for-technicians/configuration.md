@@ -192,7 +192,7 @@ installation.
 | `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
 | `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Beatmapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Beatmapsets/`           | Installed beatmapsets. Each set is stored as its own `.osz` archive.                                    | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
 | `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
@@ -228,11 +228,10 @@ Beatmaps are stored under:
 Data/Beatmapsets/
 ```
 
-Each beatmapset is stored as a directory containing the extracted contents of the original `.osz` archive, including audio,
-images, video, and `.osu` files.
+Each beatmapset is stored as its own `.osz` archive, kept exactly as uploaded. Individual files (audio, images, video,
+`.osu`) are extracted on demand rather than kept separately on disk.
 
-You can add an `.osz` file directly to the `Data/Beatmapsets/` directory. Basil automatically extracts it into its beatmapset
-directory.
+You can add an `.osz` file directly to the `Data/Beatmapsets/` directory. Basil detects and ingests it automatically.
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.

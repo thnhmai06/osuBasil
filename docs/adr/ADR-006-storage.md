@@ -1,11 +1,12 @@
 # ADR-006 — Storage
 
-> Status: **Partially accepted, partially proposed.** Retry contract for `PutAsync` decided and
-> implemented 2026-09-01 (see "Decision (implemented this session)" below) — that part is not a
-> decision gate. The `.osz` direct-storage design (see "`.osz` direct storage — design [GATE]"
-> further down, added 2026-09-03) **is** a `[GATE]` item: a real architecture flip of the beatmap
-> storage subsystem, proposed here but **not yet approved and not implemented**. Per plan rule 4,
-> no code should be written against it until its Decision section is approved.
+> Status: **Accepted and implemented.** Retry contract for `PutAsync` decided and implemented
+> 2026-09-01 (see "Decision (implemented this session)" below) — that part was never a decision
+> gate. The `.osz` direct-storage design (see "`.osz` direct storage — design [GATE]" further
+> down, added 2026-09-03) **was** a `[GATE]` item: a real architecture flip of the beatmap storage
+> subsystem. Approved 2026-09-04 and implemented 2026-09-04 (`2ef37c7`..`8c7d34e` on
+> `chore/perf-investigation`). See the GATE section's own status line for what shipped and what
+> was deliberately left open.
 
 > Phase 5 of the perf-investigation plan is explicitly secondary: "storage rewrite is not a
 > prerequisite for core concurrency scalability unless profiling shows it contributes meaningfully
@@ -86,14 +87,12 @@ torn one.
 
 ## Open items (confirmed by code reading, not implemented this session)
 
-- **`.osz` zip-on-demand.** Beatmap downloads decompress the archive into a `MemoryStream` and
-  call `.ToArray()` per request rather than storing/streaming extracted assets — real allocation
-  cost (up to ~200MB LOH for a 100MB set) with no cache or stampede guard on the extraction
-  itself. Issue #4 asks for storing `.osz` content directly instead. This is a genuine storage
-  architecture decision (what gets stored, what gets extracted on demand vs. cached, single-
-  flight around a concurrent stampede on a cold cache) that deserves its own design pass before
-  code, not a quick patch — **design written 2026-09-03, see "`.osz` direct storage — design
-  [GATE]" below; still not implemented, awaiting approval.**
+- ~~**`.osz` zip-on-demand.**~~ **Fixed 2026-09-04.** Beatmap downloads decompressed the archive
+  into a `MemoryStream` and called `.ToArray()` per request rather than storing/streaming
+  extracted assets — real allocation cost (up to ~200MB LOH for a 100MB set) with no cache or
+  stampede guard on the extraction itself. Issue #4 asked for storing `.osz` content directly
+  instead. Design written 2026-09-03, approved and implemented 2026-09-04 — see "`.osz` direct
+  storage — design [GATE]" below for what shipped.
 - ~~**`ReconcileAllAsync` runs inside a request.**~~ **Fixed 2026-09-04.** `POST /beatmapsets`
   (`HandleCreate`) called `BeatmapIngestionService.ReconcileAllAsync`, a full-disk reconciliation
   pass, synchronously as part of handling a single upload — an accident of implementation
@@ -168,15 +167,36 @@ pass, not written as part of this documentation-only review.
 
 ## `.osz` direct storage — design [GATE]
 
-> Status: **Approved 2026-09-04, implementation in progress.** Written at the user's explicit
-> request to design this item ("Thiết kế storage .osz trực tiếp"), continuing from the "Open
-> items" entry above. This was a `[GATE]` decision per plan rule 4; the user supplied real
-> beatmapset data for the two outstanding Measurements items and directed implementation to
-> proceed ("Bạn có thể sử dụng dữ liệu ở [...] để test. sau đó làm .osz full rewrite nhé"). See
-> "Measurements" below for what was run against that real data, and "Design corrections found
-> before implementation" for what changed in the Decision as a direct result before any code was
-> written — read that section before touching the numbered Decision items above, since two of
-> them are now stated incompletely on their own.
+> Status: **Approved 2026-09-04, implemented 2026-09-04.** Written at the user's explicit request
+> to design this item ("Thiết kế storage .osz trực tiếp"), continuing from the "Open items" entry
+> above. This was a `[GATE]` decision per plan rule 4; the user supplied real beatmapset data for
+> the two outstanding Measurements items and directed implementation to proceed ("Bạn có thể sử
+> dụng dữ liệu ở [...] để test. sau đó làm .osz full rewrite nhé"). See "Measurements" below for
+> what was run against that real data, and "Design corrections found before implementation" for
+> what changed in the Decision as a direct result before any code was written.
+>
+> **What shipped** (`chore/perf-investigation`, `2ef37c7`..`8c7d34e`): `BeatmapsetAssetCache`
+> (on-demand per-entry extraction, invalidated per-beatmapset); `BeatmapsetMigrationService` (a
+> one-time background pass converting legacy folders to the canonical archive and pre-warming the
+> asset cache from the folder's own contents — never blocks host startup, per correction 1 below);
+> every read path (`.osu`/background/audio/video resolution, thumbnails, previews, downloads,
+> `!mp` and osu!web routes) and both write routes (`PUT`/`DELETE /beatmapsets/{id}`) made
+> dual-layout aware, per correction 2 below.
+>
+> **A bug found during implementation, not anticipated by this design**: the live
+> `BeatmapWatcherService` reacts to migration's own archive-publish rename and redundantly
+> reconciles the archive migration just built; for a legacy folder with no `.osu` content this
+> raced migration into deleting the archive it had just produced. Intermittent and load-dependent
+> — it surfaced only under full-suite parallel test execution, never in isolation. Fixed by having
+> migration skip a folder with no `.osu` file, matching the definition `ReconcileFolderAsync`
+> already used for the same case.
+>
+> **Deliberately left open**: (1) narrowing `BeatmapWatcherService` to a non-recursive, `.osz`-only
+> watch (this design's own eventual end state) is not implemented — its precondition, that no
+> legacy folder remains live, isn't true yet, since both write routes still carry a legacy-folder
+> branch. (2) `SqliteBeatmapsetRepository.UpsertAsync`'s non-atomic insert-then-read-back (a
+> pre-existing race, unrelated to this rewrite) was found via a revert-and-fail run's incidental
+> output and left unfixed, out of this ADR's scope.
 
 ### Problem
 

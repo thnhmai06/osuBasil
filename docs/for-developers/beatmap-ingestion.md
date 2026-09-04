@@ -92,7 +92,7 @@ A map can therefore be **available locally and downloadable without being discov
 
 The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 
-* A `.osz` placed in `Beatmapsets/` is automatically detected, extracted into its own directory, analyzed, and synchronized with the database. No restart or manual action is required.
+* A `.osz` placed in `Beatmapsets/` is automatically detected, kept in place as the beatmapset's permanent storage, analyzed, and synchronized with the database. No restart or manual action is required.
 * A standalone `.osu` file placed directly in `Beatmapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
 * `POST /beatmapsets` on the admin API accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
 * Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata.
@@ -113,7 +113,19 @@ No other part of Basil depends on `ffmpeg`.
 
 ## Source of truth
 
-Each locally ingested beatmapset is represented on disk by its own directory:
+Each locally ingested beatmapset is represented on disk by its own permanent `.osz` archive,
+kept exactly as uploaded rather than extracted and discarded:
+
+```text
+Beatmapsets/
+└── {id} Artist - Title.osz
+```
+
+An individual asset (a `.osu` file, background, audio, video) is extracted from the archive on
+demand and cached — see "Derived media" below, which covers this the same way it covers
+generated thumbnails and previews.
+
+A beatmapset ingested before this decision may still be on disk as an extracted directory:
 
 ```text
 Beatmapsets/
@@ -125,7 +137,11 @@ Beatmapsets/
     └── *.osb
 ```
 
-The directory contains the original contents of the `.osz` archive.
+A background migration pass converts each such directory to the canonical `.osz` layout once,
+at startup, without blocking Basil from accepting connections. Every consumer that resolves a
+beatmapset's files — ingestion, downloads, thumbnails, previews, `!mp`/osu!web routes — checks
+for the extracted-directory layout first and falls back to the canonical archive otherwise, so a
+beatmapset is fully functional under either layout for as long as both exist side by side.
 
 The database mirrors this filesystem state:
 
@@ -175,7 +191,7 @@ Both mechanisms eventually invoke the same ingestion service. There is no separa
          ▼
 BeatmapIngestionService
          │
-         ├── extract archive
+         ├── keep archive in place as canonical storage
          │
          ├── analyze beatmaps
          │      ├── star rating
@@ -279,6 +295,8 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 * [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
 * [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
+* [`Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs): one-time background conversion of extracted directories to the canonical `.osz` layout
+* [`Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs): on-demand per-asset extraction from the canonical archive
 * [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Basil.Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
 * [`Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs`](../../src/Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs): beatmap asset and preview routes
 
