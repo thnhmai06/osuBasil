@@ -30,18 +30,21 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	///     media-file columns are deliberately left alone: a re-ingestion pass must never clear an
 	///     admin-set freeze lock or privacy flag, and the pass's actual background and audio files
 	///     are not known yet (they are set later via <see cref="SetBackgroundFileAsync" /> and
-	///     <see cref="SetAudioFileAsync" />). The persisted row is re-read and returned.
+	///     <see cref="SetAudioFileAsync" />). The persisted row is returned by the same statement
+	///     that writes it (<c>RETURNING</c>), not a separate follow-up read, so a concurrent
+	///     <see cref="DeleteAsync" /> can never land in the gap between the write and the read.
 	/// </remarks>
 	public async Task<Beatmapset> UpsertAsync(Beatmapset beatmapset, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync(
+		var row = await connection.QuerySingleAsync<BeatmapsetRow>(
 			"""
 			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
 			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile, @AudioFile)
 			ON CONFLICT(Id) DO UPDATE SET
 			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
 			    LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
+			RETURNING *
 			""",
 			new
 			{
@@ -58,7 +61,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 			});
 		logger.LogDebug("Beatmapset upserted: Id={Id}", beatmapset.Id);
 
-		return (await FetchByIdAsync(beatmapset.Id, cancellationToken))!;
+		return row.ToBeatmapset();
 	}
 
 	/// <inheritdoc />
