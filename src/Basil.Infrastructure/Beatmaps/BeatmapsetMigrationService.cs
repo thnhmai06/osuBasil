@@ -95,6 +95,11 @@ public sealed partial class BeatmapsetMigrationService(
 		// BeatmapIngestionService.ReconcileFolderAsync already uses). Zipping it anyway would hand the
 		// live watcher a canonical ".osz" whose own ReconcileOszAsync pass immediately deletes it as
 		// unparseable, wasting the zip and racing this pass's asset-cache pre-warm for nothing.
+		// ponytail: existence, not decodability -- ReconcileFolderAsync's own check parses each file and
+		// requires at least one to succeed. A folder whose only ".osu" file exists but fails to parse
+		// still gets migrated (and its archive still deleted on the watcher's next pass, same as before
+		// this check existed). Real legacy folders always contain parseable content; widen to a real
+		// decode check if that ever stops being true.
 		if (Directory.EnumerateFiles(folder, "*.osu", SearchOption.TopDirectoryOnly).FirstOrDefault() is null)
 			return false;
 
