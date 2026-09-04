@@ -1,15 +1,11 @@
 namespace Basil.Application.Configurations;
 
 /// <summary>
-///     Configuration for the optional beatmap mirror, controlling assets/downloads that are missing
-///     from local storage.
+///     The one-time upgrade seed for the beatmap mirror endpoints: an existing deployment's
+///     <c>appsettings.json</c> value, copied into the database the first time the server starts with
+///     this section present. See <see cref="Basil.Application.Services.Beatmaps.MirrorService" /> for
+///     the live, mutable source of truth read on every request from then on.
 /// </summary>
-/// <remarks>
-///     Local storage is always tried first, regardless of whether a mirror is configured. When
-///     <see cref="DownloadEndpoint" /> is unset (the default), a beatmapset missing locally is
-///     reported as unavailable rather than reaching out to the internet. When it is set, a missing
-///     beatmapset with a genuine ppy id falls back to the mirror instead.
-/// </remarks>
 public sealed class MirrorOptions
 {
 	public const string SectionName = "Basil:Mirror";
@@ -22,17 +18,4 @@ public sealed class MirrorOptions
 	///     of <see cref="DownloadEndpoint" />.
 	/// </summary>
 	public string? SearchEndpoint { get; init; }
-
-	/// <summary>
-	///     Gets a value that indicates whether the server runs in online mirror mode: local storage
-	///     is still tried first everywhere, but a beatmapset missing locally falls back to the
-	///     mirror instead of reporting unavailable.
-	/// </summary>
-	public bool IsOnlineMode => !string.IsNullOrEmpty(DownloadEndpoint);
-
-	/// <summary>
-	///     Gets a value that indicates whether osu!direct search should query <see cref="SearchEndpoint" />
-	///     instead of the local beatmap database.
-	/// </summary>
-	public bool HasSearchMirror => !string.IsNullOrEmpty(SearchEndpoint);
 }

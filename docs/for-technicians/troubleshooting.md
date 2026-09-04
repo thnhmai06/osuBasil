@@ -94,13 +94,7 @@ Basil supports both local storage and optional external mirrors.
 
 ### Local-only mode
 
-If:
-
-```text
-Basil:Mirror:DownloadEndpoint
-```
-
-is not configured, Basil uses local storage.
+If `GET /settings/mirror`'s `downloadEndpoint` is unset, Basil uses local storage only.
 
 Check that:
 
@@ -112,9 +106,10 @@ Basil watches the beatmapset directory while running and also performs a full re
 
 ### Mirror mode
 
-If `Basil:Mirror:DownloadEndpoint` is configured, Basil can redirect requests for missing beatmapsets to the configured mirror.
+If `downloadEndpoint` is set, Basil can redirect requests for missing beatmapsets to the configured mirror.
 
-If you do not want external downloads, clear this setting, set `null` and restart Basil.
+If you do not want external downloads, clear it with `PUT /settings/mirror` — no restart required. See
+[`configuration.md`](configuration.md#beatmap-mirror).
 
 ---
 

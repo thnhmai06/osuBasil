@@ -84,6 +84,7 @@ internal static class ApiHostRoutes
 
 		var settings = group.MapGroup("/settings");
 		settings.MapAdminKeyRoutes();
+		settings.MapMirrorSettingsRoutes();
 
 		group.MapAnnounceRoutes();
 

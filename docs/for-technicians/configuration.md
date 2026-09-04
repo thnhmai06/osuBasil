@@ -37,9 +37,9 @@ All settings below are under the `Basil` section.
 | `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
 | `Irc:Name`                | IRC server name.                                                                                                                                                                                   |
 | `Irc:Port`                | TCP port used by Basil's embedded IRC gateway. Defaults to `6667`.                                                                                                                                 |
-| `Mirror:DownloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local beatmapsets first. If a beatmapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror.       |
-| `Mirror:SearchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local beatmapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
 | `Logging:MinimumLevel`    | Minimum log level written to stdout and the full log file. Defaults to `Information`. See [`logging.md`](logging.md).                                                                              |
+
+The beatmap mirror endpoints are **not** configured here — see [Beatmap mirror](#beatmap-mirror) below.
 
 ### Applying configuration changes
 
@@ -129,6 +129,33 @@ In bypass mode:
 **Do not expose a production server without an admin key.**
 
 Set one with `PUT /settings/adminkey` to leave bypass mode.
+
+---
+
+## Beatmap mirror
+
+The optional external beatmap mirror endpoints are stored as mutable server settings, like the admin
+key, rather than as a `Data/appsettings.json` value — changing them takes effect immediately, with no
+restart.
+
+| Endpoint          | Effect                                                                                                                                                     |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `downloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local beatmapsets first. If a beatmapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror. |
+| `searchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local beatmapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
+
+Read and change them through:
+
+```text
+GET  /settings/mirror
+PUT  /settings/mirror
+```
+
+`PUT`'s body replaces both endpoints; omit a field (or send it as `null`) to clear that endpoint.
+
+An install upgrading from a release that configured `Basil:Mirror:DownloadEndpoint` /
+`Basil:Mirror:SearchEndpoint` in `Data/appsettings.json` has that value copied into the database
+automatically, once, the first time Basil starts after the upgrade — the `Basil:Mirror` section itself
+is no longer read afterward and can be removed from `Data/appsettings.json`.
 
 ---
 

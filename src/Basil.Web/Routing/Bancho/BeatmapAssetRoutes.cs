@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
+using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Options;
 
@@ -24,7 +25,7 @@ internal static class BeatmapAssetRoutes
 		// beatmapset's locally stored background by BeatmapThumbnailProvider (ImageSharp.Web),
 		// which runs ahead of routing and so handles a set with a local background on its own —
 		// these routes only run as a fallback: private/missing set, or no local background. When
-		// the server runs in online mirror mode (see MirrorOptions.IsOnlineMode) and a set has no
+		// the server runs in online mirror mode (see MirrorEndpoints.IsOnlineMode) and a set has no
 		// local background, the request redirects to b.ppy.sh instead of 404ing, matching that
 		// host's real public URL scheme — but only for sets with a genuine ppy id; a locally
 		// authored set has no ppy-hosted counterpart to redirect to.
@@ -62,14 +63,14 @@ internal static class BeatmapAssetRoutes
 
 	/// <summary>Serves the 80x60 cover thumbnail's mirror fallback (no local background).</summary>
 	private static Task<IResult> HandleThumbnailSmall(int setId, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<MirrorOptions> mirror, HttpRequest request, CancellationToken cancellationToken)
+		MirrorService mirror, HttpRequest request, CancellationToken cancellationToken)
 	{
 		return HandleThumbnailFallbackAsync(setId, beatmapsetRepository, mirror, request, cancellationToken);
 	}
 
 	/// <summary>Serves the 160x120 list-icon thumbnail's mirror fallback (no local background).</summary>
 	private static Task<IResult> HandleThumbnailLarge(int setId, IBeatmapsetRepository beatmapsetRepository,
-		IOptions<MirrorOptions> mirror, HttpRequest request, CancellationToken cancellationToken)
+		MirrorService mirror, HttpRequest request, CancellationToken cancellationToken)
 	{
 		return HandleThumbnailFallbackAsync(setId, beatmapsetRepository, mirror, request, cancellationToken);
 	}
@@ -80,13 +81,13 @@ internal static class BeatmapAssetRoutes
 	///     background is always served by that provider instead — this handler never resizes anything.
 	/// </summary>
 	private static async Task<IResult> HandleThumbnailFallbackAsync(int setId,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<MirrorOptions> mirror, HttpRequest request,
+		IBeatmapsetRepository beatmapsetRepository, MirrorService mirror, HttpRequest request,
 		CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (beatmapset is null || beatmapset.IsPrivate) return Results.NotFound();
 
-		return MirrorFallback(mirror.Value, beatmapset, request);
+		return MirrorFallback(await mirror.GetAsync(cancellationToken), beatmapset, request);
 	}
 
 	/// <summary>
@@ -94,7 +95,7 @@ internal static class BeatmapAssetRoutes
 	///     produced, or 503 when audio extraction itself fails.
 	/// </summary>
 	private static async Task<IResult> HandleAudioPreview(int setId, IBeatmapRepository beatmaps,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, MirrorService mirror,
 		IResponseCache cache, IAudioExtractor extractor, HttpRequest request,
 		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
@@ -106,7 +107,7 @@ internal static class BeatmapAssetRoutes
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, ContentTypes.Resolve(ResponseCacheKeys.Preview(setId)));
 
-		return MirrorFallback(mirror.Value, beatmapset, request);
+		return MirrorFallback(await mirror.GetAsync(cancellationToken), beatmapset, request);
 	}
 
 	/// <summary>
@@ -114,7 +115,7 @@ internal static class BeatmapAssetRoutes
 	///     404 when offline (unchanged behavior); 503 when online but the set has no ppy id to
 	///     redirect with (a locally authored set has no mirror counterpart).
 	/// </summary>
-	private static IResult MirrorFallback(MirrorOptions mirror, Beatmapset beatmapset, HttpRequest request)
+	private static IResult MirrorFallback(MirrorEndpoints mirror, Beatmapset beatmapset, HttpRequest request)
 	{
 		if (!mirror.IsOnlineMode) return Results.NotFound();
 

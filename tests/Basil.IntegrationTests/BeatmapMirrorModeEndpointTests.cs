@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
@@ -14,9 +15,9 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Covers the online-mirror-mode fallback: local storage is always tried first (see
 ///     <see cref="BeatmapRedirectEndpointTests" /> for `/d/{id}`'s local-first coverage), and only a
-///     beatmapset genuinely missing locally is affected by <see cref="MirrorOptions.IsOnlineMode" />
-///     — a redirect for a genuine ppy id, `503` for a locally-authored (synthesized-id) set or a
-///     route with no mirror equivalent, `404` when offline.
+///     beatmapset genuinely missing locally is affected by online mirror mode — a redirect for a
+///     genuine ppy id, `503` for a locally-authored (synthesized-id) set or a route with no mirror
+///     equivalent, `404` when offline.
 /// </summary>
 public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> factory)
 	: IClassFixture<WebApplicationFactory<Program>>, IDisposable
@@ -51,7 +52,9 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+				// Real, stateful repository: mirror mode is now read back from here (seeded once at
+				// startup from the MirrorOptions registered below), not from IOptions directly.
+				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
 				services.AddSingleton(beatmapsets);
 				services.AddSingleton(maps);
 				if (downloadEndpoint is not null)

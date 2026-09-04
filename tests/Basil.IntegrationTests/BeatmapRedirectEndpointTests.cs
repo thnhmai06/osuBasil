@@ -1,4 +1,5 @@
 using System.Net;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Basil.Web;
@@ -11,8 +12,8 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Verifies the /d/ and updated-beatmap endpoints report unavailability rather than reaching out
-///     to the internet by default; /d/{set_id} only redirects if an operator explicitly configures
-///     MirrorOptions:DownloadEndpoint.
+///     to the internet by default; /d/{set_id} only redirects if an operator explicitly configures a
+///     download mirror endpoint.
 /// </summary>
 public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory)
 	: IClassFixture<WebApplicationFactory<Program>>
@@ -34,7 +35,9 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+				// Real, stateful repository: mirror mode is now read back from here (seeded once at
+				// startup from the MirrorOptions registered below), not from IOptions directly.
+				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
 				if (downloadEndpoint is not null)
 					services.AddSingleton(Options.Create(
 						new MirrorOptions { DownloadEndpoint = downloadEndpoint }));

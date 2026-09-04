@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Application.Sessions;
@@ -51,7 +52,9 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+				// Real, stateful repository: mirror search mode is now read back from here (seeded once
+				// at startup from any MirrorOptions a derived factory registers), not from IOptions directly.
+				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(users);
 				services.AddSingleton(TestDoubles.FixedPasswordHasher());

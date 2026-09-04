@@ -2,7 +2,8 @@
 
 ## Overview
 
-Basil supports two beatmap serving modes, controlled by `Basil:Mirror`:
+Basil supports two beatmap serving modes, controlled by the mirror endpoints managed through
+`GET`/`PUT /settings/mirror`:
 
 * **Offline mode**: both `DownloadEndpoint` and `SearchEndpoint` are `null`. Beatmaps are served exclusively from the local `Beatmapsets/` directory.
 * **Online mode**: one or both mirror endpoints are configured. Basil can use an external beatmap mirror for downloads and/or osu!direct search.
@@ -17,29 +18,14 @@ A locally ingested beatmap can therefore exist in the database even when the ser
 
 ## Mirror modes
 
-The mirror configuration is under:
-
-```text
-Basil:Mirror:DownloadEndpoint
-Basil:Mirror:SearchEndpoint
-```
+The mirror endpoints (`downloadEndpoint`, `searchEndpoint`) are stored as mutable server settings, not
+`appsettings.json` values — see [`configuration.md`](../for-technicians/configuration.md#beatmap-mirror) for the
+`/settings/mirror` API.
 
 ### Offline mode
 
-Offline mode is enabled when both endpoints are `null`:
-
-```json
-{
-  "Basil": {
-    "Mirror": {
-      "DownloadEndpoint": null,
-      "SearchEndpoint": null
-    }
-  }
-}
-```
-
-In this mode:
+Offline mode is the default: a fresh deployment has both endpoints unset until an operator sets them via
+`PUT /settings/mirror`. In this mode:
 
 * beatmaps are obtained from the local `Beatmapsets/` directory;
 * locally ingested beatmaps can be served and downloaded;
@@ -300,4 +286,4 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 * [`database.md`](database.md): the `Beatmapsets`/`Beatmaps` schema synchronized by local ingestion
 * [`response-envelope.md`](response-envelope.md): how beatmap data is exposed through API responses
-* [`configuration.md`](../for-technicians/configuration.md): `Basil:Mirror` configuration and other server settings
+* [`configuration.md`](../for-technicians/configuration.md): the mirror endpoints and other server settings

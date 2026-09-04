@@ -10,6 +10,7 @@ using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
@@ -112,9 +113,10 @@ public sealed class Program
 			("Menu Banners", "Main-menu promotional banners (assets.<domain>/menu-content.json)."),
 			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
 		]),
-		("Admin Key",
+		("Settings",
 		[
-			("Admin Key", "The server's admin key: status, rotation, and bypass mode.")
+			("Admin Key", "The server's admin key: status, rotation, and bypass mode."),
+			("Settings", "The server's beatmap mirror endpoints.")
 		]),
 		("Announce",
 		[
@@ -693,13 +695,15 @@ public sealed class Program
 			Directory.CreateDirectory(path);
 		logger.LogInformation("Storage folders ready");
 
-		var mirrorOptions = scope.ServiceProvider.GetRequiredService<IOptions<MirrorOptions>>().Value;
-		if (mirrorOptions.IsOnlineMode)
-			logger.LogInformation("Beatmap serving mode: ONLINE — Basil:Mirror:DownloadEndpoint is set. " +
+		var mirrorService = scope.ServiceProvider.GetRequiredService<MirrorService>();
+		await mirrorService.SeedFromConfigIfUnsetAsync();
+		var mirror = await mirrorService.GetAsync();
+		if (mirror.IsOnlineMode)
+			logger.LogInformation("Beatmap serving mode: ONLINE — a mirror download endpoint is set. " +
 			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
 			                      "mirror, local-only asset routes report 503, all when missing locally.");
 		else
-			logger.LogInformation("Beatmap serving mode: OFFLINE — Basil:Mirror:DownloadEndpoint is unset. " +
+			logger.LogInformation("Beatmap serving mode: OFFLINE — no mirror download endpoint is set. " +
 			                      "All beatmap assets are served from local storage only.");
 
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();

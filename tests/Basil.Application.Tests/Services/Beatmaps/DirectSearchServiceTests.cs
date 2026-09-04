@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -13,12 +14,13 @@ public class DirectSearchServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly IMirrorSearchClient _mirrorClient = Substitute.For<IMirrorSearchClient>();
-	private MirrorOptions _mirrorOptions = new();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 
 	private DirectSearchService MakeService()
 	{
-		return new DirectSearchService(_beatmaps, _mirrorClient, Options.Create(_mirrorOptions),
-			NullLogger<DirectSearchService>.Instance);
+		var mirror = new MirrorService(_settings, Options.Create(new MirrorOptions()),
+			NullLogger<MirrorService>.Instance);
+		return new DirectSearchService(_beatmaps, _mirrorClient, mirror, NullLogger<DirectSearchService>.Instance);
 	}
 
 	[Theory]
@@ -89,7 +91,7 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_MirrorConfiguredAndSucceeds_UsesMirrorNotLocal()
 	{
-		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
+		_settings.GetAsync("Mirror:SearchEndpoint", Arg.Any<CancellationToken>()).Returns("https://mirror.local/search");
 		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
 			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		var mirrorSet = new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4,
@@ -109,7 +111,7 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_MirrorConfiguredButFails_FallsBackToLocal()
 	{
-		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
+		_settings.GetAsync("Mirror:SearchEndpoint", Arg.Any<CancellationToken>()).Returns("https://mirror.local/search");
 		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
 			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())

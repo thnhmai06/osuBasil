@@ -48,41 +48,22 @@ public class OptionsBindingTests
 	}
 
 	[Fact]
-	public void MirrorOptions_IsOnlineMode_FalseWhenDownloadEndpointUnset()
-	{
-		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
-
-		Assert.False(options.IsOnlineMode);
-	}
-
-	[Fact]
-	public void MirrorOptions_IsOnlineMode_TrueWhenDownloadEndpointSet()
-	{
-		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>
-		{
-			[$"{MirrorOptions.SectionName}:DownloadEndpoint"] = "https://catboy.best/d"
-		});
-
-		Assert.True(options.IsOnlineMode);
-	}
-
-	[Fact]
-	public void MirrorOptions_HasSearchMirror_FalseWhenSearchEndpointUnset()
-	{
-		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
-
-		Assert.False(options.HasSearchMirror);
-	}
-
-	[Fact]
-	public void MirrorOptions_HasSearchMirror_TrueWhenSearchEndpointSet()
+	public void MirrorOptions_Binds_SearchEndpoint()
 	{
 		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>
 		{
 			[$"{MirrorOptions.SectionName}:SearchEndpoint"] = "https://catboy.best/api/v2/search"
 		});
 
-		Assert.True(options.HasSearchMirror);
+		Assert.Equal("https://catboy.best/api/v2/search", options.SearchEndpoint);
+	}
+
+	[Fact]
+	public void MirrorOptions_SearchEndpoint_IsNullByDefault()
+	{
+		var options = BindOptions<MirrorOptions>(MirrorOptions.SectionName, new Dictionary<string, string?>());
+
+		Assert.Null(options.SearchEndpoint);
 	}
 
 	[Fact]
