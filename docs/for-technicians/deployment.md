@@ -131,7 +131,7 @@ A new database has no admin key and therefore starts in **bypass mode**.
 Before allowing clients to connect, set an admin key using:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 **Do not expose a server to untrusted users while it is in bypass mode.**

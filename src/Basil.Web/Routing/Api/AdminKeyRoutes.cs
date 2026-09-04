@@ -22,9 +22,9 @@ internal static class AdminKeyRoutes
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
 	/// <summary>
-	///     Registers the `/adminkey` read/write/clear routes on the `api.` host.
+	///     Registers the `/settings/adminkey` read/write/clear routes on the `api.` host.
 	/// </summary>
-	/// <param name="group">The `api.` host route group.</param>
+	/// <param name="group">The `api.` host `/settings` route group.</param>
 	public static void MapAdminKeyRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/adminkey", async (AdminKeyService adminKey, CancellationToken cancellationToken) =>
@@ -97,10 +97,10 @@ internal static class AdminKeyRoutes
 		return Results.Json(new AdminKeyChangedView("Admin key updated."));
 	}
 
-	/// <summary>Response body for `GET /adminkey`.</summary>
+	/// <summary>Response body for `GET /settings/adminkey`.</summary>
 	public sealed record AdminKeyStatusView(bool HasAdminKey, DateTimeOffset? LastChanged);
 
-	/// <summary>Request body for `PUT /adminkey`.</summary>
+	/// <summary>Request body for `PUT /settings/adminkey`.</summary>
 	public sealed record AdminKeyBody(string Key);
 
 	/// <summary>Confirmation body for the admin key write routes.</summary>

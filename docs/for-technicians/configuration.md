@@ -96,7 +96,7 @@ The key is:
 
 * stored as a bcrypt hash in the database;
 * sent to the API as `Authorization: Bearer <key>`;
-* managed through the `api.<domain>` `/adminkey` endpoints.
+* managed through the `api.<domain>` `/settings/adminkey` endpoints.
 
 ### Set the admin key
 
@@ -105,7 +105,7 @@ A new database has **no admin key** configured.
 Before exposing the server to users, set an admin key with:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 Once a key is set, administrative requests must provide:
@@ -128,7 +128,7 @@ In bypass mode:
 
 **Do not expose a production server without an admin key.**
 
-Set one with `PUT /adminkey` to leave bypass mode.
+Set one with `PUT /settings/adminkey` to leave bypass mode.
 
 ---
 

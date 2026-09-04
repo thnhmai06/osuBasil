@@ -74,7 +74,7 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		var body = JsonSerializer.Serialize(new { key });
 		using var content = new StringContent(body, Encoding.UTF8, "application/json");
 		using var response =
-			await client.PutAsync(clientFactory.BuildUri("api", "/adminkey"), content, cancellationToken);
+			await client.PutAsync(clientFactory.BuildUri("api", "/settings/adminkey"), content, cancellationToken);
 		response.EnsureSuccessStatusCode();
 	}
 

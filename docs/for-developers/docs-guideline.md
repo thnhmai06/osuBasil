@@ -84,7 +84,7 @@ Use inline code for technical identifiers, including:
 For example:
 
 * [`ServerOptions`](../../src/Basil.Application/Configurations/ServerOptions.cs)
-* `PUT /adminkey`
+* `PUT /settings/adminkey`
 * `appsettings.json`
 
 ## Cross-references

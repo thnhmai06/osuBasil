@@ -132,7 +132,7 @@ This is expected for a new installation, but it is unsafe for an exposed server.
 Set an admin key through:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 on the `api.<domain>` host.

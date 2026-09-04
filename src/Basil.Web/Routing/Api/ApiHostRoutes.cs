@@ -82,7 +82,8 @@ internal static class ApiHostRoutes
 
 		group.MapMenuIconRoutes();
 
-		group.MapAdminKeyRoutes();
+		var settings = group.MapGroup("/settings");
+		settings.MapAdminKeyRoutes();
 
 		group.MapAnnounceRoutes();
 

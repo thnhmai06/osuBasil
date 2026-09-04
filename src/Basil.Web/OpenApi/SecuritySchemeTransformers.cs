@@ -42,7 +42,7 @@ internal static class SecuritySchemeTransformers
 				Description =
 					"The server's admin key. " +
 					"Provide it as `Authorization: Bearer <admin-key>`. " +
-					"The key can be managed through the `GET`, `PUT`, and `DELETE /adminkey` endpoints. " +
+					"The key can be managed through the `GET`, `PUT`, and `DELETE /settings/adminkey` endpoints. " +
 					"Required for all management and mutation endpoints unless the server is running in bypass mode (no admin key configured)."
 			};
 

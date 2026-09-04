@@ -736,7 +736,7 @@ public sealed class Program
 					"NO ADMIN KEY IS CONFIGURED — THE SERVER IS RUNNING IN BYPASS MODE. " +
 					"ALL MANAGEMENT ACTIONS AND IN-GAME REGISTRATIONS ARE ACCEPTED WITHOUT AUTHENTICATION. " +
 					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
-					"Configure an admin key immediately via PUT /adminkey.");
+					"Configure an admin key immediately via PUT /settings/adminkey.");
 		}
 	}
 

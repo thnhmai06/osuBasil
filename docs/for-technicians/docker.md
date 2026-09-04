@@ -71,7 +71,7 @@ A new database has no admin key and therefore starts in **bypass mode**.
 After Basil is running, set the admin key through:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 on the `api.<domain>` host.
