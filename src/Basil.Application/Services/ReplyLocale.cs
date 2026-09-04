@@ -3,23 +3,22 @@ using System.Text.Json;
 namespace Basil.Application.Services;
 
 /// <summary>
-///     Loads the wording for <see cref="Bot.MpReplies" />, <see cref="Irc.IrcReplies" />, and
-///     <see cref="Content.ServerReplies" /> from three on-disk localization files, so the text of
-///     every user-visible bot/IRC/server reply can be edited without recompiling.
+///     Loads the wording for <see cref="Bot.MpReplies" /> and <see cref="Irc.IrcReplies" /> from two
+///     on-disk localization files, so the text of every user-visible bot/IRC reply can be edited
+///     without recompiling.
 /// </summary>
 /// <remarks>
-///     Reads <c>Data/Localization/BasilBot.json</c>, <c>Irc.json</c>, and <c>Server.json</c> once,
-///     next to the running assembly. Each file is a two-level object -- a category, then a member
-///     name within it -- mapping to that reply's text; callers look a value up by its
-///     <c>"Category.Member"</c> key. A key missing from its file surfaces as an exception the first
-///     time that member is touched -- <c>Program.cs</c> touches one member of each class once at
-///     startup specifically so this is a boot-time failure, not one discovered mid-request.
+///     Reads <c>Data/Localization/BasilBot.json</c> and <c>Irc.json</c> once, next to the running
+///     assembly. Each file is a two-level object -- a category, then a member name within it --
+///     mapping to that reply's text; callers look a value up by its <c>"Category.Member"</c> key. A
+///     key missing from its file surfaces as an exception the first time that member is touched --
+///     <c>Program.cs</c> touches one member of each class once at startup specifically so this is a
+///     boot-time failure, not one discovered mid-request.
 /// </remarks>
 internal static class ReplyLocale
 {
 	private static readonly Lazy<JsonDocument> BasilBotDocument = new(() => Load("BasilBot.json"));
 	private static readonly Lazy<JsonDocument> IrcDocument = new(() => Load("Irc.json"));
-	private static readonly Lazy<JsonDocument> ServerDocument = new(() => Load("Server.json"));
 
 	/// <summary>Resolves a <see cref="Bot.MpReplies" /> member's text by its <c>"Category.Member"</c> key.</summary>
 	public static string BasilBot(string key)
@@ -31,12 +30,6 @@ internal static class ReplyLocale
 	public static string Irc(string key)
 	{
 		return Resolve(IrcDocument.Value, "Irc.json", key);
-	}
-
-	/// <summary>Resolves a <see cref="Content.ServerReplies" /> member's text by its <c>"Category.Member"</c> key.</summary>
-	public static string Server(string key)
-	{
-		return Resolve(ServerDocument.Value, "Server.json", key);
 	}
 
 	private static JsonDocument Load(string fileName)

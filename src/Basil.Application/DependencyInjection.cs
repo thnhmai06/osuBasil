@@ -65,6 +65,7 @@ public static class DependencyInjection
 		services.AddSingleton<MenuIconService>();
 		services.AddSingleton<MenuBannerService>();
 		services.AddSingleton<MirrorService>();
+		services.AddSingleton<MotdService>();
 
 		services.AddSingleton<IPacketHandler, PingHandler>();
 		services.AddSingleton<IPacketHandler, LogoutHandler>();

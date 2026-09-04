@@ -227,3 +227,76 @@ worth doing on its own — but needs that concrete target stated first, not infe
 ## Measurements
 
 Not applicable — no implementation, no behavior change.
+
+## Follow-up: MOTD moved back to a database-backed setting (2026-09-04)
+
+The 2026-09-04 follow-up above moved the MOTD out of the database and into `Server.json` alongside
+the reply-locale files, on the reasoning that it was wording, not runtime state. The user reversed
+that specific call the same day: the MOTD goes back to a database-backed mutable setting, managed
+through `GET`/`PUT /settings/motd`, consolidated under the same `/settings/` prefix `/settings/adminkey`
+and `/settings/mirror` already use. The reply-locale split itself (three-way — now two-way after this
+— file split, category nesting, the hand-rolled `ReplyLocale` loader) is unaffected; only the MOTD's
+storage moved back.
+
+Changes:
+
+- `ServerReplies` and `Server.json` deleted outright — MOTD was their only content, so nothing else
+  depended on either. `ReplyLocale.Server` removed along with them.
+- `MotdService` reinstated (`Services/Content/MotdService.cs`), following `AdminKeyService`/
+  `MirrorService`'s established pattern: `ISettingsRepository`-backed, async `GetTextAsync`/
+  `SetTextAsync`, setting key `Motd` — kept as the bare key `001_base.sql` already seeds (a
+  `Category:Field` shape like `AdminKey:Hash`/`Mirror:DownloadEndpoint` was tried first, but
+  `SqliteSettingsRepository.SetAsync` is UPDATE-only against a pre-seeded row, so a different key
+  here would have silently no-op'd every write against a real deployment; see the ordering-bug
+  paragraph below for the same class of failure).
+- New `GET`/`PUT /settings/motd` (`MotdSettingsRoutes.cs`) — `GET` is not admin-key-gated (the message
+  itself isn't sensitive, matching the original pre-locale `/announce/motd` design), `PUT` is.
+  Deliberately placed under `/settings/motd`, not the original `/announce/motd`: the user's request
+  named the new path directly, and it fits the `/settings/` consolidation already in place for
+  AdminKey and Mirror.
+- `LoginService.WelcomeNotification` and `IrcQueryService.BuildMotdReply` (renamed back to
+  `BuildMotdReplyAsync`) both go back to async, reading through `MotdService` instead of a
+  class-load-time static field. The `motdTextOverride` testability parameter added during the locale
+  detour is gone — a mocked `ISettingsRepository` is the seam again, restoring `AdminKeyServiceTests`'
+  own pattern for testing a settings-backed consumer.
+
+Found and fixed a real ordering bug while wiring this: `Program.cs`'s `InitializeDataAsync` read/wrote
+the `Settings` table (via `MirrorService.SeedFromConfigIfUnsetAsync`, from the prior `Mirror`-to-DB
+migration round) *before* database migrations ran, which had gone unnoticed locally because a
+developer's already-migrated `Basil.db` masked it. It surfaced the moment Docker engine became
+available in this session and a real fresh-image build ran `Program.Main` (build-time OpenAPI doc
+generation) against a genuinely empty database: `SQLite Error 1: 'no such table: Settings'`. Fixed by
+moving the Settings-table reads/writes to after migrations complete — but deliberately *not* nested
+inside `if (hasDatabase)`, since several existing test hosts run with no real database at all
+(`DatabaseOptions.Path = ""`) while still registering a working in-memory `ISettingsRepository`, and
+had been relying on that seed step running unconditionally. Verified against real Docker (see
+[`docker.md`](../for-technicians/docker.md) verification note) and against the full test suite,
+including the mirror/MOTD integration tests that exercise this exact startup path.
+
+The same live verification surfaced two further real bugs, neither reachable by a test suite built
+entirely on fake `ISettingsRepository`s:
+
+- `SqliteSettingsRepository.SetAsync` is UPDATE-only against a pre-seeded row (see its own class
+  remarks), so any Settings key without a migration-seeded row silently no-ops on every write — no
+  exception, `GetAsync` just keeps returning `null`. The `Mirror:DownloadEndpoint`/
+  `Mirror:SearchEndpoint`/`Mirror:Seeded` keys added by the prior Mirror-to-DB round had never been
+  seeded by a migration, so `/settings/mirror` writes silently failed against a real deployment; the
+  same would have happened to MOTD under the `Motd:Text` key considered above. Fixed by adding
+  migration `005_mirror_settings.sql` to seed the three `Mirror:*` keys, and by keeping MOTD on the
+  bare `Motd` key `001_base.sql` already seeds. Added a permanent regression test
+  (`SqliteSettingsRepositoryTests.SetAsync_EveryServiceOwnedKey_ActuallyPersists`, run against the
+  real migrated schema) covering every currently-live Settings key, so a future key added without a
+  matching migration seed fails a test instead of failing silently in production.
+- `docker-compose.yml`'s whole-directory `./docker-data/Data:/app/Data` mount shadows the image's
+  bundled `Data/basil.local.pfx` development TLS certificate, the same shadowing class already fixed
+  for `appsettings.json`/`Localization/` in an earlier round — invisible locally because a
+  previously-deployed `docker-data/Data/` already had its own copy of the file. A genuinely fresh
+  `docker-data/` hit an OpenSSL `no such file` error and an infinite Kestrel restart loop. Fixed by
+  adding an individual `./data/certs/basil.local.pfx:/app/Data/basil.local.pfx:ro` mount, applied to
+  both the Compose file and the bare `docker run` flow documented in
+  [`docker.md`](../for-technicians/docker.md).
+
+## Measurements
+
+Not applicable — no behavior-affecting performance claim, pure feature reversal + a startup-ordering
+correctness fix.

@@ -12,7 +12,6 @@ using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
-using Basil.Application.Services.Content;
 using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
@@ -116,7 +115,8 @@ public sealed class Program
 		("Settings",
 		[
 			("Admin Key", "The server's admin key: status, rotation, and bypass mode."),
-			("Mirror", "The server's beatmap mirror endpoints.")
+			("Mirror", "The server's beatmap mirror endpoints."),
+			("MOTD", "The message shown to a player on login.")
 		]),
 		("Announce",
 		[
@@ -672,13 +672,11 @@ public sealed class Program
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-		// Forces MpReplies/IrcReplies/ServerReplies to fully resolve every member from
-		// ReplyLocale's localization files now, at boot, rather than lazily on whichever member a
-		// live chat command, IRC reply, or login first happens to touch -- a missing key is a
-		// startup failure, not one discovered mid-tournament.
+		// Forces MpReplies/IrcReplies to fully resolve every member from ReplyLocale's localization
+		// files now, at boot, rather than lazily on whichever member a live chat command or IRC reply
+		// first happens to touch -- a missing key is a startup failure, not one discovered mid-tournament.
 		_ = MpReplies.CreateFailed;
 		_ = IrcReplies.Welcome;
-		_ = ServerReplies.MotdText;
 		logger.LogInformation("Reply locale loaded");
 
 		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);
@@ -695,17 +693,6 @@ public sealed class Program
 			Directory.CreateDirectory(path);
 		logger.LogInformation("Storage folders ready");
 
-		var mirrorService = scope.ServiceProvider.GetRequiredService<MirrorService>();
-		await mirrorService.SeedFromConfigIfUnsetAsync();
-		var mirror = await mirrorService.GetAsync();
-		if (mirror.IsOnlineMode)
-			logger.LogInformation("Beatmap serving mode: ONLINE — a mirror download endpoint is set. " +
-			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
-			                      "mirror, local-only asset routes report 503, all when missing locally.");
-		else
-			logger.LogInformation("Beatmap serving mode: OFFLINE — no mirror download endpoint is set. " +
-			                      "All beatmap assets are served from local storage only.");
-
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
 		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
 		IReadOnlyList<Channel> allChannels = [];
@@ -720,6 +707,24 @@ public sealed class Program
 
 			allChannels = await channelRepository.FetchAllAsync();
 		}
+
+		// Reads/writes the Settings table, so this must run after migrations create it when a real
+		// database is in play -- moving it earlier (alongside the MirrorOptions-only version this
+		// replaced) broke a from-scratch database, including a fresh Docker image build's build-time
+		// OpenAPI doc generation, which runs Program.Main against an empty database before any
+		// container ever starts. Deliberately NOT nested inside `if (hasDatabase)`: a test host with no
+		// real database still registers a working (in-memory) ISettingsRepository and expects the
+		// mirror it configured to seed and take effect.
+		var mirrorService = scope.ServiceProvider.GetRequiredService<MirrorService>();
+		await mirrorService.SeedFromConfigIfUnsetAsync();
+		var mirror = await mirrorService.GetAsync();
+		if (mirror.IsOnlineMode)
+			logger.LogInformation("Beatmap serving mode: ONLINE — a mirror download endpoint is set. " +
+			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
+			                      "mirror, local-only asset routes report 503, all when missing locally.");
+		else
+			logger.LogInformation("Beatmap serving mode: OFFLINE — no mirror download endpoint is set. " +
+			                      "All beatmap assets are served from local storage only.");
 
 		channelRegistry.Seed(allChannels);
 

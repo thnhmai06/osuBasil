@@ -81,8 +81,7 @@ For example:
 │   ├── appsettings.json
 │   └── Localization/
 │       ├── BasilBot.json
-│       ├── Irc.json
-│       └── Server.json
+│       └── Irc.json
 └── Logs/
 ```
 

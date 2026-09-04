@@ -50,6 +50,7 @@ public sealed class LoginService(
 	PlayerLogoutService playerLogoutService,
 	IPlayerStatusEvents statusEvents,
 	MenuIconService menuIconService,
+	MotdService motdService,
 	IOptions<ServerOptions> serverOptions,
 	ILogger<LoginService> logger)
 {
@@ -213,7 +214,7 @@ public sealed class LoginService(
 			ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter))
 		};
 
-		if (WelcomeNotification() is { } notification)
+		if (await WelcomeNotification(cancellationToken) is { } notification)
 			data.Add(notification);
 
 		// send auto-join channel info; the client will attempt to join them.
@@ -340,14 +341,14 @@ public sealed class LoginService(
 	///     Returns the configured MOTD text as a notification packet, or <see langword="null" />
 	///     when none is configured.
 	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the read.</param>
 	/// <returns>
 	///     The notification packet to append to the login bundle, or <see langword="null" /> for none.
 	/// </returns>
-	private static byte[]? WelcomeNotification()
+	private async Task<byte[]?> WelcomeNotification(CancellationToken cancellationToken)
 	{
-		return !string.IsNullOrWhiteSpace(ServerReplies.MotdText)
-			? ServerPacketWriter.Notification(ServerReplies.MotdText)
-			: null;
+		var text = await motdService.GetTextAsync(cancellationToken);
+		return !string.IsNullOrWhiteSpace(text) ? ServerPacketWriter.Notification(text) : null;
 	}
 
 	/// <summary>

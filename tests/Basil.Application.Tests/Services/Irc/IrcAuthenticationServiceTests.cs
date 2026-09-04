@@ -26,6 +26,7 @@ public class IrcAuthenticationServiceTests
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly ISessionRegistry<IrcSession> _sessionRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
@@ -42,7 +43,7 @@ public class IrcAuthenticationServiceTests
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
-			options);
+			new MotdService(_settings), options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
 			queries, options, _passwordHasher, _tokenGenerator);
 	}

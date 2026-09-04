@@ -59,15 +59,14 @@ certificate settings. See [`docker.md`](docker.md).
 
 ## Localization
 
-The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send, plus the
-message-of-the-day, is not hardcoded in the application — it lives in three files under
+The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send is not
+hardcoded in the application — it lives in two files under
 [`Data/Localization/`](../../src/Basil.Application/Data/Localization):
 
 | File            | Covers                                                          |
 |------------------|------------------------------------------------------------------|
 | `BasilBot.json`  | `!mp` and general chat command replies (`!where`, `!faq`, `!roll`, `!help`). |
 | `Irc.json`       | The IRC gateway's replies — registration, queries, and command errors.       |
-| `Server.json`    | The message-of-the-day (see below).                                          |
 
 Edit the text for any reply there and restart Basil — no rebuild is required.
 
@@ -78,12 +77,29 @@ every placeholder a reply currently uses when editing it, or the affected reply 
 missing value. Every key is required: removing one prevents Basil from starting, with a startup log
 message naming the missing key.
 
-### Message of the day
+The message-of-the-day is a separate, mutable server setting rather than a localization entry — see
+[Message of the day](#message-of-the-day) below.
+
+---
+
+## Message of the day
 
 The message shown to a player as a login notification, and returned by the IRC gateway's `/MOTD`
-command, is `Server.json`'s `Motd.Text` — a single string, blank by default. It is edited the same
-way as any other localization entry (edit the file, restart Basil) and is **not** managed through the
-API: there is no endpoint to read or set it at runtime.
+command, is stored as a mutable server setting, like the admin key and the mirror endpoints —
+changing it takes effect immediately, with no restart.
+
+Read and change it through:
+
+```text
+GET  /settings/motd
+PUT  /settings/motd
+```
+
+`PUT`'s body is `{ text }`. A `null`, empty, or blank `text` clears it, so nothing is shown on login.
+`GET` is not admin-key-gated — the message itself isn't sensitive — but `PUT` is.
+
+A fresh database ships with a default welcome message already set, not a blank one; clear it with
+`PUT { "text": "" }` if you don't want a login message.
 
 ---
 

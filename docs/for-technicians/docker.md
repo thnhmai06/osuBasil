@@ -38,10 +38,11 @@ src/Basil.Web/Data/appsettings.json
         └──► /app/Data/appsettings.json
 ```
 
-`src/Basil.Application/Data/Localization/` (reply text and the message-of-the-day, see
-[`configuration.md`](configuration.md)) is bind-mounted the same way, so it can be edited on the host and survives
-container recreation just like `appsettings.json` — without this mount, the broader `docker-data/Data` volume below
-would shadow the localization files built into the image, and Basil would fail to start.
+`src/Basil.Application/Data/Localization/` (reply text, see [`configuration.md`](configuration.md)) is
+bind-mounted the same way, so it can be edited on the host and survives container recreation just like
+`appsettings.json` — without this mount, the broader `docker-data/Data` volume below would shadow the
+localization files built into the image, and Basil would fail to start. The bundled development TLS
+certificate (`data/certs/basil.local.pfx`) is bind-mounted individually for the same reason.
 
 ### 2. Start Basil
 
@@ -52,6 +53,10 @@ docker compose up --build -d
 ```
 
 This builds the image and starts Basil in the background.
+
+> Verified against a real container build and a genuinely fresh (empty) `docker-data/` directory:
+> `docker compose up --build -d` produces a running server that answers `/health`, and
+> `/settings/motd` / `/settings/mirror` / `/settings/adminkey` round-trip correctly through it.
 
 Persistent data is stored on the host under:
 
@@ -114,19 +119,23 @@ Prepare the configuration file and persistent directories on the host. `appsetti
 using [`configuration.md`](configuration.md)'s setting reference; the `Localization/` files are not — extract the
 image's copies once instead of writing 150+ reply strings by hand:
 
+The bundled development TLS certificate (`basil.local.pfx`) needs the same individual-file treatment
+— extract it alongside `Localization/`:
+
 ```bash
 container=$(docker create thanhmai06/osubasil:<version>)
 docker cp "$container:/app/Data/Localization" ./Localization
+docker cp "$container:/app/Data/basil.local.pfx" ./basil.local.pfx
 docker rm "$container"
 ```
 
 ```text
 ./
 ├── appsettings.json
+├── basil.local.pfx
 ├── Localization/
 │   ├── BasilBot.json
-│   ├── Irc.json
-│   └── Server.json
+│   └── Irc.json
 └── docker-data/
     ├── Data/
     └── Logs/
@@ -138,6 +147,7 @@ Run the container:
 docker run -d --name basil -p 443:443 \
   -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
   -v "$PWD/Localization:/app/Data/Localization:ro" \
+  -v "$PWD/basil.local.pfx:/app/Data/basil.local.pfx:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<version>
@@ -152,17 +162,18 @@ deployment:
 /app/
 ├── Data/
 │   ├── appsettings.json
+│   ├── basil.local.pfx
 │   └── Localization/
 │       ├── BasilBot.json
-│       ├── Irc.json
-│       └── Server.json
+│       └── Irc.json
 └── Logs/
 ```
 
-Mount `appsettings.json` and `Localization/` (into their paths above) and `Data/` from the host so configuration,
-reply text/MOTD, and server state survive container replacement. Both must be mounted individually, not just
-`Data/`: the broader `Data/` mount would otherwise shadow the image's own copies of them, and a missing
-`Localization/` file specifically prevents Basil from starting at all (see [`configuration.md`](configuration.md)).
+Mount `appsettings.json`, `basil.local.pfx`, and `Localization/` (into their paths above), plus `Data/` from the
+host, so configuration, the TLS certificate, reply text, and server state (including the MOTD, now a
+database-backed setting) survive container replacement. All three must be mounted individually, not just `Data/`:
+the broader `Data/` mount would otherwise shadow the image's own copies of them, and a missing `Localization/`
+file specifically prevents Basil from starting at all (see [`configuration.md`](configuration.md)).
 
 ---
 
@@ -201,12 +212,13 @@ docker pull thanhmai06/osubasil:<new-version>
 docker run -d --name basil -p 443:443 \
   -v "$PWD/appsettings.json:/app/Data/appsettings.json:ro" \
   -v "$PWD/Localization:/app/Data/Localization:ro" \
+  -v "$PWD/basil.local.pfx:/app/Data/basil.local.pfx:ro" \
   -v "$PWD/docker-data/Data:/app/Data" \
   -v "$PWD/docker-data/Logs:/app/Logs" \
   thanhmai06/osubasil:<new-version>
 ```
 
-The existing `appsettings.json`, `Localization/`, and `docker-data/` are reused.
+The existing `appsettings.json`, `basil.local.pfx`, `Localization/`, and `docker-data/` are reused.
 
 Basil applies database migrations automatically when the new version starts.
 
