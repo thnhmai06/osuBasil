@@ -124,6 +124,7 @@ public static class DependencyInjection
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
 		services.AddSingleton<IAudioExtractor, FfmpegAudioExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
+		services.AddSingleton<BeatmapsetAssetCache>();
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
