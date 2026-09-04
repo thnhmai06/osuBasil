@@ -168,10 +168,15 @@ pass, not written as part of this documentation-only review.
 
 ## `.osz` direct storage — design [GATE]
 
-> Status: **Proposed 2026-09-03, not approved, not implemented.** Written at the user's explicit
+> Status: **Approved 2026-09-04, implementation in progress.** Written at the user's explicit
 > request to design this item ("Thiết kế storage .osz trực tiếp"), continuing from the "Open
-> items" entry above. This is a `[GATE]` decision per plan rule 4 — no code against it until the
-> Decision section is approved.
+> items" entry above. This was a `[GATE]` decision per plan rule 4; the user supplied real
+> beatmapset data for the two outstanding Measurements items and directed implementation to
+> proceed ("Bạn có thể sử dụng dữ liệu ở [...] để test. sau đó làm .osz full rewrite nhé"). See
+> "Measurements" below for what was run against that real data, and "Design corrections found
+> before implementation" for what changed in the Decision as a direct result before any code was
+> written — read that section before touching the numbered Decision items above, since two of
+> them are now stated incompletely on their own.
 
 ### Problem
 
@@ -427,21 +432,126 @@ current per-request path, not a theoretical concern — this raises RC7's alloca
 was development-feedback/throwaway per the skill's use-case guidance and was not committed to the
 repo.
 
-**Still not run** — before implementing the full Decision, per plan rule 6/the Definition of Done,
-this still needs:
+**Disk-usage measurement against real data, 2026-09-04.** The user supplied a real beatmapset
+library (`C:\Users\haith\Desktop\Data\Mapsets`, 8 sets, 3 still-loose `.osz` + 5 already-extracted
+folders, 247 MB total) — read-only, never modified by this measurement. Byte-level breakdown per
+set (via `unzip -l` for the loose archives, direct file sizes for the extracted folders), against
+each set's own `.osu`'s real `AudioFilename`/background reference (not guessed from file extension,
+since several sets bundle dozens to hundreds of hitsound sample files in the same audio formats as
+the song itself):
 
-- Disk-usage measurement across a realistic mixed-popularity beatmapset library (many sets never
-  requested outside ingest, a few "hot" ones) to confirm Alternative C's bound actually holds in
-  practice rather than only in the worst-case reasoning above.
-- Migration-pass timing against a large existing library (hundreds to low thousands of sets, matching
-  a real tournament server's scale), since it runs on every startup until every set has both
-  artifacts.
-- The stampede-guard's actual effect under concurrent load (N simultaneous requests for the same
-  cold cache entry) for whatever mechanism the eventual `.osz`/extracted-asset cache uses — the
-  narrower ffmpeg-preview stampede case in this same ADR's "Open items" is now fixed and has this
-  test (`AudioPreviewSingleFlightTests`), but that guard is scoped to that one caller, not the
-  `.osz` cache this Decision proposes.
+| Set | Canonical (whole-set) size | Alternative C eager set (`.osu` + preview bg + preview audio) | Eager fraction |
+|---|---|---|---|
+| Turbo - PADORU | 1.65 MB | 1.09 MB | 66% |
+| Camellia - Operation: Zenithfall | 55.9 MB | 10.0 MB | 18% |
+| Ludicin - Bismuth | 31.3 MB | 16.1 MB | 51% |
+| VNMC Sound Team - DYSMAL/FATE | 49.0 MB | 16.3 MB | 33% |
+| Camellia - Exit This Earth's Atmosphere (remix) | 88.3 MB | 11.6 MB | 13% |
+| Kou! - SELENE-UI | 8.25 MB | 8.37 MB | ~100% |
+| BANIO - mosi mosi | 6.69 MB | 1.34 MB | 20% |
+| Garoad - Hopes and Dreams | 1.60 MB | 1.48 MB | 93% |
+| **Total** | **242.7 MB** | **66.3 MB** | **27%** |
 
-One measurement closing does not unpark this Decision by itself — the disk-usage and migration-
-timing items above are still open, and the rewrite (canonical-store flip + deployment-data
-migration) stays parked until they are too.
+A fully-cold library (Alternative C's floor: every set only ever ingested, never individually
+requested) costs canonical + eager = 242.7 + 66.3 = **309.0 MB, 1.27x today's baseline** (which
+keeps only the extracted form, ≈ canonical size — confirmed by this same data, since already-
+compressed audio/image/video content barely shrinks under DEFLATE). A fully-hot library (every
+asset in every set requested at least once, cache converges to a full duplicate) costs
+canonical + canonical ≈ **2x baseline** — this **confirms** the ADR's original "roughly doubles"
+hot-case estimate with real ratios instead of the worst-case reasoning it was written from.
+
+The 13%–100% spread in eager fraction is real and set-dependent, driven almost entirely by how
+much of a set's bulk is *not* the song/background: the 88 MB remix set is 13% eager because 232
+`.wav` hitsound samples account for 75.3 MB of it, none of which any Basil route serves
+individually (see "Storyboard/hitsound consumer check" below) — they exist purely inside the
+canonical `.osz` and are never extracted at all under this Decision, cold or hot. The Zenithfall
+set similarly bundles 321 non-preview `.ogg` hitsound samples (13.9 MB) alongside its one real
+13.1 MB video. **This is n=8, not "hundreds," so it does not establish a population-wide
+popularity distribution** — but it replaces the ADR's assumed compression/duplication ratios with
+real ones from genuine osu! beatmapsets spanning 1.6 MB to 92 MB, and the cold/hot bound shape
+(1.27x floor, 2x ceiling) is now measured, not asserted.
+
+**Migration-pass timing against the same real data, 2026-09-04.** The 5 real extracted folders
+were copied (read-only source, copy on `V:` — the repo's own volume, since `File.Move` silently
+degrades to copy+delete across volumes and that would have measured the wrong thing) into a
+throwaway benchmark project, timing the two operations Decision item 8 performs per set:
+
+| Operation | Measured | Extrapolated |
+|---|---|---|
+| Zip-build (`ZipFile.CreateFromDirectory`, `CompressionLevel.Optimal`) | 24.4 MB/s, avg 1.85 s/set across the 5 real sets (50 ms for the 1.65 MB set, 4.0 s for the 88 MB one) | N=100 sets ≈ 185 s; N=1000 ≈ 1855 s (minutes to tens of minutes on a library of hundreds — this n=5 sample skews toward large competitive sets, so treat this as a direction, not a precise prediction) |
+| `Directory.Move` (existing folder → cache dir, same volume) | avg 0.48 ms/move, 10 moves total | Negligible at any realistic N — confirms this step is a rename, not a byte copy, as the ADR assumed |
+| Steady-state skip check (`File.Exists` + `Directory.Exists`, synthetic N=2000 markers) | 17.5 µs/set, 35 ms total at N=2000 | Cheap enough to run unconditionally on every startup at any realistic library size |
+
+`CompressionLevel.Optimal` bought almost nothing on this real data (55.9→51.0 MB, 49.0→47.0 MB) —
+audio/image/video content is already compressed, so DEFLATE has little left to do; only the
+232-`.wav` set compressed meaningfully. `CompressionLevel.Fastest` is a measured, free speedup for
+both this migration pass and the `noVideo` archive build (item 5) — the implementation uses
+`CompressionLevel.Fastest` for both instead of the default `Optimal`.
+
+**Stampede-guard under concurrent load**: not run as a supervised load test (RC11's block on
+unattended load testing still applies — unchanged from every prior round). Covered instead the
+same way this same ADR's ffmpeg-preview stampede guard was: an in-process concurrent test against
+the new cache's single-flight lock (many concurrent requests for one cold `(setId, entryName)`,
+asserting exactly one extraction), matching `AudioPreviewSingleFlightTests`'s pattern. This is not
+a substitute for a real multi-user load test, but it is the same bar this ADR already accepted for
+an equivalent guard, not a new exception.
+
+**Storyboard/hitsound consumer check** (asked on review before implementing): confirmed by reading
+`BeatmapsetAssetRoutes.HandleDownloadStoryboard` — it serves only the `.osb` file itself
+(`Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault()`), never a storyboard's
+referenced images/videos individually. No Basil route resolves an individual hitsound sample or a
+non-preview storyboard asset by itself; the full-archive download is the only path that ever
+touches them. This confirms Alternative C's eager set (`.osu` + preview background + preview
+audio) is complete — nothing else needs eager population, though `.osb` itself needs a lazy-extract
+cache entry (item 4) since today it's resolved by an inline glob, not through a `XxxFilePath`
+builder like background/audio/osu/video already are.
+
+### Design corrections found before implementation (2026-09-04)
+
+Reviewing the Decision above against the real migration-timing numbers, and against
+`ReconcileAllAsync`'s existing orphan-sweep logic, surfaced two corrections that change what the
+numbered Decision items above actually mean. Both are stated here rather than silently folded into
+the numbered list, since the numbered list is what an implementer would otherwise follow literally
+and get wrong.
+
+**1. First-run migration must be a background task, not part of synchronous startup.** Decision
+item 8 as originally written says the migration pass "is safe to also run as an ordinary part of
+every startup." The measurements above show that claim is only true for the **skip path** (an
+already-migrated set costs 17.5 µs to confirm and skip) — the **first-run conversion** for a set
+that hasn't been migrated yet is CPU-bound zip compression at 24.4 MB/s, which the extrapolation
+above puts at minutes to tens of minutes for a library of hundreds of sets. Blocking
+`InitializeDataAsync` — and therefore blocking HTTP/Bancho from accepting any connection — for that
+long on every upgrade is not acceptable, and is exactly the class of startup-path risk this
+session's Program.cs ordering fix (the MOTD/Mirror round) was about. **Correction: the one-time
+conversion for not-yet-migrated sets runs as a background task, started after the app begins
+accepting connections, not awaited by `InitializeDataAsync`.** The cheap skip check stays
+synchronous at startup exactly as item 8 already says, since it costs nothing to run unconditionally.
+
+**2. Every read path — including the orphan sweep — must resolve both layouts for the whole
+migration window, not just after it completes.** `ReconcileAllAsync`'s existing orphan sweep
+enumerates every currently-known-live set id (`seenSetIds`, populated by walking `*.osz` files and
+beatmapset subfolders) and deletes the DB row — cascading its beatmaps — for any known id *not* in
+that set. Once ingestion is switched to treating a loose `.osz` as the canonical, permanent form
+(item 1) but the background migration (correction 1 above) hasn't reached a given set yet, that
+set exists only as an un-migrated extracted folder. If the sweep's enumeration only looks for the
+new layout, every not-yet-migrated set is invisible to it and gets deleted on the very first
+startup after upgrade — a mass, cascading, silent data loss across the whole library, worse than
+the silent single-key write failure fixed earlier this session, and directly caused by treating the
+migration as instantaneous when the timing measurement above shows it isn't. **Correction: for the
+duration of the migration window, a set counts as "live" if it is present under *either* layout —
+a loose `.osz` matching its id, *or* an extracted folder matching its id — and every consumer that
+resolves a beatmapset's files (`FindBeatmapsetFolder` and everything built on it, item 4's rewire)
+falls back from "cache → extract from `.osz`" to "the legacy extracted folder directly" when no
+`.osz` exists yet for that id, rather than failing.** This makes the ADR's stated cache invariant
+("the cache is always either absent or a faithful extraction of the current `.osz`'s content")
+transiently false during the migration window, and the dual-layout fallback is what makes that
+survivable instead of a correctness bug. Once a set's background migration completes, its legacy
+folder is deleted and the fallback stops applying to it specifically.
+
+These corrections do not change what gets built, only two details of how it gets sequenced and
+what "orphaned" means during the transition — the numbered Decision items 1–8 above stand as the
+target end state.
+
+One measurement closing does not unpark this Decision by itself, and the disk-usage/migration-
+timing measurements above are exactly the two that were still missing — with them run against real
+data and the two corrections above folded in, this Decision is unparked for implementation.
