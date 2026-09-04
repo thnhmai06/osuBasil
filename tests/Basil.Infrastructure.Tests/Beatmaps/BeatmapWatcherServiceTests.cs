@@ -281,6 +281,19 @@ public class BeatmapWatcherServiceTests : IDisposable
 
 			Assert.NotNull(BeatmapIngestionService.FindBeatmapsetOsz(_options.Value, 900000));
 
+			// The watcher also sees the temp-then-rename publish of the canonical archive itself (an
+			// in-tree Renamed event) and redundantly reconciles it via ReconcileOszAsync a debounce
+			// window later. For a set with valid ".osu" content (unlike the empty-folder case
+			// BeatmapsetMigrationServiceTests.LegacyFolderWithNoOsuFile_IsSkippedRatherThanZippedEmpty
+			// guards against), that redundant pass resolves the same already-canonical path and so
+			// should be a no-op -- confirmed here by the asset cache's pre-warmed file surviving
+			// untouched (same write time) rather than being invalidated and re-extracted.
+			var cachedOsuFile = Path.Combine(_options.Value.CachePath, "beatmapset-assets", "900000",
+				"vivid_with_setid.osu");
+			Assert.True(File.Exists(cachedOsuFile),
+				"Migration's asset-cache pre-warm did not produce " + cachedOsuFile);
+			var preWarmedAt = File.GetLastWriteTimeUtc(cachedOsuFile);
+
 			// Give the watcher's own debounce window (2s) plus margin to process whatever Deleted/
 			// Renamed events the migration's folder move fired, then assert the row is still there.
 			await Task.Delay(TimeSpan.FromSeconds(4));
@@ -289,6 +302,11 @@ public class BeatmapWatcherServiceTests : IDisposable
 				"Beatmapset was deleted by the live watcher after being successfully migrated. Ingestion log: " +
 				string.Join(" | ", _ingestionLog.Messages) +
 				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+
+			Assert.True(File.Exists(cachedOsuFile),
+				"The live watcher's redundant reconcile of migration's own archive invalidated the pre-warmed " +
+				"asset cache. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages));
+			Assert.Equal(preWarmedAt, File.GetLastWriteTimeUtc(cachedOsuFile));
 		}
 		finally
 		{
