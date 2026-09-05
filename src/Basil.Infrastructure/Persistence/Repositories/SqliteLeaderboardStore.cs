@@ -106,6 +106,6 @@ public sealed class SqliteLeaderboardStore(string connectionString) : ILeaderboa
 	/// <summary>Creates a new SQLite connection using the store's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 }

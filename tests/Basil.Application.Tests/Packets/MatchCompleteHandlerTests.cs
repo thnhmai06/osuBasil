@@ -26,7 +26,7 @@ public class MatchCompleteHandlerTests
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -55,7 +55,7 @@ public class MatchCompleteHandlerTests
 		host.Dequeue();
 		guest.Dequeue();
 		spectatorish.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.MatchRepository,
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -66,5 +66,31 @@ public class MatchCompleteHandlerTests
 		Assert.Contains(ServerPacketWriter.MatchComplete(), Chunk(host.Dequeue()));
 		// immune from match_complete itself (still gets the enqueue_state update, just not this packet)
 		Assert.DoesNotContain(ServerPacketWriter.MatchComplete(), Chunk(spectatorish.Dequeue()));
+	}
+
+	/// <summary>
+	///     Regression test (ADR-003): a full round-end outbox must not stop the room from seeing a
+	///     consistent match-complete broadcast — only the database write is lost, loudly logged, not
+	///     the in-memory state transition or the packets players actually see.
+	/// </summary>
+	[Fact]
+	public async Task Handle_OutboxFull_StillFinishesMatchAndBroadcasts()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+		match.Slots[0].Status = SlotStatus.Playing;
+		match.InProgress = true;
+		match.CurrentRoundId = 1;
+		fixture.RoundEndOutbox.ThrowFull = true;
+		host.Dequeue();
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+			NullLogger<MatchCompleteHandler>.Instance);
+
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.False(match.InProgress);
+		Assert.Contains(ServerPacketWriter.MatchComplete(), Chunk(host.Dequeue()));
 	}
 }

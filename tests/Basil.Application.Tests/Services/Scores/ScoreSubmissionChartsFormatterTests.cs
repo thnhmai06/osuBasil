@@ -8,11 +8,11 @@ public class ScoreSubmissionChartsFormatterTests
 {
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Beatmapset(50, "a", "b", "d",
+		var beatmapset = new Beatmapset(50, "a", "b", "d",
 			new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc),
 			new DateTime(2021, 5, 20, 10, 0, 0, DateTimeKind.Utc));
 		return new Beatmap(
-			"md5", 100, mapset, "c", "f.osu",
+			"md5", 100, beatmapset, "c", "f.osu",
 			new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Basil.Application.Services;
 
@@ -13,7 +14,10 @@ namespace Basil.Application.Formats;
 ///     (<c>MatchScoreUpdateHandler</c> and <c>SpectateFramesHandler</c>). It uses the web defaults
 ///     (camelCase naming) plus the <see cref="CountryJsonConverter" /> and
 ///     <see cref="TimeSpanSecondsJsonConverter" /> converters, so a Country and a TimeSpan
-///     serialize the same way in every payload.
+///     serialize the same way in every payload. The relaxed encoder avoids needlessly escaping
+///     ordinary ASCII punctuation (a literal plus sign, for example) that the default encoder
+///     treats as HTML-unsafe — safe here since every consumer parses this as JSON, never embeds
+///     it into an HTML document.
 /// </remarks>
 public static class BasilJsonOptions
 {
@@ -22,7 +26,10 @@ public static class BasilJsonOptions
 
 	private static JsonSerializerOptions CreateOptions()
 	{
-		var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+		var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+		{
+			Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+		};
 		options.Converters.Add(new CountryJsonConverter());
 		options.Converters.Add(new TimeSpanSecondsJsonConverter());
 		return options;

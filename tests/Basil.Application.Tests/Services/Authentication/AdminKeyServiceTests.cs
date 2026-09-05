@@ -74,8 +74,21 @@ public class AdminKeyServiceTests
 
 		await MakeService().SetKeyAsync("new-key");
 
-		// AdminKey:LastChanged is stamped by a DB trigger on AdminKey:Hash changes, not app code.
 		await _settings.Received(1).SetAsync("AdminKey:Hash", "new-hash", Arg.Any<CancellationToken>());
+	}
+
+	/// <summary>
+	///     Regression test: a DB trigger also stamps this column as a safety net for writes that
+	///     bypass this service, but that write is invisible to the settings cache decorator, which
+	///     only invalidates the key it was actually asked to write. The service must stamp it itself
+	///     through the same repository call so the cache invalidates correctly.
+	/// </summary>
+	[Fact]
+	public async Task SetKeyAsync_AlsoStampsLastChanged()
+	{
+		await MakeService().SetKeyAsync("new-key");
+
+		await _settings.Received(1).SetAsync("AdminKey:LastChanged", Arg.Any<string>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -83,8 +96,16 @@ public class AdminKeyServiceTests
 	{
 		await MakeService().ClearAsync();
 
-		// AdminKey:LastChanged is stamped by a DB trigger on AdminKey:Hash changes, not app code.
 		await _settings.Received(1).SetAsync("AdminKey:Hash", null, Arg.Any<CancellationToken>());
+	}
+
+	/// <summary>See <see cref="SetKeyAsync_AlsoStampsLastChanged" /> — the same gap applies to clearing the key.</summary>
+	[Fact]
+	public async Task ClearAsync_AlsoStampsLastChanged()
+	{
+		await MakeService().ClearAsync();
+
+		await _settings.Received(1).SetAsync("AdminKey:LastChanged", Arg.Any<string>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]

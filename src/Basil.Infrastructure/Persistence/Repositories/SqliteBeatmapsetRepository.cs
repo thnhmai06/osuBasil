@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Persistence.Repositories;
 
 /// <inheritdoc cref="IBeatmapsetRepository" />
 /// <remarks>
-///     Rows map through the private mutable <c>MapsetRow</c> DTO. Each method opens its own
+///     Rows map through the private mutable <c>BeatmapsetRow</c> DTO. Each method opens its own
 ///     connection.
 /// </remarks>
 public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<SqliteBeatmapsetRepository> logger)
@@ -18,9 +18,9 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task<Beatmapset?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		var row = await connection.QuerySingleOrDefaultAsync<MapsetRow>(
+		var row = await connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"SELECT * FROM Beatmapsets WHERE Id = @Id", new { Id = id });
-		return row?.ToMapset();
+		return row?.ToBeatmapset();
 	}
 
 	/// <inheritdoc />
@@ -30,18 +30,21 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	///     media-file columns are deliberately left alone: a re-ingestion pass must never clear an
 	///     admin-set freeze lock or privacy flag, and the pass's actual background and audio files
 	///     are not known yet (they are set later via <see cref="SetBackgroundFileAsync" /> and
-	///     <see cref="SetAudioFileAsync" />). The persisted row is re-read and returned.
+	///     <see cref="SetAudioFileAsync" />). The persisted row is returned by the same statement
+	///     that writes it (<c>RETURNING</c>), not a separate follow-up read, so a concurrent
+	///     <see cref="DeleteAsync" /> can never land in the gap between the write and the read.
 	/// </remarks>
 	public async Task<Beatmapset> UpsertAsync(Beatmapset beatmapset, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync(
+		var row = await connection.QuerySingleAsync<BeatmapsetRow>(
 			"""
 			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
 			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile, @AudioFile)
 			ON CONFLICT(Id) DO UPDATE SET
 			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
 			    LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
+			RETURNING *
 			""",
 			new
 			{
@@ -58,7 +61,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 			});
 		logger.LogDebug("Beatmapset upserted: Id={Id}", beatmapset.Id);
 
-		return (await FetchByIdAsync(beatmapset.Id, cancellationToken))!;
+		return row.ToBeatmapset();
 	}
 
 	/// <inheritdoc />
@@ -135,14 +138,14 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	{
 		await using var connection = Connect();
 		var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
-		var rows = await connection.QueryAsync<MapsetRow>(
+		var rows = await connection.QueryAsync<BeatmapsetRow>(
 			$"""
 			 SELECT m.* FROM Beatmapsets m
 			 {whereClause}
 			 ORDER BY m.Id DESC LIMIT @Limit OFFSET @Offset
 			 """,
 			new { Limit = limit, Offset = offset });
-		return [.. rows.Select(r => r.ToMapset())];
+		return [.. rows.Select(r => r.ToBeatmapset())];
 	}
 
 	/// <inheritdoc />
@@ -162,13 +165,13 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>
 	///     A mutable row DTO matching the Beatmapsets table columns.
 	/// </summary>
-	private sealed class MapsetRow
+	private sealed class BeatmapsetRow
 	{
 		public int Id { get; set; }
 		public string Artist { get; set; } = "";
@@ -183,7 +186,7 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 
 		/// <summary>Builds a <see cref="Beatmapset" /> from this row.</summary>
 		/// <returns>The domain beatmapset.</returns>
-		public Beatmapset ToMapset()
+		public Beatmapset ToBeatmapset()
 		{
 			return new Beatmapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate,
 				BackgroundFile, AudioFile);

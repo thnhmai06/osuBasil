@@ -58,7 +58,7 @@ internal static class MenuIconRoutes
 			.WithName("updateMenuIcon")
 			.WithSummary("Update menu icon.")
 			.WithDescription($"""
-			                  Multipart request, fields `image`, `url` — each applied only if present.{ImageFieldNote}
+			                  Multipart request, fields `image`, `url` — each applied only if present. Sending `url` empty clears the click-through URL back to unset.{ImageFieldNote}
 			                  """ + LoginEffectNote + AdminKeyNote)
 			.WithTags("Menu Icon")
 			.WithMultipartBody(
@@ -66,7 +66,7 @@ internal static class MenuIconRoutes
 				MultipartField.Text("url", false))
 			.Produces<MenuIconChangedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"))
+			.WithExample(StatusCodes.Status200OK, new MenuIconChangedView($"Menu icon updated.{LoginEffectNote}"))
 			.WithExample(StatusCodes.Status400BadRequest,
 				new ErrorResponse("'image' must be an uploaded file or start with http:// or https://."));
 
@@ -75,7 +75,7 @@ internal static class MenuIconRoutes
 			{
 				await menuIcon.ResetAsync(cancellationToken);
 				logger.LogInformation("Menu icon deleted via admin API");
-				return Results.Json(new MenuIconChangedView(true, $"Menu icon removed.{LoginEffectNote}"));
+				return Results.Json(new MenuIconChangedView($"Menu icon removed.{LoginEffectNote}"));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -86,14 +86,14 @@ internal static class MenuIconRoutes
 			.WithTags("Menu Icon")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,
-				new MenuIconChangedView(true, $"Menu icon removed.{LoginEffectNote}"));
+				new MenuIconChangedView($"Menu icon removed.{LoginEffectNote}"));
 
 		group.MapDelete("/menu/icon/image", async (MenuIconService menuIcon, ILogger<MenuIconRoutesLog> logger,
 				CancellationToken cancellationToken) =>
 			{
 				await menuIcon.DeleteIconAsync(cancellationToken);
 				logger.LogInformation("Menu icon image deleted via admin API");
-				return Results.Json(new MenuIconChangedView(true, $"Menu icon image removed.{LoginEffectNote}"));
+				return Results.Json(new MenuIconChangedView($"Menu icon image removed.{LoginEffectNote}"));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -104,7 +104,7 @@ internal static class MenuIconRoutes
 			.WithTags("Menu Icon")
 			.Produces<MenuIconChangedView>()
 			.WithExample(StatusCodes.Status200OK,
-				new MenuIconChangedView(true, $"Menu icon image removed.{LoginEffectNote}"));
+				new MenuIconChangedView($"Menu icon image removed.{LoginEffectNote}"));
 	}
 
 	private static async Task<IResult> HandleGet(MenuIconService menuIcon, IOptions<ServerOptions> server,
@@ -153,16 +153,18 @@ internal static class MenuIconRoutes
 			}
 		}
 
-		var urlRaw = form["url"].ToString();
-		if (!string.IsNullOrEmpty(urlRaw)) await menuIcon.SaveUrlAsync(urlRaw, cancellationToken);
+		// A present-but-empty `url` field is a deliberate reset to unset, told apart from an absent
+		// field (which leaves the current URL untouched) by presence in the form, not by content.
+		if (form.TryGetValue("url", out var urlValues))
+			await menuIcon.SaveUrlAsync(urlValues.ToString(), cancellationToken);
 
 		logger.LogInformation("Menu icon updated via admin API");
-		return Results.Json(new MenuIconChangedView(true, $"Menu icon updated.{LoginEffectNote}"));
+		return Results.Json(new MenuIconChangedView($"Menu icon updated.{LoginEffectNote}"));
 	}
 
 	/// <summary>Response body for `GET /menu/icon`.</summary>
 	public sealed record MenuIconView(string? Image, string? Url);
 
 	/// <summary>Confirmation body for the menu icon write routes.</summary>
-	public sealed record MenuIconChangedView(bool Success, string Message);
+	public sealed record MenuIconChangedView(string Message);
 }

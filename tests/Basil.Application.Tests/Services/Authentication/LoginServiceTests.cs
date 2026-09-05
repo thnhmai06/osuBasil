@@ -1,19 +1,26 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Login;
+using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
@@ -40,7 +47,9 @@ public class LoginServiceTests
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
+	private readonly IPlayerStatusEvents _statusEvents = Substitute.For<IPlayerStatusEvents>();
 
+	private readonly PlayerLogoutService _playerLogoutService;
 	private readonly SpectatorService _spectatorService;
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
@@ -48,16 +57,20 @@ public class LoginServiceTests
 
 	public LoginServiceTests()
 	{
-		_spectatorService = new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-				_channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		_spectatorService = new SpectatorService(_channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
+		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), _channelRegistry,
+			_sessionRegistry, ircRegistry, channelMembership, Substitute.For<IMatchRepository>(),
+			Substitute.For<IMatchRoundEndOutbox>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users,
+			NullLogger<MatchMembershipService>.Instance);
+		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
+			_spectatorService, matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
-		// NSubstitute's default for an unconfigured string-returning member is "", not null — stub
-		// this explicitly so every test's happy path matches "no MOTD configured" unless overridden.
-		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns((string?)null);
 		// TryAdd's unconfigured NSubstitute default is false — stub it true so the happy
 		// path doesn't spuriously hit the "user-already-logged-in" branch.
 		_sessionRegistry.TryAdd(Arg.Any<GameSession>()).Returns(true);
@@ -67,7 +80,8 @@ public class LoginServiceTests
 	{
 		return new LoginService(
 			_users, _userStatRepository, _clientHashes, _loginRepository, _channelRegistry, _sessionRegistry,
-			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _menuIconService, _motdService,
+			_relationships, _passwordHasher, _tokenGenerator, _spectatorService, _playerLogoutService,
+			_statusEvents, _menuIconService, _motdService,
 			Options.Create(new ServerOptions
 			{
 				Domain = "test.local"
@@ -203,6 +217,35 @@ public class LoginServiceTests
 	}
 
 	[Fact]
+	public async Task DuplicateExpiredSession_InMatch_LeavesMatchAndFreesSlot()
+	{
+		// RC3: relogin eviction used to bypass PlayerLogoutService and just remove the session
+		// from the registry, leaving its match slot occupied forever — GhostDisconnectService
+		// only reaps sessions still present in a registry, so the slot could never be freed
+		// (duplicate players after a taskkill reconnect, "match is locked", !mp make appearing
+		// to kick its own creator via a stale Match reference).
+		var match = new MatchSession(0, "test match", "", "Some Map", 100, new string('a', 32),
+			999, GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0, "#multiplayer");
+		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100),
+			Match = match
+		};
+		match.Slots[0].PlayerId = existing.Id;
+		match.Slots[0].Status = SlotStatus.NotReady;
+		_sessionRegistry.GetByName("cmyui").Returns(existing);
+		_users.FetchByNameAsync("cmyui").Returns((User?)null);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
+
+		await useCase.ExecuteAsync(request);
+
+		Assert.True(match.Slots[0].Empty);
+		Assert.Null(existing.Match);
+	}
+
+	[Fact]
 	public async Task UnknownUsername_ReturnsIncorrectCredentials()
 	{
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
@@ -226,6 +269,27 @@ public class LoginServiceTests
 		_users.FetchByNameAsync("cmyui").Returns(user);
 		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
+
+		var result = await useCase.ExecuteAsync(request);
+
+		Assert.Equal("incorrect-credentials", result.OsuToken);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4-adjacent, user-directed follow-up on the soft-delete work):
+	///     a deleted account must never be able to log back in, even with a correct password.
+	///     Reported as ordinary incorrect credentials rather than a distinct reason, so an
+	///     unauthenticated caller can't use login to probe whether a username was deleted.
+	/// </summary>
+	[Fact]
+	public async Task DeletedAccount_CorrectPassword_ReturnsIncorrectCredentials()
+	{
+		var user = MakeUser(10, UserPrivileges.Unrestricted, deletedAt: DateTimeOffset.UnixEpoch);
+		_users.FetchByNameAsync("cmyui").Returns(user);
+		_users.FetchPasswordHashAsync(10).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 		var useCase = MakeUseCase();
 		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
 
@@ -422,21 +486,6 @@ public class LoginServiceTests
 	}
 
 	[Fact]
-	public async Task MotdText_WhenSet_SendsNotification()
-	{
-		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns("Test message of the day!");
-		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
-
-		var useCase = MakeUseCase();
-		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
-		var result = await useCase.ExecuteAsync(request);
-
-		var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
-		var bodyHex = Convert.ToHexString(result.ResponseBody);
-		Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
-	}
-
-	[Fact]
 	public async Task MotdText_WhenUnset_SendsNoNotification()
 	{
 		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
@@ -450,6 +499,21 @@ public class LoginServiceTests
 			ServerPacketWriter.ProtocolVersion(19),
 			ServerPacketWriter.LoginReply(10));
 		Assert.Equal(expectedHeader, result.ResponseBody.Take(expectedHeader.Length).ToArray());
+	}
+
+	[Fact]
+	public async Task MotdText_WhenSet_SendsNotification()
+	{
+		_settings.GetAsync("Motd", Arg.Any<CancellationToken>()).Returns("Test message of the day!");
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted | UserPrivileges.Verified);
+
+		var useCase = MakeUseCase();
+		var request = new LoginRequest(LoginBody(), IPAddress.Loopback);
+		var result = await useCase.ExecuteAsync(request);
+
+		var notificationPacket = ServerPacketWriter.Notification("Test message of the day!");
+		var bodyHex = Convert.ToHexString(result.ResponseBody);
+		Assert.Contains(Convert.ToHexString(notificationPacket), bodyHex);
 	}
 
 	[Fact]
@@ -508,6 +572,33 @@ public class LoginServiceTests
 		Assert.DoesNotContain(Convert.ToHexString(unexpectedPacket), bodyHex);
 	}
 
+	/// <summary>
+	///     Regression test: the channel-info packet broadcast to every other online session used to
+	///     be rebuilt fresh per recipient even though its content (channel name/topic/player count)
+	///     never varies by recipient — pure allocation waste scaling with online session count on
+	///     every login. This pins that the broadcast content itself is unaffected by hoisting that
+	///     packet build out of the per-recipient loop.
+	/// </summary>
+	[Fact]
+	public async Task Login_BroadcastsChannelInfoToOtherOnlineSessions()
+	{
+		SetUpHappyPath(out _, UserPrivileges.Unrestricted);
+		var channel = new ChannelSession(1, "#osu", 0, 0, true);
+		_channelRegistry.AutoJoinChannels.Returns([channel]);
+		var bystander =
+			new GameSession(99, "bystander", "tok", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.All.Returns([bystander]);
+
+		var useCase = MakeUseCase();
+		await useCase.ExecuteAsync(new LoginRequest(LoginBody(), IPAddress.Loopback));
+
+		// Login also broadcasts the new session's presence/stats to every other online session
+		// afterward, so the channel-info bytes only need to lead the bystander's queued packets.
+		var expected = ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
+		var actual = bystander.Dequeue();
+		Assert.Equal(expected, actual.Take(expected.Length));
+	}
+
 	private void SetUpHappyPath(out User user, UserPrivileges priv, int userId = 10, string country = "us")
 	{
 		user = MakeUser(userId, priv, country);
@@ -524,9 +615,9 @@ public class LoginServiceTests
 		_tokenGenerator.GenerateToken().Returns("generated-token");
 	}
 
-	private static User MakeUser(int id, UserPrivileges priv, string country = "us")
+	private static User MakeUser(int id, UserPrivileges priv, string country = "us", DateTimeOffset? deletedAt = null)
 	{
-		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default);
+		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default, deletedAt);
 	}
 
 	private static byte[] Concat(params byte[][] parts)

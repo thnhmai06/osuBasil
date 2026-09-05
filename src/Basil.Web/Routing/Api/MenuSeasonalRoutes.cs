@@ -56,7 +56,7 @@ internal static class MenuSeasonalRoutes
 			.Produces<MenuSeasonalCreatedView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status201Created, new MenuSeasonalCreatedView("winter-2026.png", true))
+			.WithExample(StatusCodes.Status201Created, new MenuSeasonalCreatedView("winter-2026.png"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-2026.png' already exists."));
 
@@ -84,16 +84,35 @@ internal static class MenuSeasonalRoutes
 			.WithMultipartFileUpload()
 			.Produces<MenuSeasonalReplacedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new MenuSeasonalReplacedView("winter-2026.png", true))
+			.WithExample(StatusCodes.Status200OK, new MenuSeasonalReplacedView("winter-2026.png"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."))
+			.ProducesProblem(StatusCodes.Status404NotFound);
+
+		group.MapPatch("/menu/seasonals/{fileName}", HandleRename)
+			.RequireAuthorization(AdminKeyDefaults.Policy)
+			.WithGroupName("basilapi")
+			.WithName("renameSeasonalBackground")
+			.WithSummary("Rename a seasonal background.")
+			.WithDescription("""
+			                 Renames the file, keeping its content unchanged.
+
+			                 Returns `404 Not Found` if no file with this name exists, or `409 Conflict` if a file with the new name already exists.
+			                 """ + AdminKeyNote)
+			.WithTags("Seasonal Backgrounds")
+			.Produces<MenuSeasonalRenamedView>()
+			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+			.WithExample(StatusCodes.Status200OK,
+				new MenuSeasonalRenamedView("winter-2026.png", "winter-final.png"))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'winter-final.png' already exists."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/menu/seasonals/{fileName}", (string fileName, MenuSeasonalService seasonal,
 				ILogger<MenuSeasonalRoutesLog> logger) =>
 			{
-				if (!seasonal.Delete(fileName)) return Results.NotFound();
+				if (!seasonal.Delete(fileName))
+					return Results.NotFound(new ErrorResponse("Seasonal background not found."));
 				logger.LogDebug("Seasonal background deleted via admin API: FileName={FileName}", fileName);
-				return Results.Json(new MenuSeasonalDeletedView(fileName, true));
+				return Results.Json(new MenuSeasonalDeletedView(fileName));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -106,7 +125,7 @@ internal static class MenuSeasonalRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("Seasonal Backgrounds")
 			.Produces<MenuSeasonalDeletedView>()
-			.WithExample(StatusCodes.Status200OK, new MenuSeasonalDeletedView("winter-2026.png", true))
+			.WithExample(StatusCodes.Status200OK, new MenuSeasonalDeletedView("winter-2026.png"))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -127,7 +146,7 @@ internal static class MenuSeasonalRoutes
 			return Results.Conflict(new ErrorResponse($"'{fileName}' already exists."));
 
 		logger.LogDebug("Seasonal background created via admin API: FileName={FileName}", fileName);
-		return Results.Created($"/menu/seasonals/{fileName}", new MenuSeasonalCreatedView(fileName, true));
+		return Results.Created($"/menu/seasonals/{fileName}", new MenuSeasonalCreatedView(fileName));
 	}
 
 	private static async Task<IResult> HandleReplace(string fileName, HttpContext context,
@@ -142,18 +161,41 @@ internal static class MenuSeasonalRoutes
 
 		await using var stream = file.OpenReadStream();
 		var result = await seasonal.ReplaceAsync(fileName, stream, cancellationToken);
-		if (result == MenuSeasonalService.ReplaceResult.NotFound) return Results.NotFound();
+		if (result == MenuSeasonalService.ReplaceResult.NotFound)
+			return Results.NotFound(new ErrorResponse("Seasonal background not found."));
 
 		logger.LogDebug("Seasonal background replaced via admin API: FileName={FileName}", fileName);
-		return Results.Json(new MenuSeasonalReplacedView(fileName, true));
+		return Results.Json(new MenuSeasonalReplacedView(fileName));
+	}
+
+	private static IResult HandleRename(string fileName, RenameSeasonalBackgroundRequest request,
+		MenuSeasonalService seasonal, ILogger<MenuSeasonalRoutesLog> logger)
+	{
+		var newFileName = Path.GetFileName(request.NewFileName);
+		var result = seasonal.Rename(fileName, newFileName);
+		if (result == MenuSeasonalService.RenameResult.NotFound)
+			return Results.NotFound(new ErrorResponse("Seasonal background not found."));
+		if (result == MenuSeasonalService.RenameResult.TargetAlreadyExists)
+			return Results.Conflict(new ErrorResponse($"'{newFileName}' already exists."));
+
+		logger.LogDebug("Seasonal background renamed via admin API: FileName={FileName}, NewFileName={NewFileName}",
+			fileName, newFileName);
+		return Results.Json(new MenuSeasonalRenamedView(fileName, newFileName));
 	}
 
 	/// <summary>Confirmation body for `DELETE /menu/seasonals/{fileName}`.</summary>
-	public sealed record MenuSeasonalDeletedView(string FileName, bool Deleted);
+	public sealed record MenuSeasonalDeletedView(string FileName);
 
 	/// <summary>Confirmation body for `POST /menu/seasonals`.</summary>
-	public sealed record MenuSeasonalCreatedView(string FileName, bool Created);
+	public sealed record MenuSeasonalCreatedView(string FileName);
 
 	/// <summary>Confirmation body for `PUT /menu/seasonals/{fileName}`.</summary>
-	public sealed record MenuSeasonalReplacedView(string FileName, bool Replaced);
+	public sealed record MenuSeasonalReplacedView(string FileName);
+
+	/// <summary>Confirmation body for `PATCH /menu/seasonals/{fileName}`.</summary>
+	public sealed record MenuSeasonalRenamedView(string FileName, string NewFileName);
+
+	/// <summary>Request body for `PATCH /menu/seasonals/{fileName}`.</summary>
+	/// <param name="NewFileName">The file name to rename the seasonal background to.</param>
+	public sealed record RenameSeasonalBackgroundRequest(string NewFileName);
 }

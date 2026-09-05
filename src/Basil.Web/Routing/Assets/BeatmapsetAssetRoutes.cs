@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Media;
 using Basil.Application.Abstractions.Storage;
 using Basil.Application.Configurations;
+using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Web.Auth;
@@ -34,7 +35,7 @@ internal static class BeatmapsetAssetRoutes
 	/// <param name="group">The `assets.` host route group.</param>
 	public static void MapBeatmapsetAssetRoutes(this RouteGroupBuilder group)
 	{
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}/download", HandleDownloadBeatmap)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapAsset")
 			.WithSummary("Download a beatmap.")
@@ -47,7 +48,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/background", HandleDownloadBackground)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}/background", HandleDownloadBackground)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapBackgroundAsset")
 			.WithSummary("Download a beatmap background.")
@@ -60,7 +61,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/background", HandleDownloadMapsetBackground)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/background", HandleDownloadBeatmapsetBackground)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapsetBackgroundAsset")
 			.WithSummary("Download beatmapset background.")
@@ -73,7 +74,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/covers/{variant}.jpg", HandleDownloadCover)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/covers/{variant}.jpg", HandleDownloadCover)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapsetCoverAsset")
 			.WithSummary("Download a beatmapset cover variant.")
@@ -86,7 +87,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/audio", HandleDownloadAudio)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}/audio", HandleDownloadAudio)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapAudioAsset")
 			.WithSummary("Download beatmap audio.")
@@ -99,7 +100,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/audio", HandleDownloadMapsetAudio)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/audio", HandleDownloadBeatmapsetAudio)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapsetAudioAsset")
 			.WithSummary("Download beatmapset audio.")
@@ -112,7 +113,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/{beatmapId:int}/video", HandleDownloadVideo)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/{beatmapId:int}/video", HandleDownloadVideo)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapVideoAsset")
 			.WithSummary("Download beatmap video.")
@@ -125,12 +126,12 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/audiopreview", HandleAudioPreview)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/audiopreview", HandleAudioPreview)
 			.WithGroupName("assets")
 			.WithName("getBeatmapsetAudioPreviewAsset")
 			.WithSummary("Get beatmapset audio preview.")
 			.WithDescription("""
-			                 Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's audio file, starting at its recorded preview time. This is the same clip the `b.` host serves at `/preview/{mapsetId}.mp3`.
+			                 Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's audio file, starting at its recorded preview time. This is the same clip the `b.` host serves at `/preview/{beatmapsetId}.mp3`.
 
 			                 Returns `404 Not Found` if the beatmapset doesn't exist or is private. `503 Service Unavailable` if audio extraction fails, or if no audio file is available locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).
 			                 """)
@@ -138,7 +139,7 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/storyboard", HandleDownloadStoryboard)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/storyboard", HandleDownloadStoryboard)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapsetStoryboardAsset")
 			.WithSummary("Download beatmapset storyboard.")
@@ -151,12 +152,14 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-		group.MapGet("/beatmapsets/{mapsetId:int}/download", HandleDownloadArchive)
+		group.MapGet("/beatmapsets/{beatmapsetId:int}/download", HandleDownloadArchive)
 			.WithGroupName("assets")
 			.WithName("downloadBeatmapsetAsset")
 			.WithSummary("Download a beatmapset.")
 			.WithDescription("""
 			                 Serves a `.osz` archive containing every file in the beatmapset: audio, images, video, and every `.osu`/`.osb`. Served as `application/x-osu-beatmap-archive`.
+
+			                 Pass `?noVideo=1` to omit video files from the archive. Only applies when the beatmapset's files are stored locally; a mirror redirect always omits video regardless of this parameter.
 
 			                 Returns `404 Not Found` if the beatmapset has no files locally and either the server is offline or the beatmapset has no genuine ppy id to redirect a mirror lookup with. Otherwise, when the server runs in online mirror mode, redirects to the configured mirror.
 			                 """)
@@ -164,32 +167,35 @@ internal static class BeatmapsetAssetRoutes
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
-	private static async Task<IResult> HandleDownloadBeatmap(int mapsetId, int beatmapId, HttpContext context,
-		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadBeatmap(int beatmapsetId, int beatmapId, HttpContext context,
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache,
+		MirrorService mirror, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId) return Results.NotFound();
 
-		var osuPath = BeatmapIngestionService.OsuFilePath(storage.Value, bmap);
-		return File.Exists(osuPath)
+		var osuPath =
+			await BeatmapIngestionService.OsuFilePathAsync(storage.Value, assetCache, bmap, cancellationToken);
+		return osuPath is not null && File.Exists(osuPath)
 			? Results.File(osuPath, ContentTypes.Resolve(osuPath), enableRangeProcessing: true)
-			: LocalOnlyFallback(mirror.Value);
+			: LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 	}
 
-	private static async Task<IResult> HandleDownloadBackground(int mapsetId, int beatmapId, HttpContext context,
-		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadBackground(int beatmapsetId, int beatmapId, HttpContext context,
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache,
+		MirrorService mirror, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId) return Results.NotFound();
 
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, bmap);
-		if (backgroundPath is null || !File.Exists(backgroundPath)) return LocalOnlyFallback(mirror.Value);
+		var backgroundPath =
+			await BeatmapIngestionService.BackgroundFilePathAsync(storage.Value, assetCache, bmap, cancellationToken);
+		if (backgroundPath is null || !File.Exists(backgroundPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		return Results.File(backgroundPath, BackgroundContentType(backgroundPath), enableRangeProcessing: true);
 	}
@@ -199,55 +205,65 @@ internal static class BeatmapsetAssetRoutes
 		return ContentTypes.Resolve(path, "image/jpeg");
 	}
 
-	private static async Task<IResult> HandleDownloadMapsetBackground(int mapsetId, HttpContext context,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadBeatmapsetBackground(int beatmapsetId, HttpContext context,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, MirrorService mirror, CancellationToken cancellationToken)
 	{
-		var (mapset, notFound) = await ResolveMapsetAsync(mapsetId, context, beatmapsetRepository, cancellationToken);
+		var (beatmapset, notFound) =
+			await ResolveBeatmapsetAsync(beatmapsetId, context, beatmapsetRepository, cancellationToken);
 		if (notFound is not null) return notFound;
 
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, mapset!);
-		if (backgroundPath is null || !File.Exists(backgroundPath)) return LocalOnlyFallback(mirror.Value);
+		var backgroundPath = await BeatmapIngestionService.BackgroundFilePathAsync(storage.Value, assetCache,
+			beatmapset!, cancellationToken);
+		if (backgroundPath is null || !File.Exists(backgroundPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		return Results.File(backgroundPath, BackgroundContentType(backgroundPath), enableRangeProcessing: true);
 	}
 
-	private static async Task<IResult> HandleDownloadCover(int mapsetId, string variant, HttpContext context,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadCover(int beatmapsetId, string variant, HttpContext context,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, MirrorService mirror, CancellationToken cancellationToken)
 	{
 		if (variant is not ("cover" or "card" or "list" or "slimcover")) return Results.NotFound();
 
-		var (mapset, notFound) = await ResolveMapsetAsync(mapsetId, context, beatmapsetRepository, cancellationToken);
+		var (beatmapset, notFound) =
+			await ResolveBeatmapsetAsync(beatmapsetId, context, beatmapsetRepository, cancellationToken);
 		if (notFound is not null) return notFound;
 
-		var backgroundPath = BeatmapIngestionService.BackgroundFilePath(storage.Value, mapset!);
-		if (backgroundPath is null || !File.Exists(backgroundPath)) return LocalOnlyFallback(mirror.Value);
+		var backgroundPath = await BeatmapIngestionService.BackgroundFilePathAsync(storage.Value, assetCache,
+			beatmapset!, cancellationToken);
+		if (backgroundPath is null || !File.Exists(backgroundPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		// This handler only serves the miss-path fallback (see class remarks) — an existing background
 		// is normally served, already cropped, by BeatmapsetBackgroundProvider before routing.
 		return Results.File(backgroundPath, BackgroundContentType(backgroundPath), enableRangeProcessing: true);
 	}
 
-	private static async Task<(Beatmapset? Mapset, IResult? NotFound)> ResolveMapsetAsync(int mapsetId,
+	private static async Task<(Beatmapset? Beatmapset, IResult? NotFound)> ResolveBeatmapsetAsync(int beatmapsetId,
 		HttpContext context, IBeatmapsetRepository beatmapsetRepository, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		return mapset is null || (mapset.IsPrivate && !isAdmin) ? (null, Results.NotFound()) : (mapset, null);
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		return beatmapset is null || (beatmapset.IsPrivate && !isAdmin)
+			? (null, Results.NotFound())
+			: (beatmapset, null);
 	}
 
-	private static async Task<IResult> HandleDownloadAudio(int mapsetId, int beatmapId, HttpContext context,
-		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadAudio(int beatmapsetId, int beatmapId, HttpContext context,
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache,
+		MirrorService mirror, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId) return Results.NotFound();
 
-		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, bmap);
-		if (audioPath is null || !File.Exists(audioPath)) return LocalOnlyFallback(mirror.Value);
+		var audioPath =
+			await BeatmapIngestionService.AudioFilePathAsync(storage.Value, assetCache, bmap, cancellationToken);
+		if (audioPath is null || !File.Exists(audioPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		return Results.File(audioPath, AudioContentType(audioPath), enableRangeProcessing: true);
 	}
@@ -257,86 +273,92 @@ internal static class BeatmapsetAssetRoutes
 		return ContentTypes.Resolve(path, "audio/mpeg");
 	}
 
-	private static async Task<IResult> HandleDownloadMapsetAudio(int mapsetId, HttpContext context,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadBeatmapsetAudio(int beatmapsetId, HttpContext context,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, MirrorService mirror, CancellationToken cancellationToken)
 	{
-		var (mapset, notFound) = await ResolveMapsetAsync(mapsetId, context, beatmapsetRepository, cancellationToken);
+		var (beatmapset, notFound) =
+			await ResolveBeatmapsetAsync(beatmapsetId, context, beatmapsetRepository, cancellationToken);
 		if (notFound is not null) return notFound;
 
-		var audioPath = BeatmapIngestionService.AudioFilePath(storage.Value, mapset!);
-		if (audioPath is null || !File.Exists(audioPath)) return LocalOnlyFallback(mirror.Value);
+		var audioPath = await BeatmapIngestionService.AudioFilePathAsync(storage.Value, assetCache, beatmapset!,
+			cancellationToken);
+		if (audioPath is null || !File.Exists(audioPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		return Results.File(audioPath, AudioContentType(audioPath), enableRangeProcessing: true);
 	}
 
-	private static async Task<IResult> HandleDownloadVideo(int mapsetId, int beatmapId, HttpContext context,
-		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadVideo(int beatmapsetId, int beatmapId, HttpContext context,
+		IBeatmapRepository beatmaps, IOptions<StorageOptions> storage, BeatmapsetAssetCache assetCache,
+		MirrorService mirror, CancellationToken cancellationToken)
 	{
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
-		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: mapsetId, includePrivate: isAdmin,
+		var bmap = await beatmaps.FetchOneAsync(beatmapId, setId: beatmapsetId, includePrivate: isAdmin,
 			cancellationToken: cancellationToken);
-		if (bmap is null || bmap.Beatmapset.Id != mapsetId) return Results.NotFound();
+		if (bmap is null || bmap.Beatmapset.Id != beatmapsetId) return Results.NotFound();
 
-		var videoPath = BeatmapIngestionService.VideoFilePath(storage.Value, bmap);
-		if (videoPath is null || !File.Exists(videoPath)) return LocalOnlyFallback(mirror.Value);
+		var videoPath =
+			await BeatmapIngestionService.VideoFilePathAsync(storage.Value, assetCache, bmap, cancellationToken);
+		if (videoPath is null || !File.Exists(videoPath))
+			return LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 
 		return Results.File(videoPath, ContentTypes.Resolve(videoPath), enableRangeProcessing: true);
 	}
 
-	private static async Task<IResult> HandleAudioPreview(int mapsetId, IBeatmapRepository beatmaps,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		IResponseCache cache, IAudioExtractor extractor, ILogger<BanchoHostGroupsLog> logger,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleAudioPreview(int beatmapsetId, IBeatmapRepository beatmaps,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
+		BeatmapsetAssetCache assetCache, MirrorService mirror, IResponseCache cache, IAudioExtractor extractor,
+		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
 	{
-		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(mapsetId, beatmaps, beatmapsetRepository,
-			storage, cache, extractor, logger, cancellationToken);
+		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(beatmapsetId, beatmaps, beatmapsetRepository,
+			storage, assetCache, cache, extractor, logger, cancellationToken);
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, "audio/mpeg");
 
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		return mapset is null ? Results.NotFound() : LocalOnlyFallback(mirror.Value);
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		return beatmapset is null ? Results.NotFound() : LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 	}
 
-	private static async Task<IResult> HandleDownloadStoryboard(int mapsetId,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
+	private static async Task<IResult> HandleDownloadStoryboard(int beatmapsetId,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, MirrorService mirror,
 		CancellationToken cancellationToken)
 	{
-		var folder = BeatmapIngestionService.FindMapsetFolder(storage.Value, mapsetId);
+		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
 		var osbPath = folder is null
 			? null
 			: Directory.EnumerateFiles(folder, "*.osb").Order().FirstOrDefault();
 		if (osbPath is not null)
 			return Results.File(osbPath, ContentTypes.Resolve(osbPath), enableRangeProcessing: true);
 
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		return mapset is null ? Results.NotFound() : LocalOnlyFallback(mirror.Value);
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		return beatmapset is null ? Results.NotFound() : LocalOnlyFallback(await mirror.GetAsync(cancellationToken));
 	}
 
-	private static async Task<IResult> HandleDownloadArchive(int mapsetId, IBeatmapRepository beatmaps,
-		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, IOptions<MirrorOptions> mirror,
-		CancellationToken cancellationToken)
+	private static async Task<IResult> HandleDownloadArchive(int beatmapsetId, IBeatmapRepository beatmaps,
+		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, MirrorService mirror,
+		CancellationToken cancellationToken, int noVideo = 0)
 	{
-		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, mapsetId, false,
-			cancellationToken);
+		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, beatmapsetId,
+			noVideo != 0, cancellationToken);
 		if (osz is not null)
 			return Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName), osz.Value.FileName);
 
-		if (!mirror.Value.IsOnlineMode) return Results.NotFound();
+		var mirrorEndpoints = await mirror.GetAsync(cancellationToken);
+		if (!mirrorEndpoints.IsOnlineMode) return Results.NotFound();
 
-		var mapset = await beatmapsetRepository.FetchByIdAsync(mapsetId, cancellationToken);
-		if (mapset is { IsLocallyIngested: true }) return LocalOnlyFallback(mirror.Value);
-		if (mapset is null && mapsetId >= Beatmap.LocalIdFloor) return Results.NotFound();
+		var beatmapset = await beatmapsetRepository.FetchByIdAsync(beatmapsetId, cancellationToken);
+		if (beatmapset is { IsLocallyIngested: true }) return LocalOnlyFallback(mirrorEndpoints);
+		if (beatmapset is null && beatmapsetId >= Beatmap.LocalIdFloor) return Results.NotFound();
 
-		return Results.Redirect($"{mirror.Value.DownloadEndpoint}/{mapsetId}?n=1", true);
+		return Results.Redirect($"{mirrorEndpoints.DownloadEndpoint}/{beatmapsetId}?n=1", true);
 	}
 
 	/// <summary>
 	///     503 while the server runs in online mirror mode (this route has no mirror-hosted equivalent
 	///     to redirect to); 404 while offline, matching the pre-online-mode behavior exactly.
 	/// </summary>
-	private static IResult LocalOnlyFallback(MirrorOptions mirror)
+	private static IResult LocalOnlyFallback(MirrorEndpoints mirror)
 	{
 		return mirror.IsOnlineMode
 			? Results.Problem("This endpoint is not available while the server runs in online mirror mode.",

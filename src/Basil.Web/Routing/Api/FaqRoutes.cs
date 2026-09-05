@@ -33,7 +33,11 @@ internal static class FaqRoutes
 			.WithGroupName("basilapi")
 			.WithName("listFaqs")
 			.WithSummary("List FAQs.")
-			.WithDescription("Returns the bare entry names, matching the same identifiers `!faq` uses in chat.")
+			.WithDescription("""
+			                 Returns the bare entry names, matching the same identifiers `!faq` uses in chat.
+
+			                 An entry nested in a subdirectory joins its path segments with `:` instead of a slash (e.g. `folder1:folder2:file3` for `folder1/folder2/file3.txt` on disk), the same identifier every other `/faqs` route accepts and `!faq` uses in chat.
+			                 """)
 			.WithTags("FAQ")
 			.Produces<IReadOnlyList<string>>()
 			.WithExample(StatusCodes.Status200OK, new List<string> { "rules", "schedule", "how-to-join" });
@@ -53,14 +57,16 @@ internal static class FaqRoutes
 			.Produces<FaqCreatedView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status201Created, new FaqCreatedView("rules", true))
+			.WithExample(StatusCodes.Status201Created, new FaqCreatedView("rules"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("'rules' already exists."));
 
 		group.MapGet("/faqs/{entry}", async (string entry, FaqService faq, CancellationToken cancellationToken) =>
 			{
 				var content = await faq.ReadEntryAsync(entry, cancellationToken);
-				return content is null ? Results.NotFound() : Results.Text(content);
+				return content is null
+					? Results.NotFound(new ErrorResponse("FAQ entry not found."))
+					: Results.Text(content);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getFaq")
@@ -87,15 +93,15 @@ internal static class FaqRoutes
 			.WithMultipartFileUpload()
 			.Produces<FaqReplacedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules", true))
+			.WithExample(StatusCodes.Status200OK, new FaqReplacedView("rules"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid entry name."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/faqs/{entry}", (string entry, FaqService faq, ILogger<FaqRoutesLog> logger) =>
 			{
-				if (!faq.DeleteEntry(entry)) return Results.NotFound();
+				if (!faq.DeleteEntry(entry)) return Results.NotFound(new ErrorResponse("FAQ entry not found."));
 				logger.LogDebug("FAQ entry deleted via admin API: Entry={Entry}", entry);
-				return Results.Json(new FaqDeletedView(entry, true));
+				return Results.Json(new FaqDeletedView(entry));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -108,7 +114,7 @@ internal static class FaqRoutes
 			                 """ + AdminKeyNote)
 			.WithTags("FAQ")
 			.Produces<FaqDeletedView>()
-			.WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules", true))
+			.WithExample(StatusCodes.Status200OK, new FaqDeletedView("rules"))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -136,7 +142,7 @@ internal static class FaqRoutes
 			};
 
 		logger.LogDebug("FAQ entry created via admin API: Entry={Entry}", entry);
-		return Results.Created($"/faqs/{entry}", new FaqCreatedView(entry, true));
+		return Results.Created($"/faqs/{entry}", new FaqCreatedView(entry));
 	}
 
 	private static async Task<IResult> HandleReplace(string entry, HttpContext context, FaqService faq,
@@ -153,19 +159,19 @@ internal static class FaqRoutes
 		var result = await faq.ReplaceEntryAsync(entry, stream, cancellationToken);
 		if (result is FaqService.ReplaceResult.NotFound or FaqService.ReplaceResult.InvalidName)
 			return result == FaqService.ReplaceResult.NotFound
-				? Results.NotFound()
+				? Results.NotFound(new ErrorResponse("FAQ entry not found."))
 				: Results.BadRequest(new ErrorResponse("Invalid entry name."));
 
 		logger.LogDebug("FAQ entry replaced via admin API: Entry={Entry}", entry);
-		return Results.Json(new FaqReplacedView(entry, true));
+		return Results.Json(new FaqReplacedView(entry));
 	}
 
 	/// <summary>Confirmation body for `DELETE /faqs/{entry}`.</summary>
-	public sealed record FaqDeletedView(string Entry, bool Deleted);
+	public sealed record FaqDeletedView(string Entry);
 
 	/// <summary>Confirmation body for `POST /faqs/`.</summary>
-	public sealed record FaqCreatedView(string Entry, bool Created);
+	public sealed record FaqCreatedView(string Entry);
 
 	/// <summary>Confirmation body for `PUT /faqs/{entry}`.</summary>
-	public sealed record FaqReplacedView(string Entry, bool Replaced);
+	public sealed record FaqReplacedView(string Entry);
 }

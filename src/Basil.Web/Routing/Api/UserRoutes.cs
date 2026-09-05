@@ -6,12 +6,14 @@ using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Services.Users;
+using Basil.Application.Sessions;
 using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Web.Auth;
 using Basil.Web.OpenApi;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -43,15 +45,23 @@ internal static class UserRoutes
 	{
 		var admin = group.MapGroup("/users").RequireAuthorization(AdminKeyDefaults.Policy);
 
-		admin.MapGet("", async (IUserRepository users, CancellationToken cancellationToken) =>
-				Results.Json((await users.FetchAllAsync(cancellationToken)).Select(u => u.ToView()).ToList()))
+		admin.MapGet("", async ([FromQuery] int? page, [FromQuery] int? pageSize, IUserRepository users,
+				CancellationToken cancellationToken) =>
+			{
+				var (p, ps) = Pagination.Normalize(page, pageSize);
+				var all = await users.FetchAllAsync(cancellationToken);
+				var overqueried = all.Skip((p - 1) * ps).Take(ps + 1).Select(u => u.ToView()).ToList();
+				return Results.Json(Pagination.Trim(overqueried, p, ps, all.Count));
+			})
 			.WithGroupName("basilapi")
 			.WithName("listUsers")
 			.WithSummary("List users.")
-			.WithDescription("Returns every user, unfiltered and unpaged." + AdminKeyNote)
+			.WithDescription("""
+			                 Returns every user, unfiltered, paginated with `page` (default 1) and `pageSize` (default 50).
+			                 """ + AdminKeyNote)
 			.WithTags("Users")
-			.Produces<IReadOnlyList<UserView>>()
-			.WithExample(StatusCodes.Status200OK, new List<UserView> { SampleUser().ToView() });
+			.Produces<PagedResult<UserView>>()
+			.WithExample(StatusCodes.Status200OK, new PagedResult<UserView>(1, 50, 1, [SampleUser().ToView()]));
 
 		group.MapGet("/users/{idOrName}", (string idOrName, IUserRepository users,
 					CancellationToken cancellationToken) =>
@@ -118,13 +128,13 @@ internal static class UserRoutes
 			.WithLink(StatusCodes.Status201Created, "DeleteUser", "deleteUser", "Soft-delete the newly created user.",
 				("userId", "$response.body#/data/id"));
 
-		admin.MapPut("/{userId:int}", async (int userId, ReplaceUserRequest body, IUserRepository users,
+		admin.MapPut("/{userId:numericid}", async (int userId, ReplaceUserRequest body, IUserRepository users,
 				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapService.BotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
 				var before = await users.FetchByIdAsync(userId, cancellationToken);
-				if (before is null) return Results.NotFound();
+				if (before is null) return Results.NotFound(new ErrorResponse("User not found."));
 
 				if (!User.ValidateUsername(body.Name, out var usernameError))
 					return Results.BadRequest(new ErrorResponse(usernameError));
@@ -154,13 +164,13 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		admin.MapPatch("/{userId:int}", async (int userId, UpdateUserRequest body, IUserRepository users,
+		admin.MapPatch("/{userId:numericid}", async (int userId, UpdateUserRequest body, IUserRepository users,
 				ILogger<UserRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
 				if (userId == BotBootstrapService.BotId)
 					return Results.BadRequest(new ErrorResponse("Cannot modify BasilBot."));
 				var before = await users.FetchByIdAsync(userId, cancellationToken);
-				if (before is null) return Results.NotFound();
+				if (before is null) return Results.NotFound(new ErrorResponse("User not found."));
 
 				if (body.Name is not null)
 				{
@@ -197,7 +207,8 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot modify BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		admin.MapPut("/{userId:int}/avatar", async (int userId, HttpContext context, IOptions<StorageOptions> storage,
+		admin.MapPut("/{userId:numericid}/avatar", async (int userId, HttpContext context,
+				IOptions<StorageOptions> storage,
 				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger,
 				CancellationToken cancellationToken) =>
 			{
@@ -232,7 +243,7 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'file' form field."));
 
-		admin.MapDelete("/{userId:int}/avatar", (int userId, IOptions<StorageOptions> storage,
+		admin.MapDelete("/{userId:numericid}/avatar", (int userId, IOptions<StorageOptions> storage,
 				IOptions<ServerOptions> serverOptions, ILogger<UserRoutesLog> logger) =>
 			{
 				if (Directory.Exists(storage.Value.AvatarsPath))
@@ -273,17 +284,21 @@ internal static class UserRoutes
 			.WithTags("Users")
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		// Soft delete: zeroes privileges rather than removing the row, so score/social/anticheat
-		// history referencing this user's id stays intact. It matches how restriction/ban already
-		// works in this server (a privilege bit, never a hard delete).
-		admin.MapDelete("/{userId:int}",
+		// Soft delete: stamps DeletedAt and zeroes privileges (defense in depth) rather than removing
+		// the row, so score/social/anticheat history referencing this user's id stays intact, and the
+		// name stays reserved (Users_Name_uindex/Users_SafeName_uindex) so nobody can register it
+		// again. DeletedAt, not the zeroed privilege, is the authoritative "is this user deleted"
+		// signal everywhere else in the codebase (login, IRC login) -- see IUserRepository.SoftDeleteAsync.
+		admin.MapDelete("/{userId:numericid}",
 				async (int userId, IUserRepository users, ILogger<UserRoutesLog> logger,
 					CancellationToken cancellationToken) =>
 				{
 					if (userId == BotBootstrapService.BotId)
 						return Results.BadRequest(new ErrorResponse("Cannot delete BasilBot."));
-					if (await users.FetchByIdAsync(userId, cancellationToken) is null) return Results.NotFound();
+					if (await users.FetchByIdAsync(userId, cancellationToken) is null)
+						return Results.NotFound(new ErrorResponse("User not found."));
 
+					await users.SoftDeleteAsync(userId, DateTimeOffset.UtcNow, cancellationToken);
 					await users.UpdatePrivilegesAsync(userId, 0, cancellationToken);
 					var deleted = await users.FetchByIdAsync(userId, cancellationToken);
 					logger.LogInformation("User deleted via admin API: UserId={UserId}", userId);
@@ -293,41 +308,45 @@ internal static class UserRoutes
 			.WithName("deleteUser")
 			.WithSummary("Delete a user.")
 			.WithDescription("""
-			                 Soft-deletes the user and returns the updated row, with its `privilege` now zero. Score, social, and anticheat history referencing this user stays intact.
+			                 Soft-deletes the user and returns the updated row, with `deletedAt` now set. Score, social, and anticheat history referencing this user stays intact, and the username stays reserved -- nobody can register it again. A deleted user can no longer log in.
 
 			                 Returns `400 Bad Request` when targeting user id 0 (BasilBot), or `404 Not Found` if no user with this id exists.
 			                 """ + AdminKeyNote)
 			.WithTags("Users")
 			.Produces<UserView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, SampleUser().ToView() with { Privilege = 0 })
+			.WithExample(StatusCodes.Status200OK, SampleUser().ToView() with { DeletedAt = DateTimeOffset.UnixEpoch })
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapGet("/users/{idOrName}/live", (string idOrName, IUserRepository users, HttpContext context,
-					IPlayerInputEvents events, CancellationToken cancellationToken) =>
+					IPlayerInputEvents inputEvents, IPlayerStatusEvents statusEvents,
+					ISessionRegistry<GameSession> gameRegistry, CancellationToken cancellationToken) =>
 				UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/live",
-					id => Task.FromResult(HandleGetLive(id, context, events, cancellationToken)), cancellationToken))
+					id => Task.FromResult(HandleGetLive(id, context, inputEvents, statusEvents, gameRegistry,
+						cancellationToken)), cancellationToken))
 			.WithGroupName("basilapi")
 			.WithName("spectateUser")
 			.WithSummary("Spectate a user.")
 			.WithDescription("""
-			                 Server-Sent Events stream (event name `frames`) of one user's decoded replay-frame bundles: button state, cursor position, and the trailing scoreframe per bundle.
+			                 Server-Sent Events stream of one user's live status and gameplay input.
 
-			                 The stream is live whenever that user is online and playing, tournament match or not. A nonexistent or offline user simply never receives any frames.
+			                 Each event is one of two types, carried by the SSE `event` field:
+
+			                 - `status`: online/offline and current activity (the full current status first, then on every change)
+			                 - `input`: decoded replay-frame bundles -- button state, cursor position, and the trailing scoreframe per bundle -- only while that user is online and playing, tournament match or not
 
 			                 A non-numeric `{idOrName}` is resolved via username lookup and redirected to the canonical form.
 
-			                 Returns `400 Bad Request` for user id 0 (BasilBot has no gameplay stream to expose).
+			                 Returns `400 Bad Request` for user id 0 (BasilBot has no live stream to expose).
 			                 """)
 			.WithTags("Users")
+			.Produces<PlayerStatusView>()
 			.Produces<SpectateFramesEvent>()
-			.WithExample(StatusCodes.Status200OK, new SpectateFramesEvent(new UserBrief(7, "Alice", Country.Us),
-				ReplayAction.Standard, 0, [new ReplayFrame(Keys.Left1, TaikoByte.None, 100.5f, 200.25f, 1000)],
-				new ScoreFrame(1000, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false)))
+			.WithUserLiveExamples()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status400BadRequest,
-				new ErrorResponse("BasilBot has no gameplay stream to expose."));
+				new ErrorResponse("BasilBot has no live stream to expose."));
 	}
 
 	private static User SampleUser()
@@ -340,7 +359,7 @@ internal static class UserRoutes
 		CancellationToken cancellationToken)
 	{
 		var user = await users.FetchByIdAsync(userId, cancellationToken);
-		return user is null ? Results.NotFound() : Results.Json(user.ToView());
+		return user is null ? Results.NotFound(new ErrorResponse("User not found.")) : Results.Json(user.ToView());
 	}
 
 	private static IResult HandleGetAvatar(int userId, IOptions<StorageOptions> storage)
@@ -348,18 +367,19 @@ internal static class UserRoutes
 		var match = Directory.Exists(storage.Value.AvatarsPath)
 			? Directory.EnumerateFiles(storage.Value.AvatarsPath, $"{userId}.*").FirstOrDefault()
 			: null;
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Avatar not found."));
 
 		return Results.File(match, ContentTypes.Resolve(match));
 	}
 
-	private static IResult HandleGetLive(int userId, HttpContext context, IPlayerInputEvents events,
+	private static IResult HandleGetLive(int userId, HttpContext context, IPlayerInputEvents inputEvents,
+		IPlayerStatusEvents statusEvents, ISessionRegistry<GameSession> gameRegistry,
 		CancellationToken cancellationToken)
 	{
 		if (userId == BotBootstrapService.BotId)
 			return LiveSseRoutes.SseError(StatusCodes.Status400BadRequest,
-				"BasilBot has no gameplay stream to expose.");
-		return LiveSseRoutes.HandleInput(context, userId, events, cancellationToken);
+				"BasilBot has no live stream to expose.");
+		return LiveSseRoutes.HandleInput(context, userId, inputEvents, statusEvents, gameRegistry, cancellationToken);
 	}
 }
 

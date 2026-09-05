@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Services.Beatmaps;
@@ -75,10 +76,13 @@ public static class MatchLiveSnapshotBuilder
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
+		// mapId mirrors beatmap's presence rather than match.MapId directly (Issue #4): "beatmap"
+		// already represents the assigned map, so a mapId alongside a null beatmap would be a
+		// redundant, inconsistent id nobody can resolve to anything.
 		return new MatchRoomLive(
-			match.DbId, match.Name, !string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
-			match.MapId, match.Mods, match.Freemods, match.TeamType, match.WinCondition, match.Mode,
-			match.InProgress, beatmap);
+			!string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
+			beatmap is not null ? match.MapId : null, match.Mods, match.Freemods, match.TeamType,
+			match.WinCondition, match.Mode, match.InProgress, beatmap);
 	}
 
 	/// <summary>Builds the per-userSession live score payload for the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
@@ -193,12 +197,32 @@ public static class MatchLiveSnapshotBuilder
 		if (match.PendingTimer is null || match.TimerStartedAt is null || match.TimerTotalSeconds is null)
 			return new MatchTimerView(false, null, false);
 
-		var elapsed = (DateTimeOffset.UtcNow - match.TimerStartedAt.Value).TotalSeconds;
+		var startTime = match.TimerStartedAt.Value;
+		var endTime = startTime.AddSeconds(match.TimerTotalSeconds.Value);
+		var elapsed = (DateTimeOffset.UtcNow - startTime).TotalSeconds;
 		var remaining = Math.Max(0, match.TimerTotalSeconds.Value - (int)elapsed);
-		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart);
+		return new MatchTimerView(true, remaining, match.PendingTimerIsAutoStart, startTime, endTime);
 	}
 
-	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>.</summary>
+	/// <summary>
+	///     Builds the timer snapshot for the SSE stream: the same data as <see cref="BuildTimer" />,
+	///     minus <see cref="MatchTimerView.SecondsRemaining" />.
+	/// </summary>
+	/// <remarks>
+	///     A ticking counter would otherwise change on every announcement checkpoint, defeating the
+	///     stream's coalescing and pushing an update purely to report elapsed time (Issue #4: "Remove
+	///     `secondsRemaining` from the timer SSE stream to prevent network spam"). A subscriber
+	///     computes remaining time locally from <see cref="MatchTimerView.StartedAt" />/
+	///     <see cref="MatchTimerView.EndsAt" /> instead.
+	/// </remarks>
+	/// <param name="match">The match whose timer to snapshot.</param>
+	public static MatchTimerLiveView BuildTimerLive(MatchSession match)
+	{
+		var timer = BuildTimer(match);
+		return new MatchTimerLiveView(timer.Running, timer.AutoStart, timer.StartedAt, timer.EndsAt);
+	}
+
+	/// <summary>Builds the full 16-slot view payload for <c>GET/PUT /matches/{matchId}/slots</c>.</summary>
 	/// <param name="match">The match being snapshotted.</param>
 	/// <param name="gameRegistry">The registry used to resolve online <see cref="GameSession" /> occupants.</param>
 	/// <param name="ircRegistry">The registry used to resolve online <see cref="IrcSession" /> occupants.</param>
@@ -230,8 +254,10 @@ public static class MatchLiveSnapshotBuilder
 			var user = slot.PlayerId is { } pid
 				? await ResolveOrPlaceholder(pid, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
-			slots.Add(new MatchSlotView(i, user, slot.Status, slot.Team, slot.Mods,
-				slot.Status == SlotStatus.Ready, slot.Loaded));
+			slots.Add(user is null
+				? new MatchSlotView(i + 1, null, slot.Status, null, null, null, null)
+				: new MatchSlotView(i + 1, user, slot.Status, slot.Team, slot.Mods,
+					slot.Status == SlotStatus.Ready, slot.Loaded));
 		}
 
 		return slots;
@@ -311,9 +337,8 @@ public sealed record UserBrief(int Id, string Name, Country Country);
 /// </summary>
 /// <remarks>
 ///     The shape carries no membership (host, referees, or slots) and no rounds. <see cref="MapId" />
-///     keeps the osu! protocol's <c>-1</c> sentinel ("choosing beatmap" or "map not on this system")
-///     rather than going nullable; <see cref="Beatmap" /> (on each derived record) is
-///     <see langword="null" /> in both of those cases.
+///     is <see langword="null" /> in the same cases <see cref="Beatmap" /> (on each derived record) is
+///     -- no beatmap chosen, or the chosen one no longer resolves on this server.
 /// </remarks>
 /// <param name="Id">The match's id.</param>
 /// <param name="Name">The room name.</param>
@@ -321,7 +346,7 @@ public sealed record UserBrief(int Id, string Name, Country Country);
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -334,7 +359,7 @@ public abstract record MatchRoomCore(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -344,15 +369,19 @@ public abstract record MatchRoomCore(
 /// <summary>The <c>live</c> object embedded in a <c>GET /matches</c> list item and in a match report.</summary>
 /// <remarks>
 ///     Carries room configuration plus the current map and in-progress flag, with no slots, host,
-///     referees, or rounds.
+///     referees, or rounds. Deliberately omits <c>id</c>/<c>name</c> — every place this is embedded
+///     (<see cref="MatchListItem" />, <see cref="MatchReport" />) already carries
+///     those at its own top level, so repeating them here would be redundant.
 /// </remarks>
-/// <param name="Id">The match's id.</param>
-/// <param name="Name">The room name.</param>
 /// <param name="HasPassword">Whether the room has a password set.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">
+///     The assigned beatmap id, or <see langword="null" /> when none is chosen or <see cref="Beatmap" />
+///     doesn't resolve -- mirrors <see cref="Beatmap" />'s presence rather than the room's raw selection,
+///     since a mapId nothing can resolve to is not useful on its own.
+/// </param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -364,22 +393,18 @@ public abstract record MatchRoomCore(
 ///     resolves.
 /// </param>
 public sealed record MatchRoomLive(
-	int Id,
-	string Name,
 	bool HasPassword,
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
 	MatchWinCondition WinCondition,
 	GameMode Mode,
 	bool InProgress,
-	BeatmapDetail? Beatmap)
-	: MatchRoomCore(Id, Name, HasPassword, IsPrivate, IsLocked, Size, MapId, Mods, Freemod, TeamType, WinCondition,
-		Mode);
+	BeatmapDetail? Beatmap);
 
 /// <summary>
 ///     The payload for the SSE <c>/match/{id}/settings</c> channel and the response body for
@@ -392,7 +417,7 @@ public sealed record MatchRoomLive(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -411,7 +436,7 @@ public sealed record MatchSettingsView(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -430,7 +455,7 @@ public sealed record MatchSettingsView(
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="IsLocked">Whether the room blocks new joins.</param>
 /// <param name="Size">The number of open slots.</param>
-/// <param name="MapId">The assigned beatmap id, or the <c>-1</c> sentinel when none is chosen.</param>
+/// <param name="MapId">The assigned beatmap id, or <see langword="null" /> when none is chosen.</param>
 /// <param name="Mods">The room-level mods.</param>
 /// <param name="Freemod">Whether the room is in freemod mode.</param>
 /// <param name="TeamType">The room's team type.</param>
@@ -451,7 +476,7 @@ public sealed record MatchLiveSnapshot(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -481,33 +506,66 @@ public sealed record MatchBansView(IReadOnlyList<UserBrief> BannedUsers);
 /// <param name="Running">Whether a countdown is currently pending.</param>
 /// <param name="SecondsRemaining">The whole seconds remaining, or <see langword="null" /> when no countdown is running.</param>
 /// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
-public sealed record MatchTimerView(bool Running, int? SecondsRemaining, bool AutoStart);
+/// <param name="StartedAt">
+///     The time the countdown began, or <see langword="null" /> when no countdown is running. Lets a
+///     client compute remaining time locally from wall-clock time instead of only trusting
+///     <see cref="SecondsRemaining" />, which is a snapshot that goes stale between updates.
+/// </param>
+/// <param name="EndsAt">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+public sealed record MatchTimerView(
+	bool Running,
+	int? SecondsRemaining,
+	bool AutoStart,
+	DateTimeOffset? StartedAt = null,
+	DateTimeOffset? EndsAt = null);
+
+/// <summary>The payload for the SSE stream <c>GET /matches/{matchId}/timer/live</c>.</summary>
+/// <remarks>Omits <c>secondsRemaining</c>; see <see cref="MatchLiveSnapshotBuilder.BuildTimerLive" />.</remarks>
+/// <param name="Running">Whether a countdown is currently pending.</param>
+/// <param name="AutoStart">Whether the pending countdown will start the match at zero.</param>
+/// <param name="StartedAt">The time the countdown began, or <see langword="null" /> when no countdown is running.</param>
+/// <param name="EndsAt">The time the countdown finishes, or <see langword="null" /> when no countdown is running.</param>
+public sealed record MatchTimerLiveView(
+	bool Running,
+	bool AutoStart,
+	DateTimeOffset? StartedAt = null,
+	DateTimeOffset? EndsAt = null);
 
 /// <summary>One slot in <c>GET /matches/{matchId}/slots</c>.</summary>
 /// <remarks>
 ///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> serialize as their numeric
 ///     enum values. <see cref="Ready" /> is true exactly when <see cref="Status" /> is
-///     <see cref="SlotStatus.Ready" />.
+///     <see cref="SlotStatus.Ready" />. <see cref="Team" />, <see cref="Mods" />, <see cref="Ready" />,
+///     and <see cref="Loaded" /> are occupant state and only meaningful with one present; each is
+///     omitted from the JSON entirely (not merely <see langword="null" />) on an empty slot.
+///     <see cref="Status" /> is not one of them -- an empty slot is still meaningfully
+///     <see cref="SlotStatus.Open" /> or <see cref="SlotStatus.Locked" />, so it always serializes.
 /// </remarks>
-/// <param name="Index">The 0-based slot index.</param>
+/// <param name="Index">The 1-based slot index (1 through 16), matching `!mp move`'s convention.</param>
 /// <param name="User">The occupant, or <see langword="null" /> for an empty slot.</param>
 /// <param name="Status">The slot's current status.</param>
-/// <param name="Team">The occupant's team.</param>
-/// <param name="Mods">The occupant's mods.</param>
-/// <param name="Ready">Whether the occupant is ready.</param>
-/// <param name="Loaded">Whether the occupant has finished loading the map.</param>
+/// <param name="Team">The occupant's team, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Mods">The occupant's mods, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Ready">Whether the occupant is ready, or <see langword="null" /> for an empty slot.</param>
+/// <param name="Loaded">
+///     Whether the occupant has finished loading the map, or <see langword="null" /> for an empty slot.
+/// </param>
 public sealed record MatchSlotView(
 	int Index,
 	UserBrief? User,
 	SlotStatus Status,
-	MatchTeam Team,
-	Mods Mods,
-	bool Ready,
-	bool Loaded);
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	MatchTeam? Team,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	Mods? Mods,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	bool? Ready,
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	bool? Loaded);
 
 /// <summary>
-///     The payload for <c>GET/PUT/PATCH /matches/{matchId}/slots</c>, always 16 entries, indexes 0 through
-///     15.
+///     The payload for <c>GET/PUT /matches/{matchId}/slots</c>, always 16 entries, indexes 1 through
+///     16.
 /// </summary>
 /// <param name="Slots">The slot views, index-aligned with the match's slots.</param>
 public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
@@ -524,12 +582,22 @@ public sealed record MatchSlotsView(IReadOnlyList<MatchSlotView> Slots);
 /// <param name="Live">
 ///     The current room configuration, or <see langword="null" /> once the room is no longer live.
 /// </param>
-public sealed record MatchListItem(int Id, string Name, DateTime CreatedAt, DateTime? EndedAt, MatchRoomLive? Live);
+public sealed record MatchListItem(
+	int Id,
+	string Name,
+	DateTimeOffset CreatedAt,
+	DateTimeOffset? EndedAt,
+	MatchRoomLive? Live);
 
 /// <summary>The response body for <c>POST /matches/{matchId}/close</c>.</summary>
 /// <param name="MatchId">The closed match's id.</param>
 /// <param name="EndedAt">When the match was closed.</param>
-public sealed record MatchClosedView(int MatchId, DateTime EndedAt);
+public sealed record MatchClosedView(int MatchId, DateTimeOffset EndedAt);
+
+/// <summary>The response body for <c>POST /matches/{matchId}/abort</c>.</summary>
+/// <param name="MatchId">The aborted match's id.</param>
+/// <param name="AbortedAt">When the round was aborted.</param>
+public sealed record MatchAbortedView(int MatchId, DateTimeOffset AbortedAt);
 
 /// <summary>One player's live score frame on the SSE <c>/matches/{matchId}/live/{slotIndex}</c> channel.</summary>
 /// <param name="User">The player the score belongs to.</param>

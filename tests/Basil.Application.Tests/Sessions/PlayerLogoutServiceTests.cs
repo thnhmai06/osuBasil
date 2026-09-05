@@ -1,7 +1,10 @@
+using System.Text.Json;
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Spectating;
@@ -36,7 +39,7 @@ public class PlayerLogoutServiceTests
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-		Substitute.For<IMatchRepository>(), Substitute.For<IMatchLiveEvents>(),
+		Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
 		Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 		NullLogger<MatchMembershipService>.Instance);
 
@@ -46,13 +49,15 @@ public class PlayerLogoutServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 		NullLogger<SpectatorService>.Instance);
 
+	private readonly MultiplayerTestSupport.FakePlayerStatusEvents _statusEvents = new();
+
 	private PlayerLogoutService MakeService()
 	{
 		var channelMembership =
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		return new PlayerLogoutService(_gameRegistry, _ircRegistry, channelMembership, _spectatorService,
-			_matchMembership, NullLogger<PlayerLogoutService>.Instance);
+			_matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -63,6 +68,24 @@ public class PlayerLogoutServiceTests
 		await MakeService().LogoutAsync(player);
 
 		_gameRegistry.Received(1).Remove(player);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4 follow-up: "GET /users/{id}/live should include status
+	///     information"): a logout must publish an offline status to the userSession's live status
+	///     channel, or a client watching the stream would never learn the userSession went offline.
+	/// </summary>
+	[Fact]
+	public async Task Logout_PublishesOfflineStatus()
+	{
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+
+		await MakeService().LogoutAsync(player);
+
+		var publish = Assert.Single(_statusEvents.Publishes);
+		Assert.Equal(1, publish.PlayerId);
+		var view = JsonSerializer.Deserialize<PlayerStatusView>(publish.Payload, BasilJsonOptions.Instance);
+		Assert.False(view!.Online);
 	}
 
 	[Fact]
@@ -186,7 +209,7 @@ public class PlayerLogoutServiceTests
 		var matchMembership = new MatchMembershipService(matchRegistry, channelRegistry, gameRegistry, ircRegistry,
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			matchRepository,
+			matchRepository, Substitute.For<IMatchRoundEndOutbox>(),
 			new MultiplayerTestSupport.FakeMatchLiveEvents(),
 			Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
@@ -198,7 +221,7 @@ public class PlayerLogoutServiceTests
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var service = new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, _spectatorService,
-			matchMembership, NullLogger<PlayerLogoutService>.Instance);
+			matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 
 		await service.LogoutAsync(host);
 

@@ -51,7 +51,7 @@ public class CommandDispatcherTests
 	{
 		return new StorageOptions
 		{
-			ReplaysPath = "", AvatarsPath = "", MapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
+			ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
 			FaqsPath = faqsPath,
 			CachePath = ""
 		};
@@ -63,7 +63,7 @@ public class CommandDispatcherTests
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
 		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchRegistry, fixture.MatchRepository,
-			_beatmaps,
+			fixture.RoundEndOutbox, _beatmaps,
 			fixture.SessionRegistry, fixture.IrcSessionRegistry, Substitute.For<IUserRepository>(),
 			fixture.ChannelRegistry,
 			NullLogger<MpCommandService>.Instance,

@@ -1,6 +1,8 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
+using Basil.Application.Diagnostics;
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
@@ -32,6 +34,7 @@ public sealed class MatchMembershipService(
 	ISessionRegistry<IrcSession> ircRegistry,
 	ChannelMembershipService channelMembership,
 	IMatchRepository matchRepository,
+	IMatchRoundEndOutbox roundEndOutbox,
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
@@ -141,6 +144,10 @@ public sealed class MatchMembershipService(
 				await CloseAsync(match, creator.Id, creator.Name, cancellationToken);
 				return null;
 			}
+
+			// Only JoinResult.Ok actually seated the creator (AlreadyInMatch means nothing changed).
+			if (joined is JoinResult.Ok)
+				await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		}
 		else
 		{
@@ -339,13 +346,15 @@ public sealed class MatchMembershipService(
 		if (!match.HasGameplayHost) match.HostId = userSession.Id;
 
 		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
+		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
+		// lock instead, since a version allocated an instant later than the mutation is still correct.
 		SyncEmptyRoomTimer(match);
 
 		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
 			match.DbId, userSession.Id, slotId);
 
-		_ = matchRepository.CreateEventAsync(new MatchEvent(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerJoined,
 			userSession.Id, userSession.Name, null,
 			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -398,14 +407,16 @@ public sealed class MatchMembershipService(
 			}
 		}
 
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
+		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
+		// lock instead, since a version allocated an instant later than the mutation is still correct.
 		SyncEmptyRoomTimer(match);
 
 		userSession.Match = null;
 
 		logger.LogInformation("- User left match: MatchId={MatchId} UserId={UserId}", match.DbId, userSession.Id);
 
-		_ = matchRepository.CreateEventAsync(new MatchEvent(
+		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.PlayerLeft,
 			userSession.Id, userSession.Name, null,
 			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -422,7 +433,7 @@ public sealed class MatchMembershipService(
 			var newHostName = newHostId is not null
 				? gameRegistry.GetByUserId(newHostId.Value)?.Name
 				: null;
-			_ = matchRepository.CreateEventAsync(new MatchEvent(
+			await matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, newHostId, newHostName,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
@@ -498,7 +509,7 @@ public sealed class MatchMembershipService(
 			player.Enqueue(ServerPacketWriter.MatchJoinFail());
 		}
 
-		TeardownMatch(match);
+		await TeardownMatch(match, cancellationToken);
 		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -536,11 +547,22 @@ public sealed class MatchMembershipService(
 	/// </returns>
 	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
 	{
-		var beatmap = match.MapId > 0
-			? await beatmapRepo.FetchOneAsync(match.MapId, cancellationToken: cancellationToken)
-			: null;
+		if (match.MapId is not { } mapId)
+		{
+			// Without this, a match with no beatmap selected starts every occupied slot as Playing
+			// anyway. No client can ever send MatchLoadComplete/MatchComplete for a round it has no
+			// map for, so the round never finishes, and every later !mp start returns
+			// AlreadyInProgress until someone runs !mp abort — see the 2026 investigation's RC4.
+			logger.LogDebug("Match start aborted (no beatmap selected): MatchId={MatchId}", match.DbId);
+			var noMapBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
+			if (noMapBot is not null)
+				EnqueueChat(match, noMapBot.Name, noMapBot.Id,
+					"Match cannot start because no beatmap has been selected.");
+			return false;
+		}
 
-		if (match.MapId > 0 && beatmap is null)
+		var beatmap = await beatmapRepo.FetchOneAsync(mapId, cancellationToken: cancellationToken);
+		if (beatmap is null)
 		{
 			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
 				match.DbId, match.MapId);
@@ -569,7 +591,10 @@ public sealed class MatchMembershipService(
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
 		Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
-		await EnqueueStateAsync(match, cancellationToken: cancellationToken);
+		// Not hoisted (ADR-004 4b): the round-start write above already holds the lock through a DB
+		// await per ADR-003's decision to keep round-start synchronous, so shrinking just this tail
+		// call's lock scope would not meaningfully reduce hold time.
+		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
 	}
@@ -601,92 +626,115 @@ public sealed class MatchMembershipService(
 			IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
 	}
 
+	private static readonly KeyValuePair<string, object?> PacketStreamTag = new("stream", "packet");
+
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
 	/// <remarks>
 	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
-	///     then rebuilds and publishes the main, settings, and per-slot snapshots through
-	///     <see cref="IMatchLiveEvents" />.
+	///     then rebuilds and publishes the main, settings, per-slot, and whole-arrangement slots
+	///     snapshots through <see cref="IMatchLiveEvents" />. This is the single call path every
+	///     slot-mutating operation (packet-driven or HTTP-driven) routes through, so <c>slot</c> and
+	///     <c>slots</c> always fire together (ADR-004) — no separate path publishes one without the
+	///     other. A channel whose <see cref="SnapshotChannel{T}.Publish" /> found nothing changed is
+	///     skipped rather than emitting a no-op patch.
+	/// </remarks>
+	/// <remarks>
+	///     Runs entirely without holding <see cref="MatchSession.Lock" /> (ADR-004 4b) — every build
+	///     and broadcast here is gated by <paramref name="version" /> instead, so a call superseded
+	///     by a newer mutation's is dropped rather than reverting live state to something stale. The
+	///     caller must allocate <paramref name="version" /> from <see cref="MatchSession.NextStateVersion" />
+	///     after the mutation it is reporting has completed; the lock does not need to still be held
+	///     at that point; allocating it slightly later can only produce a newer version, never a stale
+	///     one.
 	/// </remarks>
 	/// <param name="match">The match whose state to broadcast.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
 	/// <param name="cancellationToken">A token that cancels the snapshot builds.</param>
-	public async Task EnqueueStateAsync(MatchSession match, bool lobby = true,
+	public async Task EnqueueStateAsync(MatchSession match, long version, bool lobby = true,
 		CancellationToken cancellationToken = default)
 	{
-		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null)
-			channelMembership.BroadcastToMembers(channel,
-				ServerPacketWriter.UpdateMatch(match.ToPacket()));
+		if (match.PacketBroadcastGate.TryAdvance(version))
+		{
+			var channel = channelRegistry.GetByName(match.ChatChannelName);
+			if (channel is not null)
+				channelMembership.BroadcastToMembers(channel,
+					ServerPacketWriter.UpdateMatch(match.ToPacket()));
 
-		if (!match.IsPrivate)
-			BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
+			if (!match.IsPrivate)
+				BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
+		}
+		else
+		{
+			BasilMetrics.StalePublishDropped.Add(1, PacketStreamTag);
+		}
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		eventBus.PublishMain(match.DbId, match.MainSnapshot.Publish(mainSnapshot));
+		if (match.MainSnapshot.Publish(mainSnapshot, version) is { } mainDelta)
+			eventBus.PublishMain(match.DbId, mainDelta);
 
 		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
-		var settingsDelta = match.SettingsSnapshot.Publish(settings);
-		eventBus.PublishSettings(match.DbId, settingsDelta);
+		if (match.SettingsSnapshot.Publish(settings, version) is { } settingsDelta)
+			eventBus.PublishSettings(match.DbId, settingsDelta);
 
 		for (var i = 0; i < match.SlotSnapshots.Count; i++)
-		{
-			var slotDelta = match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i]);
-			eventBus.PublishSlot(match.DbId, i, slotDelta);
-		}
+			if (match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i], version) is { } slotDelta)
+				eventBus.PublishSlot(match.DbId, i, slotDelta);
+
+		// Reuses mainSnapshot.Slots (already resolved above) instead of a second occupant-lookup
+		// pass — MatchSlotsView wraps the exact same per-slot view list BuildSlots itself produces.
+		if (match.SlotsSnapshot.Publish(new MatchSlotsView(mainSnapshot.Slots), version) is { } slotsDelta)
+			eventBus.PublishSlots(match.DbId, slotsDelta);
 	}
 
 	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose host to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
-	public async Task PublishHostAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishHostAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		var delta = match.HostSnapshot.Publish(host);
-		eventBus.PublishHost(match.DbId, delta);
+		if (match.HostSnapshot.Publish(host, version) is { } delta)
+			eventBus.PublishHost(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose referees to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
-	public async Task PublishRefsAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishRefsAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
 			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
-		var delta = match.RefsSnapshot.Publish(refs);
-		eventBus.PublishRefs(match.DbId, delta);
+		if (match.RefsSnapshot.Publish(refs, version) is { } delta)
+			eventBus.PublishRefs(match.DbId, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose banlist to publish.</param>
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
-	public async Task PublishBansAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task PublishBansAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
 		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
-		var delta = match.BansSnapshot.Publish(bans);
-		eventBus.PublishBans(match.DbId, delta);
+		if (match.BansSnapshot.Publish(bans, version) is { } delta)
+			eventBus.PublishBans(match.DbId, delta);
 	}
 
 	/// <summary>Republishes the countdown timer snapshot channel.</summary>
 	/// <param name="match">The match whose timer to publish.</param>
-	public void PublishTimer(MatchSession match)
+	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	public void PublishTimer(MatchSession match, long version)
 	{
-		var delta = match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimer(match));
-		eventBus.PublishTimer(match.DbId, delta);
-	}
-
-	/// <summary>Rebuilds and republishes the slots' snapshot channel.</summary>
-	/// <param name="match">The match whose slots to publish.</param>
-	/// <param name="cancellationToken">A token that cancels the occupant lookups.</param>
-	public async Task PublishSlotsAsync(MatchSession match, CancellationToken cancellationToken = default)
-	{
-		var slots = await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, userRepo,
-			cancellationToken);
-		var delta = match.SlotsSnapshot.Publish(slots);
-		eventBus.PublishSlots(match.DbId, delta);
+		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)
+			eventBus.PublishTimer(match.DbId, delta);
 	}
 
 	/// <summary>
@@ -730,35 +778,45 @@ public sealed class MatchMembershipService(
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 		var token = cts.Token;
 
-		if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
-
-		await match.Lock.WaitAsync(token);
+		// This loop is started fire-and-forget (see SyncEmptyRoomTimer); an exception here would
+		// otherwise fault a Task nobody observes, silently losing it instead of reaching the logs.
 		try
 		{
-			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
-			match.EmptyRoomWarningSent = true;
-			AnnounceToRoomAndReferees(match,
-				$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+			if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
 
-		if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
+			await match.Lock.WaitAsync(token);
+			try
+			{
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				match.EmptyRoomWarningSent = true;
+				AnnounceToRoomAndReferees(match,
+					$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
 
-		await match.Lock.WaitAsync(token);
-		try
-		{
-			if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
-			AnnounceToRoomAndReferees(match, "Closing the room — it stayed empty for 5 minutes.");
-			match.EmptyRoomTimer = null;
-			match.EmptyRoomWarningSent = false;
-			await CloseAsync(match, null, null, token);
+			if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
+
+			await match.Lock.WaitAsync(token);
+			try
+			{
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				AnnounceToRoomAndReferees(match,
+					$"Closing the room — it stayed empty for {EmptyRoomCloseSeconds / 60} minutes.");
+				match.EmptyRoomTimer = null;
+				match.EmptyRoomWarningSent = false;
+				await CloseAsync(match, null, null, token);
+			}
+			finally
+			{
+				match.Lock.Release();
+			}
 		}
-		finally
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			match.Lock.Release();
+			logger.LogError(ex, "Empty-room close loop failed: MatchId={MatchId}", match.DbId);
 		}
 	}
 
@@ -782,7 +840,7 @@ public sealed class MatchMembershipService(
 	///     Announces a message into the match's chat channel and, for any referee not already reached
 	///     through that channel, as a direct message.
 	/// </summary>
-	private void AnnounceToRoomAndReferees(MatchSession match, string text)
+	internal void AnnounceToRoomAndReferees(MatchSession match, string text)
 	{
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
@@ -800,12 +858,31 @@ public sealed class MatchMembershipService(
 		}
 	}
 
-	private void TeardownMatch(MatchSession match)
+	/// <summary>
+	///     Cancels the match's timers, waits for any round-end write still queued for it to finish
+	///     persisting (or give up), ends every live SSE subscriber still connected to it, then
+	///     removes it from the registry and notifies the lobby.
+	/// </summary>
+	/// <remarks>
+	///     The drain (ADR-003) guarantees the last round's end is never discarded along with the
+	///     match's in-memory state — a match with no pending write returns immediately. The SSE
+	///     completion (ADR-004) guarantees a client still connected when the match closes observes
+	///     end-of-stream right away instead of its handler staying attached indefinitely.
+	/// </remarks>
+	private async Task TeardownMatch(MatchSession match, CancellationToken cancellationToken)
 	{
 		match.PendingTimer?.Cancel();
 		match.PendingTimer = null;
 		match.EmptyRoomTimer?.Cancel();
 		match.EmptyRoomTimer = null;
+
+		await roundEndOutbox.DrainAsync(match.DbId, cancellationToken);
+
+		// Ends every subscriber still connected to this match's live SSE streams (ADR-004) — without
+		// this, a client connected when the match closes would keep its handler attached to the
+		// live-event hub indefinitely (or until it happens to disconnect on its own).
+		match.SseSubscribers.CompleteAll();
+		eventBus.Forget(match.DbId);
 
 		matchRegistry.Remove(match.Id);
 

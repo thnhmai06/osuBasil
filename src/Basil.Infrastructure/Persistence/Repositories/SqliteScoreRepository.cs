@@ -33,20 +33,23 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	/// </remarks>
 	public async Task<long> CreateAsync(ScoreInsertRow row, CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		var id = await connection.QuerySingleAsync<long>(
-			"""
-			INSERT INTO Scores
-			    (MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
-			     Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum, RoundId, Team, SubmittedAt)
-			VALUES
-			    (@MapMd5, @Score, @Accuracy, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
-			     @Grade, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @Checksum, @RoundId, @Team, @SubmittedAt);
-			SELECT last_insert_rowid();
-			""",
-			row);
-		logger.LogDebug("Score row created: Id={Id} UserId={UserId}", id, row.UserId);
-		return id;
+		return await SqliteInstrumentation.RecordAsync("score.create", async () =>
+		{
+			await using var connection = Connect();
+			var id = await connection.QuerySingleAsync<long>(
+				"""
+				INSERT INTO Scores
+				    (MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+				     Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum, RoundId, Team, SubmittedAt)
+				VALUES
+				    (@MapMd5, @Score, @Accuracy, @MaxCombo, @Mods, @N300, @N100, @N50, @NMiss, @NGeki, @NKatu,
+				     @Grade, @Mode, @PlayTime, @TimeElapsed, @ClientFlags, @UserId, @Perfect, @Checksum, @RoundId, @Team, @SubmittedAt);
+				SELECT last_insert_rowid();
+				""",
+				row);
+			logger.LogDebug("Score row created: Id={Id} UserId={UserId}", id, row.UserId);
+			return id;
+		});
 	}
 
 	/// <inheritdoc />
@@ -130,7 +133,7 @@ public sealed class SqliteScoreRepository(string connectionString, ILogger<Sqlit
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>

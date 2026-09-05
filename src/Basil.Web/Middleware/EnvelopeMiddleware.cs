@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Formats;
 using Basil.Web.OpenApi;
 using Basil.Web.Routing.Api;
 
@@ -24,8 +25,20 @@ namespace Basil.Web.Middleware;
 /// </remarks>
 public sealed class EnvelopeMiddleware(RequestDelegate next)
 {
-	/// <summary>JSON options using web defaults, used to parse and reserialize the buffered envelope.</summary>
-	private static readonly JsonSerializerOptions JsonWebOptions = new(JsonSerializerDefaults.Web);
+	/// <summary>
+	///     The <see cref="HttpContext.Items" /> key a route handler sets to override the envelope's
+	///     generic verb-derived success message (e.g. "Created successfully") with one that actually
+	///     describes what the endpoint did.
+	/// </summary>
+	public const string EnvelopeMessageKey = "EnvelopeMessage";
+
+	/// <summary>
+	///     JSON options used to parse and reserialize the buffered envelope — the shared instance
+	///     every response body serialization uses, so re-serializing the envelope here doesn't
+	///     re-escape a value (e.g. a literal <c>+</c>) differently than the route handler that
+	///     originally wrote it.
+	/// </summary>
+	private static readonly JsonSerializerOptions JsonWebOptions = BasilJsonOptions.Instance;
 
 	/// <summary>Envelopes the current response body when the matched endpoint belongs to the basilapi group.</summary>
 	/// <remarks>
@@ -42,7 +55,18 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 		var groupName = endpoint?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()?.EndpointGroupName;
 		var isAlwaysSse = endpoint is RouteEndpoint { RoutePattern.RawText: { } raw } &&
 		                  LiveSseRoutes.IsSseRoute(raw);
-		if (groupName != "basilapi" || isAlwaysSse || HttpMethods.IsHead(context.Request.Method))
+		// A route that failed to match at all (404, 405, or a route-constraint miss e.g. an
+		// overflowing {id:int}) resolves no endpoint whatsoever — endpoint is null, distinct from a
+		// matched endpoint that simply isn't part of any of our named groups (the framework's own
+		// /openapi/*.json, Scalar UI, etc., which must stay unwrapped). Falling straight to "skip"
+		// on a null endpoint left every unmatched-route response an unwrapped, empty body on exactly
+		// the host whose contract promises an envelope on every response. The api. host is
+		// identified by its "api." subdomain prefix (the same convention every host group in
+		// BanchoHostGroups.MapAll uses), not by re-deriving the configured domain here.
+		var isUnmatchedOnApiHost = endpoint is null &&
+		                           context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase);
+		if ((groupName != "basilapi" && !isUnmatchedOnApiHost) || isAlwaysSse ||
+		    HttpMethods.IsHead(context.Request.Method))
 		{
 			await next(context);
 			return;
@@ -85,7 +109,9 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 
 		var statusCode = context.Response.StatusCode;
 		var body = buffer.Length == 0 ? null : await JsonNode.ParseAsync(buffer);
-		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions);
+		var messageOverride = context.Items[EnvelopeMessageKey] as string;
+		var envelope = EnvelopeBuilder.Build(statusCode, context.Request.Method, body, JsonWebOptions,
+			messageOverride);
 
 		context.Response.ContentType = "application/json; charset=utf-8";
 		var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonWebOptions);

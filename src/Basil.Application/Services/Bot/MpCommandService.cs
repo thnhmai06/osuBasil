@@ -4,11 +4,13 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Bot;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Packets.Channels;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -46,6 +48,7 @@ public sealed class MpCommandService(
 	MatchMembershipService matchMembership,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
+	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -113,7 +116,8 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchRepository, beatmapRepository, gameRegistry, ircRegistry, matchControlLogger);
+		new(matchMembership, matchRepository, roundEndOutbox, beatmapRepository, gameRegistry, ircRegistry,
+			matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
@@ -309,31 +313,35 @@ public sealed class MpCommandService(
 			return false;
 		}
 
+		MatchMembershipService.JoinResult joined;
 		await match.Lock.WaitAsync(cancellationToken);
 		try
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-			var joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
-			if (joined == MatchMembershipService.JoinResult.Ok)
-			{
-				sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
-				return true;
-			}
-
-			sink.Reply(joined switch
-			{
-				MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
-				MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
-				MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
-				MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
-				_ => MpReplies.FailedToJoinMatch
-			});
-			return false;
+			joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		if (joined == MatchMembershipService.JoinResult.Ok)
+		{
+			await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+				cancellationToken: cancellationToken);
+			sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
+			return true;
+		}
+
+		sink.Reply(joined switch
+		{
+			MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
+			MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
+			MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
+			MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
+			_ => MpReplies.FailedToJoinMatch
+		});
+		return false;
 	}
 
 	/// <summary>
@@ -503,11 +511,11 @@ public sealed class MpCommandService(
 	private async Task<bool> SettingsAsync(MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		var beatmapLine = match.MapId > 0
-			? await beatmapRepository.FetchOneAsync(match.MapId, cancellationToken: cancellationToken) is { } bmap
+		var beatmapLine = match.MapId is { } mapId
+			? await beatmapRepository.FetchOneAsync(mapId, cancellationToken: cancellationToken) is { } bmap
 				? string.Format(MpReplies.SettingsBeatmap, bmap.Id, bmap.FullName)
 				: MpReplies.SettingsBeatmapNotFound
-			: string.Format(MpReplies.SettingsBeatmap, match.MapId, match.MapName);
+			: MpReplies.SettingsBeatmapNotSelected;
 
 		var lines = new List<string>
 		{
@@ -829,14 +837,18 @@ public sealed class MpCommandService(
 		}
 
 		var result = await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
-		if (result == MatchControlService.AddRefereeResult.TargetIsBot)
+		switch (result)
 		{
-			sink.Reply(MpReplies.CannotAddBotReferee);
-			return false;
+			case MatchControlService.AddRefereeResult.TargetIsBot:
+				sink.Reply(MpReplies.CannotAddBotReferee);
+				return false;
+			case MatchControlService.AddRefereeResult.AlreadyReferee:
+				sink.Reply(string.Format(MpReplies.TargetIsAlreadyAReferee, target.Name));
+				return false;
+			default:
+				sink.Reply(string.Format(MpReplies.AddedReferee, target.Name));
+				return true;
 		}
-
-		sink.Reply(string.Format(MpReplies.AddedReferee, target.Name));
-		return true;
 	}
 
 	/// <summary>
@@ -971,7 +983,7 @@ public sealed class MpCommandService(
 	/// </summary>
 	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
-		const string usage = MpReplies.SetUsage;
+		var usage = MpReplies.SetUsage;
 
 		if (args.Count < 1 || !TryParseTeamType(args[0], out var teamType))
 		{
@@ -1041,7 +1053,14 @@ public sealed class MpCommandService(
 		return true;
 	}
 
-	/// <summary>Implements <c>!mp map &lt;beatmap id&gt;</c>, changing the match's selected map.</summary>
+	/// <summary>
+	///     Implements <c>!mp map &lt;beatmap id&gt; [playmode]</c>, changing the match's selected map.
+	/// </summary>
+	/// <remarks>
+	///     <paramref name="args" />'s optional second token is a playmode (0-3), only meaningful for a
+	///     beatmap whose own mode is osu!/convertible; see
+	///     <see cref="MatchControlService.SetMapAsync" />'s own remarks for the ignored-otherwise rule.
+	/// </remarks>
 	private async Task<bool> SetMapAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
@@ -1051,7 +1070,20 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, cancellationToken);
+		GameMode? playmode = null;
+		if (args.Count > 1)
+		{
+			if (!int.TryParse(args[1], out var playmodeValue) || playmodeValue is < 0 or > 3)
+			{
+				sink.Reply(MpReplies.MapUsage);
+				return false;
+			}
+
+			playmode = (GameMode)playmodeValue;
+		}
+
+		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, playmode,
+			cancellationToken: cancellationToken);
 		if (result == MatchControlService.SetMapResult.BeatmapNotFound || beatmap is null)
 		{
 			sink.Reply(string.Format(MpReplies.NoBeatmapWithId, beatmapId));
@@ -1101,7 +1133,10 @@ public sealed class MpCommandService(
 		}
 
 		await _matchControl.SetModsAsync(match, mods, freemod);
-		sink.Reply(DescribeModChange(before, mods, wasFreemod, match.Freemods));
+		// match.Mods, not the raw requested `mods`: SetModsAsync silently filters combinations invalid
+		// for the current gamemode (e.g. HTDT keeps only HT), and the reply must describe what was
+		// actually applied, not what was asked for.
+		sink.Reply(DescribeModChange(before, match.Mods, wasFreemod, match.Freemods));
 
 		return true;
 	}
@@ -1254,6 +1289,8 @@ public sealed class MpCommandService(
 				sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 				return false;
 			default:
+				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+					cancellationToken: cancellationToken);
 				sink.Reply(string.Format(MpReplies.KickedFromMatch, targetUser.Name));
 				return true;
 		}
@@ -1288,6 +1325,8 @@ public sealed class MpCommandService(
 				sink.Reply(string.Format(MpReplies.CannotBanReferee, targetUser.Name));
 				return false;
 			default:
+				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
+					cancellationToken: cancellationToken);
 				sink.Reply(string.Format(MpReplies.BannedPlayerFromMatch, targetUser.Name));
 				return true;
 		}

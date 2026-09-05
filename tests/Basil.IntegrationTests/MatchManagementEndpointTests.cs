@@ -88,6 +88,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(TestDoubles.NullUserRepository());
+				services.AddSingleton(TestDoubles.NullMapRepository());
 			});
 		});
 	}
@@ -131,6 +132,32 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		Assert.True(json.GetProperty("host").ValueKind is JsonValueKind.Null);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "INVALID MATCH DATA CAN STILL CREATE A MATCH" -- an invalid
+	///     mapId used to return the 400 error only after the match was already registered
+	///     (<c>CreateEmptyAsync</c> ran first), leaving an orphaned, half-initialized match behind with
+	///     nothing left to close it. The mapId is now validated before the match is created at all.
+	/// </summary>
+	[Fact]
+	public async Task PostMatch_InvalidMapId_ReturnsBadRequestAndCreatesNoMatch()
+	{
+		var client = _factory.CreateClient();
+		var before = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"));
+		var beforeCount = (await before.Content.ReadFromJsonAsync<JsonElement>())
+			.GetProperty("data").GetArrayLength();
+
+		var request = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
+		request.Content = JsonContent.Create(new { name = "Bad Map", mapId = 999999 });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+		var after = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"));
+		var afterCount = (await after.Content.ReadFromJsonAsync<JsonElement>())
+			.GetProperty("data").GetArrayLength();
+		Assert.Equal(beforeCount, afterCount);
+	}
+
 	[Fact]
 	public async Task GetMatch_ListsCreatedMatchByDefault_OnlineStatus()
 	{
@@ -150,6 +177,16 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		// (isOpen was dropped in the Phase 2 record redesign; MatchListItem.Live replaces it).
 		Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id &&
 		                               item.GetProperty("live").ValueKind != JsonValueKind.Null);
+	}
+
+	[Fact]
+	public async Task GetMatch_InvalidStatus_ReturnsBadRequestInsteadOfSilentlyDefaulting()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=notarealstatus"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
 	[Fact]

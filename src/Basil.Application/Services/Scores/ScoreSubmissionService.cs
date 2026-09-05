@@ -255,6 +255,11 @@ public sealed class ScoreSubmissionService(
 		finally
 		{
 			checksumLock.Release();
+			// Every submission carries a distinct client checksum, so leaving the entry behind would
+			// grow this dictionary without bound for the server's whole lifetime. Compare-and-remove
+			// (not a plain key removal) so a concurrent submission that already looked up this exact
+			// SemaphoreSlim instance is never affected by it being dropped here.
+			ChecksumLocks.TryRemove(new KeyValuePair<string, SemaphoreSlim>(score.ClientChecksum, checksumLock));
 		}
 	}
 

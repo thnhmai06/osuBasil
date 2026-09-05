@@ -42,7 +42,7 @@ public static class DependencyInjection
 	///     Registers every Infrastructure service into the container: the port implementations
 	///     (SQLite repositories, caching decorators, media processors, the osu!lazer calculator, the
 	///     password hasher and score decryptor, session registries, and storage providers) plus the
-	///     background services that watch the mapsets folder and reclaim folders marked for deletion.
+	///     background services that watch the beatmapsets folder and reclaim folders marked for deletion.
 	/// </summary>
 	/// <param name="services">The service collection to register into.</param>
 	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
@@ -62,14 +62,17 @@ public static class DependencyInjection
 		{
 			ReplaysPath = Path.Combine(AppContext.BaseDirectory, "Data", "Replays"),
 			AvatarsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Avatars"),
-			MapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Mapsets"),
+			BeatmapsetsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Beatmapsets"),
 			MenuSeasonalsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Seasonals"),
 			MenuBannersPath = Path.Combine(AppContext.BaseDirectory, "Data", "Menu", "Banners"),
 			FaqsPath = Path.Combine(AppContext.BaseDirectory, "Data", "Faqs"),
 			CachePath = Path.Combine(AppContext.BaseDirectory, "Data", "Cache")
 		}));
 
-		services.AddMemoryCache();
+		// SizeLimit bounds the caching decorators sharing this instance (beatmap/beatmapset/user/settings
+		// lookups) to a fixed entry count regardless of catalog growth; each decorator's cache.Set call
+		// assigns Size = 1 accordingly.
+		services.AddMemoryCache(options => options.SizeLimit = 10_000);
 
 		services.AddSingleton<IUserRepository>(sp =>
 			new CachingUserRepository(
@@ -121,6 +124,7 @@ public static class DependencyInjection
 		services.AddSingleton<IResponseCache, FileSystemResponseCache>();
 		services.AddSingleton<IAudioExtractor, FfmpegAudioExtractor>();
 		services.AddSingleton<IOsuCalculator, PpyOsuCalculator>();
+		services.AddSingleton<BeatmapsetAssetCache>();
 		services.AddSingleton<BeatmapIngestionService>();
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
@@ -130,10 +134,12 @@ public static class DependencyInjection
 		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
 		services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
+		services.AddSingleton<IPlayerStatusEvents, PlayerStatusEvents>();
 
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<BeatmapWatcherService>();
-		services.AddHostedService<MapsetGarbageCollectorService>();
+		services.AddHostedService<BeatmapsetGarbageCollectorService>();
+		services.AddHostedService<BeatmapsetMigrationService>();
 
 		return services;
 

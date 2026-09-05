@@ -61,5 +61,7 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 }

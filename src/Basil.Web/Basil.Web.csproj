@@ -34,6 +34,14 @@
 		<Content Include="..\..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<!-- Lives under Data/ (see ConfigureConfiguration in Program.cs) so it moves along with the
+		     rest of the server's persistent state when relocating a deployment. Already picked up as
+		     a Content item by the SDK's default globbing (it's just a normal file under the project
+		     directory); Update only adds the CopyToOutputDirectory metadata that globbing alone
+		     doesn't set. -->
+		<Content Update="Data\appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>

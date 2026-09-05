@@ -36,4 +36,25 @@ public class PartMatchHandlerTests
 		Assert.NotNull(fixture.MatchRegistry.GetById(match.Id));
 		Assert.NotNull(match.EmptyRoomTimer);
 	}
+
+	/// <summary>
+	///     Regression test for the ADR-004 4b follow-up: LeaveAsync no longer publishes internally, so
+	///     the handler itself must publish after releasing the lock -- a missed call here would leave
+	///     SSE subscribers watching a leave that never broadcasts.
+	/// </summary>
+	[Fact]
+	public async Task Handle_InAMatch_PublishesUpdatedMainSnapshot()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+		var beforeLeave = match.MainSnapshot.Latest;
+		var handler = new PartMatchHandler(fixture.MatchMembership);
+
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.NotNull(match.MainSnapshot.Latest);
+		Assert.NotSame(beforeLeave, match.MainSnapshot.Latest);
+	}
 }

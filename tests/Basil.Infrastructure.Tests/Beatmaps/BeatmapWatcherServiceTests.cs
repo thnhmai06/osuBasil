@@ -12,20 +12,24 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 
 /// <summary>
 ///     Thin glue over BeatmapIngestionService's already-tested reconciliation methods — one
-///     integration-style test dropping a real beatmapset folder in and polling for the DB row is enough.
-///     Deliberately does NOT use the shared <c>SqliteFixture</c>/<c>IClassFixture</c> pattern used
-///     elsewhere: xUnit already constructs a fresh instance of this class per test method (no
-///     <c>IClassFixture</c> forces sharing), so giving each instance its own temp DB here means the
-///     two tests below can never observe each other's rows — no test-order dependency, unlike a
-///     shared-DB class fixture would produce for two tests racing the same debounce window.
+///     integration-style test dropping a real ".osz" archive in and polling for the DB row is enough
+///     for the happy path; the rest pin the narrowed watch scope (Phase 7: non-recursive, ".osz"-only
+///     at the top level) by asserting a legacy folder is deliberately left alone. Deliberately does NOT
+///     use the shared <c>SqliteFixture</c>/<c>IClassFixture</c> pattern used elsewhere: xUnit already
+///     constructs a fresh instance of this class per test method (no <c>IClassFixture</c> forces
+///     sharing), so giving each instance its own temp DB here means the tests below can never observe
+///     each other's rows — no test-order dependency, unlike a shared-DB class fixture would produce for
+///     two tests racing the same debounce window.
 /// </summary>
 [Collection(BeatmapFilesystemTestCollection.Name)]
 public class BeatmapWatcherServiceTests : IDisposable
 {
 	private readonly SqliteBeatmapRepository _beatmaps;
+	private readonly SqliteBeatmapsetRepository _beatmapsets;
 	private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
 	private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
-	private readonly string _mapsetsPath;
+	private readonly string _beatmapsetsPath;
+	private readonly IOptions<StorageOptions> _options;
 	private readonly BeatmapWatcherService _watcher;
 	private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
@@ -38,35 +42,42 @@ public class BeatmapWatcherServiceTests : IDisposable
 		SqlMigrationRunner.RunMigrations(connectionString);
 
 		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		var mapsets = new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
-		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
-		Directory.CreateDirectory(_mapsetsPath);
+		_beatmapsets =
+			new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
+		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
+		Directory.CreateDirectory(_beatmapsetsPath);
 
-		var options = Options.Create(new StorageOptions
+		_options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "",
 			AvatarsPath = "",
-			MapsetsPath = _mapsetsPath,
+			BeatmapsetsPath = _beatmapsetsPath,
 			MenuSeasonalsPath = "",
 			MenuBannersPath = "",
-			FaqsPath = "", CachePath = Path.Combine(_mapsetsPath, "Cache")
+			FaqsPath = "", CachePath = Path.Combine(_beatmapsetsPath, "Cache")
 		});
-		var ingestion = new BeatmapIngestionService(_beatmaps, mapsets, new FakeOsuCalculator(), options,
-			new FileSystemResponseCache(options), _ingestionLog);
-		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
+		var ingestion = new BeatmapIngestionService(_beatmaps, _beatmapsets, new FakeOsuCalculator(), _options,
+			new FileSystemResponseCache(_options), new BeatmapsetAssetCache(_options), _ingestionLog);
+		_watcher = new BeatmapWatcherService(ingestion, _options, _watcherLog);
 	}
 
 	public void Dispose()
 	{
-		Directory.Delete(_mapsetsPath, true);
+		Directory.Delete(_beatmapsetsPath, true);
 		// Pooling=False above means there's nothing pooled to clear before deleting.
 		File.Delete(_dbPath);
 		File.Delete(_dbPath + "-wal");
 		File.Delete(_dbPath + "-shm");
 	}
 
+	/// <summary>
+	///     Phase 7 regression: a legacy extracted-folder beatmapset dropped directly onto disk is no
+	///     longer live-reconciled -- the watcher only watches top-level ".osz" archives now, not folder
+	///     contents. Such a folder is still picked up eventually (the startup sweep, the migration
+	///     service, or an API route that writes to it directly), just never by this live watcher.
+	/// </summary>
 	[Fact]
-	public async Task DroppingMapsetFolder_GetsAutoIngestedWithinDebounceWindow()
+	public async Task DroppingBeatmapsetFolder_IsNotLiveIngested()
 	{
 		await _watcher.StartAsync(CancellationToken.None);
 		try
@@ -74,24 +85,59 @@ public class BeatmapWatcherServiceTests : IDisposable
 			// FileSystemWatcher can silently miss the very first filesystem event after a process's
 			// first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
 			// event before the real payload avoids that race.
-			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+			await File.WriteAllTextAsync(Path.Combine(_beatmapsetsPath, "warmup.txt"), "");
 			await Task.Delay(300);
-			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+			File.Delete(Path.Combine(_beatmapsetsPath, "warmup.txt"));
 
-			var folder = Path.Combine(_mapsetsPath, "900000000 FAIRY FORE - Vivid");
+			var folder = Path.Combine(_beatmapsetsPath, "900000000 FAIRY FORE - Vivid");
 			Directory.CreateDirectory(folder);
 			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
 				Path.Combine(folder, "vivid_osu_file.osu"));
 
-			var deadline = DateTime.UtcNow.AddSeconds(10);
-			while (DateTime.UtcNow < deadline &&
-			       await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
-				await Task.Delay(200);
+			// Give the watcher's debounce window (2s) plus margin to have reconciled it, were it going
+			// to -- then assert it never did.
+			await Task.Delay(TimeSpan.FromSeconds(4));
 
-			var found = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
-			Assert.True(found is not null,
-				"Beatmap never appeared. Ingestion log: " + string.Join(" | ", _ingestionLog.Messages) +
-				" || Watcher log: " + string.Join(" | ", _watcherLog.Messages));
+			Assert.Null(await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true));
+		}
+		finally
+		{
+			await _watcher.StopAsync(CancellationToken.None);
+		}
+	}
+
+	/// <summary>
+	///     Phase 7 regression: renaming a legacy folder to the `.deleted_` marker convention directly on
+	///     disk is no longer live-reconciled -- the watcher ignores every event for a top-level entry
+	///     that isn't a ".osz" file, including this rename. A beatmapset actually deleted through the
+	///     API is removed by the route's own inline call instead (see <c>BeatmapsetRoutes.HandleDelete</c>).
+	/// </summary>
+	[Fact]
+	public async Task RenamingBeatmapsetFolderToDeletedMarker_IsNotLiveReconciled()
+	{
+		await _watcher.StartAsync(CancellationToken.None);
+		try
+		{
+			await File.WriteAllTextAsync(Path.Combine(_beatmapsetsPath, "warmup.txt"), "");
+			await Task.Delay(300);
+			File.Delete(Path.Combine(_beatmapsetsPath, "warmup.txt"));
+
+			var folder = Path.Combine(_beatmapsetsPath, "900001 FAIRY FORE - Vivid");
+			Directory.CreateDirectory(folder);
+			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
+				Path.Combine(folder, "vivid_osu_file.osu"));
+
+			// Give the watcher's debounce window plus margin to have reconciled the drop, were it going
+			// to -- confirms it never got ingested in the first place (nothing to un-ingest), then
+			// exercises the rename path on top of it.
+			await Task.Delay(TimeSpan.FromSeconds(4));
+			Assert.Null(await _beatmaps.FetchOneAsync(setId: 900001, includePrivate: true));
+
+			var deletedFolder = folder + BeatmapIngestionService.DeletedFolderInfix + Guid.NewGuid().ToString("N");
+			Directory.Move(folder, deletedFolder);
+
+			await Task.Delay(TimeSpan.FromSeconds(4));
+			Assert.Null(await _beatmaps.FetchOneAsync(setId: 900001, includePrivate: true));
 		}
 		finally
 		{
@@ -100,63 +146,7 @@ public class BeatmapWatcherServiceTests : IDisposable
 	}
 
 	[Fact]
-	public async Task RenamingMapsetFolderToDeletedMarker_RemovesMapsetWithoutReingestingIt()
-	{
-		await _watcher.StartAsync(CancellationToken.None);
-		try
-		{
-			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
-			await Task.Delay(300);
-			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
-
-			var folder = Path.Combine(_mapsetsPath, "unresolved FAIRY FORE - Vivid");
-			Directory.CreateDirectory(folder);
-			File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu"),
-				Path.Combine(folder, "vivid_osu_file.osu"));
-
-			var ingestDeadline = DateTime.UtcNow.AddSeconds(10);
-			while (DateTime.UtcNow < ingestDeadline &&
-			       await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true) is null)
-				await Task.Delay(200);
-
-			var beatmap = await _beatmaps.FetchOneAsync(filename: "vivid_osu_file.osu", includePrivate: true);
-			Assert.NotNull(beatmap);
-
-			// ReconcileDeletedFolderAsync (which this test exercises indirectly through the watcher)
-			// parses the Beatmapset id from the folder's own leading digits — rename to the actually
-			// resolved id first, matching every other test here that relies on that lookup.
-			var resolvedFolder = BeatmapIngestionService.MapsetFolderPath(
-				new StorageOptions
-				{
-					ReplaysPath = "",
-					AvatarsPath = "",
-					MapsetsPath = _mapsetsPath,
-					MenuSeasonalsPath = "",
-					MenuBannersPath = "",
-					FaqsPath = "", CachePath = ""
-				},
-				beatmap.Beatmapset);
-			Directory.Move(folder, resolvedFolder);
-
-			var deletedFolder = resolvedFolder + BeatmapIngestionService.DeletedFolderInfix +
-			                    Guid.NewGuid().ToString("N");
-			Directory.Move(resolvedFolder, deletedFolder);
-
-			var deleteDeadline = DateTime.UtcNow.AddSeconds(10);
-			while (DateTime.UtcNow < deleteDeadline &&
-			       await _beatmaps.FetchOneAsync(setId: beatmap.Beatmapset.Id, includePrivate: true) is not null)
-				await Task.Delay(200);
-
-			Assert.Null(await _beatmaps.FetchOneAsync(setId: beatmap.Beatmapset.Id, includePrivate: true));
-		}
-		finally
-		{
-			await _watcher.StopAsync(CancellationToken.None);
-		}
-	}
-
-	[Fact]
-	public async Task DroppingOsz_SelfDeletingAfterExtraction_DoesNotDeleteTheMapsetItJustIngested()
+	public async Task DroppingOsz_SelfDeletingAfterExtraction_DoesNotDeleteTheBeatmapsetItJustIngested()
 	{
 		await _watcher.StartAsync(CancellationToken.None);
 		try
@@ -164,17 +154,17 @@ public class BeatmapWatcherServiceTests : IDisposable
 			// FileSystemWatcher can silently miss the very first filesystem event after a process's
 			// first watcher is armed (a known .NET/Windows cold-start quirk) — a throwaway warm-up
 			// event before the real payload avoids that race.
-			await File.WriteAllTextAsync(Path.Combine(_mapsetsPath, "warmup.txt"), "");
+			await File.WriteAllTextAsync(Path.Combine(_beatmapsetsPath, "warmup.txt"), "");
 			await Task.Delay(300);
-			File.Delete(Path.Combine(_mapsetsPath, "warmup.txt"));
+			File.Delete(Path.Combine(_beatmapsetsPath, "warmup.txt"));
 
-			// Fixture carries an explicit BeatmapSetID (900000) so the beatmapset ResolveMapsetAsync
+			// Fixture carries an explicit BeatmapSetID (900000) so the beatmapset ResolveBeatmapsetAsync
 			// creates has a deterministic id, and the .osz's own filename below uses that same id —
 			// matching what a real osu!-downloaded archive looks like ("{setId} Artist - Title.osz").
 			// Without that alignment ReconcileDeletedFolderAsync (parsing the leading digits of
 			// whatever path it's given) would parse an id that happens not to match any row, and the
 			// bug this test exists to catch — deleting the just-ingested beatmapset — would go unnoticed.
-			var oszPath = Path.Combine(_mapsetsPath, "900000 FAIRY FORE - Vivid.osz");
+			var oszPath = Path.Combine(_beatmapsetsPath, "900000 FAIRY FORE - Vivid.osz");
 			await using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
 			{
 				await archive.CreateEntryFromFileAsync(

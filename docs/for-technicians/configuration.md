@@ -1,4 +1,4 @@
-﻿# Configuration
+# Configuration
 
 This page is the authoritative reference for configuring and maintaining a Basil server. It covers application settings,
 the admin key, and persistent server data.
@@ -9,7 +9,7 @@ If this document conflicts with another document, **this document takes preceden
 
 ### Configuration file
 
-Basil's configuration is stored in [`appsettings.json`](../../src/Basil.Web/appsettings.json), under the `Basil` section.
+Basil's configuration is stored in [`Data/appsettings.json`](../../src/Basil.Web/Data/appsettings.json), under the `Basil` section. It lives under `Data/` (not next to the executable) so it moves along with the rest of the server's persistent state when relocating a deployment.
 
 The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core framework setting.
 
@@ -17,10 +17,10 @@ The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core fra
 
 Basil loads configuration from multiple sources. Later sources override earlier ones:
 
-1. `appsettings.json`
-2. `appsettings.{Environment}.json`, if present
+1. `Data/appsettings.json`
+2. `Data/appsettings.{Environment}.json`, if present
 
-This is commonly used in container deployments to override values from a mounted `appsettings.json`.
+This is commonly used in container deployments to override values from a mounted `Data/appsettings.json`.
 
 ### Available settings
 
@@ -37,16 +37,16 @@ All settings below are under the `Basil` section.
 | `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
 | `Irc:Name`                | IRC server name.                                                                                                                                                                                   |
 | `Irc:Port`                | TCP port used by Basil's embedded IRC gateway. Defaults to `6667`.                                                                                                                                 |
-| `Mirror:DownloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local mapsets first. If a mapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror.       |
-| `Mirror:SearchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local mapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
 | `Logging:MinimumLevel`    | Minimum log level written to stdout and the full log file. Defaults to `Information`. See [`logging.md`](logging.md).                                                                              |
+
+The beatmap mirror endpoints are **not** configured here — see [Beatmap mirror](#beatmap-mirror) below.
 
 ### Applying configuration changes
 
-For changes made to `appsettings.json`:
+For changes made to `Data/appsettings.json`:
 
 1. Stop Basil.
-2. Edit `appsettings.json`.
+2. Edit `Data/appsettings.json`.
 3. Start Basil again.
 4. Check the startup log for configuration or certificate errors.
 
@@ -54,6 +54,52 @@ No rebuild is required.
 
 For container deployments, prefer environment variables for deployment-specific values such as the domain, port, or
 certificate settings. See [`docker.md`](docker.md).
+
+---
+
+## Localization
+
+The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send is not
+hardcoded in the application — it lives in two files under
+[`Data/Localization/`](../../src/Basil.Application/Data/Localization):
+
+| File            | Covers                                                          |
+|------------------|------------------------------------------------------------------|
+| `BasilBot.json`  | `!mp` and general chat command replies (`!where`, `!faq`, `!roll`, `!help`). |
+| `Irc.json`       | The IRC gateway's replies — registration, queries, and command errors.       |
+
+Edit the text for any reply there and restart Basil — no rebuild is required.
+
+Each file is a two-level object: a category, then a member within it, mapping to that reply's text
+(for example, `BasilBot.json`'s `"Join"` category holds every `!mp join`-related reply). `{0}`, `{1}`,
+etc. are placeholders filled in when the reply is sent (for example, a player or match name) — keep
+every placeholder a reply currently uses when editing it, or the affected reply will render with a
+missing value. Every key is required: removing one prevents Basil from starting, with a startup log
+message naming the missing key.
+
+The message-of-the-day is a separate, mutable server setting rather than a localization entry — see
+[Message of the day](#message-of-the-day) below.
+
+---
+
+## Message of the day
+
+The message shown to a player as a login notification, and returned by the IRC gateway's `/MOTD`
+command, is stored as a mutable server setting, like the admin key and the mirror endpoints —
+changing it takes effect immediately, with no restart.
+
+Read and change it through:
+
+```text
+GET  /settings/motd
+PUT  /settings/motd
+```
+
+`PUT`'s body is `{ text }`. A `null`, empty, or blank `text` clears it, so nothing is shown on login.
+`GET` is not admin-key-gated — the message itself isn't sensitive — but `PUT` is.
+
+A fresh database ships with a default welcome message already set, not a blank one; clear it with
+`PUT { "text": "" }` if you don't want a login message.
 
 ---
 
@@ -66,7 +112,7 @@ The key is:
 
 * stored as a bcrypt hash in the database;
 * sent to the API as `Authorization: Bearer <key>`;
-* managed through the `api.<domain>` `/adminkey` endpoints.
+* managed through the `api.<domain>` `/settings/adminkey` endpoints.
 
 ### Set the admin key
 
@@ -75,7 +121,7 @@ A new database has **no admin key** configured.
 Before exposing the server to users, set an admin key with:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 Once a key is set, administrative requests must provide:
@@ -98,7 +144,37 @@ In bypass mode:
 
 **Do not expose a production server without an admin key.**
 
-Set one with `PUT /adminkey` to leave bypass mode.
+Set one with `PUT /settings/adminkey` to leave bypass mode.
+
+---
+
+## Beatmap mirror
+
+The optional external beatmap mirror endpoints are stored as mutable server settings, like the admin
+key, rather than as a `Data/appsettings.json` value — changing them takes effect immediately, with no
+restart.
+
+| Endpoint          | Effect                                                                                                                                                     |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `downloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local beatmapsets first. If a beatmapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror. |
+| `searchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local beatmapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
+
+Read and change them through:
+
+```text
+GET  /settings/mirror
+PUT  /settings/mirror
+```
+
+`PUT`'s body replaces both endpoints; omit a field (or send it as `null`) to clear that endpoint.
+
+An install upgrading from a release that configured `Basil:Mirror:DownloadEndpoint` /
+`Basil:Mirror:SearchEndpoint` in `Data/appsettings.json` has that value copied into the database
+automatically, once, the first time Basil starts after the upgrade — the `Basil:Mirror` section itself
+is no longer read afterward and can be removed from `Data/appsettings.json`.
+
+Unlike every other setting in this document, `Basil:Mirror` therefore stops responding to a config-file
+or environment-variable change after that first boot — use `PUT /settings/mirror` instead.
 
 ---
 
@@ -111,10 +187,12 @@ installation.
 
 | Path                      | Contents                                                                                                                          | Safe to delete?                                            |
 |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `Data/appsettings.json`   | Server configuration; see [Configuration file](#configuration-file) above.                                                       | **No**                                                       |
+| `Data/Localization/*.json` | Reply text and the message-of-the-day; see [Localization](#localization) above.                                                | **No**                                                       |
 | `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
 | `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Mapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Beatmapsets/`           | Installed beatmapsets. Each set is stored as its own `.osz` archive.                                    | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
 | `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
@@ -147,19 +225,18 @@ Database migrations are applied automatically when Basil starts.
 Beatmaps are stored under:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
-Each mapset is stored as a directory containing the extracted contents of the original `.osz` archive, including audio,
-images, video, and `.osu` files.
+Each beatmapset is stored as its own `.osz` archive, kept exactly as uploaded. Individual files (audio, images, video,
+`.osu`) are extracted on demand rather than kept separately on disk.
 
-You can add an `.osz` file directly to the `Data/Mapsets/` directory. Basil automatically extracts it into its mapset
-directory.
+You can add an `.osz` file directly to the `Data/Beatmapsets/` directory. Basil detects and ingests it automatically.
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.
 
-Mapset changes are detected automatically while Basil is running. A background watcher normally processes additions,
+Beatmapset changes are detected automatically while Basil is running. A background watcher normally processes additions,
 changes, and deletions within approximately two seconds. Basil also performs a full reconciliation during startup.
 
 Administrators can upload `.osz` files through:
@@ -213,7 +290,7 @@ To move Basil to another server:
 
 1. Stop Basil on the source server.
 2. Copy the entire Basil executable directory to the target.
-3. Make sure `appsettings.json` and the complete `Data/` directory are included.
+3. Make sure the complete `Data/` directory is included — it carries both server state and `appsettings.json`.
 4. Do **not** copy `Logs/` unless you specifically need the old log history.
 5. Verify the target's configuration, especially domain, HTTPS certificate, and ports.
 6. Start Basil on the target.
@@ -225,16 +302,15 @@ If the target already contains the correct Basil executable:
 
 1. Stop Basil.
 2. Replace the executable files with the new version.
-3. Preserve the existing `Data/` directory.
-4. Preserve or update `appsettings.json` as required.
-5. Start Basil.
-6. Check the startup log and verify the server is responding.
+3. Preserve the existing `Data/` directory (this carries `appsettings.json` too).
+4. Start Basil.
+5. Check the startup log and verify the server is responding.
 
-**Never replace `Data/` with an empty directory during an upgrade.** It contains the database, beatmaps, avatars,
-replays, and other persistent state.
+**Never replace `Data/` with an empty directory during an upgrade.** It contains the configuration, database,
+beatmaps, avatars, replays, and other persistent state.
 
 If you intentionally want to preserve the target's existing configuration and data, copy only the new application files
-and leave `appsettings.json` and `Data/` untouched.
+and leave `Data/` untouched.
 
 ---
 

@@ -1,3 +1,4 @@
+using Basil.Application.Formats;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Beatmaps;
@@ -90,8 +91,8 @@ public sealed record BeatmapsetSummary(
 	string Artist,
 	string Title,
 	string Creator,
-	DateTime LastUpdate,
-	DateTime CreatedAt,
+	DateTimeOffset LastUpdate,
+	DateTimeOffset CreatedAt,
 	bool IsFrozen,
 	bool IsPrivate,
 	BeatmapStatus Status,
@@ -122,8 +123,8 @@ public sealed record BeatmapsetDetail(
 	string Artist,
 	string Title,
 	string Creator,
-	DateTime LastUpdate,
-	DateTime CreatedAt,
+	DateTimeOffset LastUpdate,
+	DateTimeOffset CreatedAt,
 	bool IsFrozen,
 	bool IsPrivate,
 	BeatmapStatus Status,
@@ -146,8 +147,9 @@ public static class BeatmapViewMapper
 		public BeatmapsetSummary ToSummary(int beatmapCount)
 		{
 			return new BeatmapsetSummary(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator,
-				beatmapset.LastUpdate,
-				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status, beatmapCount);
+				beatmapset.LastUpdate.AsUtcOffset(),
+				beatmapset.CreatedAt.AsUtcOffset(), beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status,
+				beatmapCount);
 		}
 
 		/// <summary>
@@ -158,8 +160,8 @@ public static class BeatmapViewMapper
 		public BeatmapsetDetail ToDetail(IReadOnlyList<Beatmap> beatmaps)
 		{
 			return new BeatmapsetDetail(beatmapset.Id, beatmapset.Artist, beatmapset.Title, beatmapset.Creator,
-				beatmapset.LastUpdate,
-				beatmapset.CreatedAt, beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status,
+				beatmapset.LastUpdate.AsUtcOffset(),
+				beatmapset.CreatedAt.AsUtcOffset(), beatmapset.IsFrozen, beatmapset.IsPrivate, Beatmapset.Status,
 				[.. beatmaps.Select(b => b.ToInSet())]);
 		}
 	}

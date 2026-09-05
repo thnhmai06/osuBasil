@@ -5,7 +5,7 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     A real, stateful <see cref="ISettingsRepository" /> backed by a dictionary, for tests that
-///     need read-your-writes behavior (e.g. <c>PUT /adminkey</c> followed by <c>GET /adminkey</c>)
+///     need read-your-writes behavior (e.g. <c>PUT /settings/adminkey</c> followed by <c>GET /settings/adminkey</c>)
 ///     rather than the fixed canned responses <see cref="TestDoubles" />'s substitutes return.
 /// </summary>
 public sealed class InMemorySettingsRepository : ISettingsRepository

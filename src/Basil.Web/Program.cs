@@ -10,7 +10,9 @@ using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Bot;
+using Basil.Application.Services.Irc;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions.Channels;
 using Basil.Domain.Channels;
@@ -22,6 +24,7 @@ using Basil.Web.Auth;
 using Basil.Web.Logging;
 using Basil.Web.Middleware;
 using Basil.Web.OpenApi;
+using Basil.Web.Routing;
 using Basil.Web.Routing.Bancho;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -109,14 +112,15 @@ public sealed class Program
 			("Menu Banners", "Main-menu promotional banners (assets.<domain>/menu-content.json)."),
 			("Menu Icon", "The in-game main menu icon image and its click-through URL.")
 		]),
-		("Admin Key",
+		("Settings",
 		[
-			("Admin Key", "The server's admin key: status, rotation, and bypass mode.")
+			("Admin Key", "The server's admin key: status, rotation, and bypass mode."),
+			("Mirror", "The server's beatmap mirror endpoints."),
+			("MOTD", "The message shown to a player on login.")
 		]),
 		("Announce",
 		[
-			("Announce", "Pushing an in-game notification to online players."),
-			("Motd", "The message shown to a player on login.")
+			("Announce", "Pushing an in-game notification to online players.")
 		]),
 		("Abbreviation Redirects",
 		[
@@ -144,6 +148,7 @@ public sealed class Program
 
 		builder.Services.AddInfrastructure(builder.Configuration);
 		builder.Services.AddApplication();
+		ConfigureRouting(builder);
 		ConfigureJson(builder);
 		ConfigureOpenApi(builder);
 		ConfigureAuth(builder);
@@ -155,7 +160,9 @@ public sealed class Program
 
 		// Order matters: authentication/authorization must run before EnvelopeMiddleware (which
 		// needs the resolved role to decide what a response reveals), which must run before
-		// ApiRequestLoggingMiddleware (which logs the final status code).
+		// ApiRequestLoggingMiddleware (which logs the final status code). RequestMetricsMiddleware
+		// runs first so its measured duration includes every other middleware's cost.
+		app.UseMiddleware<RequestMetricsMiddleware>();
 		app.UseMiddleware<RequestIdLoggingMiddleware>();
 		app.UseSerilogRequestLogging();
 		app.UseMiddleware<ExceptionLoggingMiddleware>();
@@ -287,7 +294,7 @@ public sealed class Program
 			.Enrich.With<CategoryEnricher>()
 			.MinimumLevel.Is(minimumLevel)
 			.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-			// Anything the CategoryEnricher couldn't place in a curated scope (Mapsets/Matches/Scores/
+			// Anything the CategoryEnricher couldn't place in a curated scope (Beatmapsets/Matches/Scores/
 			// Online/IRC/Host/Database/Cache) is generic framework/library chatter, not a domain event
 			// worth Information-level noise; only Warning+ from it shows by default. Curated categories,
 			// and anything at Warning+ regardless of category, are never touched here.
@@ -316,17 +323,19 @@ public sealed class Program
 	/// </summary>
 	/// <remarks>
 	///     <c>appsettings.json</c> carries all Basil settings under a <c>Basil</c> section alongside
-	///     standard ASP.NET Core config (<c>Logging</c>, <c>AllowedHosts</c>).
-	///     <c>appsettings.{EnvironmentName}.json</c> and command-line args are layered on top for
-	///     environment-specific overrides.
+	///     standard ASP.NET Core config (<c>Logging</c>, <c>AllowedHosts</c>). It lives under
+	///     <c>Data/</c> rather than next to the executable, so it moves along with the rest of the
+	///     server's persistent state (see <c>StorageOptions</c>) when relocating a deployment -- one
+	///     directory to copy instead of two. <c>appsettings.{EnvironmentName}.json</c> and
+	///     command-line args are layered on top for environment-specific overrides.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose configuration is extended.</param>
 	/// <param name="args">The command-line arguments layered last, at the highest priority.</param>
 	private static void ConfigureConfiguration(WebApplicationBuilder builder, string[] args)
 	{
 		builder.Configuration
-			.AddJsonFile("appsettings.json", false, true)
-			.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true)
+			.AddJsonFile(Path.Combine("Data", "appsettings.json"), false, true)
+			.AddJsonFile(Path.Combine("Data", $"appsettings.{builder.Environment.EnvironmentName}.json"), true, true)
 			.AddCommandLine(args);
 	}
 
@@ -337,13 +346,17 @@ public sealed class Program
 	///     The section supplies <c>Port</c> (default 443), <c>CertPath</c>, and <c>CertPassword</c>;
 	///     the server binds exclusively on that port. Leaving <c>CertPath</c>/<c>CertPassword</c>
 	///     unset uses the dev cert or OS-level TLS. A bad cert path or password is logged at Critical
-	///     (path only, never the password) before the process exits with code 1.
+	///     (path only, never the password) before the process exits with code 1. The <c>Server</c>
+	///     response header is suppressed, since advertising the exact server software is unnecessary
+	///     reconnaissance information for an attacker.
 	/// </remarks>
 	/// <param name="builder">The web application builder whose Kestrel options are configured.</param>
 	private static void ConfigureKestrel(WebApplicationBuilder builder)
 	{
 		builder.WebHost.ConfigureKestrel((context, options) =>
 		{
+			options.AddServerHeader = false;
+
 			var logger = options.ApplicationServices.GetService<ILoggerFactory>()?
 				.CreateLogger(typeof(Program).FullName ?? "Program");
 
@@ -419,6 +432,14 @@ public sealed class Program
 		builder.Services.AddAuthorizationBuilder()
 			.AddPolicy(AdminKeyDefaults.Policy,
 				policy => policy.RequireRole(AdminKeyDefaults.Role));
+	}
+
+	/// <summary>Registers the <c>:numericid</c> route constraint used by the `api.` host's id route parameters.</summary>
+	/// <param name="builder">The web application builder whose routing options are configured.</param>
+	private static void ConfigureRouting(WebApplicationBuilder builder)
+	{
+		builder.Services.Configure<RouteOptions>(options =>
+			options.ConstraintMap[NumericIdRouteConstraint.Token] = typeof(NumericIdRouteConstraint));
 	}
 
 	/// <summary>
@@ -651,6 +672,13 @@ public sealed class Program
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
+		// Forces MpReplies/IrcReplies to fully resolve every member from ReplyLocale's localization
+		// files now, at boot, rather than lazily on whichever member a live chat command or IRC reply
+		// first happens to touch -- a missing key is a startup failure, not one discovered mid-tournament.
+		_ = MpReplies.CreateFailed;
+		_ = IrcReplies.Welcome;
+		logger.LogInformation("Reply locale loaded");
+
 		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);
 
 		var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
@@ -659,20 +687,11 @@ public sealed class Program
 		var storageOptions = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
 		foreach (var path in new[]
 		         {
-			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.MapsetsPath,
+			         storageOptions.ReplaysPath, storageOptions.AvatarsPath, storageOptions.BeatmapsetsPath,
 			         storageOptions.MenuSeasonalsPath, storageOptions.FaqsPath
 		         })
 			Directory.CreateDirectory(path);
 		logger.LogInformation("Storage folders ready");
-
-		var mirrorOptions = scope.ServiceProvider.GetRequiredService<IOptions<MirrorOptions>>().Value;
-		if (mirrorOptions.IsOnlineMode)
-			logger.LogInformation("Beatmap serving mode: ONLINE — Basil:Mirror:DownloadEndpoint is set. " +
-			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
-			                      "mirror, local-only asset routes report 503, all when missing locally.");
-		else
-			logger.LogInformation("Beatmap serving mode: OFFLINE — Basil:Mirror:DownloadEndpoint is unset. " +
-			                      "All beatmap assets are served from local storage only.");
 
 		var channelRepository = scope.ServiceProvider.GetRequiredService<IChannelRepository>();
 		var channelRegistry = scope.ServiceProvider.GetRequiredService<IChannelRegistry>();
@@ -688,6 +707,24 @@ public sealed class Program
 
 			allChannels = await channelRepository.FetchAllAsync();
 		}
+
+		// Reads/writes the Settings table, so this must run after migrations create it when a real
+		// database is in play -- moving it earlier (alongside the MirrorOptions-only version this
+		// replaced) broke a from-scratch database, including a fresh Docker image build's build-time
+		// OpenAPI doc generation, which runs Program.Main against an empty database before any
+		// container ever starts. Deliberately NOT nested inside `if (hasDatabase)`: a test host with no
+		// real database still registers a working (in-memory) ISettingsRepository and expects the
+		// mirror it configured to seed and take effect.
+		var mirrorService = scope.ServiceProvider.GetRequiredService<MirrorService>();
+		await mirrorService.SeedFromConfigIfUnsetAsync();
+		var mirror = await mirrorService.GetAsync();
+		if (mirror.IsOnlineMode)
+			logger.LogInformation("Beatmap serving mode: ONLINE — a mirror download endpoint is set. " +
+			                      "Thumbnails/previews redirect to b.ppy.sh, downloads redirect to the configured " +
+			                      "mirror, local-only asset routes report 503, all when missing locally.");
+		else
+			logger.LogInformation("Beatmap serving mode: OFFLINE — no mirror download endpoint is set. " +
+			                      "All beatmap assets are served from local storage only.");
 
 		channelRegistry.Seed(allChannels);
 
@@ -708,7 +745,7 @@ public sealed class Program
 					"NO ADMIN KEY IS CONFIGURED — THE SERVER IS RUNNING IN BYPASS MODE. " +
 					"ALL MANAGEMENT ACTIONS AND IN-GAME REGISTRATIONS ARE ACCEPTED WITHOUT AUTHENTICATION. " +
 					"THIS IS INSECURE AND SHOULD ONLY BE USED FOR DEVELOPMENT. " +
-					"Configure an admin key immediately via PUT /adminkey.");
+					"Configure an admin key immediately via PUT /settings/adminkey.");
 		}
 	}
 

@@ -26,7 +26,7 @@ public sealed class IrcQueryService(
 	ISessionRegistry<GameSession> gameSessions,
 	ISessionRegistry<IrcSession> ircSessions,
 	ChannelMembershipService channelMembership,
-	MotdService motd,
+	MotdService motdService,
 	IOptions<IrcOptions> options)
 {
 	/// <summary>The hostname half of every hostmask the gateway reports.</summary>
@@ -218,12 +218,12 @@ public sealed class IrcQueryService(
 
 	/// <summary>Builds the message of the day, or the numeric reporting that none is configured.</summary>
 	/// <param name="requester">The session the reply is addressed to.</param>
-	/// <param name="cancellationToken">The cancellation token to observe.</param>
+	/// <param name="cancellationToken">A token that cancels the read.</param>
 	/// <returns>The numerics that form the /MOTD reply in wire order.</returns>
 	public async Task<IReadOnlyList<IrcMessage>> BuildMotdReplyAsync(UserSession requester,
 		CancellationToken cancellationToken = default)
 	{
-		var text = await motd.GetTextAsync(cancellationToken);
+		var text = await motdService.GetTextAsync(cancellationToken);
 		if (string.IsNullOrWhiteSpace(text))
 			return [Reply(IrcNumeric.ErrNoMotd, requester.Name, IrcReplies.NoMotd)];
 

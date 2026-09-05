@@ -65,6 +65,14 @@ public sealed class IrcAuthenticationService(
 				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
 					IrcReplies.PasswordIncorrect));
 
+		// A deleted account must never be able to log back in, regardless of a correct password
+		// (Issue #4), matching the bancho login gate. Reported as ordinary incorrect-password rather
+		// than a distinct reason, so an unauthenticated caller can't use login to probe deletion status.
+		if (user.DeletedAt is not null)
+			return IrcLoginOutcome.Failed(
+				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+					IrcReplies.PasswordIncorrect));
+
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new IrcSession(
 			user.Id, user.Name, $"irc-{tokenGenerator.GenerateToken()}", user.Privilege, loginTime)

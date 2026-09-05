@@ -1,0 +1,46 @@
+{
+	"Registration": {
+		"Welcome": "Welcome to {0} IRC, {1}",
+		"YourHost": "Your host is {0}, running version {1}",
+		"ServerCreated": "This server was created {0}",
+		"AreSupportedByThisServer": "are supported by this server"
+	},
+	"Query": {
+		"EndOfNames": "End of /NAMES list",
+		"EndOfWho": "End of /WHO list",
+		"EndOfWhoIs": "End of /WHOIS list",
+		"EndOfList": "End of /LIST",
+		"NoTopicIsSet": "No topic is set",
+		"NoSuchChannel": "No such channel",
+		"NoSuchNickChannel": "No such nick/channel",
+		"IrcGateway": "Basil IRC gateway",
+		"SecondsIdleSignonTime": "seconds idle, signon time",
+		"TopicManagedByServer": "Channel topics are managed by the server",
+		"ModesManagedByServer": "Channel modes are managed by the server"
+	},
+	"Motd": {
+		"NoMotd": "The server has no MOTD.",
+		"MotdStart": "- {0} Message of the Day -",
+		"EndOfMotd": "End of /MOTD command."
+	},
+	"Lusers": {
+		"LusersClients": "There are {0} users and 0 invisible on 1 servers",
+		"ChannelsFormed": "channels formed",
+		"LusersMe": "I have {0} clients and 1 servers"
+	},
+	"List": {
+		"ListChannel": "Channel",
+		"ListUsers": "Users  Name"
+	},
+	"Errors": {
+		"PasswordIncorrect": "Password incorrect",
+		"NicknameInUse": "Nickname is already in use",
+		"ErroneousNickname": "Erroneous nickname",
+		"YouHaveNotRegistered": "You have not registered",
+		"NotEnoughParameters": "Not enough parameters",
+		"CannotJoinChannel": "Cannot join channel (no permission)",
+		"NicknameChangeNotSupported": "Changing nickname is not supported",
+		"UnknownCommand": "Unknown command",
+		"CannotSendToChannel": "Cannot send to channel"
+	}
+}

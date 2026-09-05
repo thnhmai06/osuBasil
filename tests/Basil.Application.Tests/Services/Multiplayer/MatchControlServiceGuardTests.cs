@@ -17,7 +17,8 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchRepository, _fixture.BeatmapRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchRepository, _fixture.RoundEndOutbox,
+			_fixture.BeatmapRepository,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, NullLogger<MatchControlService>.Instance);
 	}
 
@@ -113,21 +114,25 @@ public class MatchControlServiceGuardTests
 		Assert.DoesNotContain(oldRef.Id, match.Referees);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): AddRefereeAsync used to unconditionally add and report success
+	///     even when the target already held referee status. It now detects the no-op case up front
+	///     instead of mutating and reporting success for something that didn't change.
+	/// </summary>
 	[Fact]
-	public async Task AddRefereesAsync_AddsBatch_SkipsExisting()
+	public async Task AddRefereeAsync_TargetAlreadyReferee_ReturnsAlreadyReferee()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
-		var already = MultiplayerTestSupport.MakePlayer(2, "already");
-		var newRef = MultiplayerTestSupport.MakePlayer(3, "newref");
-		_fixture.RegisterAll(host, already, newRef);
+		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
+		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(already.Id);
+		match.AddReferee(referee.Id);
 		var control = MakeService();
 
-		await control.AddRefereesAsync(match, [already, newRef]);
+		var result = await control.AddRefereeAsync(null, null, match, referee);
 
-		Assert.Equal(2, match.Referees.Count);
-		Assert.Contains(newRef.Id, match.Referees);
+		Assert.Equal(MatchControlService.AddRefereeResult.AlreadyReferee, result);
+		Assert.Single(match.Referees);
 	}
 
 	[Fact]
@@ -376,6 +381,32 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(MatchControlService.SetSlotsResult.UnknownUserId, result);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): PATCH's per-slot validation checked each entry independently, so
+	///     the same userId assigned to two destination slots in one payload was never rejected -- PUT
+	///     happened to catch this only indirectly (a duplicate collapses the referenced set below the
+	///     full-occupant count), and only when at least 2 players were seated. SetSlotsAsync now checks
+	///     for a duplicate directly, regardless of full-replace or occupant count.
+	/// </summary>
+	[Fact]
+	public async Task SetSlotsAsync_SameUserIdInTwoEntries_ReturnsDuplicateUserId()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+
+		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		{
+			[1] = new(host.Id, null, null),
+			[2] = new(host.Id, null, null)
+		};
+
+		var result = await control.SetSlotsAsync(match, entries, false);
+
+		Assert.Equal(MatchControlService.SetSlotsResult.DuplicateUserId, result);
+	}
+
 	[Fact]
 	public async Task SetSlotsAsync_Put_MissingCurrentOccupant_ReturnsPlayerCountMismatch()
 	{
@@ -483,5 +514,73 @@ public class MatchControlServiceGuardTests
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.Equal(teamBefore, match.Slots[hostSlot].Team);
+	}
+
+	/// <summary>Regression test (ADR-003): abort now queues the round-end write instead of awaiting it inline.</summary>
+	[Fact]
+	public async Task AbortAsync_InProgress_QueuesRoundEndWriteAndClearsCurrentRoundId()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.InProgress = true;
+		match.CurrentRoundId = 5;
+		var control = MakeService();
+
+		var result = await control.AbortAsync(match);
+
+		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Null(match.CurrentRoundId);
+		Assert.False(match.InProgress);
+		Assert.Contains(_fixture.RoundEndOutbox.Enqueued, w => w.MatchId == match.DbId && w.RoundId == 5 && w.Aborted);
+	}
+
+	/// <summary>
+	///     Regression test (ADR-003): a full round-end outbox must not stop the abort from clearing
+	///     match state or broadcasting — only the database write is lost, loudly logged.
+	/// </summary>
+	[Fact]
+	public async Task AbortAsync_OutboxFull_StillClearsStateAndReturnsOk()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		match.InProgress = true;
+		match.CurrentRoundId = 5;
+		_fixture.RoundEndOutbox.ThrowFull = true;
+		var control = MakeService();
+
+		var result = await control.AbortAsync(match);
+
+		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Null(match.CurrentRoundId);
+		Assert.False(match.InProgress);
+	}
+
+	/// <summary>
+	///     Regression test (ADR-004 slots-stream unification): SetSlotsAsync used to call
+	///     PublishSlotsAsync alone, leaving the per-index `slot` and general `main`/`settings`
+	///     channels silent for HTTP-driven slot mutations. It now routes through EnqueueStateAsync,
+	///     the same path every packet-driven mutation uses, so all of them fire together.
+	/// </summary>
+	[Fact]
+	public async Task SetSlotsAsync_PublishesSlotsAndPerSlotAndMain()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		_fixture.RegisterAll(host);
+		var match = _fixture.CreateMatch(host);
+		var control = MakeService();
+		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		{
+			[hostSlot] = new(host.Id, "Red", null)
+		};
+
+		var result = await control.SetSlotsAsync(match, entries, false);
+
+		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.NotEmpty(_fixture.EventBus.SlotsPublishes);
+		Assert.NotEmpty(_fixture.EventBus.SlotPublishes);
+		Assert.NotEmpty(_fixture.EventBus.MainPublishes);
 	}
 }

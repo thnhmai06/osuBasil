@@ -26,6 +26,7 @@ public class IrcAuthenticationServiceTests
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
 	private readonly ISessionRegistry<IrcSession> _sessionRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
 
@@ -42,7 +43,7 @@ public class IrcAuthenticationServiceTests
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
-			new MotdService(Substitute.For<ISettingsRepository>()), options);
+			new MotdService(_settings), options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
 			queries, options, _passwordHasher, _tokenGenerator);
 	}
@@ -89,6 +90,25 @@ public class IrcAuthenticationServiceTests
 		var outcome = await MakeService().AuthenticateAsync("alice", "wrong", Substitute.For<IIrcConnection>());
 
 		Assert.False(outcome.Success);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4-adjacent, user-directed follow-up on the soft-delete work):
+	///     a deleted account must never be able to log back in via IRC either, even with a correct
+	///     password, matching the bancho login gate.
+	/// </summary>
+	[Fact]
+	public async Task AuthenticateAsync_DeletedAccount_CorrectPassword_Fails()
+	{
+		_users.FetchByNameAsync("alice", Arg.Any<CancellationToken>())
+			.Returns(new User(1, "alice", Country.Xx, UserPrivileges.Unrestricted, default, DateTimeOffset.UnixEpoch));
+		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
+
+		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
+
+		Assert.False(outcome.Success);
+		Assert.Null(outcome.Session);
 	}
 
 	[Fact]

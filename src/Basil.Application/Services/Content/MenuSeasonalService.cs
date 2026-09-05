@@ -120,4 +120,37 @@ public sealed class MenuSeasonalService(IOptions<StorageOptions> storage)
 		File.Delete(path);
 		return true;
 	}
+
+	/// <summary>
+	///     Renames a stored seasonal image, keeping its content unchanged.
+	/// </summary>
+	/// <param name="fileName">The current file name of the image.</param>
+	/// <param name="newFileName">The file name to rename it to.</param>
+	/// <returns>A <see cref="RenameResult" /> describing the outcome.</returns>
+	public RenameResult Rename(string fileName, string newFileName)
+	{
+		var path = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(fileName));
+		if (!File.Exists(path)) return RenameResult.NotFound;
+
+		var newPath = Path.Combine(storage.Value.MenuSeasonalsPath, Path.GetFileName(newFileName));
+		if (File.Exists(newPath)) return RenameResult.TargetAlreadyExists;
+
+		File.Move(path, newPath);
+		return RenameResult.Renamed;
+	}
+
+	/// <summary>
+	///     Identifies the outcome of a seasonal image rename.
+	/// </summary>
+	public enum RenameResult : byte
+	{
+		/// <summary>The image was renamed.</summary>
+		Renamed,
+
+		/// <summary>No image with the given name exists.</summary>
+		NotFound,
+
+		/// <summary>An image already exists under the requested new name.</summary>
+		TargetAlreadyExists
+	}
 }

@@ -62,9 +62,12 @@ internal static class MatchRoutes
 			.Produces<PagedResult<MatchListItem>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<MatchListItem>(1, 50, 1,
 			[
-				new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTime.Parse("2026-07-20T12:00:00Z"), null,
-					SampleRoomLive())
-			]));
+				new MatchListItem(42, "Grand Finals: Alpha vs Bravo", DateTimeOffset.Parse("2026-07-20T12:00:00Z"),
+					null, SampleRoomLive())
+			]))
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status400BadRequest,
+				new ErrorResponse("Invalid status 'foo'. Expected 'online', 'offline', or 'all'."));
 
 		group.MapPost("/matches", HandleCreate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -74,7 +77,7 @@ internal static class MatchRoutes
 			.WithDescription("""
 			                 Creates a new multiplayer match and returns its room settings.
 
-			                 Every field is required except `password`. A `mapId` of -1 means no beatmap has been chosen yet. The new match starts with host id 0 and no referees; set the host with `PUT /matches/{matchId}/hosts` and add referees with `PATCH /matches/{matchId}/refs`.
+			                 Every field is required except `password` and `mapId`; a `null` or omitted `mapId` means no beatmap has been chosen yet. The new match starts with host id 0 and no referees; set the host with `PUT /matches/{matchId}/hosts` and add referees with `PATCH /matches/{matchId}/refs`.
 			                 """ + AdminKeyNote)
 			.WithTags("Matches")
 			.Produces<MatchSettingsView>(StatusCodes.Status201Created)
@@ -95,11 +98,11 @@ internal static class MatchRoutes
 				"Partially update the newly created match's room settings.",
 				("matchId", "$response.body#/data/id"));
 
-		group.MapGet("/matches/{matchId:int}", async (int matchId, MatchReportService reportService,
+		group.MapGet("/matches/{matchId:numericid}", async (int matchId, MatchReportService reportService,
 				CancellationToken cancellationToken) =>
 			{
 				var report = await reportService.BuildAsync(matchId, cancellationToken);
-				return report is null ? Results.NotFound() : Results.Json(report);
+				return report is null ? Results.NotFound(new ErrorResponse("Match not found.")) : Results.Json(report);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchReport")
@@ -116,7 +119,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status200OK, SampleMatchReport())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/settings", HandleSettingsGet)
+		group.MapGet("/matches/{matchId:numericid}/settings", HandleSettingsGet)
 			.WithGroupName("basilapi")
 			.WithName("getMatchSettings")
 			.WithSummary("Get match settings.")
@@ -134,7 +137,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status200OK, SampleSettings())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/settings/live", HandleSettingsStream)
+		group.MapGet("/matches/{matchId:numericid}/settings/live", HandleSettingsStream)
 			.WithGroupName("basilapi")
 			.WithName("getMatchSettingsLive")
 			.WithSummary("Stream match settings.")
@@ -148,9 +151,10 @@ internal static class MatchRoutes
 			.WithTags("Match Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleSettings());
+			.WithExample(StatusCodes.Status200OK, SampleSettings())
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
-		group.MapPut("/matches/{matchId:int}/settings", HandleSettingsReplace)
+		group.MapPut("/matches/{matchId:numericid}/settings", HandleSettingsReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchSettings")
@@ -158,7 +162,7 @@ internal static class MatchRoutes
 			.WithDescription("""
 			                 Replaces the match's entire room configuration and returns the updated settings.
 
-			                 Every field is required except `password`. A `mapId` of -1 clears or skips the beatmap selection. `freemod: true` enables FreeMod and ignores `mods` for that call; `mods` alone sets the room's fixed mod set.
+			                 Every field is required except `password` and `mapId`; a `null` or omitted `mapId` clears or skips the beatmap selection. `freemod: true` enables FreeMod and ignores `mods` for that call; `mods` alone sets the room's fixed mod set.
 
 			                 Returns `400 Bad Request` if `mapId` doesn't resolve to a known beatmap, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
@@ -169,7 +173,7 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapPatch("/matches/{matchId:int}/settings", HandleSettingsUpdate)
+		group.MapPatch("/matches/{matchId:numericid}/settings", HandleSettingsUpdate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateMatchSettings")
@@ -186,27 +190,32 @@ internal static class MatchRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("No beatmap with id 654 found locally."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/matches/{matchId:int}/live", HandleMainLiveStream)
+		group.MapGet("/matches/{matchId:numericid}/live", HandleMainLiveStream)
 			.WithGroupName("basilapi")
 			.WithName("getMatchLive")
 			.WithSummary("Stream full match state.")
 			.WithDescription("""
-			                 Server-Sent Events stream of the match's full live state: room config, host, referees, current beatmap, in-progress flag, and every slot.
+			                 Server-Sent Events stream of the match's full live state: room config, host, referees, current beatmap, in-progress flag, and every slot, interleaved with every player's live gameplay updates during a round.
 
-			                 The first event is the full current state; each later event carries only the fields that changed. This channel carries no per-player score data; use `GET /matches/{matchId}/live/{slotIndex}` for that.
+			                 Each event is one of two types, carried by the SSE `event` field:
 
-			                 For a one-shot snapshot including historical rounds and events, use `GET /matches/{matchId}`.
+			                 - `main`: the room's full state first, then only the fields that changed
+			                 - `gameplay`: one player's live score frames during a round
+
+			                 For per-slot player input frames, use `GET /matches/{matchId}/live/{slotIndex}`. For a one-shot snapshot including historical rounds and events, use `GET /matches/{matchId}`.
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
 			.WithTags("Match Live")
 			.Produces<MatchLiveSnapshot>()
+			.Produces<PlayerLiveScore>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
-			.WithExample(StatusCodes.Status200OK, SampleLiveSnapshot());
+			.WithMainLiveExamples(SampleLiveSnapshot())
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
-		group.MapGet("/matches/{matchId:int}/live/{slotIndex:int}", HandleLiveSlotStream)
+		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")
-			.WithName("getMatchSlotLiveStream")
+			.WithName("getMatchSlotLive")
 			.WithSummary("Stream one match slot.")
 			.WithDescription("""
 			                 Server-Sent Events stream for a single slot, `{slotIndex}` in 1-16 (matching `!mp move`'s convention).
@@ -236,7 +245,9 @@ internal static class MatchRoutes
 	{
 		var (p, ps) = Pagination.Normalize(page, pageSize);
 		var mode = (status ?? "online").ToLowerInvariant();
-		if (mode is not ("online" or "offline" or "all")) mode = "online";
+		if (mode is not ("online" or "offline" or "all"))
+			return Results.BadRequest(
+				new ErrorResponse($"Invalid status '{status}'. Expected 'online', 'offline', or 'all'."));
 		var isAdmin = context.User.IsInRole(AdminKeyDefaults.Role);
 
 		var rows = await matchRepository.FetchAllMatchesAsync(cancellationToken);
@@ -263,7 +274,8 @@ internal static class MatchRoutes
 			var live = matchLive is not null
 				? await MatchLiveSnapshotBuilder.BuildRoomLive(matchLive, beatmaps, cancellationToken)
 				: null;
-			items.Add(new MatchListItem(match.Id, match.Name, match.CreatedAt, match.EndedAt, live));
+			items.Add(new MatchListItem(match.Id, match.Name, match.CreatedAt.AsUtcOffset(),
+				match.EndedAt?.AsUtcOffset(), live));
 		}
 
 		var overqueried = items.Skip((p - 1) * ps).Take(ps + 1).ToList();
@@ -278,9 +290,16 @@ internal static class MatchRoutes
 		var name = string.IsNullOrEmpty(body.Name) ? "New match" : body.Name;
 		if (name.Length > MatchControlService.MaxMatchNameLength) name = name[..MatchControlService.MaxMatchNameLength];
 
+		// Validated before the match is registered at all: a match that's created and then immediately
+		// rejected for a bad mapId would otherwise be left behind, orphaned and half-initialized, with
+		// no caller left to close it (Issue #4: "INVALID MATCH DATA CAN STILL CREATE A MATCH").
+		if (body.MapId is > 0 && await beatmaps.FetchOneAsync(body.MapId.Value, cancellationToken: cancellationToken)
+			    is null)
+			return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId} found locally."));
+
 		var data = new MatchState(
 			0, false, 0, 0, name, body.Password ?? "",
-			"", 0, "",
+			MatchControlService.NoBeatmapSelectedName, 0, "",
 			[], [], [], 0, 0,
 			0, 0, false, [], 0);
 
@@ -293,8 +312,8 @@ internal static class MatchRoutes
 			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
 			await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, cancellationToken);
 
-			var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
-			if (mapError is not null) return mapError;
+			// The mapId is already known-valid (checked above), so this cannot fail here.
+			await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
 
 			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
@@ -317,7 +336,7 @@ internal static class MatchRoutes
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		return Results.Json(
 			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
@@ -330,7 +349,7 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return LiveSseRoutes.NotLive();
 
-		return LiveSseRoutes.HandleSettings(context, matchId, events,
+		return LiveSseRoutes.HandleSettings(context, match, events,
 			() => match.SettingsSnapshot.Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,
@@ -343,7 +362,7 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return LiveSseRoutes.NotLive();
 
-		return LiveSseRoutes.HandleMain(context, matchId, events,
+		return LiveSseRoutes.HandleMain(context, match, events,
 			() => match.MainSnapshot.Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,
@@ -373,7 +392,7 @@ internal static class MatchRoutes
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -407,7 +426,7 @@ internal static class MatchRoutes
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound();
+		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 		await match.Lock.WaitAsync(cancellationToken);
 		try
@@ -428,21 +447,20 @@ internal static class MatchRoutes
 	/// <summary>
 	///     Shared by <see cref="HandleCreate" /> and <see cref="HandleSettingsReplace" />: both apply every
 	///     field unconditionally (PUT-style, no "was this given" check), unlike
-	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `-1` is the established
-	///     "no beatmap chosen" sentinel (see <see cref="MatchRoomCore" />'s doc comment); ids in this
-	///     schema auto-increment from 1 (see CLAUDE.md), so 0 (JSON's default for an omitted field) can
-	///     never be a real beatmap either. Both are skipped entirely rather than attempted as a lookup,
-	///     which would otherwise fail with a confusing "beatmap not found" error for a caller correctly
-	///     signaling "no map".
+	///     <see cref="ApplySettingsAsync" />'s PATCH-style partial application. `null` means "no beatmap
+	///     chosen"; a caller still sending the legacy `-1` sentinel, or `0` (ids in this schema
+	///     auto-increment from 1, so 0 can never be a real beatmap), is treated the same way. All three
+	///     are skipped entirely rather than attempted as a lookup, which would otherwise fail with a
+	///     confusing "beatmap not found" error for a caller correctly signaling "no map".
 	/// </summary>
-	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int mapId,
+	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int? mapId,
 		MatchControlService matchControl, CancellationToken cancellationToken)
 	{
-		if (mapId <= 0) return null;
+		if (mapId is null or <= 0) return null;
 
-		var (result, _) = await matchControl.SetMapAsync(match, mapId, cancellationToken);
+		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken: cancellationToken);
 		return result == MatchControlService.SetMapResult.BeatmapNotFound
-			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found on the server."))
+			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found locally."))
 			: null;
 	}
 
@@ -472,7 +490,8 @@ internal static class MatchRoutes
 
 		if (body.MapId is not null)
 		{
-			var (result, _) = await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken);
+			var (result, _) =
+				await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken: cancellationToken);
 			if (result == MatchControlService.SetMapResult.BeatmapNotFound)
 				return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId.Value} found locally."));
 		}
@@ -500,7 +519,7 @@ internal static class MatchRoutes
 
 	private static MatchRoomLive SampleRoomLive()
 	{
-		return new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+		return new MatchRoomLive(true, false, false, 16, 654,
 			Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard,
 			true, SampleBeatmap());
 	}
@@ -509,8 +528,8 @@ internal static class MatchRoutes
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i, null, SlotStatus.Open, MatchTeam.Neutral, Mods.NoMod, false, false));
-		slots[0] = new MatchSlotView(0, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red,
+			slots.Add(new MatchSlotView(i + 1, null, SlotStatus.Open, null, null, null, null));
+		slots[0] = new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing, MatchTeam.Red,
 			Mods.NoMod, true, true);
 
 		return new MatchLiveSnapshot(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
@@ -534,9 +553,9 @@ internal static class MatchRoutes
 
 	private static MatchReport SampleMatchReport()
 	{
-		var created = DateTime.Parse("2026-06-01T10:00:00Z");
-		var started = DateTime.Parse("2026-07-20T12:00:00Z");
-		var ended = DateTime.Parse("2026-07-20T12:04:30Z");
+		var created = DateTimeOffset.Parse("2026-06-01T10:00:00Z");
+		var started = DateTimeOffset.Parse("2026-07-20T12:00:00Z");
+		var ended = DateTimeOffset.Parse("2026-07-20T12:04:30Z");
 
 		var beatmapset = new BeatmapsetSummary(321, "Camellia", "Exit This Earth's Atmosphere", "RLC", created,
 			created, false, false, BeatmapStatus.Loved, 1);
@@ -546,7 +565,7 @@ internal static class MatchRoutes
 		var beatmap = new BeatmapDetail("d41d8cd98f00b204e9800998ecf8427e", 654, "Extreme",
 			difficulty, objectCounts, false, beatmapset);
 
-		var live = new MatchRoomLive(42, "Grand Finals: Alpha vs Bravo", true, false, false, 16, 654,
+		var live = new MatchRoomLive(true, false, false, 16, 654,
 			Mods.NoMod, false, MatchTeamType.TeamVs, MatchWinCondition.ScoreV2, GameMode.Standard, false, beatmap);
 
 		var score = new MatchReportScore(new UserBrief(7, "Alice", Country.Vn), MatchTeam.Red, Mods.NoMod, 4_850_213,
@@ -562,14 +581,14 @@ internal static class MatchRoutes
 }
 
 /// <summary>
-///     Request body for `POST /matches`. Every field is required except `password`. A `mapId` of -1
-///     means no beatmap has been chosen yet.
+///     Request body for `POST /matches`. Every field is required except `password` and `mapId`; a
+///     `null` or omitted `mapId` means no beatmap has been chosen yet.
 /// </summary>
 public sealed record CreateMatchRequest(
 	string Name,
 	string? Password,
 	bool IsPrivate,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,
@@ -578,7 +597,7 @@ public sealed record CreateMatchRequest(
 
 /// <summary>
 ///     Request body for `PUT /matches/{matchId}/settings`: full replace. Every field is required
-///     except `password`. A `mapId` of -1 means no beatmap has been chosen yet.
+///     except `password` and `mapId`; a `null` or omitted `mapId` means no beatmap has been chosen yet.
 /// </summary>
 public sealed record ReplaceMatchSettingsRequest(
 	string Name,
@@ -586,7 +605,7 @@ public sealed record ReplaceMatchSettingsRequest(
 	bool IsPrivate,
 	bool IsLocked,
 	int Size,
-	int MapId,
+	int? MapId,
 	Mods Mods,
 	bool Freemod,
 	MatchTeamType TeamType,

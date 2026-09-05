@@ -9,6 +9,7 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -16,6 +17,7 @@ using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Basil.Application.Tests.Backgrounds;
 
@@ -53,11 +55,11 @@ public class GhostDisconnectServiceTests
 			NullLogger<SpectatorService>.Instance);
 		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry,
 			gameRegistry, ircRegistry,
-			channelMembership, Substitute.For<IMatchRepository>(),
+			channelMembership, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
 			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
 			NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+			Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -69,8 +71,8 @@ public class GhostDisconnectServiceTests
 		var stale = MakeSession(1, "stale-token", Now.AddSeconds(-301));
 		gameRegistry.TryAdd(stale);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
-			.RunOnce();
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.Null(gameRegistry.GetByToken("stale-token"));
 	}
@@ -84,8 +86,8 @@ public class GhostDisconnectServiceTests
 		var fresh = MakeSession(1, "fresh-token", Now.AddSeconds(-299));
 		gameRegistry.TryAdd(fresh);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
-			.RunOnce();
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.NotNull(gameRegistry.GetByToken("fresh-token"));
 	}
@@ -100,8 +102,8 @@ public class GhostDisconnectServiceTests
 			{ LastRecvTime = Now.AddSeconds(-301), IsBot = true };
 		gameRegistry.TryAdd(bot);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
-			.RunOnce();
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.NotNull(gameRegistry.GetByToken("bot-token"));
 	}
@@ -117,8 +119,8 @@ public class GhostDisconnectServiceTests
 		gameRegistry.TryAdd(stale);
 		gameRegistry.TryAdd(bystander);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
-			.RunOnce();
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.Equal(ServerPacketWriter.Logout(1), bystander.Dequeue());
 	}
@@ -143,10 +145,40 @@ public class GhostDisconnectServiceTests
 		gameRegistry.TryAdd(bystander);
 
 		await new GhostDisconnectService(gameRegistry, ircRegistry,
-			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry)).RunOnce();
+			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.False(channel.Contains(stale.Id));
 		Assert.False(stale.InChannel("#osu"));
+	}
+
+	/// <summary>
+	///     One session's reap throwing (e.g. a channel lookup blowing up mid-teardown) must not abort
+	///     the sweep for every session after it, and must not propagate out of RunOnce — the default
+	///     BackgroundService exception behavior would otherwise take the whole host down over one bad
+	///     reap.
+	/// </summary>
+	[Fact]
+	public async Task RunOnce_OneSessionReapThrows_StillReapsTheRest()
+	{
+		var gameRegistry = new GameSessionRegistryTestDouble();
+		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+		ircRegistry.All.Returns([]);
+		var channelRegistry = Substitute.For<IChannelRegistry>();
+		channelRegistry.GetByName("#doomed").Throws(new InvalidOperationException("boom"));
+
+		var poisoned = MakeSession(1, "poisoned-token", Now.AddSeconds(-301));
+		poisoned.JoinChannel("#doomed");
+		var stale = MakeSession(2, "stale-token", Now.AddSeconds(-301));
+		gameRegistry.TryAdd(poisoned);
+		gameRegistry.TryAdd(stale);
+
+		await new GhostDisconnectService(gameRegistry, ircRegistry,
+			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
+
+		Assert.NotNull(gameRegistry.GetByToken("poisoned-token"));
+		Assert.Null(gameRegistry.GetByToken("stale-token"));
 	}
 
 	[Fact]
@@ -164,8 +196,8 @@ public class GhostDisconnectServiceTests
 		bot.Spectating = stale;
 		gameRegistry.TryAdd(stale);
 
-		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry))
-			.RunOnce();
+		await new GhostDisconnectService(gameRegistry, ircRegistry, MakePlayerLogout(gameRegistry, ircRegistry),
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.Empty(stale.Spectators);
 		Assert.Null(bot.Spectating);
@@ -197,9 +229,10 @@ public class GhostDisconnectServiceTests
 			testChannelMembership,
 			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
 				NullLogger<SpectatorService>.Instance),
-			fixture.MatchMembership, NullLogger<PlayerLogoutService>.Instance);
+			fixture.MatchMembership, Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
 
-		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout).RunOnce();
+		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout,
+			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.Null(ghost.Match);
 		Assert.Equal(SlotStatus.Open, ghostSlot.Status);

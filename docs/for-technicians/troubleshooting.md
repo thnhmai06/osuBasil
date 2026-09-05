@@ -87,34 +87,29 @@ docker compose logs -f
 First check whether the beatmapset exists in:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 Basil supports both local storage and optional external mirrors.
 
 ### Local-only mode
 
-If:
-
-```text
-Basil:Mirror:DownloadEndpoint
-```
-
-is not configured, Basil uses local storage.
+If `GET /settings/mirror`'s `downloadEndpoint` is unset, Basil uses local storage only.
 
 Check that:
 
-* the `.osz` was added to `Data/Mapsets/`;
+* the `.osz` was added to `Data/Beatmapsets/`;
 * Basil had time to ingest it;
 * the beatmapset appears after restarting Basil if it was added while the server was offline.
 
-Basil watches the mapset directory while running and also performs a full reconciliation during startup.
+Basil watches the beatmapset directory while running and also performs a full reconciliation during startup.
 
 ### Mirror mode
 
-If `Basil:Mirror:DownloadEndpoint` is configured, Basil can redirect requests for missing beatmapsets to the configured mirror.
+If `downloadEndpoint` is set, Basil can redirect requests for missing beatmapsets to the configured mirror.
 
-If you do not want external downloads, clear this setting, set `null` and restart Basil.
+If you do not want external downloads, clear it with `PUT /settings/mirror` — no restart required. See
+[`configuration.md`](configuration.md#beatmap-mirror).
 
 ---
 
@@ -132,7 +127,7 @@ This is expected for a new installation, but it is unsafe for an exposed server.
 Set an admin key through:
 
 ```text
-PUT /adminkey
+PUT /settings/adminkey
 ```
 
 on the `api.<domain>` host.
@@ -319,7 +314,7 @@ If the problem affects only IRC clients, troubleshoot the IRC TCP connection sep
 
 Basil reads configuration when the process starts.
 
-After changing [`appsettings.json`](../../src/Basil.Web/appsettings.json):
+After changing [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json):
 
 1. Save the file.
 2. Stop Basil.
@@ -362,7 +357,7 @@ Do not replace or delete this file unless you intentionally want to create a new
 For beatmaps, check:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 For other data locations, see [`configuration.md`](configuration.md).

@@ -1,3 +1,4 @@
+using Basil.Application.Abstractions.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,7 +16,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	private readonly SqliteBeatmapRepository _repository =
 		new(fixture.ConnectionString, NullLogger<SqliteBeatmapRepository>.Instance);
 
-	private static Beatmapset MakeMapset(int id, string artist = "Camellia",
+	private static Beatmapset MakeBeatmapset(int id, string artist = "Camellia",
 		string title = "Exit This Earth's Atomosphere", string creator = "cmyui", bool isPrivate = false)
 	{
 		return new Beatmapset(id, artist, title, creator,
@@ -25,7 +26,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 	private static Beatmap MakeBeatmap(int id, string md5, bool isPrivate = false)
 	{
-		return new Beatmap(md5, id, MakeMapset(1000 + id, isPrivate: isPrivate), "Hyper",
+		return new Beatmap(md5, id, MakeBeatmapset(1000 + id, isPrivate: isPrivate), "Hyper",
 			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
@@ -169,7 +170,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	}
 
 	[Fact]
-	public async Task FetchOne_PrivateMapset_HiddenByDefault_VisibleWithIncludePrivate()
+	public async Task FetchOne_PrivateBeatmapset_HiddenByDefault_VisibleWithIncludePrivate()
 	{
 		var bmap = MakeBeatmap(108, "gg00000000000000000000000000gg", true);
 		await UpsertBeatmapAsync(bmap);
@@ -181,14 +182,14 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	}
 
 	[Fact]
-	public async Task FetchAllBySetId_ExcludesPrivateMapsetByDefault_IncludesWithFlag()
+	public async Task FetchAllBySetId_ExcludesPrivateBeatmapsetByDefault_IncludesWithFlag()
 	{
 		var setId = 5050;
-		var mapset = MakeMapset(setId, isPrivate: true);
-		var first = new Beatmap(new string('n', 32), 250, mapset, "Normal", "n.osu",
+		var beatmapset = MakeBeatmapset(setId, isPrivate: true);
+		var first = new Beatmap(new string('n', 32), 250, beatmapset, "Normal", "n.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
-		var second = new Beatmap(new string('o', 32), 251, mapset, "Hidden", "o.osu",
+		var second = new Beatmap(new string('o', 32), 251, beatmapset, "Hidden", "o.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 		await UpsertBeatmapAsync(first);
@@ -204,7 +205,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	private static Beatmap MakeBeatmap(int id, int setId, string md5, string artist, double diff,
 		GameMode mode = GameMode.Standard, bool isPrivate = false)
 	{
-		return new Beatmap(md5, id, MakeMapset(setId, artist, "Title", isPrivate: isPrivate),
+		return new Beatmap(md5, id, MakeBeatmapset(setId, artist, "Title", isPrivate: isPrivate),
 			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu",
 			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
@@ -219,7 +220,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(202, setA, new string('g', 32), "Zeta Artist", 2.0));
 		await UpsertBeatmapAsync(MakeBeatmap(203, setB, new string('h', 32), "Alpha Artist", 3.0));
 
-		var results = await _repository.SearchAsync(null, null, 0, 100);
+		var results = await _repository.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100);
 		var relevant = results.Where(set => set[0].Beatmapset.Id is 5001 or 5002).ToList();
 
 		Assert.Equal(5002, relevant[0][0].Beatmapset.Id);
@@ -234,7 +235,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var setId = 5010;
 		await UpsertBeatmapAsync(MakeBeatmap(210, setId, new string('i', 32), "UniqueArtistName210", 1.0));
 
-		var results = await _repository.SearchAsync("UniqueArtistName210", null, 0, 100);
+		var results = await _repository.SearchAsync(new BeatmapsetSearchFilters("UniqueArtistName210"), null, 0, 100);
 
 		Assert.Single(results);
 		Assert.Equal(setId, results[0][0].Beatmapset.Id);
@@ -247,8 +248,9 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(220, setId, new string('j', 32), "ModeFilterArtist220", 1.0,
 			GameMode.Taiko));
 
-		var matching = await _repository.SearchAsync("ModeFilterArtist220", GameMode.Taiko, 0, 100);
-		var nonMatching = await _repository.SearchAsync("ModeFilterArtist220", GameMode.Catch, 0, 100);
+		var filters = new BeatmapsetSearchFilters("ModeFilterArtist220");
+		var matching = await _repository.SearchAsync(filters, GameMode.Taiko, 0, 100);
+		var nonMatching = await _repository.SearchAsync(filters, GameMode.Catch, 0, 100);
 
 		Assert.Single(matching);
 		Assert.Empty(nonMatching);
@@ -260,8 +262,9 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(240, 5040, new string('l', 32), "PagingArtist240A", 1.0));
 		await UpsertBeatmapAsync(MakeBeatmap(241, 5041, new string('m', 32), "PagingArtist240B", 1.0));
 
-		var page1 = await _repository.SearchAsync("PagingArtist240", null, 0, 1);
-		var page2 = await _repository.SearchAsync("PagingArtist240", null, 1, 1);
+		var pagingFilters = new BeatmapsetSearchFilters("PagingArtist240");
+		var page1 = await _repository.SearchAsync(pagingFilters, null, 0, 1);
+		var page2 = await _repository.SearchAsync(pagingFilters, null, 1, 1);
 
 		Assert.Single(page1);
 		Assert.Single(page2);
@@ -269,14 +272,148 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	}
 
 	[Fact]
-	public async Task SearchAsync_ExcludesPrivateMapsets()
+	public async Task SearchAsync_ExcludesPrivateBeatmapsets()
 	{
 		var setId = 5060;
 		await UpsertBeatmapAsync(MakeBeatmap(260, setId, new string('p', 32), "PrivateSearchArtist260", 1.0,
 			isPrivate: true));
 
-		var results = await _repository.SearchAsync("PrivateSearchArtist260", null, 0, 100);
+		var results =
+			await _repository.SearchAsync(new BeatmapsetSearchFilters("PrivateSearchArtist260"), null, 0, 100);
 
 		Assert.Empty(results);
+	}
+
+	// ---- Structured filters (Issue #4: "Support searching by ... osu!'s search parameters") ----
+
+	[Fact]
+	public async Task SearchAsync_StarsFilter_MatchesOnlyInRange()
+	{
+		var setId = 5070;
+		await UpsertBeatmapAsync(MakeBeatmap(270, setId, new string('q', 32), "StarsFilterArtist270", 3.0));
+
+		var matching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 2.0)),
+			null, 0, 100);
+		var nonMatching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 5.0)),
+			null, 0, 100);
+
+		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
+		Assert.DoesNotContain(nonMatching, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchAsync_CirclesFilter_ReadsFromObjectCountsJson()
+	{
+		var setId = 5071;
+		var beatmapset = MakeBeatmapset(setId, "CirclesFilterArtist271");
+		await UpsertBeatmapAsync(new Beatmap(new string('r', 32), 271, beatmapset, "Diff",
+			"CirclesFilterArtist271 - Title (cmyui) [Diff].osu",
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new OsuBeatmapObjectCounts { MaxCombo = 500, Circles = 300, Sliders = 50 }));
+
+		var matching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 200)),
+			null, 0, 100);
+		var nonMatching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 400)),
+			null, 0, 100);
+
+		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
+		Assert.DoesNotContain(nonMatching, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchAsync_CirclesFilter_ExcludesNonStandardModeBeatmaps()
+	{
+		// TaikoBeatmapObjectCounts has no Circles field, so json_extract(..., '$.Circles') is NULL for
+		// it — this must never satisfy a `circles > N` comparison.
+		var setId = 5072;
+		var beatmapset = MakeBeatmapset(setId, "TaikoCirclesArtist272");
+		await UpsertBeatmapAsync(new Beatmap(new string('s', 32), 272, beatmapset, "Diff",
+			"TaikoCirclesArtist272 - Title (cmyui) [Diff].osu",
+			new Difficulty(GameMode.Taiko, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new TaikoBeatmapObjectCounts { MaxCombo = 500, Hits = 300 }));
+
+		var results = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThanOrEqual,
+				0)),
+			null, 0, 100);
+
+		Assert.DoesNotContain(results, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchAsync_CreatorFilter_ExactCaseInsensitiveMatch()
+	{
+		var setId = 5073;
+		var beatmapset = MakeBeatmapset(setId, creator: "SomeCreator273");
+		await UpsertBeatmapAsync(new Beatmap(new string('t', 32), 273, beatmapset, "Diff",
+			"Artist - Title (SomeCreator273) [Diff].osu",
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+
+		var exactMatch = await _repository.SearchAsync(new BeatmapsetSearchFilters(Creator: "SOMECREATOR273"), null,
+			0, 100);
+		var noMatch = await _repository.SearchAsync(new BeatmapsetSearchFilters(Creator: "Some"), null, 0, 100);
+
+		Assert.Contains(exactMatch, set => set[0].Beatmapset.Id == setId);
+		Assert.DoesNotContain(noMatch, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchAsync_StatusFilter_MatchesOnlyTheServersConstantStatus()
+	{
+		var setId = 5074;
+		await UpsertBeatmapAsync(MakeBeatmap(274, setId, new string('u', 32), "StatusFilterArtist274", 1.0));
+
+		var matching = await _repository.SearchAsync(new BeatmapsetSearchFilters(Status: BeatmapStatus.Approved),
+			null, 0, 100);
+		var nonMatching = await _repository.SearchAsync(new BeatmapsetSearchFilters(Status: BeatmapStatus.Ranked),
+			null, 0, 100);
+
+		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
+		Assert.DoesNotContain(nonMatching, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchAsync_CreatedFilter_YearWindowMatchesWholeYear()
+	{
+		var setId = 5075;
+		var beatmapset = new Beatmapset(setId, "CreatedFilterArtist275", "Title", "cmyui",
+			new DateTime(2019, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2019, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+		await UpsertBeatmapAsync(new Beatmap(new string('v', 32), 275, beatmapset, "Diff",
+			"CreatedFilterArtist275 - Title (cmyui) [Diff].osu",
+			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+
+		var matching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Created: new DateFilter(ComparisonOperator.Equal,
+				new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero),
+				new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))), null, 0, 100);
+		var nonMatching = await _repository.SearchAsync(
+			new BeatmapsetSearchFilters(Created: new DateFilter(ComparisonOperator.Equal,
+				new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero),
+				new DateTimeOffset(2022, 1, 1, 0, 0, 0, TimeSpan.Zero))), null, 0, 100);
+
+		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
+		Assert.DoesNotContain(nonMatching, set => set[0].Beatmapset.Id == setId);
+	}
+
+	[Fact]
+	public async Task SearchCountAsync_MatchesSearchAsyncsUnpagedResultCount()
+	{
+		var setA = 5076;
+		var setB = 5077;
+		await UpsertBeatmapAsync(MakeBeatmap(276, setA, new string('w', 32), "SearchCountArtist276", 3.0));
+		await UpsertBeatmapAsync(MakeBeatmap(277, setB, new string('x', 32), "SearchCountArtist276", 3.0));
+		var filters = new BeatmapsetSearchFilters("SearchCountArtist276");
+
+		var count = await _repository.SearchCountAsync(filters, null);
+		var page = await _repository.SearchAsync(filters, null, 0, 100);
+
+		Assert.Equal(2, count);
+		Assert.Equal(count, page.Count);
 	}
 }

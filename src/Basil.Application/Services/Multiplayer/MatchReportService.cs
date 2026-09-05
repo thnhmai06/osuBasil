@@ -2,6 +2,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Formats;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -41,12 +42,21 @@ public sealed class MatchReportService(
 		var matchRow = await matchRepository.FetchMatchAsync(matchId, cancellationToken);
 		if (matchRow is null) return null;
 
+		// Call-local memoization only — this service is a singleton, so an instance-level cache
+		// would leak stale data across concurrent report builds. The same handful of players and
+		// often the same beatmap recur across every round and event of one report; resolving each
+		// distinct id once here avoids repeating that resolution (including an uncached
+		// FetchAllBySetIdAsync inside ResolveBeatmapAsync) once per round/event/score that
+		// references it.
+		var userCache = new Dictionary<int, UserBrief>();
+		var beatmapCache = new Dictionary<string, BeatmapDetail?>();
+
 		var roundRows = await matchRepository.FetchRoundsAsync(matchId, cancellationToken);
 		var rounds = new List<MatchReportRound>(roundRows.Count);
 		foreach (var round in roundRows)
 		{
 			var roundScores = await scores.FetchByRoundAsync(round.Id, cancellationToken);
-			rounds.Add(await BuildRound(round, roundScores, cancellationToken));
+			rounds.Add(await BuildRound(round, roundScores, userCache, beatmapCache, cancellationToken));
 		}
 
 		var events = await matchRepository.FetchEventsAsync(matchId, cancellationToken);
@@ -54,14 +64,13 @@ public sealed class MatchReportService(
 		foreach (var e in events)
 		{
 			var actor = e.ActorUserId is { } actorId
-				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(actorId, gameRegistry, ircRegistry, users,
-					cancellationToken)
+				? await ResolveUserCached(actorId, userCache, cancellationToken) ?? Placeholder(actorId)
 				: null;
 			var target = e.TargetUserId is { } targetId
-				? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(targetId, gameRegistry, ircRegistry, users,
-					cancellationToken)
+				? await ResolveUserCached(targetId, userCache, cancellationToken) ?? Placeholder(targetId)
 				: null;
-			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target, e.Timestamp, e.Detail));
+			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target,
+				e.Timestamp.AsUtcOffset(), e.Detail));
 		}
 
 		var live = matchRegistry.GetByDbId(matchId);
@@ -70,16 +79,46 @@ public sealed class MatchReportService(
 			: await MatchLiveSnapshotBuilder.BuildRoomLive(live, beatmaps, cancellationToken);
 
 		return new MatchReport(
-			matchRow.Id, matchRow.Name, matchRow.CreatedAt, matchRow.EndedAt,
+			matchRow.Id, matchRow.Name, matchRow.CreatedAt.AsUtcOffset(), matchRow.EndedAt?.AsUtcOffset(),
 			liveInfo, reportEvents, rounds);
+	}
+
+	/// <summary>Resolves a user id, caching only a successful resolution so each caller can still apply its own fallback.</summary>
+	private async Task<UserBrief?> ResolveUserCached(int userId, Dictionary<int, UserBrief> cache,
+		CancellationToken cancellationToken)
+	{
+		if (cache.TryGetValue(userId, out var cached)) return cached;
+		var resolved =
+			await UserBriefResolver.ResolveAsync(userId, gameRegistry, ircRegistry, users, cancellationToken);
+		if (resolved is not null) cache[userId] = resolved;
+		return resolved;
+	}
+
+	/// <summary>The same "unknown" placeholder <see cref="MatchLiveSnapshotBuilder.ResolveOrPlaceholder" /> uses.</summary>
+	private static UserBrief Placeholder(int userId)
+	{
+		return new UserBrief(userId, "Unknown", Country.Xx);
+	}
+
+	/// <summary>Resolves a beatmap by md5, caching both a hit and a miss for the given md5.</summary>
+	private async Task<BeatmapDetail?> ResolveBeatmapCached(string mapMd5, Dictionary<string, BeatmapDetail?> cache,
+		CancellationToken cancellationToken)
+	{
+		if (cache.TryGetValue(mapMd5, out var cached)) return cached;
+		var resolved = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(mapMd5, beatmaps, cancellationToken);
+		cache[mapMd5] = resolved;
+		return resolved;
 	}
 
 	/// <summary>Builds one round's report, deriving its winner and per-userSession scores from the stored rows.</summary>
 	/// <param name="round">The round row.</param>
 	/// <param name="roundScores">The round's stored scores.</param>
+	/// <param name="userCache">The call-local user resolution cache shared across every round of this report.</param>
+	/// <param name="beatmapCache">The call-local beatmap resolution cache shared across every round of this report.</param>
 	/// <param name="cancellationToken">A token that cancels the user and beatmap lookups.</param>
 	/// <returns>The <see cref="MatchReportRound" />.</returns>
 	private async Task<MatchReportRound> BuildRound(Round round, IReadOnlyList<ScoreReport> roundScores,
+		Dictionary<int, UserBrief> userCache, Dictionary<string, BeatmapDetail?> beatmapCache,
 		CancellationToken cancellationToken)
 	{
 		int? winnerUserId = null;
@@ -166,27 +205,26 @@ public sealed class MatchReportService(
 		}
 
 		var winner = winnerUserId is { } wid
-			? await MatchLiveSnapshotBuilder.ResolveOrPlaceholder(wid, gameRegistry, ircRegistry, users,
-				cancellationToken)
+			? await ResolveUserCached(wid, userCache, cancellationToken) ?? Placeholder(wid)
 			: null;
 
 		var reportScores = new List<MatchReportScore>(roundScores.Count);
 		foreach (var s in roundScores)
 		{
-			var user = await UserBriefResolver.ResolveAsync(s.UserId, gameRegistry, ircRegistry, users,
-				           cancellationToken)
+			var user = await ResolveUserCached(s.UserId, userCache, cancellationToken)
 			           ?? new UserBrief(s.UserId, s.UserName, Country.Xx);
 			reportScores.Add(new MatchReportScore(
 				user, s.Team, s.Mods, s.Score, s.Accuracy, s.MaxCombo,
 				s.N300, s.N100, s.N50, s.NMiss, s.NGeki, s.NKatu,
-				Enum.Parse<Grade>(s.Grade), s.Perfect, s.SubmittedAt));
+				Enum.Parse<Grade>(s.Grade), s.Perfect, s.SubmittedAt.AsUtcOffset()));
 		}
 
-		var beatmap = await MatchLiveSnapshotBuilder.ResolveBeatmapAsync(round.MapMd5, beatmaps, cancellationToken);
+		var beatmap = await ResolveBeatmapCached(round.MapMd5, beatmapCache, cancellationToken);
 
 		return new MatchReportRound(
 			round.RoundIndex, round.MapMd5, beatmap,
-			round.Mode, round.WinCondition, round.TeamType, round.Mods, round.Aborted, round.StartedAt, round.EndedAt,
+			round.Mode, round.WinCondition, round.TeamType, round.Mods, round.Aborted,
+			round.StartedAt.AsUtcOffset(), round.EndedAt?.AsUtcOffset(),
 			winner, winnerTeam, winMetric, winDiff, reportScores);
 	}
 
@@ -223,8 +261,8 @@ public sealed class MatchReportService(
 public sealed record MatchReport(
 	int MatchId,
 	string Name,
-	DateTime CreatedAt,
-	DateTime? EndedAt,
+	DateTimeOffset CreatedAt,
+	DateTimeOffset? EndedAt,
 	MatchRoomLive? Live,
 	IReadOnlyList<MatchReportEvent> Events,
 	IReadOnlyList<MatchReportRound> Rounds);
@@ -239,7 +277,7 @@ public sealed record MatchReportEvent(
 	MatchEventType EventType,
 	UserBrief? Actor,
 	UserBrief? Target,
-	DateTime Timestamp,
+	DateTimeOffset Timestamp,
 	string? Detail);
 
 /// <summary>One beatmap played within a match.</summary>
@@ -276,8 +314,8 @@ public sealed record MatchReportRound(
 	MatchTeamType TeamType,
 	Mods Mods,
 	bool Aborted,
-	DateTime StartedAt,
-	DateTime? EndedAt,
+	DateTimeOffset StartedAt,
+	DateTimeOffset? EndedAt,
 	UserBrief? Winner,
 	MatchTeam? WinnerTeam,
 	MatchWinCondition? WinMetric,
@@ -315,4 +353,4 @@ public sealed record MatchReportScore(
 	int NumKatu,
 	Grade Grade,
 	bool Perfect,
-	DateTime SubmittedAt);
+	DateTimeOffset SubmittedAt);

@@ -449,6 +449,7 @@ Important developer documents:
 * [`database.md`](docs/for-developers/database.md) — persistence design
 * [`logging.md`](docs/for-developers/logging.md) — logging design
 * [`docs-guideline.md`](docs/for-developers/docs-guideline.md) — documentation rules
+* [`known-limitations.md`](docs/for-developers/known-limitations.md) — open RC items, unproven hypotheses, and the dependency inventory
 
 Technician documentation:
 

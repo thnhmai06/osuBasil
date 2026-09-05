@@ -22,28 +22,29 @@ internal static class AdminKeyRoutes
 	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
 
 	/// <summary>
-	///     Registers the `/adminkey` read/write/clear routes on the `api.` host.
+	///     Registers the `/settings/adminkey` read/write/clear routes on the `api.` host.
 	/// </summary>
-	/// <param name="group">The `api.` host route group.</param>
+	/// <param name="group">The `api.` host `/settings` route group.</param>
 	public static void MapAdminKeyRoutes(this RouteGroupBuilder group)
 	{
 		group.MapGet("/adminkey", async (AdminKeyService adminKey, CancellationToken cancellationToken) =>
 			{
 				var lastChanged = await adminKey.GetLastChangedAsync(cancellationToken);
-				return Results.Json(new AdminKeyStatusView(lastChanged));
+				var hasAdminKey = !await adminKey.IsBypassAsync(cancellationToken);
+				return Results.Json(new AdminKeyStatusView(hasAdminKey, lastChanged));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("getAdminKeyStatus")
 			.WithSummary("Get admin key status.")
 			.WithDescription("""
-			                 Returns when the admin key was last set or cleared, never the key or its hash.
+			                 Returns whether an admin key is currently configured, and when it was last set or cleared.
 
-			                 `lastChanged` is `null` on a never-configured install.
+			                 `lastChanged` is `null` on a never-configured install. `hasAdminKey` is `false` while the server is in bypass mode.
 			                 """ + AdminKeyNote)
 			.WithTags("Admin Key")
 			.Produces<AdminKeyStatusView>()
-			.WithExample(StatusCodes.Status200OK, new AdminKeyStatusView(DateTimeOffset.UtcNow));
+			.WithExample(StatusCodes.Status200OK, new AdminKeyStatusView(true, DateTimeOffset.UtcNow));
 
 		group.MapPut("/adminkey", HandleSetKey)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -58,7 +59,7 @@ internal static class AdminKeyRoutes
 			.WithTags("Admin Key")
 			.Produces<AdminKeyChangedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status200OK, new AdminKeyChangedView(true, "Admin key updated."))
+			.WithExample(StatusCodes.Status200OK, new AdminKeyChangedView("Admin key updated."))
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Key must be 1 to 72 bytes long."));
 
 		group.MapDelete("/adminkey", async (AdminKeyService adminKey, ILogger<AdminKeyRoutesLog> logger,
@@ -66,8 +67,8 @@ internal static class AdminKeyRoutes
 			{
 				await adminKey.ClearAsync(cancellationToken);
 				logger.LogInformation("Admin key cleared via admin API — server is now in bypass mode");
-				return Results.Json(new AdminKeyChangedView(true,
-					"Admin key cleared. The server is now in bypass mode."));
+				return Results.Json(
+					new AdminKeyChangedView("Admin key cleared. The server is now in bypass mode."));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -80,7 +81,7 @@ internal static class AdminKeyRoutes
 			.WithTags("Admin Key")
 			.Produces<AdminKeyChangedView>()
 			.WithExample(StatusCodes.Status200OK,
-				new AdminKeyChangedView(true, "Admin key cleared. The server is now in bypass mode."));
+				new AdminKeyChangedView("Admin key cleared. The server is now in bypass mode."));
 	}
 
 	private static async Task<IResult> HandleSetKey(AdminKeyBody body, AdminKeyService adminKey,
@@ -93,17 +94,17 @@ internal static class AdminKeyRoutes
 
 		await adminKey.SetKeyAsync(body.Key, cancellationToken);
 		logger.LogInformation("Admin key updated via admin API");
-		return Results.Json(new AdminKeyChangedView(true, "Admin key updated."));
+		return Results.Json(new AdminKeyChangedView("Admin key updated."));
 	}
 
-	/// <summary>Response body for `GET /adminkey`.</summary>
-	public sealed record AdminKeyStatusView(DateTimeOffset? LastChanged);
+	/// <summary>Response body for `GET /settings/adminkey`.</summary>
+	public sealed record AdminKeyStatusView(bool HasAdminKey, DateTimeOffset? LastChanged);
 
-	/// <summary>Request body for `PUT /adminkey`.</summary>
+	/// <summary>Request body for `PUT /settings/adminkey`.</summary>
 	public sealed record AdminKeyBody(string Key);
 
 	/// <summary>Confirmation body for the admin key write routes.</summary>
-	public sealed record AdminKeyChangedView(bool Success, string Message);
+	public sealed record AdminKeyChangedView(string Message);
 }
 
 /// <summary>A dedicated logger category marker for the static <see cref="AdminKeyRoutes" /> class.</summary>

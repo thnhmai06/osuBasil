@@ -13,7 +13,7 @@ namespace Basil.Application.Packets.Multiplayer;
 ///     current host may transfer the role, and the target slot must be occupied. The match's HostId is
 ///     updated, a <c>MatchTransferHost</c> packet is enqueued for the new host, the updated state is
 ///     broadcast, and a <c>HostGranted</c> match event is persisted through
-///     <see cref="IMatchRepository.CreateEventAsync" />, without awaiting the write. All of
+///     <see cref="IMatchRepository.CreateEventAsync" />. All of
 ///     this runs under the match's <see cref="Basil.Application.Sessions.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
 public sealed class MatchTransferHostHandler(
@@ -35,8 +35,14 @@ public sealed class MatchTransferHostHandler(
 		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
+			// Host status is re-checked here, not just before the lock: it can only change under this
+			// same lock (a concurrent leave or transfer), so a sender who lost host while waiting for
+			// it must not still be treated as authoritative once the lock is acquired.
+			if (gameSession.Id != match.HostId) return;
+
 			var targetId = match.Slots[slotId].PlayerId;
 			if (targetId is null) return;
 
@@ -47,17 +53,23 @@ public sealed class MatchTransferHostHandler(
 
 			var targetPlayer = sessionRegistry.GetByUserId(targetId.Value);
 			targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
 
+			// Reordered ahead of the (now unlocked, ADR-004 4b) state broadcast: this audit-trail write
+			// doesn't read or depend on live match state beyond values already captured above, so it
+			// runs here instead, still under the lock, rather than gating release on it.
 			var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
-			_ = matchRepository.CreateEventAsync(new MatchEvent(
+			await matchRepository.CreateEventAsync(new MatchEvent(
 				match.DbId, (int)MatchEventType.HostGranted,
 				prevHostId, prevHostName, targetId, targetPlayer?.Name,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

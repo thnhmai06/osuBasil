@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Tests.Caching;
 
 public class CachingBeatmapsetRepositoryTests
 {
-	private static Beatmapset MakeMapset(int id)
+	private static Beatmapset MakeBeatmapset(int id)
 	{
 		return new Beatmapset(id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 	}
@@ -20,7 +20,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -39,7 +39,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -59,7 +59,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -79,7 +79,7 @@ public class CachingBeatmapsetRepositoryTests
 		{
 			ById =
 			{
-				[1] = MakeMapset(1)
+				[1] = MakeBeatmapset(1)
 			}
 		};
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
@@ -96,7 +96,7 @@ public class CachingBeatmapsetRepositoryTests
 	public async Task UpsertAsync_InvalidatesCachedEntry()
 	{
 		var inner = new CountingBeatmapsetRepository();
-		var original = MakeMapset(1);
+		var original = MakeBeatmapset(1);
 		inner.ById[1] = original;
 		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapsetRepository>.Instance);
@@ -109,6 +109,22 @@ public class CachingBeatmapsetRepositoryTests
 		await repo.FetchByIdAsync(1);
 
 		Assert.Equal(2, inner.FetchByIdCalls);
+	}
+
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task FetchByIdAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var inner = new CountingBeatmapsetRepository { ById = { [1] = MakeBeatmapset(1) } };
+		var repo = new CachingBeatmapsetRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingBeatmapsetRepository>.Instance);
+
+		var beatmapset = await repo.FetchByIdAsync(1);
+
+		Assert.NotNull(beatmapset);
 	}
 
 	private sealed class CountingBeatmapsetRepository : IBeatmapsetRepository

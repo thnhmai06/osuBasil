@@ -59,23 +59,70 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		var matchId = await RegisterLiveMatch();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
 			() => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
 
 		Assert.Equal("main", eventType);
 		Assert.Contains("world", data);
 	}
 
+	/// <summary>
+	///     Regression test (user-directed follow-up: "use every native SSE feature -- event, data,
+	///     retry, id"): a stream built on the <c>Subscribe</c> helper (chat, and this standalone
+	///     per-player input stream) is entirely event-oriented (ADR-004), so every item gets both an
+	///     SSE <c>retry:</c> hint and a monotonic <c>id:</c>.
+	/// </summary>
 	[Fact]
 	public async Task SpecChannel_ReceivesWhateverIsPublishedForThatPlayerId()
 	{
 		var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-		var (eventType, data) = await ReceiveAfterPublishAsync("/users/7/live",
-			() => events.PublishInput(7, [.. "frame-data"u8]));
+		// discardFirst: true — the stream now leads with a `status` snapshot (this test's player is
+		// offline, so `{"online":false,...}`) before any `input` this test publishes.
+		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync("/users/7/live",
+			() => events.PublishInput(7, [.. "frame-data"u8]), true);
 
 		Assert.Equal("input", eventType);
 		Assert.Equal("frame-data", data);
+		Assert.Equal("5000", retry);
+		Assert.Equal("1", eventId);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "GET /users/{id}/live should include status information in
+	///     addition to spectating information"): the stream leads with a `status` snapshot even for a
+	///     player who has never been online.
+	/// </summary>
+	[Fact]
+	public async Task SpecChannel_InitialSnapshotReportsOffline()
+	{
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Get, "/users/7/live") { Headers = { Host = "api.test.local" } };
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+		var (eventType, data, _, _) = await ConnectAndReadOneEventAsync(client, request, false, cts.Token);
+
+		Assert.Equal("status", eventType);
+		Assert.Contains("\"online\":false", data);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "GET /users/{id}/live should include status information"): a
+	///     status change (login, activity update) reaches an already-connected stream as a `status`
+	///     event, separate from `input`.
+	/// </summary>
+	[Fact]
+	public async Task SpecChannel_ReceivesPublishedStatusChanges()
+	{
+		var events = _factory.Services.GetRequiredService<IPlayerStatusEvents>();
+
+		var (eventType, data, _, retry) = await ReceiveAfterPublishAsync("/users/7/live",
+			() => events.PublishStatus(7, [.. "{\"online\":true,\"activity\":2}"u8]), true);
+
+		Assert.Equal("status", eventType);
+		Assert.Equal("{\"online\":true,\"activity\":2}", data);
+		Assert.Equal("5000", retry);
 	}
 
 	[Fact]
@@ -83,11 +130,11 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	{
 		var events = _factory.Services.GetRequiredService<IPlayerInputEvents>();
 
-		var (_, data) = await ReceiveAfterPublishAsync("/users/7/live", () =>
+		var (_, data, _, _) = await ReceiveAfterPublishAsync("/users/7/live", () =>
 		{
 			events.PublishInput(8, [.. "not for userSession 7"u8]);
 			events.PublishInput(7, [.. "for userSession 7"u8]);
-		});
+		}, true);
 
 		Assert.Equal("for userSession 7", data);
 	}
@@ -98,7 +145,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		var matchId = await RegisterLiveMatch();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-		var (_, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
+		var (_, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
 		{
 			events.PublishMain(12, [.. "wrong match"u8]);
 			events.PublishMain(matchId, [.. "right match"u8]);
@@ -134,14 +181,15 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 	///     SendAsync before ever publishing anything would deadlock (nothing would ever trigger that
 	///     first write).
 	/// </summary>
-	private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish)
+	private async Task<(string? EventType, string Data, string? EventId, string? Retry)> ReceiveAfterPublishAsync(
+		string path, Action publish, bool discardFirst = false)
 	{
 		var client = _factory.CreateClient();
 		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
 		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-		var pipelineTask = ConnectAndReadOneEventAsync(client, request, cts.Token);
+		var pipelineTask = ConnectAndReadOneEventAsync(client, request, discardFirst, cts.Token);
 
 		while (!pipelineTask.IsCompleted)
 		{
@@ -152,8 +200,9 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		return await pipelineTask;
 	}
 
-	private static async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(
-		HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
+	private static async Task<(string? EventType, string Data, string? EventId, string? Retry)>
+		ConnectAndReadOneEventAsync(
+			HttpClient client, HttpRequestMessage request, bool discardFirst, CancellationToken cancellationToken)
 	{
 		using var response =
 			await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -161,22 +210,41 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>
 		await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 		using var reader = new StreamReader(stream);
 
+		if (discardFirst) await ReadNextEventAsync(reader, cancellationToken);
 		return await ReadNextEventAsync(reader, cancellationToken);
 	}
 
-	private static async Task<(string? EventType, string Data)> ReadNextEventAsync(StreamReader reader,
-		CancellationToken cancellationToken)
+	/// <summary>
+	///     Reads one complete SSE event (every field line up to the terminating blank line) --
+	///     .NET's <c>SseFormatter</c> writes <c>event:</c>/<c>data:</c> first and <c>id:</c>/<c>retry:</c>
+	///     after, so this cannot return as soon as <c>data:</c> is seen the way a data-only reader could.
+	/// </summary>
+	private static async Task<(string? EventType, string Data, string? EventId, string? Retry)> ReadNextEventAsync(
+		StreamReader reader, CancellationToken cancellationToken)
 	{
 		string? eventType = null;
+		string? data = null;
+		string? eventId = null;
+		string? retry = null;
 		while (true)
 		{
 			var line = await reader.ReadLineAsync(cancellationToken);
 			if (line is null) throw new IOException("Stream ended unexpectedly.");
 
+			if (line.Length == 0)
+			{
+				if (data is not null) return (eventType, data, eventId, retry);
+				continue;
+			}
+
 			if (line.StartsWith("event: ", StringComparison.Ordinal))
 				eventType = line["event: ".Length..];
+			else if (line.StartsWith("id: ", StringComparison.Ordinal))
+				eventId = line["id: ".Length..];
+			else if (line.StartsWith("retry: ", StringComparison.Ordinal))
+				retry = line["retry: ".Length..];
 			else if (line.StartsWith("data: ", StringComparison.Ordinal))
-				return (eventType, line["data: ".Length..]);
+				data = line["data: ".Length..];
 		}
 	}
 

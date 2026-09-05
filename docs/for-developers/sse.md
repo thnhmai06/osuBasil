@@ -8,10 +8,12 @@ The client-facing wire contract is documented in [`sse.md`](../for-client/api/ss
 server-side implementation: where live events are published, how connections maintain state, how patches are generated,
 and how the response pipeline keeps SSE streams unbuffered.
 
-The implementation has two event sources:
+The implementation has three event sources:
 
 * [`IMatchLiveEvents`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs) for match-scoped state.
 * [`IPlayerInputEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs) for a player's spectator input.
+* [`IPlayerStatusEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs) for a player's
+  online/offline and activity status.
 
 Each SSE connection subscribes to the relevant event source and maintains its own last-sent state.
 
@@ -42,8 +44,10 @@ A publisher never writes directly to an HTTP response.
 
 Each connection owns its own delivery buffer, allowing state mutation to remain independent from network I/O.
 
-This is particularly important for multiplayer state changes because a publisher may execute while holding
-[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs). A slow SSE consumer must never extend the critical section.
+This matters for multiplayer state changes even though most publishing now runs after
+[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) has already been released
+— a few call sites still publish while holding it (see "Publishing after the lock is released" below for exactly
+which, and why). A slow SSE consumer must never extend that critical section regardless of which case applies.
 
 ## Event sources
 
@@ -71,9 +75,21 @@ The event source is scoped to the player whose input is being observed rather th
 
 As with match events, publishers do not perform HTTP or SSE writes.
 
-## Per-connection state
+### `IPlayerStatusEvents`
 
-Each live connection maintains the state it last sent to that client.
+`IPlayerStatusEvents` publishes a single player's online/offline transitions and in-game activity changes (login,
+logout, and the `ChangeAction` packet). Scoped to the player, the same shape as `IPlayerInputEvents`.
+
+`GET /users/{idOrName}/live` combines both player-scoped sources into one stream: `status` (state-oriented, a full
+snapshot on connect and on every change) alongside `input` (event-oriented, only while the player is playing) — the
+same state+event multiplexing the per-match `main` and per-slot streams use.
+
+## Shared per-match state
+
+The patch a mutation produces is computed once per match, not once per connection: a
+[`SnapshotChannel<T>`](../../src/Basil.Application/Services/SnapshotChannel.cs) holds the one "last published" state for
+each stream, and every publish diffs against that shared state and broadcasts the same patch bytes to every subscriber
+of that stream.
 
 The lifecycle is:
 
@@ -81,65 +97,78 @@ The lifecycle is:
 connection established
         │
         ▼
-read current state
+read the stream's current shared snapshot
         │
         ▼
 send full snapshot
         │
         ▼
-store snapshot as last-sent state
+event received (shared patch, already computed)
         │
         ▼
-event received
-        │
-        ▼
-read current state
-        │
-        ▼
-diff against last-sent state
-        │
-        ▼
-send merge patch
-        │
-        ▼
-update last-sent state
+forward patch as-is
 ```
 
-The first event is therefore always a complete snapshot.
+The first event a connection receives is therefore always a complete snapshot, read directly from the shared state at
+subscribe time rather than reconstructed from patches. Subsequent events are the same merge patch every other
+subscriber of that stream receives.
 
-Subsequent events contain only fields that changed relative to that connection's previous state.
+## Why a shared diff is safe
 
-## Why diff per connection?
-
-A patch is meaningful only relative to a particular previous state.
-
-Consider two clients:
+A merge patch is only meaningful relative to the state it was computed from. What makes a *shared* patch safe, despite
+different connections joining at different times, is that a connection never has to apply a patch to a baseline it
+doesn't have:
 
 ```text
-Match state
-    │
-    ├── Client A connected earlier
-    │      last state = S1
-    │
-    └── Client B connected later
-           last state = S2
+Client A connected earlier ──┐
+                              ├── both read the SAME shared snapshot at subscribe time
+Client B connected later  ───┘
 ```
 
-When the match changes to `S3`:
+Every connection's very first event is a fresh read of the shared snapshot, not a patch. From that point on, both
+clients hold the same state as the shared publisher, so the same subsequent patch applies cleanly to both. There is no
+per-connection baseline to reconcile.
 
-```text
-S1 → S3 = patch A
-S2 → S3 = patch B
-```
+A publish that produces no observable change (nothing in the diffed state actually differs) returns no patch at all,
+so a stream with no real activity emits no events — earlier revisions of this pipeline broadcast an empty `{}` patch
+on every publish regardless of whether anything changed; that is no longer the behavior.
 
-The patches may differ because the clients started from different snapshots.
+## Publishing after the lock is released
 
-Broadcasting one precomputed patch would therefore require additional synchronization rules for newly connected or
-temporarily disconnected clients.
+Most publishing happens after `MatchSession.Lock` has already been released, not while holding it — the
+snapshot build and the diff/broadcast are the expensive part, and running them unlocked keeps the lock's hold time
+down to the mutation itself. This reopens a question the shared-diff model doesn't answer on its own: two publishes
+for the same stream can now run concurrently and finish in either order, so what stops an older mutation's publish
+from completing *after* a newer one's and reverting the shared state back to something stale?
 
-Keeping the previous state per connection makes the invariant simple:
+The answer is a version number, not a lock. Whoever mutates the match allocates a state version
+(`MatchSession.NextStateVersion()`) at the moment the mutation completes, while the lock is still held — so the
+version reflects true mutation order even though nothing after that point is ordered by the lock anymore. Each
+stream's `SnapshotChannel` (and the packet broadcast, via its own `SequenceGate`) only accepts a publish whose version
+is newer than the last one it actually applied; an older version arriving late is dropped instead of applied. A
+dropped publish is not an error — it means a newer version already reflects everything that one would have added — so
+it is only counted (`basil.match.publish.stale_dropped`), never logged as a failure.
 
-> Every patch is computed against the exact state previously sent to that connection.
+Not every call site needed to change to get this benefit. A few (starting a round, a countdown's own final tick, and
+the `!mp kick`/`!mp ban` bot commands specifically) still publish before releasing the lock, because hoisting them
+would require restructuring how several different callers share that lock, not just shrinking one function's hold
+time. Seating and leaving a match (`OccupySlot`/`LeaveAsync`) no longer publish internally at all; every caller
+allocates a version and publishes itself after the mutation completes.
+
+## Subscriber registry and match close
+
+Every match-scoped live connection registers with that match's
+[`SseSubscriberRegistry`](../../src/Basil.Application/Services/SseSubscriberRegistry.cs) for as long as it is open. The
+registry has two states, OPEN and CLOSED, and the transition is atomic with respect to registration: a connection that
+subscribes concurrently with the match closing either joins the OPEN registry and is completed moments later, or finds
+the registry already CLOSED and is completed immediately — there is no window where a subscription is silently missed.
+
+When a match closes, its registry completes every currently registered connection, ending their SSE streams without
+waiting for the client to disconnect on its own. This is what makes a match's live streams bounded in lifetime by the
+match itself rather than by client behavior.
+
+The per-player live stream (`GET /users/{idOrName}/live`, combining status and spectator input) is not match-scoped and
+is deliberately not registered with any match's registry — its lifetime is the player's session, not any one match.
 
 ## Snapshot consistency
 
@@ -301,17 +330,38 @@ The same state mutation can therefore serve:
 
 Publishers should not construct merge patches themselves.
 
-A publisher knows that state changed, but not what a particular client has already received.
+A publisher knows that state changed, not what the patch relative to the previous published state should look like.
 
-Patch generation belongs to the live connection, which owns the previous snapshot.
+Patch generation belongs to the stream's shared [`SnapshotChannel`](../../src/Basil.Application/Services/SnapshotChannel.cs), which owns the previous snapshot for that stream.
 
-### Do not introduce shared client state
+### Backpressure is a per-stream decision
 
-Do not store a single "last broadcast state" for a match.
+A stream that only ever needs the *latest* state does not need a bound: a slow connection just falls behind on
+intermediate values and catches up when it reads. The `/matches/{id}/live` and `/matches/{id}/live/{slotIndex}`
+streams are different — each carries a mix of high-frequency `gameplay` (and, for the slot stream, `input`) events
+alongside lower-frequency state events (`main`, `slot`) on one connection, so both are bounded and evict the oldest
+queued events once full, emitting a `gap` SSE event in their place so the client can tell that a drop happened
+instead of silently missing updates.
 
-Different clients can connect at different times and can therefore have different baselines.
+Whether a given stream needs this treatment is decided per stream, not applied uniformly.
 
-Connection-local state is required for correct patch generation.
+### `retry:` and `id:` follow the same event/state split as backpressure
+
+Every stream sends an SSE `retry:` hint, telling a disconnected client how long to wait before
+reconnecting.
+
+An SSE `id:` is different: it implies resumption is meaningful, so it's assigned only to
+event-oriented items (`chat`, `gameplay`, `input`) — a coalescing state item (`main`, `settings`,
+`hosts`, `refs`, `ban`, `timer`, `slots`, per-slot `slot`) never gets one, since a fresh snapshot
+always supersedes anything resumption from an id could offer. On the multiplexed streams
+(`/matches/{id}/live`, `/matches/{id}/live/{slotIndex}`), this means only some of the items
+sharing that one connection carry an id.
+
+The id is a monotonic counter, scoped to that one connection — not a durable sequence number, and
+not persisted. The server does not read an incoming `Last-Event-ID` on reconnect: `chat` (the
+stream this most plausibly applies to) is explicitly not stored, so there is nothing to replay
+from. Assigning the id is about giving the client something to reason about mid-connection (spot a
+gap, dedupe), not about building resumption.
 
 ### Do not perform network I/O inside match locks
 
@@ -330,7 +380,11 @@ If a change occurs while `MatchSession.Lock` is held, publishing must not wait f
 * [`Basil.Web/Middleware/EnvelopeMiddleware.cs`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs): JSON response wrapping and SSE bypass
 * [`Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs): match live event source
 * [`Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs): spectator input event source
+* [`Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs): player status event source
 * [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): live match state construction
+* [`Basil.Application/Services/SnapshotChannel.cs`](../../src/Basil.Application/Services/SnapshotChannel.cs): shared per-stream snapshot + diff
+* [`Basil.Application/Services/SseSubscriberRegistry.cs`](../../src/Basil.Application/Services/SseSubscriberRegistry.cs): per-match subscriber lifecycle, completed on match close
+* [`Basil.Application/Services/BoundedSseChannel.cs`](../../src/Basil.Application/Services/BoundedSseChannel.cs): bounded-stream eviction and gap marker
 
 ## See also
 

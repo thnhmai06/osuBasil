@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Infrastructure.Security;
@@ -48,5 +50,25 @@ public class BCryptPasswordHasherTests
 		// second call should hit the in-memory cache path, not re-run bcrypt
 		Assert.True(hasher.Verify(passwordMd5, hash));
 		Assert.False(hasher.Verify(Md5("wrong-password"), hash));
+	}
+
+	/// <summary>
+	///     Regression test: the verification cache used to retain the verified candidate's raw bytes
+	///     (a password's md5 digest, or the admin key) so a memory dump of this cache alone could
+	///     recover them. It must now hold only a one-way digest of the candidate.
+	/// </summary>
+	[Fact]
+	public void Verify_CachesDigestNotRawSecret()
+	{
+		var hasher = new BCryptPasswordHasher();
+		var passwordMd5 = Md5("hunter2");
+		var hash = hasher.Hash(passwordMd5);
+		hasher.Verify(passwordMd5, hash);
+
+		var cacheField =
+			typeof(BCryptPasswordHasher).GetField("_cache", BindingFlags.NonPublic | BindingFlags.Instance)!;
+		var cache = (ConcurrentDictionary<string, byte[]>)cacheField.GetValue(hasher)!;
+
+		Assert.NotEqual(passwordMd5, cache[hash]);
 	}
 }

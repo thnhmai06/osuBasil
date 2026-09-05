@@ -101,6 +101,22 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): a matchId overflowing int32 used to fail the built-in `:int`
+	///     route constraint outright, surfacing as a bare, unenveloped 404 instead of a real error --
+	///     the request never reached a handler or EnvelopeMiddleware at all. The `:numericid` constraint
+	///     lets routing match on any all-digit id, so the framework's own model-binding failure (already
+	///     a proper enveloped 400 for other cases) handles this one too.
+	/// </summary>
+	[Fact]
+	public async Task GetMatch_OverflowingMatchId_ReturnsBadRequestNotBareNotFound()
+	{
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/matches/99999999999999999999"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task PutHosts_MissingAdminKey_ReturnsUnauthorized()
 	{
@@ -167,7 +183,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var view = await response.Content.ReadFromJsonAsync<JsonElement>();
 
 		response.EnsureSuccessStatusCode();
-		Assert.Equal(2, view.GetProperty("data").GetProperty("sent").GetInt32());
+		Assert.Equal(2, view.GetProperty("data").GetProperty("deliveredCount").GetInt32());
 	}
 
 	// ---- /hosts ----
@@ -222,10 +238,15 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		putRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
 		(await client.SendAsync(putRequest)).EnsureSuccessStatusCode();
 
-		var deleteResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/refs?userId={referee.Id}"));
+		var deleteRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/refs");
+		deleteRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var deleteResponse = await client.SendAsync(deleteRequest);
 
-		Assert.Equal(HttpStatusCode.Conflict, deleteResponse.StatusCode);
+		deleteResponse.EnsureSuccessStatusCode();
+		var results = await deleteResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.False(result.GetProperty("ok").GetBoolean());
+		Assert.Equal("Refusing to leave the match with no referees.", result.GetProperty("error").GetString());
 	}
 
 	[Fact]
@@ -240,9 +261,36 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var response = await client.SendAsync(request);
 
 		response.EnsureSuccessStatusCode();
-		var view = await response.Content.ReadFromJsonAsync<JsonElement>();
-		Assert.Contains(view.GetProperty("data").GetProperty("referees").EnumerateArray(),
-			r => r.GetProperty("id").GetInt32() == referee.Id);
+		var results = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.Equal(referee.Id, result.GetProperty("userId").GetInt32());
+		Assert.True(result.GetProperty("ok").GetBoolean());
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Adding a player who is already a referee still reports success."
+	/// </summary>
+	[Fact]
+	public async Task Refs_Patch_AlreadyReferee_ReportsFailureForThatTarget()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var referee = await SeatNewPlayer(2004, "alreadyref", matchId);
+
+		var firstAdd = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
+		firstAdd.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		(await client.SendAsync(firstAdd)).EnsureSuccessStatusCode();
+
+		var secondAdd = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
+		secondAdd.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var response = await client.SendAsync(secondAdd);
+
+		response.EnsureSuccessStatusCode();
+		var results = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var result = results.GetProperty("data").EnumerateArray().Single();
+		Assert.Equal(referee.Id, result.GetProperty("userId").GetInt32());
+		Assert.False(result.GetProperty("ok").GetBoolean());
+		Assert.Equal("Already a referee of this match.", result.GetProperty("error").GetString());
 	}
 
 	// ---- /ban ----
@@ -260,11 +308,54 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		response.EnsureSuccessStatusCode();
 	}
 
+	/// <summary>Regression test (Issue #4): a userId that belongs to no registered account must be rejected.</summary>
+	[Fact]
+	public async Task Ban_Patch_UnregisteredUserId_ReturnsBadRequest()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
+		request.Content = JsonContent.Create(new { userIds = new[] { 424242 } });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "A banned referee can still control the match, and a referee can
+	///     ban themselves. Referees should not be affected by match bans." The single-target `!mp ban`
+	///     bot command already guards against this; the bulk API routes (PUT/PATCH) did not.
+	/// </summary>
+	[Theory]
+	[InlineData("PUT")]
+	[InlineData("PATCH")]
+	public async Task Ban_RefereeUserId_ReturnsBadRequest(string method)
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var referee = await SeatNewPlayer(2010, "banproofref", matchId);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(referee.Id, referee.Name, Country.Xx, UserPrivileges.Unrestricted, default));
+
+		var refsRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/refs");
+		refsRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		(await client.SendAsync(refsRequest)).EnsureSuccessStatusCode();
+
+		var banRequest = MakeRequest(new HttpMethod(method), $"/matches/{matchId}/ban");
+		banRequest.Content = JsonContent.Create(new { userIds = new[] { referee.Id } });
+		var response = await client.SendAsync(banRequest);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
 	[Fact]
 	public async Task Ban_PatchThenUnban_ReflectsInGet()
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(555, "offline", Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		patchRequest.Content = JsonContent.Create(new { userIds = InputValue });
@@ -275,13 +366,19 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.Contains(bannedView.GetProperty("data").GetProperty("bannedUsers").EnumerateArray(),
 			u => u.GetProperty("id").GetInt32() == 555);
 
-		var unbanResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban?userId=555"));
+		var unbanRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban");
+		unbanRequest.Content = JsonContent.Create(new { userIds = new[] { 555 } });
+		var unbanResponse = await client.SendAsync(unbanRequest);
 		unbanResponse.EnsureSuccessStatusCode();
+		var unbanResults = await unbanResponse.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.True(unbanResults.GetProperty("data").EnumerateArray().Single().GetProperty("ok").GetBoolean());
 
-		var unbanUnknownResponse = await client.SendAsync(
-			MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban?userId=555"));
-		Assert.Equal(HttpStatusCode.BadRequest, unbanUnknownResponse.StatusCode);
+		var unbanAgainRequest = MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/ban");
+		unbanAgainRequest.Content = JsonContent.Create(new { userIds = new[] { 555 } });
+		var unbanAgainResponse = await client.SendAsync(unbanAgainRequest);
+		unbanAgainResponse.EnsureSuccessStatusCode();
+		var unbanAgainResults = await unbanAgainResponse.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.False(unbanAgainResults.GetProperty("data").EnumerateArray().Single().GetProperty("ok").GetBoolean());
 	}
 
 	// ---- /kick ----
@@ -334,6 +431,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var free = new GameSession(2007, "free", "t2007", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.TryAdd(banned);
 		sessionRegistry.TryAdd(free);
+		((NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>())
+			.Add(new User(banned.Id, banned.Name, Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var banRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		banRequest.Content = JsonContent.Create(new { userIds = new[] { banned.Id } });
@@ -354,7 +453,55 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		Assert.NotNull(free.Match);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): force-inviting a player already seated in a different match used
+	///     to be rejected outright ("Already in another match."). It must instead leave them from the old
+	///     match and seat them in the new one.
+	/// </summary>
+	[Fact]
+	public async Task Invite_Force_TargetInAnotherMatch_LeavesOldMatchAndSeatsInNew()
+	{
+		var client = _factory.CreateClient();
+		var oldMatchId = await CreateMatchAsync(client);
+		var newMatchId = await CreateMatchAsync(client);
+		var target = await SeatNewPlayer(3001, "mover", oldMatchId);
+
+		var inviteRequest = MakeRequest(HttpMethod.Post, $"/matches/{newMatchId}/slots");
+		inviteRequest.Content = JsonContent.Create(new { userIds = new[] { target.Id }, force = true });
+		var response = await client.SendAsync(inviteRequest);
+		response.EnsureSuccessStatusCode();
+
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+		Assert.True(envelope.GetProperty("data")[0].GetProperty("ok").GetBoolean());
+
+		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var oldMatch = matchRegistry.GetByDbId(oldMatchId)!;
+		Assert.NotNull(target.Match);
+		Assert.Equal(newMatchId, target.Match!.DbId);
+		Assert.DoesNotContain(oldMatch.Slots, s => s.PlayerId == target.Id);
+	}
+
 	// ---- /slots ----
+
+	/// <summary>
+	///     Regression test (Issue #4): slot indexes used to be 0-based (0-15); the wire contract is now
+	///     1-based (1-16, matching `!mp move`'s convention) on both the request and response sides.
+	///     Index 0 is now out of range; index 16 (the last slot) is valid.
+	/// </summary>
+	[Theory]
+	[InlineData(0, HttpStatusCode.BadRequest)]
+	[InlineData(16, HttpStatusCode.OK)]
+	public async Task Slots_Put_IndexBoundary_1Through16(int index, HttpStatusCode expected)
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
+		request.Content = JsonContent.Create(new { slots = new object[] { new { index, locked = true } } });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(expected, response.StatusCode);
+	}
 
 	[Fact]
 	public async Task Slots_Get_ReturnsSixteenIndexedEntries()
@@ -368,7 +515,32 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 		var slots = body.GetProperty("data").GetProperty("slots").EnumerateArray().ToList();
 		Assert.Equal(16, slots.Count);
-		for (var i = 0; i < 16; i++) Assert.Equal(i, slots[i].GetProperty("index").GetInt32());
+		for (var i = 0; i < 16; i++) Assert.Equal(i + 1, slots[i].GetProperty("index").GetInt32());
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): an empty slot used to serialize `team`/`mods`/`ready`/`loaded`
+	///     as meaningless default values (0/false) alongside `user: null`. It now omits all four
+	///     fields entirely -- `status` stays, since Open/Locked is still meaningful without an
+	///     occupant.
+	/// </summary>
+	[Fact]
+	public async Task Slots_Get_EmptySlot_OmitsOccupantOnlyFields()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/matches/{matchId}/slots"));
+		response.EnsureSuccessStatusCode();
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		var slot = body.GetProperty("data").GetProperty("slots")[0];
+		Assert.Equal(JsonValueKind.Null, slot.GetProperty("user").ValueKind);
+		Assert.True(slot.TryGetProperty("status", out _));
+		Assert.False(slot.TryGetProperty("team", out _));
+		Assert.False(slot.TryGetProperty("mods", out _));
+		Assert.False(slot.TryGetProperty("ready", out _));
+		Assert.False(slot.TryGetProperty("loaded", out _));
 	}
 
 	[Fact]
@@ -389,8 +561,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		{
 			slots = new object[]
 			{
-				new { index = slotA, userId = b.Id },
-				new { index = slotB, userId = a.Id }
+				new { index = slotA + 1, userId = b.Id },
+				new { index = slotB + 1, userId = a.Id }
 			}
 		});
 		var response = await client.SendAsync(request);
@@ -409,7 +581,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new
 		{
-			slots = new object[] { new { index = 0, userId = 999999 } }
+			slots = new object[] { new { index = 1, userId = 999999 } }
 		});
 		var response = await client.SendAsync(request);
 
@@ -425,10 +597,10 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var slot = matchRegistry.GetByDbId(matchId)!.GetSlotId(player.Id)!.Value;
 
-		var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+		var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		request.Content = JsonContent.Create(new
 		{
-			slots = new object[] { new { index = slot, userId = player.Id, locked = true } }
+			slots = new object[] { new { index = slot + 1, userId = player.Id, locked = true } }
 		});
 		var response = await client.SendAsync(request);
 
@@ -457,6 +629,45 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 		var secondAbort = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer"));
 		Assert.Equal(HttpStatusCode.Conflict, secondAbort.StatusCode);
+	}
+
+	/// <summary>Regression test (Issue #4): "GET /matches/{id}/timer should include startTime and endTime timestamps."</summary>
+	[Fact]
+	public async Task Timer_Start_ResponseIncludesStartAndEndTime()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
+		startRequest.Content = JsonContent.Create(new { seconds = 120 });
+		var startResponse = await client.SendAsync(startRequest);
+		startResponse.EnsureSuccessStatusCode();
+
+		var data = (await startResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+		var startedAt = data.GetProperty("startedAt").GetDateTimeOffset();
+		var endsAt = data.GetProperty("endsAt").GetDateTimeOffset();
+		Assert.Equal(120, (endsAt - startedAt).TotalSeconds);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "DELETE /matches/{id}/timer should return a clear
+	///     notification/message confirming the timer has been aborted" -- the envelope message used to
+	///     default to the generic DELETE-verb message ("Deleted successfully"), misleading since
+	///     nothing is deleted.
+	/// </summary>
+	[Fact]
+	public async Task Timer_Delete_EnvelopeMessageConfirmsAbort()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
+		startRequest.Content = JsonContent.Create(new { seconds = 120 });
+		(await client.SendAsync(startRequest)).EnsureSuccessStatusCode();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer"));
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		Assert.Equal("Countdown aborted.", envelope.GetProperty("message").GetString());
 	}
 
 	// ---- /abort, /close ----
@@ -590,6 +801,11 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 
 		public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 			CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

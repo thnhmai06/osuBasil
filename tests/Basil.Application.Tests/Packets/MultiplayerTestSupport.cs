@@ -1,6 +1,7 @@
 using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
@@ -85,8 +86,8 @@ internal static class MultiplayerTestSupport
 	public static Beatmap MakeBeatmap(int id = 100, string md5 = "")
 	{
 		var actualMd5 = md5.Length == 32 ? md5 : new string('a', 32);
-		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-		return new Beatmap(actualMd5, id, mapset, "Normal", "map.osu",
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		return new Beatmap(actualMd5, id, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}
@@ -158,8 +159,12 @@ internal static class MultiplayerTestSupport
 			while (_byId.ContainsKey(id)) id++;
 			var dbId = _nextDbId++;
 
+			// Mirrors InMemoryMatchRegistry.BuildNew: data.MapId is the wire value (0/-1 both mean
+			// "no map" at this boundary); MatchSession.MapId is null in that case, not a sentinel.
+			var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
+
 			var match = new MatchSession(
-				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+				id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
 				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
 				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
 			{
@@ -259,100 +264,166 @@ internal static class MultiplayerTestSupport
 		}
 	}
 
+	/// <summary>
+	///     In-memory stand-in for the round-end outbox: <see cref="Enqueue" /> completes synchronously
+	///     (no background drain to wait for), matching how <see cref="FakeMatchRepository" /> itself
+	///     completes synchronously — keeps every existing synchronous test call site unchanged.
+	/// </summary>
+	public sealed class FakeMatchRoundEndOutbox : IMatchRoundEndOutbox
+	{
+		public List<RoundEndWrite> Enqueued { get; } = [];
+		public List<int> Drained { get; } = [];
+
+		/// <summary>When set, <see cref="Enqueue" /> throws instead of recording, simulating a full queue.</summary>
+		public bool ThrowFull { get; set; }
+
+		public void Enqueue(RoundEndWrite write)
+		{
+			if (ThrowFull) throw new MatchRoundEndOutboxFullException(write.MatchId, write.RoundId);
+			Enqueued.Add(write);
+		}
+
+		public Task DrainAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			Drained.Add(matchId);
+			return Task.CompletedTask;
+		}
+	}
+
 	/// <summary>Records what would have been pushed to SSE subscribers, without any real channel/connection.</summary>
+	/// <remarks>
+	///     Subscribe methods only record; no test currently subscribes through this fake and asserts
+	///     on delivery, so they return a trivial no-op handle rather than modeling real per-match
+	///     dispatch (see <see cref="Basil.Infrastructure.Sessions.MatchLiveEvents" /> for that).
+	/// </remarks>
 	public sealed class FakeMatchLiveEvents : IMatchLiveEvents
 	{
+		private sealed class NoOpSubscription : IDisposable
+		{
+			public void Dispose()
+			{
+			}
+		}
+
 		public List<(int MatchDbId, byte[] Payload)> MainPublishes { get; } = [];
 		public List<(int MatchDbId, string PlayerName, byte[] Payload)> PlayerPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> SettingsPublishes { get; } = [];
 		public List<(int MatchDbId, int SlotIndex, byte[] Payload)> SlotPublishes { get; } = [];
-		public List<(int MatchDbId, byte[] Payload)> LivePublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> HostPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> RefsPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> BansPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> TimerPublishes { get; } = [];
 		public List<(int MatchDbId, byte[] Payload)> SlotsPublishes { get; } = [];
-
-		public event Action<int, byte[]>? MainPublished;
-		public event Action<int, string, byte[]>? PlayerScorePublished;
+		public List<int> Forgotten { get; } = [];
 
 		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
-		public bool HasPlayerScoreSubscribers => true;
+		public bool HasPlayerScoreSubscribers(int matchDbId)
+		{
+			return true;
+		}
 
-		public event Action<int, byte[]>? SettingsPublished;
-		public event Action<int, int, byte[]>? SlotPublished;
-		public event Action<int, byte[]>? HostPublished;
-		public event Action<int, byte[]>? RefsPublished;
-		public event Action<int, byte[]>? BansPublished;
-		public event Action<int, byte[]>? TimerPublished;
-		public event Action<int, byte[]>? SlotsPublished;
-		public event Action<int, byte[]>? ChatPublished;
+		public IDisposable SubscribeMain(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
+		}
 
 		public void PublishMain(int matchDbId, byte[] payload)
 		{
 			MainPublishes.Add((matchDbId, payload));
-			MainPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribePlayerScore(int matchDbId, Action<string, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
 		{
 			PlayerPublishes.Add((matchDbId, playerName, payload));
-			PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+		}
+
+		public IDisposable SubscribeSettings(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSettings(int matchDbId, byte[] payload)
 		{
 			SettingsPublishes.Add((matchDbId, payload));
-			SettingsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlot(int matchDbId, Action<int, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
 		{
 			SlotPublishes.Add((matchDbId, slotIndex, payload));
-			SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+		}
+
+		public IDisposable SubscribeHost(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishHost(int matchDbId, byte[] payload)
 		{
 			HostPublishes.Add((matchDbId, payload));
-			HostPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeRefs(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishRefs(int matchDbId, byte[] payload)
 		{
 			RefsPublishes.Add((matchDbId, payload));
-			RefsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeBans(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishBans(int matchDbId, byte[] payload)
 		{
 			BansPublishes.Add((matchDbId, payload));
-			BansPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeTimer(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishTimer(int matchDbId, byte[] payload)
 		{
 			TimerPublishes.Add((matchDbId, payload));
-			TimerPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlots(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlots(int matchDbId, byte[] payload)
 		{
 			SlotsPublishes.Add((matchDbId, payload));
-			SlotsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeChat(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishChat(int matchDbId, byte[] payload)
 		{
-			ChatPublished?.Invoke(matchDbId, payload);
 		}
 
-		public event Action<int, byte[]>? LivePublished;
-
-		public void PublishLive(int matchDbId, byte[] payload)
+		public void Forget(int matchDbId)
 		{
-			LivePublishes.Add((matchDbId, payload));
-			LivePublished?.Invoke(matchDbId, payload);
+			Forgotten.Add(matchDbId);
 		}
 	}
 
@@ -373,6 +444,23 @@ internal static class MultiplayerTestSupport
 		}
 	}
 
+	/// <summary>Records what would have been pushed to the /users/{id}/live SSE `status` subscribers.</summary>
+	public sealed class FakePlayerStatusEvents : IPlayerStatusEvents
+	{
+		public List<(int PlayerId, byte[] Payload)> Publishes { get; } = [];
+
+		public event Action<int, byte[]>? StatusPublished;
+
+		/// <summary>Always true — this fake exists to record every publish call, not to model subscriber presence.</summary>
+		public bool HasSubscribers => true;
+
+		public void PublishStatus(int playerId, byte[] payload)
+		{
+			Publishes.Add((playerId, payload));
+			StatusPublished?.Invoke(playerId, payload);
+		}
+	}
+
 	/// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
 	public sealed class Fixture
 	{
@@ -387,13 +475,14 @@ internal static class MultiplayerTestSupport
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 
 			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				IrcSessionRegistry, ChannelMembership, MatchRepository, EventBus,
+				IrcSessionRegistry, ChannelMembership, MatchRepository, RoundEndOutbox, EventBus,
 				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
 		public FakeMatchRegistry MatchRegistry { get; }
 		public FakeMatchRepository MatchRepository { get; } = new();
+		public FakeMatchRoundEndOutbox RoundEndOutbox { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
 		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
 

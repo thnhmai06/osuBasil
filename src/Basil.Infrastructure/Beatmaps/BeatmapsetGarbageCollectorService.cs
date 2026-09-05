@@ -12,9 +12,9 @@ namespace Basil.Infrastructure.Beatmaps;
 ///     The pass runs on a recurring schedule, so a folder that can't be deleted yet (for example a
 ///     locked file) is simply retried on the next pass.
 /// </summary>
-public sealed class MapsetGarbageCollectorService(
+public sealed class BeatmapsetGarbageCollectorService(
 	IOptions<StorageOptions> options,
-	ILogger<MapsetGarbageCollectorService> logger) : BackgroundService
+	ILogger<BeatmapsetGarbageCollectorService> logger) : BackgroundService
 {
 	private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
 
@@ -40,13 +40,13 @@ public sealed class MapsetGarbageCollectorService(
 	}
 
 	/// <summary>
-	///     Deletes every folder under <see cref="StorageOptions.MapsetsPath" /> whose name carries the
+	///     Deletes every folder under <see cref="StorageOptions.BeatmapsetsPath" /> whose name carries the
 	///     deletion marker. A folder that fails to delete (typically a locked file) is logged and
 	///     retried on the next cycle.
 	/// </summary>
 	private void CollectOnce()
 	{
-		var path = options.Value.MapsetsPath;
+		var path = options.Value.BeatmapsetsPath;
 		if (!Directory.Exists(path)) return;
 
 		foreach (var folder in Directory.EnumerateDirectories(path))

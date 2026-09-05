@@ -55,7 +55,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	[InlineData("avatar", "osu! Client API: Avatar Files", new[] { "/{userId}" })]
 	[InlineData("basilapi", "Basil API", new[]
 	{
-		"/matches/{matchId}", "/matches", "/beatmapsets/{mapsetId}", "/users", "/scores/{scoreId}",
+		"/matches/{matchId}", "/matches", "/beatmapsets/{beatmapsetId}", "/users", "/scores/{scoreId}",
 		"/faqs/{entry}", "/menu/seasonals/{fileName}", "/health"
 	})]
 	public async Task Document_ReturnsExpectedTitleAndPaths(string documentName, string expectedTitle,
@@ -180,18 +180,24 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 			.GetProperty("responses").GetProperty("200").GetProperty("content")
 			.GetProperty("application/json");
 
-		// Bare $ref to the declared payload type (MatchLiveSnapshot), not an inline Envelope object —
-		// SSE payloads are never enveloped at runtime, so neither is their declared schema.
-		Assert.Equal("#/components/schemas/MatchLiveSnapshot", responseNode.GetProperty("schema")
-			.GetProperty("$ref").GetString());
+		// A oneOf of bare $refs to the two payload types this stream can carry (MatchLiveSnapshot for
+		// `main`, PlayerLiveScore for `gameplay`), not an inline Envelope object -- SSE payloads are
+		// never enveloped at runtime, so neither is their declared schema.
+		var refs = responseNode.GetProperty("schema").GetProperty("oneOf").EnumerateArray()
+			.Select(s => s.GetProperty("$ref").GetString()).ToHashSet();
+		Assert.Equal(["#/components/schemas/MatchLiveSnapshot", "#/components/schemas/PlayerLiveScore"], refs);
 
-		// The example must also stay unwrapped (no top-level "success"/"data" envelope keys) —
-		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions.WithExample
-		// must skip the same envelope-wrapping it applies to every other basilapi route.
-		var examplePropertyNames = responseNode.GetProperty("example").EnumerateObject()
-			.Select(p => p.Name).ToHashSet();
-		Assert.DoesNotContain("success", examplePropertyNames);
-		Assert.Contains("inProgress", examplePropertyNames);
+		// Both named examples must also stay unwrapped (no top-level "success"/"data" envelope keys) --
+		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions must skip
+		// the same envelope-wrapping it applies to every other basilapi route.
+		var mainExampleProps = responseNode.GetProperty("examples").GetProperty("main").GetProperty("value")
+			.EnumerateObject().Select(p => p.Name).ToHashSet();
+		Assert.DoesNotContain("success", mainExampleProps);
+		Assert.Contains("inProgress", mainExampleProps);
+
+		var gameplayExampleProps = responseNode.GetProperty("examples").GetProperty("gameplay").GetProperty("value")
+			.EnumerateObject().Select(p => p.Name).ToHashSet();
+		Assert.DoesNotContain("success", gameplayExampleProps);
 	}
 
 	[Fact]
@@ -211,6 +217,78 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 
 		var publicOp = document.GetProperty("paths").GetProperty("/scores").GetProperty("get");
 		Assert.False(publicOp.TryGetProperty("security", out _));
+	}
+
+	/// <summary>
+	///     Every declared basilapi success (2xx) response must carry a documented example -- unlike an
+	///     error response, a success response has no synthesized fallback
+	///     (<see cref="EnvelopeSchemaTransformer" /> only synthesizes one for status &gt;= 400), so a
+	///     missing example here unambiguously means one was never declared. Pins the 4 `/menu/banners`
+	///     200-response gaps this regression fixed (`getMenuBanner`, `updateMenuBanner`,
+	///     `deleteMenuBanner` were missing theirs).
+	/// </summary>
+	[Fact]
+	public async Task BasilApiDocument_EverySuccessResponseHasAnExample()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		var missing = new List<string>();
+		foreach (var pathEntry in document.GetProperty("paths").EnumerateObject())
+		foreach (var opEntry in pathEntry.Value.EnumerateObject())
+		{
+			if (!opEntry.Value.TryGetProperty("responses", out var responses)) continue;
+			foreach (var statusEntry in responses.EnumerateObject())
+			{
+				if (!int.TryParse(statusEntry.Name, out var statusCode) || statusCode >= 400) continue;
+				if (!statusEntry.Value.TryGetProperty("content", out var content) ||
+				    !content.TryGetProperty("application/json", out var mediaType))
+					continue;
+
+				var hasExample = mediaType.TryGetProperty("example", out var example) &&
+				                 example.ValueKind != JsonValueKind.Null;
+				var hasExamples = mediaType.TryGetProperty("examples", out var examples) &&
+				                  examples.ValueKind == JsonValueKind.Object && examples.EnumerateObject().Any();
+				if (!hasExample && !hasExamples)
+					missing.Add($"{opEntry.Name.ToUpperInvariant()} {pathEntry.Name} -> {statusEntry.Name}");
+			}
+		}
+
+		Assert.Empty(missing);
+	}
+
+	/// <summary>
+	///     Every SSE stream's synchronous 409 "not live" response must document the actual
+	///     <see cref="LiveSseRoutes.NotLive" /> message, not a bare presence check -- a 4xx response
+	///     always has SOME example (<see cref="EnvelopeSchemaTransformer" /> synthesizes a generic one,
+	///     message = the plain HTTP reason phrase "Conflict", when a route declares none of its own), so
+	///     only the message text distinguishes a real declared example from that fallback. Pins the 8
+	///     SSE routes (`chat`, `hosts`, `refs`, `ban`, `slots`, `timer`, `settings`, and the main
+	///     `/live`) this regression added an explicit example to.
+	/// </summary>
+	[Theory]
+	[InlineData("/matches/{matchId}/settings/live", "get")]
+	[InlineData("/matches/{matchId}/live", "get")]
+	[InlineData("/matches/{matchId}/chat/live", "get")]
+	[InlineData("/matches/{matchId}/hosts/live", "get")]
+	[InlineData("/matches/{matchId}/refs/live", "get")]
+	[InlineData("/matches/{matchId}/ban/live", "get")]
+	[InlineData("/matches/{matchId}/slots/live", "get")]
+	[InlineData("/matches/{matchId}/timer/live", "get")]
+	public async Task BasilApiDocument_SseRoute_409UsesTheActualNotLiveMessage(string path, string method)
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		var example = document.GetProperty("paths").GetProperty(path).GetProperty(method)
+			.GetProperty("responses").GetProperty("409").GetProperty("content")
+			.GetProperty("application/json").GetProperty("example");
+
+		Assert.Equal("Match is not live", example.GetProperty("message").GetString());
 	}
 
 	[Fact]

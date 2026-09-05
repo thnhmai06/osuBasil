@@ -27,7 +27,7 @@ public static class MatchPacketDataMapper
 			match.Name,
 			match.Password,
 			match.MapName,
-			match.MapId,
+			match.MapId ?? -1,
 			match.MapMd5,
 			[.. match.Slots.Select(s => new MatchSlotPacket((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
 			match.HostId,

@@ -49,7 +49,7 @@ The minimum log level is controlled by:
 Basil:Logging:MinimumLevel
 ```
 
-in [`appsettings.json`](../../src/Basil.Web/appsettings.json).
+in [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json).
 
 Example:
 

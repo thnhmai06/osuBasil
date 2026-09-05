@@ -39,7 +39,8 @@ public sealed class CachingUserRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByIdAsync(id, cancellationToken);
-		if (user is not null) cache.Set(key, user, _ttl);
+		if (user is not null)
+			cache.Set(key, user, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return user;
 	}
 
@@ -59,7 +60,8 @@ public sealed class CachingUserRepository(
 
 		logger.LogDebug("Cache miss {Key}", key);
 		var user = await inner.FetchByNameAsync(name, cancellationToken);
-		if (user is not null) cache.Set(key, user, _ttl);
+		if (user is not null)
+			cache.Set(key, user, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return user;
 	}
 
@@ -99,6 +101,20 @@ public sealed class CachingUserRepository(
 		cache.Remove(IdKey(id));
 		if (before is not null) cache.Remove(NameKey(before.Name));
 		cache.Remove(NameKey(name));
+	}
+
+	/// <inheritdoc cref="IUserRepository.SoftDeleteAsync" />
+	/// <remarks>
+	///     Invalidates both the id- and name-keyed entries after updating -- unlike the other update
+	///     methods here, a stale name-keyed hit would let a deleted account's login check
+	///     (<see cref="FetchByNameAsync" />) read a cached pre-deletion row and let them log back in.
+	/// </remarks>
+	public async Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
+	{
+		var before = await inner.FetchByIdAsync(id, cancellationToken);
+		await inner.SoftDeleteAsync(id, deletedAt, cancellationToken);
+		cache.Remove(IdKey(id));
+		if (before is not null) cache.Remove(NameKey(before.Name));
 	}
 
 	/// <inheritdoc cref="IUserRepository.CreateAsync" />

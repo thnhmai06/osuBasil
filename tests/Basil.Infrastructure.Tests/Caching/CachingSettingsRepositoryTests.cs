@@ -64,6 +64,22 @@ public class CachingSettingsRepositoryTests
 		Assert.Equal(2, inner.GetCalls);
 	}
 
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task GetAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var inner = new CountingSettingsRepository { Values = { ["AdminKey:Hash"] = "hash" } };
+		var repo = new CachingSettingsRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingSettingsRepository>.Instance);
+
+		var value = await repo.GetAsync("AdminKey:Hash");
+
+		Assert.Equal("hash", value);
+	}
+
 	private sealed class CountingSettingsRepository : ISettingsRepository
 	{
 		public int GetCalls { get; private set; }

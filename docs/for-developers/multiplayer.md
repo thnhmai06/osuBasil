@@ -296,9 +296,29 @@ This prevents two different entry points from concurrently modifying:
 
 An HTTP administrative operation therefore follows the same concurrency rules as the equivalent Bancho operation.
 
+### Round-end persistence
+
+Persisting that a round ended is a database write, and a database write can be slow enough (SQLite lock contention,
+retry/backoff) that doing it while holding `MatchSession.Lock` would block every other operation on that match for
+the duration.
+
+Round-*end* writes are therefore queued and persisted outside the lock, on a single shared, ordered background
+queue: the caller enqueues the fact (match id, round id, end time, whether it was an abort) under the lock, without
+waiting for the write to land, and a dedicated background consumer drains the queue and persists each entry in the
+order it was enqueued. A match's own round-end writes are always enqueued one at a time under that match's own lock,
+so two writes for the same match can never be persisted out of order, even though the queue itself is shared across
+every match.
+
+Round-*start* is not part of this: `MatchSession.CurrentRoundId` is read immediately after a round starts (by score
+submission, see above), so it cannot be deferred and stays a synchronous write.
+
+A permanently failed round-end write (retry budget exhausted) is logged with every fact needed to reconstruct it by
+hand rather than silently dropped. This is an accepted gap, not a correctness bug: match reports are generated on
+demand from whatever made it to the database, not from an in-memory source of truth.
+
 ## Empty-room lifecycle
 
-A match with no seated players is automatically closed after five minutes.
+A match with no seated players is automatically closed after fifteen minutes.
 
 This applies regardless of how the room was created.
 
@@ -314,10 +334,10 @@ There is no separate permanent-room state.
 The empty-room timer:
 
 1. starts when the room has no seated players;
-2. announces a 60-second warning;
+2. after ten minutes still empty, announces a 5-minute warning;
 3. sends the warning to referees who are not currently in the room's channel;
-4. closes the room if nobody joins;
-5. is cancelled when a player joins after the warning.
+4. closes the room five minutes later if nobody joins;
+5. is cancelled when a player joins, whether before or after the warning.
 
 The room's creator still retains creator/referee authority even when no player is seated.
 
@@ -400,11 +420,19 @@ The multiplayer/report model depends on several invariants:
 * The report is derived rather than persisted as a separate document.
 * The winner is derived from score data rather than stored independently.
 * Closing a live room does not destroy the persistent match history.
+* A match's round-end writes are persisted in the order they ended, even though they run outside `MatchSession.Lock`.
+* A `GameSession` is removed from the session registry only after its match slot has already been cleared, both
+  under the same match's lock (`PlayerLogoutService.LogoutAsync` → `MatchMembershipService.LeaveAsync`'s
+  `slot.Reset(...)`, then `gameRegistry.Remove(...)` after the lock is released). `PlayerLogoutService` is the
+  single removal path (verified: no other call site removes a `GameSession` from the registry), so a match's
+  `CloseAsync` sweep, itself running under the same lock, can never observe a slot whose `PlayerId` still points
+  to a session the registry no longer has.
 
 ## Related code
 
 * [`Basil.Application/Services/Multiplayer/MatchReportService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchReportService.cs): report construction and winner calculation
 * [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs): player membership, slots, and empty-room lifecycle
+* [`Basil.Application/Backgrounds/MatchRoundEndOutbox.cs`](../../src/Basil.Application/Backgrounds/MatchRoundEndOutbox.cs): ordered, outside-the-lock round-end persistence
 * [`Basil.Web/Routing/Api/MatchRoutes.cs`](../../src/Basil.Web/Routing/Api/MatchRoutes.cs): match-level API routes
 * [`Basil.Web/Routing/Api/MatchSubResourceRoutes.cs`](../../src/Basil.Web/Routing/Api/MatchSubResourceRoutes.cs): match sub-resource routes
 * [`Basil.Application/Sessions/GameSession.cs`](../../src/Basil.Application/Sessions/GameSession.cs): live gameplay state

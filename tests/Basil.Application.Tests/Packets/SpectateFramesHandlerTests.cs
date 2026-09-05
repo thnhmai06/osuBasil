@@ -1,6 +1,7 @@
 using Basil.Application.Packets.Spectating;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
+using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
 namespace Basil.Application.Tests.Packets;
@@ -80,6 +81,24 @@ public class SpectateFramesHandlerTests
 
 		var publish = Assert.Single(playerInputEvents.Publishes);
 		Assert.Equal(host.Id, publish.PlayerId);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): a non-Standard bundle (song change, skip, completion, fail,
+	///     pause, and the like) carries no meaningful replay frames and used to be published to the
+	///     spectating stream as an empty/junk event anyway.
+	/// </summary>
+	[Fact]
+	public async Task Handle_NonStandardAction_SkipsPublish()
+	{
+		var host = MakePlayer(1, "host");
+		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
+		var newSongBundle = (byte[])ValidBundleBytes.Clone();
+		newSongBundle[6] = (byte)ReplayAction.NewSong; // action byte follows extra(4) + frameCount(2)
+
+		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(newSongBundle));
+
+		Assert.Empty(playerInputEvents.Publishes);
 	}
 
 	[Fact]

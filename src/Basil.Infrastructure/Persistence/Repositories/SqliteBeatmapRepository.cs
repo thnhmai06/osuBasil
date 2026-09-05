@@ -57,19 +57,19 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		if (setId is not null)
 		{
-			conditions.Add("b.MapsetId = @MapsetId");
-			parameters.Add("MapsetId", setId);
+			conditions.Add("b.BeatmapsetId = @BeatmapsetId");
+			parameters.Add("BeatmapsetId", setId);
 		}
 
 		if (!includePrivate) conditions.Add("m.IsPrivate = 0");
 
 		await using var connection = Connect();
-		var beatmaps = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+		var beatmaps = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 WHERE {string.Join(" AND ", conditions)}
 			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
 			parameters,
 			splitOn: "Id");
 		return beatmaps.FirstOrDefault();
@@ -99,10 +99,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await connection.ExecuteAsync(
 			"""
 			REPLACE INTO Beatmaps (
-			    Md5, Id, MapsetId, Version, Filename, TotalLength,
+			    Md5, Id, BeatmapsetId, Version, Filename, TotalLength,
 			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
 			) VALUES (
-			    @Md5, @Id, @MapsetId, @Version, @Filename, @TotalLength,
+			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @TotalLength,
 			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
 			)
 			""",
@@ -110,7 +110,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			{
 				resolved.Md5,
 				resolved.Id,
-				MapsetId = resolved.Beatmapset.Id,
+				BeatmapsetId = resolved.Beatmapset.Id,
 				resolved.Version,
 				resolved.Filename,
 				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
@@ -147,16 +147,70 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     star rating, and only sets whose id survived the first pass are included.
 	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		string? query, GameMode? mode, int offset, int amount,
+		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
-		var conditions = new List<string> { "m.IsPrivate = 0" };
-		var parameters = new DynamicParameters();
+		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
+		parameters.Add("Offset", offset);
+		parameters.Add("Amount", amount);
 
-		if (query is not null)
+		await using var connection = Connect();
+		var setIds = (await connection.QueryAsync<int>(
+			$"""
+			 SELECT DISTINCT b.BeatmapsetId FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 {whereClause}
+			 ORDER BY b.BeatmapsetId DESC LIMIT @Amount OFFSET @Offset
+			 """,
+			parameters)).ToList();
+
+		if (setIds.Count == 0) return [];
+
+		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
+			$"""
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0
+			 ORDER BY b.Sr ASC
+			 """,
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
+			new { SetIds = setIds },
+			splitOn: "Id");
+
+		var mapsBySet = rows.GroupBy(b => b.Beatmapset.Id)
+			.ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)[.. g]);
+
+		return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
+	}
+
+	/// <inheritdoc />
+	public async Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+		CancellationToken cancellationToken = default)
+	{
+		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
+
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>(
+			$"""
+			 SELECT COUNT(DISTINCT b.BeatmapsetId) FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 {whereClause}
+			 """,
+			parameters);
+	}
+
+	/// <summary>
+	///     Builds the shared `WHERE` clause and parameters for a beatmapset search, from the same
+	///     filters <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
+	/// </summary>
+	private static string BuildSearchWhereClause(BeatmapsetSearchFilters filters, GameMode? mode,
+		out DynamicParameters parameters)
+	{
+		var conditions = new List<string> { "m.IsPrivate = 0" };
+		parameters = new DynamicParameters();
+		var p = 0;
+
+		if (filters.Keywords is not null)
 		{
 			conditions.Add("(m.Artist LIKE @Query OR m.Title LIKE @Query OR m.Creator LIKE @Query)");
-			parameters.Add("Query", $"%{query}%");
+			parameters.Add("Query", $"%{filters.Keywords}%");
 		}
 
 		if (mode is not null)
@@ -165,35 +219,118 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			parameters.Add("Mode", (int)mode);
 		}
 
-		var whereClause = $"WHERE {string.Join(" AND ", conditions)}";
-		parameters.Add("Offset", offset);
-		parameters.Add("Amount", amount);
+		AppendNumeric(conditions, parameters, ref p, "b.Sr", filters.Stars);
+		AppendNumeric(conditions, parameters, ref p, "b.Ar", filters.Ar);
+		AppendNumeric(conditions, parameters, ref p, "b.Hp", filters.Hp);
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Cs);
+		AppendNumeric(conditions, parameters, ref p, "b.Od", filters.Od);
+		AppendNumeric(conditions, parameters, ref p, "b.Bpm", filters.Bpm);
+		AppendNumeric(conditions, parameters, ref p, "b.TotalLength", filters.LengthSeconds);
+		// osu!mania's key count and every other mode's circle size share the same stored field,
+		// matching real osu!'s own convention -- see BeatmapsetSearchFilters.Keys's own remarks.
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Keys);
+		// Circles/sliders only exist on standard-mode beatmaps (BeatmapObjectCounts's polymorphic
+		// JSON shape); json_extract returns NULL for every other mode, which naturally excludes them
+		// from these comparisons rather than requiring a separate mode check.
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Circles')", filters.Circles);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Sliders')", filters.Sliders);
+		AppendDate(conditions, parameters, ref p, "m.CreatedAt", filters.Created);
+		AppendDate(conditions, parameters, ref p, "m.LastUpdate", filters.Updated);
 
-		await using var connection = Connect();
-		var setIds = (await connection.QueryAsync<int>(
-			$"""
-			 SELECT DISTINCT b.MapsetId FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
-			 {whereClause}
-			 ORDER BY b.MapsetId DESC LIMIT @Amount OFFSET @Offset
-			 """,
-			parameters)).ToList();
+		if (filters.Creator is not null)
+		{
+			conditions.Add("m.Creator = @Creator COLLATE NOCASE");
+			parameters.Add("Creator", filters.Creator);
+		}
 
-		if (setIds.Count == 0) return [];
+		if (filters.Artist is not null)
+		{
+			conditions.Add("m.Artist LIKE @ArtistFilter");
+			parameters.Add("ArtistFilter", $"%{filters.Artist}%");
+		}
 
-		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
-			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
-			 WHERE b.MapsetId IN @SetIds AND m.IsPrivate = 0
-			 ORDER BY b.Sr ASC
-			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
-			new { SetIds = setIds },
-			splitOn: "Id");
+		if (filters.Title is not null)
+		{
+			conditions.Add("m.Title LIKE @TitleFilter");
+			parameters.Add("TitleFilter", $"%{filters.Title}%");
+		}
 
-		var mapsBySet = rows.GroupBy(b => b.Beatmapset.Id)
-			.ToDictionary(g => g.Key, g => (IReadOnlyList<Beatmap>)[.. g]);
+		if (filters.Difficulty is not null)
+		{
+			conditions.Add("b.Version LIKE @DifficultyFilter");
+			parameters.Add("DifficultyFilter", $"%{filters.Difficulty}%");
+		}
 
-		return [.. setIds.Where(mapsBySet.ContainsKey).Select(id => mapsBySet[id])];
+		if (filters.Status is not null)
+		{
+			// Every set on this server reports the same status (Beatmapset.Status is a constant), so
+			// this either matches everything or nothing depending on which status was asked for.
+			conditions.Add(filters.Status == Beatmapset.Status ? "1 = 1" : "1 = 0");
+		}
+
+		return $"WHERE {string.Join(" AND ", conditions)}";
+	}
+
+	/// <summary>Appends a `column &lt;op&gt; @paramName` condition for a numeric search filter, if one was given.</summary>
+	private static void AppendNumeric<T>(List<string> conditions, DynamicParameters parameters, ref int paramIndex,
+		string column, ComparableFilter<T>? filter) where T : struct
+	{
+		if (filter is null) return;
+		var name = $"F{paramIndex++}";
+		conditions.Add($"{column} {ToSql(filter.Operator)} @{name}");
+		parameters.Add(name, filter.Value);
+	}
+
+	/// <summary>
+	///     Appends a condition for a date search filter, if one was given -- see
+	///     <see cref="DateFilter" />'s own remarks for how each operator maps to
+	///     <see cref="DateFilter.RangeStart" />/<see cref="DateFilter.RangeEnd" />.
+	/// </summary>
+	private static void AppendDate(List<string> conditions, DynamicParameters parameters, ref int paramIndex,
+		string column, DateFilter? filter)
+	{
+		if (filter is null) return;
+		var name = $"F{paramIndex++}";
+
+		switch (filter.Operator)
+		{
+			case ComparisonOperator.Equal:
+				conditions.Add($"{column} >= @{name}Start AND {column} < @{name}End");
+				parameters.Add($"{name}Start", filter.RangeStart.UtcDateTime);
+				parameters.Add($"{name}End", filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.GreaterThan:
+				conditions.Add($"{column} >= @{name}");
+				parameters.Add(name, filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.LessThanOrEqual:
+				conditions.Add($"{column} < @{name}");
+				parameters.Add(name, filter.RangeEnd.UtcDateTime);
+				break;
+			case ComparisonOperator.GreaterThanOrEqual:
+				conditions.Add($"{column} >= @{name}");
+				parameters.Add(name, filter.RangeStart.UtcDateTime);
+				break;
+			case ComparisonOperator.LessThan:
+				conditions.Add($"{column} < @{name}");
+				parameters.Add(name, filter.RangeStart.UtcDateTime);
+				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(filter));
+		}
+	}
+
+	private static string ToSql(ComparisonOperator op)
+	{
+		return op switch
+		{
+			ComparisonOperator.Equal => "=",
+			ComparisonOperator.LessThan => "<",
+			ComparisonOperator.LessThanOrEqual => "<=",
+			ComparisonOperator.GreaterThan => ">",
+			ComparisonOperator.GreaterThanOrEqual => ">=",
+			_ => throw new ArgumentOutOfRangeException(nameof(op))
+		};
 	}
 
 	/// <inheritdoc />
@@ -221,23 +358,51 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	{
 		await using var connection = Connect();
 		var whereClause = includePrivate
-			? "WHERE b.MapsetId = @MapsetId"
-			: "WHERE b.MapsetId = @MapsetId AND m.IsPrivate = 0";
-		var rows = await connection.QueryAsync<BeatmapRow, MapsetRow, Beatmap>(
+			? "WHERE b.BeatmapsetId = @BeatmapsetId"
+			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.MapsetId = m.Id
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 {whereClause}
 			 """,
-			(b, m) => b.ToBeatmap(m.ToMapset()),
-			new { MapsetId = setId },
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
+			new { BeatmapsetId = setId },
 			splitOn: "Id");
 		return [.. rows];
+	}
+
+	/// <inheritdoc />
+	/// <remarks>Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />.</remarks>
+	public async Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default)
+	{
+		if (setIds.Count == 0) return new Dictionary<int, int>();
+
+		await using var connection = Connect();
+		var whereClause = includePrivate
+			? "WHERE b.BeatmapsetId IN @SetIds"
+			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<SetBeatmapCount>(
+			$"""
+			 SELECT b.BeatmapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 {whereClause}
+			 GROUP BY b.BeatmapsetId
+			 """,
+			new { SetIds = setIds });
+		return rows.ToDictionary(r => r.SetId, r => r.Count);
 	}
 
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
+	}
+
+	/// <summary>A row DTO for the grouped per-set beatmap count.</summary>
+	private sealed class SetBeatmapCount
+	{
+		public int SetId { get; set; }
+		public int Count { get; set; }
 	}
 
 	/// <summary>
@@ -286,7 +451,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     A mutable row DTO matching the Beatmapsets columns of the shared SELECT, the other half
 	///     of the JOIN.
 	/// </summary>
-	private sealed class MapsetRow
+	private sealed class BeatmapsetRow
 	{
 		public int Id { get; set; }
 		public string Artist { get; set; } = "";
@@ -299,7 +464,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 		/// <summary>Builds a <see cref="Beatmapset" /> from this row.</summary>
 		/// <returns>The domain beatmapset.</returns>
-		public Beatmapset ToMapset()
+		public Beatmapset ToBeatmapset()
 		{
 			return new Beatmapset(Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate);
 		}

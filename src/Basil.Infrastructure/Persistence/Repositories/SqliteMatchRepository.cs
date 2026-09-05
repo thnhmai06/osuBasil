@@ -58,37 +58,43 @@ public sealed class SqliteMatchRepository(
 		Mods mods, DateTime startedAt,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		var id = await connection.QuerySingleAsync<int>(
-			"""
-			INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
-			VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @StartedAt);
-			SELECT last_insert_rowid();
-			""",
-			new
-			{
-				MatchId = matchId,
-				RoundIndex = roundIndex,
-				MapMd5 = mapMd5,
-				Mode = mode,
-				WinCondition = winCondition,
-				TeamType = teamType,
-				Mods = mods,
-				StartedAt = startedAt
-			});
-		logger.LogDebug("Round row created: Id={Id} MatchId={MatchId}", id, matchId);
-		return id;
+		return await SqliteInstrumentation.RecordAsync("match.round.create", async () =>
+		{
+			await using var connection = Connect();
+			var id = await connection.QuerySingleAsync<int>(
+				"""
+				INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
+				VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @StartedAt);
+				SELECT last_insert_rowid();
+				""",
+				new
+				{
+					MatchId = matchId,
+					RoundIndex = roundIndex,
+					MapMd5 = mapMd5,
+					Mode = mode,
+					WinCondition = winCondition,
+					TeamType = teamType,
+					Mods = mods,
+					StartedAt = startedAt
+				});
+			logger.LogDebug("Round row created: Id={Id} MatchId={MatchId}", id, matchId);
+			return id;
+		});
 	}
 
 	/// <inheritdoc />
 	public async Task SetRoundEndedAsync(int roundId, DateTime endedAt, bool aborted,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = Connect();
-		await connection.ExecuteAsync(
-			"UPDATE Rounds SET EndedAt = @EndedAt, Aborted = @Aborted WHERE Id = @RoundId",
-			new { RoundId = roundId, EndedAt = endedAt, Aborted = aborted });
-		logger.LogDebug("Round row ended: RoundId={RoundId} Aborted={Aborted}", roundId, aborted);
+		await SqliteInstrumentation.RecordAsync("match.round.end", async () =>
+		{
+			await using var connection = Connect();
+			await connection.ExecuteAsync(
+				"UPDATE Rounds SET EndedAt = @EndedAt, Aborted = @Aborted WHERE Id = @RoundId",
+				new { RoundId = roundId, EndedAt = endedAt, Aborted = aborted });
+			logger.LogDebug("Round row ended: RoundId={RoundId} Aborted={Aborted}", roundId, aborted);
+		});
 	}
 
 	/// <inheritdoc />
@@ -202,7 +208,7 @@ public sealed class SqliteMatchRepository(
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{
-		return new SqliteConnection(connectionString);
+		return SqliteConnectionFactory.Open(connectionString);
 	}
 
 	/// <summary>

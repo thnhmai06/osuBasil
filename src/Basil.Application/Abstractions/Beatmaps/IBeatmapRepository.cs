@@ -67,7 +67,10 @@ public interface IBeatmapRepository
 	/// <summary>
 	///     Searches beatmaps locally and returns the matching sets, grouped by setId.
 	/// </summary>
-	/// <param name="query">A free-text term matched against artist, title, and creator.</param>
+	/// <param name="filters">
+	///     The parsed search query -- free-text keywords plus any structured filters (star rating,
+	///     BPM, artist, etc.); see <see cref="BeatmapsetSearchFilters" />.
+	/// </param>
 	/// <param name="mode">An optional game mode that every returned beatmap must belong to.</param>
 	/// <param name="offset">The number of matching sets to skip before returning results.</param>
 	/// <param name="amount">The maximum number of sets to return.</param>
@@ -82,7 +85,18 @@ public interface IBeatmapRepository
 	///     excluded, since this is a discovery surface, not a specific-record lookup.
 	/// </remarks>
 	Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		string? query, GameMode? mode, int offset, int amount,
+		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Counts the sets that would be returned by <see cref="SearchAsync" /> for the same filters
+	///     and mode, ignoring paging.
+	/// </summary>
+	/// <param name="filters">The parsed search query -- see <see cref="SearchAsync" />.</param>
+	/// <param name="mode">An optional game mode that every counted beatmap must belong to.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The total number of matching sets, across every page.</returns>
+	Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
@@ -123,4 +137,23 @@ public interface IBeatmapRepository
 	/// </remarks>
 	Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
 		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Counts each set's beatmaps in one query, for callers that need only the count (for
+	///     example a beatmapset listing page) and would otherwise call
+	///     <see cref="FetchAllBySetIdAsync" /> once per set just to read <c>.Count</c>.
+	/// </summary>
+	/// <param name="setIds">The ids of the sets to count.</param>
+	/// <param name="includePrivate">
+	///     <see langword="true" /> to include beatmaps under a private beatmapset in the count;
+	///     otherwise, <see langword="false" /> to exclude them.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     Each requested set's beatmap count, keyed by set id. A set with zero matching beatmaps
+	///     (including one absent from the store entirely) is simply missing from the result rather
+	///     than present with a zero count.
+	/// </returns>
+	Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default);
 }

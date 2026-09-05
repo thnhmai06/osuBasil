@@ -26,7 +26,7 @@ namespace Basil.Application.Sessions.Multiplayer;
 /// <param name="name">The room's name.</param>
 /// <param name="password">The room's password, used in its invitation url.</param>
 /// <param name="mapName">The name of the currently selected beatmap.</param>
-/// <param name="mapId">The id of the currently selected beatmap.</param>
+/// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
 /// <param name="hostId">The id of the userSession hosting the room.</param>
 /// <param name="mode">The game mode the room plays in.</param>
@@ -41,7 +41,7 @@ public sealed class MatchSession(
 	string name,
 	string password,
 	string mapName,
-	int mapId,
+	int? mapId,
 	string mapMd5,
 	int hostId,
 	GameMode mode,
@@ -55,7 +55,7 @@ public sealed class MatchSession(
 	private readonly ConcurrentDictionary<int, byte> _bannedIds = new();
 	private readonly ConcurrentDictionary<int, byte> _invitedIds = new();
 	private readonly ConcurrentDictionary<int, byte> _referees = new();
-	private readonly HashSet<int> _tourneyClients = [];
+	private readonly ConcurrentDictionary<int, byte> _tourneyClients = new();
 
 	/// <summary>The host id a match carries while nobody holds gameplay host.</summary>
 	public static int NoHostId => SystemUserIds.BasilBot;
@@ -64,43 +64,82 @@ public sealed class MatchSession(
 	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
 	///     sequences on this match's slots and settings, held for the duration of any such sequence.
 	/// </summary>
-	public SemaphoreSlim Lock { get; } = new(1, 1);
+	public InstrumentedMatchLock Lock { get; } = new();
+
+	private long _stateVersion = -1;
 
 	/// <summary>
-	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. See
-	///     <see cref="SnapshotChannel{T}" />'s doc comment for why this is never guarded by
-	///     <see cref="Lock" />.
+	///     Allocates the next state version: a monotonically increasing number identifying this
+	///     match's logical position in mutation order, shared across every live-state channel and
+	///     the packet broadcast (ADR-004 4b).
 	/// </summary>
-	public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new();
+	/// <remarks>
+	///     Ordinarily called while holding <see cref="Lock" />, at the moment a mutation completes and
+	///     before releasing it — the value is only meaningful relative to other callers because
+	///     acquiring <see cref="Lock" /> is itself strictly ordered. A caller that allocates a version
+	///     without holding <see cref="Lock" /> (the countdown loop's periodic announcements are the
+	///     one existing case, by design never taking the lock across their delay) still gets a
+	///     correct, race-free value — the allocation itself is atomic — but its relative ordering
+	///     against a concurrent locked mutation is not guaranteed to reflect which happened "first" in
+	///     wall-clock terms, only that neither is lost or double-counted. The caller then builds and
+	///     broadcasts unlocked, passing this version to whichever <see cref="SnapshotChannel{T}.Publish" />
+	///     calls or <see cref="PacketBroadcastGate" /> it uses, so a build that finishes out of order
+	///     relative to a newer mutation's build is dropped instead of reverting live state to
+	///     something stale.
+	/// </remarks>
+	/// <returns>The newly allocated version.</returns>
+	public long NextStateVersion() => Interlocked.Increment(ref _stateVersion);
+
+	/// <summary>
+	///     Gets the sequence gate guarding the match's bancho <c>UpdateMatch</c> packet broadcast
+	///     against out-of-order delivery once building and broadcasting it runs unlocked (ADR-004
+	///     4b) — the same hazard <see cref="SnapshotChannel{T}" /> guards against for SSE snapshots.
+	/// </summary>
+	public SequenceGate PacketBroadcastGate { get; } = new();
+
+	/// <summary>
+	///     Gets the registry of this match's live SSE subscribers, completed as a whole by
+	///     <c>TeardownMatch</c> (ADR-004) so a client still connected when the match closes observes
+	///     end-of-stream instead of hanging or leaking.
+	/// </summary>
+	public SseSubscriberRegistry SseSubscribers { get; } = new();
+
+	/// <summary>
+	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. Safe
+	///     to publish to without holding <see cref="Lock" /> because it is itself gated by a state
+	///     version drawn from <see cref="NextStateVersion" /> (ADR-004 4b) — see
+	///     <see cref="SnapshotChannel{T}" />'s doc comment.
+	/// </summary>
+	public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new("main");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's settings channel.</summary>
-	public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new();
+	public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new("settings");
 
 	/// <summary>
 	///     Gets one <see cref="SnapshotChannel{T}" /> per slot, indexed like <see cref="Slots" />,
 	///     feeding the per-slot "slot" sub-event channel.
 	/// </summary>
 	public IReadOnlyList<SnapshotChannel<MatchSlotView>> SlotSnapshots { get; } =
-		[.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchSlotView>())];
+		[.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchSlotView>("slot"))];
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's host channel.</summary>
-	public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new();
+	public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new("host");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's referee-list channel.</summary>
-	public SnapshotChannel<MatchRefereesView> RefsSnapshot { get; } = new();
+	public SnapshotChannel<MatchRefereesView> RefsSnapshot { get; } = new("refs");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's banlist channel.</summary>
-	public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new();
+	public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new("bans");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's countdown-timer channel.</summary>
-	public SnapshotChannel<MatchTimerView> TimerSnapshot { get; } = new();
+	public SnapshotChannel<MatchTimerLiveView> TimerSnapshot { get; } = new("timer");
 
 	/// <summary>
 	///     Gets the same lock-free full-snapshot and delta state, scoped to the match's slot channel:
 	///     a whole-arrangement dict view, distinct from <see cref="SlotSnapshots" />'s per-index list
 	///     (which still feeds the per-slot "slot" sub-event).
 	/// </summary>
-	public SnapshotChannel<MatchSlotsView> SlotsSnapshot { get; } = new();
+	public SnapshotChannel<MatchSlotsView> SlotsSnapshot { get; } = new("slots");
 
 	/// <summary>
 	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match
@@ -120,15 +159,15 @@ public sealed class MatchSession(
 	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
 	public bool HasGameplayHost => HostId != NoHostId;
 
-	/// <summary>Gets or sets the id of the currently selected beatmap.</summary>
-	public int MapId { get; set; } = mapId;
+	/// <summary>Gets or sets the id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public int? MapId { get; set; } = mapId;
 
 	/// <summary>
 	///     Gets or sets the id of the beatmap that was selected before the current one, updated whenever the room's map
 	///     changes.
 	/// </summary>
 	// ReSharper disable once UnusedAutoPropertyAccessor.Global
-	public int PrevMapId { get; set; }
+	public int? PrevMapId { get; set; }
 
 	/// <summary>Gets or sets the md5 of the currently selected beatmap.</summary>
 	public string MapMd5 { get; set; } = mapMd5;
@@ -279,7 +318,7 @@ public sealed class MatchSession(
 	public IReadOnlyCollection<int> Referees => (IReadOnlyCollection<int>)_referees.Keys;
 
 	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
-	public IReadOnlyCollection<int> TourneyClients => _tourneyClients;
+	public IReadOnlyCollection<int> TourneyClients => (IReadOnlyCollection<int>)_tourneyClients.Keys;
 
 	/// <summary>Gets the ids of the players banned from this match.</summary>
 	public IReadOnlyCollection<int> BannedIds => (IReadOnlyCollection<int>)_bannedIds.Keys;
@@ -377,7 +416,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession whose connection is a tourney client.</param>
 	public void AddTourneyClient(int playerId)
 	{
-		_tourneyClients.Add(playerId);
+		_tourneyClients[playerId] = 0;
 	}
 
 	/// <summary>
@@ -386,7 +425,7 @@ public sealed class MatchSession(
 	/// <param name="playerId">The id of the userSession whose tourney-client connection is being removed.</param>
 	public void RemoveTourneyClient(int playerId)
 	{
-		_tourneyClients.Remove(playerId);
+		_tourneyClients.TryRemove(playerId, out _);
 	}
 
 	/// <summary>

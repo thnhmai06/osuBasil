@@ -3,6 +3,7 @@ using Basil.Application.Packets;
 using Basil.Application.Services.Authentication;
 using Basil.Application.Sessions;
 using Basil.Domain.Login;
+using Basil.Protocol;
 using Basil.Protocol.Packets;
 using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
 
@@ -89,8 +90,9 @@ internal static class BanchoProtocolRoutes
 		- TournamentJoinMatchChannel
 		- TournamentLeaveMatchChannel
 
-		Live multiplayer score updates are also published through the Basil API's
-		`GET /matches/{matchId}/live/{slotIndex}` Server-Sent Events endpoint.
+		Live multiplayer score updates are also published as `gameplay` events through the Basil
+		API's `GET /matches/{matchId}/live` and `GET /matches/{matchId}/live/{slotIndex}`
+		Server-Sent Events endpoints.
 
 		The response body uses the same packet format and contains zero or more packets
 		queued for the client. An empty response body simply means no packets are
@@ -146,12 +148,27 @@ internal static class BanchoProtocolRoutes
 						headers["X-Real-IP"] = remoteIp;
 					}
 
-					var ip = Geolocation.PhraseIpAddress(headers);
-					var loginUseCase = context.RequestServices.GetRequiredService<LoginService>();
-					var loginResult =
-						await loginUseCase.ExecuteAsync(new LoginRequest(body, ip), cancellationToken);
-					response.Headers["cho-token"] = loginResult.OsuToken;
-					responseBody = loginResult.ResponseBody;
+					// LoginService.ExecuteAsync guarantees a LoginResult (never throws), but this still
+					// guards the header assignment itself: whatever precedes the call (header
+					// parsing, DI resolution) is the one remaining path that could skip it and
+					// reproduce the missing-cho-token symptom the 2026-08 investigation traced to
+					// an unhandled exception here.
+					try
+					{
+						var ip = Geolocation.PhraseIpAddress(headers);
+						var loginUseCase = context.RequestServices.GetRequiredService<LoginService>();
+						var loginResult =
+							await loginUseCase.ExecuteAsync(new LoginRequest(body, ip), cancellationToken);
+						response.Headers["cho-token"] = loginResult.OsuToken;
+						responseBody = loginResult.ResponseBody;
+					}
+					catch (Exception ex) when (ex is not OperationCanceledException)
+					{
+						context.RequestServices.GetRequiredService<ILogger<Program>>()
+							.LogError(ex, "Login request failed before a LoginResult could be produced");
+						response.Headers["cho-token"] = "server-error";
+						responseBody = [.. ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)];
+					}
 				}
 				else
 				{

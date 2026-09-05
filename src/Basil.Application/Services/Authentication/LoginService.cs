@@ -1,16 +1,19 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Basil.Application.Abstractions.Login;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Application.Packets;
 using Basil.Application.Services.Bot;
 using Basil.Application.Services.Content;
 using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
@@ -44,6 +47,8 @@ public sealed class LoginService(
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator,
 	SpectatorService spectatorService,
+	PlayerLogoutService playerLogoutService,
+	IPlayerStatusEvents statusEvents,
 	MenuIconService menuIconService,
 	MotdService motdService,
 	IOptions<ServerOptions> serverOptions,
@@ -80,6 +85,29 @@ public sealed class LoginService(
 			return InvalidRequestFailure("invalid-adapters");
 		}
 
+		try
+		{
+			return await ExecuteAuthenticatedAsync(loginForm, request, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// Every prior branch returns a LoginResult with a real cho-token, so the bancho route
+			// handler can set the header unconditionally after awaiting this method — an exception
+			// escaping here was the one path that skipped it (see docs/for-developers/bancho.md and
+			// the 2026-08 investigation into missing cho-token headers under SQLite write
+			// contention). ErrorOccurred is the protocol's own "internal error" login-failure code.
+			logger.LogError(ex, "Login failed with an unexpected exception: Username={Username}",
+				loginForm.Username);
+			return new LoginResult("server-error", Concat(
+				ServerPacketWriter.Notification("A server error occurred while logging in. Please try again."),
+				ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)));
+		}
+	}
+
+	/// <summary>Runs the login checks and session setup once the raw request has parsed successfully.</summary>
+	private async Task<LoginResult> ExecuteAuthenticatedAsync(LoginForm loginForm, LoginRequest request,
+		CancellationToken cancellationToken)
+	{
 		var clientDetails = loginForm.ClientDetails;
 		if (!(clientDetails.IsRunningUnderWine || clientDetails.Adapters.Any(a => a.Length > 0)))
 			return InvalidRequestFailure("empty-adapters");
@@ -96,15 +124,17 @@ public sealed class LoginService(
 					ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
 					ServerPacketWriter.Notification("User already logged in.")));
 
-			// #spec_{userId} is keyed by the persistent user id, stable across relogins — tear down
-			// the bot's spectating relationship on the departing session now, or a relogin would pile
-			// a dead member reference onto the channel the new session's own AddSpectator call
-			// below re-creates.
-			var staleBot = gameSessions.GetByUserId(BotBootstrapService.BotId);
-			if (staleBot is not null) spectatorService.RemoveSpectator(existingSession, staleBot);
-
+			// Routes through the same teardown as a normal logout (match leave under lock,
+			// spectator teardown including the bot's #spec_{userId} watch, channel parts, registry
+			// removal, offline broadcast) instead of only removing the session from the registry.
+			// The old bare Remove() left an evicted session's match slot permanently orphaned —
+			// GhostDisconnectService only scans the registries it's still in, so a session already
+			// evicted here could never be reaped — producing duplicate players after a taskkill
+			// reconnect, "match is locked" from a slot nobody can ever free, and !mp make appearing
+			// to kick its own creator (a stale Match reference tripping the AlreadyInMatch
+			// tolerance in MatchMembershipService.CreateAsync). See RC3 in the 2026 investigation.
 			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
-			gameSessions.Remove(existingSession);
+			await playerLogoutService.LogoutAsync(existingSession, cancellationToken);
 		}
 
 		var user = await users.FetchByNameAsync(loginForm.Username, cancellationToken);
@@ -114,6 +144,16 @@ public sealed class LoginService(
 		if (passwordHash is null
 		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginForm.PasswordMd5), passwordHash))
 			return IncorrectCredentials(loginForm.Username, request.Ip);
+
+		// A deleted account must never be able to log back in, regardless of a correct password
+		// (Issue #4). Reported as ordinary incorrect credentials rather than a distinct reason, so an
+		// unauthenticated caller can't use login to probe whether a given username was deleted.
+		if (user.DeletedAt is not null)
+		{
+			logger.LogDebug("Login rejected: account deleted. UserId={UserId} Username={Username}",
+				user.Id, user.Name);
+			return IncorrectCredentials(loginForm.Username, request.Ip);
+		}
 
 		if (loginForm.OsuVersion.Stream == OsuStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
@@ -182,11 +222,16 @@ public sealed class LoginService(
 		{
 			if (!channel.CanRead(user.Privilege) || channel.Name == "#lobby") continue;
 
-			data.Add(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+			// Built once and shared by reference: the packet's content is identical for every
+			// recipient (channel name/topic/player-count, not who's reading it), and Enqueue never
+			// mutates what it's given, so rebuilding it per recipient was pure allocation waste that
+			// scaled with online session count on every single login.
+			var channelInfo = ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
+			data.Add(channelInfo);
 
 			foreach (var other in gameSessions.All)
 				if (channel.CanRead(other.Privilege))
-					other.Enqueue(ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount));
+					other.Enqueue(channelInfo);
 		}
 
 		data.Add(ServerPacketWriter.ChannelInfoEnd());
@@ -271,6 +316,10 @@ public sealed class LoginService(
 		var bot = gameSessions.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null) spectatorService.AddSpectator(session, bot);
 
+		if (statusEvents.HasSubscribers)
+			statusEvents.PublishStatus(session.Id,
+				JsonSerializer.SerializeToUtf8Bytes(PlayerStatusView.Build(session), BasilJsonOptions.Instance));
+
 		logger.LogInformation("+ User logged in: UserId={UserId} Username={Username} Ip={Ip} Country={Country}",
 			session.Id, session.Name, request.Ip, session.Country);
 		return new LoginResult(session.Token, Concat([.. data]));
@@ -289,8 +338,8 @@ public sealed class LoginService(
 	}
 
 	/// <summary>
-	///     Reads the configured MOTD text and returns it as a notification packet, or
-	///     <see langword="null" /> when none is configured.
+	///     Returns the configured MOTD text as a notification packet, or <see langword="null" />
+	///     when none is configured.
 	/// </summary>
 	/// <param name="cancellationToken">A token that cancels the read.</param>
 	/// <returns>
@@ -299,7 +348,7 @@ public sealed class LoginService(
 	private async Task<byte[]?> WelcomeNotification(CancellationToken cancellationToken)
 	{
 		var text = await motdService.GetTextAsync(cancellationToken);
-		return text is not null ? ServerPacketWriter.Notification(text) : null;
+		return !string.IsNullOrWhiteSpace(text) ? ServerPacketWriter.Notification(text) : null;
 	}
 
 	/// <summary>

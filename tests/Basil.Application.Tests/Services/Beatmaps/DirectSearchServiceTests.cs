@@ -1,4 +1,5 @@
 using Basil.Application.Abstractions.Beatmaps;
+using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -13,12 +14,13 @@ public class DirectSearchServiceTests
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly IMirrorSearchClient _mirrorClient = Substitute.For<IMirrorSearchClient>();
-	private MirrorOptions _mirrorOptions = new();
+	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
 
 	private DirectSearchService MakeService()
 	{
-		return new DirectSearchService(_beatmaps, _mirrorClient, Options.Create(_mirrorOptions),
-			NullLogger<DirectSearchService>.Instance);
+		var mirror = new MirrorService(_settings, Options.Create(new MirrorOptions()),
+			NullLogger<MirrorService>.Instance);
+		return new DirectSearchService(_beatmaps, _mirrorClient, mirror, NullLogger<DirectSearchService>.Instance);
 	}
 
 	[Theory]
@@ -28,43 +30,47 @@ public class DirectSearchServiceTests
 	// puts on the wire, or the sentinel never matches and the filter/tab silently returns nothing.
 	[InlineData("Top Rated")]
 	[InlineData("Most Played")]
-	public async Task NonTextQuery_PassesNullQueryThrough(string query)
+	public async Task NonTextQuery_PassesEmptyFiltersThrough(string query)
 	{
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest(query, -1, 0));
 
-		await _beatmaps.Received(1).SearchAsync(null, null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
-	public async Task TextQuery_PassedThrough()
+	public async Task TextQuery_ParsedAsKeywords()
 	{
-		_beatmaps.SearchAsync("camellia", null, 0, 100).Returns([]);
+		var expected = new BeatmapsetSearchFilters("camellia");
+		_beatmaps.SearchAsync(expected, null, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("camellia", -1, 0));
 
-		await _beatmaps.Received(1).SearchAsync("camellia", null, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1).SearchAsync(expected, null, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task ModeNotMinusOne_FiltersByMode()
 	{
-		_beatmaps.SearchAsync(null, GameMode.Taiko, 0, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, GameMode.Taiko, 0, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("Newest", 1, 0));
 
-		await _beatmaps.Received(1).SearchAsync(null, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, GameMode.Taiko, 0, 100, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task PageNum_MultipliedByOneHundredForOffset()
 	{
-		_beatmaps.SearchAsync(null, null, 200, 100).Returns([]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 200, 100).Returns([]);
 
 		await MakeService().SearchAsync(new DirectSearchRequest("Newest", -1, 2));
 
-		await _beatmaps.Received(1).SearchAsync(null, null, 200, 100, Arg.Any<CancellationToken>());
+		await _beatmaps.Received(1)
+			.SearchAsync(BeatmapsetSearchFilters.Empty, null, 200, 100, Arg.Any<CancellationToken>());
 	}
 
 	// ---- SearchFormattedAsync: orchestrates local vs. mirror ----
@@ -72,7 +78,8 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_NoSearchMirrorConfigured_UsesLocal()
 	{
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 
 		var response = await MakeService().SearchFormattedAsync(new DirectSearchRequest("Newest", -1, 0));
 
@@ -84,8 +91,9 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_MirrorConfiguredAndSucceeds_UsesMirrorNotLocal()
 	{
-		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_settings.GetAsync("Mirror:SearchEndpoint", Arg.Any<CancellationToken>()).Returns("https://mirror.local/search");
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		var mirrorSet = new MirrorSearchSet("MirrorArtist", "MirrorTitle", "MirrorCreator", 4,
 			"2020-01-01 00:00:00", 200, true, [new MirrorSearchBeatmap(5.5, "Insane", 4, 8, 9, 5, 0)]);
 		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
@@ -103,8 +111,9 @@ public class DirectSearchServiceTests
 	[Fact]
 	public async Task SearchFormattedAsync_MirrorConfiguredButFails_FallsBackToLocal()
 	{
-		_mirrorOptions = new MirrorOptions { SearchEndpoint = "https://mirror.local/search" };
-		_beatmaps.SearchAsync(null, null, 0, 100).Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
+		_settings.GetAsync("Mirror:SearchEndpoint", Arg.Any<CancellationToken>()).Returns("https://mirror.local/search");
+		_beatmaps.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100)
+			.Returns([[MakeBeatmap(1, 100, "Hyper", 6.5)]]);
 		_mirrorClient.SearchAsync("https://mirror.local/search", null, null, 100, 0, Arg.Any<CancellationToken>())
 			.Returns((IReadOnlyList<MirrorSearchSet>?)null);
 
@@ -116,11 +125,11 @@ public class DirectSearchServiceTests
 	private static Beatmap MakeBeatmap(int id, int setId, string version, double diff, string artist = "Artist",
 		string title = "Title")
 	{
-		var mapset = new Beatmapset(setId, artist, title, "cmyui",
+		var beatmapset = new Beatmapset(setId, artist, title, "cmyui",
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc),
 			new DateTime(2020, 3, 15, 10, 30, 0, DateTimeKind.Utc));
 		return new Beatmap(
-			new string('0', 32), id, mapset, version, "file.osu",
+			new string('0', 32), id, beatmapset, version, "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, diff),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

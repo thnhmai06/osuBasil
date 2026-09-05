@@ -24,7 +24,7 @@ public class FileSystemReplayStorageTests
 				{
 					ReplaysPath = replaysPath,
 					AvatarsPath = replaysPath,
-					MapsetsPath = replaysPath,
+					BeatmapsetsPath = replaysPath,
 					MenuSeasonalsPath = replaysPath,
 					MenuBannersPath = replaysPath,
 					FaqsPath = replaysPath,

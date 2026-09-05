@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
+using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
+using Basil.Web.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -67,6 +70,24 @@ public sealed class AdminKeyAuthenticationHandler(
 		var principal = new ClaimsPrincipal(identity);
 		var ticket = new AuthenticationTicket(principal, Scheme.Name);
 		return AuthenticateResult.Success(ticket);
+	}
+
+	/// <summary>
+	///     Writes a proper enveloped error body alongside the `401 Unauthorized` status, for both a
+	///     missing and an invalid admin key -- the base implementation only sets the status code,
+	///     leaving the response body empty.
+	/// </summary>
+	/// <param name="properties">Authentication properties passed through to the base challenge handling.</param>
+	protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
+	{
+		await base.HandleChallengeAsync(properties);
+
+		var envelope = new Envelope<object?>(false, StatusCodes.Status401Unauthorized,
+			"Missing or invalid admin key.", null, null, null, DateTimeOffset.UtcNow);
+		Response.ContentType = "application/json";
+		await Response.WriteAsync(
+			JsonSerializer.Serialize(envelope, BasilJsonOptions.Instance),
+			Context.RequestAborted);
 	}
 }
 

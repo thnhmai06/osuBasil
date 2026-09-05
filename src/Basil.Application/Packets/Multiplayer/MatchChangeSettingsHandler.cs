@@ -44,8 +44,13 @@ public sealed class MatchChangeSettingsHandler(
 		    gameSession.Id != match.HostId) return;
 
 		await match.Lock.WaitAsync(cancellationToken);
+		long version;
 		try
 		{
+			// Re-checked under the lock: host status can only change under this same lock, so a
+			// sender who lost host while waiting for it must not still act with host authority.
+			if (gameSession.Id != match.HostId) return;
+
 			var freemods = matchData.FreeMods;
 			if (freemods != match.Freemods)
 			{
@@ -74,13 +79,13 @@ public sealed class MatchChangeSettingsHandler(
 			{
 				match.UnreadyPlayers();
 				match.PrevMapId = match.MapId;
-				match.MapId = -1;
+				match.MapId = null;
 				match.MapMd5 = "";
-				match.MapName = "";
+				match.MapName = MatchControlService.NoBeatmapSelectedName;
 				match.UnresolvedMapMd5 = null;
 				matchMembership.CancelQueuedAutoStart(match);
 			}
-			else if (match.MapId == -1)
+			else if (match.MapId is null)
 			{
 				// Always re-attempt the lookup (not gated on UnresolvedMapMd5) so a beatmap ingested
 				// later while the room sits idle resolves silently on the next settings packet. Only
@@ -138,11 +143,13 @@ public sealed class MatchChangeSettingsHandler(
 
 			match.Name = matchData.Name;
 			matchMembership.SyncChannelTopic(match);
-			await matchMembership.EnqueueStateAsync(match, cancellationToken: cancellationToken);
+			version = match.NextStateVersion();
 		}
 		finally
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
 	}
 }

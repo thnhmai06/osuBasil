@@ -1,9 +1,7 @@
 using System.Collections.Frozen;
 using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Services.Beatmaps;
 
@@ -15,7 +13,7 @@ namespace Basil.Application.Services.Beatmaps;
 ///     <see cref="SearchAsync" />/<see cref="Format" /> query the local beatmap database only, kept
 ///     exactly as before mirror search existed. <see cref="SearchFormattedAsync" /> is the
 ///     orchestrator every route should call instead: it queries the mirror when
-///     <see cref="MirrorOptions.HasSearchMirror" /> is set (falling back to local on mirror
+///     <see cref="MirrorEndpoints.HasSearchMirror" /> is set (falling back to local on mirror
 ///     failure), or local otherwise. The metadata pipe-replacement quirk applies to both sources: it
 ///     protects the pipe-delimited wire format from any artist, title, or difficulty name that
 ///     happens to contain a literal <c>|</c>.
@@ -23,7 +21,7 @@ namespace Basil.Application.Services.Beatmaps;
 public sealed class DirectSearchService(
 	IBeatmapRepository beatmaps,
 	IMirrorSearchClient mirrorSearchClient,
-	IOptions<MirrorOptions> mirrorOptions,
+	MirrorService mirrorService,
 	ILogger<DirectSearchService> logger)
 {
 	/// <summary>
@@ -57,13 +55,15 @@ public sealed class DirectSearchService(
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
 		DirectSearchRequest request, CancellationToken cancellationToken = default)
 	{
-		var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;
+		var filters = NonTextQueries.Contains(request.Query)
+			? BeatmapsetSearchFilters.Empty
+			: BeatmapsetSearchQueryParser.Parse(request.Query);
 		GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
 
-		var results = await beatmaps.SearchAsync(queryText, mode, request.PageNum * PageSize, PageSize,
+		var results = await beatmaps.SearchAsync(filters, mode, request.PageNum * PageSize, PageSize,
 			cancellationToken);
 		logger.LogDebug("osu!direct search: Query={Query} Mode={Mode} PageNum={PageNum} ResultCount={ResultCount}",
-			queryText, mode, request.PageNum, results.Count);
+			request.Query, mode, request.PageNum, results.Count);
 		return results;
 	}
 
@@ -84,7 +84,7 @@ public sealed class DirectSearchService(
 	public async Task<string> SearchFormattedAsync(DirectSearchRequest request,
 		CancellationToken cancellationToken = default)
 	{
-		var mirror = mirrorOptions.Value;
+		var mirror = await mirrorService.GetAsync(cancellationToken);
 		if (mirror.HasSearchMirror)
 		{
 			var queryText = NonTextQueries.Contains(request.Query) ? null : request.Query;

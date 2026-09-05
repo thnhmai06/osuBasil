@@ -8,6 +8,7 @@ using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Abstractions.Social;
 using Basil.Application.Abstractions.Users;
+using Basil.Application.Backgrounds;
 using Basil.Application.Configurations;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Content;
@@ -17,6 +18,7 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Channels;
 using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
@@ -365,10 +367,11 @@ public class TcpIrcConnectionTests
 		var matchMembership = new MatchMembershipService(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
 			gameRegistry, ircRegistry, channelMembership, new NotSupportedMatchRepository(),
+			new NoOpMatchRoundEndOutbox(),
 			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
 			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			NullLogger<PlayerLogoutService>.Instance);
+			new NoOpPlayerStatusEvents(), NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(GameSession session)
@@ -472,6 +475,11 @@ public class TcpIrcConnectionTests
 
 		public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}
@@ -640,8 +648,14 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
-		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(string? query, GameMode? mode, int offset,
-			int amount, CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}
@@ -661,72 +675,144 @@ public class TcpIrcConnectionTests
 		{
 			throw new NotSupportedException();
 		}
+
+		public Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+			bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
 	}
 
 	/// <summary>No-op event bus — these tests never inspect the SSE live layer.</summary>
+	private sealed class NoOpMatchRoundEndOutbox : IMatchRoundEndOutbox
+	{
+		public void Enqueue(RoundEndWrite write)
+		{
+		}
+
+		public Task DrainAsync(int matchId, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+	}
+
 	private sealed class NoOpMatchLiveEvents : IMatchLiveEvents
 	{
-		public bool HasPlayerScoreSubscribers => false;
+		private sealed class NoOpSubscription : IDisposable
+		{
+			public void Dispose()
+			{
+			}
+		}
 
-		public event Action<int, byte[]>? MainPublished;
-		public event Action<int, string, byte[]>? PlayerScorePublished;
-		public event Action<int, byte[]>? SettingsPublished;
-		public event Action<int, int, byte[]>? SlotPublished;
-		public event Action<int, byte[]>? HostPublished;
-		public event Action<int, byte[]>? RefsPublished;
-		public event Action<int, byte[]>? BansPublished;
-		public event Action<int, byte[]>? TimerPublished;
-		public event Action<int, byte[]>? SlotsPublished;
-		public event Action<int, byte[]>? ChatPublished;
+		public bool HasPlayerScoreSubscribers(int matchDbId)
+		{
+			return false;
+		}
+
+		public IDisposable SubscribeMain(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
+		}
 
 		public void PublishMain(int matchDbId, byte[] payload)
 		{
-			MainPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribePlayerScore(int matchDbId, Action<string, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
 		{
-			PlayerScorePublished?.Invoke(matchDbId, playerName, payload);
+		}
+
+		public IDisposable SubscribeSettings(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSettings(int matchDbId, byte[] payload)
 		{
-			SettingsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlot(int matchDbId, Action<int, byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
 		{
-			SlotPublished?.Invoke(matchDbId, slotIndex, payload);
+		}
+
+		public IDisposable SubscribeHost(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishHost(int matchDbId, byte[] payload)
 		{
-			HostPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeRefs(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishRefs(int matchDbId, byte[] payload)
 		{
-			RefsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeBans(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishBans(int matchDbId, byte[] payload)
 		{
-			BansPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeTimer(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishTimer(int matchDbId, byte[] payload)
 		{
-			TimerPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeSlots(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishSlots(int matchDbId, byte[] payload)
 		{
-			SlotsPublished?.Invoke(matchDbId, payload);
+		}
+
+		public IDisposable SubscribeChat(int matchDbId, Action<byte[]> handler)
+		{
+			return new NoOpSubscription();
 		}
 
 		public void PublishChat(int matchDbId, byte[] payload)
 		{
-			ChatPublished?.Invoke(matchDbId, payload);
+		}
+
+		public void Forget(int matchDbId)
+		{
+		}
+	}
+
+	private sealed class NoOpPlayerStatusEvents : IPlayerStatusEvents
+	{
+		public bool HasSubscribers => false;
+
+		public event Action<int, byte[]>? StatusPublished;
+
+		public void PublishStatus(int playerId, byte[] payload)
+		{
 		}
 	}
 }

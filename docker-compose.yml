@@ -7,7 +7,9 @@ services:
     volumes:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
-      - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
+      - ./src/Basil.Web/Data/appsettings.json:/app/Data/appsettings.json:ro
+      - ./src/Basil.Application/Data/Localization:/app/Data/Localization:ro
+      - ./data/certs/basil.local.pfx:/app/Data/basil.local.pfx:ro
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     restart: unless-stopped

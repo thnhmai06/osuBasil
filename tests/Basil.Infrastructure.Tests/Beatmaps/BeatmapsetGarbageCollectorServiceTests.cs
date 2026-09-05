@@ -10,38 +10,38 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 ///     tested without waiting out the real interval.
 /// </summary>
 [Collection(BeatmapFilesystemTestCollection.Name)]
-public class MapsetGarbageCollectorServiceTests : IDisposable
+public class BeatmapsetGarbageCollectorServiceTests : IDisposable
 {
-	private readonly string _mapsetsPath;
-	private readonly MapsetGarbageCollectorService _service;
+	private readonly string _beatmapsetsPath;
+	private readonly BeatmapsetGarbageCollectorService _service;
 
-	public MapsetGarbageCollectorServiceTests()
+	public BeatmapsetGarbageCollectorServiceTests()
 	{
-		_mapsetsPath = Path.Combine(Path.GetTempPath(), "obt-gc-tests-" + Guid.NewGuid());
-		Directory.CreateDirectory(_mapsetsPath);
+		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-gc-tests-" + Guid.NewGuid());
+		Directory.CreateDirectory(_beatmapsetsPath);
 		var options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "",
 			AvatarsPath = "",
-			MapsetsPath = _mapsetsPath,
+			BeatmapsetsPath = _beatmapsetsPath,
 			MenuSeasonalsPath = "",
 			MenuBannersPath = "",
 			FaqsPath = "", CachePath = ""
 		});
-		_service = new MapsetGarbageCollectorService(options, NullLogger<MapsetGarbageCollectorService>.Instance);
+		_service = new BeatmapsetGarbageCollectorService(options, NullLogger<BeatmapsetGarbageCollectorService>.Instance);
 	}
 
 	public void Dispose()
 	{
-		Directory.Delete(_mapsetsPath, true);
+		Directory.Delete(_beatmapsetsPath, true);
 	}
 
 	[Fact]
 	public async Task StartAsync_DeletesMarkedFoldersImmediately_LeavesLiveFoldersAlone()
 	{
-		var deletedFolder = Path.Combine(_mapsetsPath,
+		var deletedFolder = Path.Combine(_beatmapsetsPath,
 			"5 Artist - Title" + BeatmapIngestionService.DeletedFolderInfix + "abc");
-		var liveFolder = Path.Combine(_mapsetsPath, "6 Artist - Title");
+		var liveFolder = Path.Combine(_beatmapsetsPath, "6 Artist - Title");
 		Directory.CreateDirectory(deletedFolder);
 		Directory.CreateDirectory(liveFolder);
 

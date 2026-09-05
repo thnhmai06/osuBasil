@@ -33,5 +33,7 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
 		{
 			match.Lock.Release();
 		}
+
+		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 	}
 }

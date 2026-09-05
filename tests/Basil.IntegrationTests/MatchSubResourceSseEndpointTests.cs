@@ -4,7 +4,9 @@ using System.Text.Json;
 using Basil.Application.Abstractions.Multiplayer;
 using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
+using Basil.Application.Formats;
 using Basil.Application.Services;
+using Basil.Application.Services.Bot;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
@@ -114,6 +116,71 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		return await ReadNextEventAsync(reader, cts.Token);
 	}
 
+	/// <summary>
+	///     Like <see cref="ReceiveAfterTriggerAsync" /> but for a stream with no warm-snapshot
+	///     precondition (event-oriented, nothing to send before the first real event) that also
+	///     requires the admin key: connects, primes the connection until it flushes, discards that
+	///     priming event, then performs <paramref name="trigger" /> and reads the event it produces.
+	/// </summary>
+	/// <remarks>
+	///     A purely event-oriented stream flushes no headers until its first item is actually written,
+	///     so simply awaiting the connect before publishing anything would deadlock -- the connect
+	///     never completes on its own. <paramref name="prime" /> fires repeatedly (each firing that
+	///     lands before the endpoint's subscription is registered, or before a buffering stream's next
+	///     flush, is silently absorbed into that first flush) until the connect finally completes.
+	///     Both callbacks must not depend on an HTTP round trip through this same
+	///     <see cref="WebApplicationFactory{T}" /> -- an in-process DI call is safe, and safe to repeat
+	///     for <paramref name="prime" />.
+	/// </remarks>
+	private async Task<(string? EventType, string Data)> ReceiveAfterTriggerAsyncNoWarmup(string path,
+		Func<Task> prime, Func<Task> trigger)
+	{
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Get, path)
+		{
+			Headers = { Host = "api.test.local", Authorization = new AuthenticationHeaderValue("Bearer", AdminKey) }
+		};
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+		// Each retry waits a full flush cycle (plus margin) rather than polling tightly: a
+		// buffering stream's first flush can take up to its flush interval even after the
+		// subscription registers, so a short poll would fire many redundant primes into that
+		// same pending flush before noticing it landed.
+		var connectTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+		while (!connectTask.IsCompleted)
+		{
+			await prime();
+			await Task.WhenAny(connectTask, Task.Delay(TimeSpan.FromMilliseconds(1200), cts.Token));
+		}
+
+		using var response = await connectTask;
+		response.EnsureSuccessStatusCode();
+		await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+		using var reader = new StreamReader(stream);
+
+		await ReadNextEventAsync(reader, cts.Token); // discard the priming flush
+		await trigger();
+		return await ReadNextEventAsync(reader, cts.Token);
+	}
+
+	/// <summary>Connects an SSE stream and returns its first event -- the warm full snapshot, unread.</summary>
+	/// <remarks>Same "channel must already be warm" precondition as <see cref="ReceiveAfterTriggerAsync" />.</remarks>
+	private async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(string path)
+	{
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+		var client = _factory.CreateClient();
+		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+		using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+		response.EnsureSuccessStatusCode();
+		await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+		using var reader = new StreamReader(stream);
+
+		return await ReadNextEventAsync(reader, cts.Token);
+	}
+
 	private static async Task<(string? EventType, string Data)> ReadNextEventAsync(StreamReader reader,
 		CancellationToken cancellationToken)
 	{
@@ -183,6 +250,9 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
+		var userRepository = (NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>();
+		userRepository.Add(new User(111, "warm", Country.Xx, UserPrivileges.Unrestricted, default));
+		userRepository.Add(new User(777, "target", Country.Xx, UserPrivileges.Unrestricted, default));
 
 		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		warmRequest.Content = JsonContent.Create(new { userIds = InputValue });
@@ -211,19 +281,19 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var otherSlot = currentSlot == 0 ? 1 : 0;
 
 		// Warm SlotsSnapshot.Latest with a no-op re-team of the userSession's own current slot.
-		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+		var warmRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 		warmRequest.Content = JsonContent.Create(new
 		{
-			slots = new[] { new { index = currentSlot, userId = player.Id } }
+			slots = new[] { new { index = currentSlot + 1, userId = player.Id } }
 		});
 		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/slots/live", async () =>
 		{
-			var request = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/slots");
+			var request = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/slots");
 			request.Content = JsonContent.Create(new
 			{
-				slots = new[] { new { index = otherSlot, userId = player.Id } }
+				slots = new[] { new { index = otherSlot + 1, userId = player.Id } }
 			});
 			(await client.SendAsync(request)).EnsureSuccessStatusCode();
 		});
@@ -250,6 +320,67 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		Assert.Equal("timer", eventType);
 		Assert.Contains("\"running\":false", data);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Remove secondsRemaining from the timer SSE stream to prevent
+	///     network spam; client calculation should rely on startTime and endTime."
+	/// </summary>
+	[Fact]
+	public async Task Timer_Sse_InitialSnapshotOmitsSecondsRemaining()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+
+		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
+		startRequest.Content = JsonContent.Create(new { seconds = 120 });
+		(await client.SendAsync(startRequest)).EnsureSuccessStatusCode();
+
+		var (eventType, data) = await ConnectAndReadOneEventAsync($"/matches/{matchId}/timer/live");
+
+		Assert.Equal("timer", eventType);
+		Assert.DoesNotContain("secondsRemaining", data);
+		Assert.Contains("\"startedAt\"", data);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Buffer messages per connection and send them every second to
+	///     reduce load." Two chat lines from the same request publish an instant apart, well inside the
+	///     flush window, so they arrive as one combined `chat` event carrying both instead of two
+	///     separate events.
+	/// </summary>
+	[Fact]
+	public async Task Chat_Sse_BuffersLinesFromOneRequestIntoOneFlush()
+	{
+		var client = _factory.CreateClient();
+		var matchId = await CreateMatchAsync(client);
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var sender = new UserBrief(1, "Alice", Country.Us);
+
+		var (eventType, data) = await ReceiveAfterTriggerAsyncNoWarmup($"/matches/{matchId}/chat/live",
+			() =>
+			{
+				events.PublishChat(matchId,
+					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "priming",
+						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
+				return Task.CompletedTask;
+			},
+			() =>
+			{
+				events.PublishChat(matchId,
+					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "first",
+						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
+				events.PublishChat(matchId,
+					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "second",
+						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
+				return Task.CompletedTask;
+			});
+
+		Assert.Equal("chat", eventType);
+		var messages = JsonSerializer.Deserialize<JsonElement[]>(data);
+		Assert.Equal(2, messages!.Length);
+		Assert.Equal("first", messages[0].GetProperty("text").GetString());
+		Assert.Equal("second", messages[1].GetProperty("text").GetString());
 	}
 
 	/// <summary>Auto-incrementing in-memory stand-in for the Matches/Rounds tables — nothing persisted.</summary>
@@ -333,14 +464,22 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	/// </summary>
 	private sealed class NoopUserRepository : IUserRepository
 	{
+		private readonly Dictionary<int, User> _byId = new();
+
 		public Task<User?> FetchByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.GetValueOrDefault(id));
 		}
 
 		public Task<User?> FetchByNameAsync(string name, CancellationToken cancellationToken = default)
 		{
-			return Task.FromResult<User?>(null);
+			return Task.FromResult(_byId.Values.FirstOrDefault(u => u.Name == name));
+		}
+
+		/// <summary>Registers a user so <see cref="FetchByIdAsync" /> resolves it instead of "no account".</summary>
+		public void Add(User user)
+		{
+			_byId[user.Id] = user;
 		}
 
 		public Task<string?> FetchPasswordHashAsync(int id, CancellationToken cancellationToken = default)
@@ -355,6 +494,11 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		public Task UpdatePrivilegesAsync(int id, UserPrivileges privilege,
 			CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

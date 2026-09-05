@@ -1,3 +1,4 @@
+using Basil.Application.Formats;
 using Basil.Application.Services.Content;
 using Basil.Domain.Content;
 using Basil.Web.Auth;
@@ -63,13 +64,16 @@ internal static class MenuBannerRoutes
 				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>(StatusCodes.Status201Created)
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-			.WithExample(StatusCodes.Status201Created, SampleView());
+			.WithExample(StatusCodes.Status201Created, SampleView())
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing 'url' form field."));
 
-		group.MapGet("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
+		group.MapGet("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
 				CancellationToken cancellationToken) =>
 			{
 				var banner = await banners.FetchByIdAsync(bannerId, cancellationToken);
-				return banner is null ? Results.NotFound() : Results.Json(ToView(banner, banners));
+				return banner is null
+					? Results.NotFound(new ErrorResponse("Banner not found."))
+					: Results.Json(ToView(banner, banners));
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMenuBanner")
@@ -77,9 +81,10 @@ internal static class MenuBannerRoutes
 			.WithDescription("Returns `404 Not Found` if the banner doesn't exist.")
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerView>()
+			.WithExample(StatusCodes.Status200OK, SampleView())
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapMethods("/menu/banners/{bannerId:int}", [HttpMethods.Put, HttpMethods.Patch], HandleUpdate)
+		group.MapMethods("/menu/banners/{bannerId:numericid}", [HttpMethods.Put, HttpMethods.Patch], HandleUpdate)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("updateMenuBanner")
@@ -99,14 +104,17 @@ internal static class MenuBannerRoutes
 				MultipartField.Text("expires", false))
 			.Produces<MenuBannerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, SampleView())
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Invalid 'begins' form field."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapDelete("/menu/banners/{bannerId:int}", async (int bannerId, MenuBannerService banners,
+		group.MapDelete("/menu/banners/{bannerId:numericid}", async (int bannerId, MenuBannerService banners,
 				ILogger<MenuBannerRoutesLog> logger, CancellationToken cancellationToken) =>
 			{
-				if (!await banners.DeleteAsync(bannerId, cancellationToken)) return Results.NotFound();
+				if (!await banners.DeleteAsync(bannerId, cancellationToken))
+					return Results.NotFound(new ErrorResponse("Banner not found."));
 				logger.LogInformation("Menu banner deleted via admin API: Id={Id}", bannerId);
-				return Results.Json(new MenuBannerDeletedView(bannerId, true));
+				return Results.Json(new MenuBannerDeletedView(bannerId));
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
@@ -116,6 +124,7 @@ internal static class MenuBannerRoutes
 			                 "if the banner doesn't exist." + AdminKeyNote)
 			.WithTags("Menu Banners")
 			.Produces<MenuBannerDeletedView>()
+			.WithExample(StatusCodes.Status200OK, new MenuBannerDeletedView(1))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 
@@ -190,7 +199,7 @@ internal static class MenuBannerRoutes
 			updated = await banners.UpdateAsync(bannerId, image, url, begins, expires, cancellationToken);
 		}
 
-		if (updated is null) return Results.NotFound();
+		if (updated is null) return Results.NotFound(new ErrorResponse("Banner not found."));
 
 		logger.LogInformation("Menu banner updated via admin API: Id={Id}", bannerId);
 		return Results.Json(ToView(updated, banners));
@@ -219,13 +228,13 @@ internal static class MenuBannerRoutes
 
 	private static MenuBannerView ToView(MenuBanner banner, MenuBannerService banners)
 	{
-		return new MenuBannerView(banner.Id, banners.ResolveImageUrl(banner.Image), banner.Url, banner.Begins,
-			banner.Expires, banner.IsCurrent(DateTime.UtcNow));
+		return new MenuBannerView(banner.Id, banners.ResolveImageUrl(banner.Image), banner.Url,
+			banner.Begins?.AsUtcOffset(), banner.Expires?.AsUtcOffset(), banner.IsCurrent(DateTime.UtcNow));
 	}
 
 	private static MenuBannerView SampleView()
 	{
-		var begins = DateTime.Parse("2026-06-01T00:00:00Z");
+		var begins = DateTimeOffset.Parse("2026-06-01T00:00:00Z");
 		return new MenuBannerView(1, "https://assets.example.com/menu/banners/summer.png",
 			"https://example.com/summer-event", begins, begins.AddDays(30), true);
 	}
@@ -235,10 +244,10 @@ internal static class MenuBannerRoutes
 		int Id,
 		string Image,
 		string Url,
-		DateTime? Begins,
-		DateTime? Expires,
+		DateTimeOffset? Begins,
+		DateTimeOffset? Expires,
 		bool IsCurrent);
 
 	/// <summary>Confirmation body for `DELETE /menu/banners/{bannerId}`.</summary>
-	public sealed record MenuBannerDeletedView(int Id, bool Deleted);
+	public sealed record MenuBannerDeletedView(int Id);
 }

@@ -64,6 +64,7 @@ public static class DependencyInjection
 		services.AddSingleton<MenuSeasonalService>();
 		services.AddSingleton<MenuIconService>();
 		services.AddSingleton<MenuBannerService>();
+		services.AddSingleton<MirrorService>();
 		services.AddSingleton<MotdService>();
 
 		services.AddSingleton<IPacketHandler, PingHandler>();
@@ -116,6 +117,10 @@ public static class DependencyInjection
 		services.AddSingleton<PacketDispatcher>();
 
 		services.AddHostedService<GhostDisconnectService>();
+
+		services.AddSingleton<MatchRoundEndOutbox>();
+		services.AddSingleton<IMatchRoundEndOutbox>(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
+		services.AddHostedService(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
 
 		return services;
 	}

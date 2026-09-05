@@ -90,6 +90,18 @@ public sealed class ChatSettings : ScenarioSettings
 
 	/// <summary>Target message payload size in bytes (filler appended to the tracking marker).</summary>
 	public int MessageBytes { get; init; } = 64;
+
+	/// <summary>
+	///     How often a receiver polls while waiting for messages. Deliberately its own setting rather than
+	///     reusing the shared <c>Client:PollIntervalSeconds</c>: that value is tuned for realistic idle
+	///     client behavior (seconds), which would dominate the reported delivery-latency percentiles with
+	///     an artificial client-side wait unrelated to server fan-out speed. Kept short so the measured
+	///     latency approximates actual server delivery time.
+	/// </summary>
+	public int ReceivePollIntervalMs { get; init; } = 200;
+
+	/// <summary>Gets <see cref="ReceivePollIntervalMs" /> as a <see cref="TimeSpan" />.</summary>
+	public TimeSpan ReceivePollInterval => TimeSpan.FromMilliseconds(ReceivePollIntervalMs);
 }
 
 /// <summary>Settings for <see cref="Scenarios.MultiplayerScenario" />. Scale axis is rooms, not users.</summary>

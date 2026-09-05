@@ -31,7 +31,7 @@ public sealed class CachingSettingsRepository(
 
 		logger.LogDebug("Cache miss {Key}", cacheKey);
 		var value = await inner.GetAsync(key, cancellationToken);
-		cache.Set(cacheKey, value, _ttl);
+		cache.Set(cacheKey, value, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return value;
 	}
 

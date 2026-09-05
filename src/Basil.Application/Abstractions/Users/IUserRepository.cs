@@ -86,6 +86,19 @@ public interface IUserRepository
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
+	///     Marks a user as deleted.
+	/// </summary>
+	/// <param name="id">The id of the user to delete.</param>
+	/// <param name="deletedAt">The time of deletion.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>
+	///     Soft delete: the row, its name, and its history are never removed. Stamping
+	///     <see cref="User.DeletedAt" /> is the authoritative deletion signal; callers must not infer
+	///     deletion from <see cref="UserPrivileges" /> being zero.
+	/// </remarks>
+	Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	///     Fetches every user in the database.
 	/// </summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

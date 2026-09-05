@@ -22,7 +22,7 @@ public sealed class CategoryEnricher : ILogEventEnricher
 
 	private static readonly (string Match, bool IsPrefix, string Category)[] Rules =
 	[
-		("Basil.Infrastructure.Beatmaps.", true, "Mapsets"),
+		("Basil.Infrastructure.Beatmaps.", true, "Beatmapsets"),
 		("Basil.Application.Services.Multiplayer.", true, "Matches"),
 		("Basil.Application.Packets.Multiplayer.", true, "Matches"),
 		("Basil.Application.Services.Scores.", true, "Scores"),
