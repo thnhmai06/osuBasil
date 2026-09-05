@@ -19,12 +19,16 @@ that step (usually "reproduce it" or "measure it") before writing a fix.
 
 ### Capacity above 100 concurrent users is unmeasured (NEEDS EXPERIMENT)
 
-`Profiles/full.json` (stress ramping 100 → 5000 concurrent users, then a 12-hour soak at 750) has never run to
-completion. Every load test run so far has either stopped short deliberately (to validate a fix) or crashed
-before reaching this range (see the next item). The server's actual capacity envelope, and where its scaling
-curve knees, are both unknown above the 100-user mark that has been exercised.
+A supervised run on 2026-09-05 (commit `d5ca2d4`, see RC11 below) completed `login → idle → chat → multiplayer →
+api`, but `full.json`'s `stress`/`soak` scenario sections produced no variants and were skipped entirely --
+config gap, not yet re-checked against the profile file. The stress ramp (100 → 5000 concurrent users) and the
+12-hour soak at 750 have therefore still never run. The server's capacity envelope and scaling-curve knees above
+the levels exercised (multiplayer 64 rooms, the `api` cluster's own concurrency) remain unknown, and are now
+additionally blocked on RC11 recurring at that boundary (see below) before a stress ramp would even be
+meaningful to run.
 
-**Blocker:** running it requires direct supervision (see the next item) for however many hours the run takes.
+**Blocker:** fix or confirm the `full.json` stress/soak scenario configuration, resolve RC11's recurrence, then
+run under supervision again.
 
 ### RC5 — SSE memory leak under load (NEEDS EXPERIMENT; the mechanism itself is already fixed)
 
@@ -38,19 +42,37 @@ neither confirms nor refutes it. Closing this needs the same supervised `full.js
 
 **Blocker:** same as the capacity item above — needs a supervised multi-hour run.
 
-### RC11 — the ADR-001 fix has never been re-verified under a full, unsupervised, sustained combined-load run
+### RC11 — recurred under a full, supervised, combined-load run (2026-09-05) despite ADR-001
 
-RC11 (the server dying under combined multiplayer + API load, root-caused to RC1's SQLite write-path saturation)
-was fixed by ADR-001 (busy-timeout + `synchronous=NORMAL` + collapsing round-trip writes) and verified against
-the specific load profile that originally triggered it (0 failures where there were previously 12 `SQLITE_BUSY`
-failures at concurrency 100). That verification run was itself supervised and comparatively short. The full
-`login → idle → chat → multiplayer → api → soak` sequence that first exposed RC11 has not been rerun end to end
-since the fix, because every attempt to run it unsupervised risks the same crash-and-silently-waste-hours outcome
-the original investigation hit twice. Until it is rerun under supervision, "RC11 is fixed" rests on a narrower
-repro than the one that found it.
+ADR-001 (busy-timeout + `synchronous=NORMAL` + collapsing round-trip writes) was verified against the narrow
+load profile that originally triggered RC11 (0 failures where there were previously 12 `SQLITE_BUSY` failures at
+concurrency 100), but that verification run was short and didn't combine multiplayer with sustained `api` load.
+On 2026-09-05 (commit `d5ca2d4`), a supervised run of `Profiles/full.json`'s `login → idle → chat → multiplayer
+→ api` sequence (`.loadtest/reports/full-20260905-094716/`) reproduced the same shape of failure RC11 originally
+named, starting partway through the `api` scenario (its `api_match_list_500` sub-scenario failed 13390/13390
+requests, 100%, and several subsequent sub-scenarios failed heavily):
 
-**Blocker:** needs a human present at the machine for the run's full duration (see "Handoff: what a load test
-run needs" below).
+* **CONFIRMED, from `resources.csv`** (not just the request-level failures): by the run's final samples,
+  `ThreadPoolQueueLength` climbed monotonically from 809 to a peak of 2004 and never recovered; `ThreadCount`
+  climbed 500 → 517; `HandleCount` climbed 6776 → 6972; `CpuPercent` sat at ~0.000 throughout (threads blocked on
+  I/O, not computing); `TcpConnections` fell 500 → 297 as clients gave up. This is the same signature the
+  original RC11 investigation used to conclude "ThreadPool saturation, not a crash" -- CPU near zero, queue
+  depth growing without bound, no recovery.
+* **CONFIRMED, independent of the harness's own reporting:** a native `Test-NetConnection`/`Invoke-WebRequest`
+  probe against `127.0.0.1:8443` during the failure window also failed (`TcpTestSucceeded: False`), ruling out a
+  client-side (load-generator) artifact.
+* **Gap re-confirmed:** `Logs/latest.log` stopped writing at 17:46 (hit its ~1 GB size cap) while the run
+  continued until 18:02 -- the exact tooling gap this page already flagged lost visibility across precisely the
+  window that mattered.
+* **Not yet root-caused further this round:** whether this is the same RC1 mechanism resurfacing at a different
+  concurrency/duration than ADR-001's own verification covered, or a related-but-distinct saturation path, is
+  not established. Re-profiling (needed for RC8 below) should not proceed until this is understood, per the
+  plan's "profile first" rule -- optimizing anything else while this is open risks fixing the wrong bottleneck.
+
+**Next step:** investigate the write-path/lock-contention state during the `multiplayer` → `api` transition
+specifically (the same transition that first exposed RC11), using `resources.csv` and `BasilMetrics`'
+`DbCommandDurationMs`/`DbBusyCount`/`MatchLockWaitMs` instrumentation already in place, ideally with the log
+size cap raised or rotation fixed first so the failure window isn't a blind spot again.
 
 ### RC8 — protocol allocation and login fan-out (HYPOTHESIS)
 
@@ -101,21 +123,30 @@ transition rather than trying to reproduce it with two real clients.
   reconciled by startup reconciliation, the migration pass, or the route that writes to it, just never by the
   live watcher. See [`beatmap-ingestion.md`](beatmap-ingestion.md)'s "Ingestion triggers" section.
 
-## Handoff: what a load test run needs
+## Handoff: what the next load test run needs
 
-The two NEEDS EXPERIMENT items above both need the same thing: a supervised run of the full load-test sequence
-with someone able to notice a crash and stop the run, rather than burning hours against a dead server. When
-ready to schedule this:
+The 2026-09-05 run (see RC11 above) proved the command and harness work end to end, but also proved two things
+worth fixing before the next run rather than re-discovering again:
 
 ```bash
 dotnet run --project tests/Basil.LoadTests -- --profile full
 ```
 
 (`--profile` takes the profile name only, not a path; the harness resolves it to
-`tests/Basil.LoadTests/Profiles/full.json` relative to the built output. `full.json` already has
-`Accounts.Count` set to 5000, matching the profile's own stress ramp.) Expect several hours for the full
-stress-to-soak sequence. Watch for the
-server process exiting or stopping responding to `/health`; if it does, capture the last ~2 minutes of
+`tests/Basil.LoadTests/Profiles/full.json` relative to the built output.) Before the next run:
+
+1. **Check why `stress`/`soak` produced no variants** — `full.json` is supposed to ramp 100 → 5000 concurrent
+   users then soak at 750 for 12 hours, but the 2026-09-05 run's log showed both scenarios "disabled or produced
+   no variants; skipping." Read `Scenarios:stress`/`Scenarios:soak` in the profile and whatever gates
+   `ScenarioCatalog` uses to decide a scenario has variants, before assuming the ramp/soak will actually run next
+   time.
+2. **Raise or rotate the log size cap** — `Logs/latest.log`/`errors_latest.log` hit their ~1 GB cap and stopped
+   writing 16 minutes before the run actually ended, for the second time this effort has needed exactly that
+   window. Either raise the cap for a load-test run specifically, or fix log rotation so a capped file rolls
+   into a fresh one instead of going silent (see [`logging.md`](logging.md)).
+
+Watch for the server process exiting or stopping responding to `/health`; if it does (or if `resources.csv`
+shows `ThreadPoolQueueLength` climbing without recovering, as it did this round), capture the last ~2 minutes of
 `Logs/latest.log`/`Logs/errors_latest.log` and the process's final `ThreadPoolQueueLength`/`ThreadCount` from
 `resources.csv` before stopping the run.
 
