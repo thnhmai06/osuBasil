@@ -26,6 +26,18 @@ curve knees, are both unknown above the 100-user mark that has been exercised.
 
 **Blocker:** running it requires direct supervision (see the next item) for however many hours the run takes.
 
+### RC5 — SSE memory leak under load (NEEDS EXPERIMENT; the mechanism itself is already fixed)
+
+The three concrete mechanisms this root cause originally named (`DiffObjects` always producing a non-null,
+spammable `{}` diff; `PublishSlotsAsync` having a single call site that starved slot updates; and no
+`Writer.Complete()` call on match teardown, leaking the SSE channel) are fixed by ADR-004's SSE rebuild (Phase
+3). What was never proven either way is the original claim of an actual memory leak under sustained load: no
+load test run has yet exercised "an SSE client stays connected while its match closes" at any real concurrency.
+A 93-second soak run showed a flat working set with no leak, but that run never exercised this scenario, so it
+neither confirms nor refutes it. Closing this needs the same supervised `full.json` run as the item above.
+
+**Blocker:** same as the capacity item above — needs a supervised multi-hour run.
+
 ### RC11 — the ADR-001 fix has never been re-verified under a full, unsupervised, sustained combined-load run
 
 RC11 (the server dying under combined multiplayer + API load, root-caused to RC1's SQLite write-path saturation)
@@ -99,11 +111,13 @@ with someone able to notice a crash and stop the run, rather than burning hours 
 ready to schedule this:
 
 ```bash
-dotnet run --project tests/Basil.LoadTests -- --profile Profiles/full.json
+dotnet run --project tests/Basil.LoadTests -- --profile full
 ```
 
-(exact invocation may need adjusting to the harness's current CLI — check `tests/Basil.LoadTests/README.md` or
-the harness's `--help` output first). Expect several hours for the full stress-to-soak sequence. Watch for the
+(`--profile` takes the profile name only, not a path; the harness resolves it to
+`tests/Basil.LoadTests/Profiles/full.json` relative to the built output. `full.json` already has
+`Accounts.Count` set to 5000, matching the profile's own stress ramp.) Expect several hours for the full
+stress-to-soak sequence. Watch for the
 server process exiting or stopping responding to `/health`; if it does, capture the last ~2 minutes of
 `Logs/latest.log`/`Logs/errors_latest.log` and the process's final `ThreadPoolQueueLength`/`ThreadCount` from
 `resources.csv` before stopping the run.
@@ -118,12 +132,12 @@ decision.
 |-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | `Microsoft.Data.Sqlite`                                                                       | The database engine. Chosen for a single-process, self-contained tournament server with no separate DB service to install (see [`database.md`](database.md)). |
 | `Dapper`                                                                                       | Thin SQL mapper over `Microsoft.Data.Sqlite`. Chosen deliberately over a full ORM so repositories keep explicit control of their SQL.       |
-| `dbup-sqlite`                                                                                  | Runs the numbered schema migrations (`001_base.sql` onward) at startup, on both a fresh database and an upgrading one.                     |
+| `dbup-sqlite`                                                                                  | Runs the numbered schema migrations (`001_base.sql` onward) at startup, on both a fresh database and an upgrading one. Previously flagged as a removal candidate (a hand-rolled runner could replace it for this project's small migration count); not yet evaluated. |
 | `Microsoft.Extensions.Caching.Memory`                                                          | Backs the read-through caching decorators (beatmap/beatmapset/user/settings repositories) and `BeatmapsetAssetCache`.                       |
 | `BCrypt.Net-Next`                                                                              | Hashes the admin key and user passwords.                                                                                                    |
 | `BouncyCastle.Cryptography`                                                                    | Rijndael-256 decryption of osu! stable's legacy score-submission encoding; no modern alternative implements this legacy scheme.             |
 | `FFMpegCore`                                                                                   | Extracts and trims the 10-second audio preview clip (with fade-out) from a beatmapset's audio file.                                         |
-| `SixLabors.ImageSharp` / `SixLabors.ImageSharp.Web`                                            | Beatmap background/thumbnail/menu-icon image processing, and the on-the-fly resize provider middleware ahead of routing.                    |
+| `SixLabors.ImageSharp` / `SixLabors.ImageSharp.Web`                                            | Beatmap background/thumbnail/menu-icon image processing, and the on-the-fly resize provider middleware ahead of routing. Previously flagged as a removal candidate (the middleware runs its 6 providers ahead of routing on every bancho request); not yet evaluated. |
 | `ppy.osu.Game.Rulesets.{Osu,Taiko,Catch,Mania}`                                                | Official osu! difficulty/star-rating calculators. Display-only (no pp-based gameplay); kept per an explicit user decision earlier in this effort rather than reimplemented. |
 | `Microsoft.AspNetCore.OpenApi` / `Microsoft.OpenApi` / `Microsoft.Extensions.ApiDescription.Server` | Generates the OpenAPI schema for every host (`bancho`, `osuweb`, `beatmapassets`, `avatar`, `assets`, `basilapi`) at build time.        |
 | `Scalar.AspNetCore`                                                                            | Serves the interactive API reference UI at `/docs/basil-api/`.                                                                             |
