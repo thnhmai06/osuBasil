@@ -54,6 +54,7 @@
 		<PackageReference Include="Scalar.AspNetCore"/>
 		<PackageReference Include="SixLabors.ImageSharp.Web"/>
 		<PackageReference Include="Serilog.AspNetCore"/>
+		<PackageReference Include="Serilog.Sinks.Async"/>
 		<PackageReference Include="Serilog.Sinks.Console"/>
 		<PackageReference Include="Serilog.Sinks.File"/>
 	</ItemGroup>

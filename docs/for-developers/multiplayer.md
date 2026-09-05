@@ -421,6 +421,11 @@ The multiplayer/report model depends on several invariants:
 * The winner is derived from score data rather than stored independently.
 * Closing a live room does not destroy the persistent match history.
 * A match's round-end writes are persisted in the order they ended, even though they run outside `MatchSession.Lock`.
+* A round closes at most once: `MatchCompleteHandler` treats `MatchSession.InProgress` as the round's open/closed
+  flag and no-ops immediately if it is already `false`, so a duplicate or late-arriving completion for an
+  already-closed round cannot re-enqueue that round's end a second time. Every slot stays `Complete` once a round
+  closes (nothing resets it until the next start), so without this check the "no slot still playing" condition
+  alone would let a repeat completion straight through.
 * A `GameSession` is removed from the session registry only after its match slot has already been cleared, both
   under the same match's lock (`PlayerLogoutService.LogoutAsync` → `MatchMembershipService.LeaveAsync`'s
   `slot.Reset(...)`, then `gameRegistry.Remove(...)` after the lock is released). `PlayerLogoutService` is the

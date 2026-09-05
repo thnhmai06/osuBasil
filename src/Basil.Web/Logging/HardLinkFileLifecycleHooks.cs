@@ -6,7 +6,7 @@ namespace Basil.Web.Logging;
 
 /// <summary>
 ///     Recreates a fixed "latest" hardlink pointing at whichever log file was just opened. Runs once
-///     per file-open (daily rollover or process start), not per log line.
+///     per file-open (daily rollover, size rollover, or process start), not per log line.
 /// </summary>
 /// <param name="latestLinkPath">The fixed path of the "latest" hardlink to recreate on each file open.</param>
 public sealed class HardLinkFileLifecycleHooks(string latestLinkPath) : FileLifecycleHooks

@@ -4,8 +4,10 @@ using Basil.Web.Routing.Api;
 namespace Basil.Web.Middleware;
 
 /// <summary>
-///     Logs one Information line per completed request on the `api.` host, skipping its live SSE
-///     channels.
+///     Logs one line per completed request on the `api.` host, skipping its live SSE channels. A
+///     successful or client-error response logs at <c>Debug</c> — a per-request audit trail available
+///     on demand, not on by default; a server error logs at <c>Warning</c>, since that is an abnormal
+///     condition worth surfacing at the default level.
 /// </summary>
 /// <remarks>
 ///     A stream that would push data indefinitely has no meaningful "completed" line — it would only
@@ -35,7 +37,10 @@ public sealed class ApiRequestLoggingMiddleware(RequestDelegate next, ILogger<Ap
 		try
 		{
 			await next(context);
-			logger.LogInformation("API request completed: {Method} {Path} -> {StatusCode} in {ElapsedMs} ms",
+			var level = context.Response.StatusCode >= StatusCodes.Status500InternalServerError
+				? LogLevel.Warning
+				: LogLevel.Debug;
+			logger.Log(level, "API request completed: {Method} {Path} -> {StatusCode} in {ElapsedMs} ms",
 				context.Request.Method, context.Request.Path, context.Response.StatusCode,
 				stopwatch.ElapsedMilliseconds);
 		}

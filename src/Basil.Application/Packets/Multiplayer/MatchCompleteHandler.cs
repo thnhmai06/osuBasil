@@ -49,6 +49,12 @@ public sealed class MatchCompleteHandler(
 		long version;
 		try
 		{
+			// A round already closed once (InProgress cleared below) has no "still playing" slot
+			// left to guard against — a duplicate or late-arriving completion for it would
+			// otherwise re-enter this block and re-enqueue the same round's end. Idempotent no-op
+			// once the round has already closed.
+			if (!match.InProgress) return;
+
 			var slot = match.GetSlot(gameSession.Id);
 			if (slot is null)
 			{

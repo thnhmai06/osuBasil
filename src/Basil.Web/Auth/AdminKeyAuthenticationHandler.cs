@@ -55,11 +55,11 @@ public sealed class AdminKeyAuthenticationHandler(
 
 		if (string.IsNullOrEmpty(provided) || !await adminKeyService.VerifyAsync(provided, Context.RequestAborted))
 		{
-			Logger.LogInformation("Admin auth failed: Path={Path}", Request.Path);
+			Logger.LogWarning("Admin auth failed: Path={Path}", Request.Path);
 			return AuthenticateResult.Fail("Invalid admin key");
 		}
 
-		Logger.LogInformation("Admin auth succeeded: Path={Path}", Request.Path);
+		Logger.LogDebug("Admin auth succeeded: Path={Path}", Request.Path);
 		return Success();
 	}
 

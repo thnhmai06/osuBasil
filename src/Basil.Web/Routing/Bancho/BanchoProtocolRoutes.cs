@@ -133,7 +133,16 @@ internal static class BanchoProtocolRoutes
 				byte[] responseBody;
 				if (string.IsNullOrEmpty(token))
 				{
-					var headers = request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
+					// Only the three headers Geolocation.PhraseIpAddress reads are copied out of the
+					// request, not the full header collection.
+					var headers = new Dictionary<string, string>(3);
+					var cfConnectingIp = request.Headers["CF-Connecting-IP"];
+					if (cfConnectingIp.Count > 0) headers["CF-Connecting-IP"] = cfConnectingIp.ToString();
+					var forwardedFor = request.Headers["X-Forwarded-For"];
+					if (forwardedFor.Count > 0) headers["X-Forwarded-For"] = forwardedFor.ToString();
+					var realIp = request.Headers["X-Real-IP"];
+					if (realIp.Count > 0) headers["X-Real-IP"] = realIp.ToString();
+
 					// In production a reverse proxy (nginx) always sets X-Forwarded-For; without one
 					// in front (e.g., local dev), synthesize it from the direct TCP peer so
 					// IpResolver only ever trusts the forwarded headers, never the direct peer

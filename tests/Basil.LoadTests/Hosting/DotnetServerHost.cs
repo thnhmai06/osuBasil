@@ -77,9 +77,11 @@ public sealed class DotnetServerHost : IServerHost
 		           throw new InvalidOperationException($"Failed to start server process '{fileName}'.");
 
 		// The server's stdout/stderr are redirected, but nobody consumes them; a redirected pipe that
-		// is never drained blocks the child as soon as its buffer fills. Drain both to a discard task.
-		_ = _process.StandardOutput.ReadToEndAsync(cancellationToken);
-		_ = _process.StandardError.ReadToEndAsync(cancellationToken);
+		// is never drained blocks the child as soon as its buffer fills. Drain both continuously
+		// without accumulating — a run's total output can run into the gigabytes — and observe
+		// completion so a fault in the drain itself surfaces instead of silently going unnoticed.
+		_ = DrainAsync(_process.StandardOutput, cancellationToken);
+		_ = DrainAsync(_process.StandardError, cancellationToken);
 
 		_clientFactory = new BasilHttpClientFactory(Endpoint, new ClientSettings());
 
@@ -177,6 +179,31 @@ public sealed class DotnetServerHost : IServerHost
 		if (_processSampler is not null) await _processSampler.DisposeAsync();
 		await _machineCpuSampler.DisposeAsync();
 		_process?.Dispose();
+	}
+
+	/// <summary>
+	///     Continuously drains a redirected stream without accumulating its content, so the child
+	///     process is never blocked by a full pipe buffer once its stdout/stderr fills. A read failure
+	///     is reported through <see cref="_logWarning" /> rather than left as a silently unobserved
+	///     faulted task.
+	/// </summary>
+	private async Task DrainAsync(StreamReader reader, CancellationToken cancellationToken)
+	{
+		var buffer = new char[4096];
+		try
+		{
+			while (await reader.ReadAsync(buffer, cancellationToken) > 0)
+			{
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// expected on shutdown
+		}
+		catch (Exception ex)
+		{
+			_logWarning($"Server output drain failed: {ex.Message}");
+		}
 	}
 
 	/// <summary>Reads a log file with a short retry, returning <see langword="null" /> if it stays locked.</summary>

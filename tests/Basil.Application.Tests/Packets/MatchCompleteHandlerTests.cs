@@ -93,4 +93,29 @@ public class MatchCompleteHandlerTests
 		Assert.False(match.InProgress);
 		Assert.Contains(ServerPacketWriter.MatchComplete(), Chunk(host.Dequeue()));
 	}
+
+	/// <summary>
+	///     Regression test: a duplicate or late-arriving completion for a round that already closed
+	///     must not re-enqueue that round's end a second time. Every slot stays <c>Complete</c> once a
+	///     round closes (nothing resets it until the next start), so without an explicit
+	///     <c>InProgress</c> check the "no slot still playing" guard alone would let a second
+	///     completion straight through.
+	/// </summary>
+	[Fact]
+	public async Task Handle_CompletionAfterRoundAlreadyClosed_DoesNotReEnqueue()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+		match.Slots[0].Status = SlotStatus.Complete;
+		match.InProgress = false;
+		match.CurrentRoundId = 1;
+		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+			NullLogger<MatchCompleteHandler>.Instance);
+
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.Empty(fixture.RoundEndOutbox.Enqueued);
+	}
 }

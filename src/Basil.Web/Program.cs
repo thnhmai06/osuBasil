@@ -164,7 +164,6 @@ public sealed class Program
 		// runs first so its measured duration includes every other middleware's cost.
 		app.UseMiddleware<RequestMetricsMiddleware>();
 		app.UseMiddleware<RequestIdLoggingMiddleware>();
-		app.UseSerilogRequestLogging();
 		app.UseMiddleware<ExceptionLoggingMiddleware>();
 		app.UseWebSockets();
 		app.UseCors(CorsPolicyName);
@@ -271,7 +270,24 @@ public sealed class Program
 	}
 
 	/// <summary>
-	///     Configures Serilog for the host, writing to the console and two daily rolling file sinks.
+	///     The size a rolling log file may reach before a new file is started, in addition to the
+	///     daily roll. Left at Serilog's own 1 GB default, a burst of request-volume logging silently
+	///     truncates the log with no error and no indication anything was lost — this happened twice
+	///     during the 2026 performance investigation, both times destroying the evidence for the
+	///     failure under study. Rolling on size as well as on the day keeps every file small enough to
+	///     be one coherent artifact instead of one that stops mid-incident.
+	/// </summary>
+	private const long FileSizeLimitBytes = 256 * 1024 * 1024;
+
+	/// <summary>
+	///     How long a rolled file is kept. Used instead of a file-count limit because, once size
+	///     rolling is in play, a fixed file count no longer corresponds to a fixed number of days.
+	/// </summary>
+	private static readonly TimeSpan RetainedFileTimeLimit = TimeSpan.FromDays(30);
+
+	/// <summary>
+	///     Configures Serilog for the host, writing to the console and two rolling file sinks that
+	///     roll daily or at <see cref="FileSizeLimitBytes" />, whichever comes first.
 	/// </summary>
 	/// <remarks>
 	///     Console and full-file output honor <c>Basil:Logging:MinimumLevel</c> (default
@@ -302,20 +318,30 @@ public sealed class Program
 				e.Level < LogEventLevel.Warning &&
 				e.Properties.TryGetValue("Category", out var category) &&
 				category is ScalarValue { Value: CategoryEnricher.FallbackCategory })
-			.WriteTo.Console(outputTemplate: template)
-			.WriteTo.File(
+			// Both sinks are async-wrapped so a stalled console pipe or slow disk can never block the
+			// thread that produced the log event: the event goes onto a bounded in-memory queue drained
+			// by one background thread, and — blockWhenFull left at its default false — a queue that
+			// fills is relieved by dropping the newest event rather than blocking the caller.
+			.WriteTo.Async(a => a.Console(outputTemplate: template))
+			.WriteTo.Async(a => a.File(
 				Path.Combine(logsPath, "full", "basil-.log"),
 				rollingInterval: RollingInterval.Day,
-				retainedFileCountLimit: 30,
+				fileSizeLimitBytes: FileSizeLimitBytes,
+				rollOnFileSizeLimit: true,
+				retainedFileCountLimit: null,
+				retainedFileTimeLimit: RetainedFileTimeLimit,
 				outputTemplate: template,
-				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "latest.log")))
-			.WriteTo.File(
+				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "latest.log"))))
+			.WriteTo.Async(a => a.File(
 				Path.Combine(logsPath, "errors", "basil-.log"),
 				LogEventLevel.Error,
 				rollingInterval: RollingInterval.Day,
-				retainedFileCountLimit: 30,
+				fileSizeLimitBytes: FileSizeLimitBytes,
+				rollOnFileSizeLimit: true,
+				retainedFileCountLimit: null,
+				retainedFileTimeLimit: RetainedFileTimeLimit,
 				outputTemplate: template,
-				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "errors_latest.log"))));
+				hooks: new HardLinkFileLifecycleHooks(Path.Combine(logsPath, "errors_latest.log")))));
 	}
 
 	/// <summary>
