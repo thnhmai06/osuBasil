@@ -421,6 +421,12 @@ The multiplayer/report model depends on several invariants:
 * The winner is derived from score data rather than stored independently.
 * Closing a live room does not destroy the persistent match history.
 * A match's round-end writes are persisted in the order they ended, even though they run outside `MatchSession.Lock`.
+* A `GameSession` is removed from the session registry only after its match slot has already been cleared, both
+  under the same match's lock (`PlayerLogoutService.LogoutAsync` → `MatchMembershipService.LeaveAsync`'s
+  `slot.Reset(...)`, then `gameRegistry.Remove(...)` after the lock is released). `PlayerLogoutService` is the
+  single removal path (verified: no other call site removes a `GameSession` from the registry), so a match's
+  `CloseAsync` sweep, itself running under the same lock, can never observe a slot whose `PlayerId` still points
+  to a session the registry no longer has.
 
 ## Related code
 

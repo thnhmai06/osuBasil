@@ -93,6 +93,18 @@ reach it that way, and are covered separately so the `api.` host's envelope cont
   keeps its previous bare-response behavior on an unhandled exception; only `api.` has an envelope contract to
   uphold.
 
+### Internal invariant: `EnvelopeMiddleware` never re-parses untrusted bytes
+
+`EnvelopeMiddleware` calls `JsonNode.ParseAsync` on the buffered response body, and `EnvelopeBuilder.BuildMeta`
+calls `GetValue<int>()` on a paginated body's `page`/`pageSize`/`totalRecords` fields. Neither call is wrapped in a
+`try`/`catch`, but neither is reachable by any current `basilapi` route: every enveloped body is JSON the
+framework itself serialized from a typed C# object (`Results.Json`, `TypedResults`, etc.), never a re-parse of
+request input, so the bytes are guaranteed well-formed and `page`/`pageSize`/`totalRecords` are guaranteed
+numeric. A route that manually writes non-standard JSON bytes with a JSON content type would violate this and
+should not do so. Should either call ever throw regardless, `ExceptionLoggingMiddleware` (registered earlier in
+the pipeline, so it wraps `EnvelopeMiddleware`) still catches it and maps it to a correctly enveloped `500` --
+there is no path where either throw reaches the client unwrapped.
+
 ## OpenAPI schema transformation
 
 `EnvelopeSchemaTransformer` keeps the generated OpenAPI contract consistent with the runtime behavior.
