@@ -443,10 +443,11 @@ internal static class BeatmapsetRoutes
 			return Results.BadRequest(new ErrorResponse("Only .osz uploads are accepted."));
 
 		// A not-yet-migrated set (legacy extracted folder) has the upload extracted directly over its
-		// existing folder. A set already on the canonical ".osz" layout has no such folder: its archive
-		// is replaced wholesale instead, going through the exact same replace-collision path (cache
-		// invalidation included) ReconcileOszAsync already uses for a freshly-uploaded archive that
-		// resolves onto an existing id.
+		// existing folder, then reconciled inline -- the watcher no longer watches folder contents, so
+		// this route owns its own reconciliation instead of relying on it. A set already on the
+		// canonical ".osz" layout has no such folder: its archive is replaced wholesale instead, going
+		// through the exact same replace-collision path (cache invalidation included) ReconcileOszAsync
+		// already uses for a freshly-uploaded archive that resolves onto an existing id.
 		var targetFolder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
 		if (targetFolder is not null)
 		{
@@ -464,6 +465,8 @@ internal static class BeatmapsetRoutes
 			{
 				File.Delete(tempOszPath);
 			}
+
+			await ingestion.ReconcileFolderAsync(targetFolder, cancellationToken);
 		}
 		else
 		{
@@ -494,11 +497,12 @@ internal static class BeatmapsetRoutes
 		if (beatmapset.IsFrozen)
 			return Results.Conflict(new ErrorResponse("This beatmapset is frozen and cannot be deleted."));
 
-		// A not-yet-migrated set (legacy extracted folder) deletes asynchronously: the rename below is
-		// picked up by BeatmapWatcherService, which resolves the DB row's removal (and so must not be
-		// duplicated here). A set already on the canonical ".osz" layout has no such folder to rename,
-		// so its deletion runs directly -- a single file delete has no equivalent "locked mid-recursive-
-		// delete" concern the async folder path exists to avoid.
+		// A not-yet-migrated set (legacy extracted folder) is marked deleted by renaming it aside (so a
+		// concurrent reader never sees a half-removed folder), then reconciled inline -- the watcher no
+		// longer watches folder contents, so this route owns its own reconciliation instead of relying
+		// on it. A set already on the canonical ".osz" layout has no such folder to rename, so its
+		// deletion runs directly -- a single file delete has no equivalent "locked mid-recursive-delete"
+		// concern the rename-aside path exists to avoid.
 		var folder = BeatmapIngestionService.FindBeatmapsetFolder(storage.Value, beatmapsetId);
 		if (folder is not null)
 		{
@@ -512,6 +516,8 @@ internal static class BeatmapsetRoutes
 				return Results.Conflict(
 					new ErrorResponse("The beatmapset's files are currently in use; try again shortly."));
 			}
+
+			await ingestion.ReconcileDeletedFolderAsync(folder, cancellationToken);
 		}
 		else
 		{

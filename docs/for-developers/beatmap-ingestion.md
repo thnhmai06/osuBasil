@@ -161,13 +161,15 @@ Mirror-hosted beatmaps are a separate concern. They do not need to exist in `Bea
 
 ## Ingestion triggers
 
-Basil has two mechanisms for keeping the local beatmap database synchronized with `Beatmapsets/`.
+Basil has three mechanisms for keeping the local beatmap database synchronized with `Beatmapsets/`.
 
 ### Filesystem watcher
 
-`[BeatmapWatcherService](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory for changes.
+`[BeatmapWatcherService](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
+
+The watcher does not watch inside an extracted-directory (legacy layout) beatmapset, and ignores that directory's own top-level appearance, rename, or removal. A directory dropped directly onto disk, or deleted by renaming it aside, is not live-reconciled this way -- it is picked up by startup reconciliation or the migration pass below, or reconciled inline by the admin API route that wrote to it (`PUT`/`DELETE /beatmapsets/{id}`, for a beatmapset still on the legacy layout).
 
 ### Startup reconciliation
 
@@ -175,7 +177,11 @@ The watcher cannot account for changes that happen while Basil is offline.
 
 Therefore, Basil performs a full reconciliation during startup. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
 
-Both mechanisms eventually invoke the same ingestion service. There is no separate implementation for startup discovery, filesystem changes, or admin uploads.
+### Migration pass
+
+The background migration pass described above (extracted directory → canonical `.osz`) also reconciles a legacy beatmapset it converts, as a side effect of building its archive.
+
+Every mechanism eventually invokes the same ingestion service. There is no separate implementation for startup discovery, filesystem changes, migration, or admin uploads.
 
 ## Ingestion lifecycle
 

@@ -329,8 +329,9 @@ public sealed partial class BeatmapIngestionService(
 	/// <summary>
 	///     Extracts every entry of a `.osz` archive into <paramref name="targetFolder" /> (overwriting
 	///     existing files), creating the folder if needed. Filesystem-only, never touches the
-	///     database; the caller (or the live <see cref="BeatmapWatcherService" />) is responsible for
-	///     any DB reconciliation that should follow.
+	///     database; the caller is responsible for reconciling the folder afterward (see
+	///     <see cref="ReconcileFolderAsync" />) -- the live <see cref="BeatmapWatcherService" /> no
+	///     longer watches folder contents.
 	/// </summary>
 	public static async Task ExtractOszIntoFolderAsync(string oszPath, string targetFolder,
 		CancellationToken cancellationToken = default)

@@ -10,6 +10,8 @@ using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -28,11 +30,12 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	private const string AdminKey = "correct-key";
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmapset-mgmt-tests-").FullName;
 	private readonly WebApplicationFactory<Program> _factory;
+	private readonly IBeatmapsetRepository _beatmapsets;
 	private Beatmapset? _beatmapset;
 
 	public BeatmapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
 	{
-		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		var beatmapsets = _beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => _beatmapset?.Id == call.ArgAt<int>(0) ? _beatmapset : null);
 		beatmapsets.FetchAllIdsAsync(Arg.Any<CancellationToken>())
@@ -110,6 +113,30 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{setId} Artist - Title");
 		Directory.CreateDirectory(folder);
 		return folder;
+	}
+
+	/// <summary>
+	///     Builds a variant of <see cref="_factory" /> with <see cref="BeatmapWatcherService" /> and
+	///     <see cref="BeatmapsetMigrationService" /> both removed, so a seeded legacy folder is
+	///     guaranteed to still be a legacy folder -- and reconciled by nothing but the route itself --
+	///     when the request under test runs. Only used by the two tests that specifically pin
+	///     Phase 7's "legacy branch reconciles inline" contract; every other test in this class keeps
+	///     the real (racy) background services, matching production.
+	/// </summary>
+	private WebApplicationFactory<Program> FactoryWithoutBackgroundBeatmapServices()
+	{
+		return _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+		{
+			RemoveHostedService<BeatmapWatcherService>(services);
+			RemoveHostedService<BeatmapsetMigrationService>(services);
+		}));
+	}
+
+	private static void RemoveHostedService<T>(IServiceCollection services) where T : class
+	{
+		var descriptor = services.FirstOrDefault(d =>
+			d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(T));
+		if (descriptor is not null) services.Remove(descriptor);
 	}
 
 	private static async Task<byte[]> MakeMinimalOszAsync()
@@ -303,6 +330,36 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		Assert.Contains(archive.Entries, e => e.Name == "replacement.osu");
 	}
 
+	/// <summary>
+	///     Phase 7 regression: the legacy-folder branch of <c>HandleReplace</c> used to rely entirely on
+	///     the live <see cref="BeatmapWatcherService" /> noticing the extracted files and reconciling
+	///     them -- with the watcher (and <see cref="BeatmapsetMigrationService" />) removed from this
+	///     request's host entirely, that can no longer happen, so the DB row must appear from the route
+	///     handler's own inline <c>ReconcileFolderAsync</c> call, immediately, with no polling.
+	/// </summary>
+	[Fact]
+	public async Task PutBeatmapset_LegacyFolderWithNoBackgroundServicesRunning_ReconcilesInline()
+	{
+		_beatmapset = new Beatmapset(703, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		BeatmapsetFolder(703);
+
+		var beatmaps = Substitute.For<IBeatmapRepository>();
+		beatmaps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns((IReadOnlyList<Beatmap>)[]);
+
+		var factory = FactoryWithoutBackgroundBeatmapServices()
+			.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddSingleton(beatmaps)));
+
+		var request = MakeRequest(HttpMethod.Put, "/beatmapsets/703");
+		request.Content = new MultipartFormDataContent
+			{ { new ByteArrayContent(await MakeDecodableOszAsync("Replacement")), "file", "set.osz" } };
+
+		var response = await factory.CreateClient().SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+		await beatmaps.Received(1).UpsertAsync(Arg.Any<Beatmap>(), Arg.Any<CancellationToken>());
+	}
+
 	// ---- DELETE /beatmapsets/{beatmapsetId} ----
 
 	[Fact]
@@ -343,8 +400,8 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	///     folder it finds to the canonical ".osz" layout the moment the host starts (on this test's own
 	///     first HTTP call) -- so a folder seeded before that first call is not guaranteed to still be a
 	///     folder by the time this DELETE request runs. Both of <c>HandleDelete</c>'s branches (rename a
-	///     still-legacy folder to the deleted-marker convention for the watcher to reconcile
-	///     asynchronously; delete a canonical ".osz" directly) leave no local files behind either way.
+	///     still-legacy folder to the deleted-marker convention, then reconcile it inline; delete a
+	///     canonical ".osz" directly) leave no local files behind either way.
 	/// </summary>
 	[Fact]
 	public async Task DeleteBeatmapset_Valid_RemovesTheBeatmapsetsLocalFilesAndReturns202()
@@ -359,6 +416,29 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
 		Assert.DoesNotContain(Directory.EnumerateFiles(beatmapsetsPath, "*.osz"),
 			f => Path.GetFileName(f).StartsWith("801 "));
+	}
+
+	/// <summary>
+	///     Phase 7 regression: the legacy-folder branch of <c>HandleDelete</c> used to rely entirely on
+	///     the live <see cref="BeatmapWatcherService" /> noticing the rename-to-deleted-marker and
+	///     reconciling the row's removal -- with the watcher (and <see cref="BeatmapsetMigrationService" />)
+	///     removed from this request's host entirely, that can no longer happen, so the repository's
+	///     delete must come from the route handler's own inline <c>ReconcileDeletedFolderAsync</c> call,
+	///     immediately, with no polling. True regardless of which storage layout backed the set (both
+	///     branches end in the same <c>DeleteBeatmapsetAsync</c> call), which is exactly why this
+	///     assertion doesn't need to fight the migration race the way the on-disk assertion above does.
+	/// </summary>
+	[Fact]
+	public async Task DeleteBeatmapset_WithNoBackgroundServicesRunning_RemovesDbRowInline()
+	{
+		_beatmapset = new Beatmapset(802, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
+		BeatmapsetFolder(802);
+
+		var factory = FactoryWithoutBackgroundBeatmapServices();
+		var response = await factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/802"));
+
+		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+		await _beatmapsets.Received(1).DeleteAsync(802, Arg.Any<CancellationToken>());
 	}
 
 	// ---- PATCH /beatmapsets/{beatmapsetId} ----

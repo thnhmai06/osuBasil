@@ -69,18 +69,6 @@ tourney client traffic produces the concurrent access this fix protects against 
 no load test scenario exercises tourney-client connections. The fix is safe and low-cost either way; only its
 necessity is unconfirmed.
 
-### Phase 7 — narrowing `BeatmapWatcherService` to non-recursive, `.osz`-only watching (blocked by code, not schedule)
-
-The `.osz` direct-storage rewrite (ADR-006, now implemented and removed as a standalone doc — see
-[`beatmap-ingestion.md`](beatmap-ingestion.md) for the current storage model) left this one follow-up
-deliberately undone: `BeatmapsetRoutes.HandleReplace` and `HandleDelete` still each branch on
-`FindBeatmapsetFolder(...)` returning non-null, i.e. they still actively handle a beatmapset stored in the
-legacy extracted-folder layout. Narrowing the watcher now would silently stop live-reconciling any beatmapset
-that has not yet migrated to the canonical `.osz` layout. This is not a "wait some amount of time" blocker; it is
-"wait until those two `if (targetFolder is not null)` branches have no remaining folders to reach," which is a
-statement about deployment data, not a date. Re-check by searching for `targetFolder is not null` /
-`folder is not null` in those two handlers before starting this.
-
 ### Match Hosts/Referees API — cannot be manually exercised with real osu! clients in this environment
 
 Issue #4 marked this "Unable to test" because reproducing it needs two osu! client connections at once, and the
@@ -103,6 +91,15 @@ transition rather than trying to reproduce it with two real clients.
   `PlayerLogoutService.LogoutAsync` is the only code path that removes a `GameSession` from the registry, and it
   always clears the match slot under the same match lock first. See [`multiplayer.md`](multiplayer.md)'s
   invariants list.
+* **Phase 7 — narrowing `BeatmapWatcherService` to non-recursive, `.osz`-only watching** — this was previously
+  blocked on "no legacy folder left to reach," a statement about deployment data rather than something fixable
+  in code. On closer trace, the real coupling was narrower: `BeatmapsetRoutes.HandleReplace`/`HandleDelete`'s
+  legacy-folder branches didn't reconcile the DB themselves; they relied on the watcher noticing the folder
+  change. Making both branches call `BeatmapIngestionService.ReconcileFolderAsync`/`ReconcileDeletedFolderAsync`
+  inline removed that reliance, so the watcher's folder-watching (`IncludeSubdirectories`, the
+  `Directory.Exists`/deleted-folder arms in `Settle`) could be dropped outright — a legacy folder still gets
+  reconciled by startup reconciliation, the migration pass, or the route that writes to it, just never by the
+  live watcher. See [`beatmap-ingestion.md`](beatmap-ingestion.md)'s "Ingestion triggers" section.
 
 ## Handoff: what a load test run needs
 
