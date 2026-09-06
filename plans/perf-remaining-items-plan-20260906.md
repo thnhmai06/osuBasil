@@ -11,7 +11,7 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
 
 | # | Mục | Việc thật sự cần làm |
 |---|-----|----------------------|
-| A | Stress/soak chưa từng chạy thật | Profile + soak-smoke đã xong (§1); còn thiếu stress ramp thật + soak 12h thật |
+| A | Stress/soak chưa từng chạy thật | Profile + soak-smoke + stress ramp thật đã xong (§1); còn thiếu soak 12h thật |
 | B | RC5 (SSE leak) chưa được đóng | Nhánh `sse` đã code xong + verify plumbing ở scale nhỏ (§2); vẫn cần soak 12h thật mới đóng được RC5 |
 | C | RC11 — chưa từng bắt được thread dump | Là điều kiện tiên quyết trước khi chạy lại, không phải bước làm giữa chừng — xem §3 |
 | D | 2 bug OpenAPI (`basilapi.json`) | ĐÃ XONG cả 2 — §4 sửa 2026-09-06, §5 tự resolve qua feature khác |
@@ -47,8 +47,25 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
    `Basil.db`/log với server thật do harness start. Xoá `.loadtest/server` + kill orphan process → chạy
    sạch. `soak-analysis.md` báo đúng "insufficient data (5min < 30min minimum)" cho mọi series — đúng dự
    kiến, KHÔNG phải "no leak", chỉ xác nhận plumbing hoạt động.
-3. **Còn lại**: chạy `stress` ramp thật (100 → 5000) rồi `soak` 12 giờ thật, có giám sát — xem §3 cho
-   điều kiện tiên quyết trước khi bấm chạy.
+3. ~~Chạy `stress` ramp thật (100 → 5000)~~ — XONG (2026-09-06, report
+   `.loadtest/reports/stress-20260906-090139/`, commit đang tạo). 32m23s, 484554 request, fail 2569
+   (0.53%), không đạt ngưỡng "unusable" (>5% fail liên tục 60s) hay "saturation" (process CPU ≥95% liên
+   tục 30s — process CPU chỉ đạt max 80.29%, mean 32.80%).
+   **Phát hiện quan trọng**: `TotalMachineCpuPercent` (CPU toàn máy) áp sát 97-100% kéo dài suốt đoạn
+   ramp 1000→2000 trở lên (`resources.csv`), dù CPU riêng của process server không hề bão hoà — vì máy
+   test chạy CẢ server lẫn load-generator client trên cùng 8 logical core. Đây là giới hạn của thiết lập
+   single-machine, không phải trần năng lực thật của server: `SaturationCpuPercent` trong `stress.json`
+   chỉ theo dõi CPU riêng của process, nên không bắt được tình trạng nghẽn CPU toàn máy này — cần lưu ý
+   khi đọc lại các mốc "an toàn" ở đây. Latency xấu đi rõ ở đỉnh tải: p99 29.2s, max 156.98s (ở mức
+   1000-5000 đồng thời); ở mức thấp hơn latency vẫn tốt (p50 194ms toàn run). Không có tín hiệu RC11
+   (threadpool queue length max 839 nhưng mean chỉ 103, tăng cùng lúc CPU toàn máy tăng — khớp mô hình
+   tải tăng bình thường, không phải "CPU thấp mà queue vẫn phình" là dấu hiệu bất thường của RC11).
+   → verify: `stress-events.md` — 1 `first-server-error` (ở mức 100, sớm, khả năng do JIT/GC warm-up),
+   1 `first-connection-failure` + 1 `first-timeout` (cả hai ở ramp 1000→2000, khớp thời điểm CPU toàn máy
+   chạm 100%) — **đã xác nhận qua `resources.csv`, không phải bug server**.
+4. **Còn lại**: `soak` 12 giờ thật, có giám sát trực tiếp — xem §3 cho điều kiện tiên quyết trước khi bấm
+   chạy. **Không được tự chạy không giám sát** — cần người theo dõi `resources.csv` trực tiếp và sẵn sàng
+   bắt `dotnet-dump` nếu nghi RC11 (xem §3).
 
 ## §2. RC5 (SSE leak) — soak hiện tại không đóng được mục này
 
