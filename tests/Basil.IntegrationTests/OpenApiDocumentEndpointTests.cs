@@ -180,12 +180,17 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 			.GetProperty("responses").GetProperty("200").GetProperty("content")
 			.GetProperty("application/json");
 
-		// A oneOf of bare $refs to the two payload types this stream can carry (MatchLiveSnapshot for
-		// `main`, PlayerLiveScore for `gameplay`), not an inline Envelope object -- SSE payloads are
-		// never enveloped at runtime, so neither is their declared schema.
-		var refs = responseNode.GetProperty("schema").GetProperty("oneOf").EnumerateArray()
-			.Select(s => s.GetProperty("$ref").GetString()).ToHashSet();
-		Assert.Equal(["#/components/schemas/MatchLiveSnapshot", "#/components/schemas/PlayerLiveScore"], refs);
+		// A oneOf of the two payload types this stream can carry (MatchLiveSnapshot for `main`,
+		// PlayerLiveScore for `gameplay`), not an inline Envelope object -- SSE payloads are never
+		// enveloped at runtime, so neither is their declared schema. Resolved through ResolveSchema
+		// rather than asserted as literal $ref strings: which of the two ends up inlined vs. promoted
+		// to a shared component is an OpenAPI-generation detail (MatchLiveSnapshot is inlined because
+		// it isn't reused by any other operation, PlayerLiveScore is $ref'd because
+		// getMatchSlotLive also produces it), not part of the documented contract.
+		var oneOf = responseNode.GetProperty("schema").GetProperty("oneOf").EnumerateArray().ToList();
+		var resolved = oneOf.Select(s => ResolveSchema(s, document)).ToList();
+		Assert.Contains(resolved, s => RequiredFields(s).Contains("slots")); // MatchLiveSnapshot
+		Assert.Contains(resolved, s => RequiredFields(s).Contains("user")); // PlayerLiveScore
 
 		// Both named examples must also stay unwrapped (no top-level "success"/"data" envelope keys) --
 		// this route's path carries the literal `live` segment, so OpenApiExampleExtensions must skip
@@ -198,6 +203,58 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 		var gameplayExampleProps = responseNode.GetProperty("examples").GetProperty("gameplay").GetProperty("value")
 			.EnumerateObject().Select(p => p.Name).ToHashSet();
 		Assert.DoesNotContain("success", gameplayExampleProps);
+	}
+
+	/// <summary>
+	///     Confirms a oneOf branch that carries a type only this stream declares (not reused by any
+	///     other operation, so the framework never promotes it to a shared component) still resolves to
+	///     a genuine, complete schema rather than a dangling <c>$ref</c> pointing at a component that was
+	///     never registered -- the exact defect a duplicate <c>.Produces&lt;T&gt;()</c> pair on the same
+	///     status code used to produce for <c>MatchLiveSnapshot</c> and <c>PlayerStatusView</c>.
+	/// </summary>
+	[Fact]
+	public async Task BasilApiDocument_SseRouteUnsharedPayloadType_IsNotADanglingRef()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+		var matchLiveOneOf = document
+			.GetProperty("paths").GetProperty("/matches/{matchId}/live").GetProperty("get")
+			.GetProperty("responses").GetProperty("200").GetProperty("content")
+			.GetProperty("application/json").GetProperty("schema").GetProperty("oneOf");
+		var matchLiveSnapshot = matchLiveOneOf.EnumerateArray()
+			.Single(s => !s.TryGetProperty("$ref", out _));
+		Assert.True(matchLiveSnapshot.TryGetProperty("properties", out var matchLiveProps));
+		Assert.True(matchLiveProps.TryGetProperty("slots", out _));
+
+		var userLiveOneOf = document
+			.GetProperty("paths").GetProperty("/users/{userId}/live").GetProperty("get")
+			.GetProperty("responses").GetProperty("200").GetProperty("content")
+			.GetProperty("application/json").GetProperty("schema").GetProperty("oneOf");
+		var playerStatusView = userLiveOneOf.EnumerateArray()
+			.Single(s => !s.TryGetProperty("$ref", out _));
+		Assert.True(playerStatusView.TryGetProperty("properties", out var playerStatusProps));
+		Assert.True(playerStatusProps.TryGetProperty("activity", out _));
+	}
+
+	/// <summary>
+	///     Follows a schema's <c>$ref</c> into <c>components.schemas</c>, or returns it unchanged when it
+	///     is already an inline schema.
+	/// </summary>
+	private static JsonElement ResolveSchema(JsonElement schema, JsonElement document)
+	{
+		if (!schema.TryGetProperty("$ref", out var refProp)) return schema;
+		var name = refProp.GetString()!.Split('/')[^1];
+		return document.GetProperty("components").GetProperty("schemas").GetProperty(name);
+	}
+
+	private static HashSet<string> RequiredFields(JsonElement schema)
+	{
+		return schema.TryGetProperty("required", out var required)
+			? required.EnumerateArray().Select(e => e.GetString()!).ToHashSet()
+			: [];
 	}
 
 	[Fact]

@@ -97,30 +97,35 @@ internal static class OpenApiExampleExtensions
 	///     200-response schema with a <c>oneOf</c> union and attaching one named example per event type.
 	/// </summary>
 	/// <remarks>
-	///     Both components (<c>MatchLiveSnapshot</c> and <c>PlayerLiveScore</c>) are referenced by name
-	///     rather than reusing whatever this operation's own <c>mediaType.Schema</c> currently holds --
-	///     with two competing <c>.Produces&lt;T&gt;()</c> declarations on the same status code, only the
-	///     last one registered survives on <c>mediaType.Schema</c> by the time this transformer runs, so
-	///     reading it back would silently duplicate one type instead of pairing both. This mirrors the
-	///     explicit-reference half of <see cref="WithSlotLiveExamples" />'s pattern for the same reason
-	///     <c>PlayerLiveScore</c> is referenced there too.
+	///     <c>PlayerLiveScore</c> is referenced by name, reused from the shared component the framework
+	///     already registered for it (it also backs <see cref="WithSlotLiveExamples" />'s own route, so it
+	///     qualifies for promotion to a named component). <c>MatchLiveSnapshot</c> does not qualify: this
+	///     operation declares two competing <c>.Produces&lt;T&gt;()</c> calls on the same status code, and
+	///     only the second-declared type survives the framework's normal registration -- reading back
+	///     <c>mediaType.Schema</c> at this point would silently duplicate <c>PlayerLiveScore</c> instead of
+	///     pairing both. Generating <c>MatchLiveSnapshot</c>'s schema explicitly sidesteps that: it comes
+	///     back inlined rather than promoted to a shared component, which is fine since no other operation
+	///     reuses this type.
 	/// </remarks>
 	/// <param name="builder">The route whose 200 response gets the two named examples.</param>
 	/// <param name="mainExample">The example <c>MatchLiveSnapshot</c> payload for the <c>main</c> event.</param>
 	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
 	public static RouteHandlerBuilder WithMainLiveExamples(this RouteHandlerBuilder builder, object mainExample)
 	{
-		return builder.AddOpenApiOperationTransformer((operation, context, _) =>
+		return builder.AddOpenApiOperationTransformer(async (operation, context, cancellationToken) =>
 		{
 			if (operation.Responses?.TryGetValue("200", out var response) != true ||
 			    response?.Content?.TryGetValue("application/json", out var mediaType) != true)
-				return Task.CompletedTask;
+				return;
+
+			var matchLiveSnapshotSchema =
+				await context.GetOrCreateSchemaAsync(typeof(MatchLiveSnapshot), cancellationToken: cancellationToken);
 
 			mediaType!.Schema = new OpenApiSchema
 			{
 				OneOf =
 				[
-					new OpenApiSchemaReference("MatchLiveSnapshot", context.Document),
+					matchLiveSnapshotSchema,
 					new OpenApiSchemaReference("PlayerLiveScore", context.Document)
 				]
 			};
@@ -141,8 +146,6 @@ internal static class OpenApiExampleExtensions
 							4_213_567, 812, 812, false, 98, false), JsonWebOptions)
 				}
 			};
-
-			return Task.CompletedTask;
 		});
 	}
 
@@ -152,26 +155,30 @@ internal static class OpenApiExampleExtensions
 	///     <c>oneOf</c> union and attaching one named example per event type.
 	/// </summary>
 	/// <remarks>
-	///     Both components are referenced by name rather than reusing whatever this operation's own
-	///     <c>mediaType.Schema</c> currently holds -- the same explicit-reference reasoning
-	///     <see cref="WithMainLiveExamples" /> documents applies here too, since this route also
-	///     declares two competing <c>.Produces&lt;T&gt;()</c> calls on the same status code.
+	///     <c>SpectateFramesEvent</c> is referenced by name, reused from the shared component the
+	///     framework already registered for it. <c>PlayerStatusView</c> does not qualify: the same
+	///     explicit-generation reasoning <see cref="WithMainLiveExamples" /> documents applies here too,
+	///     since this route also declares two competing <c>.Produces&lt;T&gt;()</c> calls on the same
+	///     status code and only the second-declared type survives the framework's normal registration.
 	/// </remarks>
 	/// <param name="builder">The route whose 200 response gets the two named examples.</param>
 	/// <returns>The <paramref name="builder" /> for continued chaining.</returns>
 	public static RouteHandlerBuilder WithUserLiveExamples(this RouteHandlerBuilder builder)
 	{
-		return builder.AddOpenApiOperationTransformer((operation, context, _) =>
+		return builder.AddOpenApiOperationTransformer(async (operation, context, cancellationToken) =>
 		{
 			if (operation.Responses?.TryGetValue("200", out var response) != true ||
 			    response?.Content?.TryGetValue("application/json", out var mediaType) != true)
-				return Task.CompletedTask;
+				return;
+
+			var playerStatusViewSchema =
+				await context.GetOrCreateSchemaAsync(typeof(PlayerStatusView), cancellationToken: cancellationToken);
 
 			mediaType!.Schema = new OpenApiSchema
 			{
 				OneOf =
 				[
-					new OpenApiSchemaReference("PlayerStatusView", context.Document),
+					playerStatusViewSchema,
 					new OpenApiSchemaReference("SpectateFramesEvent", context.Document)
 				]
 			};
@@ -196,8 +203,6 @@ internal static class OpenApiExampleExtensions
 						JsonWebOptions)
 				}
 			};
-
-			return Task.CompletedTask;
 		});
 	}
 
