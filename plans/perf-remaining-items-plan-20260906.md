@@ -81,11 +81,9 @@ Cửa sổ sập từng rộng 6 phút; không đủ thời gian để cài côn
 
 **Trước khi chạy `stress`/`soak` thật (không phải trong lúc chạy):**
 
-1. Xác nhận `dotnet-dump` đã cài và biết PID tiến trình server trước khi bấm chạy:
-   ```bash
-   dotnet tool install --global dotnet-dump   # nếu chưa có
-   dotnet-dump --version
-   ```
+1. ~~Xác nhận `dotnet-dump` đã cài~~ — XONG (2026-09-06): `dotnet-dump` 10.0.731102 đã cài sẵn
+   (`dotnet tool install --global dotnet-dump` báo "already installed"). Còn lại: biết PID tiến trình
+   server trước khi bấm chạy lần tới (`dotnet-dump collect` cần PID, không tra được giữa lúc sập).
 2. Viết sẵn lệnh bắt dump để copy-paste ngay khi thấy dấu hiệu sập (`ThreadPoolQueueLength` tăng liên
    tục trong khi `CpuPercent` giữ gần 0 qua vài mẫu liên tiếp):
    ```bash
