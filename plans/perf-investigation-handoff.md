@@ -59,7 +59,7 @@ These constraints shaped every change made so far and should keep shaping what c
 | Match Hosts/Referees "unable to test" (Issue #4) | Closed — environment constraint, not a defect; covered by existing in-process tests |
 | Full supervised load test | Run three times (2026-09-05/06); RC11 no longer reproduces — see §4 |
 | Stress/soak scenario ramp (100 → 5000 users, 12h soak) | **Still never run** — config gap unaudited, see §5 |
-| 2 OpenAPI spec-conformance bugs found | **Not fixed — see §6** |
+| 2 OpenAPI spec-conformance bugs found | Dangling `$ref` fixed; duplicate path template still needs a decision — see §6 |
 
 Full test suite: 1598 tests passing, Release build clean, as of `7085abe`.
 
@@ -160,37 +160,36 @@ Everything else from the original root-cause list (RC1–RC4, RC6, RC7, RC12, th
 Phase 7, and the outbox-full burst) is closed. See `docs/for-developers/known-limitations.md`'s "Recently
 closed" section for the closure evidence on each.
 
-## 6. Two OpenAPI spec-conformance bugs found (2026-09-05), still not fixed
+## 6. Two OpenAPI spec-conformance bugs found (2026-09-05); one fixed, one needs a decision
 
 Found while self-checking the 6 generated OpenAPI documents (`bancho`, `osuweb`, `beatmapassets`, `avatar`,
 `assets`, `basilapi`) with a throwaway validator built on the same `Microsoft.OpenApi` 2.11.0 package the
 project already depends on (`OpenApiDocument.Parse` + its `Diagnostic.Errors`/`Warnings`). 5 of 6 documents
-are clean. `basilapi.json` has:
+are clean. `basilapi.json` had:
 
-1. **Duplicate path template** (spec violation, not an ASP.NET routing bug): `GET /users/{idOrName}` and
-   `PUT /users/{userId}` (and their `/avatar` children) normalize to the same template
-   (`/users/{}`) once parameter names are ignored — OpenAPI 3.x requires path templates to be unique
-   regardless of parameter naming, even though the two routes are perfectly distinguishable by HTTP method
-   at the actual routing layer. `PUT` genuinely only accepts a numeric id (admin action); `GET` accepts
-   either an id or a username — renaming either parameter to match the other would make one of the two
-   descriptions inaccurate. This needs a design decision (accept the pedantic non-conformance, or rename one
-   side and document the accepted inaccuracy), not a one-line fix.
-2. **Dangling `$ref`** (real bug): the `oneOf` response schema for two SSE routes —
-   `GET /matches/{matchId}/live` and `GET /users/{idOrName}/live` — references `MatchLiveSnapshot` and
-   `PlayerStatusView` respectively via `$ref`, but neither type has a schema actually registered in
-   `components.schemas` (confirmed: each name appears exactly once in the whole document — the dangling
-   `$ref` itself, nothing else). Root cause: both operations declare `.Produces<T>()` twice
-   (`MatchRoutes.cs:210-211`, `UserRoutes.cs:344-345`), and only the *last*-declared type of the pair
-   actually gets a registered component schema (`PlayerLiveScore` and `SpectateFramesEvent`, the second type
-   in each pair, both register correctly). The hand-written `oneOf` builder
-   (`OpenApiExampleExtensions.cs`) assumes both types it names already have schemas and just emits `$ref`
-   strings by name — it should instead verify/force both schemas to exist. This one is a real, fixable code
-   bug once someone has time to touch `OpenApiExampleExtensions.cs` and the two duplicate `.Produces<T>()`
-   call sites.
+1. **Duplicate path template** (spec violation, not an ASP.NET routing bug) — **still open, needs a
+   decision**: `GET /users/{idOrName}` and `PUT /users/{userId}` (and their `/avatar` children) normalize to
+   the same template (`/users/{}`) once parameter names are ignored — OpenAPI 3.x requires path templates to
+   be unique regardless of parameter naming, even though the two routes are perfectly distinguishable by
+   HTTP method at the actual routing layer. `PUT` genuinely only accepts a numeric id (admin action); `GET`
+   accepts either an id or a username — renaming either parameter to match the other would make one of the
+   two descriptions inaccurate. Needs a design decision (accept the pedantic non-conformance, or rename one
+   side and document the accepted inaccuracy) from the project owner, not a unilateral fix.
+2. **Dangling `$ref`** — **fixed** (commit `611ed36`): the `oneOf` response schema for two SSE routes —
+   `GET /matches/{matchId}/live` and `GET /users/{idOrName}/live` — referenced `MatchLiveSnapshot` and
+   `PlayerStatusView` respectively via `$ref`, but neither type had a schema registered in
+   `components.schemas`. Root cause: both operations declare `.Produces<T>()` twice on the same status code
+   (`MatchRoutes.cs:210-211`, `UserRoutes.cs:353-354`), and only the *last*-declared type of the pair
+   actually gets a registered component schema. Fixed in `OpenApiExampleExtensions.cs` by generating the
+   lost type's schema explicitly via .NET 10's `OpenApiOperationTransformerContext.GetOrCreateSchemaAsync`
+   instead of assuming it was promoted to a named component — it comes back inlined rather than `$ref`'d,
+   which is correct since neither type is reused by any other operation. Verified with a dedicated
+   regression test (`BasilApiDocument_SseRouteUnsharedPayloadType_IsNotADanglingRef`), confirmed to fail
+   against the pre-fix code via revert-and-fail.
 
 Wording/description content in all 6 documents is clean against `CLAUDE.md`'s rule 5 (no implementation
 details in `.WithSummary`/`.WithDescription`) and shows no AI-writing filler patterns. This audit has not
-been re-run since; re-run it if either route's `.Produces<T>()` declarations change before this is fixed.
+been re-run since; re-run it if any route's `.Produces<T>()` declarations change again.
 
 ## 7. Where to find things
 
@@ -228,7 +227,7 @@ been re-run since; re-run it if either route's `.Produces<T>()` declarations cha
    (`ThreadPoolQueueLength` climbing while `CpuPercent` stays near zero) and ready to capture a thread dump
    (`dotnet-dump collect -p <pid>` then `clrstack -all`) immediately if it appears — this is still the one
    measurement that would close RC11 with certainty rather than an inference from correlation.
-3. Independently of the above: decide on the two OpenAPI bugs in §6 (at minimum, fix the dangling `$ref`;
-   the duplicate-path-template item needs a design decision from the project owner).
+3. Independently of the above: decide on the remaining OpenAPI item in §6 (the duplicate-path-template
+   non-conformance) — the dangling `$ref` is already fixed.
 4. Only after the stress/soak run has a real capacity ceiling to profile against: start RC8 (protocol
    allocation) re-profiling. Don't optimize it speculatively before then.
