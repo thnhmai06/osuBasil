@@ -80,7 +80,7 @@ As with match events, publishers do not perform HTTP or SSE writes.
 `IPlayerStatusEvents` publishes a single player's online/offline transitions and in-game activity changes (login,
 logout, and the `ChangeAction` packet). Scoped to the player, the same shape as `IPlayerInputEvents`.
 
-`GET /users/{idOrName}/live` combines both player-scoped sources into one stream: `status` (state-oriented, a full
+`GET /users/{userId}/live` combines both player-scoped sources into one stream: `status` (state-oriented, a full
 snapshot on connect and on every change) alongside `input` (event-oriented, only while the player is playing) — the
 same state+event multiplexing the per-match `main` and per-slot streams use.
 
@@ -167,7 +167,7 @@ When a match closes, its registry completes every currently registered connectio
 waiting for the client to disconnect on its own. This is what makes a match's live streams bounded in lifetime by the
 match itself rather than by client behavior.
 
-The per-player live stream (`GET /users/{idOrName}/live`, combining status and spectator input) is not match-scoped and
+The per-player live stream (`GET /users/{userId}/live`, combining status and spectator input) is not match-scoped and
 is deliberately not registered with any match's registry — its lifetime is the player's session, not any one match.
 
 ## Snapshot consistency

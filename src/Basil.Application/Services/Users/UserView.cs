@@ -7,7 +7,7 @@ namespace Basil.Application.Services.Users;
 
 /// <summary>
 ///     The wire shape of a user in the <c>GET /users</c> and
-///     <c>GET /users/{idOrName}</c> API responses.
+///     <c>GET /users/{userId}</c> API responses.
 /// </summary>
 /// <remarks>
 ///     Carries the same fields as the domain <see cref="User" /> record.

@@ -107,4 +107,25 @@ public interface IUserRepository
 	///     Used by the management REST API's user listing.
 	/// </remarks>
 	Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Fetches a page of users matching the given search filters.
+	/// </summary>
+	/// <param name="filters">The parsed search query -- see <see cref="UserSearchFilters" />.</param>
+	/// <param name="offset">The number of matching users to skip.</param>
+	/// <param name="amount">The maximum number of users to return.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The matching users, in ascending id order.</returns>
+	/// <remarks>A deleted user never matches, regardless of the given filters.</remarks>
+	Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Counts the users that would be returned by <see cref="SearchAsync" /> for the same filters,
+	///     ignoring paging.
+	/// </summary>
+	/// <param name="filters">The parsed search query -- see <see cref="SearchAsync" />.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The total number of matching users.</returns>
+	Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default);
 }

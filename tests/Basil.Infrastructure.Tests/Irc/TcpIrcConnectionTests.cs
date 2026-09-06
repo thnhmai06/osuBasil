@@ -500,6 +500,17 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
+		public Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+			CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
 		public void Add(User user, string? pwBcrypt = null)
 		{
 			_byName[User.MakeSafeName(user.Name)] = user;

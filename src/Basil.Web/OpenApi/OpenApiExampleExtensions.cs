@@ -148,7 +148,7 @@ internal static class OpenApiExampleExtensions
 
 	/// <summary>
 	///     Documents the two event payloads produced by the per-player live SSE endpoint
-	///     (<c>GET /users/{idOrName}/live</c>) by replacing its single 200-response schema with a
+	///     (<c>GET /users/{userId}/live</c>) by replacing its single 200-response schema with a
 	///     <c>oneOf</c> union and attaching one named example per event type.
 	/// </summary>
 	/// <remarks>

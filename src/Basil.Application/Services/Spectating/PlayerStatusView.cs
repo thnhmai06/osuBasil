@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Spectating;
 
 /// <summary>
-///     The wire shape of a userSession's live status, published on the <c>GET /users/{idOrName}/live</c>
+///     The wire shape of a userSession's live status, published on the <c>GET /users/{userId}/live</c>
 ///     stream's <c>status</c> event.
 /// </summary>
 /// <param name="Online">Whether the userSession currently has an active game session.</param>

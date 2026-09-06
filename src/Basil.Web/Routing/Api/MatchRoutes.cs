@@ -224,7 +224,7 @@ internal static class MatchRoutes
 
 			                 - `slot`: the slot's occupancy, status, team, and mods (full first, then deltas)
 			                 - `score`: the current occupant's live score frames during a round
-			                 - `input`: the current occupant's raw spectator-input frames, the same shape as `GET /users/{idOrName}/live`
+			                 - `input`: the current occupant's raw spectator-input frames, the same shape as `GET /users/{userId}/live`
 
 			                 The stream follows whoever currently occupies the slot; if the occupant changes, later `score`/`input` events match the new occupant automatically.
 

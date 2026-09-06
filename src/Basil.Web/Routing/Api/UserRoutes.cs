@@ -30,8 +30,9 @@ internal sealed class UserRoutesLog;
 /// </summary>
 /// <remarks>
 ///     User reads and the spectate stream are public, while creating, updating, deleting, and avatar
-///     management require administrator authorization. Reads accept a username in place of a numeric
-///     id and redirect to the canonical numeric form; writes require a numeric id.
+///     management require administrator authorization. Every route -- reads and writes alike --
+///     takes a numeric id; resolving a username to a user is a separate concern, handled by
+///     <c>GET /users/search</c>.
 /// </remarks>
 internal static class UserRoutes
 {
@@ -63,19 +64,35 @@ internal static class UserRoutes
 			.Produces<PagedResult<UserView>>()
 			.WithExample(StatusCodes.Status200OK, new PagedResult<UserView>(1, 50, 1, [SampleUser().ToView()]));
 
-		group.MapGet("/users/{idOrName}", (string idOrName, IUserRepository users,
-					CancellationToken cancellationToken) =>
-				UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}",
-					id => HandleGetUser(id, users, cancellationToken), cancellationToken))
+		group.MapGet("/users/search", HandleSearch)
+			.WithGroupName("basilapi")
+			.WithName("searchUsers")
+			.WithSummary("Search users.")
+			.WithDescription("""
+			                 Returns a page of users matching `q`: a free-text search plus optional `key<operator>value` filters.
+
+			                 `q`'s free-text portion matches a user id exactly, or a substring of the username (case- and space-insensitive), whichever applies.
+
+			                 Supported filter keys: `country` (matches any of the given countries -- concatenate multiple two-letter codes to OR them, e.g. `country=jp` or `country=vnusgb` for Vietnam, the US, or Great Britain), `privilege` (bitwise: matches users whose privilege flags include every bit set in the given mask, e.g. `privilege=2` for verified users).
+
+			                 Query params: `q` (required -- this endpoint cannot list every user; unfiltered listing is an administrator-only operation, see `GET /users`), `page` (default 1), `pageSize` (default 50).
+
+			                 A deleted user is always excluded from these results.
+			                 """)
+			.WithTags("Users")
+			.Produces<PagedResult<UserView>>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, new PagedResult<UserView>(1, 50, 1, [SampleUser().ToView()]))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Missing required query parameter 'q'."));
+
+		group.MapGet("/users/{userId:numericid}", HandleGetUser)
 			.WithGroupName("basilapi")
 			.WithName("getUser")
 			.WithSummary("Get a user.")
 			.WithDescription("""
 			                 Returns the user's profile.
 
-			                 A non-numeric `{idOrName}` is resolved via username lookup and redirected to the canonical `/users/{id}` form; a numeric value is served directly.
-
-			                 Returns `404 Not Found` if no user with this id or name exists.
+			                 Returns `404 Not Found` if no user with this id exists.
 			                 """)
 			.WithTags("Users")
 			.Produces<UserView>()
@@ -118,7 +135,7 @@ internal static class UserRoutes
 				new ErrorResponse("Username must be between 3 and 15 characters."))
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Username already exists."))
 			.WithLink(StatusCodes.Status201Created, "GetUser", "getUser", "Look up the newly created user.",
-				("idOrName", "$response.body#/data/id"))
+				("userId", "$response.body#/data/id"))
 			.WithLink(StatusCodes.Status201Created, "ReplaceUser", "replaceUser",
 				"Replace the newly created user's editable fields.",
 				("userId", "$response.body#/data/id"))
@@ -265,10 +282,8 @@ internal static class UserRoutes
 			.Produces<AvatarView>()
 			.WithExample(StatusCodes.Status200OK, new AvatarView(7, "https://a.example.test/7"));
 
-		group.MapGet("/users/{idOrName}/avatar", (string idOrName, IUserRepository users,
-					IOptions<StorageOptions> storage, CancellationToken cancellationToken) =>
-				UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/avatar",
-					id => Task.FromResult(HandleGetAvatar(id, storage)), cancellationToken))
+		group.MapGet("/users/{userId:numericid}/avatar", (int userId, IOptions<StorageOptions> storage) =>
+				HandleGetAvatar(userId, storage))
 			.WithGroupName("basilapi")
 			.WithName("getUserAvatar")
 			.WithSummary("Get a user avatar.")
@@ -276,8 +291,6 @@ internal static class UserRoutes
 			                 Serves the raw avatar file uploaded via `PUT /users/{id}/avatar`, if any. Content-Type is inferred from the file extension.
 
 			                 Unlike the `a.<domain>` host's client-facing avatar route, this never falls back to a default image.
-
-			                 A non-numeric `{idOrName}` is resolved via username lookup and redirected to the canonical form.
 
 			                 Returns `404 Not Found` if no avatar was ever uploaded for this user.
 			                 """)
@@ -319,12 +332,10 @@ internal static class UserRoutes
 			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Cannot delete BasilBot."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
-		group.MapGet("/users/{idOrName}/live", (string idOrName, IUserRepository users, HttpContext context,
+		group.MapGet("/users/{userId:numericid}/live", (int userId, HttpContext context,
 					IPlayerInputEvents inputEvents, IPlayerStatusEvents statusEvents,
 					ISessionRegistry<GameSession> gameRegistry, CancellationToken cancellationToken) =>
-				UserLookup.ResolveAsync(idOrName, users, id => $"/users/{id}/live",
-					id => Task.FromResult(HandleGetLive(id, context, inputEvents, statusEvents, gameRegistry,
-						cancellationToken)), cancellationToken))
+				HandleGetLive(userId, context, inputEvents, statusEvents, gameRegistry, cancellationToken))
 			.WithGroupName("basilapi")
 			.WithName("spectateUser")
 			.WithSummary("Spectate a user.")
@@ -335,8 +346,6 @@ internal static class UserRoutes
 
 			                 - `status`: online/offline and current activity (the full current status first, then on every change)
 			                 - `input`: decoded replay-frame bundles -- button state, cursor position, and the trailing scoreframe per bundle -- only while that user is online and playing, tournament match or not
-
-			                 A non-numeric `{idOrName}` is resolved via username lookup and redirected to the canonical form.
 
 			                 Returns `400 Bad Request` for user id 0 (BasilBot has no live stream to expose).
 			                 """)
@@ -360,6 +369,21 @@ internal static class UserRoutes
 	{
 		var user = await users.FetchByIdAsync(userId, cancellationToken);
 		return user is null ? Results.NotFound(new ErrorResponse("User not found.")) : Results.Json(user.ToView());
+	}
+
+	private static async Task<IResult> HandleSearch([FromQuery] string? q, [FromQuery] int? page,
+		[FromQuery] int? pageSize, IUserRepository users, CancellationToken cancellationToken)
+	{
+		if (string.IsNullOrWhiteSpace(q))
+			return Results.BadRequest(new ErrorResponse("Missing required query parameter 'q'."));
+
+		var (p, ps) = Pagination.Normalize(page, pageSize);
+		var filters = UserSearchQueryParser.Parse(q);
+
+		var found = await users.SearchAsync(filters, (p - 1) * ps, ps, cancellationToken);
+		var total = await users.SearchCountAsync(filters, cancellationToken);
+
+		return Results.Json(new PagedResult<UserView>(p, ps, total, [.. found.Select(u => u.ToView())]));
 	}
 
 	private static IResult HandleGetAvatar(int userId, IOptions<StorageOptions> storage)

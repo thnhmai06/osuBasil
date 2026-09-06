@@ -147,6 +147,79 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		return [.. rows.Select(r => r.ToUser())];
 	}
 
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+		CancellationToken cancellationToken = default)
+	{
+		var whereClause = BuildSearchWhereClause(filters, out var parameters);
+		parameters.Add("Offset", offset);
+		parameters.Add("Amount", amount);
+
+		await using var connection = Connect();
+		var rows = await connection.QueryAsync<UserRow>(
+			$"""
+			 SELECT * FROM Users
+			 {whereClause}
+			 ORDER BY Id LIMIT @Amount OFFSET @Offset
+			 """,
+			parameters);
+		return [.. rows.Select(r => r.ToUser())];
+	}
+
+	/// <inheritdoc />
+	public async Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+	{
+		var whereClause = BuildSearchWhereClause(filters, out var parameters);
+
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>(
+			$"SELECT COUNT(*) FROM Users {whereClause}",
+			parameters);
+	}
+
+	/// <summary>
+	///     Builds the shared `WHERE` clause and parameters for a user search, from the same filters
+	///     <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
+	/// </summary>
+	/// <remarks>
+	///     A numeric <see cref="UserSearchFilters.Keywords" /> matches either the id exactly or a
+	///     username substring -- osu! ids and usernames are drawn from different characters, so both
+	///     can be checked without ambiguity.
+	/// </remarks>
+	private static string BuildSearchWhereClause(UserSearchFilters filters, out DynamicParameters parameters)
+	{
+		var conditions = new List<string> { "DeletedAt IS NULL" };
+		parameters = new DynamicParameters();
+
+		if (filters.Keywords is not null)
+		{
+			parameters.Add("Query", $"%{User.MakeSafeName(filters.Keywords)}%");
+			if (int.TryParse(filters.Keywords, out var id))
+			{
+				conditions.Add("(SafeName LIKE @Query OR Id = @Id)");
+				parameters.Add("Id", id);
+			}
+			else
+			{
+				conditions.Add("SafeName LIKE @Query");
+			}
+		}
+
+		if (filters.Countries is { Count: > 0 })
+		{
+			conditions.Add("Country IN @Countries");
+			parameters.Add("Countries", filters.Countries.Select(c => c.ToAcronym()).ToList());
+		}
+
+		if (filters.PrivilegeMask is not null)
+		{
+			conditions.Add("(Privilege & @PrivilegeMask) = @PrivilegeMask");
+			parameters.Add("PrivilegeMask", (int)filters.PrivilegeMask.Value);
+		}
+
+		return $"WHERE {string.Join(" AND ", conditions)}";
+	}
+
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>
 	private SqliteConnection Connect()
 	{

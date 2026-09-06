@@ -502,7 +502,7 @@ internal static class LiveSseRoutes
 	///     sub-events (<see cref="EventOrientedSubEventTypes" />) each get a monotonic per-connection
 	///     SSE <c>id:</c>; the state sub-event never does, for the same reason
 	///     <see cref="SubscribeWithSnapshot" /> omits one. A <see langword="null" /> <paramref name="registry" />
-	///     (the per-player <c>/users/{idOrName}/live</c> stream) skips <see cref="SseSubscriberRegistry" />
+	///     (the per-player <c>/users/{userId}/live</c> stream) skips <see cref="SseSubscriberRegistry" />
 	///     registration entirely, same as <see cref="Subscribe" />.
 	/// </remarks>
 	private static async IAsyncEnumerable<SseItem<string>> SubscribeMultiWithSnapshot(

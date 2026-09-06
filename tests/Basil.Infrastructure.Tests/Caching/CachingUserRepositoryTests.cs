@@ -170,5 +170,16 @@ public class CachingUserRepositoryTests
 		{
 			return Task.FromResult<IReadOnlyList<User>>([]);
 		}
+
+		public Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<User>>([]);
+		}
+
+		public Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
+		}
 	}
 }

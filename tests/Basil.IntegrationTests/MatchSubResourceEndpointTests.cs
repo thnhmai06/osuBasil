@@ -826,6 +826,17 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			return Task.FromResult<IReadOnlyList<User>>([]);
 		}
 
+		public Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<User>>([]);
+		}
+
+		public Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
+		}
+
 		/// <summary>Seeds a user row so a kick/ban route resolving it by id or name finds a real account.</summary>
 		public void Add(User user)
 		{

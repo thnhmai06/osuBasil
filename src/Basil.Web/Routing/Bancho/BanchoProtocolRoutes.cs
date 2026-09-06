@@ -61,7 +61,7 @@ internal static class BanchoProtocolRoutes
 		- CantSpectate
 
 		Live replay frames are also published through the Basil API's
-		`GET /users/{idOrName}/live` Server-Sent Events endpoint.
+		`GET /users/{userId}/live` Server-Sent Events endpoint.
 
 		### Multiplayer
 

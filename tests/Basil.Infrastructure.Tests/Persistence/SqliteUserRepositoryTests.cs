@@ -1,3 +1,4 @@
+using Basil.Application.Abstractions.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Repositories;
@@ -138,5 +139,93 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		var reclaimed = await _repository.CreateAsync("claimed name", "different-hash", Country.Xx);
 
 		Assert.Null(reclaimed);
+	}
+
+	[Fact]
+	public async Task Search_KeywordsSubstring_MatchesUsername()
+	{
+		var created = (await _repository.CreateAsync("searchable player", "hash", Country.Xx))!;
+
+		var results = await _repository.SearchAsync(new UserSearchFilters("search"), 0, 50);
+
+		Assert.Contains(results, u => u.Id == created.Id);
+	}
+
+	[Fact]
+	public async Task Search_NumericKeywords_MatchesIdExactly()
+	{
+		var created = (await _repository.CreateAsync("numeric id search user", "hash", Country.Xx))!;
+
+		var results = await _repository.SearchAsync(new UserSearchFilters(created.Id.ToString()), 0, 50);
+
+		Assert.Contains(results, u => u.Id == created.Id);
+	}
+
+	[Fact]
+	public async Task Search_CountryFilter_ExcludesOtherCountries()
+	{
+		var jp = (await _repository.CreateAsync("jp search user", "hash", Country.Jp))!;
+		var us = (await _repository.CreateAsync("us search user", "hash", Country.Us))!;
+
+		var results = await _repository.SearchAsync(new UserSearchFilters("search user", [Country.Jp]), 0, 50);
+
+		Assert.Contains(results, u => u.Id == jp.Id);
+		Assert.DoesNotContain(results, u => u.Id == us.Id);
+	}
+
+	[Fact]
+	public async Task Search_MultipleCountryFilter_MatchesAnyOfThem()
+	{
+		var jp = (await _repository.CreateAsync("jp multi country user", "hash", Country.Jp))!;
+		var us = (await _repository.CreateAsync("us multi country user", "hash", Country.Us))!;
+		var vn = (await _repository.CreateAsync("vn multi country user", "hash", Country.Vn))!;
+
+		var results = await _repository.SearchAsync(
+			new UserSearchFilters("multi country user", [Country.Jp, Country.Us]), 0, 50);
+
+		Assert.Contains(results, u => u.Id == jp.Id);
+		Assert.Contains(results, u => u.Id == us.Id);
+		Assert.DoesNotContain(results, u => u.Id == vn.Id);
+	}
+
+	[Fact]
+	public async Task Search_PrivilegeMask_MatchesOnlyUsersWithEveryBitSet()
+	{
+		var withBoth = (await _repository.CreateAsync("priv mask both", "hash", Country.Xx,
+			UserPrivileges.Unrestricted | UserPrivileges.Verified))!;
+		var withOne = (await _repository.CreateAsync("priv mask one", "hash", Country.Xx,
+			UserPrivileges.Unrestricted))!;
+
+		var results = await _repository.SearchAsync(
+			new UserSearchFilters("priv mask",
+				PrivilegeMask: (ushort)(UserPrivileges.Unrestricted | UserPrivileges.Verified)),
+			0, 50);
+
+		Assert.Contains(results, u => u.Id == withBoth.Id);
+		Assert.DoesNotContain(results, u => u.Id == withOne.Id);
+	}
+
+	[Fact]
+	public async Task Search_DeletedUser_IsExcluded()
+	{
+		var created = (await _repository.CreateAsync("deleted search user", "hash", Country.Xx))!;
+		await _repository.SoftDeleteAsync(created.Id, DateTimeOffset.UtcNow);
+
+		var results = await _repository.SearchAsync(new UserSearchFilters("deleted search"), 0, 50);
+
+		Assert.DoesNotContain(results, u => u.Id == created.Id);
+	}
+
+	[Fact]
+	public async Task SearchCount_MatchesSearchResultCountAcrossPages()
+	{
+		await _repository.CreateAsync("count search user one", "hash", Country.Xx);
+		await _repository.CreateAsync("count search user two", "hash", Country.Xx);
+
+		var page = await _repository.SearchAsync(new UserSearchFilters("count search"), 0, 1);
+		var total = await _repository.SearchCountAsync(new UserSearchFilters("count search"));
+
+		Assert.Single(page);
+		Assert.True(total >= 2);
 	}
 }
