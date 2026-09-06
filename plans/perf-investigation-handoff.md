@@ -58,8 +58,8 @@ These constraints shaped every change made so far and should keep shaping what c
 | Investigation-only items (`EnvelopeMiddleware` throw sites, `CloseAsync` edge case) | Traced and confirmed unreachable, closed as non-issues |
 | Match Hosts/Referees "unable to test" (Issue #4) | Closed — environment constraint, not a defect; covered by existing in-process tests |
 | Full supervised load test | Run three times (2026-09-05/06); RC11 no longer reproduces — see §4 |
-| Stress/soak scenario ramp (100 → 5000 users, 12h soak) | **Still never run** — config gap unaudited, see §5 |
-| 2 OpenAPI spec-conformance bugs found | Dangling `$ref` fixed; duplicate path template still needs a decision — see §6 |
+| Stress/soak scenario ramp (100 → 5000 users, 12h soak) | **Still never run** — deliberately disabled (`Enabled: false`), not a bug; see `plans/perf-remaining-items-plan-20260906.md` §1 |
+| 2 OpenAPI spec-conformance bugs found | Both closed — see §6 |
 
 Full test suite: 1598 tests passing, Release build clean, as of `7085abe`.
 
@@ -139,15 +139,24 @@ to the repo — local artifacts; copy them somewhere durable if the machine will
 ## 5. Everything else that's still open
 
 - **Stress/soak scenario ramp never run**: `full.json`'s `stress` (100 → 5000 concurrent users) and `soak`
-  (12h at 750) scenario sections produced no variants and were skipped entirely in every run so far — a
-  config gap, not yet audited against `ScenarioCatalog`'s variant-selection logic. The server's capacity
-  envelope and scaling-curve knees above what's been exercised (multiplayer 64 rooms, `api` cluster
-  concurrency up to 500) remain unknown. **This is the actual next blocking item**, not RC11 itself — RC11
-  no longer reproduces, but the stress/soak gap has never been touched.
+  (12h at 750) scenario sections produced no variants and were skipped entirely in every run so far.
+  Confirmed (2026-09-06) this is **not a config bug** — `Scenarios.stress.Enabled` and
+  `Scenarios.soak.Enabled` are both deliberately `false` in `full.json`, and `StressScenario.cs`/
+  `SoakScenario.cs` both no-op by design when disabled. Nothing to audit; the scenarios just need
+  dedicated profiles (`Profiles/stress.json`, `Profiles/soak-smoke.json`, matching the existing
+  `Profiles/api-only.json` pattern) and to actually be run. Full plan:
+  `plans/perf-remaining-items-plan-20260906.md` §1. The server's capacity envelope and scaling-curve
+  knees above what's been exercised (multiplayer 64 rooms, `api` cluster concurrency up to 500) remain
+  unknown. **This is the actual next blocking item**, not RC11 itself — RC11 no longer reproduces, but
+  the stress/soak run has never happened.
 - **RC5 — SSE leak under load** (`NEEDS EXPERIMENT`): the three concrete mechanisms this originally named
   are fixed (ADR-004). Whether an actual memory leak exists under sustained load with SSE clients connected
   through match close/reopen churn is unproven either way — needs a supervised run specifically exercising
-  that scenario (a 93-second soak showed a flat working set, but never exercised this scenario).
+  that scenario (a 93-second soak showed a flat working set, but never exercised this scenario). **Also
+  confirmed (2026-09-06) that the stress/soak run above won't cover this by itself**: `full.json`'s
+  `soak.Weights` has no `sse` action and `SoakScenario`'s action switch has no `"sse"` branch either — an
+  SSE-holding-through-match-churn action needs to be added to the soak scenario itself, not just enabled.
+  Full plan: `plans/perf-remaining-items-plan-20260906.md` §2.
 - **RC8 — protocol allocation / login fan-out** (`HYPOTHESIS`): presence confirmed in code
   (`BinaryWriter`-per-primitive allocation, `GameSession`'s double-copy `Dequeue()`), but whether it's the
   *next* bottleneck is not established. Blocked on re-profiling — now unblocked in principle since RC11 no
@@ -160,23 +169,24 @@ Everything else from the original root-cause list (RC1–RC4, RC6, RC7, RC12, th
 Phase 7, and the outbox-full burst) is closed. See `docs/for-developers/known-limitations.md`'s "Recently
 closed" section for the closure evidence on each.
 
-## 6. Two OpenAPI spec-conformance bugs found (2026-09-05); one fixed, one needs a decision
+## 6. Two OpenAPI spec-conformance bugs found (2026-09-05) — both now closed
 
 Found while self-checking the 6 generated OpenAPI documents (`bancho`, `osuweb`, `beatmapassets`, `avatar`,
 `assets`, `basilapi`) with a throwaway validator built on the same `Microsoft.OpenApi` 2.11.0 package the
 project already depends on (`OpenApiDocument.Parse` + its `Diagnostic.Errors`/`Warnings`). 5 of 6 documents
-are clean. `basilapi.json` had:
+were clean at the time. `basilapi.json` had:
 
-1. **Duplicate path template** (spec violation, not an ASP.NET routing bug) — **still open, needs a
-   decision**: `GET /users/{idOrName}` and `PUT /users/{userId}` (and their `/avatar` children) normalize to
-   the same template (`/users/{}`) once parameter names are ignored — OpenAPI 3.x requires path templates to
-   be unique regardless of parameter naming, even though the two routes are perfectly distinguishable by
-   HTTP method at the actual routing layer. `PUT` genuinely only accepts a numeric id (admin action); `GET`
-   accepts either an id or a username — renaming either parameter to match the other would make one of the
-   two descriptions inaccurate. Needs a design decision (accept the pedantic non-conformance, or rename one
-   side and document the accepted inaccuracy) from the project owner, not a unilateral fix.
+1. **Duplicate path template** — **closed, resolved as a side effect of an unrelated feature**
+   (commit `5f1264a`): `GET /users/{idOrName}` and `PUT /users/{userId}` (and their `/avatar`/`/live`
+   children) used to normalize to the same template once parameter names were ignored. Resolved not by
+   picking one of the two design options this handoff originally posed, but by a separate,
+   user-requested feature: `/users` now only ever accepts a numeric id (`GET /users/{userId:numericid}`,
+   dropping username-as-path-parameter entirely), with username/id lookup moved to a dedicated
+   `GET /users/search`. Confirmed on the regenerated `basilapi.json`: `/users/{userId}`,
+   `/users/{userId}/avatar`, `/users/{userId}/live` each have exactly one template, and a full
+   normalized-path-template scan across all 61 `basilapi` paths finds zero duplicates.
 2. **Dangling `$ref`** — **fixed** (commit `611ed36`): the `oneOf` response schema for two SSE routes —
-   `GET /matches/{matchId}/live` and `GET /users/{idOrName}/live` — referenced `MatchLiveSnapshot` and
+   `GET /matches/{matchId}/live` and `GET /users/{userId}/live` — referenced `MatchLiveSnapshot` and
    `PlayerStatusView` respectively via `$ref`, but neither type had a schema registered in
    `components.schemas`. Root cause: both operations declare `.Produces<T>()` twice on the same status code
    (`MatchRoutes.cs:210-211`, `UserRoutes.cs:353-354`), and only the *last*-declared type of the pair
@@ -185,11 +195,13 @@ are clean. `basilapi.json` had:
    instead of assuming it was promoted to a named component — it comes back inlined rather than `$ref`'d,
    which is correct since neither type is reused by any other operation. Verified with a dedicated
    regression test (`BasilApiDocument_SseRouteUnsharedPayloadType_IsNotADanglingRef`), confirmed to fail
-   against the pre-fix code via revert-and-fail.
+   against the pre-fix code via revert-and-fail. Re-checked across all 6 documents after the fix: zero
+   dangling `$ref` anywhere, not just in `basilapi.json`.
 
-Wording/description content in all 6 documents is clean against `CLAUDE.md`'s rule 5 (no implementation
-details in `.WithSummary`/`.WithDescription`) and shows no AI-writing filler patterns. This audit has not
-been re-run since; re-run it if any route's `.Produces<T>()` declarations change again.
+Wording/description content in all 6 documents was clean against `CLAUDE.md`'s rule 5 (no implementation
+details in `.WithSummary`/`.WithDescription`) and showed no AI-writing filler patterns at the time of the
+original audit; not re-checked since, but neither fix above touched any `.WithSummary`/`.WithDescription`
+text.
 
 ## 7. Where to find things
 
@@ -199,6 +211,10 @@ been re-run since; re-run it if any route's `.Produces<T>()` declarations change
   point-in-time summary, that file is the living one.
 - [`perf-investigation-log.md`](perf-investigation-log.md) — the full session-by-session working log
   (Vietnamese), for the reasoning behind any specific past decision.
+- [`perf-remaining-items-plan-20260906.md`](perf-remaining-items-plan-20260906.md) — the current,
+  detailed (Vietnamese) plan for every item in §5 above: what's actually needed, in what order, and each
+  item's verify criterion. More current than this handoff's own §5/§8 summaries; read it before starting
+  any of that work.
 - [`rc11-recurrence-analysis-20260905.md`](rc11-recurrence-analysis-20260905.md) /
   [`rc11-fix-plan-20260905.md`](rc11-fix-plan-20260905.md) — RC11's round-1 evidence and the fix plan that
   produced the logging reform; both are self-marked as superseded by `known-limitations.md` for current
@@ -221,13 +237,18 @@ been re-run since; re-run it if any route's `.Produces<T>()` declarations change
 
 ## 8. Recommended immediate next step
 
-1. **Audit why `full.json`'s `stress`/`soak` scenarios produce no variants.** This is the actual remaining
-   blocker for the capacity-envelope/scaling-curve deliverable — RC11 no longer blocks it.
-2. Once that's fixed, run the stress ramp and soak under supervision, watching for RC11's signature
-   (`ThreadPoolQueueLength` climbing while `CpuPercent` stays near zero) and ready to capture a thread dump
-   (`dotnet-dump collect -p <pid>` then `clrstack -all`) immediately if it appears — this is still the one
-   measurement that would close RC11 with certainty rather than an inference from correlation.
-3. Independently of the above: decide on the remaining OpenAPI item in §6 (the duplicate-path-template
-   non-conformance) — the dangling `$ref` is already fixed.
-4. Only after the stress/soak run has a real capacity ceiling to profile against: start RC8 (protocol
-   allocation) re-profiling. Don't optimize it speculatively before then.
+Both OpenAPI items in §6 are now closed. See `plans/perf-remaining-items-plan-20260906.md` for the
+detailed, current plan on everything below; this is the short version:
+
+1. Add `Profiles/stress.json` and `Profiles/soak-smoke.json` (scoped single-scenario profiles, matching
+   the existing `Profiles/api-only.json` pattern) and confirm each actually produces variants and runs to
+   completion — the `Enabled: false` flags just need flipping in a scoped profile, not a config fix.
+2. While touching `SoakScenario.cs`: add an `"sse"` action branch (hold an SSE connection through a
+   match close/reopen cycle) so a real soak run can actually close RC5, which the current soak
+   configuration cannot exercise at all.
+3. Before running the real stress ramp / 12h soak under supervision: confirm `dotnet-dump` is installed
+   and have the capture command ready to paste the moment RC11's signature appears
+   (`ThreadPoolQueueLength` climbing while `CpuPercent` stays near zero) — three attempts across two
+   investigations have failed to capture a dump only because tooling wasn't ready in the moment.
+4. Only after that run has a real capacity ceiling to profile against: start RC8 (protocol allocation)
+   re-profiling. Don't optimize it speculatively before then.

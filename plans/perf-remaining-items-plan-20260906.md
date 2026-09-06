@@ -14,7 +14,7 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
 | A | Stress/soak chưa từng chạy | Không phải bug config — chỉ là cờ tắt (`Enabled: false`), xem §1 |
 | B | RC5 (SSE leak) chưa được đóng | Soak hiện tại **không** phủ được kịch bản này dù stress/soak chạy xong — cần thêm việc, xem §2 |
 | C | RC11 — chưa từng bắt được thread dump | Là điều kiện tiên quyết trước khi chạy lại, không phải bước làm giữa chừng — xem §3 |
-| D | 2 bug OpenAPI (`basilapi.json`) | 1 cần quyết định thiết kế (hỏi ở §5), 1 là bug sửa được (§4) |
+| D | 2 bug OpenAPI (`basilapi.json`) | ĐÃ XONG cả 2 — §4 sửa 2026-09-06, §5 tự resolve qua feature khác |
 | E | RC8 (protocol allocation) | Giữ nguyên thứ tự cuối cùng của handoff — chỉ bắt đầu sau khi A-C xong |
 
 ## §1. Stress/soak: bật cờ, không phải "audit config gap"
@@ -99,7 +99,7 @@ Cửa sổ sập từng rộng 6 phút; không đủ thời gian để cài côn
 → verify: trước khi lần chạy giám sát tiếp theo bắt đầu, cả 3 mục trên đã sẵn sàng (checklist, không
 phải tùy ứng biến).
 
-## §4. Dangling `$ref` trong `basilapi.json` — bug sửa được
+## §4. Dangling `$ref` trong `basilapi.json` — ĐÃ SỬA (commit `611ed36`)
 
 Vị trí: `OpenApiExampleExtensions.cs`'s `WithMainLiveExamples` (dòng 119-126) và `WithUserLiveExamples`
 (dòng 170-177). Cả hai tự tay dựng `OpenApiSchemaReference("<TênType>", context.Document)` cho **cả hai**
@@ -131,6 +131,13 @@ chạy lại validator tạm (`OpenApiDocument.Parse` + `Diagnostic.Errors`) tr�
 `basilapi.json`'s `components.schemas` chứa cả `MatchLiveSnapshot` và `PlayerStatusView` (mỗi tên xuất
 hiện ở đúng 1 định nghĩa component, không chỉ ở `$ref`).
 
+**ĐÃ XONG (2026-09-06)**: sửa bằng `context.GetOrCreateSchemaAsync(typeof(T))` (.NET 10) thay vì tự dựng
+`OpenApiSchemaReference` theo tên — type bị mất giờ trả về schema inline đầy đủ (không phải component
+`$ref`, nhưng đó là đúng vì không type nào trong 2 type này dùng lại ở operation khác). Verify: quét
+dangling `$ref` (JSON parse + so khớp `components.schemas`) trên cả 6 tài liệu → 0 dangling ở tất cả.
+Regression test `BasilApiDocument_SseRouteUnsharedPayloadType_IsNotADanglingRef`, xác nhận fail đúng lý
+do trên code cũ (revert-and-fail). Commit `611ed36`.
+
 ## §5. Duplicate path template — đã tự resolve (2026-09-06)
 
 Đã xử lý như một phần của feature "chỉ dùng id cho `/users`, thêm `GET /users/search`" (yêu cầu riêng
@@ -153,6 +160,8 @@ ceiling thật để nhắm vào. Không tối ưu đầu cơ trước đó.
 2. §2 bước 1-2 (thêm nhánh `sse` vào soak) — làm cùng lúc với §1 vì cùng đụng `SoakScenario.cs`/profile.
 3. §3 (chuẩn bị `dotnet-dump`) — làm song song, không phụ thuộc §1/§2, nhưng phải xong **trước** bước 4.
 4. Chạy `stress` ramp thật + `soak` 12 giờ thật, có giám sát trực tiếp `resources.csv`.
-5. §4 (sửa dangling `$ref`) — độc lập hoàn toàn với 1-4, có thể làm bất cứ lúc nào.
-6. §5 — chờ quyết định của bạn, rồi làm cùng lúc hoặc sau §4.
+5. ~~§4 (sửa dangling `$ref`)~~ — XONG, commit `611ed36`.
+6. ~~§5~~ — XONG, tự resolve qua feature `/users` chỉ dùng id (commit `5f1264a`).
 7. RC8 — chỉ sau bước 4 có kết quả.
+
+Việc còn lại thật sự chỉ còn: §1-§3 (stress/soak + RC5 SSE branch + chuẩn bị dump), rồi mới tới RC8.
