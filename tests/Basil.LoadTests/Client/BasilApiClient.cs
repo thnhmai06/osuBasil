@@ -121,6 +121,33 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 			: null;
 	}
 
+	/// <summary>
+	///     Looks up a specific match's database id by its exact room name, for <c>SoakScenario</c>'s
+	///     <c>sse</c> action -- unlike <see cref="ResolveSampleMatchIdAsync" />, this needs the one match a
+	///     single virtual user just created, not an arbitrary existing one, since many instances create
+	///     rooms concurrently during a soak run.
+	/// </summary>
+	/// <param name="name">The exact room name to match, as passed to the match-create packet.</param>
+	/// <param name="cancellationToken">Cancellation token for the lookup request.</param>
+	/// <returns>The match's database id, or <see langword="null" /> if it isn't found within the most recent page.</returns>
+	public async Task<int?> ResolveMatchIdByNameAsync(string name, CancellationToken cancellationToken = default)
+	{
+		using var client = clientFactory.CreateClient();
+		using var response = await client.GetAsync(
+			clientFactory.BuildUri("api", "/matches?status=all&page=1&pageSize=20"), cancellationToken);
+		if (!response.IsSuccessStatusCode) return null;
+
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+		var items = envelope.GetProperty("data");
+		if (items.ValueKind != JsonValueKind.Array) return null;
+
+		foreach (var item in items.EnumerateArray())
+			if (item.GetProperty("name").GetString() == name)
+				return item.GetProperty("id").GetInt32();
+
+		return null;
+	}
+
 	/// <summary>Best-effort lookup of any existing beatmapset id, for <c>ApiScenario</c>'s <c>beatmapset</c> target.</summary>
 	/// <returns>The first beatmapset id found, or <see langword="null" /> if none exist.</returns>
 	public async Task<int?> ResolveSampleBeatmapsetIdAsync(CancellationToken cancellationToken = default)

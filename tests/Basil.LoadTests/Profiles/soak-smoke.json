@@ -1,5 +1,5 @@
 {
-	"Name": "stress",
+	"Name": "soak-smoke",
 	"ServerHost": {
 		"Kind": "Dotnet",
 		"Domain": "basil.local",
@@ -18,17 +18,17 @@
 	"Client": {
 		"HttpVersion": "1.1",
 		"ConnectionMode": "Shared",
-		"MaxConnectionsPerServer": 2048,
+		"MaxConnectionsPerServer": 512,
 		"RequestTimeoutSeconds": 30,
 		"PollIntervalSeconds": 60
 	},
 	"Accounts": {
-		"Count": 5000,
-		"NamePrefix": "stress",
+		"Count": 750,
+		"NamePrefix": "load",
 		"Password": "loadtest-pw"
 	},
 	"Metrics": {
-		"SampleIntervalSeconds": 2,
+		"SampleIntervalSeconds": 1,
 		"DotnetCounters": {
 			"Enabled": true,
 			"RefreshIntervalSeconds": 1
@@ -39,7 +39,8 @@
 		"Formats": [
 			"Html",
 			"Csv",
-			"Md"
+			"Md",
+			"Txt"
 		]
 	},
 	"Scenarios": {
@@ -85,31 +86,33 @@
 			"WarmUpSeconds": 0
 		},
 		"stress": {
-			"Enabled": true,
-			"ConcurrentUsers": [
-				100,
-				250,
-				500,
-				1000,
-				2000,
-				5000
-			],
-			"RampSeconds": 30,
-			"HoldSeconds": 90,
-			"MaxFailCount": 2147483647,
-			"UnusableSuccessRatePercent": 5,
-			"UnusableForSeconds": 60,
-			"SaturationCpuPercent": 95,
-			"SaturationSeconds": 30
-		},
-		"soak": {
 			"Enabled": false,
 			"ConcurrentUsers": [],
-			"DurationSeconds": 0,
-			"WarmUpSeconds": 0,
-			"ReportingIntervalSeconds": 300,
-			"Weights": {},
-			"LeakSlopeThresholds": {}
+			"RampSeconds": 0,
+			"HoldSeconds": 0
+		},
+		"soak": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				50
+			],
+			"DurationSeconds": 300,
+			"WarmUpSeconds": 30,
+			"ReportingIntervalSeconds": 30,
+			"Weights": {
+				"chat": 35,
+				"multiplayer": 20,
+				"api": 20,
+				"sse": 10,
+				"idle": 15
+			},
+			"LeakSlopeThresholds": {
+				"WorkingSetMbPerHour": 25,
+				"GcHeapMbPerHour": 25,
+				"ThreadsPerHour": 5,
+				"HandlesPerHour": 50,
+				"P95MsPerHour": 10
+			}
 		}
 	}
 }

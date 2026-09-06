@@ -3,7 +3,7 @@
 	"ServerHost": {
 		"Kind": "Dotnet",
 		"Domain": "basil.local",
-		"Port": 8443,
+		"Port": 9443,
 		"IrcPort": 16667,
 		"CertPath": "data/certs/basil.local.pfx",
 		"CertPassword": "your-password",
@@ -161,9 +161,10 @@
 			"WarmUpSeconds": 300,
 			"ReportingIntervalSeconds": 300,
 			"Weights": {
-				"chat": 40,
+				"chat": 35,
 				"multiplayer": 20,
-				"api": 25,
+				"api": 20,
+				"sse": 10,
 				"idle": 15
 			},
 			"LeakSlopeThresholds": {

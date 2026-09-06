@@ -213,7 +213,7 @@ public sealed class SoakSettings
 	/// <summary>How often NBomber streams interim stats, so a multi-hour run doesn't report only at the end.</summary>
 	public int ReportingIntervalSeconds { get; init; } = 300;
 
-	/// <summary>Relative weights for each workload mixed into the soak (chat/multiplayer/api/idle).</summary>
+	/// <summary>Relative weights for each workload mixed into the soak (chat/multiplayer/api/sse/idle).</summary>
 	public Dictionary<string, int> Weights { get; init; } = [];
 
 	/// <summary>Per-series leak-slope thresholds; a slope above the threshold with a high R² is reported as a leak.</summary>
