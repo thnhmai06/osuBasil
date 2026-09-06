@@ -11,8 +11,8 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
 
 | # | Mục | Việc thật sự cần làm |
 |---|-----|----------------------|
-| A | Stress/soak chưa từng chạy | Không phải bug config — chỉ là cờ tắt (`Enabled: false`), xem §1 |
-| B | RC5 (SSE leak) chưa được đóng | Soak hiện tại **không** phủ được kịch bản này dù stress/soak chạy xong — cần thêm việc, xem §2 |
+| A | Stress/soak chưa từng chạy thật | Profile + soak-smoke đã xong (§1); còn thiếu stress ramp thật + soak 12h thật |
+| B | RC5 (SSE leak) chưa được đóng | Nhánh `sse` đã code xong + verify plumbing ở scale nhỏ (§2); vẫn cần soak 12h thật mới đóng được RC5 |
 | C | RC11 — chưa từng bắt được thread dump | Là điều kiện tiên quyết trước khi chạy lại, không phải bước làm giữa chừng — xem §3 |
 | D | 2 bug OpenAPI (`basilapi.json`) | ĐÃ XONG cả 2 — §4 sửa 2026-09-06, §5 tự resolve qua feature khác |
 | E | RC8 (protocol allocation) | Giữ nguyên thứ tự cuối cùng của handoff — chỉ bắt đầu sau khi A-C xong |
@@ -32,20 +32,23 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
 
 **Việc cần làm:**
 
-1. Tạo 2 profile riêng theo đúng khuôn mẫu `Profiles/api-only.json` đã có (profile con để lặp có kiểm
-   soát, thay vì bật thẳng trong `full.json` và chạy toàn bộ tuần tự mỗi lần):
-   - `Profiles/stress.json` — chỉ bật `stress`, các scenario khác tắt.
-   - `Profiles/soak-smoke.json` — chỉ bật `soak`, `DurationSeconds` rút xuống ~300 (5 phút) thay vì
-     43200, giữ nguyên `Weights`/`LeakSlopeThresholds`.
-   → verify: `dotnet run --project tests/Basil.LoadTests -- --profile stress` và
-   `--profile soak-smoke` đều tạo ra scenario variant (không còn dòng "produced no variants"), chạy hết
-   vòng đời, và report sinh ra ở `.loadtest/reports/`.
-2. Chạy `soak-smoke` **trước** khi chạy soak 12 giờ thật. Đây là bước rẻ nhất để tránh phát hiện lỗi bind
-   hoặc lỗi `SoakAnalyzer` ở giờ thứ 11 của một lần chạy 12 giờ.
-   → verify: report có đủ metric cho `SoakAnalyzer` tính slope (working set, GC heap, thread/handle
-   count, P95), và không có exception nào từ chính scenario code (`ex.GetType().Name` trong log).
-3. Chỉ sau khi (1) và (2) xanh: chạy `stress` ramp thật (100 → 5000) rồi `soak` 12 giờ thật, có giám sát —
-   xem §3 cho điều kiện tiên quyết trước khi bấm chạy.
+1. ~~Tạo 2 profile riêng~~ — XONG (2026-09-06). `Profiles/stress.json` hoá ra đã tồn tại sẵn từ harness
+   gốc (commit `82d9e97`, không phải việc mới) — chỉ cần đổi `Port` 8443→9443 (xem note port bên dưới).
+   `Profiles/soak-smoke.json` tạo mới, soak 300s thay vì 43200s, giữ nguyên `Weights`/`LeakSlopeThresholds`
+   pattern. **Phát hiện phụ**: port 8443 đang nằm trong Windows dynamic TCP exclusion range hiện tại
+   (`netsh int ipv4 show excludedportrange`, 8433-8532 — Hyper-V/WSL/Docker cấp lại) → bind
+   `SocketException 10013`. Đổi toàn bộ 4 profile (`full.json`, `api-only.json`, `stress.json`,
+   `soak-smoke.json`) sang port 9443. Không phải bug code.
+   → verify: `dotnet run --project tests/Basil.LoadTests -- --profile soak-smoke` chạy hết vòng đời,
+   report sinh ra ở `.loadtest/reports/` — **đã xác nhận, xanh**.
+2. ~~Chạy soak-smoke trước~~ — XONG. 3 lần chạy đầu dính lỗi môi trường không liên quan code (xem vòng
+   log tương ứng): seeding 404 hàng loạt + hang treo ở "Beatmap serving mode" — cả 2 do 1 process
+   `dotnet Basil.Web.dll` orphan (tự start lúc debug port 8443 sớm hơn, port 9444) giữ lock chung file
+   `Basil.db`/log với server thật do harness start. Xoá `.loadtest/server` + kill orphan process → chạy
+   sạch. `soak-analysis.md` báo đúng "insufficient data (5min < 30min minimum)" cho mọi series — đúng dự
+   kiến, KHÔNG phải "no leak", chỉ xác nhận plumbing hoạt động.
+3. **Còn lại**: chạy `stress` ramp thật (100 → 5000) rồi `soak` 12 giờ thật, có giám sát — xem §3 cho
+   điều kiện tiên quyết trước khi bấm chạy.
 
 ## §2. RC5 (SSE leak) — soak hiện tại không đóng được mục này
 
@@ -60,19 +63,24 @@ trên. Điều đó **không đúng** với cấu hình soak hiện tại:
 
 **Việc cần làm (việc code thật, không chỉ đổi config):**
 
-1. Thêm nhánh `"sse"` vào `SoakScenario`'s `Build`/switch: instance giữ một kết nối SSE tới
-   `/matches/{matchId}/live` (hoặc `/users/{idOrName}/live`) xuyên qua ít nhất một chu kỳ đóng/mở match
-   (map "multiplayer" action hiện tại — create → part — đã có sẵn logic tạo/đóng match, có thể tái dùng).
-2. Thêm `"sse": <weight>` vào `soak-smoke.json` và `full.json`'s `soak.Weights`.
-   → verify: `soak-smoke` chạy có action `"sse"` xuất hiện trong report (không rơi vào `default`).
-3. Sau khi soak 12 giờ thật chạy xong với nhánh này bật: đối chiếu working-set/GC-heap slope của
-   `SoakAnalyzer` — nếu vượt `LeakSlopeThresholds`, RC5 được xác nhận (`CONFIRMED`), có bằng chứng slope
-   cụ thể để đưa vào `known-limitations.md`.
-   → verify: `known-limitations.md`'s RC5 entry chuyển từ `NEEDS EXPERIMENT` sang `CONFIRMED` hoặc
-   `CLOSED — no leak observed`, kèm số liệu slope thật.
-
-Nếu không muốn mở rộng scope harness ở vòng này, ít nhất ghi rõ trong `known-limitations.md` rằng soak
-hiện tại **không** phủ RC5, để người sau không lặp lại giả định sai này lần ba.
+1. ~~Thêm nhánh "sse"~~ — XONG (commit `5ef80ad`). Subscribe `/matches/{id}/settings/live`, đóng match
+   bằng `POST /matches/{id}/close` (KHÔNG phải `PartMatch` — rời ghế chỉ để phòng trống chờ timer 15
+   phút, không đóng ngay, xem `multiplayer.md`), tạo+đóng match thứ 2, rồi drain stream tới EOF thật
+   hoặc deadline 15s. 2 bug tự tìm ra khi làm thật:
+   - Đọc 1 dòng để "confirm còn sống" → sai, SSE nhiều dòng/event, dòng sót trong buffer làm lần đọc
+     sau luôn non-null → false "still-open". Sửa: drain loop tới EOF thật.
+   - Đóng bằng `PartMatch` ban đầu → không bao giờ trigger `Writer.Complete()` (không đóng phòng thật).
+     Sửa: dùng `POST /matches/{id}/close`.
+2. ~~Thêm "sse" vào Weights~~ — XONG, `soak-smoke.json` + `full.json`.
+   → verify: **đã chạy thật** — sau khi sửa cả 2 bug, `soak-smoke` 5 phút báo `sse-closed` cho toàn bộ
+   14/14 lần action `sse` chạy (trước khi sửa: 26/26 và 21/21 lần đều `sse-still-open` giả do bug #1
+   rồi bug #2). Xác nhận cơ chế `Writer.Complete()` hoạt động đúng ở scale nhỏ.
+3. **Còn lại thật sự**: soak 12 giờ thật với nhánh này bật — chỉ khi đó mới đối chiếu được
+   working-set/GC-heap slope của `SoakAnalyzer` để đóng RC5 (`CONFIRMED` nếu vượt threshold, hoặc
+   `CLOSED — no leak observed` nếu không). 5 phút soak-smoke KHÔNG đủ dữ liệu (`SoakAnalyzer` tự báo
+   "insufficient data (5min < 30min minimum)") — đây là xác nhận plumbing hoạt động, KHÔNG phải kết
+   luận RC5 đã đóng hay chưa. Đừng lặp lại nhầm lẫn "soak ngắn = no leak" lần ba
+   (`known-limitations.md` đã ghi nhận nhầm lẫn này 2 lần trước với run 93 giây).
 
 ## §3. RC11 — chuẩn bị bắt thread dump là điều kiện tiên quyết, không phải bước giữa chừng
 
