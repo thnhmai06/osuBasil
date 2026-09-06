@@ -1,12 +1,16 @@
 # Basil performance investigation — handoff
 
-Branch: `chore/perf-investigation` · PR: #7 · Latest commit as of this handoff: `a7f169a`
+Branch: `chore/perf-investigation` · PR: #7 · Latest commit as of this handoff: `7085abe`
 
 This document is a handoff summary for whoever picks up this effort next. It is a synthesis, not a
 line-by-line translation of the working log this effort was tracked in session-by-session — that raw log
-(in Vietnamese, ~30 rounds of incremental notes) exists outside this repo. Ask the previous owner for it if
-you need blow-by-blow reasoning for a specific past decision; this document gives you the state, the
-evidence, and where to look next.
+(in Vietnamese, ~28 rounds of incremental notes) lives at [`perf-investigation-log.md`](perf-investigation-log.md)
+in this same directory. Read that if you need blow-by-blow reasoning for a specific past decision; this
+document gives you the state, the evidence, and where to look next.
+
+**This revision supersedes the previous handoff written at `a7f169a`.** That version left RC11 as an open,
+unexplained recurrence. Since then, two follow-up load-test rounds and a root-cause investigation closed
+most of the gap — see §4, rewritten below. Do not read `a7f169a`'s version of §4 as current.
 
 ## 1. Why this exists
 
@@ -18,8 +22,8 @@ them with evidence (not guesses), and produce a server that is lightweight, pred
 minimally dependent — not necessarily one that survives an arbitrary "N users" number.
 
 Three investigation passes (bancho core/concurrency, data layer/API pipeline, load-test evidence) produced
-an initial root-cause list (RC1–RC10, later RC11/RC12 added). Most are closed. **RC11 is not**, and it is
-the reason this handoff exists now rather than after a clean finish — see §4.
+an initial root-cause list (RC1–RC10, later RC11/RC12 added). All are now closed or reduced to a single,
+narrow, unmeasured item — see §3 and §4.
 
 ## 2. Operating rules (still apply to any further work here)
 
@@ -42,97 +46,121 @@ These constraints shaped every change made so far and should keep shaping what c
 
 | Area | Status |
 |---|---|
-| DB write path (RC1/RC2, ADR-001) | Fixed in isolation; **recurring under combined load — see §4** |
+| DB write path (RC1/RC2, ADR-001) | Fixed; verified again under combined load — see §4 |
 | Session/match state (RC3/RC4, ADR-002/003) | Done |
 | SSE rebuild (RC5, ADR-004) | Mechanism fixed; leak-under-load claim still `NEEDS EXPERIMENT` |
 | API pipeline (RC6, ADR-005) | Done; Issue #4's full naming/DTO/OpenAPI audit done |
-| Storage (RC7, ADR-006, `.osz` direct storage) | Fully implemented and accepted |
-| Protocol/allocation perf (RC8) | Not started — blocked on RC11 (profile-first rule) |
+| Storage (RC7, ADR-006, `.osz` direct storage) | Fully implemented and accepted, including watcher narrowing (Phase 7) |
+| Round-end outbox burst (found during RC11 follow-up) | Root-caused and fixed — see §4 |
+| Logging pipeline (RC11 follow-up) | Reformed: size-rolling sinks, async-wrapped, leveled per-request logging — see §4 |
+| Protocol/allocation perf (RC8) | Not started — `HYPOTHESIS`, blocked on re-profiling under the now-stable server |
 | Security (Phase S) | Done, 5/5 items |
-| Beatmap watcher narrowing (Phase 7) | Done |
-| Full supervised load test | **Run once (2026-09-05); found RC11 recurring — see §4** |
+| Investigation-only items (`EnvelopeMiddleware` throw sites, `CloseAsync` edge case) | Traced and confirmed unreachable, closed as non-issues |
+| Match Hosts/Referees "unable to test" (Issue #4) | Closed — environment constraint, not a defect; covered by existing in-process tests |
+| Full supervised load test | Run three times (2026-09-05/06); RC11 no longer reproduces — see §4 |
+| Stress/soak scenario ramp (100 → 5000 users, 12h soak) | **Still never run** — config gap unaudited, see §5 |
 | 2 OpenAPI spec-conformance bugs found | **Not fixed — see §6** |
 
-Full test suite: 1597 tests passing (Domain 114, Protocol 158, Application 710, Architecture 9,
-Infrastructure 256, IntegrationTests 350) as of `d5ca2d4`. Release build clean.
+Full test suite: 1598 tests passing, Release build clean, as of `7085abe`.
 
-## 4. The open, urgent item: RC11 recurred
+## 4. RC11 — where it actually landed
 
 **RC11** originally meant "the server dies completely under combined multiplayer + API load," root-caused
-to SQLite write-path saturation (`Microsoft.Data.Sqlite` is not truly async, so writes block pool threads;
-once write throughput is exceeded for long enough, the ThreadPool backlog grows without bound and never
-recovers on its own). ADR-001 (busy-timeout, `synchronous=NORMAL`, collapsed round-trip writes) fixed this
-against the narrow profile that first found it (0 failures at concurrency 100, vs. 12 `SQLITE_BUSY` failures
-before the fix).
+to SQLite write-path saturation. ADR-001 (busy-timeout, `synchronous=NORMAL`, collapsed round-trip writes)
+fixed this against the narrow profile that first found it, but that verification never covered the actual
+combined-load scenario.
 
-**That verification never covered the actual combined-load scenario.** On 2026-09-05, a supervised run of
-`Profiles/full.json`'s `login → idle → chat → multiplayer → api` sequence reproduced the same failure shape,
-starting at the `multiplayer → api` transition:
+**Round 1 (2026-09-05, commit `d5ca2d4`)**: a supervised run of `Profiles/full.json`'s full
+`login → idle → chat → multiplayer → api` sequence reproduced RC11's original failure shape almost exactly —
+`ThreadPoolQueueLength` climbing 809 → 2004 with no recovery, `CpuPercent` pinned near 0 (threads blocked on
+I/O, not computing), and the DB-free `api_health_500` scenario running clean while every DB-touching
+scenario after it failed. Confirmed independent of the harness with a native `Test-NetConnection` probe.
+Full detail: `plans/rc11-recurrence-analysis-20260905.md`.
 
-- `api_match_list_500` (one of 18 `api` sub-scenarios, at the highest tested concurrency, 500) failed
-  **13390/13390 requests — 100%**. Several subsequent sub-scenarios (`api_match_report_500`,
-  `api_beatmapset_500`, `api_mixed_500`) stayed collapsed.
-- `resources.csv` for the run confirms this independent of request-level reporting: by the run's final
-  samples, `ThreadPoolQueueLength` climbed monotonically 809 → 2004 with no recovery, `ThreadCount` climbed
-  500 → 517, `HandleCount` climbed 6776 → 6972, `CpuPercent` sat near 0.000 (threads blocked on I/O, not
-  computing), and `TcpConnections` fell 500 → 297 as clients gave up. This is the exact signature the
-  original RC11 investigation used to distinguish "ThreadPool saturation, not a crash."
-- Confirmed independently of the load-test harness: a native `Test-NetConnection`/`Invoke-WebRequest` probe
-  against `127.0.0.1:8443` during the failure window also failed to connect (`TcpTestSucceeded: False`),
-  ruling out a client-side (load generator) artifact.
-- `Logs/latest.log` stopped writing at 17:46 (hit its ~1 GB size cap) while the run continued to 18:02 —
-  the same tooling gap the original RC11 investigation hit, losing log visibility across exactly the window
-  that mattered, for the second time.
-- The one endpoint type that did **not** fail at the same concurrency: `api_health_500` (no DB access) ran
-  clean (913744 ok / 38 timeout). This rules out a generic "Kestrel can't handle 500 concurrent connections"
-  explanation — every DB-touching endpoint failed together regardless of which one, while the DB-free one
-  didn't. That points at the SQLite/ThreadPool mechanism, not a bug in any one route's own code.
-- `errors_latest.log` shows a burst of `MatchRoundEndOutboxFullException` ("Round-end outbox is full") at
-  17:39, right as `multiplayer_64` finished and `api` began — consistent with a write backlog from
-  multiplayer's round-end persistence not draining before `api`'s load ramped through 50 → 200 → 500
-  concurrency over the following ~16 minutes, tipping into full saturation once it hit 500.
-- One route under test at the time this happened was `GET /matches/{matchId}` (the tournament match report,
-  `MatchReportService`) — it did **not** cause this. `api_health_500` ran clean immediately before the
-  collapse, and the collapse had already started (at `api_user_500`) two sub-scenarios before the match
-  report scenario even ran. It inherited an already-saturated server, like every other DB-touching endpoint
-  tested after it.
+**Re-review the same day** corrected three conclusions the raw evidence didn't actually support (the
+`api_user_500` scenario was not already-collapsed when it started; the round-end-outbox burst preceded the
+collapse by 17 minutes and 4 healthy scenarios, ruling it out as a direct precursor; the DB-free endpoint
+surviving is explained by scenario ordering, not proof the database is uninvolved). Also found:
+`Logs/latest.log` had stopped writing at 17:46 (hit Serilog's 1GB default) while the run continued to
+18:02 — the same tooling gap that had already cost a prior investigation its evidence, for the second time.
 
-**Conclusion: ADR-001 is not sufficient to close RC11.** The narrow verification (login-only, concurrency
-100) does not represent the actual combined multiplayer+API load pattern. This needs new investigation, not
-a quick patch — per the project's own "profile first" rule, do not optimize RC8 (protocol allocation) or
-anything else until this is understood, since it risks fixing the wrong bottleneck.
+**The fix plan** (`plans/rc11-fix-plan-20260905.md`) called for naming the blocking mechanism via a thread
+dump *before* reforming logging, since the logging reform alone was expected to make Candidate A (console
+sink blocking on the load-harness's stdout pipe) disappear without ever confirming it was the cause. In
+practice: an API-only re-run (Phase 2, scope-narrowed at the user's request) did not reproduce the
+collapse, so there was no dump to take, and Phases 2b/5's SQLite-specific fix were skipped rather than
+guessed at. The user chose to proceed with the logging reform anyway and record RC11's mechanism as open.
 
-**Suggested next step**: investigate DB write throughput / lock contention specifically across the
-`multiplayer → api` transition, using the `BasilMetrics` instrumentation already in place
-(`DbCommandDurationMs`, `DbBusyCount`, `MatchLockWaitMs`) — ideally after raising or fixing the log size cap
-so the failure window isn't a blind spot again (see `docs/for-developers/known-limitations.md`'s "Handoff"
-section for the two things to fix before the next run: the log cap, and why `full.json`'s `stress`/`soak`
-scenarios produced no variants this run and need auditing).
+**Logging reform shipped** (commit `7085abe`, Phases 1/3/4/6 of the fix plan):
+- File sinks roll at 256MB in addition to daily (previously silently truncated at Serilog's 1GB default).
+- Both sinks wrapped in `Serilog.Sinks.Async`, so a stalled console pipe or slow disk can never block a
+  request thread.
+- Per-request API logging leveled to `Debug` (`Warning` on 5xx) instead of unconditional `Information` —
+  this alone was ~80% of a collapsed run's 1GB log.
+- Removed a redundant `UseSerilogRequestLogging()` registration that built and discarded a log event on
+  every request.
+- The load-test harness itself no longer accumulates a run's entire stdout/stderr in memory.
 
-The full run's evidence is preserved at `.loadtest/reports/full-20260905-094716/` (not committed to the
-repo — it's a local artifact; copy it somewhere durable if the machine will be reimaged).
+**Round 2 (same day, commit `5bde7b5`)**: the *full* `login → idle → chat → multiplayer → api` sequence,
+with the logging reform applied, completed with **no collapse**: max `ThreadPoolQueueLength` 702 (vs. 2004
+in round 1), max `ThreadCount` 169 (vs. 517), comparable machine CPU pressure to round 1 (63% vs. 58% mean).
+
+**The round-end-outbox burst reproduced identically in round 2** (1,056 `MatchRoundEndOutboxFullException`
+occurrences during the `multiplayer_64` window) and was root-caused the next day (commit `7085abe`):
+
+1. **Load-test harness bug, not a server bug**: `MultiplayerScenario` used `Simulation.KeepConstant`, which
+   respawns a fresh scenario copy under the same instance number the instant one virtual user's room
+   lifecycle finishes. The per-room `TaskCompletionSource` coordinating host→followers is created once for
+   the scenario's whole life, so every respawned generation's followers kept resolving the *first*
+   generation's stale match id and sending gameplay packets at an already-closed match. Fixed by switching
+   to `Simulation.Inject` with `interval == during` — a one-shot batch where every copy runs once to its own
+   natural completion. Cut the exception count from 1,056 to 126.
+2. **Real server bug, small but genuine**: `MatchCompleteHandler`'s "anyone still playing" guard had no
+   memory of whether the round it just closed was already closed, so a duplicate or late-arriving
+   completion for that round re-entered the block and re-enqueued the same round's end. Fixed with a
+   one-line idempotency check (`if (!match.InProgress) return;`) right after acquiring the match lock.
+   Verified with two further `multiplayer_64`-only runs: zero `MatchRoundEndOutboxFullException` occurrences.
+
+**Where this leaves RC11's mechanism**: still not named from a stack — no thread dump was ever taken,
+across three attempts in two investigations. The balance of evidence favors the console-sink-blocking
+candidate (the one variable that changed between "collapses every time" and "doesn't collapse across two
+full-workload attempts" was the logging pipeline), but this is inference from correlation, not proof. The
+SQLite-write-path candidate remains untested either way. **Treat RC11 as not currently reproducible under
+this test harness — not as a confirmed-fixed root cause.** If it recurs in some future run, capturing a
+thread dump at the first sign of the collapse signature (`ThreadPoolQueueLength` climbing while
+`CpuPercent` stays near zero) is the one measurement that would close this with certainty. Full detail and
+the corrected evidence table: `docs/for-developers/known-limitations.md`'s RC11 entry — that document is
+the authoritative, living record; this section is a point-in-time summary of it.
+
+The full evidence for all three runs is preserved at `.loadtest/reports/full-20260905-094716/`,
+`.loadtest/reports/api-only-20260905-125951/`, and `.loadtest/reports/full-20260905-143915/` (not committed
+to the repo — local artifacts; copy them somewhere durable if the machine will be reimaged).
 
 ## 5. Everything else that's still open
 
+- **Stress/soak scenario ramp never run**: `full.json`'s `stress` (100 → 5000 concurrent users) and `soak`
+  (12h at 750) scenario sections produced no variants and were skipped entirely in every run so far — a
+  config gap, not yet audited against `ScenarioCatalog`'s variant-selection logic. The server's capacity
+  envelope and scaling-curve knees above what's been exercised (multiplayer 64 rooms, `api` cluster
+  concurrency up to 500) remain unknown. **This is the actual next blocking item**, not RC11 itself — RC11
+  no longer reproduces, but the stress/soak gap has never been touched.
 - **RC5 — SSE leak under load** (`NEEDS EXPERIMENT`): the three concrete mechanisms this originally named
   are fixed (ADR-004). Whether an actual memory leak exists under sustained load with SSE clients connected
-  through match close/reopen churn is unproven either way — needs the same kind of supervised run as RC11,
-  specifically exercising that scenario.
+  through match close/reopen churn is unproven either way — needs a supervised run specifically exercising
+  that scenario (a 93-second soak showed a flat working set, but never exercised this scenario).
 - **RC8 — protocol allocation / login fan-out** (`HYPOTHESIS`): presence confirmed in code
   (`BinaryWriter`-per-primitive allocation, `GameSession`'s double-copy `Dequeue()`), but whether it's the
-  *next* bottleneck after RC1/RC5 is not established. Blocked on re-profiling, which is blocked on RC11.
-- **Capacity envelope / scaling curve** (Definition of Done item): unmeasured above what's been exercised.
-  Blocked on the same supervised-run requirement as RC11, plus the `stress`/`soak` config gap found this
-  round.
+  *next* bottleneck is not established. Blocked on re-profiling — now unblocked in principle since RC11 no
+  longer reproduces, but the stress/soak run above should happen first so profiling targets the real ceiling.
 - **Tourney-client concurrency fix** (`HYPOTHESIS`): the `HashSet<int>` → `ConcurrentDictionary<int, byte>`
-  change is safe and cheap either way; whether it was ever actually necessary (real tourney-client traffic
-  hitting concurrent access) has never been observed. Low priority.
-- **Match Hosts/Referees API "Unable to test"**: this is an environment constraint (the original reporter
-  only had one osu! client to test with), not a defect — Basil's own test suite already exercises
-  multi-session host/referee transitions in-process. Closed as far as this effort is concerned; see
-  `known-limitations.md`.
+  change is safe and cheap either way; whether it was ever actually necessary has never been observed. Low
+  priority.
 
-## 6. Two OpenAPI spec-conformance bugs found (2026-09-05), not yet fixed
+Everything else from the original root-cause list (RC1–RC4, RC6, RC7, RC12, the two investigation-only items,
+Phase 7, and the outbox-full burst) is closed. See `docs/for-developers/known-limitations.md`'s "Recently
+closed" section for the closure evidence on each.
+
+## 6. Two OpenAPI spec-conformance bugs found (2026-09-05), still not fixed
 
 Found while self-checking the 6 generated OpenAPI documents (`bancho`, `osuweb`, `beatmapassets`, `avatar`,
 `assets`, `basilapi`) with a throwaway validator built on the same `Microsoft.OpenApi` 2.11.0 package the
@@ -161,7 +189,8 @@ are clean. `basilapi.json` has:
    call sites.
 
 Wording/description content in all 6 documents is clean against `CLAUDE.md`'s rule 5 (no implementation
-details in `.WithSummary`/`.WithDescription`) and shows no AI-writing filler patterns.
+details in `.WithSummary`/`.WithDescription`) and shows no AI-writing filler patterns. This audit has not
+been re-run since; re-run it if either route's `.Produces<T>()` declarations change before this is fixed.
 
 ## 7. Where to find things
 
@@ -169,28 +198,37 @@ details in `.WithSummary`/`.WithDescription`) and shows no AI-writing filler pat
   authoritative, versioned tracking doc for every open root cause, the dependency inventory, and the load
   test handoff instructions. Keep this updated as things close or reopen; this handoff document is a
   point-in-time summary, that file is the living one.
+- [`perf-investigation-log.md`](perf-investigation-log.md) — the full session-by-session working log
+  (Vietnamese), for the reasoning behind any specific past decision.
+- [`rc11-recurrence-analysis-20260905.md`](rc11-recurrence-analysis-20260905.md) /
+  [`rc11-fix-plan-20260905.md`](rc11-fix-plan-20260905.md) — RC11's round-1 evidence and the fix plan that
+  produced the logging reform; both are self-marked as superseded by `known-limitations.md` for current
+  status.
 - [`docs/adr/`](../docs/adr/) — ADR-003/004/005/007 (ADR-001, 002, 006 were implementation-scoped and
   deleted once done, per an explicit project-owner decision that ADRs here are not permanent documents).
+  ADR-006 is the last implementation-scoped one remaining as of this handoff — `docs/` no longer references
+  it (that cross-reference dependency was removed), so it can be deleted whenever the project owner wants.
 - [`docs/for-developers/working-scopes.md`](../docs/for-developers/working-scopes.md) — what Basil is and
   isn't scoped to do; check before adding anything bancho.py has that Basil doesn't.
 - [`tests/Basil.LoadTests/`](../tests/Basil.LoadTests/) — the load-test harness. Run with:
   ```bash
   dotnet run --project tests/Basil.LoadTests -- --profile full
   ```
-  (`--profile` takes a bare name, resolved to `Profiles/<name>.json`.) **Read the "Handoff" section of
-  `known-limitations.md` first** — there are two known issues to check/fix before trusting the next run's
-  `stress`/`soak` results and log capture.
+  (`--profile` takes a bare name, resolved to `Profiles/<name>.json`.) There's also `Profiles/api-only.json`
+  for scoped API-only iteration, added during the RC11 follow-up.
 - `CLAUDE.md` (repo root) — the full set of engineering rules this effort has followed throughout
   (surgical changes, evidence labels, test contract rules, API/XML doc conventions). Read it before making
   any change here.
 
 ## 8. Recommended immediate next step
 
-Do not start RC8 (protocol/allocation optimization) or attempt the stress/soak run yet. Both are gated on
-understanding why RC11 recurred. Start with:
-
-1. Fix the `Logs/latest.log` size cap or its rotation (small, unblocks future debugging of exactly this
-   kind of failure).
-2. Audit why `full.json`'s `stress`/`soak` scenarios produced no variants.
-3. Re-investigate RC11 at the `multiplayer → api` transition specifically, with log capture actually
-   working this time, using the existing `BasilMetrics` DB/lock instrumentation.
+1. **Audit why `full.json`'s `stress`/`soak` scenarios produce no variants.** This is the actual remaining
+   blocker for the capacity-envelope/scaling-curve deliverable — RC11 no longer blocks it.
+2. Once that's fixed, run the stress ramp and soak under supervision, watching for RC11's signature
+   (`ThreadPoolQueueLength` climbing while `CpuPercent` stays near zero) and ready to capture a thread dump
+   (`dotnet-dump collect -p <pid>` then `clrstack -all`) immediately if it appears — this is still the one
+   measurement that would close RC11 with certainty rather than an inference from correlation.
+3. Independently of the above: decide on the two OpenAPI bugs in §6 (at minimum, fix the dangling `$ref`;
+   the duplicate-path-template item needs a design decision from the project owner).
+4. Only after the stress/soak run has a real capacity ceiling to profile against: start RC8 (protocol
+   allocation) re-profiling. Don't optimize it speculatively before then.

@@ -734,6 +734,34 @@ Backlog còn lại y hệt: chỉ load test giám sát (đã handoff), không c�
 
 **Còn lại cho phiên sau** (đã đúng, không còn item cũ sai lệch): Phase 7 (watcher narrowing) chờ hết folder legacy — re-check bằng grep `targetFolder is not null`/`folder is not null` trong `HandleReplace`/`HandleDelete`; Broader Follow-up (re-profile, load test thật, scaling curves, Definition of Done) — CHƯA làm, chờ RC11, cần user giám sát trực tiếp lúc chạy (`known-limitations.md`'s "Handoff" ghi lệnh cụ thể); Final Deliverables còn lại (load-test profile update, before/after benchmark report gộp, capacity envelope + scaling curves) — phụ thuộc mục trên, chưa làm được. `known-limitations.md` + dependency inventory ĐÃ XONG, không còn nằm trong backlog.
 
+**Cập nhật 2026-09-06 vòng 29 (RC11 follow-up — logging reform + outbox-full root cause, HANDOFF cuối)**: sau vòng 28, user chọn tiếp tục `plans/rc11-fix-plan-20260905.md` dù Phase 2 (thread dump) đã bị skip vì API-only re-run không tái hiện collapse.
+
+Đã làm (Phase 1/3/4/6 của fix plan, commit `7085abe`):
+- File sink Serilog: thêm `fileSizeLimitBytes=256MB` + `rollOnFileSizeLimit=true` (trước đó im lặng truncate ở default 1GB — đúng gap đã mất evidence 2 lần).
+- Cả 2 sink (console + file) bọc `Serilog.Sinks.Async` — sink chậm/pipe treo không còn chặn được request thread.
+- Log per-request API level xuống `Debug` (giữ `Warning` nếu 5xx) thay vì `Information` vô điều kiện — ~80% dung lượng log 1GB của run collapse là dòng này.
+- Xoá `UseSerilogRequestLogging()` thừa (build+enrich+filter 1 event/request rồi vứt do bị `CategoryEnricher` filter chặn — không log dòng nào cả, chỉ tốn CPU).
+- Admin-auth log level đúng mức độ nghiêm trọng (success→Debug, failed→Warning).
+- Bỏ allocation `ToDictionary` toàn bộ header collection ở `RequestIdLoggingMiddleware`/`BanchoProtocolRoutes`, chỉ build dictionary 3 key `Geolocation.PhraseIpAddress` cần — kèm side-effect có chủ đích: đọc qua `IHeaderDictionary` case-insensitive nên `x-forwarded-for` viết thường giờ được nhận đúng (trước đây bị bỏ qua do so sánh case-sensitive) — đã flag rõ, không giấu.
+- LoadTests harness: `DotnetServerHost`'s `ReadToEndAsync` (tích luỹ toàn bộ stdout/stderr vào RAM, không giới hạn) → thay bằng vòng lặp bounded, drain liên tục.
+- Thêm `Profiles/api-only.json` cho lần re-run scope hẹp.
+
+Re-run full.json lần 2 (commit `5bde7b5`) chạy trọn `login→idle→chat→multiplayer→api` **KHÔNG collapse**: `ThreadPoolQueueLength` đỉnh 702 (so 2004 lần 1), `ThreadCount` đỉnh 169 (so 517), CPU máy tương đương lần 1 (63% vs 58%) — không phải do máy rảnh hơn.
+
+Outbox-full burst (1,056 lần `MatchRoundEndOutboxFullException` trong cửa sổ `multiplayer_64` của lần re-run 2) — root-cause thật, 2 bug độc lập:
+1. **Bug ở load-test harness, không phải server**: `MultiplayerScenario` dùng `Simulation.KeepConstant` — theo doc NBomber, hễ 1 virtual user xong vòng đời phòng (~15-25s) là respawn ngay 1 bản instance mới CÙNG số hiệu để giữ đủ count suốt 180s. Nhưng `roomMatchIds` (TaskCompletionSource điều phối host→follower theo phòng) chỉ tạo 1 lần cho suốt đời scenario → chỉ generation ĐẦU TIÊN set được kết quả, mọi generation respawn sau đó follower cứ resolve theo match id CŨ đã đóng, gửi gameplay packet vào match chết. Fix: đổi sang `Simulation.Inject` với `interval == during` — batch one-shot, mỗi bản chạy đúng 1 lần tới khi tự hoàn thành, không bao giờ respawn. Riêng fix này giảm 1,056 → 126.
+2. **Bug thật ở server, nhỏ nhưng có thật**: `MatchCompleteHandler`'s guard "còn ai đang chơi không" không nhớ round vừa đóng đã đóng chưa — slot vẫn giữ `Complete` mãi tới lần start kế tiếp, nên 1 completion trùng/đến trễ cho round đó lọt qua guard lần nữa, enqueue lại đúng round-end đó. Fix 1 dòng: `if (!match.InProgress) return;` ngay sau khi acquire match lock. Verify: 2 lần chạy `multiplayer_64`-only tiếp theo, **0** exception (so 126). Regression test: `MatchCompleteHandlerTests.Handle_CompletionAfterRoundAlreadyClosed_DoesNotReEnqueue`.
+
+Không đụng capacity outbox (128) hay serial single-consumer drain — cả 2 bug fix xong thì 1 phòng chỉ đóng round đúng 1 lần thật, 128 dư sức cho 64 phòng đóng đồng loạt.
+
+**Kết luận RC11 cuối cùng**: cơ chế block KHÔNG bao giờ được xác nhận bằng thread dump thật (3 lần cố gắng, 2 đợt điều tra, chưa lần nào lấy được dump). Bằng chứng nghiêng về console-sink-blocking (biến duy nhất đổi giữa "collapse mọi lần" và "không collapse 2 lần liên tiếp" là logging pipeline) nhưng đây là suy luận từ tương quan, KHÔNG phải chứng minh trực tiếp. Ứng viên SQLite write-path vẫn chưa test được theo hướng nào. **Xử lý RC11 như "không tái hiện được với harness hiện tại", KHÔNG phải "đã đóng"** — nếu tái hiện lần sau, bắt buộc lấy thread dump ngay khi thấy signature (`ThreadPoolQueueLength` tăng trong khi `CpuPercent` gần 0) trước khi làm gì khác.
+
+Đã cập nhật `known-limitations.md`: mục RC11 viết lại đầy đủ timeline 2 lần re-run + outbox fix, chuyển outbox-full burst + Phase 7 + 2 investigation-only item (`EnvelopeMiddleware` throw site, `CloseAsync` edge case) sang "Recently closed"; thêm mục "Handoff" ghi rõ việc còn thiếu trước lần chạy sau (audit config stress/soak — VẪN CHƯA LÀM, đây mới là blocker thật còn lại, không phải RC11 nữa).
+
+Full suite 1598 test pass, Release build sạch. Commit `7085abe`, đã push.
+
+**Bàn giao cuối phiên này**: đã viết lại toàn bộ `plans/perf-investigation-handoff.md` (bản tiếng Anh, cho người kế nhiệm) phản ánh đúng state hiện tại — RC11 không còn là blocker chính, blocker thật còn lại là audit config `stress`/`soak` của `full.json` (chưa từng chạy được, chưa biết vì sao "produced no variants"). Backlog còn lại, đúng thứ tự ưu tiên: (1) audit `stress`/`soak` config — việc duy nhất không cần user quyết định gì, có thể làm ngay; (2) chạy stress/soak dưới giám sát, sẵn sàng bắt thread dump nếu RC11 signature xuất hiện lại; (3) quyết định 2 bug OpenAPI (mục 6 trong handoff, dangling `$ref` sửa được ngay, duplicate path template cần quyết định từ project owner); (4) RC8 profiling — chỉ sau khi có trần capacity thật từ (2). Không còn hạng mục nào cần hỏi user ngay lúc này ngoài việc xác nhận có muốn tiếp tục 4 bước trên hay dừng ở đây.
+
 ---
 
 ## Design inputs cho DTO/model (đã research, dùng cho ADR-004/005 + Phase 4/5)
