@@ -1,29 +1,27 @@
 # Phase 0: Foundation
 
 Status: Implementing
-Last updated: 2026-09-08T03:10:00Z (local 2026-09-08 10:10 UTC+7)
+Last updated: 2026-09-08T06:40:00Z (local 2026-09-08 13:40 UTC+7)
 
 ## Completed
 - Task 0.1 -- captured the pre-migration baseline, commit `91d151f`
 - Task 0.2 -- renamed `Basil.Web` to `Basil.Server`, commit `b4cf563`
 - Task 0.3 -- merged `Basil.Application` and `Basil.Infrastructure` into `Basil.Server` as slices,
-  commit (see below, this session)
+  commit `977b561`
+- Task 0.4 -- rewrote the architecture tests with real slice-boundary rules, commit `1142bc1`
 
 ## Current state
-Task 0.3 is complete: build succeeds with 0 errors, full suite is 1618 tests total (1622 baseline
-minus the 4 architecture tests that named the now-deleted Application/Infrastructure assemblies --
-see arithmetic below). Across four full-suite runs this session, 1618/1618 was observed clean once;
-the other three each had exactly one intermittent failure, in
-`BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`
-and/or `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`,
-never both failing deterministically together, never the same test failing twice with the same
-signature -- see the flake writeup below. `src/Basil.Application` and `src/Basil.Infrastructure` no
-longer exist. Task 0.4 (rewrite the architecture tests with the real slice-boundary rules) is next.
+Task 0.4 is complete: build succeeds with 0 errors, full suite is 1621 tests total (1618 + 3 new
+architecture tests). `dotnet test tests/Basil.ArchitectureTests` is 8/8 green. A full-suite run hit
+the documented Windows file-handle flake once
+(`BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`);
+re-running that one test in isolation passed clean (16/16) -- this is the known flake, not a
+regression. Task 0.5 (split `Program.cs` into `Host/`) is next.
 
 ## Remaining
-- Task 0.4 -- rewrite the architecture tests: the adjacency allowlist, `SliceBoundaryTests`,
-  `Shared` segment-purity test
-- Tasks 0.5 through 0.14 (owned by later workers/phases)
+- Task 0.5 -- split `Program.cs` into `Host/`
+- Task 0.6 -- DI and routing seams
+- Tasks 0.7 through 0.14 (owned by later workers/phases)
 
 ## Important decisions
 - Task 0.2's file moves (all 46 `.cs` files, `Basil.slnx`, `Dockerfile`, `docker-compose.yml`, the
@@ -176,6 +174,10 @@ longer exist. Task 0.4 (rewrite the architecture tests with the real slice-bound
 - `plans/execution/baseline/routes.txt` -- 138 `Map(Get|Post|Put|Patch|Delete)` route literals under
   `src/Basil.Web/`
 - `plans/execution/baseline/locale-keys.txt` -- 154 `BasilBot.*`/`Irc.*` localization keys
+- Task 0.4 (this session), commit `1142bc1`: new
+  `tests/Basil.ArchitectureTests/{SliceAdjacency,SliceBoundaryTests}.cs`.
+  `tests/Basil.ArchitectureTests/DependencyDirectionTests.cs` unchanged (already in its final
+  state from Task 0.3).
 
 ## Verification
 - Task 0.1: `dotnet build --configuration Release` -- succeeded, 0 errors, 2 pre-existing warnings
@@ -192,6 +194,13 @@ longer exist. Task 0.4 (rewrite the architecture tests with the real slice-bound
     NetArchTest decision above). After the one-line fix: 1622 passed / 0 failed / 0 skipped,
     matching the baseline exactly. Per-project: Domain.Tests 114, Protocol.Tests 158,
     Application.Tests 723, ArchitectureTests 9, Infrastructure.Tests 263, IntegrationTests 355.
+- Task 0.4 (this session):
+  - `dotnet build --configuration Release` -- succeeded, 0 errors.
+  - `dotnet test tests/Basil.ArchitectureTests` -- 8/8 passed.
+  - `dotnet test --configuration Release` (full suite) -- 1621 total: Domain.Tests 114,
+    Protocol.Tests 158, ArchitectureTests 8, Application.Tests 723, Infrastructure.Tests 263,
+    IntegrationTests 355 (354 passed + 1 known flake). Re-running
+    `BeatmapsetManagementEndpointTests` alone: 16/16 passed, confirming the flake.
 
 ## Known issues / blockers
 - **Pre-existing Windows file-lock flake in `Basil.IntegrationTests`, not caused by this move.**
@@ -222,18 +231,74 @@ longer exist. Task 0.4 (rewrite the architecture tests with the real slice-bound
     treating it as a regression. If a *different* test fails, or one of these two fails with a new
     trace shape, treat it as new and investigate.
 
+## Task 0.4 details (this session)
+- **Method**: started `SliceAdjacency.Allowed` empty, ran
+  `Slices_Should_Only_Reference_Declared_Slices` against the real merged `Basil.Server` assembly,
+  and derived every edge from actual NetArchTest failures rather than the plan's draft list. The
+  plan's draft had 19 edges; the real codebase has **38**. Two throwaway probe fixtures
+  (`ProbeAdjacency.cs`/`ProbeEdgeDetail.cs`/`ProbeDeps.cs`, a small IL-token scanner using
+  `System.Reflection` to resolve which specific type each violation pointed at) were used to
+  identify the exact offending file+target-type per edge, then deleted before committing --
+  nothing from them is in the repo.
+- **Every edge has a one-line justification in `SliceAdjacency.cs`** naming the file(s) that need
+  it. None required moving a file out of its slice -- every edge traced back to a real, sensible
+  cross-slice service call (e.g. `Auth -> {Chat,Content,Irc,Multiplayer,Spectating,Users}` all come
+  from `LoginService`/`AdminKeyService`/`ClientIntegrityService`/`AuthenticationService` doing
+  exactly what login/auth needs to do: seed channel membership, read settings, check anticheat
+  context, publish presence, resolve the user).
+- **`("Users", "Spectating")` was pre-approved by the orchestrator** and added with that
+  justification (`Features/Users/Packets/ChangeActionHandler.cs`, `UserRoutes.cs`'s
+  `/users/{id}/live`).
+- **One observation flagged, not acted on**: `Multiplayer.UserBrief`/`UserBriefResolver` are used
+  by Chat, Bot, Scores and Spectating as a generic "summary view of a user" DTO, and are the sole
+  reason for the `("Spectating", "Multiplayer")` edge (every Spectating file that touches
+  Multiplayer touches only `UserBrief`). This is a plausible "file in the wrong slice" case --
+  `UserBrief` arguably belongs in `Users` -- but moving it changes ~8 files' `using`s and would add
+  a new `(Users, Irc)` edge (via `UserBriefResolver` -> `IrcSession`), a design question wider than
+  Task 0.4's surgical scope. Left as-is; flagged for whoever next touches Multiplayer or Users.
+- **`Shared_Should_Not_Reference_Features` is a pinned baseline (14 named types), not an absolute
+  ban** -- see `SliceBoundaryTests.cs`'s doc comment for the full list and per-type reason. This
+  was an advisor-reviewed decision: the plan's Step 3 draft has no allowlist mechanism for this
+  rule, but running it against the real assembly found 14 pre-existing violations (`GameSession`/
+  `UserSession` holding a live `MatchSession` and IRC bridge connection; several `Shared/Http`
+  host-route files inlining slice logic instead of only delegating to it; three `Shared/Media`
+  asset providers; `FileSystemReplayStorage`) that predate this migration and are out of Phase 0's
+  scope to fix -- `GameSession`/`UserSession` in particular is Task 1.4's ("MatchSession model
+  encapsulation") territory. The test asserts set-equality against the 14 names, so a *new*
+  Shared -> Features edge still fails the build, and fixing an existing offender fails too (a nudge
+  to shrink the pinned list, not silence the test).
+- **`Shared_Segments_Should_Come_From_The_Allowlist`** explicitly excludes the bare
+  `Basil.Server.Shared` namespace (no segment) from the check, so `BasilMetrics.cs` (which Task 0.7
+  splits) doesn't need a tenth segment added.
+- `DependencyDirectionTests.cs` needed no edits -- Task 0.3 already left it in the desired end
+  state (five kernel-purity tests, no Application/Infrastructure references).
+- Two pre-existing carry-over items from Task 0.3, not resolved by Task 0.4, still open for later
+  phases:
+  - `Basil.LoadTests`' `ScenarioSettings.ReloginGuardWindowSeconds` is a locally-duplicated
+    constant (see the Task 0.3 entries above) -- Phase 6's territory.
+  - `AnnounceRoutes.cs` (Content) has a dead `using Basil.Server.Features.Bot;` (no real
+    dependency, confirmed via probe) -- harmless, not touched, since removing unrelated dead code
+    is out of this task's surgical scope.
+
 ## Next exact step
-Task 0.4: rewrite `tests/Basil.ArchitectureTests/DependencyDirectionTests.cs` (and/or a new file)
-with real slice-boundary rules over `Basil.Server`'s `Features/`/`Shared/` folders -- an adjacency
-allowlist, `SliceBoundaryTests`, a `Shared` segment-purity test. Two things flagged during Task 0.3
-for this task to fold in:
-- a new `("Users", "Spectating")` adjacency edge appeared during the merge (not present before, not
-  in the original allowlist design) -- confirm whether it's intentional coupling or should be
-  refactored away before the allowlist locks it in.
-- `Basil.LoadTests`' `ScenarioSettings.ReloginGuardWindowSeconds` is now a locally-duplicated
-  constant (see Important decisions) because `Basil.Server` is self-contained and can't be
-  referenced from a non-self-contained project -- Phase 6 (or whoever touches load tests next)
-  should decide whether that's permanent or whether the harness should read the real value some
-  other way (e.g. via config/HTTP instead of a compiled reference).
+Task 0.5: split `src/Basil.Server/Host/Program.cs` (811 lines) into
+`Host/{Bootstrap,SerilogSetup,KestrelSetup,ConfigurationSetup,OpenApiSetup,CorsSetup,
+ImageSharpSetup,AuthSetup,JsonSetup,StartupData,StartupBanner,SliceRegistration}.cs` per the plan.
+Two things this worker already scoped out while reading `Program.cs`, for whoever picks this up:
+- `ConfigureRouting` (registers `NumericIdRouteConstraint`) and the inline
+  `builder.Services.Configure<ServerOptions>(...)` call have no dedicated file in the plan's exact
+  12-file list. Current plan: fold both into `SliceRegistration.AddAll`, in their current relative
+  order (right before `AddInfrastructure`/`AddApplication`), since Task 0.6's
+  `AddSharedInfrastructure` is where they conceptually belong anyway.
+- Renaming `Program` to `Host.Bootstrap` breaks `CategoryEnricher.cs`'s exact-match log-category
+  rule `("Basil.Server.Program", false, "Host")` (`src/Basil.Server/Shared/Logging/
+  CategoryEnricher.cs`) -- every split file that logs under the "Host" category (`ConfigureKestrel`/
+  `KestrelSetup`, `LogStartupBanner`/`StartupBanner.Log`, `InitializeDataAsync`/
+  `StartupData.InitializeAsync`) must keep using `ILogger<Bootstrap>`/`typeof(Bootstrap)` (not a
+  per-file logger type) so they all still produce the SourceContext `Basil.Server.Host.Bootstrap`,
+  and that one `CategoryEnricher` rule string must be updated to match. This is a real, if internal,
+  logging-categorization regression if missed -- not user-facing, but deliberately designed
+  behavior the codebase already documents wanting to preserve.
+
 Also see "Known issues / blockers" above before treating any `Basil.IntegrationTests` failure on
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
