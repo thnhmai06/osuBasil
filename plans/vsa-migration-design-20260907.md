@@ -1,6 +1,6 @@
 # Design: Vertical Slice migration and consolidated refactor
 
-Status: approved design, revision 2, pending implementation plan
+Status: approved design, revision 3, pending implementation plan
 Date: 2026-09-07
 Branch base: `chore/perf-investigation` (PR #7)
 
@@ -983,28 +983,52 @@ here. This boundary is stated in the design because it is the one that erodes fi
 "temporary" stored result turns the observability surface into a maintenance framework with a
 lifecycle to own.
 
-### 10.2 Metric verification gate
+### 10.2 Metric verification gate - completed
 
-The category and metric lists below are candidates. Before implementation, each metric is verified
-against the actual .NET 10 API surface, and the results are recorded in
-`plans/diagnostic-metric-inventory-20260907.md`:
+Every candidate metric was verified against the real .NET 10 API surface with a probe that calls
+each API, times 100k reads of the cheap ones, forces real lock contention, and attaches a
+`MeterListener` to discover which instruments the runtime actually publishes. Results, including
+raw probe output, are in `plans/diagnostic-metric-inventory-20260907.md`.
 
-```
-metric -> exact .NET API or meter+instrument -> semantic (gauge / cumulative / rate, units)
-       -> sampling cost -> availability caveats -> live-eligible or snapshot-only
-```
+Findings that changed this design, rather than merely confirming it:
 
-No metric is implemented on the assumption that a property exists because the name suggests one.
-Where a value is not directly available, the inventory records the decision: derive it, read it from
-an `EventCounter` or `Meter` instrument, use a different runtime API, or do not expose it.
+* **`ThreadPool.PendingWorkItemCount` and `Monitor.LockContentionCount` are plain static
+  properties** in .NET 10 (0.022 and 0.045 microseconds per read). The assumption that they are
+  EventCounter-only was true in early .NET Core and is now false. No listener plumbing is needed for
+  either.
+* **Exception counts and every `http` metric cannot be point-sampled.** `dotnet.exceptions` exists
+  only as a push-based `Counter<long>` on the `System.Runtime` meter - there is no BCL property for
+  it - and the ASP.NET Core hosting and Kestrel meters do not exist at all until hosting constructs
+  them (the probe, running as a plain console app, found zero `Microsoft.AspNetCore.*` instruments
+  and only the 19 always-on `System.Runtime` ones). Both require a `MeterListener` attached once at
+  startup and kept for the process lifetime, accumulating into memory that the broadcast reads. A
+  per-tick create-sample-dispose listener does not work.
+* **Completion-port thread counts are vestigial** on the portable thread pool .NET 10 uses on both
+  Windows and Linux: the probe read fixed legacy values (min 1, max 1000, available 1000) that no
+  I/O load moves. They are excluded - publishing a number that carries no signal is worse than
+  publishing nothing.
+* **`Process` refresh is the dominant cost.** A fresh `Process.GetCurrentProcess()` measured ~4.0 ms
+  and `Refresh()` on a cached instance ~3.7 ms - both syscalls. The implementation must hold one
+  cached `Process` and refresh it once per tick, never per metric. `Process.WorkingSet64` also
+  caches silently: the probe allocated 200 MB and the value did not move until `Refresh()`.
+  `Environment.WorkingSet` (0.21 microseconds) is the always-live alternative.
+* **`GCMemoryInfo` is a since-last-GC snapshot, not a live heap walk** - its fields read `0` before
+  the first collection. `PauseTimePercentage` is scoped to the single most recent GC and must not be
+  presented as a rolling "time in GC"; a smoothed rate comes from `GetTotalPauseDuration()` deltas.
+* **Unhandled exception count is an event, not a gauge.** `dotnet.exceptions` counts every throw
+  including caught ones, and `AppDomain.UnhandledException` fires as the process is dying. It is
+  routed to the log and alert path, not modelled as a 1 Hz value.
+* **`error.type` is unbounded cardinality.** Exception and request metrics are aggregated to totals,
+  not exposed as a series per exception type or status code.
+* Two documentation-versus-probe mismatches are resolved in favor of the probe:
+  `dotnet.thread_pool.thread.count` and `dotnet.thread_pool.queue.length` are registered as
+  `ObservableCounter`, not `ObservableUpDownCounter`, despite documentation describing them as
+  gauges. Basil reports them as gauges, which is what they mean.
 
-Metrics that specifically must not be assumed, because they have historically existed only as
-counters published through a listener rather than as readable properties, and because several are
-cumulative rather than instantaneous: ThreadPool queue length, lock contention, time-in-GC,
-exception count, unhandled exception count, and every completion-port-thread value.
-
-Platform note: the server runs on Windows and ships in Docker, so any metric whose meaning or
-availability differs on Linux is flagged in the inventory.
+Platform note: the probe ran on Windows 11. The inventory flags per row where Linux differs -
+`Process.HandleCount` semantics (file-descriptor scan versus handle-table read), `MinWorkingSet`
+unsupported, and `TotalAvailableMemoryBytes` / `HighMemoryLoadThresholdBytes` being cgroup-aware on
+Linux and Job-Object-aware on Windows.
 
 ### 10.3 Candidate categories
 
@@ -1016,10 +1040,10 @@ fields of `ResourceSample` - rather than from an invented list. Subject to secti
 | `process` | process id, uptime, working set, private memory, virtual memory, peak working set, CPU usage, thread count, handle count |
 | `memory` | managed memory, GC heap size, fragmented bytes, memory load, available memory, high-memory-load threshold, working set, private memory |
 | `gc` | gen0/1/2 collection counts, generation sizes, LOH, POH, fragmentation, GC mode, latency mode, time in GC |
-| `threadpool` | thread count, worker and completion-port availability and limits, queue length, completed work items, contention count |
+| `threadpool` | thread count, worker thread availability and limits, queue length, completed work items, lock contention count. Completion-port values excluded as vestigial. |
 | `runtime` | runtime version, server GC, concurrent GC, processor count, architecture, operating system - static, snapshot only |
-| `exceptions` | total thrown count, unhandled count, rate |
-| `http` | active requests, request rate, failed request rate, request duration, active connections, connection rate |
+| `exceptions` | total thrown count and derived rate, aggregated - no per-`error.type` series. Unhandled exceptions are an event on the log path, not a value here. |
+| `http` | active requests, request rate, failed request rate, request duration aggregate, active connections, connection rate |
 | `application` | active users, active sessions, active matches, active SSE subscribers by stream, active timers, eventing statistics |
 
 `application` carries only Basil-specific semantics; no runtime metric is filed there.
@@ -1052,9 +1076,25 @@ POST /diagnostic/{category}/{action}     direct runtime operation
 
 A one-second live interval does not mean recomputing every metric with an expensive call each
 second. Cheap counters are read on demand; expensive ones are sampled at a rate matched to their
-cost and their rate of change, as recorded in the inventory; collection is shared across subscribers
-through the hub, so N subscribers cost one collection. With no subscribers, nothing is collected -
-the same guard as section 4.1.
+cost and their rate of change, as recorded in the inventory. Collection is shared across subscribers
+through the hub, so N subscribers cost one collection.
+
+Two consequences of section 10.2 that the implementation must respect:
+
+* **One `Process` refresh per tick, shared by every process and memory metric.** Refreshing costs
+  milliseconds; doing it per metric would make the diagnostic loop itself a measurable load, which
+  is the failure mode this whole subsystem exists to avoid.
+* **The zero-subscriber guard does not extend to the listener.** Section 4.1's guard applies to
+  building and broadcasting a snapshot. The `MeterListener` backing the exception and HTTP
+  categories must run for the process lifetime regardless of subscribers: those instruments are
+  push-based, so a listener started on demand would have no baseline and could not report a rate for
+  the interval an operator actually cares about. The listener's steady-state cost is an increment
+  per event, and it accumulates into fixed-size in-memory totals - no history, no ring buffer, which
+  keeps it inside the section 10.1 boundary.
+
+Values the inventory marks as changing only with host or container configuration -
+`TotalAvailableMemoryBytes`, `HighMemoryLoadThresholdBytes`, thread pool min and max - are polled on
+a slow cadence or at connect time, not every second.
 
 ---
 
@@ -1209,8 +1249,13 @@ coupling appear, is the adjacency allowlist still small, did anything drift into
 ### Phase 5 - Diagnostic API
 
 Section 10. Purely additive: new files in a new slice, no existing behavior changed. Depends only on
-Phase 0's hub, so it runs in parallel with Phase 1. Its first step is the metric verification gate
-(section 10.2); no endpoint is written before the inventory exists.
+Phase 0's hub, so it runs in parallel with Phase 1. The metric verification gate (section 10.2) is
+already satisfied - `plans/diagnostic-metric-inventory-20260907.md` exists - so this phase starts by
+implementing against that inventory, row by row, rather than by investigating.
+
+The one piece of infrastructure this phase builds before any endpoint is the long-lived
+`MeterListener` background service that backs the `exceptions` and `http` categories, since those
+values do not exist without it.
 
 Verification: each metric's semantics checked against a known process state; `/live` interval
 measured; every SSE route confirmed to carry the `/live` suffix; admin key enforcement tested; a
