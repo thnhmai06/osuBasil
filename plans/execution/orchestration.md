@@ -85,9 +85,10 @@ unfinished, resume from repository state and schedule the next one.
 | Scheduled at | Fires at | Status |
 | --- | --- | --- |
 | 2026-09-07 22:42 UTC+7 | 2026-09-08 03:42 UTC+7 | cancelled — superseded |
-| 2026-09-07 22:55 UTC+7 | 2026-09-08 00:13 UTC+7 | pending |
+| 2026-09-07 22:55 UTC+7 | 2026-09-08 00:13 UTC+7 | cancelled — reset time corrected |
+| 2026-09-07 23:00 UTC+7 | 2026-09-08 01:13 UTC+7 | pending |
 
-The usage limit resets before 00:10 UTC+7, so the first continuation fires just after that rather
+The usage limit resets at 01:10 UTC+7, so the first continuation fires just after that rather
 than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
 
 Cron jobs are session-only: they do not survive this Claude session ending. If a new session
