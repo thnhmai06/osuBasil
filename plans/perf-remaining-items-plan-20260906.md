@@ -11,11 +11,11 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
 
 | # | Mục | Việc thật sự cần làm |
 |---|-----|----------------------|
-| A | Stress/soak chưa từng chạy thật | Profile + soak-smoke + stress ramp thật đã xong (§1); còn thiếu soak 12h thật |
-| B | RC5 (SSE leak) chưa được đóng | Nhánh `sse` đã code xong + verify plumbing ở scale nhỏ (§2); vẫn cần soak 12h thật mới đóng được RC5 |
-| C | RC11 — chưa từng bắt được thread dump | Là điều kiện tiên quyết trước khi chạy lại, không phải bước làm giữa chừng — xem §3 |
+| A | Stress/soak chưa từng chạy thật | Profile + soak-smoke + stress ramp thật đã xong (§1); soak 12-24h thật thử 2 lần, cả 2 bị máy kill vì hết RAM trước khi hoàn tất — DỪNG, không thử lại (quyết định 2026-09-07) |
+| B | RC5 (SSE leak) chưa được đóng | Nhánh `sse` đã code xong + verify plumbing ở scale nhỏ (§2); 13h42m dữ liệu thật cho thấy handle-growth giảm tốc (chưa CONFIRM được leak) — dừng ở **SUPPORTED**, không CONFIRMED/CLOSED |
+| C | RC11 — chưa từng bắt được thread dump | Cơ hội bắt dump xuất hiện lúc soak lần 2 sập (spike bộ nhớ ~90s) nhưng watcher không kịp — vẫn CHƯA bắt được dump nào; không tiếp tục thử |
 | D | 2 bug OpenAPI (`basilapi.json`) | ĐÃ XONG cả 2 — §4 sửa 2026-09-06, §5 tự resolve qua feature khác |
-| E | RC8 (protocol allocation) | Giữ nguyên thứ tự cuối cùng của handoff — chỉ bắt đầu sau khi A-C xong |
+| E | RC8 (protocol allocation) | Giữ nguyên thứ tự cuối cùng của handoff — A-C coi như đã kết thúc (không CONFIRM được do giới hạn tài nguyên máy test), có thể xem xét bắt đầu nếu cần |
 
 ## §1. Stress/soak: bật cờ, không phải "audit config gap"
 
@@ -121,12 +121,20 @@ trên. Điều đó **không đúng** với cấu hình soak hiện tại:
    → verify: **đã chạy thật** — sau khi sửa cả 2 bug, `soak-smoke` 5 phút báo `sse-closed` cho toàn bộ
    14/14 lần action `sse` chạy (trước khi sửa: 26/26 và 21/21 lần đều `sse-still-open` giả do bug #1
    rồi bug #2). Xác nhận cơ chế `Writer.Complete()` hoạt động đúng ở scale nhỏ.
-3. **Còn lại thật sự**: soak 12 giờ thật với nhánh này bật — chỉ khi đó mới đối chiếu được
-   working-set/GC-heap slope của `SoakAnalyzer` để đóng RC5 (`CONFIRMED` nếu vượt threshold, hoặc
+3. **Còn lại thật sự**: soak 12-24 giờ thật với nhánh này bật, chạy trọn tới lúc `SoakAnalyzer` tính được
+   slope thật — chỉ khi đó mới đóng được RC5 dứt khoát (`CONFIRMED` nếu vượt threshold, hoặc
    `CLOSED — no leak observed` nếu không). 5 phút soak-smoke KHÔNG đủ dữ liệu (`SoakAnalyzer` tự báo
    "insufficient data (5min < 30min minimum)") — đây là xác nhận plumbing hoạt động, KHÔNG phải kết
-   luận RC5 đã đóng hay chưa. Đừng lặp lại nhầm lẫn "soak ngắn = no leak" lần ba
-   (`known-limitations.md` đã ghi nhận nhầm lẫn này 2 lần trước với run 93 giây).
+   luận RC5 đã đóng hay chưa.
+   **QUYẾT ĐỊNH (2026-09-07, theo yêu cầu user)**: 2 lần chạy thật (§1 mục 4) đều bị máy kill vì hết RAM
+   hệ thống trước khi tới lúc hoàn tất/để `SoakAnalyzer` tính slope chính thức — không thử lại lần 3 để
+   tiết kiệm usage. RC5 dừng lại ở **SUPPORTED, không CONFIRMED**: bằng chứng tốt nhất hiện có là 13h42m
+   dữ liệu thật (lần 2, 1000 đồng thời) cho thấy handle count tăng giảm tốc dần (801→90 handle/giờ qua 4
+   đoạn 3.5h) — dáng đường cong bão hoà, không phải leak tuyến tính rõ ràng — nhưng chưa đủ dài để
+   `SoakAnalyzer` tự kết luận, và không loại trừ được liên hệ với đợt tăng đột biến bộ nhớ gây sập (xem
+   §1 mục 4). Không lặp lại nhầm lẫn "soak ngắn = no leak" (`known-limitations.md` đã ghi nhận nhầm lẫn
+   này 2 lần trước với run 93 giây) — kết luận đúng ở đây là "chưa đủ dữ liệu để CONFIRM hay loại trừ",
+   không phải "không có leak".
 
 ## §3. RC11 — chuẩn bị bắt thread dump là điều kiện tiên quyết, không phải bước giữa chừng
 
