@@ -1,6 +1,7 @@
+using Basil.Server.Shared.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Services.Multiplayer;
+using Basil.Server.Features.Multiplayer;
 
 namespace Basil.Application.Tests.Services.Multiplayer;
 

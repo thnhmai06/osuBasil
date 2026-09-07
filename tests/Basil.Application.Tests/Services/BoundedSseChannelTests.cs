@@ -1,6 +1,6 @@
+using Basil.Server.Shared.Eventing;
 using System.Net.ServerSentEvents;
 using System.Threading.Channels;
-using Basil.Application.Services;
 using Xunit;
 
 namespace Basil.Application.Tests.Services;

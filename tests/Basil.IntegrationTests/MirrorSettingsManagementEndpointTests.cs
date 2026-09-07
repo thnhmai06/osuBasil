@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Configurations;
+using Basil.Server.Features.Content;
+using Basil.Server.Shared.Configuration;
 using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

@@ -1,4 +1,4 @@
-using Basil.Infrastructure.System;
+using Basil.Server.Shared.Storage;
 
 namespace Basil.Infrastructure.Tests.System;
 

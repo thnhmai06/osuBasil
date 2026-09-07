@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Persistence;
+using Basil.Server.Shared.Persistence;
 using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Tests.Persistence;

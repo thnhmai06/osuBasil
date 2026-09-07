@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Application.Configurations;
+using Basil.Server.Shared.Configuration;
 using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

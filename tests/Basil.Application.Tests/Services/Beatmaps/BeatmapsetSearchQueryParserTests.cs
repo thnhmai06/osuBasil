@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Services.Beatmaps;
+using Basil.Server.Features.Beatmaps;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Tests.Services.Beatmaps;

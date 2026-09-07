@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using Basil.Application.Abstractions.Beatmaps;
+using Basil.Server.Features.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 

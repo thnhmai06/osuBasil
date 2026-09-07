@@ -1,10 +1,9 @@
-using Basil.Application.Abstractions.Scores;
+using Basil.Server.Features.Scores;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence;
-using Basil.Infrastructure.Persistence.Repositories;
+using Basil.Server.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;

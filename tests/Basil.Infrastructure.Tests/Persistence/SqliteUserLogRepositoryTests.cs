@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Persistence.Repositories;
+using Basil.Server.Features.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;

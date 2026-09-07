@@ -1,6 +1,6 @@
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Authentication;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Users;
+using Basil.Server.Features.Auth;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

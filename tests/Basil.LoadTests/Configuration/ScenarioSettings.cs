@@ -1,5 +1,3 @@
-using Basil.Application.Services.Authentication;
-
 namespace Basil.LoadTests.Configuration;
 
 /// <summary>
@@ -53,6 +51,15 @@ public sealed class StartupSettings
 public sealed class LoginSettings : ScenarioSettings
 {
 	/// <summary>
+	///     Mirrors <c>LoginService.ReloginGuardWindowSeconds</c> in Basil.Server. Duplicated rather
+	///     than referenced: Basil.Server merged the old Application/Infrastructure projects and
+	///     became a self-contained executable, which the SDK refuses to let a non-self-contained
+	///     project (this harness) reference (see the <c>ProjectReference</c> comment in
+	///     Basil.LoadTests.csproj). Keep this in sync if the server's guard window changes.
+	/// </summary>
+	private const int ReloginGuardWindowSeconds = 10;
+
+	/// <summary>
 	///     When <see langword="true" />, every seeded account is logged in once before measurement starts,
 	///     so the measured phase hits the bcrypt-verify cache instead of paying full bcrypt cost. When
 	///     <see langword="false" />, the run measures the cold (first-login) cost instead. Both are
@@ -67,7 +74,7 @@ public sealed class LoginSettings : ScenarioSettings
 	///     guard so each account's first measured login evicts its stale session cleanly instead of
 	///     failing with <c>user-already-logged-in</c>.
 	/// </summary>
-	public double PostWarmupSettleSeconds { get; init; } = LoginService.ReloginGuardWindowSeconds + 1;
+	public double PostWarmupSettleSeconds { get; init; } = ReloginGuardWindowSeconds + 1;
 
 	/// <summary>Gets <see cref="PostWarmupSettleSeconds" /> as a <see cref="TimeSpan" />.</summary>
 	public TimeSpan PostWarmupSettle => TimeSpan.FromSeconds(PostWarmupSettleSeconds);

@@ -1,4 +1,4 @@
-using Basil.Application.Packets.Multiplayer;
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -1,9 +1,10 @@
-using Basil.Application.Configurations;
-using Basil.Application.Services.Bot;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Irc;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Shared.Eventing;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Bot;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Irc;
+using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

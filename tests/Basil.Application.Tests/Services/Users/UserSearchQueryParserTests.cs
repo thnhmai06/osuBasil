@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Users;
+using Basil.Server.Features.Users;
 using Basil.Domain.Login;
 
 namespace Basil.Application.Tests.Services.Users;

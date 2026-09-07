@@ -1,10 +1,9 @@
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Multiplayer;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Irc;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Scores;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;

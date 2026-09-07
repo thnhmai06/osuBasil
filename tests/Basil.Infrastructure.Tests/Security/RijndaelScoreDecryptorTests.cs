@@ -1,5 +1,4 @@
-using Basil.Infrastructure.Security;
-
+using Basil.Server.Features.Scores;
 namespace Basil.Infrastructure.Tests.Security;
 
 /// <summary>

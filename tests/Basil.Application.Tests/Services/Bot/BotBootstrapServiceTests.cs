@@ -1,9 +1,11 @@
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
-using Basil.Application.Services.Bot;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Irc;
+using Basil.Server.Shared.Eventing;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Bot;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging.Abstractions;

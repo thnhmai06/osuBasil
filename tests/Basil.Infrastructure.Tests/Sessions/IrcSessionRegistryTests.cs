@@ -1,7 +1,6 @@
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Irc;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Irc;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Sessions;
 using Basil.Protocol.Irc;
 
 namespace Basil.Infrastructure.Tests.Sessions;

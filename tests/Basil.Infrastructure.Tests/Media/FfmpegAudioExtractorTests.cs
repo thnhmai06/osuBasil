@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
-using Basil.Infrastructure.Media;
+using Basil.Server.Shared.Media;
 
 namespace Basil.Infrastructure.Tests.Media;
 

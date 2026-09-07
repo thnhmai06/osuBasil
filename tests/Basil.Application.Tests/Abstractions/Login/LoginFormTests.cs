@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using Basil.Application.Abstractions.Login;
+using Basil.Server.Features.Auth;
 using Basil.Domain.Login;
 
 namespace Basil.Application.Tests.Abstractions.Login;

@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Services.Content;
+using Basil.Server.Features.Content;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Content;

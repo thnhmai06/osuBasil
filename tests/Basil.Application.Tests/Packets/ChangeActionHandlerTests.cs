@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Basil.Application.Formats;
-using Basil.Application.Packets.Users;
-using Basil.Application.Services.Spectating;
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Http;
+using Basil.Server.Features.Users.Packets;
+using Basil.Server.Features.Spectating;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

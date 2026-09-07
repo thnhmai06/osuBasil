@@ -1,5 +1,5 @@
-using Basil.Application.Formats;
-using Basil.Server.Middleware;
+using Basil.Server.Shared.Http;
+using Basil.Server.Shared.Http.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;

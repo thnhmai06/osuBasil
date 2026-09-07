@@ -1,5 +1,5 @@
-using Basil.Application.Configurations;
-using Basil.Infrastructure.Storage;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Tests.Storage;

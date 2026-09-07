@@ -1,5 +1,4 @@
-using Basil.Infrastructure.Persistence.Repositories;
-
+using Basil.Server.Features.Chat;
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>

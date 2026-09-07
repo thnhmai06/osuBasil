@@ -1,0 +1,122 @@
+using System.Collections.Concurrent;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Chat;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Protocol.Multiplayer;
+
+namespace Basil.Server.Features.Multiplayer;
+
+/// <inheritdoc cref="IMatchRegistry" />
+/// <remarks>
+///     Stores matches keyed by both the wire-protocol match id and the persistent database id.
+///     <see cref="CreateAsync" /> assigns the lowest free wire-protocol id, retrying with the next
+///     id when a concurrent creation wins the race for the candidate id.
+/// </remarks>
+public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMatchRepository matchRepository)
+	: IMatchRegistry
+{
+	private readonly ConcurrentDictionary<int, int> _dbIdtoId = new();
+	private readonly ConcurrentDictionary<int, MatchSession> _matches = new();
+
+	/// <inheritdoc />
+	public MatchSession? GetById(int id)
+	{
+		return _matches.GetValueOrDefault(id);
+	}
+
+	/// <inheritdoc />
+	/// <remarks>Scans every match until the first whose <see cref="MatchSession.DbId" /> matches.</remarks>
+	public MatchSession? GetByDbId(int dbId)
+	{
+		return _dbIdtoId.TryGetValue(dbId, out var protocolId) ? GetById(protocolId) : null;
+	}
+
+	/// <inheritdoc />
+	/// <remarks>Claims the lowest-numbered id not currently in use.</remarks>
+	public async Task<MatchSession> CreateAsync(MatchState data, int hostId,
+		CancellationToken cancellationToken = default)
+	{
+		// The persistent id is claimed first because it names the room's chat channel, which is fixed
+		// for the session's lifetime.
+		var dbId =
+			await matchRepository.CreateMatchAsync(data.Name, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
+
+		MatchSession match;
+		var id = 0;
+		do
+		{
+			while (_matches.ContainsKey(id)) id++;
+			match = BuildNew(id, dbId, data, hostId);
+		} while (!_matches.TryAdd(id, match));
+
+		_dbIdtoId[dbId] = match.Id;
+		RegisterChannel(match);
+
+		return match;
+	}
+
+	/// <inheritdoc />
+	public void Remove(int id)
+	{
+		if (!_matches.TryRemove(id, out var match)) return;
+		_dbIdtoId.TryRemove(match.DbId, out _);
+
+		RemoveChannel(match);
+		_ = matchRepository.SetMatchEndedAsync(match.DbId, DateTimeOffset.UtcNow.UtcDateTime);
+	}
+
+	/// <inheritdoc />
+	public IReadOnlyCollection<MatchSession> All => (IReadOnlyCollection<MatchSession>)_matches.Values;
+
+	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
+	/// <param name="id">The in-memory registry slot id.</param>
+	/// <param name="dbId">The match's persistent database id.</param>
+	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="hostId">The id of the userSession who created the room.</param>
+	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
+	private static MatchSession BuildNew(int id, int dbId, MatchState data, int hostId)
+	{
+		// data.MapId is the wire/protocol value: -1 is a real client's explicit "no beatmap chosen",
+		// and 0 is what an HTTP creation request leaves as an unused placeholder (ids in this schema
+		// auto-increment from 1, so 0 can never be a real beatmap either). Both mean "no map" at this
+		// wire-to-domain boundary; MatchSession.MapId itself is null in that case, not a sentinel.
+		var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
+
+		return new MatchSession(
+			id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
+			hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
+			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(dbId))
+		{
+			DbId = dbId
+		};
+	}
+
+	/// <summary>Get the chat channel name of a match.</summary>
+	/// <param name="matchDbId">The match's persistent database id, the same id every command and route names it by.</param>
+	/// <returns>The <c>#mp_{dbId}</c> channel name.</returns>
+	private static string ChannelNameFor(int matchDbId)
+	{
+		return $"#mp_{matchDbId}";
+	}
+
+	/// <summary>Registers the match's chat channel in the channel registry.</summary>
+	/// <param name="match">The match whose channel to register.</param>
+	private void RegisterChannel(MatchSession match)
+	{
+		channelRegistry.Add(new ChannelSession(
+			0, match.ChatChannelName,
+			0, 0, false, "#multiplayer", true)
+		{
+			Topic = match.Name
+		});
+	}
+
+	/// <summary>Registers the match's chat channel in the channel registry.</summary>
+	/// <param name="match">The match whose channel to register.</param>
+	private void RemoveChannel(MatchSession match)
+	{
+		channelRegistry.Remove(match.ChatChannelName);
+	}
+}

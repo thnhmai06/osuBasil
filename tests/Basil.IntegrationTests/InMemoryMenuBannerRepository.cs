@@ -1,4 +1,4 @@
-using Basil.Application.Abstractions.Content;
+using Basil.Server.Features.Content;
 using Basil.Domain.Content;
 
 namespace Basil.IntegrationTests;

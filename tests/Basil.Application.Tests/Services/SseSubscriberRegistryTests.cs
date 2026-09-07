@@ -1,5 +1,4 @@
-using Basil.Application.Services;
-
+using Basil.Server.Shared.Eventing;
 namespace Basil.Application.Tests.Services;
 
 /// <summary>

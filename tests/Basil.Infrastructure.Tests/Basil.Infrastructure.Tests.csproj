@@ -24,7 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Server\Basil.Server.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

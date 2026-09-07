@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Services.Scores;
+using Basil.Server.Features.Scores;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

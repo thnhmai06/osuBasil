@@ -1,5 +1,5 @@
-using Basil.Application.Packets.Users;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Users.Packets;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using NSubstitute;

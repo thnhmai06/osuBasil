@@ -1,7 +1,6 @@
-using Basil.Application.Abstractions.Users;
+using Basil.Server.Features.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;

@@ -1,8 +1,8 @@
+using Basil.Server.Features.Auth;
 using System.Net;
 using System.Text;
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Configurations;
-using Basil.Infrastructure.Security;
+using Basil.Server.Features.Content;
+using Basil.Server.Shared.Configuration;
 using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

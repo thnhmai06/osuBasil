@@ -1,5 +1,5 @@
-using Basil.Application.Packets.Users;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Users.Packets;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

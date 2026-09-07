@@ -1,5 +1,5 @@
-using Basil.Application.Configurations;
-using Basil.Infrastructure.Beatmaps;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 

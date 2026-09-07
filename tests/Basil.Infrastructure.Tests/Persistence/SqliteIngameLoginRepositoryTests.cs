@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Persistence.Repositories;
+using Basil.Server.Features.Auth;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;

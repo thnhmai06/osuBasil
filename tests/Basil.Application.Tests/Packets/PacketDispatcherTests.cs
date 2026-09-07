@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
-using Basil.Application.Packets;
-using Basil.Application.Packets.Multiplayer;
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Http.Bancho;
+using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;

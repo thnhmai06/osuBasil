@@ -1,5 +1,5 @@
-using Basil.Application.Packets.Channels;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Chat.Packets;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;

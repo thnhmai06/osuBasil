@@ -1,9 +1,8 @@
 using System.IO.Compression;
-using Basil.Application.Configurations;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Persistence;
-using Basil.Infrastructure.Persistence.Repositories;
-using Basil.Infrastructure.Storage;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Shared.Persistence;
+using Basil.Server.Shared.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

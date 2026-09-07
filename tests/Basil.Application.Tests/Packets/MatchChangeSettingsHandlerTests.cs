@@ -1,9 +1,8 @@
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Packets.Multiplayer;
-using Basil.Application.Services.Bot;
-using Basil.Application.Services.Multiplayer;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Server.Features.Bot;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Packets;

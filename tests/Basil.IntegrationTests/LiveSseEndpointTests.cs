@@ -1,9 +1,9 @@
+using Basil.Server.Shared.Eventing;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions.Multiplayer;
-using Basil.Application.Sessions.Spectating;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

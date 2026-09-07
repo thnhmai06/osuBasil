@@ -1,4 +1,4 @@
-using Basil.Application.Services;
+using Basil.Server.Shared.Eventing;
 using Xunit;
 
 namespace Basil.Application.Tests.Services;

@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Backgrounds;
+using Basil.Server.Features.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;

@@ -1,6 +1,7 @@
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Multiplayer;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Irc;
+using Basil.Server.Features.Users;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using NSubstitute;

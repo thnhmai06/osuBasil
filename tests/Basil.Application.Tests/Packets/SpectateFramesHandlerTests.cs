@@ -1,5 +1,5 @@
-using Basil.Application.Packets.Spectating;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Spectating.Packets;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;

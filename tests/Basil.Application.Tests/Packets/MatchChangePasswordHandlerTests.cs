@@ -1,4 +1,4 @@
-using Basil.Application.Packets.Multiplayer;
+using Basil.Server.Features.Multiplayer.Packets;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 
 namespace Basil.Application.Tests.Packets;

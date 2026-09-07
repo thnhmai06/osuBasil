@@ -1,4 +1,4 @@
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 

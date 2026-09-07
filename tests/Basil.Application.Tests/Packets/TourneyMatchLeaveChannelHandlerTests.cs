@@ -1,7 +1,8 @@
-using Basil.Application.Configurations;
-using Basil.Application.Packets.Multiplayer;
-using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Shared.Eventing;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

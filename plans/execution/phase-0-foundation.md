@@ -1,19 +1,29 @@
 # Phase 0: Foundation
 
 Status: Implementing
-Last updated: 2026-09-08T01:40:00Z (local 2026-09-08 08:40 UTC+7)
+Last updated: 2026-09-08T03:10:00Z (local 2026-09-08 10:10 UTC+7)
 
 ## Completed
 - Task 0.1 -- captured the pre-migration baseline, commit `91d151f`
-- Task 0.2 -- renamed `Basil.Web` to `Basil.Server`, commit (see below, this session)
+- Task 0.2 -- renamed `Basil.Web` to `Basil.Server`, commit `b4cf563`
+- Task 0.3 -- merged `Basil.Application` and `Basil.Infrastructure` into `Basil.Server` as slices,
+  commit (see below, this session)
 
 ## Current state
-Task 0.2 is complete and verified: build succeeds, full suite reports 1622/1622. Task 0.3 (merge
-Application + Infrastructure into Basil.Server as slices) is next.
+Task 0.3 is complete: build succeeds with 0 errors, full suite is 1618 tests total (1622 baseline
+minus the 4 architecture tests that named the now-deleted Application/Infrastructure assemblies --
+see arithmetic below). Across four full-suite runs this session, 1618/1618 was observed clean once;
+the other three each had exactly one intermittent failure, in
+`BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`
+and/or `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`,
+never both failing deterministically together, never the same test failing twice with the same
+signature -- see the flake writeup below. `src/Basil.Application` and `src/Basil.Infrastructure` no
+longer exist. Task 0.4 (rewrite the architecture tests with the real slice-boundary rules) is next.
 
 ## Remaining
-- Task 0.3 -- merge `Basil.Application` and `Basil.Infrastructure` into `Basil.Server`
-- Tasks 0.4 through 0.14 (owned by later workers/phases)
+- Task 0.4 -- rewrite the architecture tests: the adjacency allowlist, `SliceBoundaryTests`,
+  `Shared` segment-purity test
+- Tasks 0.5 through 0.14 (owned by later workers/phases)
 
 ## Important decisions
 - Task 0.2's file moves (all 46 `.cs` files, `Basil.slnx`, `Dockerfile`, `docker-compose.yml`, the
@@ -44,6 +54,91 @@ Application + Infrastructure into Basil.Server as slices) is next.
   left untouched, since Part B (Task 0.3) deletes `Application_Should_Not_HaveDependencyOn_Web`
   entirely (it references the doomed `Application.AssemblyMarker` type) and this fix/comment goes
   with it.
+- **Task 0.3 arithmetic**: baseline 1622 minus 4 architecture tests = **1618 expected**, matching
+  the actual run. The 4 removed tests, all in `tests/Basil.ArchitectureTests/DependencyDirectionTests.cs`,
+  named the now-deleted `Application`/`Infrastructure` assemblies via `typeof(Application.AssemblyMarker)`
+  / `typeof(Infrastructure.AssemblyMarker)`: `Application_Should_Not_HaveDependencyOn_Infrastructure`,
+  `Application_Should_Not_HaveDependencyOn_Web`, `Application_Should_Not_HaveDependencyOn_Frameworks`,
+  `Infrastructure_Should_Not_HaveDependencyOn_Web`. The two static field declarations
+  (`ApplicationAssembly`, `InfrastructureAssembly`) were also removed -- they no longer compile,
+  since the types they name are gone. Kept, unchanged: the five tests that take an assembly by
+  string (`Domain_Should_Not_HaveDependencyOn_{Infrastructure,Application,Web,Frameworks}` and
+  `Protocol_Should_Not_HaveDependencyOn_AnyOtherBanchoProject`) -- these still compile and still
+  assert something true. Task 0.4 replaces the lost coverage with real slice-boundary rules.
+- **Trap 1 (SQL migrations), proven, not assumed**: after the move the five `.sql` files are
+  embedded under the new resource prefix `Basil.Server.Shared.Persistence.Migrations.*` (confirmed
+  via `Assembly.GetManifestResourceNames()` on the built `Basil.Server.dll` -- exactly 5, all
+  present). `DbUp`'s single-arg `WithScriptsEmbeddedInAssembly` filters by `.sql` suffix only, so
+  the folder/namespace change didn't silently drop any script. Ran a full fresh migration (deleted
+  `Data/Basil.db`, forced `-t:Rebuild` so the OpenAPI-generation step's app startup actually
+  re-migrated instead of an incrementally-skipped no-op build) and dumped `sqlite_master`. Diffed
+  against `plans/execution/baseline/schema.txt`: identical modulo (a) CRLF-vs-LF and DDL
+  whitespace-amount differences from how the two capture methods read the `.sql` text (confirmed
+  with `diff -b`, semantically empty), and (b) one new, expected object -- DbUp's own
+  `SchemaVersions` journal table, absent from the baseline only because Task 0.1's baseline dump
+  applied the raw `.sql` files directly with a throwaway script instead of running the real
+  `SqlMigrationRunner`/DbUp. No table, column, index, or trigger differs. First attempt at this
+  check reused a stale `Data/Basil.db` left over from earlier Release builds during this same
+  session and failed with `SQLite error 1: table Users already exists` -- exactly the "looks like
+  failure, actually a stale-artifact problem" mirror image of the trap's warning. That db file is
+  gitignored build output (`bin/`), not a source artifact; deleting it and rebuilding fixed it.
+- **Trap 2 (AssemblyMarker deletion)**: see the Task 0.3 arithmetic entry above.
+- **Trap 3 (localization content)**: `Shared/Localization/{BasilBot,Irc}.json` ship as `<Content
+  Update=...>` (not `Include=...` -- the SDK's default globbing already picks up every `.json`
+  under the project tree as Content, and a duplicate explicit `Include` is a hard `NETSDK1022`
+  error) with `Link="Data\Localization\%(Filename)%(Extension)"`, confirmed landing at
+  `bin/Release/net10.0/win-x64/Data/Localization/*.json` after a real build.
+- **The "namespace nesting" trap, discovered mid-task, not anticipated by the plan**: C# treats a
+  dotted namespace declaration (`namespace A.B.C;`) as textually nested inside `A` and `A.B`
+  regardless of which file declares which segment, so a type in `Basil.Application.Packets.Channels`
+  saw `Basil.Application.Packets.IPacketHandler` with no `using` at all, purely because the child
+  namespace sat under the parent. Flattening every slice into its own namespace tree
+  (`Basil.Server.Features.<Slice>` no longer nested under anything holding `IPacketHandler`,
+  `UserSession`, `SseSubscriberRegistry`, etc.) broke every one of these free rides at once. This
+  was the dominant source of compile errors after the physical move and the namespace-declaration
+  rewrite (hundreds of `CS0246`/`CS0234`), not namespace mapping mistakes. Fixed by driving a
+  compiler-error -> missing-type -> defining-file's-namespace -> inject-`using` loop to convergence
+  (see Files changed for the throwaway scripts used, none committed), then a second, smaller pass
+  for the same problem inside XML-doc `<see cref="...">` text (`CS1574`), which the compiler
+  doesn't error on but does warn on, and which CLAUDE.md's own `Directory.Build.props` comment
+  calls out as something this codebase treats as a real build issue.
+- A related, deliberate exception-handling choice: the move map calls out roughly a dozen
+  directory-vs-file exceptions (`JsonMergePatch.cs`, `IMatchLiveEvents.cs`,
+  `RijndaelScoreDecryptor.cs`, the two `IPasswordHasher`/`ITokenGenerator` files, and similar). Every
+  one was moved individually rather than via a directory-level `git mv`, exactly as the file-move
+  map instructs.
+- `LiveSseRoutes.cs` (`src/Basil.Server/Routing/Api/`) was the one genuine code split, done last as
+  planned: match-scoped handlers (`HandleMain`, `HandleSettings`, `HandleHost`, `HandleRefs`,
+  `HandleBans`, `HandleTimer`, `HandleSlots`, `HandleLiveSlot`, `HandleChat` plus the chat-flush
+  helper) became `Features/Multiplayer/MatchLiveRoutes.cs`; the per-player input/status stream
+  (`HandleInput`) became `Features/Spectating/PlayerLiveRoutes.cs`; the genuinely shared plumbing
+  (`IsSseRoute`, `SetSseHeaders`, `NotLive`, `SseError`, `RegisterWithMatch`, `Subscribe`,
+  `SubscribeWithSnapshot`, `SubscribeMultiWithSnapshot`, plus the `ReconnectionInterval` constant)
+  became `Shared/Eventing/SseEndpoints.cs`. `SetSseHeaders` was not in the plan's short list of
+  "shared helpers" but is genuinely cross-slice infrastructure with zero feature-specific logic, so
+  it went to `Shared/Eventing` too rather than being duplicated in both feature files. Call sites
+  in `MatchRoutes.cs`, `MatchSubResourceRoutes.cs`, `UserRoutes.cs` and three `Shared/Http/*`
+  files (`ApiRequestLoggingMiddleware`, `EnvelopeMiddleware`, `EnvelopeSchemaTransformer`,
+  `OpenApiExampleExtensions`, `RequestMetricsMiddleware`) updated accordingly. This is behavior-
+  identical code motion -- no stream's wire format, headers, or subscription semantics changed.
+- **New cross-slice edge for Task 0.4 to enumerate, not yet in the draft adjacency list**:
+  `Features/Users/UserRoutes.cs` calls `Features.Spectating.PlayerLiveRoutes.HandleInput` for its
+  per-player `/users/{userId}/live` endpoint (the input/status stream is Spectating-owned per the
+  move map, but the route itself is grouped under Users). `("Users", "Spectating")` needs adding to
+  `SliceAdjacency.Allowed`. This is a real, single-direction edge the mechanical move surfaced, not
+  a circular reference -- expected, since the plan's own draft list says to "start from the real
+  compile errors, not from this draft."
+- **`Basil.LoadTests` fallout (Phase 6 territory, touched only enough to keep the solution
+  building)**: `tests/Basil.LoadTests/Basil.LoadTests.csproj` referenced `Basil.Application.csproj`
+  for `LoginService.ReloginGuardWindowSeconds` (a `const int`), used in
+  `Configuration/ScenarioSettings.cs` to compute a post-warmup settle time. That project no longer
+  exists, and `Basil.Server` cannot be referenced from a non-self-contained project (the SDK
+  rejects it; see the pre-existing comment already in that csproj about publishing it as a
+  subprocess instead). Removed the dead `ProjectReference`, and duplicated the constant's value
+  (`10`) as a private `const int` in `ScenarioSettings.cs` with a comment explaining why it isn't a
+  reference and to keep it in sync if the server's guard window changes. This is a one-line,
+  well-documented duplication of a magic number, not a harness redesign -- flagging it explicitly
+  in case Phase 6 wants a cleaner answer (e.g., a shared constants file both projects can reference).
 - The plan's Task 0.1 Step 4 assumes a single `Basil.Web.json` OpenAPI document. In reality the
   build's `Microsoft.Extensions.ApiDescription.Server` step emits **six** named documents (one per
   host/tag group: `bancho`, `osuweb`, `beatmapassets`, `avatar`, `assets`, `basilapi`), written to
@@ -99,19 +194,46 @@ Application + Infrastructure into Basil.Server as slices) is next.
     Application.Tests 723, ArchitectureTests 9, Infrastructure.Tests 263, IntegrationTests 355.
 
 ## Known issues / blockers
-- none
+- **Pre-existing Windows file-lock flake in `Basil.IntegrationTests`, not caused by this move.**
+  Four full-suite runs this session: one clean 1618/1618; the rest each had exactly one failure,
+  never the same test twice with the same signature, never reproducing under `--filter` isolation
+  or a same-file rerun:
+  - `BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`:
+    `System.IO.IOException : The process cannot access the file 'vivid.osu' because it is being used
+    by another process.` at `FileSystem.RemoveDirectoryRecursive` inside `Dispose()`.
+  - `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`:
+    one run failed only the assert (`Expected: Accepted / Actual: InternalServerError`); a later run
+    failed with the *same* trace shape as the sibling above --
+    `System.IO.IOException : The process cannot access the file 'old.osu' because it is being used
+    by another process.` at `RemoveDirectoryRecursive` inside `Dispose()` (line 100), this time
+    wrapped in an `AggregateException` together with the 500-vs-202 assert failure. Same root class:
+    a Windows file handle (from the endpoint's own file write, HTTP response buffering, or a
+    concurrently-running test class touching a `TestBeatmapsets`-style temp directory) not yet
+    released when the test's `Dispose()` tries a recursive delete; the endpoint's own request
+    occasionally loses the same race and returns 500 instead of 202.
+  - `git diff 91d151f -- tests/Basil.IntegrationTests/BeatmapsetManagementEndpointTests.cs` and the
+    same diff for `BeatmapDifficultyEndpointTests.cs`: only `using` lines changed (the mechanical
+    namespace rewrite); test bodies, `Dispose()` implementations, and fixture handling are
+    byte-identical to the pre-migration baseline. Confirms this is an environmental/Windows
+    scheduling flake surfaced by full-suite parallel execution, not a rename- or move-induced
+    regression.
+  - **For whoever runs the suite next (Task 0.4 and later)**: if you see 1617/1 fail or 1616/2 fail
+    in `Basil.IntegrationTests` on one of these two tests, this is the known flake -- rerun before
+    treating it as a regression. If a *different* test fails, or one of these two fails with a new
+    trace shape, treat it as new and investigate.
 
 ## Next exact step
-Task 0.3: merge `Basil.Application` and `Basil.Infrastructure` into `Basil.Server` per
-`plans/execution/file-move-map.md`, one atomic commit. Advisor-flagged risks to check going in:
-`AllowUnsafeBlocks` is set on `Basil.Infrastructure.csproj` but not `Basil.Server.csproj` (the
-`HardLink.cs` mover needs it carried over); confirm localization JSON actually lands next to
-`tests/Basil.Application.Tests`'s (soon `Basil.Server`-referencing) test output, not just
-`Basil.Server`'s own; check whether `tests/Basil.IntegrationTests` uses
-`WebApplicationFactory<Program>` before `Program.cs` moves to `Host/` under a real namespace;
-dedupe `SixLabors.ImageSharp.Web` and `Microsoft.Extensions.Logging.Abstractions`
-`PackageReference`s when folding csproj files; pull the four `Services/Multiplayer/JsonMergePatch.cs`
-/ `Sessions/Multiplayer/IMatchLiveEvents.cs` / `Infrastructure/Security/RijndaelScoreDecryptor.cs`
-/ `Abstractions/Users/{IPasswordHasher,ITokenGenerator}.cs`-style exceptions out of their directory
-moves individually rather than relying on a directory-level `git mv`; do the `LiveSseRoutes.cs`
-three-way split last, after every other mechanical move is green.
+Task 0.4: rewrite `tests/Basil.ArchitectureTests/DependencyDirectionTests.cs` (and/or a new file)
+with real slice-boundary rules over `Basil.Server`'s `Features/`/`Shared/` folders -- an adjacency
+allowlist, `SliceBoundaryTests`, a `Shared` segment-purity test. Two things flagged during Task 0.3
+for this task to fold in:
+- a new `("Users", "Spectating")` adjacency edge appeared during the merge (not present before, not
+  in the original allowlist design) -- confirm whether it's intentional coupling or should be
+  refactored away before the allowlist locks it in.
+- `Basil.LoadTests`' `ScenarioSettings.ReloginGuardWindowSeconds` is now a locally-duplicated
+  constant (see Important decisions) because `Basil.Server` is self-contained and can't be
+  referenced from a non-self-contained project -- Phase 6 (or whoever touches load tests next)
+  should decide whether that's permanent or whether the harness should read the real value some
+  other way (e.g. via config/HTTP instead of a compiled reference).
+Also see "Known issues / blockers" above before treating any `Basil.IntegrationTests` failure on
+`BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.

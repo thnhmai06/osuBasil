@@ -1,0 +1,81 @@
+using Basil.Server.Shared.Http;
+using Basil.Server.Features.Bot;
+using Basil.Server.Shared.Sessions;
+using Basil.Protocol.Packets;
+using Basil.Server.Features.Auth;
+using Basil.Server.Shared.Http.OpenApi;
+
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable NotAccessedPositionalProperty.Global
+
+namespace Basil.Server.Features.Content;
+
+/// <summary>A dedicated logger category marker for the static <see cref="AnnounceRoutes" /> class.</summary>
+internal sealed class AnnounceRoutesLog;
+
+/// <summary>
+///     Registers the endpoint for pushing an in-game notification popup to online players.
+/// </summary>
+internal static class AnnounceRoutes
+{
+	private const string AdminKeyNote = RouteDocs.AdminKeyNote;
+
+	/// <summary>
+	///     Registers the `/announce` route on the `api.` host.
+	/// </summary>
+	/// <param name="group">The `api.` host route group.</param>
+	public static void MapAnnounceRoutes(this RouteGroupBuilder group)
+	{
+		group.MapPost("/announce", HandleAnnounce)
+			.RequireAuthorization(AdminKeyDefaults.Policy)
+			.WithGroupName("basilapi")
+			.WithName("announce")
+			.WithSummary("Send an in-game notification to online players.")
+			.WithDescription("""
+			                 Pushes a notification popup (the same mechanism the login MOTD uses) to a set of
+			                 currently online players. BasilBot never receives it, even if explicitly listed.
+
+			                 `userIds` selects the recipients; omit it (or send `null`) to notify everyone
+			                 currently online. Ids that are offline, unknown, or BasilBot's are silently skipped.
+
+			                 Nothing is persisted — this is a one-time push at the moment of the call, not a
+			                 standing server-wide message shown to players who log in afterward.
+			                 """ + AdminKeyNote)
+			.WithTags("Announce")
+			.Produces<AnnounceResultView>()
+			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+			.WithExample(StatusCodes.Status200OK, new AnnounceResultView(3, "Server restarting in 5 minutes."))
+			.WithExample(StatusCodes.Status400BadRequest, new ErrorResponse("Text must not be empty."));
+	}
+
+	private static IResult HandleAnnounce(AnnounceBody body, ISessionRegistry<GameSession> sessionRegistry,
+		ILogger<AnnounceRoutesLog> logger)
+	{
+		if (string.IsNullOrWhiteSpace(body.Text))
+			return Results.BadRequest(new ErrorResponse("Text must not be empty."));
+
+		var targets = body.UserIds is null
+			? sessionRegistry.All.Where(s => s.Id != BotBootstrapService.BotId)
+			: body.UserIds.Where(id => id != BotBootstrapService.BotId)
+				.Select(sessionRegistry.GetByUserId)
+				.Where(s => s is not null);
+
+		var packet = ServerPacketWriter.Notification(body.Text);
+		var deliveredCount = 0;
+		foreach (var session in targets)
+		{
+			session!.Enqueue(packet);
+			deliveredCount++;
+		}
+
+		logger.LogInformation("Announcement sent via admin API: DeliveredCount={DeliveredCount}", deliveredCount);
+		return Results.Json(new AnnounceResultView(deliveredCount, body.Text));
+	}
+
+	/// <summary>Request body for `POST /announce`.</summary>
+	public sealed record AnnounceBody(string Text, int[]? UserIds = null);
+
+	/// <summary>Confirmation body for `POST /announce`.</summary>
+	public sealed record AnnounceResultView(int DeliveredCount, string Text);
+}

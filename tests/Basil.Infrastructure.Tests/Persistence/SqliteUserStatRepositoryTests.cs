@@ -1,6 +1,5 @@
+using Basil.Server.Features.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Persistence.Repositories;
-
 namespace Basil.Infrastructure.Tests.Persistence;
 
 /// <summary>

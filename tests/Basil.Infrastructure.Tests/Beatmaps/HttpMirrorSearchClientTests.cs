@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Basil.Infrastructure.Beatmaps;
+using Basil.Server.Features.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Beatmaps;

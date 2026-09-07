@@ -1,6 +1,6 @@
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Services.Authentication;
+using Basil.Server.Features.Content;
+using Basil.Server.Features.Users;
+using Basil.Server.Features.Auth;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Services.Authentication;

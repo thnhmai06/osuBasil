@@ -1,13 +1,12 @@
 using Basil.Application;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Packets;
-using Basil.Application.Services.Authentication;
-using Basil.Application.Services.Irc;
-using Basil.Application.Services.Scores;
-using Basil.Application.Services.Spectating;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Scores;
+using Basil.Server.Shared.Http.Bancho;
+using Basil.Server.Features.Auth;
+using Basil.Server.Features.Irc;
+using Basil.Server.Features.Spectating;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Multiplayer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

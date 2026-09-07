@@ -1,7 +1,5 @@
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Sessions;
-
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>

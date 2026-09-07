@@ -1,8 +1,7 @@
 using System.Net;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Scores;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

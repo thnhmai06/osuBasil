@@ -1,6 +1,6 @@
 using System.Reflection;
-using Basil.Application.Services.Bot;
-using Basil.Application.Services.Irc;
+using Basil.Server.Features.Bot;
+using Basil.Server.Features.Irc;
 
 namespace Basil.Application.Tests.Services;
 

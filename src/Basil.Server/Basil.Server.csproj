@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<SelfContained>true</SelfContained>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<Version>1.0.0</Version>
 		<FileVersion>1.0.0</FileVersion>
 		<Product>Basil</Product>
@@ -13,14 +14,14 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
-		<ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
 		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
+		<EmbeddedResource Include="Shared\Persistence\Migrations\*.sql"/>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -42,6 +43,15 @@
 		<Content Update="Data\appsettings.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<!-- ReplyLocale (Shared/Localization/ReplyLocale.cs) reads these next to the running assembly
+		     via AppContext.BaseDirectory. Already picked up as a Content item by the SDK's default
+		     globbing; Update adds the output Link (so they land under Data/Localization/, not
+		     Shared/Localization/) and CopyToOutputDirectory, which is what makes every project that
+		     references Basil.Server, including the test projects (which never run through
+		     Program.cs's own content-root setup), get a real copy alongside their own build output. -->
+		<Content Update="Shared\Localization\*.json" Link="Data\Localization\%(Filename)%(Extension)">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -57,6 +67,25 @@
 		<PackageReference Include="Serilog.Sinks.Async"/>
 		<PackageReference Include="Serilog.Sinks.Console"/>
 		<PackageReference Include="Serilog.Sinks.File"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="BCrypt.Net-Next"/>
+		<PackageReference Include="BouncyCastle.Cryptography"/>
+		<PackageReference Include="Dapper"/>
+		<PackageReference Include="dbup-sqlite"/>
+		<PackageReference Include="FFMpegCore"/>
+		<PackageReference Include="Microsoft.Data.Sqlite"/>
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
+		<PackageReference Include="Microsoft.Extensions.Http"/>
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
+		<PackageReference Include="SixLabors.ImageSharp"/>
 	</ItemGroup>
 
 	<!-- Reduce unnecessary osu! runtime dependencies in self-contained publish output (#5) -->

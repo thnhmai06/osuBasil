@@ -1,7 +1,6 @@
+using Basil.Server.Shared.Eventing;
 using System.Text;
 using System.Text.Json;
-using Basil.Application.Services;
-
 namespace Basil.Application.Tests.Services.Multiplayer;
 
 public class SnapshotChannelTests

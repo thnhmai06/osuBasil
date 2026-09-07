@@ -1,6 +1,5 @@
-using Basil.Application.Abstractions.Beatmaps;
+using Basil.Server.Features.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Tests.Persistence;

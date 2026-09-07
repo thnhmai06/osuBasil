@@ -1,9 +1,8 @@
+using Basil.Server.Features.Auth;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Infrastructure.Security;
-
 namespace Basil.Infrastructure.Tests.Security;
 
 /// <summary>

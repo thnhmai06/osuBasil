@@ -1,5 +1,4 @@
-using Basil.Infrastructure.Sessions;
-
+using Basil.Server.Features.Multiplayer;
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>

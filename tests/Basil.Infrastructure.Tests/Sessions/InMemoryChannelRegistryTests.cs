@@ -1,8 +1,6 @@
-using Basil.Application.Sessions.Channels;
+using Basil.Server.Features.Chat;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Sessions;
-
 namespace Basil.Infrastructure.Tests.Sessions;
 
 /// <summary>

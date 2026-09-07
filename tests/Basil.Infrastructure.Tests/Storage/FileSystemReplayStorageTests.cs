@@ -1,8 +1,8 @@
-using Basil.Application.Configurations;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Storage;
+using Basil.Server.Shared.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Tests.Storage;

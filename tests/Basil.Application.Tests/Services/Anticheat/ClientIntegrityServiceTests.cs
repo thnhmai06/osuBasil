@@ -1,6 +1,6 @@
-using Basil.Application.Services.Anticheat;
-using Basil.Application.Services.Bot;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Auth;
+using Basil.Server.Features.Bot;
+using Basil.Server.Shared.Sessions;
 using Basil.Application.Tests.Packets;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

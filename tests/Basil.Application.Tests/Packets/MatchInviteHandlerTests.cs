@@ -1,4 +1,4 @@
-using Basil.Application.Packets.Multiplayer;
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;

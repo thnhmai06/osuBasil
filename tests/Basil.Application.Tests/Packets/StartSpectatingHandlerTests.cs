@@ -1,9 +1,11 @@
-using Basil.Application.Configurations;
-using Basil.Application.Packets.Spectating;
-using Basil.Application.Services.Spectating;
-using Basil.Application.Sessions;
-using Basil.Application.Sessions.Channels;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Irc;
+using Basil.Server.Shared.Eventing;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Features.Spectating.Packets;
+using Basil.Server.Features.Spectating;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

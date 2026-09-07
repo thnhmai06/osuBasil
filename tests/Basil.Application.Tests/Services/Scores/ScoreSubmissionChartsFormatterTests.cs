@@ -1,4 +1,4 @@
-using Basil.Application.Services.Scores;
+using Basil.Server.Features.Scores;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 

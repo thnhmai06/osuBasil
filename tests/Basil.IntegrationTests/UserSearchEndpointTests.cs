@@ -1,13 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
-using Basil.Application.Formats;
-using Basil.Application.Services.Users;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Http;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Server;
-using Basil.Server.OpenApi;
+using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

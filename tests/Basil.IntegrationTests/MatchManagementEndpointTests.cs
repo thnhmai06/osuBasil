@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configurations;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -19,7 +19,7 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Covers the new `/matches` list/create/settings/action routes end to end — in particular, this is
-///     the first real endpoint <see cref="Basil.Server.Auth.AdminKeyAuthenticationHandler" />'s
+///     the first real endpoint <see cref="Basil.Server.Features.Auth.AdminKeyAuthenticationHandler" />'s
 ///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
 ///     is verified through the full middleware pipeline here, not just the handler in isolation.
 /// </summary>

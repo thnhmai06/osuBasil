@@ -5,15 +5,20 @@ using NetArchTest.Rules;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Enforces Clean Architecture dependency direction: Domain and Application must never
-///     depend on Infrastructure, Web, or framework/ORM/web assemblies (dep-inward-only,
-///     frame-domain-purity).
+///     Enforces the remaining Clean Architecture-era dependency rules that still apply after the
+///     Application/Infrastructure/Web merge into Basil.Server: Domain must stay pure, and Protocol
+///     must not depend on any other Bancho project.
 /// </summary>
+/// <remarks>
+///     The Application- and Infrastructure-assembly variants of these checks (and the
+///     <c>Application.AssemblyMarker</c> / <c>Infrastructure.AssemblyMarker</c> types they used to
+///     assert against) were removed when those two projects merged into <c>Basil.Server</c> --
+///     there is no longer a separate assembly for those rules to name. A later task replaces that
+///     coverage with rules over the slice boundaries inside <c>Basil.Server</c> itself.
+/// </remarks>
 public class DependencyDirectionTests
 {
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
-	private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
-	private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolAssembly = typeof(Protocol.AssemblyMarker).Assembly;
 
 	[Fact]
@@ -65,46 +70,6 @@ public class DependencyDirectionTests
 	}
 
 	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Infrastructure()
-	{
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Infrastructure")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Web()
-	{
-		// Trailing dot: NetArchTest also scans constant field values, and "Basil.Server" (without
-		// it) coincidentally matches ServerOptions.SectionName's unrelated "Basil:Server" config
-		// key. The dot anchors the check back to an actual namespace/type dependency.
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Server.")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Frameworks()
-	{
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOnAny(
-				"Microsoft.EntityFrameworkCore",
-				"Microsoft.AspNetCore",
-				"Microsoft.Data.Sqlite",
-				"Dapper")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
 	public void Protocol_Should_Not_HaveDependencyOn_AnyOtherBanchoProject()
 	{
 		var result = Types.InAssembly(ProtocolAssembly)
@@ -114,17 +79,6 @@ public class DependencyDirectionTests
 				"Basil.Application",
 				"Basil.Infrastructure",
 				"Basil.Server")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Infrastructure_Should_Not_HaveDependencyOn_Web()
-	{
-		var result = Types.InAssembly(InfrastructureAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));

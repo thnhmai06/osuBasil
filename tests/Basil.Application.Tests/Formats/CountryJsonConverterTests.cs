@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Basil.Application.Formats;
+using Basil.Server.Shared.Http;
 using Basil.Domain.Login;
 
 namespace Basil.Application.Tests.Formats;

@@ -1,5 +1,5 @@
-using Basil.Application.Configurations;
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Basil.Server;

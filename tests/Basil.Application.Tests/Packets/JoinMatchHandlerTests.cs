@@ -1,5 +1,5 @@
-using Basil.Application.Packets.Multiplayer;
-using Basil.Application.Services.Multiplayer;
+using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Server.Features.Multiplayer;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using static Basil.Application.Tests.Packets.MultiplayerTestSupport;

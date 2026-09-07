@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Abstractions.Settings;
+using Basil.Server.Features.Content;
 
 namespace Basil.IntegrationTests;
 

@@ -1,5 +1,4 @@
-using Basil.Application.Abstractions.Settings;
-using Basil.Infrastructure.Cache;
+using Basil.Server.Features.Content;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 

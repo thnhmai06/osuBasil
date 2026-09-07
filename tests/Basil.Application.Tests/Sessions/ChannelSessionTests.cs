@@ -1,4 +1,4 @@
-using Basil.Application.Sessions.Channels;
+using Basil.Server.Features.Chat;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Tests.Sessions;

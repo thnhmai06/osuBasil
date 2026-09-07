@@ -1,9 +1,9 @@
 using System.Net;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Scores;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Server;
