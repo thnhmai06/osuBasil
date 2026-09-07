@@ -63,9 +63,38 @@ Mỗi bước có dòng `→ verify:` theo quy tắc 4 của `CLAUDE.md`.
    → verify: `stress-events.md` — 1 `first-server-error` (ở mức 100, sớm, khả năng do JIT/GC warm-up),
    1 `first-connection-failure` + 1 `first-timeout` (cả hai ở ramp 1000→2000, khớp thời điểm CPU toàn máy
    chạm 100%) — **đã xác nhận qua `resources.csv`, không phải bug server**.
-4. **Còn lại**: `soak` 12 giờ thật, có giám sát trực tiếp — xem §3 cho điều kiện tiên quyết trước khi bấm
-   chạy. **Không được tự chạy không giám sát** — cần người theo dõi `resources.csv` trực tiếp và sẵn sàng
+4. **Còn lại**: `soak` 12-24 giờ thật, có giám sát trực tiếp — xem §3 cho điều kiện tiên quyết trước khi
+   bấm chạy. **Không được tự chạy không giám sát** — cần người theo dõi tiến trình trực tiếp và sẵn sàng
    bắt `dotnet-dump` nếu nghi RC11 (xem §3).
+   **2 lần thử thất bại (2026-09-06/07), cả hai do máy hết RAM, không phải do server crash tự nhiên:**
+   - **Lần 1** (750 đồng thời, `soak-full.json`): chạy 70 phút thì bị kill vì RAM hệ thống cạn (máy lúc đó
+     chỉ ~1.6-4GB free). Handle count tăng ~833/giờ ngoại suy trong cửa sổ ngắn này — SUPPORTED cho RC5,
+     chưa CONFIRMED (mẫu quá ngắn, không tách được leak thật khỏi áp lực RAM chung của máy).
+   - **Lần 2** (1000 đồng thời, `soak-full-24h.json`, sau khi user giải phóng RAM lên ~7GB free): chạy được
+     **13h42m/24h (57%)** trước khi bị kill. Dữ liệu process (qua `Get-Process`, không phải `resources.csv`
+     — file đó chỉ ghi lúc kết thúc run, xem code `ResourceTimeline.WriteCsv`) cho thấy handle count tăng
+     **giảm tốc dần** qua các mốc 3.5h liên tiếp: ~801 → 244 → 129 → 90 handle/giờ — hình dạng đường cong
+     bão hoà (warm-up rồi ổn định), KHÔNG phải leak tuyến tính vô hạn. Working set cũng giảm tốc nhưng
+     chậm hơn (~42MB/giờ ở đoạn cuối, vẫn trên ngưỡng `WorkingSetMbPerHour: 25`).
+     **Sự kiện gây sập**: trong ~90 giây cuối (11:27:58→11:29:30 giờ máy ngày 07/09), working set của
+     process nhảy đột biến 2.1GB → 3.47GB, health-check chuyển từ nhanh (10ms) sang treo hẳn (timeout 5s,
+     `curl` trả `000`) rồi process biến mất hoàn toàn — quá nhanh để `dotnet-dump` kịp bắt (watcher báo lỗi
+     "Invalid process id", process đã chết trước khi lệnh chạy). Đối chiếu `latest.log` cùng thời điểm: một
+     đợt hàng trăm match cùng đóng qua timer phòng-trống-15-phút trong vài giây (`MatchId` 357150-357342,
+     dồn cụm ở `11:30:00-11:30:12`) — vì kịch bản `multiplayer` của soak tạo phòng liên tục suốt nhiều giờ
+     mà timer 15 phút không có jitter, các phòng tạo ra trong cùng khung giờ (vd lúc warm-up) sẽ hết hạn
+     cùng lúc, tạo ra đợt dọn dẹp dồn cục định kỳ. **HYPOTHESIS**: đợt dọn dồn cục này là tác nhân gây tăng
+     đột biến bộ nhớ/GC ngay trước khi sập, cộng dồn vào baseline bộ nhớ vốn đã cao (do RAM hệ thống lúc đó
+     cũng chỉ còn ở mức trung bình) — chưa xác nhận được đây là nguyên nhân gốc hay chỉ là trùng thời điểm,
+     vì tiến trình harness giám sát cũng bị hệ thống chủ động kill do cảnh báo thiếu RAM tại đúng lúc đó
+     (không phải OOM-kill của riêng process server). Không loại trừ được RC11 hay một leak khác chưa đặt
+     tên đứng sau đợt tăng đột biến này — cần chạy lại có `dotnet-dump` áp sát hơn (poll nhanh hơn 30s) để
+     bắt kịp lần tới.
+     **Khuyến nghị nếu chạy lại**: (a) đảm bảo máy có nhiều RAM trống dư hơn (>8GB) trước khi bắt đầu vì cả
+     2 lần đều liên quan tới RAM hệ thống mỏng; (b) cân nhắc thêm jitter ngẫu nhiên vào timer phòng-trống
+     nếu đợt dọn dồn cục này được xác nhận là vấn đề thật (không chỉ ảnh hưởng soak mà cả production thật
+     có thể có nhiều phòng tạo cùng lúc, vd giờ cao điểm giải đấu); (c) poll watcher nhanh hơn (10-15s thay
+     vì 30s) để có cơ hội bắt `dotnet-dump` trước khi process chết trong các đợt tăng đột biến nhanh.
 
 ## §2. RC5 (SSE leak) — soak hiện tại không đóng được mục này
 
