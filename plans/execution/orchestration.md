@@ -15,6 +15,8 @@ Authoritative documents:
 * `plans/vsa-migration-design-20260907.md` — the approved design (revision 3)
 * `plans/diagnostic-metric-inventory-20260907.md` — probe-verified metric inventory, input to
   Phase 5; do **not** re-derive it
+* `plans/execution/file-move-map.md` — the per-directory destination map for Task 0.3, derived from
+  the tree at `d5d1b32`; do **not** re-derive it
 
 ## Execution model
 
@@ -82,7 +84,11 @@ unfinished, resume from repository state and schedule the next one.
 
 | Scheduled at | Fires at | Status |
 | --- | --- | --- |
-| 2026-09-07 22:42 SEAST | 2026-09-08 03:42 SEAST | pending |
+| 2026-09-07 22:42 UTC+7 | 2026-09-08 03:42 UTC+7 | cancelled — superseded |
+| 2026-09-07 22:55 UTC+7 | 2026-09-08 00:13 UTC+7 | pending |
+
+The usage limit resets before 00:10 UTC+7, so the first continuation fires just after that rather
+than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
 
 Cron jobs are session-only: they do not survive this Claude session ending. If a new session
 picks this work up, its first action after reading this file is to schedule a fresh +5h reminder.
