@@ -1,10 +1,10 @@
 using System.Text.Json.Nodes;
-using Basil.Web.Middleware;
-using Basil.Web.Routing.Api;
+using Basil.Server.Middleware;
+using Basil.Server.Routing.Api;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>
 ///     Rewrites every JSON response documented by basilapi so its OpenAPI schema matches the

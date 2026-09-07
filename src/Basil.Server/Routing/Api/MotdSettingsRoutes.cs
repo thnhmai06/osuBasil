@@ -1,12 +1,12 @@
 using Basil.Application.Services.Content;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>
 ///     Registers the REST endpoints for reading and managing the server's message-of-the-day.

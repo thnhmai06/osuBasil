@@ -9,10 +9,10 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
-using Basil.Web.Routing.Api;
+using Basil.Server.Routing.Api;
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>
 ///     Attaches serialized examples to already-declared OpenAPI responses, optionally wrapping
@@ -32,7 +32,7 @@ namespace Basil.Web.OpenApi;
 ///     <para>
 ///         In the <c>basilapi</c> document, examples are wrapped in the Enveloped Response
 ///         Standard (see <see cref="Envelope{T}" />) to mirror the output produced by
-///         <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> at runtime. Examples in every
+///         <see cref="Basil.Server.Middleware.EnvelopeMiddleware" /> at runtime. Examples in every
 ///         other OpenAPI document remain unchanged.
 ///     </para>
 ///     <para>

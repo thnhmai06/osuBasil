@@ -3,7 +3,7 @@ using Basil.Application.Abstractions.Users;
 using Basil.Application.Configurations;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Web;
+using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,10 +1,10 @@
-using Basil.Web.Auth;
-using Basil.Web.Routing.Api;
+using Basil.Server.Auth;
+using Basil.Server.Routing.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>
 ///     Declares the `Authorization: Bearer` header as a real OpenAPI security scheme on the

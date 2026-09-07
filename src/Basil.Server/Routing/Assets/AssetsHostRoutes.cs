@@ -1,8 +1,8 @@
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
-namespace Basil.Web.Routing.Assets;
+namespace Basil.Server.Routing.Assets;
 
 /// <summary>
 ///     Registers the `assets.` host's REST endpoints.

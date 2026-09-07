@@ -1,13 +1,13 @@
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-using Basil.Web.Routing.Api;
+using Basil.Server.Routing.Api;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>
 ///     The Enveloped Response Standard wrapping every JSON body on the api host, applied by
-///     <see cref="Basil.Web.Middleware.EnvelopeMiddleware" />.
+///     <see cref="Basil.Server.Middleware.EnvelopeMiddleware" />.
 /// </summary>
 /// <remarks>
 ///     <para>

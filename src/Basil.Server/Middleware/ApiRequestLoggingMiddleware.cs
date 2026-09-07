@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using Basil.Web.Routing.Api;
+using Basil.Server.Routing.Api;
 
-namespace Basil.Web.Middleware;
+namespace Basil.Server.Middleware;
 
 /// <summary>
 ///     Logs one line per completed request on the `api.` host, skipping its live SSE channels. A

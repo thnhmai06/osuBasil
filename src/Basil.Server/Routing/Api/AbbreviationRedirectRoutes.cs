@@ -1,4 +1,4 @@
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>
 ///     Registers the REST endpoints that redirect short resource prefixes to their canonical paths.

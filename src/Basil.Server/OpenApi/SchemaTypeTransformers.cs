@@ -8,7 +8,7 @@ using Basil.Domain.Users;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>Schema-shape fixes that apply to how individual .NET types are represented, independent of any one operation.</summary>
 internal static class SchemaTypeTransformers

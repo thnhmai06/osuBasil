@@ -4,8 +4,8 @@ using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>A dedicated logger category marker for the static <see cref="BeatmapsetRoutes" /> class.</summary>
 internal sealed class BeatmapsetRoutesLog;

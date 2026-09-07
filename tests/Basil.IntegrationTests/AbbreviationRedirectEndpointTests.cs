@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

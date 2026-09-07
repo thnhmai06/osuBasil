@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Basil.Application.Diagnostics;
 
-namespace Basil.Web.Middleware;
+namespace Basil.Server.Middleware;
 
 /// <summary>
 ///     Records total request duration to <see cref="BasilMetrics.RequestDurationMs" />, tagged by

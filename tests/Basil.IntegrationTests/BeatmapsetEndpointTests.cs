@@ -4,7 +4,7 @@ using Basil.Application.Abstractions.Beatmaps;
 using Basil.Application.Abstractions.Scores;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
-using Basil.Web;
+using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

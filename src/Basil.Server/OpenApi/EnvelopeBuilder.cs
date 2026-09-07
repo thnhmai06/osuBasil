@@ -1,14 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Web.Routing.Api;
+using Basil.Server.Routing.Api;
 using Microsoft.AspNetCore.WebUtilities;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>Shared logic for building the Enveloped Response Standard body (see <see cref="Envelope{T}" />).</summary>
 /// <remarks>
 ///     <para>
-///         Both callers use it identically: <see cref="Basil.Web.Middleware.EnvelopeMiddleware" /> wraps
+///         Both callers use it identically: <see cref="Basil.Server.Middleware.EnvelopeMiddleware" /> wraps
 ///         the real response body at runtime, and <see cref="OpenApiExampleExtensions" /> wraps a
 ///         <c>.WithExample</c> payload for the generated OpenAPI docs.
 ///     </para>

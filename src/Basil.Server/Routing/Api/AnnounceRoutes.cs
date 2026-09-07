@@ -1,14 +1,14 @@
 using Basil.Application.Services.Bot;
 using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>A dedicated logger category marker for the static <see cref="AnnounceRoutes" /> class.</summary>
 internal sealed class AnnounceRoutesLog;

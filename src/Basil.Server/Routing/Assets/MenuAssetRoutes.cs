@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using Basil.Application.Services.Content;
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
-namespace Basil.Web.Routing.Assets;
+namespace Basil.Server.Routing.Assets;
 
 /// <summary>
 ///     Registers the non-image `/menu/...` routes on the `assets.` host: the seasonal background

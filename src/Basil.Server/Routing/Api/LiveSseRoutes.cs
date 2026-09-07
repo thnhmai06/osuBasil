@@ -11,9 +11,9 @@ using Basil.Application.Services.Spectating;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Multiplayer;
 using Basil.Application.Sessions.Spectating;
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>
 ///     Registers the Server-Sent Events (SSE) endpoints for live multiplayer and spectating

@@ -5,13 +5,13 @@ using Basil.Application.Configurations;
 using Basil.Application.Services.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Web.Auth;
-using Basil.Web.Routing.Bancho;
+using Basil.Server.Auth;
+using Basil.Server.Routing.Bancho;
 using Microsoft.Extensions.Options;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
-namespace Basil.Web.Routing.Assets;
+namespace Basil.Server.Routing.Assets;
 
 /// <summary>
 ///     Registers the `assets.` host's beatmapset/beatmap file routes: background, cover variants,

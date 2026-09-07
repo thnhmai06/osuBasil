@@ -2,7 +2,7 @@ using System.Net;
 using Basil.Domain.Login;
 using Serilog.Context;
 
-namespace Basil.Web.Middleware;
+namespace Basil.Server.Middleware;
 
 /// <summary>
 ///     Pushes the current request's <see cref="HttpContext.TraceIdentifier" /> and resolved client IP

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Routing.Constraints;
 
-namespace Basil.Web.Routing;
+namespace Basil.Server.Routing;
 
 /// <summary>
 ///     Route constraint for an id segment that matches any all-digit string, regardless of whether it

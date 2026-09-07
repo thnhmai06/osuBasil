@@ -2,7 +2,7 @@ using System.Net;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
 using Basil.Domain.Beatmaps;
-using Basil.Web;
+using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

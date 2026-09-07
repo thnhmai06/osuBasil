@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Basil.Application.Formats;
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 
-namespace Basil.Web.Middleware;
+namespace Basil.Server.Middleware;
 
 /// <summary>
 ///     Logs every unhandled exception across all host groups at Error level. On the <c>api.</c>

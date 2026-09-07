@@ -7,7 +7,7 @@ using Basil.Protocol;
 using Basil.Protocol.Packets;
 using LoginRequest = Basil.Application.Services.Authentication.LoginRequest;
 
-namespace Basil.Web.Routing.Bancho;
+namespace Basil.Server.Routing.Bancho;
 
 /// <summary>
 ///     Registers the bancho protocol endpoints served by the classic osu! client host

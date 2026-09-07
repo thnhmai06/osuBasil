@@ -1,6 +1,6 @@
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>The uniform error body for every non-2xx JSON response across the api. host.</summary>
 /// <remarks>

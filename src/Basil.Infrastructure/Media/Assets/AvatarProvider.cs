@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Media.Assets;
 /// <remarks>
 ///     Only handles a user who has actually uploaded an avatar. Doesn't match (and so doesn't
 ///     resolve) for the BasilBot/default fallback avatars — those are embedded resources bundled with
-///     `Basil.Web`, which this Infrastructure-layer provider can't depend on — so those requests fall
+///     `Basil.Server`, which this Infrastructure-layer provider can't depend on — so those requests fall
 ///     through to the existing plain `a.` route, unchanged.
 /// </remarks>
 public sealed partial class AvatarProvider : IImageProvider

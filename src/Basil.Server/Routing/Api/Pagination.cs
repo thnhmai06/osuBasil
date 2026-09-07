@@ -1,4 +1,4 @@
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

@@ -7,7 +7,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Web.Routing.Bancho;
+namespace Basil.Server.Routing.Bancho;
 
 /// <summary>
 ///     Registers the `b.{domain}` host's routes: the beatmapset thumbnail mirror-fallback (the

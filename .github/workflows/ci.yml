@@ -27,12 +27,12 @@ jobs:
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=minimal"
 
       # Building the solution already regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
-      # into src/Basil.Web/obj/Basil.Web_{documentName}.json — upload them so deploy-docs doesn't need to rebuild.
+      # into src/Basil.Server/obj/Basil.Server_{documentName}.json — upload them so deploy-docs doesn't need to rebuild.
       - name: Upload OpenAPI documents
         uses: actions/upload-artifact@v4
         with:
           name: openapi-documents
-          path: src/Basil.Web/obj/Basil.Web_*.json
+          path: src/Basil.Server/obj/Basil.Server_*.json
 
   deploy-docs:
     needs: build-and-test
@@ -62,8 +62,8 @@ jobs:
           mkdir -p "$SITE"
           # docs-site is served from /docs on a running instance, so nest it under docs/
           # and make the site root a redirect there.
-          cp -r src/Basil.Web/docs-site "$SITE/docs"
-          cp openapi/Basil.Web_basilapi.json "$SITE/docs/basil-api/basilapi.json"
+          cp -r src/Basil.Server/docs-site "$SITE/docs"
+          cp openapi/Basil.Server_basilapi.json "$SITE/docs/basil-api/basilapi.json"
           cat > "$SITE/index.html" <<'EOF'
           <!doctype html>
           <html lang="en">

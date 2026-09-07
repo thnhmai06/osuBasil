@@ -1,6 +1,6 @@
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>Describes one field of a declared `multipart/form-data` request body.</summary>
 /// <param name="Name">The multipart field name.</param>

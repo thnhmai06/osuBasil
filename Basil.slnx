@@ -4,7 +4,7 @@
 		<Project Path="src/Basil.Domain/Basil.Domain.csproj"/>
 		<Project Path="src/Basil.Infrastructure/Basil.Infrastructure.csproj"/>
 		<Project Path="src/Basil.Protocol/Basil.Protocol.csproj"/>
-		<Project Path="src/Basil.Web/Basil.Web.csproj"/>
+		<Project Path="src/Basil.Server/Basil.Server.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project

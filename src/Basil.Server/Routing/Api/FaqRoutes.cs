@@ -1,12 +1,12 @@
 using Basil.Application.Services.Content;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>A dedicated logger category marker for the static <see cref="FaqRoutes" /> class.</summary>
 internal sealed class FaqRoutesLog;

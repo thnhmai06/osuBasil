@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Basil.Web.Logging;
+namespace Basil.Server.Logging;
 
 /// <summary>
 ///     Tags each log event with a fixed "Category" property inferred from its SourceContext, the full
@@ -34,8 +34,8 @@ public sealed class CategoryEnricher : ILogEventEnricher
 		("Basil.Infrastructure.Persistence.Repositories.", true, "Database"),
 		("Basil.Infrastructure.Caching.", true, "Cache"),
 		("Microsoft.Hosting.Lifetime", false, "Host"),
-		("Basil.Web.Program", false, "Host"),
-		("Basil.Web.Middleware.ApiRequestLoggingMiddleware", false, "Api")
+		("Basil.Server.Program", false, "Host"),
+		("Basil.Server.Middleware.ApiRequestLoggingMiddleware", false, "Api")
 	];
 
 	/// <summary>

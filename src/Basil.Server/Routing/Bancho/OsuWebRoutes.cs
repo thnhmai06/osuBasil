@@ -18,7 +18,7 @@ using Basil.Infrastructure.Beatmaps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Web.Routing.Bancho;
+namespace Basil.Server.Routing.Bancho;
 
 /// <summary>A dedicated logger category marker for the static <see cref="OsuWebRoutes" /> class.</summary>
 // ReSharper disable once ClassNeverInstantiated.Global

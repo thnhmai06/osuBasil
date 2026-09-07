@@ -1,11 +1,11 @@
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 using Scalar.AspNetCore;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>
 ///     Registers the `api.` host's REST endpoints.

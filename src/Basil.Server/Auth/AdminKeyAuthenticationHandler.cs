@@ -3,11 +3,11 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Basil.Application.Formats;
 using Basil.Application.Services.Authentication;
-using Basil.Web.OpenApi;
+using Basil.Server.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Web.Auth;
+namespace Basil.Server.Auth;
 
 /// <summary>
 ///     Authenticates requests using the <c>Authorization: Bearer &lt;key&gt;</c> header,

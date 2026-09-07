@@ -27,7 +27,7 @@
 		<ProjectReference Include="..\..\src\Basil.Application\Basil.Application.csproj"/>
 		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
 		<ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
-		<ProjectReference Include="..\..\src\Basil.Web\Basil.Web.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Server\Basil.Server.csproj"/>
 	</ItemGroup>
 
 </Project>

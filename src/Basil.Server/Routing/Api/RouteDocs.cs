@@ -1,4 +1,4 @@
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>Shared OpenAPI description fragments reused across the api. host's route files.</summary>
 internal static class RouteDocs

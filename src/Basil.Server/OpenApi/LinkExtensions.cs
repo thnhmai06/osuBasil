@@ -1,6 +1,6 @@
 using Microsoft.OpenApi;
 
-namespace Basil.Web.OpenApi;
+namespace Basil.Server.OpenApi;
 
 /// <summary>
 ///     Attaches OpenAPI links to an already-declared response, documenting the operations that

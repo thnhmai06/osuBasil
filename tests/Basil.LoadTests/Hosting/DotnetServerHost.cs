@@ -8,7 +8,7 @@ using Basil.LoadTests.Infrastructure.Metrics;
 namespace Basil.LoadTests.Hosting;
 
 /// <summary>
-///     Runs Basil.Web as a local child process — either a pre-published binary (the default, and the
+///     Runs Basil.Server as a local child process — either a pre-published binary (the default, and the
 ///     only mode with trustworthy process metrics: a published exe has no wrapper process) or
 ///     <c>dotnet run</c> (faster to iterate, but process metrics would measure the wrong process, so
 ///     they are reported as unavailable in that mode).
@@ -37,7 +37,7 @@ public sealed class DotnetServerHost : IServerHost
 		_processMetricsTrustworthy = settings.Dotnet.Mode == DotnetLaunchMode.Published;
 		_serverDirectory = settings.Dotnet.Mode == DotnetLaunchMode.Published
 			? RepoPaths.Resolve(settings.Dotnet.PublishDirectory)
-			: RepoPaths.Resolve("src/Basil.Web");
+			: RepoPaths.Resolve("src/Basil.Server");
 
 		Endpoint = new ServerEndpoint(settings.Domain, settings.Port, IPAddress.Loopback);
 		Capabilities = new ServerHostCapabilities(
@@ -61,7 +61,7 @@ public sealed class DotnetServerHost : IServerHost
 			: $"run --project \"{_serverDirectory}\" -c Release -- {BuildServerArguments(certPath)}";
 
 		var fileName = _settings.Dotnet.Mode == DotnetLaunchMode.Published
-			? Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Web.exe" : "Basil.Web")
+			? Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Server.exe" : "Basil.Server")
 			: "dotnet";
 
 		var startInfo = new ProcessStartInfo(fileName, arguments)
@@ -241,10 +241,10 @@ public sealed class DotnetServerHost : IServerHost
 	private async Task EnsurePublishedAsync(CancellationToken cancellationToken)
 	{
 		var executablePath =
-			Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Web.exe" : "Basil.Web");
+			Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Server.exe" : "Basil.Server");
 		if (File.Exists(executablePath) && !_settings.Dotnet.AutoPublish) return;
 
-		var webProject = RepoPaths.Resolve("src/Basil.Web");
+		var webProject = RepoPaths.Resolve("src/Basil.Server");
 		var startInfo = new ProcessStartInfo("dotnet",
 			$"publish \"{webProject}\" -c Release -o \"{_serverDirectory}\"")
 		{

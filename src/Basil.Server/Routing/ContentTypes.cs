@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace Basil.Web.Routing;
+namespace Basil.Server.Routing;
 
 /// <summary>
 ///     Resolves MIME types from file extensions, including osu!-specific file formats.

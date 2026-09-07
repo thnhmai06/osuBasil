@@ -2,7 +2,7 @@ using System.Text;
 using Serilog.Sinks.File;
 using HardLink = Basil.Infrastructure.System.HardLink;
 
-namespace Basil.Web.Logging;
+namespace Basil.Server.Logging;
 
 /// <summary>
 ///     Recreates a fixed "latest" hardlink pointing at whichever log file was just opened. Runs once

@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

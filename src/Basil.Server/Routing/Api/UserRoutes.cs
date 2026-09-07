@@ -11,8 +11,8 @@ using Basil.Application.Sessions.Spectating;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -20,7 +20,7 @@ using Microsoft.Extensions.Options;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>A dedicated logger category marker for the static <see cref="UserRoutes" /> class.</summary>
 internal sealed class UserRoutesLog;

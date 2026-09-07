@@ -20,12 +20,12 @@ using Basil.Infrastructure;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Media.Assets;
 using Basil.Infrastructure.Persistence;
-using Basil.Web.Auth;
-using Basil.Web.Logging;
-using Basil.Web.Middleware;
-using Basil.Web.OpenApi;
-using Basil.Web.Routing;
-using Basil.Web.Routing.Bancho;
+using Basil.Server.Auth;
+using Basil.Server.Logging;
+using Basil.Server.Middleware;
+using Basil.Server.OpenApi;
+using Basil.Server.Routing;
+using Basil.Server.Routing.Bancho;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -38,7 +38,7 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
-namespace Basil.Web;
+namespace Basil.Server;
 
 public sealed class Program
 {

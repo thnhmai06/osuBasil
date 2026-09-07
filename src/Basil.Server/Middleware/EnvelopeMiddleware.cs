@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Formats;
-using Basil.Web.OpenApi;
-using Basil.Web.Routing.Api;
+using Basil.Server.OpenApi;
+using Basil.Server.Routing.Api;
 
-namespace Basil.Web.Middleware;
+namespace Basil.Server.Middleware;
 
 /// <summary>
 ///     Wraps every JSON body on the <c>basilapi</c> OpenAPI group in the Enveloped Response Standard (see

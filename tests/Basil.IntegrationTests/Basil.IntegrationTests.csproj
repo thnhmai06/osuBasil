@@ -25,7 +25,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Web\Basil.Web.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Server\Basil.Server.csproj"/>
 	</ItemGroup>
 
 </Project>

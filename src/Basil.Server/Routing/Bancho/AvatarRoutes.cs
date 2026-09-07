@@ -2,7 +2,7 @@ using Basil.Application.Configurations;
 using Basil.Application.Services.Bot;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Web.Routing.Bancho;
+namespace Basil.Server.Routing.Bancho;
 
 // This server stores avatars locally rather than proxying a remote CDN.
 // Files are stored flat as "{userId}.{ext}" under StorageOptions.AvatarsPath.
@@ -32,7 +32,7 @@ internal static class AvatarRoutes
 				// BasilBot
 				if (userId == BotBootstrapService.BotId)
 				{
-					const string botResourceName = "Basil.Web.Resources.Avatars.basilbot.png";
+					const string botResourceName = "Basil.Server.Resources.Avatars.basilbot.png";
 					var botPath = Path.Combine(storage.AvatarsPath,
 						$"{BotBootstrapService.BotId}{Path.GetExtension(botResourceName)}");
 					if (!File.Exists(botPath)) TryWriteEmbeddedResource(botResourceName, botPath);
@@ -40,7 +40,7 @@ internal static class AvatarRoutes
 				}
 
 				// Regular user
-				const string defaultResourceName = "Basil.Web.Resources.Avatars.default.png";
+				const string defaultResourceName = "Basil.Server.Resources.Avatars.default.png";
 				var defaultPath = Path.Combine(storage.AvatarsPath, $"default{Path.GetExtension(defaultResourceName)}");
 				if (!File.Exists(defaultPath)) TryWriteEmbeddedResource(defaultResourceName, defaultPath);
 				return File.Exists(defaultPath)

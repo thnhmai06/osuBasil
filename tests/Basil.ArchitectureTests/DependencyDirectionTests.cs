@@ -43,7 +43,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(DomainAssembly)
 			.Should()
-			.NotHaveDependencyOn("Basil.Web")
+			.NotHaveDependencyOn("Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -78,9 +78,12 @@ public class DependencyDirectionTests
 	[Fact]
 	public void Application_Should_Not_HaveDependencyOn_Web()
 	{
+		// Trailing dot: NetArchTest also scans constant field values, and "Basil.Server" (without
+		// it) coincidentally matches ServerOptions.SectionName's unrelated "Basil:Server" config
+		// key. The dot anchors the check back to an actual namespace/type dependency.
 		var result = Types.InAssembly(ApplicationAssembly)
 			.Should()
-			.NotHaveDependencyOn("Basil.Web")
+			.NotHaveDependencyOn("Basil.Server.")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -110,7 +113,7 @@ public class DependencyDirectionTests
 				"Basil.Domain",
 				"Basil.Application",
 				"Basil.Infrastructure",
-				"Basil.Web")
+				"Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -121,7 +124,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(InfrastructureAssembly)
 			.Should()
-			.NotHaveDependencyOn("Basil.Web")
+			.NotHaveDependencyOn("Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));

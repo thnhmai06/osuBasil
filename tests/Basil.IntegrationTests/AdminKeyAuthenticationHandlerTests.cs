@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using Basil.Application.Abstractions.Settings;
 using Basil.Application.Services.Authentication;
 using Basil.Infrastructure.Security;
-using Basil.Web.Auth;
+using Basil.Server.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

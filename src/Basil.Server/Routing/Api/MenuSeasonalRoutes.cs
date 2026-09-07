@@ -1,14 +1,14 @@
 using Basil.Application.Configurations;
 using Basil.Application.Services.Content;
-using Basil.Web.Auth;
-using Basil.Web.OpenApi;
+using Basil.Server.Auth;
+using Basil.Server.OpenApi;
 using Microsoft.Extensions.Options;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Web.Routing.Api;
+namespace Basil.Server.Routing.Api;
 
 /// <summary>A dedicated logger category marker for the static <see cref="MenuSeasonalRoutes" /> class.</summary>
 internal sealed class MenuSeasonalRoutesLog;
