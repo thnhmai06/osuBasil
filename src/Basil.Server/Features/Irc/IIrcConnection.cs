@@ -1,4 +1,6 @@
 using Basil.Server.Shared.Eventing;
+// Basil.Server.Features.Chat is imported only so the <see cref="ChannelMembershipService" />
+// below resolves; nothing here calls into Chat.
 using Basil.Server.Features.Chat;
 using Basil.Server.Shared.Sessions;
 using Basil.Protocol.Irc;

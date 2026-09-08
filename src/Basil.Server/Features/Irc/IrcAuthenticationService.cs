@@ -1,7 +1,6 @@
 using Basil.Server.Features.Auth;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Server.Features.Bot;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
@@ -17,7 +16,7 @@ namespace Basil.Server.Features.Irc;
 ///     <see cref="IrcSession" /> for it.
 /// </summary>
 /// <remarks>
-///     The session is chat/command-only, wired the same way <see cref="ICommandDispatcher" /> and the
+///     The session is chat/command-only, wired the same way the bot's command dispatcher and the
 ///     rests of the chat core treat any <see cref="UserSession" />. PASS is checked against the
 ///     account password using the same MD5-then-bcrypt flow as client login: the osu! client sends
 ///     the MD5 of its password as hex at login, while an IRC client sends the password in plaintext,

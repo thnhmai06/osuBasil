@@ -1,4 +1,3 @@
-using Basil.Server.Features.Users;
 using Basil.Server.Features.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
@@ -8,7 +7,7 @@ namespace Basil.Server.Features.Beatmaps;
 
 /// <summary>
 ///     Read-through caching decorator over the real <see cref="IBeatmapsetRepository" />, same
-///     pattern as <see cref="CachingBeatmapRepository" /> and <see cref="CachingUserRepository" />,
+///     pattern as <see cref="CachingBeatmapRepository" /> and Users' CachingUserRepository,
 ///     keyed by <c>Id</c> only (a beatmapset has no md5 concept). Every write invalidates the
 ///     affected entry immediately; the TTL is only a safety net.
 /// </summary>
@@ -39,7 +38,8 @@ public sealed class CachingBeatmapsetRepository(
 		logger.LogDebug("Cache miss {Key}", key);
 		var beatmapset = await inner.FetchByIdAsync(id, cancellationToken);
 		if (beatmapset is not null)
-			cache.Set(key, beatmapset, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
+			cache.Set(key, beatmapset,
+				new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _ttl, Size = 1 });
 		return beatmapset;
 	}
 

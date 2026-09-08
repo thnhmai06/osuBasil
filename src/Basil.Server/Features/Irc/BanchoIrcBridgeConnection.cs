@@ -1,4 +1,3 @@
-using Basil.Server.Features.Chat;
 using Basil.Server.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
@@ -41,9 +40,8 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 	///     Translates an internal channel registry name into the alias the bancho client knows the
 	///     channel as. A match or spectator channel's internal name (<c>#mp_{id}</c> or
 	///     <c>#spec_{id}</c>) is never what the client joined: it only ever joined the fixed aliases
-	///     <c>#multiplayer</c> and <c>#spectator</c>, because
-	///     <see cref="ChannelMembershipService.Join" /> sends
-	///     <c>ChannelSession.DisplayName</c> rather than <c>Name</c>. Without this translation, a
+	///     <c>#multiplayer</c> and <c>#spectator</c>, because Chat's ChannelMembershipService.Join
+	///     sends <c>ChannelSession.DisplayName</c> rather than <c>Name</c>. Without this translation, a
 	///     PRIVMSG addressed to the internal name would match no window the client has opened and be
 	///     silently dropped.
 	/// </summary>
