@@ -17,7 +17,13 @@ anything already recorded here or in `plans/vsa-migration-design-20260907.md`,
 
 Authoritative documents:
 
-* `plans/vsa-migration-plan-20260907.md` — the task-by-task plan being executed
+* `plans/basil-plan-20260909.md` — **the plan being executed.** Supersedes the 2026-09-07 plan; its
+  §10 records which of that plan's 57 tasks are alive, absorbed or dead
+* `plans/architecture-assessment-20260908.md` — the measurements every architecture decision rests on
+* `plans/architecture-target-20260908.md` — the target structure and its invariants
+* `plans/execution/architecture-progress.md` — the edge and component numbers, re-measured per stage
+* `plans/execution/const-visibility-experiment.md` — why `static readonly` was chosen over Roslyn
+* `plans/vsa-migration-plan-20260907.md` — superseded; alive tasks are still executed from its text
 * `plans/vsa-migration-design-20260907.md` — the approved design (revision 3)
 * `plans/diagnostic-metric-inventory-20260907.md` — probe-verified metric inventory, input to
   Phase 5; do **not** re-derive it
@@ -70,7 +76,15 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | Phase | Status | Blocked on | Owner |
 | --- | --- | --- | --- |
 | 0 Foundation | Done | — | closed by Task 0.14 on 2026-09-08 |
-| 1 Multiplayer | Implementing | nothing | Task 1.1 done; 1.2 ready |
+| Architecture assessment | Done | — | measured, target agreed, plan rewritten 2026-09-09 |
+| Stage A enforcement | Done | — | `ed48716`; the const blind spot is closed |
+| Stage B untangle | Implementing | nothing | B4 and B3/A3 with workers |
+| Stage C business layer | Not started | Stage B | — |
+| Stage D transports | Not started | Stage C, gated on C5 | — |
+| Stage E declare | Not started | Stage D | — |
+| Stage F diagnostics | Not started | Stage D | — |
+| Stage G load harness | Not started | Stage F | — |
+| Stage H close out | Not started | everything | — |
 | 1 Multiplayer | Not started | Phase 0 | — |
 | 2 Chat/Bot/IRC | Not started | Phase 1 + Task 1.11 gate | — |
 | 3 Users/Auth | Not started | Phase 1 + Task 1.11 gate | — |
