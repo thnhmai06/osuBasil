@@ -15,7 +15,7 @@ public class MatchNoBeatmapHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchNoBeatmapHandler(fixture.MatchMembership);
+		var handler = new MatchNoBeatmapHandler();
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

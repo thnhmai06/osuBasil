@@ -16,7 +16,7 @@ public class MatchHasBeatmapHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		match.Slots[0].Status = SlotStatus.NoMap;
-		var handler = new MatchHasBeatmapHandler(fixture.MatchMembership);
+		var handler = new MatchHasBeatmapHandler();
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

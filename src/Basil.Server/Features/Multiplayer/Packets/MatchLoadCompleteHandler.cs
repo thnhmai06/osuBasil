@@ -26,20 +26,14 @@ public sealed class MatchLoadCompleteHandler(MatchMembershipService matchMembers
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			var slot = match.GetSlot(gameSession.Id);
-			if (slot is null) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			slot.Loaded = true;
+		var slot = match.GetSlot(gameSession.Id);
+		if (slot is null) return;
 
-			var stillWaiting = match.Slots.Any(s => s is { Status: SlotStatus.Playing, Loaded: false });
-			if (!stillWaiting) matchMembership.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		slot.Loaded = true;
+
+		var stillWaiting = match.Slots.Any(s => s is { Status: SlotStatus.Playing, Loaded: false });
+		if (!stillWaiting) matchMembership.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
 	}
 }

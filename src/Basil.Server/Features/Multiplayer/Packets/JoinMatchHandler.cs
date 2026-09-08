@@ -52,16 +52,8 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 			return;
 		}
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			await matchMembership.JoinAsync(gameSession, match, password, cancellationToken);
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
-
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
+		await matchMembership.JoinAsync(gameSession, match, password, cancellationToken);
+		mutation.PublishState();
 	}
 }

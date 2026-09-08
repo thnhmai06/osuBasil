@@ -1,5 +1,4 @@
 using Basil.Server.Shared.Http.Bancho;
-using Basil.Server.Features.Multiplayer;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
@@ -13,10 +12,10 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     packet sets that userSession's own slot mods, masked to non-speed-changing mods, so every userSession
 ///     controls their own modifiers. In a non-freemod match only the host's packet is honored, and it
 ///     sets the match-level mods directly; other players are ignored. The updated state is broadcast
-///     through <see cref="MatchMembershipService.EnqueueStateAsync" />. The read-mutate-broadcast
-///     sequence runs under the match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
+///     when the mutation scope completes. The read-mutate-broadcast sequence runs under the match's
+///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchChangeModsHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchChangeModsHandler : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangeMods;
 
@@ -30,34 +29,25 @@ public sealed class MatchChangeModsHandler(MatchMembershipService matchMembershi
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
+
+		if (match.Freemods)
 		{
-			if (match.Freemods)
-			{
-				if (gameSession.Id == match.HostId)
-					match.Mods = mods & Mods.SpeedChangingMods;
+			if (gameSession.Id == match.HostId)
+				match.Mods = mods & Mods.SpeedChangingMods;
 
-				var slot = match.GetSlot(gameSession.Id);
-				if (slot is null) return;
+			var slot = match.GetSlot(gameSession.Id);
+			if (slot is null) return;
 
-				slot.Mods = mods & ~Mods.SpeedChangingMods;
-			}
-			else
-			{
-				if (gameSession.Id != match.HostId) return;
-
-				match.Mods = mods;
-			}
-
-			version = match.NextStateVersion();
+			slot.Mods = mods & ~Mods.SpeedChangingMods;
 		}
-		finally
+		else
 		{
-			match.Lock.Release();
+			if (gameSession.Id != match.HostId) return;
+
+			match.Mods = mods;
 		}
 
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		mutation.PublishState();
 	}
 }

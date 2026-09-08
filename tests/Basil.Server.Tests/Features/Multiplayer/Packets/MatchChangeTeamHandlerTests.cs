@@ -15,7 +15,7 @@ public class MatchChangeTeamHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangeTeamHandler(fixture.MatchMembership);
+		var handler = new MatchChangeTeamHandler();
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 		Assert.Equal(MatchTeam.Blue, match.GetSlot(host.Id)!.Team);

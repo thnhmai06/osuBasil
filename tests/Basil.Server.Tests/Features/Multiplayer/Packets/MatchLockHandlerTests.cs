@@ -23,7 +23,7 @@ public class MatchLockHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchLockHandler(fixture.MatchMembership);
+		var handler = new MatchLockHandler();
 
 		await handler.HandleAsync(guest, ReaderFor(3));
 
@@ -37,7 +37,7 @@ public class MatchLockHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchLockHandler(fixture.MatchMembership);
+		var handler = new MatchLockHandler();
 
 		await handler.HandleAsync(host, ReaderFor(3));
 
@@ -52,7 +52,7 @@ public class MatchLockHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		match.Slots[3].Status = SlotStatus.Locked;
-		var handler = new MatchLockHandler(fixture.MatchMembership);
+		var handler = new MatchLockHandler();
 
 		await handler.HandleAsync(host, ReaderFor(3));
 
@@ -66,7 +66,7 @@ public class MatchLockHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchLockHandler(fixture.MatchMembership);
+		var handler = new MatchLockHandler();
 
 		await handler.HandleAsync(host, ReaderFor(0));
 

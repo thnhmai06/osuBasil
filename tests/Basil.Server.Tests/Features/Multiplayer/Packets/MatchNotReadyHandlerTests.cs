@@ -16,7 +16,7 @@ public class MatchNotReadyHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		match.Slots[0].Status = SlotStatus.Ready;
-		var handler = new MatchNotReadyHandler(fixture.MatchMembership);
+		var handler = new MatchNotReadyHandler();
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

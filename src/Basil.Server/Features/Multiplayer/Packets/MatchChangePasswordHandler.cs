@@ -12,7 +12,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     broadcast to the match channel and the lobby. The read-mutate-broadcast sequence runs under the
 ///     match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchChangePasswordHandler : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangePassword;
 
@@ -27,22 +27,13 @@ public sealed class MatchChangePasswordHandler(MatchMembershipService matchMembe
 		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
 		    gameSession.Id != match.HostId) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
-		{
-			// Re-checked under the lock: host status can only change under this same lock, so a
-			// sender who lost host while waiting for it must not still act with host authority.
-			if (gameSession.Id != match.HostId) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			match.Password = matchData.Password;
-			version = match.NextStateVersion();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		// Re-checked under the lock: host status can only change under this same lock, so a
+		// sender who lost host while waiting for it must not still act with host authority.
+		if (gameSession.Id != match.HostId) return;
 
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		match.Password = matchData.Password;
+		mutation.PublishState();
 	}
 }

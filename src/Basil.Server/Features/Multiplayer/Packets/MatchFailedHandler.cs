@@ -24,17 +24,11 @@ public sealed class MatchFailedHandler(MatchMembershipService matchMembership) :
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			var slotId = match.GetSlotId(gameSession.Id);
-			if (slotId is null) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		var slotId = match.GetSlotId(gameSession.Id);
+		if (slotId is null) return;
+
+		matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
 	}
 }

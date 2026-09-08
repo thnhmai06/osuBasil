@@ -14,7 +14,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     layout, and the updated state is broadcast. The read-mutate-broadcast sequence runs under the
 ///     match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchLockHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchLockHandler : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchLock;
 
@@ -28,36 +28,27 @@ public sealed class MatchLockHandler(MatchMembershipService matchMembership) : I
 		var match = gameSession.Match;
 		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
+
+		// Re-checked under the lock: host status can only change under this same lock, so a
+		// sender who lost host while waiting for it must not still act with host authority.
+		if (gameSession.Id != match.HostId) return;
+
+		var slot = match.Slots[slotId];
+
+		if (slot.Status == SlotStatus.Locked)
 		{
-			// Re-checked under the lock: host status can only change under this same lock, so a
-			// sender who lost host while waiting for it must not still act with host authority.
-			if (gameSession.Id != match.HostId) return;
-
-			var slot = match.Slots[slotId];
-
-			if (slot.Status == SlotStatus.Locked)
-			{
-				slot.Status = SlotStatus.Open;
-			}
-			else
-			{
-				if (slot.PlayerId == gameSession.Id)
-					// don't allow the host to kick themselves by clicking their own crown.
-					return;
-
-				slot.Status = SlotStatus.Locked;
-			}
-
-			version = match.NextStateVersion();
+			slot.Status = SlotStatus.Open;
 		}
-		finally
+		else
 		{
-			match.Lock.Release();
+			if (slot.PlayerId == gameSession.Id)
+				// don't allow the host to kick themselves by clicking their own crown.
+				return;
+
+			slot.Status = SlotStatus.Locked;
 		}
 
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		mutation.PublishState();
 	}
 }

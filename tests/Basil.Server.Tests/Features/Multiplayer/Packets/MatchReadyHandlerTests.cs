@@ -15,7 +15,7 @@ public class MatchReadyHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchReadyHandler(fixture.MatchMembership);
+		var handler = new MatchReadyHandler();
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -27,7 +27,7 @@ public class MatchReadyHandlerTests
 	{
 		var fixture = new Fixture();
 		var player = MakePlayer(1, "alice");
-		var handler = new MatchReadyHandler(fixture.MatchMembership);
+		var handler = new MatchReadyHandler();
 
 		await handler.HandleAsync(player, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

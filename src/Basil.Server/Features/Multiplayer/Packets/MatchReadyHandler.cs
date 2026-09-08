@@ -12,7 +12,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     update is broadcast to match members but not the lobby. The read-mutate-broadcast sequence runs
 ///     under the match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchReadyHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchReadyHandler : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchReady;
 
@@ -24,21 +24,12 @@ public sealed class MatchReadyHandler(MatchMembershipService matchMembership) : 
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
-		{
-			var slot = match.GetSlot(gameSession.Id);
-			if (slot is null) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			slot.Status = SlotStatus.Ready;
-			version = match.NextStateVersion();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		var slot = match.GetSlot(gameSession.Id);
+		if (slot is null) return;
 
-		await matchMembership.EnqueueStateAsync(match, version, false, cancellationToken);
+		slot.Status = SlotStatus.Ready;
+		mutation.PublishState(lobby: false);
 	}
 }

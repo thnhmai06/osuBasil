@@ -34,42 +34,32 @@ public sealed class MatchTransferHostHandler(
 		var match = gameSession.Match;
 		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
-		{
-			// Host status is re-checked here, not just before the lock: it can only change under this
-			// same lock (a concurrent leave or transfer), so a sender who lost host while waiting for
-			// it must not still be treated as authoritative once the lock is acquired.
-			if (gameSession.Id != match.HostId) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			var targetId = match.Slots[slotId].PlayerId;
-			if (targetId is null) return;
+		// Host status is re-checked here, not just before the lock: it can only change under this
+		// same lock (a concurrent leave or transfer), so a sender who lost host while waiting for
+		// it must not still be treated as authoritative once the lock is acquired.
+		if (gameSession.Id != match.HostId) return;
 
-			var prevHostId = match.HostId;
-			match.HostId = targetId.Value;
-			logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
-				match.DbId, prevHostId, targetId.Value);
+		var targetId = match.Slots[slotId].PlayerId;
+		if (targetId is null) return;
 
-			var targetPlayer = sessionRegistry.GetByUserId(targetId.Value);
-			targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
+		var prevHostId = match.HostId;
+		match.HostId = targetId.Value;
+		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
+			match.DbId, prevHostId, targetId.Value);
 
-			// Reordered ahead of the (now unlocked, ADR-004 4b) state broadcast: this audit-trail write
-			// doesn't read or depend on live match state beyond values already captured above, so it
-			// runs here instead, still under the lock, rather than gating release on it.
-			var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
-			await matchRepository.CreateEventAsync(new MatchEvent(
-				match.DbId, (int)MatchEventType.HostGranted,
-				prevHostId, prevHostName, targetId, targetPlayer?.Name,
-				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+		var targetPlayer = sessionRegistry.GetByUserId(targetId.Value);
+		targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
 
-			version = match.NextStateVersion();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		// Runs here, still under the lock, rather than after: this audit-trail write doesn't read or
+		// depend on live match state beyond values already captured above.
+		var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
+		await matchRepository.CreateEventAsync(new MatchEvent(
+			match.DbId, (int)MatchEventType.HostGranted,
+			prevHostId, prevHostName, targetId, targetPlayer?.Name,
+			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		mutation.PublishState();
 	}
 }

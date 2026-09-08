@@ -37,8 +37,13 @@ public sealed class MatchMembershipService(
 	IMatchLiveEvents eventBus,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo,
-	ILogger<MatchMembershipService> logger)
+	ILogger<MatchMembershipService> logger) : IMatchMutationPublisher
 {
+	/// <inheritdoc />
+	Task IMatchMutationPublisher.PublishStateAsync(MatchSession match, long version, bool lobby,
+		CancellationToken cancellationToken) => EnqueueStateAsync(match, version, lobby, cancellationToken);
+
+
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
 	public enum JoinResult : byte
 	{
@@ -108,6 +113,7 @@ public sealed class MatchMembershipService(
 		CancellationToken cancellationToken = default)
 	{
 		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
+		match.MutationPublisher = this;
 		match.CreatorId = creator.Id;
 		logger.LogInformation(
 			"+ Match created: MatchId={MatchId} CreatorId={CreatorId} Name={Name}", match.DbId, creator.Id,
@@ -188,6 +194,7 @@ public sealed class MatchMembershipService(
 		CancellationToken cancellationToken = default)
 	{
 		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
+		match.MutationPublisher = this;
 
 		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=NoHost Name={Name} (via HTTP)",
 			match.DbId, match.Name);

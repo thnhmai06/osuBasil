@@ -27,21 +27,15 @@ public sealed class MatchSkipRequestHandler(MatchMembershipService matchMembersh
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			var slot = match.GetSlot(gameSession.Id);
-			if (slot is null) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			slot.Skipped = true;
-			matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
+		var slot = match.GetSlot(gameSession.Id);
+		if (slot is null) return;
 
-			var everyoneSkipped = match.Slots.All(s => s.Status != SlotStatus.Playing || s.Skipped);
-			if (everyoneSkipped) matchMembership.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		slot.Skipped = true;
+		matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
+
+		var everyoneSkipped = match.Slots.All(s => s.Status != SlotStatus.Playing || s.Skipped);
+		if (everyoneSkipped) matchMembership.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
 	}
 }

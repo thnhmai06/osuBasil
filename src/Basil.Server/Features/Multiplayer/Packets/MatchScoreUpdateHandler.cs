@@ -36,36 +36,30 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			var slotId = match.GetSlotId(gameSession.Id);
-			if (slotId is null) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the
-			// wrapped body) is overwritten with the slot id so clients can attribute the frame.
-			var packet = PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, playData);
-			packet[11] = (byte)slotId.Value;
+		var slotId = match.GetSlotId(gameSession.Id);
+		if (slotId is null) return;
 
-			matchMembership.Enqueue(match, packet, false);
+		// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the
+		// wrapped body) is overwritten with the slot id so clients can attribute the frame.
+		var packet = PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, playData);
+		packet[11] = (byte)slotId.Value;
 
-			if (eventBus.HasPlayerScoreSubscribers(match.DbId))
-				try
-				{
-					var frame = new PacketReader(playData).ReadScoreFrame();
-					var payload = JsonSerializer.SerializeToUtf8Bytes(
-						MatchLiveSnapshotBuilder.BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
-					eventBus.PublishPlayer(match.DbId, gameSession.Name, payload);
-				}
-				catch (Exception)
-				{
-					// A malformed or short scoreframe must never break the bancho relay above; the live
-					// score channel just misses this one update.
-				}
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		matchMembership.Enqueue(match, packet, false);
+
+		if (eventBus.HasPlayerScoreSubscribers(match.DbId))
+			try
+			{
+				var frame = new PacketReader(playData).ReadScoreFrame();
+				var payload = JsonSerializer.SerializeToUtf8Bytes(
+					MatchLiveSnapshotBuilder.BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
+				eventBus.PublishPlayer(match.DbId, gameSession.Name, payload);
+			}
+			catch (Exception)
+			{
+				// A malformed or short scoreframe must never break the bancho relay above; the live
+				// score channel just misses this one update.
+			}
 	}
 }

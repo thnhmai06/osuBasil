@@ -15,7 +15,7 @@ public class MatchChangePasswordHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchChangePasswordHandler(fixture.MatchMembership);
+		var handler = new MatchChangePasswordHandler();
 
 		await handler.HandleAsync(guest,
 			MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), guest.Id));
@@ -30,7 +30,7 @@ public class MatchChangePasswordHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangePasswordHandler(fixture.MatchMembership);
+		var handler = new MatchChangePasswordHandler();
 
 		await handler.HandleAsync(host,
 			MatchRequestReader(0, match.Name, "newpw", "Some Map", 100, new string('a', 32), host.Id));
