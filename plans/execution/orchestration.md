@@ -1,6 +1,6 @@
 # Orchestration state
 
-Last updated: 2026-09-07T23:20:00Z (local 2026-09-08 06:20 UTC+7)
+Last updated: 2026-09-08T01:05:00Z (local 2026-09-08 08:05 UTC+7)
 
 ## How to resume
 
@@ -86,7 +86,8 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | --- | --- | --- |
 | 2026-09-07 22:44 UTC+7 | Tasks 0.1 + 0.2 | killed by the session limit partway through 0.2; 0.1 committed at `91d151f`, 0.2's moves left on disk uncommitted |
 | 2026-09-08 01:20 UTC+7 | finish Task 0.2, then Task 0.3 | both committed (`b4cf563`, `977b561`); killed by the session limit afterwards, tree clean |
-| 2026-09-08 06:20 UTC+7 | Tasks 0.4, 0.5, 0.6 | running |
+| 2026-09-08 06:20 UTC+7 | Tasks 0.4, 0.5, 0.6 | all three landed (`1142bc1`, `1bee08d`, `a3e7b99`); the worker stalled three times waiting on backgrounded test runs, so the orchestrator verified and committed 0.6 itself |
+| 2026-09-08 08:05 UTC+7 | Tasks 0.7, 0.8, 0.9 | running — **the last worker of this stretch; work pauses when it lands** |
 
 ## Evidence captured so far
 
@@ -126,6 +127,8 @@ area twice. Deferred to Phase 6, where it belongs.
 | --- | --- | --- |
 | Baseline (`91d151f`) | 1622 | — |
 | After Task 0.3 (`977b561`) | 1618 | four `DependencyDirectionTests` removed: they took the deleted `Application`/`Infrastructure` `AssemblyMarker` types by `typeof` and could not compile. Task 0.4 restores the coverage with slice rules. |
+| After Task 0.4 (`1142bc1`) | 1621 | three new slice-boundary tests |
+| After Task 0.6 (`a3e7b99`) | 1621 | unchanged, as a seam refactor should be |
 
 **Known flake, already investigated — do not re-open it.**
 `BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound` and
@@ -147,6 +150,34 @@ the flake; anything else is real.
    output of `Basil.IntegrationTests`, `Basil.Application.Tests` and `Basil.Infrastructure.Tests`
    too, not only `Basil.Server`. Done with `<Content Update>` plus `Link`; `<Content Include>`
    collides with the SDK's auto-globbing and fails as `NETSDK1022`.
+
+## Open architecture questions for the Phase 0 advisor review
+
+Neither is a bug, and neither blocks Tasks 0.7 to 0.9. Both are judgement calls the orchestrator
+deliberately did not make alone.
+
+**1. The adjacency allowlist has 38 edges.** Ten slices give ninety possible directed pairs, so the
+list permits about 42% of them. The design asks for a list that is "small and defensible", and names
+"the allowlist grows until it is meaningless" as a risk in its own right. Thirty-eight edges may
+faithfully describe a codebase that really is that interconnected — or it may be the signal that a
+slice boundary is drawn in the wrong place. The review should sample the edges and decide which.
+
+**2. `Shared_Should_Not_Reference_Features` pins a list of twelve existing violations.** Design rule
+4 says `Shared` must not depend on `Features` at all. A pinned exception list only blocks the
+thirteenth violation; it does not enforce the rule. Either those twelve types belong in a feature,
+or the rule needs restating as what it actually guarantees. As written it reads stronger than it is.
+
+## Regression caught during Task 0.6 review
+
+`AddChat` registered the Chat slice's services but none of its seven packet handlers, so the
+composition root resolved 39 of 46. `ChannelJoinHandler`, `ChannelPartHandler`, `LobbyJoinHandler`,
+`LobbyPartHandler`, `SendPublicMessageHandler`, `SendPrivateMessageHandler` and
+`ToggleBlockNonFriendDmsHandler` would all have been dropped by `PacketDispatcher` as unknown packet
+types — logged at debug, skipped, with the entire chat feature dead and every other test still
+green. Caught by `CompositionRootTests.ResolvesBanchoPacketDispatcherWithAllHandlers`.
+
+The worker had reported the handler total as verified and unchanged. It was not. This is the
+standing reason the orchestrator reviews repository state rather than accepting a report.
 
 ## Advisor checkpoints
 
@@ -179,7 +210,13 @@ picks this work up, its first action after reading this file is to schedule a fr
 
 ## Next action for the orchestrator
 
-Review what the current worker lands for Tasks 0.4–0.6: the adjacency allowlist must be small and
-every edge justified in one line, `Shared` must still hold only its nine approved segments, and the
-route diff against the baseline must be empty. Then delegate Tasks 0.7 through 0.9 (metric split,
-localization catalog, configuration source chain).
+**Work pauses after Task 0.9, by request.** When the current worker lands, verify its three commits
+(metric-name diff empty, locale value set unchanged, configuration test proving environment
+resolution survives the source-list clear), update this file, and stop. Do not start Task 0.10.
+
+The continuation cron is cancelled for the pause, so nothing auto-resumes. Resuming is a deliberate
+act: read this file, read the Phase 0 checkpoint, schedule a fresh reminder, and continue from Task
+0.10 (the `LiveEventHub` seam), which is also what unblocks Phase 5 to run in parallel with Phase 1.
+
+Before Phase 1 starts, the Phase 0 advisor review should settle the two open architecture questions
+above.
