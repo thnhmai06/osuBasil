@@ -4,6 +4,11 @@ Last updated: 2026-09-08T04:15:00Z (local 2026-09-08 11:15 UTC+7)
 
 ## How to resume
 
+**Check the current branch against the Branch layout table below before any push.** Implementation
+lands on `feat/vsa-migration`, not on `chore/perf-investigation` -- a push made without checking put
+the whole Phase 0 migration onto PR #7's branch. It was a fast-forward and nothing was lost, but the
+remote branch now carries work that does not belong to it.
+
 Read this file, then `git status`, `git log --oneline -20`, and the checkpoint of whichever
 phase is not `Done`. Continue from that phase's **Next exact step**. Phase 0 is `Done`; Phase 1
 has not started, and starting it is a deliberate act — read the **Pause point** section first. Do not re-investigate
@@ -65,6 +70,7 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | Phase | Status | Blocked on | Owner |
 | --- | --- | --- | --- |
 | 0 Foundation | Done | — | closed by Task 0.14 on 2026-09-08 |
+| 1 Multiplayer | Implementing | nothing | Task 1.1 done; 1.2 ready |
 | 1 Multiplayer | Not started | Phase 0 | — |
 | 2 Chat/Bot/IRC | Not started | Phase 1 + Task 1.11 gate | — |
 | 3 Users/Auth | Not started | Phase 1 + Task 1.11 gate | — |
