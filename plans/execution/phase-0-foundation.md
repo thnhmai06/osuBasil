@@ -22,12 +22,101 @@ Last updated: 2026-09-08 (local, UTC+7)
   exit code 0, empty diff. Full suite 1621/1621 (one `Basil.IntegrationTests` failure on the combined
   run was the documented Windows file-handle flake; isolated re-run of that project alone was
   355/355).
-- Task 0.9 -- configuration source chain, commit (this session, see below).
+- Task 0.9 -- configuration source chain, commit `ff449ae`.
+- Task 0.8 -- localization loader and per-slice fragments, commit (this session, see below).
 
 ## Current state
-Tasks 0.1-0.7 and 0.9 are done (0.9 done out of plan order, per the orchestrator's explicit
-instruction to sequence 0.7, 0.9, 0.8). Task 0.8 (localization) is next, in progress by this same
-worker/session.
+Tasks 0.1-0.9 are all done (0.7/0.9/0.8 done in that explicit order per the orchestrator's
+instruction, largest last). Full suite: **1625/1625 passed, 0 failed, 0 skipped**
+(1621 baseline + 3 from Task 0.9's `ConfigurationSourceTests` + 1 from Task 0.8's
+`LocaleCatalogTests` coverage test). Next up is Task 0.10, owned by a later worker/session per the
+orchestrator's explicit "stop after 0.8" instruction.
+
+### Task 0.8 details (this session)
+- **`LocaleCatalog`/`LocaleFragment`/`LocaleKey` built as three small types under
+  `Shared/Localization/`**, per the plan: `LocaleKey.Flatten` walks a nested `JsonElement` into
+  dotted `(key, value)` pairs; `LocaleFragment.Load` reads one file into a `FilePath` +
+  `Entries` dictionary; `LocaleCatalog.Load` merges every fragment under
+  `Data/Localization/*.json`, throwing (naming both files) on a duplicate key. Coverage test
+  (`EveryReferencedKeyExistsAndEveryKeyIsReferenced`) written and watched to fail
+  (`LocaleCatalog does not exist`) before any of the three types existed, per the plan's TDD step.
+- **`LocaleTouch` (forces `MpReplies`/`IrcReplies` static init so the coverage test sees every
+  referenced key) had to move out of `Shared/Localization/` into `Host/`, contradicting where the
+  plan's own snippet implies it should live.** First attempt put it in
+  `Shared/Localization/LocaleTouch.cs`; `dotnet test tests/Basil.ArchitectureTests` immediately
+  caught it: `Shared_Should_Not_Reference_Features` failed with a new offender,
+  `Basil.Server.Shared.Localization.LocaleTouch`, because the type necessarily names
+  `MpReplies`/`IrcReplies` by type, which live in `Features/Bot`/`Features/Irc`. This is exactly the
+  kind of cross-slice knowledge `Shared` is pinned against (see Task 0.4's decision on that test).
+  Moved the file to `Host/LocaleTouch.cs` (namespace `Basil.Server.Host`, alongside
+  `StartupData.cs`, which now calls `LocaleTouch.AllReplyHolders()` instead of touching the two
+  members inline) -- `Host/` already legitimately depends on every slice as the composition root.
+  **If a later task moves `LocaleTouch` back toward `Shared`, re-run
+  `Shared_Should_Not_Reference_Features` first; it will fail again for the same reason.**
+- **Key mapping applied exactly per the plan's Step 4, including one internally-inconsistent
+  instruction, flagged rather than silently resolved**: BasilBot.json's 13 non-`Dispatch`/`General`
+  categories (`Make`, `Join`, `In`, `Settings`, `Lock`, `Move`, `Name`, `Invite`, `Referee`, `Team`,
+  `Map`, `Start`, `Moderation`) became `Commands.Mp.<Category>.<Member>`; `Dispatch` and `General`
+  were both flattened into a single `General.<Member>` namespace (no `Commands.Mp` or category
+  prefix), per the plan's literal "Dispatch/General to General.*". **This is inconsistent with
+  design doc 4.5's own definition of `General.*` as "not command-related"** --
+  `Dispatch`'s six members (`NotScopedToAnyMatchHint`, `UnknownMpSubcommand`, `CreatorOnlyMp`,
+  `MpNotUsableFromLobby`, `MpChainNotUsableFromLobby`, `MpInDmOnly`) are genuinely `!mp`-dispatch
+  errors, and `General`'s own members (`WhereUsage`, `FaqUsage`, `RollResult`, etc.) are
+  command-specific usage/reply text for `!where`/`!faq`/`!roll`, not "general" in the sense 4.5
+  describes. Followed the plan's literal instruction anyway (no member-name collision between the
+  two categories, so the merge is mechanically safe) since Task 0.8 is explicitly a content-move-only
+  task -- **flagged for whoever does Task 2.2 ("Localize Bot, Chat and IRC fragments"), which is
+  positioned to give these a more coherent home.**
+  Irc.json's 6 categories became `Irc.<Category>.<Member>`, matching design 4.5 exactly with no
+  ambiguity.
+- **Value-set verification, measured**: flattened both old files' values (154 total) and both new
+  fragments' values (154 total) with a throwaway script, sorted, and diffed --
+  **empty diff, exit 0**. No reply text changed; only key shape and file location did, as required.
+- **Fragment delivery to test project output directories** verified directly, not assumed: after
+  `dotnet build`, `bot.en.json`/`irc.en.json` are present under
+  `tests/{Basil.Application.Tests,Basil.Infrastructure.Tests,Basil.IntegrationTests}/bin/Debug/net10.0/Data/Localization/`.
+  Uses the same `<Content Update="...\*.json" Link="Data\Localization\%(Filename)%(Extension)">`
+  pattern Task 0.3 already established for the old `Shared/Localization/*.json` glob -- replaced
+  that glob with `Features\**\Locale\*.json` in `Basil.Server.csproj`. **Constraint this creates,
+  not obvious from the csproj line alone: every slice's fragment filename must be unique across the
+  whole tree, since the `Link` flattens `Features/<Slice>/Locale/<file>.json` down to
+  `Data/Localization/<file>.json` with no slice subfolder.** Task 1.8 adding
+  `Features/Multiplayer/Locale/multiplayer.en.json` is fine under this constraint; a future fragment
+  reusing an existing filename would silently overwrite another slice's copy in the output directory
+  (MSBuild would not error -- this is a real gap the build doesn't guard, unlike the key-duplicate
+  guard `LocaleCatalog.Load` throws on).
+- **Self-defending guards confirmed for whoever does Task 1.8** (moves the `Commands.Mp.*` keys out
+  of `bot.en.json` into `Features/Multiplayer/Locale/multiplayer.en.json`): a copy-instead-of-move
+  produces a duplicate key across the two fragments, and `LocaleCatalog.Load` throws loudly at
+  startup/test time naming both files -- verified this throws by construction (`TryAdd` false path),
+  not just by reading the code. Separately, a new or moved reply holder that isn't added to
+  `Host/LocaleTouch.AllReplyHolders()` shows up as an **orphaned key** in
+  `LocaleCatalogTests.EveryReferencedKeyExistsAndEveryKeyIsReferenced`, not a silent gap.
+- **Pre-existing bug found, not fixed, flagged clearly**: `docker-compose.yml:11` bind-mounts
+  `./src/Basil.Application/Data/Localization:/app/Data/Localization:ro`. `src/Basil.Application/`
+  has not existed since Task 0.3 merged it into `Basil.Server` -- this mount source path was already
+  dead before this task touched anything. Docker Compose creates a missing bind-mount source
+  directory as empty on the host, so a real `docker compose up` today would mount an **empty**
+  directory over `/app/Data/Localization`, shadowing the image's baked-in fragments entirely --
+  exactly the failure mode `docs/for-technicians/docker.md:175` warns about ("a missing
+  `Localization/` file specifically prevents Basil from starting at all"). This predates Task 0.8
+  (it's a Task 0.2/0.3 rename that was never propagated to `docker-compose.yml`), is unrelated to
+  the localization *content* restructuring this task did, and is out of this task's surgical scope
+  to fix -- **flagged for whoever next touches Docker/deployment**: the fix is updating
+  `docker-compose.yml:11` to `./src/Basil.Server/Features/Bot/Locale` and
+  `./src/Basil.Server/Features/Irc/Locale` (two separate mounts, or a build step that stages both
+  into one host directory first, since the fragments no longer live under one shared folder on
+  disk the way `Shared/Localization/` did).
+- `docs/for-technicians/{configuration,docker,deployment}.md` updated in this commit: filenames
+  `BasilBot.json`/`Irc.json` -> `bot.en.json`/`irc.en.json` everywhere they appeared as literal
+  paths (directory-tree diagrams, the settings-file table). Left the pre-existing stale
+  `Basil.Web`/`Basil.Application` path-prefix staleness in the same files untouched -- unrelated to
+  this task, predates it (Task 0.2/0.3), out of surgical scope. Left `docs/adr/ADR-007-*.md`
+  entirely untouched -- it is a historical decision record, not a living reference.
+- Verification: `dotnet build --configuration Release` -- 0 errors. Full suite: **1625/1625 passed,
+  0 failed, 0 skipped**, no flake this run. Confirmed `Basil.ArchitectureTests` specifically both
+  before the `LocaleTouch` relocation (7/8, the new offender) and after (8/8, clean).
 
 ### Task 0.9 details (this session)
 - **The plan's Test 1 does not discriminate the fix, measured, not assumed.** Ran the plan's exact
@@ -84,7 +173,6 @@ worker/session.
   scope.
 
 ## Remaining
-- Task 0.8 -- localization loader and per-slice fragments (in progress this session)
 - Tasks 0.10 through 0.14 (owned by later workers/phases)
 
 ## Important decisions
@@ -433,17 +521,14 @@ Also see "Known issues / blockers" above before treating any `Basil.IntegrationT
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
 
 ## Next exact step
-Task 0.8: localization loader and per-slice fragments, per the plan (0.7 and 0.9 are both done; 0.8
-was deliberately ordered last of the three since it is much the largest). Write the failing coverage
-test first (`EveryReferencedKeyExistsAndEveryKeyIsReferenced`), watch it fail, then write
-`LocaleCatalog`/`LocaleFragment`/`LocaleKey`. Put the new test in
-`tests/Basil.Application.Tests/Shared/Localization/` for the same reason Task 0.9's test went in
-`Basil.Application.Tests` -- `Basil.Server.Tests` doesn't exist until Task 0.11. Remember: fragments
-must reach `Basil.IntegrationTests`, `Basil.Application.Tests` and `Basil.Infrastructure.Tests`
-output directories too (the `<Content Update>` + `Link` pattern already used for
-`Shared/Localization/*.json` in `Basil.Server.csproj` is the template -- see that file's existing
-comment on why `Include` collides with SDK auto-globbing as `NETSDK1022`). Diff the *value set*
-(not the key set) of the old two JSON files against `plans/execution/baseline/locale-keys.txt`
-before treating any wording change as acceptable -- key shape changes by design, no reply text may
-change. After 0.8: full suite should be 1624 (current) plus the new coverage test(s); state the exact
-arithmetic when done. Stop after 0.8 -- do not start Task 0.10.
+Tasks 0.7, 0.9, and 0.8 are all complete and committed (`d1866c8`, `ff449ae`, and this session's 0.8
+commit). Full suite: 1625/1625. The next worker should start **Task 0.10** (`LiveEventHub` and
+`StateStream`) per the plan -- read that task's section fresh; nothing in this checkpoint stands in
+for it. Two things worth carrying forward before starting:
+- The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
+  above) is real and will bite the first person who actually runs `docker compose up` on this
+  branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
+- `Shared_Should_Not_Reference_Features` (see Task 0.4's decision and Task 0.8's `LocaleTouch`
+  entry above) is a live tripwire, not just documentation -- any new `Shared/*` type that names a
+  `Features/*` type by type will fail it immediately. Check this test first if a build error is
+  confusing after adding something to `Shared/`.

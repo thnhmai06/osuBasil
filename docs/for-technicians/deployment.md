@@ -80,8 +80,8 @@ For example:
 ├── Data/
 │   ├── appsettings.json
 │   └── Localization/
-│       ├── BasilBot.json
-│       └── Irc.json
+│       ├── bot.en.json
+│       └── irc.en.json
 └── Logs/
 ```
 

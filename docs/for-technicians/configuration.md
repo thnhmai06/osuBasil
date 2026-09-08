@@ -65,18 +65,17 @@ certificate settings — environment variables do not override them. See [`docke
 ## Localization
 
 The wording of every reply BasilBot's `!mp`/general chat commands and the IRC gateway send is not
-hardcoded in the application — it lives in two files under
-[`Data/Localization/`](../../src/Basil.Application/Data/Localization):
+hardcoded in the application — it lives in `Data/Localization/`, as one JSON fragment per feature:
 
 | File            | Covers                                                          |
 |------------------|------------------------------------------------------------------|
-| `BasilBot.json`  | `!mp` and general chat command replies (`!where`, `!faq`, `!roll`, `!help`). |
-| `Irc.json`       | The IRC gateway's replies — registration, queries, and command errors.       |
+| `bot.en.json`    | `!mp` and general chat command replies (`!where`, `!faq`, `!roll`, `!help`). |
+| `irc.en.json`    | The IRC gateway's replies — registration, queries, and command errors.       |
 
 Edit the text for any reply there and restart Basil — no rebuild is required.
 
-Each file is a two-level object: a category, then a member within it, mapping to that reply's text
-(for example, `BasilBot.json`'s `"Join"` category holds every `!mp join`-related reply). `{0}`, `{1}`,
+Each file is a nested object: keys are dotted and mirror the command they belong to (for example,
+`bot.en.json`'s `Commands.Mp.Join.*` keys hold every `!mp join`-related reply). `{0}`, `{1}`,
 etc. are placeholders filled in when the reply is sent (for example, a player or match name) — keep
 every placeholder a reply currently uses when editing it, or the affected reply will render with a
 missing value. Every key is required: removing one prevents Basil from starting, with a startup log

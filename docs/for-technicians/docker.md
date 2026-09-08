@@ -134,8 +134,8 @@ docker rm "$container"
 ├── appsettings.json
 ├── basil.local.pfx
 ├── Localization/
-│   ├── BasilBot.json
-│   └── Irc.json
+│   ├── bot.en.json
+│   └── irc.en.json
 └── docker-data/
     ├── Data/
     └── Logs/
@@ -164,8 +164,8 @@ deployment:
 │   ├── appsettings.json
 │   ├── basil.local.pfx
 │   └── Localization/
-│       ├── BasilBot.json
-│       └── Irc.json
+│       ├── bot.en.json
+│       └── irc.en.json
 └── Logs/
 ```
 

@@ -4,7 +4,6 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Content;
-using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Persistence;
@@ -29,11 +28,10 @@ internal static class StartupData
 		using var scope = app.Services.CreateScope();
 		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Bootstrap>>();
 
-		// Forces MpReplies/IrcReplies to fully resolve every member from ReplyLocale's localization
-		// files now, at boot, rather than lazily on whichever member a live chat command or IRC reply
-		// first happens to touch -- a missing key is a startup failure, not one discovered mid-tournament.
-		_ = MpReplies.CreateFailed;
-		_ = IrcReplies.Welcome;
+		// Forces MpReplies/IrcReplies to fully resolve every member from the locale catalog now, at
+		// boot, rather than lazily on whichever member a live chat command or IRC reply first happens
+		// to touch -- a missing key is a startup failure, not one discovered mid-tournament.
+		LocaleTouch.AllReplyHolders();
 		logger.LogInformation("Reply locale loaded");
 
 		await MigrateLegacyMenuDataAsync(scope.ServiceProvider, logger);
