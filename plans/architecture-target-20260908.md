@@ -122,6 +122,54 @@ makes a four-project feature navigable rather than scattered.
 session, authentication, query service, replies — are transport. It has been a host wearing
 a feature's name.
 
+### 3.4 `Basil.Protocol` splits in two; `Domain` and `Infrastructure` do not
+
+**Protocol splits.** It holds two unrelated protocols and they do not touch: the bancho binary
+format (`Packets/`, `Multiplayer/`, `Binary/`, `BanchoMessage`, `LoginFailureReason` — about 1,800
+lines) and the IRC text format (`Irc/` — 360 lines, 4 files). Measured cross-references between the
+two halves: **zero, in both directions.**
+
+```
+Basil.Protocol.Bancho    binary packet format
+Basil.Protocol.Irc       IRC message format
+```
+
+The split costs one project and has nothing to untangle, and it maps one-to-one onto the host
+projects already chosen: `Hosts.Bancho` references the bancho half, `Hosts.Irc` the IRC half. That
+makes "the IRC host cannot reach a packet layout" enforced by the absence of a reference, the same
+mechanism as invariants 1 and 2, rather than by a rule someone has to remember.
+
+**`Basil.Domain` does not split.** Today's Domain is already acyclic — 4 cross-namespace references
+and no mutual pair. After absorbing the services and live state it is roughly 126 files across ten
+features, so per-feature projects would average a dozen files each, and they would only be possible
+*after* migration steps 4-7 have made the feature graph acyclic — at which point namespace rules
+already express the same thing. Splitting value types from business logic is the other tempting cut,
+and it would rebuild the anemic model that is one of the problems being fixed.
+
+**`Basil.Infrastructure` does not split.** It is about 34 files, and two mechanisms account for
+almost all of them: 16 touch the filesystem and 16 touch SQLite. ImageSharp, FFMpeg and HttpClient
+are one file each, so splitting by mechanism yields one-file projects. What makes an implementation
+swappable is the contract in `Domain`, not another project boundary. Folder by mechanism
+(`Persistence/`, `Storage/`, `Media/`, `External/`) so a swap has an obvious blast radius, and stop
+there.
+
+### 3.5 An API action that broadcasts to bancho clients
+
+Three files in the API surface reference the bancho protocol today, and one of them is not a
+leak but a real requirement: `AnnounceRoutes` calls `ServerPacketWriter` so that an HTTP announce
+reaches connected osu! clients.
+
+Under this structure that would be `Hosts.Api` needing something that lives in `Hosts.Bancho`,
+which invariant 2 forbids. The resolution is invariant 5, not an exception: `Domain` publishes the
+announcement as an event, and `Hosts.Bancho` subscribes and encodes it. The API host never learns
+that a bancho packet exists.
+
+The other two are smaller: `MatchRoutes` uses the `MatchState` enum in a view, and
+`OpenApiExampleExtensions` documents `ReplayFrame`/`ScoreFrame` as API examples — the HTTP contract
+currently describes bancho wire structures. Both want a view type owned by the API host instead.
+`UserRoutes` has a `Basil.Protocol.Multiplayer` import that no type in the file uses; it joins the
+dead imports in step 1.
+
 ---
 
 ## 4. The cost of thick hosts, and what makes it survivable
