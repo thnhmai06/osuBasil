@@ -10,13 +10,13 @@ public sealed class SqliteFixture : IAsyncLifetime
 
 	public string ConnectionString => $"Data Source={_dbPath};Foreign Keys=True;Default Timeout=5";
 
-	public Task InitializeAsync()
+	public ValueTask InitializeAsync()
 	{
 		SqlMigrationRunner.RunMigrations(ConnectionString);
-		return Task.CompletedTask;
+		return ValueTask.CompletedTask;
 	}
 
-	public Task DisposeAsync()
+	public ValueTask DisposeAsync()
 	{
 		// Release pooled connections before deleting, otherwise the file (and its WAL sidecars) can
 		// still be locked on Windows.
@@ -24,6 +24,6 @@ public sealed class SqliteFixture : IAsyncLifetime
 		File.Delete(_dbPath);
 		File.Delete(_dbPath + "-wal");
 		File.Delete(_dbPath + "-shm");
-		return Task.CompletedTask;
+		return ValueTask.CompletedTask;
 	}
 }

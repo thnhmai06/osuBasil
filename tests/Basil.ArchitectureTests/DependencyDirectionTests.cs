@@ -84,7 +84,7 @@ public class DependencyDirectionTests
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
-	private static string FailureMessage(TestResult result)
+	private static string FailureMessage(NetArchTest.Rules.TestResult result)
 	{
 		if (result.IsSuccessful) return string.Empty;
 
