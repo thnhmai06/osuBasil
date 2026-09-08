@@ -212,13 +212,16 @@ unfinished, resume from repository state and schedule the next one.
 | 2026-09-07 23:00 UTC+7 | 2026-09-08 01:13 UTC+7 | fired — cycle resumed |
 | 2026-09-08 01:20 UTC+7 | 2026-09-08 06:17 UTC+7 | fired — cycle resumed |
 | 2026-09-08 06:20 UTC+7 | 2026-09-08 11:21 UTC+7 | cancelled — superseded once the pause point moved |
-| 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | pending |
+| 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | cancelled — Phase 0 finished and work is paused |
 
 The usage limit resets at 01:10 UTC+7, so the first continuation fires just after that rather
 than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
 
-Cron jobs are session-only: they do not survive this Claude session ending. If a new session
-picks this work up, its first action after reading this file is to schedule a fresh +5h reminder.
+No reminder is scheduled right now, deliberately: the cycle exists to keep long work moving across
+session limits, and the work is paused rather than in flight. Whichever session resumes Phase 1
+schedules a fresh +5h reminder as its first action, immediately after writing its checkpoint.
+
+Cron jobs are session-only: they do not survive this Claude session ending.
 
 ## Task 0.14 — baseline verification
 
