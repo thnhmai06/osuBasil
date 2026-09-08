@@ -45,64 +45,55 @@ public sealed class MatchCompleteHandler(
 			return;
 		}
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
-		{
-			// A round already closed once (InProgress cleared below) has no "still playing" slot
-			// left to guard against — a duplicate or late-arriving completion for it would
-			// otherwise re-enter this block and re-enqueue the same round's end. Idempotent no-op
-			// once the round has already closed.
-			if (!match.InProgress) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			var slot = match.GetSlot(gameSession.Id);
-			if (slot is null)
+		// A round already closed once (InProgress cleared below) has no "still playing" slot
+		// left to guard against — a duplicate or late-arriving completion for it would
+		// otherwise re-enter this block and re-enqueue the same round's end. Idempotent no-op
+		// once the round has already closed.
+		if (!match.InProgress) return;
+
+		var slot = match.GetSlot(gameSession.Id);
+		if (slot is null)
+		{
+			logger.LogWarning(
+				"MatchComplete received but userSession has no slot in the match: UserId={UserId} MatchId={MatchId}",
+				gameSession.Id, match.DbId);
+			return;
+		}
+
+		slot.Status = SlotStatus.Complete;
+
+		if (match.Slots.Any(s => s.Status == SlotStatus.Playing)) return;
+
+		var notPlaying = match.Slots
+			.Where(s => s.PlayerId is not null && s.Status != SlotStatus.Complete)
+			.Select(s => s.PlayerId!.Value)
+			.ToList();
+
+		match.UnreadyPlayers(SlotStatus.Complete);
+		match.ResetPlayersLoadedStatus();
+		match.InProgress = false;
+
+		var roundId = match.CurrentRoundId;
+		if (roundId is { } id)
+			try
 			{
-				logger.LogWarning(
-					"MatchComplete received but userSession has no slot in the match: UserId={UserId} MatchId={MatchId}",
-					gameSession.Id, match.DbId);
-				return;
+				roundEndOutbox.Enqueue(new RoundEndWrite(match.DbId, id, DateTimeOffset.UtcNow.UtcDateTime, false));
+			}
+			catch (MatchRoundEndOutboxFullException ex)
+			{
+				// The round still ends here in memory (InProgress/slot state above already
+				// changed); only the database write is lost, and it's surfaced loudly rather
+				// than silently, per ADR-003's reject-on-full backpressure decision. The rest
+				// of this handler (broadcast + state update) still runs so players see a
+				// consistent room even though this round's EndedAt never made it to storage.
+				logger.LogError(ex, "Round-end write rejected, outbox full: MatchId={MatchId} RoundId={RoundId}",
+					match.DbId, id);
 			}
 
-			slot.Status = SlotStatus.Complete;
-
-			if (match.Slots.Any(s => s.Status == SlotStatus.Playing)) return;
-
-			var notPlaying = match.Slots
-				.Where(s => s.PlayerId is not null && s.Status != SlotStatus.Complete)
-				.Select(s => s.PlayerId!.Value)
-				.ToList();
-
-			match.UnreadyPlayers(SlotStatus.Complete);
-			match.ResetPlayersLoadedStatus();
-			match.InProgress = false;
-
-			var roundId = match.CurrentRoundId;
-			if (roundId is { } id)
-				try
-				{
-					roundEndOutbox.Enqueue(new RoundEndWrite(match.DbId, id, DateTimeOffset.UtcNow.UtcDateTime, false));
-				}
-				catch (MatchRoundEndOutboxFullException ex)
-				{
-					// The round still ends here in memory (InProgress/slot state above already
-					// changed); only the database write is lost, and it's surfaced loudly rather
-					// than silently, per ADR-003's reject-on-full backpressure decision. The rest
-					// of this handler (broadcast + state update) still runs so players see a
-					// consistent room even though this round's EndedAt never made it to storage.
-					logger.LogError(ex, "Round-end write rejected, outbox full: MatchId={MatchId} RoundId={RoundId}",
-						match.DbId, id);
-				}
-
-			logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-			matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
-			version = match.NextStateVersion();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
-
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
+		matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
+		mutation.PublishState();
 	}
 }

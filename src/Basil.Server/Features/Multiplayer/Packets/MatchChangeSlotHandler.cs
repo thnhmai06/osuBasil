@@ -29,25 +29,15 @@ public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembershi
 		var match = gameSession.Match;
 		if (match is null || slotId is < 0 or >= 16) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		long version;
-		try
-		{
-			if (match.Slots[slotId].Status != SlotStatus.Open) return;
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			var slot = match.GetSlot(gameSession.Id);
-			if (slot is null) return;
+		if (match.Slots[slotId].Status != SlotStatus.Open) return;
 
-			match.Slots[slotId].CopyFrom(slot);
-			slot.Reset();
+		var slot = match.GetSlot(gameSession.Id);
+		if (slot is null) return;
 
-			version = match.NextStateVersion();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
-
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		match.Slots[slotId].CopyFrom(slot);
+		slot.Reset();
+		mutation.PublishState();
 	}
 }

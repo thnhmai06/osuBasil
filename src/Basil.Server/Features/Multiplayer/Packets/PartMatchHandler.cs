@@ -25,16 +25,9 @@ public sealed class PartMatchHandler(MatchMembershipService matchMembership) : I
 		var match = gameSession.Match;
 		if (match is null) return;
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
-		{
-			await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
+		mutation.PublishState();
 	}
 }
