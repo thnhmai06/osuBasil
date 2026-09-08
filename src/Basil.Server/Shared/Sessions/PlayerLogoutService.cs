@@ -60,18 +60,10 @@ public sealed class PlayerLogoutService(
 	{
 		if (game.Match is { } match)
 		{
-			await match.Lock.WaitAsync(cancellationToken);
-			try
-			{
-				await matchMembership.LeaveAsync(game, match, cancellationToken);
-			}
-			finally
-			{
-				match.Lock.Release();
-			}
+			await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-			await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-				cancellationToken: cancellationToken);
+			await matchMembership.LeaveAsync(game, match, cancellationToken);
+			mutation.PublishState();
 		}
 
 		if (game.Spectating is { } host) spectatorService.RemoveSpectator(host, game);

@@ -820,37 +820,38 @@ public sealed class MatchControlService(
 				Announce(match, autoStart
 					? $"Match starts in {checkpoint} seconds"
 					: $"{checkpoint} seconds remaining");
-				matchMembership.PublishTimer(match, match.NextStateVersion());
+				// Each tick takes the match lock only long enough to allocate its version. The
+				// version used to be allocated out here with no lock at all, which let a tick
+				// broadcast a number older than a change another caller had already made.
+				await using (var tick = await match.BeginMutationAsync(token))
+				{
+					tick.PublishTimer();
+				}
+
 				remaining = checkpoint;
 			}
 
 			if (!await DelayAsync(remaining, token)) return;
 
-			await match.Lock.WaitAsync(token);
-			try
-			{
-				if (token.IsCancellationRequested) return;
-				match.PendingTimer = null;
+			await using var mutation = await match.BeginMutationAsync(token);
+
+			if (token.IsCancellationRequested) return;
+			match.PendingTimer = null;
 				match.PendingTimerIsAutoStart = false;
-				match.TimerStartedAt = null;
-				match.TimerTotalSeconds = null;
+			match.TimerStartedAt = null;
+			match.TimerTotalSeconds = null;
 
-				if (autoStart)
-				{
-					var started = match.InProgress || await matchMembership.StartAsync(match, token);
-					if (started) Announce(match, "Good luck, have fun!");
-				}
-				else
-				{
-					Announce(match, "Countdown finished");
-				}
-
-				matchMembership.PublishTimer(match, match.NextStateVersion());
-			}
-			finally
+			if (autoStart)
 			{
-				match.Lock.Release();
+				var started = match.InProgress || await matchMembership.StartAsync(match, token);
+				if (started) Announce(match, "Good luck, have fun!");
 			}
+			else
+			{
+				Announce(match, "Countdown finished");
+			}
+
+			mutation.PublishTimer();
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{

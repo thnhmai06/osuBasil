@@ -173,34 +173,32 @@ public sealed class MpCommandService(
 		return subcommand switch
 		{
 			"settings" => await SettingsAsync(match, sink, cancellationToken),
-			"lock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, true, sink))),
-			"unlock" => await RunLockedAsync(match, () => Task.FromResult(SetRoomLocked(match, false, sink))),
+			"lock" => await RunLockedAsync(match, _ => Task.FromResult(SetRoomLocked(match, true, sink))),
+			"unlock" => await RunLockedAsync(match, _ => Task.FromResult(SetRoomLocked(match, false, sink))),
 			"private" => await SetPrivate(match, args, sink),
-			"size" => await RunLockedAsync(match, () => SetSize(match, args, sink)),
-			"move" => await RunLockedAsync(match, () => MoveSlot(match, args, sink)),
-			"host" => await RunLockedAsync(match, () => SetHost(match, args, sink)),
-			"clearhost" => await RunLockedAsync(match, () => ClearHost(match, sink)),
-			"name" => await RunLockedAsync(match, () => SetName(match, args, sink)),
-			"password" => await RunLockedAsync(match, () => SetPassword(match, args, sink)),
-			"invite" => await RunLockedAsync(match, () => Task.FromResult(Invite(sender, match, args, sink))),
-			"addref" => await RunLockedAsync(match,
-				() => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
-			"removeref" => await RunLockedAsync(match,
-				() => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
+			"size" => await RunLockedAsync(match, _ => SetSize(match, args, sink)),
+			"move" => await RunLockedAsync(match, _ => MoveSlot(match, args, sink)),
+			"host" => await RunLockedAsync(match, _ => SetHost(match, args, sink)),
+			"clearhost" => await RunLockedAsync(match, _ => ClearHost(match, sink)),
+			"name" => await RunLockedAsync(match, _ => SetName(match, args, sink)),
+			"password" => await RunLockedAsync(match, _ => SetPassword(match, args, sink)),
+			"invite" => await RunLockedAsync(match, _ => Task.FromResult(Invite(sender, match, args, sink))),
+			"addref" => await RunLockedAsync(match, _ => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
+			"removeref" => await RunLockedAsync(match, _ => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
 			"listrefs" => ListReferees(match, sink),
 			"banlist" => BanListAsync(match, sink),
-			"team" => await RunLockedAsync(match, () => SetTeam(match, args, sink)),
-			"set" => await RunLockedAsync(match, () => Set(match, args, sink)),
-			"map" => await RunLockedAsync(match, () => SetMapAsync(match, args, sink, cancellationToken)),
-			"mods" => await RunLockedAsync(match, () => SetMods(match, args, sink)),
-			"start" => await RunLockedAsync(match, () => StartAsync(match, args, sink, cancellationToken)),
-			"timer" => await RunLockedAsync(match, () => Task.FromResult(Timer(match, args, sink))),
-			"aborttimer" => await RunLockedAsync(match, () => Task.FromResult(AbortTimer(match, sink))),
-			"abort" => await RunLockedAsync(match, () => AbortAsync(match, sink, cancellationToken)),
-			"kick" => await RunLockedAsync(match, () => KickAsync(sender, match, args, sink, cancellationToken)),
-			"ban" => await RunLockedAsync(match, () => BanAsync(sender, match, args, sink, cancellationToken)),
-			"unban" => await RunLockedAsync(match, () => UnbanAsync(match, args, sink, cancellationToken)),
-			"close" => await RunLockedAsync(match, () => CloseAsync(sender, match, sink, cancellationToken)),
+			"team" => await RunLockedAsync(match, _ => SetTeam(match, args, sink)),
+			"set" => await RunLockedAsync(match, _ => Set(match, args, sink)),
+			"map" => await RunLockedAsync(match, _ => SetMapAsync(match, args, sink, cancellationToken)),
+			"mods" => await RunLockedAsync(match, _ => SetMods(match, args, sink)),
+			"start" => await RunLockedAsync(match, _ => StartAsync(match, args, sink, cancellationToken)),
+			"timer" => await RunLockedAsync(match, _ => Task.FromResult(Timer(match, args, sink))),
+			"aborttimer" => await RunLockedAsync(match, _ => Task.FromResult(AbortTimer(match, sink))),
+			"abort" => await RunLockedAsync(match, _ => AbortAsync(match, sink, cancellationToken)),
+			"kick" => await RunLockedAsync(match, mutation => KickAsync(sender, match, args, sink, mutation, cancellationToken)),
+			"ban" => await RunLockedAsync(match, mutation => BanAsync(sender, match, args, sink, mutation, cancellationToken)),
+			"unban" => await RunLockedAsync(match, _ => UnbanAsync(match, args, sink, cancellationToken)),
+			"close" => await RunLockedAsync(match, _ => CloseAsync(sender, match, sink, cancellationToken)),
 			_ => UnknownSubcommand(sink, subcommand)
 		};
 	}
@@ -312,21 +310,15 @@ public sealed class MpCommandService(
 		}
 
 		MatchMembershipService.JoinResult joined;
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
 			joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
-		}
-		finally
-		{
-			match.Lock.Release();
+			if (joined == MatchMembershipService.JoinResult.Ok) mutation.PublishState();
 		}
 
 		if (joined == MatchMembershipService.JoinResult.Ok)
 		{
-			await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-				cancellationToken: cancellationToken);
 			sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
 			return true;
 		}
@@ -483,17 +475,11 @@ public sealed class MpCommandService(
 	/// <param name="match">The match whose lock is held for the duration.</param>
 	/// <param name="action">The read-mutate-broadcast action to run under the lock.</param>
 	/// <returns>The action's result.</returns>
-	private static async Task<bool> RunLockedAsync(MatchSession match, Func<Task<bool>> action)
+	private static async Task<bool> RunLockedAsync(MatchSession match,
+		Func<MatchMutationScope, Task<bool>> action)
 	{
-		await match.Lock.WaitAsync();
-		try
-		{
-			return await action();
-		}
-		finally
-		{
-			match.Lock.Release();
-		}
+		await using var mutation = await match.BeginMutationAsync();
+		return await action(mutation);
 	}
 
 	/// <summary>
@@ -1257,7 +1243,7 @@ public sealed class MpCommandService(
 
 	/// <summary>Implements <c>!mp kick &lt;name&gt;</c>, removing a userSession from the room.</summary>
 	private async Task<bool> KickAsync(UserSession sender, MatchSession match, IReadOnlyList<string> args,
-		ICommandReplySink sink, CancellationToken cancellationToken)
+		ICommandReplySink sink, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
 		{
@@ -1287,8 +1273,7 @@ public sealed class MpCommandService(
 				sink.Reply(MpReplies.UserNotInMatchOrUnregistered);
 				return false;
 			default:
-				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-					cancellationToken: cancellationToken);
+				mutation.PublishState();
 				sink.Reply(string.Format(MpReplies.KickedFromMatch, targetUser.Name));
 				return true;
 		}
@@ -1296,7 +1281,7 @@ public sealed class MpCommandService(
 
 	/// <summary>Implements <c>!mp ban &lt;name&gt;</c>, kicking a userSession and blocking them from rejoining.</summary>
 	private async Task<bool> BanAsync(UserSession sender, MatchSession match, IReadOnlyList<string> args,
-		ICommandReplySink sink, CancellationToken cancellationToken)
+		ICommandReplySink sink, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
 		{
@@ -1323,8 +1308,7 @@ public sealed class MpCommandService(
 				sink.Reply(string.Format(MpReplies.CannotBanReferee, targetUser.Name));
 				return false;
 			default:
-				await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-					cancellationToken: cancellationToken);
+				mutation.PublishState();
 				sink.Reply(string.Format(MpReplies.BannedPlayerFromMatch, targetUser.Name));
 				return true;
 		}
