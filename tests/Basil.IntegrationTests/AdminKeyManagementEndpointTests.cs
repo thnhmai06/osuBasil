@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,12 +16,12 @@ namespace Basil.IntegrationTests;
 ///     `GET`/further request reflects the just-written state, matching how the real
 ///     Settings-table-backed repository behaves.
 /// </summary>
-public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private readonly InMemorySettingsRepository _settings = new();
 
-	public AdminKeyManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public AdminKeyManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

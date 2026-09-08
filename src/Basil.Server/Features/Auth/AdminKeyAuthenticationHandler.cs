@@ -91,7 +91,7 @@ public sealed class AdminKeyAuthenticationHandler(
 	}
 }
 
-/// <summary>Scheme/policy/role names for <see cref="AdminKeyAuthenticationHandler" />, shared by <c>Program.cs</c>.</summary>
+/// <summary>Scheme/policy/role names for <see cref="AdminKeyAuthenticationHandler" />, shared by <c>Host/AuthSetup.cs</c>.</summary>
 public static class AdminKeyDefaults
 {
 	/// <summary>The authentication scheme name used by <see cref="AdminKeyAuthenticationHandler" />.</summary>

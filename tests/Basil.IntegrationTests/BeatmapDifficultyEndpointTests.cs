@@ -5,7 +5,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -21,7 +21,7 @@ namespace Basil.IntegrationTests;
 ///     NoMod/HardRock star ratings there double as a cross-check here) — not just route wiring, since
 ///     this endpoint's whole point is running the real ppy.osu.Game difficulty calculator.
 /// </summary>
-public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	// Verbatim copy of Basil.Infrastructure.Tests/Fixtures/vivid_osu_file.osu — PpyOsuCalculatorTests
 	// records NoMod Sr=4.8750450142072701 (-> 4.88 rounded) and HardRock Sr=5.9296060838721534 (-> 5.93
@@ -169,11 +169,11 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	                                         """;
 
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-difficulty-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private Beatmap? _beatmap;
 	private Beatmapset? _beatmapset;
 
-	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Program> factory)
+	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var maps = Substitute.For<IBeatmapRepository>();
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),

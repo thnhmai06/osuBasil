@@ -8,7 +8,7 @@ namespace Basil.Server.Shared.Http.Middleware;
 
 /// <summary>
 ///     Wraps every JSON body on the <c>basilapi</c> OpenAPI group in the Enveloped Response Standard (see
-///     <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Program.cs</c>.
+///     <see cref="Envelope{T}" />). Registered after <c>UseAuthorization</c> in <c>Host/Bootstrap.cs</c>.
 /// </summary>
 /// <remarks>
 ///     Skips a request entirely (no buffering, no rewriting) when the matched endpoint isn't tagged

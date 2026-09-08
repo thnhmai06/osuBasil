@@ -12,7 +12,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,12 +21,12 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>Covers the two newest SSE channels: GET /matches/{matchId}/live and GET /matches/{matchId}/live/{slotIndex}.</summary>
-public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchLiveChannelsEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchLiveChannelsEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

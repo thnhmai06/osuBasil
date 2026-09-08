@@ -6,7 +6,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,14 +20,14 @@ namespace Basil.IntegrationTests;
 ///     the right formatter. DirectSearchService/DirectSearchResponseFormatter have their own unit
 ///     tests.
 /// </summary>
-public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private IReadOnlyList<IReadOnlyList<Beatmap>> _searchResult = [];
 	private Beatmap? _setInfo;
 
-	public DirectSearchEndpointTests(WebApplicationFactory<Program> factory)
+	public DirectSearchEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_beatmaps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _setInfo);

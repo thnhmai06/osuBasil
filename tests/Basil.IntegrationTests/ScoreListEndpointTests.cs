@@ -4,7 +4,7 @@ using Basil.Server.Features.Scores;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -19,12 +19,12 @@ namespace Basil.IntegrationTests;
 ///     <see cref="GetScoresEndpointTests" /> — that file covers the unrelated osu!-client
 ///     `osu-osz2-getscores.php` endpoint, a naming false-friend for this one.
 /// </summary>
-public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private IReadOnlyList<ScoreRow> _rows = [];
 
-	public ScoreListEndpointTests(WebApplicationFactory<Program> factory)
+	public ScoreListEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var scores = Substitute.For<IScoreRepository>();
 		scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(_ => _rows.Count);

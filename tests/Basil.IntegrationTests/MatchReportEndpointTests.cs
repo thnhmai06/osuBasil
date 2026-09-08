@@ -5,7 +5,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,12 +16,12 @@ using NSubstitute.ExceptionExtensions;
 namespace Basil.IntegrationTests;
 
 /// <summary>Covers the read-only slice of the api. host's TRT endpoint, GET /matches/{matchId}.</summary>
-public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private Match? _match;
 
-	public MatchReportEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchReportEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var matchPersistence = Substitute.For<IMatchRepository>();
 		// Never exercised by this read-only report suite -- throw, matching the old fake, instead of

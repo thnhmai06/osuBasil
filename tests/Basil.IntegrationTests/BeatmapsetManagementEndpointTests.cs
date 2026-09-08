@@ -5,7 +5,7 @@ using System.Text.Json;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,15 +24,15 @@ namespace Basil.IntegrationTests;
 ///     (this suite is about the route/filesystem behavior, not persistence), while the beatmapset's
 ///     storage folder is a real temp directory so `Directory.Move`/zip-extraction actually run.
 /// </summary>
-public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmapset-mgmt-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private Beatmapset? _beatmapset;
 
-	public BeatmapsetManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public BeatmapsetManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var beatmapsets = _beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -122,7 +122,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	///     Phase 7's "legacy branch reconciles inline" contract; every other test in this class keeps
 	///     the real (racy) background services, matching production.
 	/// </summary>
-	private WebApplicationFactory<Program> FactoryWithoutBackgroundBeatmapServices()
+	private WebApplicationFactory<Bootstrap> FactoryWithoutBackgroundBeatmapServices()
 	{
 		return _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
 		{

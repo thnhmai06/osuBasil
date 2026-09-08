@@ -14,7 +14,7 @@ namespace Basil.Server.Shared.Localization;
 ///     assembly. Each file is a two-level object -- a category, then a member name within it --
 ///     mapping to that reply's text; callers look a value up by its <c>"Category.Member"</c> key. A
 ///     key missing from its file surfaces as an exception the first time that member is touched --
-///     <c>Program.cs</c> touches one member of each class once at startup specifically so this is a
+///     <c>Host/StartupData.cs</c> touches one member of each class once at startup specifically so this is a
 ///     boot-time failure, not one discovered mid-request.
 /// </remarks>
 internal static class ReplyLocale

@@ -11,7 +11,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,13 +26,13 @@ namespace Basil.IntegrationTests;
 ///     DI-resolved <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembershipService" /> —
 ///     the same production singletons the routes themselves use.
 /// </summary>
-public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
 	private static readonly int[] InputValue = [555];
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchSubResourceEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchSubResourceEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

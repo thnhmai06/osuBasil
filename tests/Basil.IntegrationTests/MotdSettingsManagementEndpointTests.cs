@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,12 +16,12 @@ namespace Basil.IntegrationTests;
 ///     `GET` reflects the just-written state, matching how the real Settings-table-backed repository
 ///     behaves (the same read-your-writes property <see cref="AdminKeyManagementEndpointTests" /> pins).
 /// </summary>
-public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private readonly InMemorySettingsRepository _settings = new();
 
-	public MotdSettingsManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public MotdSettingsManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

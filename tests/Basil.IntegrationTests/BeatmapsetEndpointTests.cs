@@ -4,7 +4,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Scores;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +23,7 @@ namespace Basil.IntegrationTests;
 ///     verifies the redirect for one representative route each and otherwise targets the `assets.`
 ///     host directly, where the actual private-check/mirror-fallback/file-serving logic now lives.
 /// </summary>
-public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	// ---- GET /beatmapsets/{beatmapsetId}/{beatmapId}/video ----
 
@@ -34,7 +34,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	                                        """;
 
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private Beatmap? _byFilename;
 	private Beatmapset? _beatmapset;
 	private Beatmap? _oneBeatmap;
@@ -44,7 +44,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	private int _searchTotal;
 	private IReadOnlyList<Beatmap> _setBeatmaps = [];
 
-	public BeatmapsetEndpointTests(WebApplicationFactory<Program> factory)
+	public BeatmapsetEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var maps = Substitute.For<IBeatmapRepository>();
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),

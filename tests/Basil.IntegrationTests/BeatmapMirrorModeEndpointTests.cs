@@ -3,7 +3,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +19,8 @@ namespace Basil.IntegrationTests;
 ///     genuine ppy id, `503` for a locally-authored (synthesized-id) set or a route with no mirror
 ///     equivalent, `404` when offline.
 /// </summary>
-public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> factory)
-	: IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> factory)
+	: IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-mirror-tests-").FullName;
 	private Beatmapset? _beatmapset;
@@ -30,7 +30,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
 	}
 
-	private WebApplicationFactory<Program> Configure(string? downloadEndpoint)
+	private WebApplicationFactory<Bootstrap> Configure(string? downloadEndpoint)
 	{
 		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

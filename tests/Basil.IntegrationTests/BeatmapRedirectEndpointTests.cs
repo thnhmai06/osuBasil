@@ -2,7 +2,7 @@ using System.Net;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,10 +15,10 @@ namespace Basil.IntegrationTests;
 ///     to the internet by default; /d/{set_id} only redirects if an operator explicitly configures a
 ///     download mirror endpoint.
 /// </summary>
-public class BeatmapRedirectEndpointTests(WebApplicationFactory<Program> factory)
-	: IClassFixture<WebApplicationFactory<Program>>
+public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> factory)
+	: IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory,
+	private static WebApplicationFactory<Bootstrap> Configure(WebApplicationFactory<Bootstrap> factory,
 		string? downloadEndpoint = null)
 	{
 		return factory.WithWebHostBuilder(builder =>

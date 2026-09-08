@@ -2,7 +2,7 @@ using System.Net;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +16,11 @@ namespace Basil.IntegrationTests;
 ///     osu.{domain} -> osu! web endpoints, b.{domain} -> beatmap assets, api.{domain} -> developer
 ///     API, with both the configured DOMAIN and the hardcoded ppy.sh registered for every group.
 /// </summary>
-public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
+public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public HostRoutingTests(WebApplicationFactory<Program> factory)
+	public HostRoutingTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

@@ -3,7 +3,7 @@ using System.Net;
 using System.Text;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,13 +20,13 @@ namespace Basil.IntegrationTests;
 ///     themselves), even though the pointer to it lives in the (in-memory, per-test) Settings
 ///     repository.
 /// </summary>
-public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
 	private static readonly string MenuDir = Path.Combine(AppContext.BaseDirectory, "Data", "Menu");
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MenuIconManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public MenuIconManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		CleanUpFiles();
 		_factory = factory.WithWebHostBuilder(builder =>

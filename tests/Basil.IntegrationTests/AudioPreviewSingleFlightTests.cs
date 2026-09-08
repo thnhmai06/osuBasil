@@ -3,7 +3,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Shared.Media;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,8 +17,8 @@ namespace Basil.IntegrationTests;
 ///     requests for the same beatmapset's preview, all racing a cold cache, must trigger at most one
 ///     ffmpeg extraction rather than one process per concurrent request.
 /// </summary>
-public class AudioPreviewSingleFlightTests(WebApplicationFactory<Program> factory)
-	: IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> factory)
+	: IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-preview-tests-").FullName;
 

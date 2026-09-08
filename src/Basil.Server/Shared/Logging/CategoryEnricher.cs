@@ -15,7 +15,7 @@ public sealed class CategoryEnricher : ILogEventEnricher
 {
 	/// <summary>
 	///     The category for every SourceContext that matches no rule below. It also marks the noise
-	///     <c>Program.ConfigureSerilog</c>'s filter demotes to Warning+ only: unclassified chatter
+	///     <c>SerilogSetup.Configure</c>'s filter demotes to Warning+ only: unclassified chatter
 	///     isn't one of the domain scopes worth showing at Information by default.
 	/// </summary>
 	public const string FallbackCategory = "App";
@@ -34,7 +34,7 @@ public sealed class CategoryEnricher : ILogEventEnricher
 		("Basil.Server.Shared.Persistence.Repositories.", true, "Database"),
 		("Basil.Infrastructure.Caching.", true, "Cache"),
 		("Microsoft.Hosting.Lifetime", false, "Host"),
-		("Basil.Server.Program", false, "Host"),
+		("Basil.Server.Host.Bootstrap", false, "Host"),
 		("Basil.Server.Shared.Http.Middleware.ApiRequestLoggingMiddleware", false, "Api")
 	];
 

@@ -14,7 +14,7 @@ public class SliceBoundaryTests
 	[Fact]
 	public void Slices_Should_Only_Reference_Declared_Slices()
 	{
-		var assembly = typeof(Basil.Server.Program).Assembly;
+		var assembly = typeof(Basil.Server.Host.Bootstrap).Assembly;
 		var allSlices = Types.InAssembly(assembly).GetTypes()
 			.Where(t => t.Namespace?.StartsWith(FeaturePrefix, StringComparison.Ordinal) == true)
 			.Select(t => t.Namespace![FeaturePrefix.Length..].Split('.')[0])
@@ -85,7 +85,7 @@ public class SliceBoundaryTests
 			"Basil.Server.Shared.Storage.FileSystemReplayStorage"
 		];
 
-		var result = Types.InAssembly(typeof(Basil.Server.Program).Assembly)
+		var result = Types.InAssembly(typeof(Basil.Server.Host.Bootstrap).Assembly)
 			.That().ResideInNamespaceStartingWith("Basil.Server.Shared")
 			.Should().NotHaveDependencyOn("Basil.Server.Features")
 			.GetResult();
@@ -116,7 +116,7 @@ public class SliceBoundaryTests
 		];
 
 		const string prefix = "Basil.Server.Shared.";
-		var offenders = Types.InAssembly(typeof(Basil.Server.Program).Assembly).GetTypes()
+		var offenders = Types.InAssembly(typeof(Basil.Server.Host.Bootstrap).Assembly).GetTypes()
 			.Select(t => t.Namespace)
 			// A type declared directly under the bare "Basil.Server.Shared" namespace (no
 			// segment at all, e.g. BasilMetrics.cs) is not a segment and needs no allowlist entry.

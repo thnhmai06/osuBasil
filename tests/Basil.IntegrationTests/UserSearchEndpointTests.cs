@@ -5,7 +5,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -22,12 +22,12 @@ namespace Basil.IntegrationTests;
 ///     <c>SqliteUserRepositoryTests</c> and <c>UserSearchQueryParserTests</c> instead of being
 ///     re-verified here.
 /// </summary>
-public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public UserSearchEndpointTests(WebApplicationFactory<Program> factory)
+	public UserSearchEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

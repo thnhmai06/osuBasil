@@ -5,7 +5,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,11 +18,11 @@ namespace Basil.IntegrationTests;
 ///     rejected with 401 (not 200) across endpoints, the correct key succeeds, and the BasilBot user
 ///     id is protected from edits.
 /// </summary>
-public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AdminManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public AdminManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

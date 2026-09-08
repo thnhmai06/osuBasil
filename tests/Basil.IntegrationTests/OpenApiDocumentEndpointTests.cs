@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -14,15 +14,15 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Confirms the 5 host-group OpenAPI documents (bancho/osuweb/beatmapassets/avatar/basilapi) are
 ///     actually reachable and correctly partitioned — each one only carries routes from its own host
-///     group (see <c>ConfigureOpenApi</c> in <c>Program.cs</c> and every <c>.WithGroupName(...)</c> in
+///     group (see <c>OpenApiSetup.Configure</c> in <c>Host/OpenApiSetup.cs</c> and every <c>.WithGroupName(...)</c> in
 ///     <c>BanchoHostGroups.cs</c> and the other <c>Routing/</c> files). Also confirms the Scalar UI mounts
 ///     and the static docs pages actually respond.
 /// </summary>
-public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public OpenApiDocumentEndpointTests(WebApplicationFactory<Program> factory)
+	public OpenApiDocumentEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

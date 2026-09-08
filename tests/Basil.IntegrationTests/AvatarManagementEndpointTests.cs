@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,13 +13,13 @@ namespace Basil.IntegrationTests;
 ///     `DELETE /users/{userId}/avatar` resets a user back to the default avatar by removing every
 ///     uploaded file for that id (always 204, idempotent whether or not one existed).
 /// </summary>
-public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-avatar-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AvatarManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public AvatarManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

@@ -13,7 +13,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,13 +28,13 @@ namespace Basil.IntegrationTests;
 ///     drives the corresponding write route (through real DI-resolved production singletons, exactly
 ///     like <see cref="MatchSubResourceEndpointTests" />) and asserts the resulting delta.
 /// </summary>
-public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
 	private static readonly int[] InputValue = [111];
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchSubResourceSseEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchSubResourceSseEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

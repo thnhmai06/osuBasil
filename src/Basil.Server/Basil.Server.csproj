@@ -35,7 +35,7 @@
 		<Content Include="..\..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<!-- Lives under Data/ (see ConfigureConfiguration in Program.cs) so it moves along with the
+		<!-- Lives under Data/ (see ConfigurationSetup.Configure in Host/ConfigurationSetup.cs) so it moves along with the
 		     rest of the server's persistent state when relocating a deployment. Already picked up as
 		     a Content item by the SDK's default globbing (it's just a normal file under the project
 		     directory); Update only adds the CopyToOutputDirectory metadata that globbing alone
@@ -48,7 +48,7 @@
 		     globbing; Update adds the output Link (so they land under Data/Localization/, not
 		     Shared/Localization/) and CopyToOutputDirectory, which is what makes every project that
 		     references Basil.Server, including the test projects (which never run through
-		     Program.cs's own content-root setup), get a real copy alongside their own build output. -->
+		     Bootstrap.Main's own content-root setup), get a real copy alongside their own build output. -->
 		<Content Update="Shared\Localization\*.json" Link="Data\Localization\%(Filename)%(Extension)">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>

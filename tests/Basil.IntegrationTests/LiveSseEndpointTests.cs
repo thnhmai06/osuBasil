@@ -8,7 +8,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,11 +25,11 @@ namespace Basil.IntegrationTests;
 ///     (both run in-process with no real network latency between them, so this race is easy to lose
 ///     without the retry).
 /// </summary>
-public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public LiveSseEndpointTests(WebApplicationFactory<Program> factory)
+	public LiveSseEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

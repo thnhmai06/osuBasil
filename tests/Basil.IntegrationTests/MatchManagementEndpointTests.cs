@@ -7,7 +7,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,12 +23,12 @@ namespace Basil.IntegrationTests;
 ///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
 ///     is verified through the full middleware pipeline here, not just the handler in isolation.
 /// </summary>
-public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		// Minimal in-memory fake so CreateMatchAsync/FetchAllMatchesAsync/DeleteMatchAsync behave
 		// realistically without a real SQLite file.

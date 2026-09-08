@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -19,13 +19,13 @@ namespace Basil.IntegrationTests;
 ///     `.Count`, one query per row on top of the page query itself. It now batches every page
 ///     item's count into a single <see cref="IBeatmapRepository.FetchCountsBySetIdsAsync" /> call.
 /// </summary>
-public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private readonly IBeatmapRepository _maps = Substitute.For<IBeatmapRepository>();
 	private IReadOnlyList<Beatmapset> _sets = [];
 
-	public BeatmapsetListEndpointTests(WebApplicationFactory<Program> factory)
+	public BeatmapsetListEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _sets.Count);

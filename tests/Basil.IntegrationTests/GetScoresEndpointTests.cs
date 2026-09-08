@@ -6,7 +6,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +21,7 @@ namespace Basil.IntegrationTests;
 ///     status-broadcast side effect (the only request osu! sends on every song-select map change),
 ///     and the two status outcomes (known/unknown map).
 /// </summary>
-public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	public const string KnownMd5 = "known-md5";
 
@@ -32,9 +32,9 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		KnownMd5, 1, Beatmapset, "Normal", "map.osu",
 		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
 
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public GetScoresEndpointTests(WebApplicationFactory<Program> factory)
+	public GetScoresEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var users = Substitute.For<IUserRepository>();
 		users.FetchPasswordHashAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

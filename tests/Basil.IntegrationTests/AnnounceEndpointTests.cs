@@ -4,7 +4,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -17,12 +17,12 @@ namespace Basil.IntegrationTests;
 ///     Covers `POST /announce`: pushes a notification popup to online players, excluding BasilBot,
 ///     targeting either everyone online (`userIds` omitted) or an explicit id list.
 /// </summary>
-public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AnnounceEndpointTests(WebApplicationFactory<Program> factory)
+	public AnnounceEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

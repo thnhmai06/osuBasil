@@ -3,7 +3,7 @@ using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Server;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +17,12 @@ namespace Basil.IntegrationTests;
 ///     never matches the route at all (a bare, unenveloped 404), and a numeric id that doesn't exist
 ///     404s through the handler instead.
 /// </summary>
-public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private readonly Dictionary<int, User> _byId = [];
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public UserLookupEndpointTests(WebApplicationFactory<Program> factory)
+	public UserLookupEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var users = Substitute.For<IUserRepository>();
 		users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

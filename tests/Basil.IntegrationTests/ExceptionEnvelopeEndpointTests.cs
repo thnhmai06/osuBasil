@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -18,11 +18,11 @@ namespace Basil.IntegrationTests;
 ///     exception thrown by a route handler on the <c>api.</c> host must still produce the
 ///     Enveloped Response Standard shape, not a bare, unenveloped 500.
 /// </summary>
-public class ExceptionEnvelopeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ExceptionEnvelopeEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public ExceptionEnvelopeEndpointTests(WebApplicationFactory<Program> factory)
+	public ExceptionEnvelopeEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var users = Substitute.For<IUserRepository>();
 		users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

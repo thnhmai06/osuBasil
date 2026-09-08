@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Basil.Server.Shared.Configuration;
-using Basil.Server;
+using Basil.Server.Host;
 using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -17,13 +17,13 @@ namespace Basil.IntegrationTests;
 ///     already taken), `PUT` only replaces an existing one (404 if it isn't). Real temp-directory
 ///     filesystem, no stubs — both resources are pure file storage with no database involvement.
 /// </summary>
-public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-faq-seasonal-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public FaqSeasonalEndpointTests(WebApplicationFactory<Program> factory)
+	public FaqSeasonalEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
