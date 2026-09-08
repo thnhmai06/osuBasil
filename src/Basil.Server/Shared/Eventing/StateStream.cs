@@ -19,7 +19,7 @@ namespace Basil.Server.Shared.Eventing;
 ///     unlocked caller with a newer sequence — see <see cref="Publish" />.
 /// </remarks>
 /// <typeparam name="T">The full-state payload type carried by the channel.</typeparam>
-public sealed class SnapshotChannel<T> where T : class
+public sealed class StateStream<T> where T : class
 {
 	private readonly Lock _sync = new();
 	private readonly KeyValuePair<string, object?> _streamTag;
@@ -27,7 +27,7 @@ public sealed class SnapshotChannel<T> where T : class
 	private T? _latest;
 
 	/// <param name="streamName">Identifies this channel for the stale-drop metric, e.g. <c>"main"</c> or <c>"settings"</c>.</param>
-	public SnapshotChannel(string streamName)
+	public StateStream(string streamName)
 	{
 		_streamTag = new KeyValuePair<string, object?>("stream", streamName);
 	}

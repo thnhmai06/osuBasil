@@ -3,12 +3,12 @@ using System.Text;
 using System.Text.Json;
 namespace Basil.Application.Tests.Services.Multiplayer;
 
-public class SnapshotChannelTests
+public class StateStreamTests
 {
 	[Fact]
 	public void Latest_BeforeAnyPublish_IsNull()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 
 		Assert.Null(channel.Latest);
 	}
@@ -16,7 +16,7 @@ public class SnapshotChannelTests
 	[Fact]
 	public void Publish_FirstCall_LatestReflectsFullState()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 		var state = new Sample("Alpha", 1);
 
 		channel.Publish(state, 1);
@@ -27,7 +27,7 @@ public class SnapshotChannelTests
 	[Fact]
 	public void Publish_SecondCallWithChange_ReturnsDeltaContainingOnlyChangedField()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 		channel.Publish(new Sample("Alpha", 1), 1);
 
 		var patchBytes = channel.Publish(new Sample("Alpha", 2), 2);
@@ -42,7 +42,7 @@ public class SnapshotChannelTests
 	[Fact]
 	public void Publish_UpdatesLatestToNewestState()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 		channel.Publish(new Sample("Alpha", 1), 1);
 		var second = new Sample("Beta", 2);
 
@@ -53,13 +53,13 @@ public class SnapshotChannelTests
 
 	/// <summary>
 	///     Regression test (ADR-004 "{}" spam fix): Publish used to return a literal "{}" for a
-	///     no-op update, which SnapshotChannel.Publish's caller broadcast on every call regardless of
+	///     no-op update, which StateStream.Publish's caller broadcast on every call regardless of
 	///     whether anything changed. It now returns null so a caller can skip publishing entirely.
 	/// </summary>
 	[Fact]
 	public void Publish_NoActualChange_ReturnsNull()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 		channel.Publish(new Sample("Alpha", 1), 1);
 
 		var patchBytes = channel.Publish(new Sample("Alpha", 1), 2);
@@ -77,7 +77,7 @@ public class SnapshotChannelTests
 	[Fact]
 	public void Publish_OlderSequenceArrivesAfterNewer_DroppedAndLatestUnchanged()
 	{
-		var channel = new SnapshotChannel<Sample>("test");
+		var channel = new StateStream<Sample>("test");
 		var newer = new Sample("Newer", 5);
 		channel.Publish(newer, 5);
 

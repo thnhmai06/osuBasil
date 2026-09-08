@@ -89,7 +89,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	/// <summary>
 	///     Connects an SSE stream and reads its first event, then performs <paramref name="trigger" />
 	///     and reads the event after that. The channel must already have a non-null
-	///     <see cref="SnapshotChannel{T}.Latest" /> before connecting (callers warm it up with one
+	///     <see cref="StateStream{T}.Latest" /> before connecting (callers warm it up with one
 	///     preliminary write) — otherwise the connect's "subscribe, drain, snapshot" sequence has
 	///     nothing to write immediately, and per the existing note on
 	///     <see cref="MatchLiveChannelsEndpointTests" />'s own helper ("an SSE response apparently

@@ -634,7 +634,7 @@ public sealed class MatchMembershipService(
 	///     snapshots through <see cref="IMatchLiveEvents" />. This is the single call path every
 	///     slot-mutating operation (packet-driven or HTTP-driven) routes through, so <c>slot</c> and
 	///     <c>slots</c> always fire together (ADR-004) — no separate path publishes one without the
-	///     other. A channel whose <see cref="SnapshotChannel{T}.Publish" /> found nothing changed is
+	///     other. A channel whose <see cref="StateStream{T}.Publish" /> found nothing changed is
 	///     skipped rather than emitting a no-op patch.
 	/// </remarks>
 	/// <remarks>

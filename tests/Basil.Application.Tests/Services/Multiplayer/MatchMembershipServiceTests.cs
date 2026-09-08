@@ -353,7 +353,7 @@ public class MatchMembershipServiceTests
 	///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.JoinAsync" />
 	///     (which itself calls <see cref="MatchMembershipService.EnqueueStateAsync" />) for the host, so
 	///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
-	///     <c>Create</c> returns — <see cref="Services.Multiplayer.SnapshotChannelTests" /> covers that
+	///     <c>Create</c> returns — <see cref="Services.Multiplayer.StateStreamTests" /> covers that
 	///     "first publish is full" behavior standalone. This test covers what happens after that: a
 	///     call with no changes publishes an empty patch, and a call after an actual change publishes
 	///     only the changed field.
@@ -378,7 +378,7 @@ public class MatchMembershipServiceTests
 		// Create already published the initial full snapshot internally, so this first call has
 		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
 		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
-		// SnapshotChannelTests; this test covers the same behavior at EnqueueStateAsync's call site).
+		// StateStreamTests; this test covers the same behavior at EnqueueStateAsync's call site).
 		await service.EnqueueStateAsync(match, match.NextStateVersion());
 		Assert.Empty(payloads);
 

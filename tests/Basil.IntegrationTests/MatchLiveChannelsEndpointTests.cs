@@ -54,7 +54,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var matchId = await CreateMatchAsync();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-		// discardFirst: true — POST /matches warms this match's main SnapshotChannel immediately
+		// discardFirst: true — POST /matches warms this match's main StateStream immediately
 		// (same reasoning as LiveSlotChannel_ReceivesSlotEventsForItsOwnSlotOnly below), so the first
 		// event off a fresh connect is that warm full snapshot (inProgress: false), not this test's
 		// manually published delta.
@@ -175,7 +175,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
 		// discardFirst: true — POST /matches now applies every CreateMatchRequest field unconditionally
-		// (SetPrivate/SetSize/... all call EnqueueState), so this slot's SnapshotChannel is already warm
+		// (SetPrivate/SetSize/... all call EnqueueState), so this slot's StateStream is already warm
 		// by the time the match is created; the first event off a fresh connect is that warm snapshot,
 		// not a published delta.
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>

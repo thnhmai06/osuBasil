@@ -17,7 +17,7 @@ namespace Basil.Server.Features.Multiplayer;
 ///     awaits. <see cref="Lock" /> is the per-match answer: callers that read then mutate slot state
 ///     (join, change-slot, part, and so on) must hold it across the whole read-mutate-broadcast
 ///     sequence. The snapshot state on this type is deliberately lock-free instead (see
-///     <see cref="SnapshotChannel{T}" />).
+///     <see cref="StateStream{T}" />).
 /// </remarks>
 /// <param name="id">
 ///     The 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the
@@ -82,7 +82,7 @@ public sealed class MatchSession(
 	///     correct, race-free value — the allocation itself is atomic — but its relative ordering
 	///     against a concurrent locked mutation is not guaranteed to reflect which happened "first" in
 	///     wall-clock terms, only that neither is lost or double-counted. The caller then builds and
-	///     broadcasts unlocked, passing this version to whichever <see cref="SnapshotChannel{T}.Publish" />
+	///     broadcasts unlocked, passing this version to whichever <see cref="StateStream{T}.Publish" />
 	///     calls or <see cref="PacketBroadcastGate" /> it uses, so a build that finishes out of order
 	///     relative to a newer mutation's build is dropped instead of reverting live state to
 	///     something stale.
@@ -93,7 +93,7 @@ public sealed class MatchSession(
 	/// <summary>
 	///     Gets the sequence gate guarding the match's bancho <c>UpdateMatch</c> packet broadcast
 	///     against out-of-order delivery once building and broadcasting it runs unlocked (ADR-004
-	///     4b) — the same hazard <see cref="SnapshotChannel{T}" /> guards against for SSE snapshots.
+	///     4b) — the same hazard <see cref="StateStream{T}" /> guards against for SSE snapshots.
 	/// </summary>
 	public SequenceGate PacketBroadcastGate { get; } = new();
 
@@ -108,38 +108,38 @@ public sealed class MatchSession(
 	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. Safe
 	///     to publish to without holding <see cref="Lock" /> because it is itself gated by a state
 	///     version drawn from <see cref="NextStateVersion" /> (ADR-004 4b) — see
-	///     <see cref="SnapshotChannel{T}" />'s doc comment.
+	///     <see cref="StateStream{T}" />'s doc comment.
 	/// </summary>
-	public SnapshotChannel<MatchLiveSnapshot> MainSnapshot { get; } = new("main");
+	public StateStream<MatchLiveSnapshot> MainSnapshot { get; } = new("main");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's settings channel.</summary>
-	public SnapshotChannel<MatchSettingsView> SettingsSnapshot { get; } = new("settings");
+	public StateStream<MatchSettingsView> SettingsSnapshot { get; } = new("settings");
 
 	/// <summary>
-	///     Gets one <see cref="SnapshotChannel{T}" /> per slot, indexed like <see cref="Slots" />,
+	///     Gets one <see cref="StateStream{T}" /> per slot, indexed like <see cref="Slots" />,
 	///     feeding the per-slot "slot" sub-event channel.
 	/// </summary>
-	public IReadOnlyList<SnapshotChannel<MatchSlotView>> SlotSnapshots { get; } =
-		[.. Enumerable.Range(0, 16).Select(_ => new SnapshotChannel<MatchSlotView>("slot"))];
+	public IReadOnlyList<StateStream<MatchSlotView>> SlotSnapshots { get; } =
+		[.. Enumerable.Range(0, 16).Select(_ => new StateStream<MatchSlotView>("slot"))];
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's host channel.</summary>
-	public SnapshotChannel<MatchHostView> HostSnapshot { get; } = new("host");
+	public StateStream<MatchHostView> HostSnapshot { get; } = new("host");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's referee-list channel.</summary>
-	public SnapshotChannel<MatchRefereesView> RefsSnapshot { get; } = new("refs");
+	public StateStream<MatchRefereesView> RefsSnapshot { get; } = new("refs");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's banlist channel.</summary>
-	public SnapshotChannel<MatchBansView> BansSnapshot { get; } = new("bans");
+	public StateStream<MatchBansView> BansSnapshot { get; } = new("bans");
 
 	/// <summary>Gets the same lock-free full-snapshot and delta state, scoped to the match's countdown-timer channel.</summary>
-	public SnapshotChannel<MatchTimerLiveView> TimerSnapshot { get; } = new("timer");
+	public StateStream<MatchTimerLiveView> TimerSnapshot { get; } = new("timer");
 
 	/// <summary>
 	///     Gets the same lock-free full-snapshot and delta state, scoped to the match's slot channel:
 	///     a whole-arrangement dict view, distinct from <see cref="SlotSnapshots" />'s per-index list
 	///     (which still feeds the per-slot "slot" sub-event).
 	/// </summary>
-	public SnapshotChannel<MatchSlotsView> SlotsSnapshot { get; } = new("slots");
+	public StateStream<MatchSlotsView> SlotsSnapshot { get; } = new("slots");
 
 	/// <summary>
 	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match

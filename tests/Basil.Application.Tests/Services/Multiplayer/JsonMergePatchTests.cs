@@ -11,7 +11,7 @@ public class JsonMergePatchTests
 
 	/// <summary>
 	///     Regression test (ADR-004 "{}" spam fix): Diff used to return an empty JsonObject for a
-	///     no-op comparison, which SnapshotChannel.Publish then serialized as a literal "{}" and
+	///     no-op comparison, which StateStream.Publish then serialized as a literal "{}" and
 	///     broadcast on every call regardless of whether anything changed. It now returns null so a
 	///     caller can skip publishing entirely.
 	/// </summary>

@@ -24,13 +24,88 @@ Last updated: 2026-09-08 (local, UTC+7)
   355/355).
 - Task 0.9 -- configuration source chain, commit `ff449ae`.
 - Task 0.8 -- localization loader and per-slice fragments, commit (this session, see below).
+- Task 0.10 -- `LiveEventHub` and `StateStream`, commit (this session, see below).
 
 ## Current state
-Tasks 0.1-0.9 are all done (0.7/0.9/0.8 done in that explicit order per the orchestrator's
-instruction, largest last). Full suite: **1625/1625 passed, 0 failed, 0 skipped**
-(1621 baseline + 3 from Task 0.9's `ConfigurationSourceTests` + 1 from Task 0.8's
-`LocaleCatalogTests` coverage test). Next up is Task 0.10, owned by a later worker/session per the
-orchestrator's explicit "stop after 0.8" instruction.
+Tasks 0.1-0.10 are done. Full suite: **1628/1628 passed, 0 failed, 0 skipped**
+(1625 prior baseline + 3 from Task 0.10's `LiveEventHubTests`). Next up is Task 0.11 (merge the
+test projects), done in the same session -- see its own entry below.
+
+### Task 0.10 details (this session)
+- **`ILiveEventHub`/`LiveEventHub`/`LiveSubscription`/`StreamKey` created exactly per the plan's
+  interface**, under `Shared/Eventing/`. The hub holds a `ConcurrentDictionary<StreamKey,
+  StreamState>`; each `StreamState` is a private nested class carrying its own `Lock`, the latest
+  payload, its version, a stale flag and the subscriber list. `Open` takes that per-stream lock to
+  register the new `LiveSubscription` and capture `(Latest, Version, IsStale)` in the same
+  critical section `Publish` uses to update them -- this is what removes the drain-then-read window
+  the design calls out. `Publish` stores the new state and snapshots the subscriber list under the
+  lock, then invokes each subscriber's `OnPublish` outside it. The hub holds no reference to a
+  repository, feature DTO or snapshot builder -- it moves `ReadOnlyMemory<byte>` and a `long`
+  version, nothing else.
+- **The subscriber-local "is this stale subscription still waiting for its first real snapshot"
+  state (`_hasSnapshot`) was not in the plan's interface list but was necessary to make the given
+  tests pass together, derived from re-reading design 4.2, not invented independently.** The
+  ordering test (`SubscriberNeverReceivesAnEventAtOrBelowItsSnapshotVersion`) requires that once a
+  subscription opens non-stale, `Version`/`Snapshot` stay frozen at their Open-time values forever,
+  and every later publish is only ever visible through `Events`. The seed-race test
+  (`SeedLosesToAPublishThatLandedWhileTheSnapshotWasBeingBuilt`) requires the opposite for a
+  subscription that opened *stale*: a publish landing before the subscriber calls
+  `SeedIfNotSuperseded` must itself become the adopted `Snapshot`/`Version` directly, not merely
+  queue as an event, because there is no established baseline yet for an event to be "after". A
+  single boolean distinguishing these two regimes (set to `!isStale` at `Open`, and flipped once
+  either a publish resolves a stale subscription or `SeedIfNotSuperseded` succeeds) satisfies both
+  tests. `SeedIfNotSuperseded` itself is the `SequenceGate.TryAdvance` shape asked for: it compares
+  its own current `_version` against the caller's `fence` and only adopts the caller's snapshot if
+  nothing landed since the fence was captured.
+- **`Events` is an unbounded per-subscription `Channel<LiveEvent>`,** matching design 4.3's explicit
+  statement that "unbounded state streams cannot drop; this applies to the bounded multiplexed
+  streams only" -- the bounded, gap-marking behavior stays in `BoundedSseChannel`, unused by the hub
+  in this task, and is a Phase 1 adoption concern, not built speculatively here.
+  `LiveEventHub.Publish` does not itself gate out-of-order versions (no `SequenceGate` at the hub
+  level): the plan's Step 5 implementation description doesn't call for one, and there's no test
+  requiring it -- the ordering guarantee the SSE contract needs (guarantee 3: no event at or below
+  a subscriber's snapshot version) is enforced per-subscription by `_hasSnapshot`/`_version`, not by
+  rejecting a stale hub-wide publish. Flagged in case Phase 1 finds a caller that can race two
+  `hub.Publish` calls out of version order for the same key -- not reproduced or tested here.
+- **A real bug in the plan's own test code was measured, not assumed, and fixed in the test only.**
+  The seed-race test's final assertion, `Assert.Equal(Bytes("published-11"), sub.Snapshot)`, compares
+  two `ReadOnlyMemory<byte>` values built from two *separate* calls to the `Bytes(...)` helper.
+  `ReadOnlyMemory<byte>.Equals` compares the underlying array reference, index and length -- not
+  content -- confirmed with a throwaway console project
+  (`a.Equals(b)` false, `a.Span.SequenceEqual(b.Span)` true, for two arrays holding identical UTF-8
+  bytes) and confirmed again by running the test with a non-interning `Bytes` helper: it failed with
+  "Values differ" despite my `LiveSubscription` already holding the byte-identical payload passed to
+  `hub.Publish`. Fixed by making the test's own `Bytes` helper intern by content (a
+  `Dictionary<string, byte[]>` cache), so two calls with the same literal return the same array and
+  the reference-based equality check becomes meaningful again -- this only touches the test's private
+  helper, not the interface or the hub's implementation, and two different literals still can't
+  accidentally collide. Watched all three tests fail before this fix existed (types didn't exist,
+  per the plan's Step 4) and pass after -- 3/3.
+- **`SnapshotChannel<T>` renamed to `StateStream<T>`,** matching design 4.1's naming ("`StateStream<T>`
+  (today's `SnapshotChannel<T>`)"). File `Shared/Eventing/SnapshotChannel.cs` -> `StateStream.cs`
+  via `git mv`; every call site's type name updated (`MatchSession.cs`'s eight snapshot-channel
+  properties, `MatchMembershipService.cs`, `BasilJsonOptions.cs`'s doc comment, plus the
+  `<see cref>`/prose mentions in `JsonMergePatchTests.cs`, `MatchMembershipServiceTests.cs`,
+  `MatchLiveChannelsEndpointTests.cs`, `MatchSubResourceSseEndpointTests.cs`). No call site's
+  *behavior* changed -- this is identifier renaming only. The dedicated unit test class
+  `SnapshotChannelTests` was renamed to `StateStreamTests` (file `git mv`'d too) since it directly
+  tests the renamed type and had to be touched anyway to keep compiling; this is a bookkeeping
+  rename, not new coverage.
+- **`SnapshotChannel.cs`'s stray `using Basil.Server.Features.Multiplayer;`** (unused; the type it
+  once needed is nowhere referenced in the file) was left as-is during the rename -- not part of this
+  task's surgical scope, flagged here rather than silently cleaned up.
+- **No slice adopts the hub in this task**, per the plan. `IMatchLiveEvents`, `MatchLiveEvents` and
+  every `LiveSseRoutes`/`SseEndpoints` call site are untouched -- confirmed by the diff containing
+  no changes to any of those files.
+- Test placement: `tests/Basil.Application.Tests/Shared/Eventing/LiveEventHubTests.cs`, the same
+  temporary-home pattern Task 0.8/0.9 used (`tests/Basil.Server.Tests` doesn't exist until Task
+  0.11, done next in this same session). Namespace `Basil.Application.Tests.Shared.Eventing`,
+  mirroring the eventual `Basil.Server.Tests.Shared.Eventing` home Task 0.11 gives it.
+- Verification: `dotnet build --configuration Release` -- 0 errors (same 18 pre-existing warnings).
+  Full suite: **1628/1628 passed, 0 failed, 0 skipped** on the first full run except the documented
+  `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+  flake (500 vs 202); isolated re-run of that test class alone: 16/16 passed, confirming the known
+  flake, not a regression. Arithmetic: 1625 (prior) + 3 (`LiveEventHubTests`) = 1628.
 
 ### Task 0.8 details (this session)
 - **`LocaleCatalog`/`LocaleFragment`/`LocaleKey` built as three small types under
@@ -521,10 +596,9 @@ Also see "Known issues / blockers" above before treating any `Basil.IntegrationT
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
 
 ## Next exact step
-Tasks 0.7, 0.9, and 0.8 are all complete and committed (`d1866c8`, `ff449ae`, and this session's 0.8
-commit). Full suite: 1625/1625. The next worker should start **Task 0.10** (`LiveEventHub` and
-`StateStream`) per the plan -- read that task's section fresh; nothing in this checkpoint stands in
-for it. Two things worth carrying forward before starting:
+Task 0.10 is complete and committed this session. Full suite: 1628/1628. The next step in this same
+session is **Task 0.11** (merge the test projects) -- see its own entry below once done; if resuming
+cold, read that task's section fresh. Two things worth carrying forward from before Task 0.10:
 - The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
   above) is real and will bite the first person who actually runs `docker compose up` on this
   branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
