@@ -99,19 +99,21 @@ public class MatchMutationScopeTests
 	public async Task RepeatedPublishRequestsCoalesceToOneVersion()
 	{
 		var match = NewMatch();
-		long? allocated;
 
-		await using (var m = await match.BeginMutationAsync(default))
+		// Read after the block, not inside it. The version is allocated on disposal -- that is the
+		// whole point of the scope owning the lifecycle -- so inside the block there is nothing to
+		// read yet.
+		MatchMutationScope scope;
+		await using (scope = await match.BeginMutationAsync(default))
 		{
-			m.Session.Slots[0].Status = SlotStatus.Ready;
-			m.PublishState();
-			m.PublishState();
-			m.PublishState(lobby: false);
-			allocated = m.AllocatedVersion;
+			scope.Session.Slots[0].Status = SlotStatus.Ready;
+			scope.PublishState();
+			scope.PublishState();
+			scope.PublishState(lobby: false);
 		}
 
 		Assert.Equal(1, VersionsAllocatedDuring(match));
-		Assert.NotNull(allocated);
+		Assert.NotNull(scope.AllocatedVersion);
 	}
 
 	[Fact]
@@ -120,8 +122,13 @@ public class MatchMutationScopeTests
 		var match = NewMatch();
 		await using var outer = await match.BeginMutationAsync(default);
 
+		// Bounded deliberately. The behaviour this pins is "throws rather than waits", so a
+		// regression makes the second call wait forever -- and an unbounded assertion would hang the
+		// whole suite instead of failing it. The token turns that hang into a failed assertion.
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
 		await Assert.ThrowsAsync<InvalidOperationException>(
-			async () => await match.BeginMutationAsync(default));
+			async () => await match.BeginMutationAsync(timeout.Token));
 	}
 
 	[Fact]
@@ -164,6 +171,9 @@ public class MatchMutationScopeTests
 		}
 		catch (InvalidOperationException) { }
 
-		await using var second = await match.BeginMutationAsync(default); // would hang if leaked
+		// Bounded for the same reason as the nesting test: a leaked lock makes this wait forever, and
+		// a hung suite is harder to diagnose than a failed assertion.
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		await using var second = await match.BeginMutationAsync(timeout.Token);
 	}
 }

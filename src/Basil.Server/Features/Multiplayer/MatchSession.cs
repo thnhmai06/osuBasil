@@ -1,4 +1,5 @@
 using Basil.Server.Shared.Eventing;
+using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Beatmaps;
@@ -106,7 +107,12 @@ public sealed class MatchSession(
 	// open MatchMutationScope. A plain field would also flag a second, genuinely independent caller
 	// waiting its turn for the lock -- which must keep blocking, not throw -- so this needs to be
 	// scoped to the calling flow rather than shared across all callers.
-	private readonly AsyncLocal<bool> _mutationOpenInThisFlow = new();
+	// Holds a box rather than a bare bool, and the difference is load-bearing. An assignment to an
+	// AsyncLocal made inside an async method is scoped to that method's execution context and is gone
+	// once it returns, so a flag set after awaiting the lock would never be visible to the caller that
+	// has to be stopped from nesting. The box is published synchronously, before any await, and every
+	// later change mutates the object the caller already holds.
+	private readonly AsyncLocal<StrongBox<bool>?> _mutationOpenInThisFlow = new();
 
 	/// <summary>
 	///     Begins one read-mutate-broadcast sequence on this match: waits for <see cref="Lock" />, then
@@ -118,21 +124,38 @@ public sealed class MatchSession(
 	///     A mutation scope for this match is already open on the calling async flow. The match lock is
 	///     not reentrant, so waiting here would deadlock; this is thrown instead.
 	/// </exception>
-	public async ValueTask<MatchMutationScope> BeginMutationAsync(CancellationToken cancellationToken = default)
+	public ValueTask<MatchMutationScope> BeginMutationAsync(CancellationToken cancellationToken = default)
 	{
-		if (_mutationOpenInThisFlow.Value)
+		if (_mutationOpenInThisFlow.Value is { Value: true })
 			throw new InvalidOperationException(
 				$"A mutation scope for match {Id} is already open on this call flow; nesting it would deadlock the match lock.");
 
-		await Lock.WaitAsync(cancellationToken);
-		_mutationOpenInThisFlow.Value = true;
+		// Marked before awaiting anything, so the caller's own flow carries the marker.
+		var openMarker = new StrongBox<bool>(true);
+		_mutationOpenInThisFlow.Value = openMarker;
+		return AcquireAsync(openMarker, cancellationToken);
+	}
+
+	private async ValueTask<MatchMutationScope> AcquireAsync(StrongBox<bool> openMarker,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await Lock.WaitAsync(cancellationToken);
+		}
+		catch
+		{
+			openMarker.Value = false;
+			throw;
+		}
+
 		return new MatchMutationScope(this, MutationPublisher, cancellationToken);
 	}
 
 	/// <summary>Releases the match lock and clears the nesting marker. Called only by <see cref="MatchMutationScope" />.</summary>
 	internal void ReleaseMutation()
 	{
-		_mutationOpenInThisFlow.Value = false;
+		if (_mutationOpenInThisFlow.Value is { } openMarker) openMarker.Value = false;
 		Lock.Release();
 	}
 
