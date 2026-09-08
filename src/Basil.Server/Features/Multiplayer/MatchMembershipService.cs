@@ -127,8 +127,7 @@ public sealed class MatchMembershipService(
 		if (creator is GameSession gameCreator)
 		{
 			JoinResult joined;
-			await match.Lock.WaitAsync(cancellationToken);
-			try
+			await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 			{
 				joined = await JoinAsync(gameCreator, match, data.Password, cancellationToken);
 				// AlreadyInMatch is not a broken room — every other gate (bans, lock, privacy,
@@ -138,10 +137,9 @@ public sealed class MatchMembershipService(
 				// room starts: no seated players, creator is only a referee. Sync the empty-room timer
 				// the same way so the room does not sit orphaned with no auto-close.
 				if (joined is JoinResult.Ok or JoinResult.AlreadyInMatch) SyncEmptyRoomTimer(match);
-			}
-			finally
-			{
-				match.Lock.Release();
+
+				// Only JoinResult.Ok actually seated the creator (AlreadyInMatch means nothing changed).
+				if (joined is JoinResult.Ok) mutation.PublishState();
 			}
 
 			if (joined is not (JoinResult.Ok or JoinResult.AlreadyInMatch))
@@ -149,22 +147,11 @@ public sealed class MatchMembershipService(
 				await CloseAsync(match, creator.Id, creator.Name, cancellationToken);
 				return null;
 			}
-
-			// Only JoinResult.Ok actually seated the creator (AlreadyInMatch means nothing changed).
-			if (joined is JoinResult.Ok)
-				await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
 		}
 		else
 		{
-			await match.Lock.WaitAsync(cancellationToken);
-			try
-			{
-				SyncEmptyRoomTimer(match);
-			}
-			finally
-			{
-				match.Lock.Release();
-			}
+			await using var mutation = await match.BeginMutationAsync(cancellationToken);
+			SyncEmptyRoomTimer(match);
 		}
 
 		// The creator isn't necessarily seated (an IrcSession never is; a GameSession creator already
@@ -203,14 +190,9 @@ public sealed class MatchMembershipService(
 			match.DbId, (int)MatchEventType.Created,
 			null, null, null, null, DateTimeOffset.UtcNow.UtcDateTime, "Created via HTTP API"), cancellationToken);
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (await match.BeginMutationAsync(cancellationToken))
 		{
 			SyncEmptyRoomTimer(match);
-		}
-		finally
-		{
-			match.Lock.Release();
 		}
 
 		return match;
@@ -793,23 +775,17 @@ public sealed class MatchMembershipService(
 		{
 			if (!await DelayAsync(EmptyRoomCloseSeconds - EmptyRoomWarnAtSeconds, token)) return;
 
-			await match.Lock.WaitAsync(token);
-			try
+			await using (await match.BeginMutationAsync(token))
 			{
 				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
 				match.EmptyRoomWarningSent = true;
 				AnnounceToRoomAndReferees(match,
 					$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
 			}
-			finally
-			{
-				match.Lock.Release();
-			}
 
 			if (!await DelayAsync(EmptyRoomWarnAtSeconds, token)) return;
 
-			await match.Lock.WaitAsync(token);
-			try
+			await using (await match.BeginMutationAsync(token))
 			{
 				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
 				AnnounceToRoomAndReferees(match,
@@ -817,10 +793,6 @@ public sealed class MatchMembershipService(
 				match.EmptyRoomTimer = null;
 				match.EmptyRoomWarningSent = false;
 				await CloseAsync(match, null, null, token);
-			}
-			finally
-			{
-				match.Lock.Release();
 			}
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
