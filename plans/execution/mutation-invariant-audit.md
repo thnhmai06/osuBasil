@@ -212,6 +212,54 @@ hazard while holding this exact lock.
   adds no *new* invariant exposure beyond what already exists in the non-exceptional path — recorded
   under Observations instead of `?` since it isn't the exception that's in question there.
 
+## Decision (Task 1.1 Step 3)
+
+Class B is non-empty: seven sites, **one root cause**. The plan's contingency was to give
+`MatchMutationScope` an explicit `Invalidate()` that those sequences call to suppress the publish.
+That is not what this audit concluded, and the reason is the shape of the finding.
+
+The seven sites are not seven different hazards. They are seven callers of one function,
+`MatchMembershipService.LeaveAsync`, which parted the match's chat channel **between** clearing the
+leaving player's slot and reassigning `HostId`. Parting a channel broadcasts to the room's other
+members, and `ChannelMembershipService.Part` reaches `IIrcConnection.Send` for every IRC member --
+a network call that can throw. A throw there left `HostId` naming a player who had already been
+removed from every slot, violating invariant 2.
+
+So the fix is to the function, not to the scope: **the channel part now runs after the host
+reassignment**, making the two state writes contiguous and infallible and leaving the fallible
+broadcast to run only once the match is already in a valid state. Class B is empty as a result, and
+`MatchMutationScope` needs no suppression mechanism.
+
+Preferring this over `Invalidate()` matters beyond tidiness. The plan itself warns that suppression
+must not become the default, because it reintroduces the silently-stale-subscriber problem. A remedy
+that seven of the busiest paths in the slice must remember to opt into is that default in practice.
+Removing the hazard costs three moved lines; tolerating it would have cost a mechanism, seven
+opt-ins, and a rule every future caller of `LeaveAsync` has to know.
+
+**Verification.** The host-selection logic is unchanged: `FirstOrDefault(s => !s.Empty)` still runs
+after `slot.Reset`, so the leaving player is still excluded from the candidates. `Part`'s first
+statement reads `userSession`'s channel set, which nothing in the host block writes.
+`Leave_WhenTheChannelBroadcastThrows_NeverLeavesAnUnseatedHost` pins the invariant -- not the
+ordering, so a future harmless reordering will not fail it -- and was watched failing against the
+unmodified code with `HostId 1 names no occupied slot.` before passing against the fix.
+
+### Consequence for Task 1.2
+
+`MatchMutationScope` is built as designed: a scope that throws still publishes what was requested
+before the throw, with no `Invalidate()` and no suppression path.
+
+### Observations handed to later tasks
+
+Observations 1 and 5 below are genuine invariant violations reachable with **no exception at all**,
+so they are bugs independent of this audit and are not fixed here:
+
+* **Observation 1** (`SetHostAsync` and `PUT /matches/{matchId}/hosts` never check the target is
+  seated) is owned by **Task 1.5**, which extracts `SetHostHandler` and already rewrites that path.
+* **Observation 5** (`StartAsync` can set `InProgress` with zero occupied slots) is owned by
+  **Task 1.6**, which extracts `MatchLifecycle` and already rewrites that path.
+
+Observations 2, 3 and 4 are latent traps rather than reachable defects and stay recorded here.
+
 ## Observations
 
 Findings adjacent to the task but outside its exact "does a throw break an invariant" scope:

@@ -13,6 +13,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -271,6 +272,43 @@ public class MatchMembershipServiceTests
 		// match, once every subscriber has been completed via SseSubscribers.CompleteAll().
 		Assert.Contains(match.DbId, _eventBus.Forgotten);
 	}
+
+	/// <summary>
+	///     A host leaving stays consistent even when the chat broadcast that accompanies the leave
+	///     throws: the match never ends up naming a host who occupies no slot.
+	/// </summary>
+	/// <remarks>
+	///     Regression test. The channel part used to run between clearing the leaving player's slot
+	///     and reassigning the host, so an IRC send failure in the middle left HostId pointing at a
+	///     player who had already been removed from every slot.
+	/// </remarks>
+	[Fact]
+	public async Task Leave_WhenTheChannelBroadcastThrows_NeverLeavesAnUnseatedHost()
+	{
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		RegisterAll(host, guest);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		await service.JoinAsync(guest, match, "");
+
+		var connection = Substitute.For<IIrcConnection>();
+		connection.When(c => c.Send(Arg.Any<IrcMessage>()))
+			.Do(_ => throw new InvalidOperationException("irc connection gone"));
+		_ircRegistry.GetByUserId(guest.Id).Returns(new IrcSession(
+			guest.Id, guest.Name, "irc-2", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+		{
+			IrcConnection = connection
+		});
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.LeaveAsync(host, match));
+
+		Assert.True(
+			match.HostId == MatchSession.NoHostId
+			|| match.Slots.Any(slot => !slot.Empty && slot.PlayerId == match.HostId),
+			$"HostId {match.HostId} names no occupied slot.");
+	}
+
 
 	/// <summary>
 	///     Regression test (ADR-004): a client still connected to one of this match's live SSE

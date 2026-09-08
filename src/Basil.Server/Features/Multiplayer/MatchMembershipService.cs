@@ -382,9 +382,6 @@ public sealed class MatchMembershipService(
 
 		slot.Reset(slot.Status == SlotStatus.Locked ? SlotStatus.Locked : SlotStatus.Open);
 
-		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		if (channel is not null) channelMembership.Part(userSession, channel);
-
 		var hostTransfer = false;
 		int? prevHostId = null;
 		int? newHostId = null;
@@ -405,6 +402,12 @@ public sealed class MatchMembershipService(
 				match.HostId = MatchSession.NoHostId;
 			}
 		}
+
+		// Parting the chat channel broadcasts to the room's other members, and a broadcast can fail:
+		// an IRC member's connection may already be gone. It runs after the host reassignment above
+		// so that a failure here cannot leave the match naming a host who occupies no slot.
+		var channel = channelRegistry.GetByName(match.ChatChannelName);
+		if (channel is not null) channelMembership.Part(userSession, channel);
 
 		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
 		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
