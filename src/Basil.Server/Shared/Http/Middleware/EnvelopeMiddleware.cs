@@ -62,7 +62,7 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 		// on a null endpoint left every unmatched-route response an unwrapped, empty body on exactly
 		// the host whose contract promises an envelope on every response. The api. host is
 		// identified by its "api." subdomain prefix (the same convention every host group in
-		// BanchoHostGroups.MapAll uses), not by re-deriving the configured domain here.
+		// BanchoHostGroups.Create uses), not by re-deriving the configured domain here.
 		var isUnmatchedOnApiHost = endpoint is null &&
 		                           context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase);
 		if ((groupName != "basilapi" && !isUnmatchedOnApiHost) || isAlwaysSse ||

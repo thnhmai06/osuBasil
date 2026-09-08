@@ -56,21 +56,25 @@ public class SliceBoundaryTests
 	[Fact]
 	public void Shared_Should_Not_Reference_Features()
 	{
-		// Shared/ still holds 14 types that reach into Features/. Each is a real structural
+		// Shared/ still holds 12 types that reach into Features/. Each is a real structural
 		// coupling that predates this migration and is out of Phase 0's scope to fix:
 		// GameSession/UserSession/PlayerLogoutService/GhostDisconnectService hold a live
 		// MatchSession and the IRC bridge connection (Task 1.4 -- MatchSession model
-		// encapsulation -- is the task that owns unwinding this); the Http host-route files
-		// (ApiHostRoutes, AssetsHostRoutes, BanchoHostGroups, OsuWebRoutes,
-		// Bancho.PacketDispatcher, OpenApi.OpenApiExampleExtensions) inline slice logic directly
-		// instead of only delegating to it; the Media asset providers and
+		// encapsulation -- is the task that owns unwinding this); BanchoHostGroups,
+		// Bancho.PacketDispatcher, OsuWebRoutes and OpenApi.OpenApiExampleExtensions inline slice
+		// logic directly instead of only delegating to it; the Media asset providers and
 		// FileSystemReplayStorage call slice services directly. This test pins the list so it can
 		// only shrink -- a new Shared -> Features edge fails the build, and removing an offender
 		// (a later phase's real fix) fails too, as a reminder to delete its entry here.
+		//
+		// ApiHostRoutes and AssetsHostRoutes dropped out of this list in Task 0.6: they used to
+		// both hold shared endpoints (health checks, docs, redirects) *and* delegate to slice-owned
+		// route mappers (`group.MapMatchRoutes()` and peers). Task 0.6 moved every delegating call
+		// out to Host/SliceRegistration.MapAll, which is Host composition code, not a Shared type,
+		// so it isn't subject to this rule at all. What's left in both files is genuinely
+		// shared -- no Features reference remains.
 		string[] knownOffenders =
 		[
-			"Basil.Server.Shared.Http.ApiHostRoutes",
-			"Basil.Server.Shared.Http.AssetsHostRoutes",
 			"Basil.Server.Shared.Http.Bancho.PacketDispatcher",
 			"Basil.Server.Shared.Http.BanchoHostGroups",
 			"Basil.Server.Shared.Http.OpenApi.OpenApiExampleExtensions",

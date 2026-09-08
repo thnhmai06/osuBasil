@@ -1,12 +1,16 @@
-using Basil.Application;
-using Basil.Server.Features.Scores;
-using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Features.Auth;
-using Basil.Server.Features.Irc;
-using Basil.Server.Features.Spectating;
-using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Bot;
 using Basil.Server.Features.Chat;
+using Basil.Server.Features.Content;
+using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Scores;
+using Basil.Server.Features.Spectating;
+using Basil.Server.Features.Users;
+using Basil.Server.Host;
+using Basil.Server.Shared.Http.Bancho;
+using Basil.Server.Shared.Sessions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,8 +39,17 @@ public class CompositionRootTests
 
 		var services = new ServiceCollection();
 		services.AddLogging();
-		services.AddInfrastructure(configuration);
-		services.AddApplication();
+		services.AddSharedInfrastructure(configuration);
+		services.AddAuth(configuration);
+		services.AddUsers(configuration);
+		services.AddChat(configuration);
+		services.AddBot(configuration);
+		services.AddIrc(configuration);
+		services.AddMultiplayer(configuration);
+		services.AddBeatmaps(configuration);
+		services.AddScores(configuration);
+		services.AddSpectating(configuration);
+		services.AddContent(configuration);
 		_provider = services.BuildServiceProvider();
 	}
 

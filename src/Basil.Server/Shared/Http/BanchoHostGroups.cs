@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.IO.Compression;
 using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Users;
 using Basil.Server.Shared.Media;
 using Basil.Server.Shared.Storage;
 using Basil.Server.Shared.Configuration;
@@ -14,6 +13,23 @@ namespace Basil.Server.Shared.Http;
 /// <summary>A dedicated logger category marker for the static <see cref="BanchoHostGroups" /> class.</summary>
 // ReSharper disable once ClassNeverInstantiated.Global
 internal sealed class BanchoHostGroupsLog;
+
+/// <summary>
+///     The constructed route group for each Bancho host, returned by <see cref="BanchoHostGroups.Create" />.
+/// </summary>
+/// <param name="Bancho">The `c.`/`ce.`/`c4.`/`c5.`/`c6.` bancho protocol host.</param>
+/// <param name="OsuWeb">The `osu.` osu! web endpoints host.</param>
+/// <param name="BeatmapAssets">The `b.` beatmap assets host.</param>
+/// <param name="Avatar">The `a.` user avatars host.</param>
+/// <param name="Api">The `api.` Bancho REST API host.</param>
+/// <param name="Assets">The `assets.` ImageSharp.Web-served media host.</param>
+internal sealed record BanchoHosts(
+	RouteGroupBuilder Bancho,
+	RouteGroupBuilder OsuWeb,
+	RouteGroupBuilder BeatmapAssets,
+	RouteGroupBuilder Avatar,
+	RouteGroupBuilder Api,
+	RouteGroupBuilder Assets);
 
 /// <summary>
 ///     Registers the host groups for both the configured domain and the fallback
@@ -39,12 +55,19 @@ public static class BanchoHostGroups
 			StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
-	///     Registers all Bancho host groups for the configured domain and the fallback
-	///     <c>ppy.sh</c> domain.
+	///     Constructs the route groups for every Bancho host, for the configured domain and the
+	///     fallback <c>ppy.sh</c> domain.
 	/// </summary>
-	/// <param name="app"> The web application to register the host groups on. </param>
+	/// <remarks>
+	///     Construction only: no route is registered on any group here. Each returned group is a
+	///     bare <see cref="RouteGroupBuilder" /> restricted to its host; the caller
+	///     (<c>Host/SliceRegistration.MapAll</c>) is responsible for mapping every host's routes onto
+	///     it, in the order each host expects.
+	/// </remarks>
+	/// <param name="app"> The web application to construct the host groups on. </param>
 	/// <param name="configuredDomain"> The primary domain used to expose the host groups. </param>
-	public static void MapAll(WebApplication app, string configuredDomain)
+	/// <returns>The constructed route group for each Bancho host.</returns>
+	internal static BanchoHosts Create(WebApplication app, string configuredDomain)
 	{
 		var domains = new[] { "ppy.sh", configuredDomain }.Distinct().ToArray();
 
@@ -57,12 +80,13 @@ public static class BanchoHostGroups
 		var apiHosts = domains.Select(domain => $"api.{domain}").ToArray();
 		var assetsHosts = domains.Select(domain => $"assets.{domain}").ToArray();
 
-		app.MapGroup("/").RequireHost(banchoHosts).MapBanchoGroup();
-		app.MapGroup("/").RequireHost(osuWebHosts).MapOsuWebGroup();
-		app.MapGroup("/").RequireHost(beatmapAssetHosts).MapBeatmapAssetGroup();
-		app.MapGroup("/").RequireHost(avatarHosts).MapAvatarGroup();
-		app.MapGroup("/").RequireHost(apiHosts).MapApiGroup();
-		app.MapGroup("/").RequireHost(assetsHosts).MapAssetsGroup();
+		return new BanchoHosts(
+			app.MapGroup("/").RequireHost(banchoHosts),
+			app.MapGroup("/").RequireHost(osuWebHosts),
+			app.MapGroup("/").RequireHost(beatmapAssetHosts),
+			app.MapGroup("/").RequireHost(avatarHosts),
+			app.MapGroup("/").RequireHost(apiHosts),
+			app.MapGroup("/").RequireHost(assetsHosts));
 	}
 
 	/// <summary>

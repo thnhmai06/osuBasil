@@ -1,9 +1,3 @@
-using Basil.Server.Features.Auth;
-using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Content;
-using Basil.Server.Features.Multiplayer;
-using Basil.Server.Features.Scores;
-using Basil.Server.Features.Users;
 using Basil.Server.Shared.Http.OpenApi;
 using Scalar.AspNetCore;
 
@@ -14,17 +8,18 @@ using Scalar.AspNetCore;
 namespace Basil.Server.Shared.Http;
 
 /// <summary>
-///     Registers the `api.` host's REST endpoints.
+///     Registers the `api.` host's shared endpoints: a `/health` probe, the generated OpenAPI/Scalar
+///     documentation site, and the abbreviation redirects.
 /// </summary>
 /// <remarks>
-///     The `api.` host serves the match report and per-resource live streams, file downloads,
-///     admin-key-gated management CRUD, a `/health` probe, the abbreviation redirects, and the
-///     generated OpenAPI/Scalar documentation site.
+///     Every slice-owned resource on this host (the match report and per-resource live streams, file
+///     downloads, admin-key-gated management CRUD, and so on) is mapped separately by
+///     <c>Host/SliceRegistration.MapAll</c>, not here.
 /// </remarks>
 internal static class ApiHostRoutes
 {
 	/// <summary>
-	///     Registers the `api.{domain}` host's routes.
+	///     Registers the `api.{domain}` host's shared (non-slice-owned) routes.
 	/// </summary>
 	/// <param name="group">The `api.{domain}` route group.</param>
 	public static void MapApiGroup(this RouteGroupBuilder group)
@@ -71,29 +66,6 @@ internal static class ApiHostRoutes
 		docs.MapGet("/irc-client/",
 				() => Results.File(Path.Combine(docsSiteRoot, "irc-client", "index.html"), "text/html"))
 			.ExcludeFromDescription();
-
-		group.MapMatchRoutes();
-
-		group.MapUserRoutes();
-
-		group.MapScoreRoutes();
-
-		group.MapBeatmapsetRoutes();
-
-		group.MapFaqRoutes();
-
-		group.MapMenuSeasonalRoutes();
-
-		group.MapMenuBannerRoutes();
-
-		group.MapMenuIconRoutes();
-
-		var settings = group.MapGroup("/settings");
-		settings.MapAdminKeyRoutes();
-		settings.MapMirrorSettingsRoutes();
-		settings.MapMotdSettingsRoutes();
-
-		group.MapAnnounceRoutes();
 
 		group.MapAbbreviationRedirects();
 	}
