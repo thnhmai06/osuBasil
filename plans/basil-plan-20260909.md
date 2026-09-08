@@ -181,15 +181,27 @@ change moves behind a service call. Verify the route table is byte-identical aga
 
 Same treatment. It is the other file that mixes HTTP with domain mutation.
 
-### Task B3: Give the four database-touching services a contract
+### Task B3: ~~Give the four database-touching services a contract~~ — closed, not needed
 
-`Auth/LoginService`, `Beatmaps/BeatmapsetGarbageCollectorService`,
-`Beatmaps/BeatmapsetMigrationService`, `Beatmaps/BeatmapWatcherService` open connections directly.
+**Closed 2026-09-09 without a code change. The finding behind it was a measurement error.**
 
-- [ ] For each, name what it actually needs as a method on an existing repository contract, or a
-  new one if none fits. Do not invent a repository per service.
-- [ ] Move the SQL into the adapter that owns that table.
-- [ ] Verify: no file outside a repository or store matches `SqliteConnection|QueryAsync|ExecuteAsync|QueryFirstOrDefault|CommandDefinition`.
+The pattern used to detect database access included an unanchored `ExecuteAsync`, which matches the
+`ExecuteAsync` override every `BackgroundService` is required to declare. `Auth/LoginService`,
+`Beatmaps/BeatmapsetGarbageCollectorService`, `Beatmaps/BeatmapsetMigrationService` and
+`Beatmaps/BeatmapWatcherService` were flagged on that basis alone; all four already route through
+repository contracts.
+
+Re-measured with an anchored pattern:
+
+```
+using Dapper|SqliteConnection|IDbConnection|CommandDefinition|[.]QueryAsync|[.]QueryFirstOrDefault
+```
+
+every database call site in the server is a `Sqlite*Repository`, a `Sqlite*Store`, or the
+persistence plumbing — sixteen files, every one an adapter. **The database boundary already holds.**
+
+Use the anchored pattern for the Stage E verification. The unanchored one reports six false
+positives, and it would report them again for anyone who re-derives this.
 
 ### Task B4: Finish `MatchMutationScope`
 

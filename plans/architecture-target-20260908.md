@@ -50,21 +50,30 @@ The layering rule is close to satisfied today, by convention rather than by enfo
 | Role | Files | Touch HTTP | Touch DB |
 |---|---:|---:|---:|
 | Packet handlers | 47 | 0 | 0 |
-| Services | 31 | 0 | 4 |
+| Services | 31 | 0 | 0 |
 | Routes | 19 | 19 | 0 |
-| Persistence | 32 | 0 | 14 |
+| Persistence | 32 | 0 | 16 |
 | Contracts | 13 | 0 | 0 |
 
-Business code does not reach the web framework anywhere, and reaches the database in four
-files. Routes never touch the database. Zero feature files import Serilog — logging already
-goes through `ILogger<T>`.
+Business code does not reach the web framework anywhere, and **does not reach the database at all**.
+Routes never touch the database either. Zero feature files import Serilog — logging already goes
+through `ILogger<T>`.
+
+> **Correction, 2026-09-09.** This table first reported four services touching the database. That
+> was wrong, and the error was in the measurement, not the code: the pattern used to detect database
+> access included an unanchored `ExecuteAsync`, which matches the `ExecuteAsync` override that every
+> `BackgroundService` is required to declare. Re-measured with
+> `using Dapper|SqliteConnection|IDbConnection|CommandDefinition|\.QueryAsync|\.QueryFirstOrDefault`,
+> every database call site in the server is a `Sqlite*Repository`, a `Sqlite*Store`, or the
+> persistence plumbing — sixteen files, all of them adapters. The four services named below route
+> through repository contracts already.
 
 **The layering is not the problem.** The problems the assessment measured are horizontal:
 one strongly connected component of ten features, an enforcement rule blind to constants,
 and per-player state with no owner. The layering rule matters here because it decides
 *where* things go when those problems are fixed — not because it is being violated.
 
-Six files violate it and are named in §6.
+Two files violate it — both route files that also mutate domain state — and they are named in §6.
 
 ---
 
@@ -273,11 +282,11 @@ in `Basil.Domain`. The business object keeps slots, host, settings and progress;
 projection moves out to the API host. This is the direction Tasks 1.3 and 1.4 of the paused
 plan were already heading; the layering rule makes it obligatory rather than optional.
 
-**The four layering violations to fix** (§2): `Auth/LoginService`,
-`Beatmaps/BeatmapsetGarbageCollectorService`, `Beatmaps/BeatmapsetMigrationService`,
-`Beatmaps/BeatmapWatcherService` reach the database directly. Each gets a contract in
-`Domain` and an adapter in `Infrastructure`. **The two transport/business mixes** —
-`MatchSubResourceRoutes`, `MatchRoutes` — are decomposed before they move.
+**The layering violations to fix.** There are two, not the six first reported: the transport and
+business mixes in `MatchSubResourceRoutes` and `MatchRoutes`, decomposed before they move. The four
+services once listed here — `Auth/LoginService`, `Beatmaps/BeatmapsetGarbageCollectorService`,
+`Beatmaps/BeatmapsetMigrationService`, `Beatmaps/BeatmapWatcherService` — already route through
+repository contracts; see the correction in §2.
 
 **F4, `Bot`.** `MpCommandService` (1,422 lines) and `MpReplies` (467) are multiplayer
 behaviour and move to `Basil.Domain/Multiplayer`. What remains of `Bot` — the dispatcher and

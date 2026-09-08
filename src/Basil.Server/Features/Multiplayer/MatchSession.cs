@@ -90,6 +90,52 @@ public sealed class MatchSession(
 	/// <returns>The newly allocated version.</returns>
 	public long NextStateVersion() => Interlocked.Increment(ref _stateVersion);
 
+	/// <summary>Gets the most recently allocated state version, or -1 if none has been allocated yet.</summary>
+	public long CurrentStateVersion => Interlocked.Read(ref _stateVersion);
+
+	/// <summary>Allocates the next state version. Called only by <see cref="MatchMutationScope" /> during disposal.</summary>
+	internal long AllocateStateVersion() => Interlocked.Increment(ref _stateVersion);
+
+	/// <summary>
+	///     Gets or sets the object that performs the actual snapshot builds and broadcasts a
+	///     <see cref="MatchMutationScope" /> requests. Set once, right after this match is created.
+	/// </summary>
+	internal IMatchMutationPublisher? MutationPublisher { get; set; }
+
+	// Tracks, per async call flow, whether that flow already holds this match's mutation lock via an
+	// open MatchMutationScope. A plain field would also flag a second, genuinely independent caller
+	// waiting its turn for the lock -- which must keep blocking, not throw -- so this needs to be
+	// scoped to the calling flow rather than shared across all callers.
+	private readonly AsyncLocal<bool> _mutationOpenInThisFlow = new();
+
+	/// <summary>
+	///     Begins one read-mutate-broadcast sequence on this match: waits for <see cref="Lock" />, then
+	///     returns a scope that releases it and runs any requested publishes once disposed.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels waiting for the lock.</param>
+	/// <returns>The mutation scope. Dispose it (typically via <c>await using</c>) to end the mutation.</returns>
+	/// <exception cref="InvalidOperationException">
+	///     A mutation scope for this match is already open on the calling async flow. The match lock is
+	///     not reentrant, so waiting here would deadlock; this is thrown instead.
+	/// </exception>
+	public async ValueTask<MatchMutationScope> BeginMutationAsync(CancellationToken cancellationToken = default)
+	{
+		if (_mutationOpenInThisFlow.Value)
+			throw new InvalidOperationException(
+				$"A mutation scope for match {Id} is already open on this call flow; nesting it would deadlock the match lock.");
+
+		await Lock.WaitAsync(cancellationToken);
+		_mutationOpenInThisFlow.Value = true;
+		return new MatchMutationScope(this, MutationPublisher, cancellationToken);
+	}
+
+	/// <summary>Releases the match lock and clears the nesting marker. Called only by <see cref="MatchMutationScope" />.</summary>
+	internal void ReleaseMutation()
+	{
+		_mutationOpenInThisFlow.Value = false;
+		Lock.Release();
+	}
+
 	/// <summary>
 	///     Gets the sequence gate guarding the match's bancho <c>UpdateMatch</c> packet broadcast
 	///     against out-of-order delivery once building and broadcasting it runs unlocked (ADR-004

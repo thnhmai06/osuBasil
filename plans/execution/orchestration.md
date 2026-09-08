@@ -30,6 +30,24 @@ Authoritative documents:
 * `plans/execution/file-move-map.md` — the per-directory destination map for Task 0.3, derived from
   the tree at `d5d1b32`; do **not** re-derive it
 
+## One worker at a time in this working tree
+
+Two workers were run concurrently on 2026-09-09 with disjoint file ownership. The file split held —
+neither touched the other's files — but the working tree itself does not support it:
+
+* Concurrent `dotnet build` / `dotnet test` runs hold locks on shared `bin/` output, producing
+  MSB3027 and MSB3021 copy failures that abort a run outright. One worker could not complete a full
+  suite run at all.
+* Concurrent git operations race on `index.lock`.
+* Worst: a worker trying to isolate its own verification ran `git stash`, which swept up the other
+  worker's uncommitted in-progress files. Nothing was lost — it checked `git diff stash@{0}` and
+  restored before dropping the entry — but that is one careless step away from destroying an hour
+  of another worker's work.
+
+**So: one worker in this tree at a time.** Real parallelism needs `git worktree`, which the design
+already assumes for the Phase 5 diagnostics work. Until a worker is given its own worktree, batch
+more tasks into a single worker rather than running two.
+
 ## Execution model
 
 Opus orchestrates: holds the architecture, tracks the dependency graph, decides ordering and
