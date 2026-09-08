@@ -1,7 +1,7 @@
 # Phase 0: Foundation
 
 Status: Implementing
-Last updated: 2026-09-08T06:40:00Z (local 2026-09-08 13:40 UTC+7)
+Last updated: 2026-09-08T07:10:00Z (local 2026-09-08 14:10 UTC+7)
 
 ## Completed
 - Task 0.1 -- captured the pre-migration baseline, commit `91d151f`
@@ -9,17 +9,18 @@ Last updated: 2026-09-08T06:40:00Z (local 2026-09-08 13:40 UTC+7)
 - Task 0.3 -- merged `Basil.Application` and `Basil.Infrastructure` into `Basil.Server` as slices,
   commit `977b561`
 - Task 0.4 -- rewrote the architecture tests with real slice-boundary rules, commit `1142bc1`
+- Task 0.5 -- split `Program.cs` into `Host/`, commit `1bee08d`
 
 ## Current state
-Task 0.4 is complete: build succeeds with 0 errors, full suite is 1621 tests total (1618 + 3 new
-architecture tests). `dotnet test tests/Basil.ArchitectureTests` is 8/8 green. A full-suite run hit
-the documented Windows file-handle flake once
-(`BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`);
-re-running that one test in isolation passed clean (16/16) -- this is the known flake, not a
-regression. Task 0.5 (split `Program.cs` into `Host/`) is next.
+Task 0.5 is complete: build succeeds with 0 errors, full suite is 1621/1621 passed, 0 failed, 0
+skipped -- a clean run this time, no flake. `src/Basil.Server/Host/Program.cs` no longer exists;
+`Host/Bootstrap.cs` (`public sealed class Bootstrap`) is the new entry point, and
+`tests/Basil.IntegrationTests` uses `WebApplicationFactory<Bootstrap>`. Verified by actually running
+the built server that the "Host" log category still applies (SourceContext
+`Basil.Server.Host.Bootstrap`, output still tagged `[Host]`). Task 0.6 (DI and routing seams) is
+next.
 
 ## Remaining
-- Task 0.5 -- split `Program.cs` into `Host/`
 - Task 0.6 -- DI and routing seams
 - Tasks 0.7 through 0.14 (owned by later workers/phases)
 
@@ -280,25 +281,90 @@ regression. Task 0.5 (split `Program.cs` into `Host/`) is next.
     dependency, confirmed via probe) -- harmless, not touched, since removing unrelated dead code
     is out of this task's surgical scope.
 
+## Task 0.5 details (this session)
+- **`ConfigureRouting`/`Configure<ServerOptions>` stayed inline in `Bootstrap.Main`**, not folded
+  into `SliceRegistration.AddAll` as originally planned -- an advisor review caught that this would
+  make Task 0.6 move them a second time. Both are one call each, right after `KestrelSetup.Configure`
+  and before `SliceRegistration.AddAll`, exactly where they were in the original `Main`.
+  `ConfigureRouting` stayed a private static method on `Bootstrap` (it already had its own XML doc
+  and didn't fit any of the plan's other 11 files).
+- **The CategoryEnricher fix (flagged last session) was applied and verified by actually running the
+  built server**, not just by test count: `CategoryEnricher.cs`'s rule
+  `("Basil.Server.Program", false, "Host")` -> `("Basil.Server.Host.Bootstrap", false, "Host")`; ran
+  `Basil.Server.exe` directly and confirmed the banner still logs `[Host]  Basil.Server.Host.Bootstrap: ...`
+  rather than falling through to the `[App]` fallback category. Its doc comment's stale
+  `Program.ConfigureSerilog` reference was also updated to `SerilogSetup.Configure`.
+- **The namespace-nesting trap (documented for Task 0.3) recurred, in reverse, for this task**:
+  `Program` lived in the bare `Basil.Server` namespace, an *ancestor* of every
+  `Basil.Server.Shared.*`/`Basil.Server.Features.*` namespace, so several files referenced `Program`/
+  `ILogger<Program>` with no explicit `using`. Moving it to the sibling namespace
+  `Basil.Server.Host` broke exactly one such file for real:
+  `src/Basil.Server/Shared/Http/BanchoProtocolRoutes.cs` (used `ILogger<Program>` inside the login
+  packet-exchange handler) -- fixed with an added `using Basil.Server.Host;` and
+  `ILogger<Program>` -> `ILogger<Bootstrap>`. Grepped the whole tree for `\bProgram\b` after the
+  move to confirm no other file was relying on the same implicit visibility; none were (the other
+  hits were all doc-comment prose, fixed below).
+- **Doc-comment prose referencing `Program.cs` updated** (these are directly about the file being
+  moved, not unrelated drive-by edits): `AdminKeyAuthenticationHandler.cs`, `EnvelopeMiddleware.cs`,
+  `ReplyLocale.cs`, `Basil.Server.csproj` (two comments), and
+  `tests/Basil.IntegrationTests/OpenApiDocumentEndpointTests.cs`.
+- **`tests/Basil.IntegrationTests`**: all 33 files using `WebApplicationFactory<Program>` moved to
+  `WebApplicationFactory<Bootstrap>` with `using Basil.Server;` -> `using Basil.Server.Host;`
+  (verified first that every one of those 33 files had exactly one `using Basil.Server;` line, used
+  for nothing but `Program`, before doing the global replace). Two files
+  (`TestDoubles.cs`, `InMemoryMenuBannerRepository.cs`) got touched by the same sed pass but had no
+  actual match -- their working-tree diff was empty (a pure CRLF/LF touch), so they were
+  `git checkout --`-ed back out rather than committed as no-op noise.
+- No `StartupObject` is set in `Basil.Server.csproj` or `Basil.slnx`; the SDK finds the sole
+  `Main` method automatically, so no build-file change was needed for the entry-point rename.
+- Verification: `dotnet build --configuration Release` -- 0 errors (only the same 16 pre-existing
+  `NU1510`/nullable/unused-event warnings). Full suite: **1621/1621 passed, 0 failed, 0 skipped** --
+  a clean run, the documented flake did not reproduce this time.
+
 ## Next exact step
-Task 0.5: split `src/Basil.Server/Host/Program.cs` (811 lines) into
-`Host/{Bootstrap,SerilogSetup,KestrelSetup,ConfigurationSetup,OpenApiSetup,CorsSetup,
-ImageSharpSetup,AuthSetup,JsonSetup,StartupData,StartupBanner,SliceRegistration}.cs` per the plan.
-Two things this worker already scoped out while reading `Program.cs`, for whoever picks this up:
-- `ConfigureRouting` (registers `NumericIdRouteConstraint`) and the inline
-  `builder.Services.Configure<ServerOptions>(...)` call have no dedicated file in the plan's exact
-  12-file list. Current plan: fold both into `SliceRegistration.AddAll`, in their current relative
-  order (right before `AddInfrastructure`/`AddApplication`), since Task 0.6's
-  `AddSharedInfrastructure` is where they conceptually belong anyway.
-- Renaming `Program` to `Host.Bootstrap` breaks `CategoryEnricher.cs`'s exact-match log-category
-  rule `("Basil.Server.Program", false, "Host")` (`src/Basil.Server/Shared/Logging/
-  CategoryEnricher.cs`) -- every split file that logs under the "Host" category (`ConfigureKestrel`/
-  `KestrelSetup`, `LogStartupBanner`/`StartupBanner.Log`, `InitializeDataAsync`/
-  `StartupData.InitializeAsync`) must keep using `ILogger<Bootstrap>`/`typeof(Bootstrap)` (not a
-  per-file logger type) so they all still produce the SourceContext `Basil.Server.Host.Bootstrap`,
-  and that one `CategoryEnricher` rule string must be updated to match. This is a real, if internal,
-  logging-categorization regression if missed -- not user-facing, but deliberately designed
-  behavior the codebase already documents wanting to preserve.
+Task 0.6: DI and routing seams, per the plan. This worker (continuing in the same session) has
+already read both `Host/ApplicationDependencyInjection.cs` (namespace `Basil.Application`,
+`AddApplication`) and `Host/InfrastructureDependencyInjection.cs` (namespace `Basil.Infrastructure`,
+`AddInfrastructure`) in full and mapped every registration to its owning slice by checking each
+registered type's actual file location (not guessed from its name). Key findings for whoever
+resumes this if the session ends mid-task:
+- Both DI files register a mix of per-slice types and genuinely `Shared/`-owned types
+  (`DatabaseOptions`, `StorageOptions`, the shared `IMemoryCache`, `PacketDispatcher`,
+  `GhostDisconnectService`, `ISessionRegistry<GameSession>`, `IResponseCache`/
+  `FileSystemResponseCache`) -- the latter go into `Host/SliceRegistration.cs`'s new
+  `AddSharedInfrastructure`, per the plan.
+- A few registrations are easy to mis-slice by name alone and were double-checked against the
+  defining file: `IClientHashRepository`/`IRelationshipRepository`/`IUserLogRepository` are Users
+  (not Auth); `ISessionRegistry<IrcSession>`'s concrete `IrcSessionRegistry` is Irc; `MirrorOptions`
+  binds in Beatmaps (the type lives in `Shared/Configuration` but the feature is Beatmaps' mirror
+  service); `IResponseCache`/`FileSystemResponseCache` is genuinely Shared (`Shared/Storage`), used
+  by the audio-preview cache which is Shared/host-route code, not a single slice.
+- `BanchoHostGroups.cs` (`Shared/Http`) today calls `MapApiGroup`/`MapOsuWebGroup`/
+  `MapBeatmapAssetGroup`/`MapAvatarGroup`/`MapAssetsGroup`, each of which is defined in a *different*
+  `Shared/Http/*.cs` file and itself calls slice-owned `group.MapXxxRoutes()` (e.g. `ApiHostRoutes.
+  MapApiGroup` calls `group.MapMatchRoutes()`, `group.MapUserRoutes()`, etc; `AssetsHostRoutes.
+  MapAssetsGroup` calls `group.MapMenuAssetRoutes()`/`group.MapBeatmapsetAssetRoutes()`). Per an
+  advisor-reviewed decision during Task 0.4: move only these *delegating* slice-route calls out to
+  `SliceRegistration.MapAll` (called against the exposed host group); leave each host-group file's
+  own inline logic (health checks, docs redirects, the whole raw-protocol handler bodies in
+  `BanchoProtocolRoutes.MapBanchoGroup` and `OsuWebRoutes.MapOsuWebGroup`) exactly where it is --
+  those files are already in the `Shared_Should_Not_Reference_Features` pinned baseline from Task
+  0.4 and are not this task's problem to fix.
+- `BanchoHostGroups.MapAll` needs to change from calling `.MapXxxGroup()` on each constructed group
+  to instead **returning** the constructed groups (a small record/tuple: Bancho, OsuWeb,
+  BeatmapAssets, Avatar, Api, Assets), so `SliceRegistration.MapAll` can call each host-group's own
+  remaining `MapXxxGroup()` (for the non-delegating parts) and then the slice-owned
+  `MapXxxRoutes()` calls, per host group, in the same order the routes register today.
+- Content has 8 separate existing route files (`AnnounceRoutes`, `FaqRoutes`, `MenuAssetRoutes`,
+  `MenuBannerRoutes`, `MenuIconRoutes`, `MenuSeasonalRoutes`, `MirrorSettingsRoutes`,
+  `MotdSettingsRoutes`) split across two host groups (`api.` and `assets.`) -- plan to give Content
+  two aggregating methods (`MapContentRoutes` for the `api.` host's pieces, a second for the
+  `assets.` host's `MenuAssetRoutes`) rather than forcing one method across two unrelated route
+  groups.
+- After this task: run the route-table diff
+  (`grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src --include=*.cs | sort -u` against
+  `plans/execution/baseline/routes.txt`) and confirm it is empty, and confirm the full suite is
+  still exactly 1621/1621 (this task must not change the count).
 
 Also see "Known issues / blockers" above before treating any `Basil.IntegrationTests` failure on
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
