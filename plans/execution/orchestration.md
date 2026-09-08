@@ -212,14 +212,16 @@ unfinished, resume from repository state and schedule the next one.
 | 2026-09-07 23:00 UTC+7 | 2026-09-08 01:13 UTC+7 | fired — cycle resumed |
 | 2026-09-08 01:20 UTC+7 | 2026-09-08 06:17 UTC+7 | fired — cycle resumed |
 | 2026-09-08 06:20 UTC+7 | 2026-09-08 11:21 UTC+7 | cancelled — superseded once the pause point moved |
-| 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | cancelled — Phase 0 finished and work is paused |
+| 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | cancelled — Phase 0 finished and work was paused |
+| 2026-09-08 15:23 UTC+7 | 2026-09-08 20:23 UTC+7 | cancelled — superseded once the reset time was known |
+| 2026-09-08 15:31 UTC+7 | 2026-09-08 19:24 UTC+7 | pending — fires just after the 19:20 reset rather than a flat +5h |
 
 The usage limit resets at 01:10 UTC+7, so the first continuation fires just after that rather
 than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
 
-No reminder is scheduled right now, deliberately: the cycle exists to keep long work moving across
-session limits, and the work is paused rather than in flight. Whichever session resumes Phase 1
-schedules a fresh +5h reminder as its first action, immediately after writing its checkpoint.
+Phase 1 is in flight, and a reminder is scheduled. When a reset time is known it beats a flat +5h:
+firing at 19:24 against a 19:20 reset recovers most of an hour that a 20:23 wake-up would have idled
+away. When no reset time is known, fall back to +5h.
 
 Cron jobs are session-only: they do not survive this Claude session ending.
 
