@@ -25,7 +25,7 @@ internal sealed class StartupUpdateCheck(
 	{
 		if (!options.Value.CheckOnStartup)
 		{
-			logger.LogWarning("Not checking for updates: the startup check is turned off in settings");
+			logger.LogWarning("Skipped checking for updates because checking on startup is disabled.");
 			return Task.CompletedTask;
 		}
 
@@ -62,15 +62,14 @@ internal sealed class StartupUpdateCheck(
 		}
 		catch (OperationCanceledException)
 		{
-			logger.LogWarning("Stopped checking for updates: the release feed did not answer within {Timeout:0}s",
-				Timeout.TotalSeconds);
+			logger.LogWarning("Skipped checking for updates because the release feed could not be reached.");
 			return;
 		}
 		catch (Exception exception)
 		{
 			// A check is a courtesy. Whatever went wrong looking for a newer release -- no network,
 			// a refused connection, a malformed feed -- must not stop the server from serving.
-			logger.LogWarning(exception, "Stopped checking for updates: the release feed could not be reached");
+			logger.LogWarning(exception, "Skipped checking for updates because the release feed could not be reached.");
 			return;
 		}
 
@@ -85,18 +84,17 @@ internal sealed class StartupUpdateCheck(
 		switch (result.Outcome)
 		{
 			case UpdateCheckOutcome.UpToDate:
-				logger.LogInformation("Basil {Version} is up to date", BuildVersion.Informational);
+				logger.LogInformation("Basil is up to date.");
 				break;
 			case UpdateCheckOutcome.UpdateAvailable:
 				logger.LogWarning(
-					"Basil {Available} is available; this server is running {Current}. Run the server with --update to install it",
-					result.AvailableVersion, BuildVersion.Informational);
+					"A new version of Basil is available. Terminate the server and restart it with --update to update.");
 				break;
 			case UpdateCheckOutcome.Failed:
-				logger.LogWarning("Stopped checking for updates: the release feed could not be reached");
+				logger.LogWarning("Skipped checking for updates because the release feed could not be reached.");
 				break;
 			case UpdateCheckOutcome.NotInstallable:
-				logger.LogWarning("Not checking for updates: this copy of Basil was not installed by the updater");
+				logger.LogWarning("Skipped checking for updates because Basil was not installed by the updater.");
 				break;
 		}
 	}

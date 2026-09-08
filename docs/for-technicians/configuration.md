@@ -132,11 +132,11 @@ What the log says:
 
 | Situation | Level | Line |
 |---|---|---|
-| Running the newest release | Information | `Basil <version> is up to date` |
-| A newer release exists | Warning | `Basil <version> is available; this server is running <version>` |
-| The feed could not be reached | Warning | `Stopped checking for updates: the release feed could not be reached` |
-| `Update:CheckOnStartup` is `false` | Warning | `Not checking for updates: the startup check is turned off in settings` |
-| This copy was not installed by the updater | Warning | `Not checking for updates: this copy of Basil was not installed by the updater` |
+| Running the newest release | Information | `Basil is up to date.` |
+| A newer release exists | Warning | `A new version of Basil is available. Terminate the server and restart it with --update to update.` |
+| The feed could not be reached, or did not answer in time | Warning | `Skipped checking for updates because the release feed could not be reached.` |
+| `Update:CheckOnStartup` is `false` | Warning | `Skipped checking for updates because checking on startup is disabled.` |
+| This copy was not installed by the updater | Warning | `Skipped checking for updates because Basil was not installed by the updater.` |
 
 The check runs in the background and gives up after 15 seconds, so an unreachable feed never delays
 the server from accepting connections.
