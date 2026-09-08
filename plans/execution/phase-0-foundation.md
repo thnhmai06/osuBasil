@@ -864,20 +864,38 @@ resumes this if the session ends mid-task:
 Also see "Known issues / blockers" above before treating any `Basil.IntegrationTests` failure on
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
 
+## Task 0.14 -- baseline verification and Phase 0 review (orchestrator, complete)
+
+Every Task 0.1 artifact was re-derived and compared. Full results, including the OpenAPI comparison
+and the four defects the review found and fixed, are recorded in `plans/execution/orchestration.md`
+under **Task 0.14 -- baseline verification**. Headline numbers: 1634 tests passing, routes and
+metric names identical to the baseline, `Basil.Protocol.Tests` unchanged apart from its xunit
+reference, 46 schema objects in both, and the six OpenAPI documents differing only by Task 0.13's
+`silenceEnd` nullability and by the two leaked C# lines this task removed from the bancho
+description.
+
+The two open architecture questions were answered against the code: the 38-edge adjacency allowlist
+is a description of real coupling rather than a rubber stamp, and `Shared_Should_Not_Reference_Features`
+asserts exact set equality, so it ratchets in both directions. Neither slice boundary moves.
+
 ## Next exact step
-Task 0.12 (xunit v3 migration, commit `65cb934`) is complete. Every implementation task in Phase 0
-(0.1 through 0.13) is now committed. **Task 0.14 -- baseline verification and the Phase 0 advisor
-review -- is the orchestrator's own task, and it is the last thing standing between here and
-Phase 1.** No further implementation work belongs in Phase 0; the next step is that review, not
-another task. Things worth carrying forward into it:
+
+**Phase 0 is complete. Nothing further belongs in it.** Work is paused before Phase 1 by standing
+instruction. When Phase 1 resumes, it starts at Task 1.1, and its first reads are the **State Phase
+1 inherits** and **Pause point** sections of `plans/execution/orchestration.md`.
+
+Carried forward into Phase 1 and beyond:
 - All test-project paths now belong under `tests/Basil.Server.Tests/`, mirroring `Features/<Slice>/`
   and `Shared/<Concern>/`. `tests/Basil.Application.Tests` and `tests/Basil.Infrastructure.Tests` no
   longer exist -- Task 0.12's xunit-v3 migration only has one test project (plus
   `Basil.Domain.Tests`, `Basil.Protocol.Tests`, `Basil.IntegrationTests`, `Basil.ArchitectureTests`)
   to touch, not two.
-- The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
-  above) is real and will bite the first person who actually runs `docker compose up` on this
-  branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
+- The dead `docker-compose.yml` localization bind mount described under Task 0.8 above was fixed in
+  `2f45f8b`, not deferred. Docker creates a missing bind source as an empty directory rather than
+  failing, so it would have shadowed `/app/Data/Localization` and killed the server at the startup
+  locale touch -- visible only on `docker compose up`, which no test covers. Per-slice locale
+  fragments mean there is no single source directory left to mount, so the mount was removed rather
+  than repointed.
 - `Shared_Should_Not_Reference_Features` (see Task 0.4's decision and Task 0.8's `LocaleTouch`
   entry above) is a live tripwire, not just documentation -- any new `Shared/*` type that names a
   `Features/*` type by type will fail it immediately. Check this test first if a build error is

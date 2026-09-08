@@ -1,0 +1,11 @@
+# The repository stores text files with LF endings. Without this, a clone made with
+# core.autocrlf=true checks sources out as CRLF, and the raw string literals that feed
+# the generated OpenAPI descriptions change with them -- which shows up as spurious
+# churn when the generated documents are compared against a recorded baseline.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.osu binary
+*.osz binary

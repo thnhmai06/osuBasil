@@ -21,8 +21,7 @@ namespace Basil.Server.Shared.Http;
 internal static class BanchoProtocolRoutes
 {
 	private const string BanchoPacketCatalog =
-		""""
-		private const string BanchoPacketCatalog = """
+		"""
 		The request body consists of one or more bancho packets encoded as:
 
 		- `uint16` packet id
@@ -99,7 +98,6 @@ internal static class BanchoProtocolRoutes
 		queued for the client. An empty response body simply means no packets are
 		currently pending.
 		""";
-		"""";
 
 	/// <summary>
 	///     Registers the bancho host group's routes: a `GET /` liveness stub plus the `POST /`

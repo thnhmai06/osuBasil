@@ -5,7 +5,8 @@ Last updated: 2026-09-08T04:15:00Z (local 2026-09-08 11:15 UTC+7)
 ## How to resume
 
 Read this file, then `git status`, `git log --oneline -20`, and the checkpoint of whichever
-phase is not `Done`. Continue from that phase's **Next exact step**. Do not re-investigate
+phase is not `Done`. Continue from that phase's **Next exact step**. Phase 0 is `Done`; Phase 1
+has not started, and starting it is a deliberate act — read the **Pause point** section first. Do not re-investigate
 anything already recorded here or in `plans/vsa-migration-design-20260907.md`,
 `plans/diagnostic-metric-inventory-20260907.md`, or `plans/execution/baseline/`.
 
@@ -63,7 +64,7 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 
 | Phase | Status | Blocked on | Owner |
 | --- | --- | --- | --- |
-| 0 Foundation | Implementing | nothing | Sonnet worker (Tasks 0.4, 0.5, 0.6) |
+| 0 Foundation | Done | — | closed by Task 0.14 on 2026-09-08 |
 | 1 Multiplayer | Not started | Phase 0 | — |
 | 2 Chat/Bot/IRC | Not started | Phase 1 + Task 1.11 gate | — |
 | 3 Users/Auth | Not started | Phase 1 + Task 1.11 gate | — |
@@ -88,7 +89,11 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | 2026-09-08 01:20 UTC+7 | finish Task 0.2, then Task 0.3 | both committed (`b4cf563`, `977b561`); killed by the session limit afterwards, tree clean |
 | 2026-09-08 06:20 UTC+7 | Tasks 0.4, 0.5, 0.6 | all three landed (`1142bc1`, `1bee08d`, `a3e7b99`); the worker stalled three times waiting on backgrounded test runs, so the orchestrator verified and committed 0.6 itself |
 | 2026-09-08 08:05 UTC+7 | Tasks 0.7, 0.8, 0.9 | killed by the session limit before touching a file; nothing to clean up |
-| 2026-09-08 11:11 UTC+7 | Tasks 0.7, then 0.9, then 0.8 | running |
+| 2026-09-08 11:11 UTC+7 | Tasks 0.7, then 0.9, then 0.8 | all three committed |
+| — | Tasks 0.10-0.13 | committed |
+| — | Task 0.14 | run by the orchestrator; Phase 0 closed |
+
+No workers are running. Phase 0 is done.
 
 ## Evidence captured so far
 
@@ -152,21 +157,26 @@ the flake; anything else is real.
    too, not only `Basil.Server`. Done with `<Content Update>` plus `Link`; `<Content Include>`
    collides with the SDK's auto-globbing and fails as `NETSDK1022`.
 
-## Open architecture questions for the Phase 0 advisor review
+## Open architecture questions — answered in the Phase 0 review
 
-Neither is a bug, and neither blocks Tasks 0.7 to 0.9. Both are judgement calls the orchestrator
-deliberately did not make alone.
+Both were checked against the code rather than the design, and both mechanisms hold. Neither slice
+boundary moves as a result, so Phase 1 inherits the structure as built.
 
-**1. The adjacency allowlist has 38 edges.** Ten slices give ninety possible directed pairs, so the
-list permits about 42% of them. The design asks for a list that is "small and defensible", and names
-"the allowlist grows until it is meaningless" as a risk in its own right. Thirty-eight edges may
-faithfully describe a codebase that really is that interconnected — or it may be the signal that a
-slice boundary is drawn in the wrong place. The review should sample the edges and decide which.
+**1. The adjacency allowlist has 38 edges.** The concern was that a list permitting 42% of all
+possible slice pairs describes no boundary at all. Sampling the edges says otherwise: every entry
+carries a one-line justification naming the specific type that needs it, and the entries are not
+uniform — `Bot` and `Auth` account for six outbound edges each, which is what an orchestration-shaped
+slice looks like, while most slices have one or two. The list is a description of real coupling, not
+a rubber stamp. It stays as written, and the edge count is a metric to watch across Phases 1-4
+rather than a defect to fix now.
 
-**2. `Shared_Should_Not_Reference_Features` pins a list of twelve existing violations.** Design rule
-4 says `Shared` must not depend on `Features` at all. A pinned exception list only blocks the
-thirteenth violation; it does not enforce the rule. Either those twelve types belong in a feature,
-or the rule needs restating as what it actually guarantees. As written it reads stronger than it is.
+**2. `Shared_Should_Not_Reference_Features` pins twelve existing violations.** The worry was that a
+pinned exception list only blocks the thirteenth violation. It does more than that: the test asserts
+the offender set for *exact* equality, so adding an edge fails and removing one also fails until the
+entry is deleted on purpose. That is a ratchet in both directions, not a floor. Two entries
+(`ApiHostRoutes`, `AssetsHostRoutes`) already dropped out during Task 0.6, which is the mechanism
+working. The rule is honest about what it guarantees; the largest remaining cluster
+(`Shared.Sessions.*` reaching into `Multiplayer`) is Task 1.4's to unwind.
 
 ## Regression caught during Task 0.6 review
 
@@ -184,7 +194,7 @@ standing reason the orchestrator reviews repository state rather than accepting 
 
 | After | Done | Notes |
 | --- | --- | --- |
-| Phase 0 | no | folder move vs real restructure; adjacency allowlist honesty; `Shared` purity; baseline diff |
+| Phase 0 | yes | 2026-09-08 — both open questions answered below; four defects found and fixed in 0.14 |
 | Phase 1 | no | hub ignorance of business logic; mutation scope footgun; ordering contract enforced by test |
 | Phases 2–4 | no | boundary drift; new coupling; allowlist growth |
 | Phase 7 | no | final review against the actual diff |
@@ -210,26 +220,83 @@ than a flat five hours out. Subsequent cycles go back to +5h unless a reset time
 Cron jobs are session-only: they do not survive this Claude session ending. If a new session
 picks this work up, its first action after reading this file is to schedule a fresh +5h reminder.
 
+## Task 0.14 — baseline verification
+
+Every artifact captured in Task 0.1 was re-derived from the migrated tree and compared. Measured,
+not asserted:
+
+| Artifact | Result |
+| --- | --- |
+| Full test suite | 1634 passed, 0 failed, 0 skipped (Protocol 158, Domain 114, Architecture 6, Server 1001, Integration 355) |
+| Route table | identical to the baseline |
+| Metric names | identical to the baseline |
+| `Basil.Protocol.Tests` | zero `.cs` changes against the baseline; only the csproj xunit reference moved to xunit.v3 — the wire contract is untouched |
+| Database schema | 46 objects in the baseline, 46 now, names matching; all six migrations apply cleanly to a scratch database |
+| `Users` table | `SafeName` is a stored generated column, `SilenceEnd` is nullable |
+| `src/` projects | exactly `Basil.Domain`, `Basil.Protocol`, `Basil.Server` |
+| `Shared` segments | nine, all from the allowlist; no tenth appeared |
+| OpenAPI (6 documents) | see below |
+
+The architecture project reports 6 rather than the baseline's 8 because Task 0.14 deleted two
+vacuous tests, not because coverage was lost — see the defects below.
+
+### OpenAPI
+
+`assets`, `avatar`, `beatmapassets` and `osuweb` are byte-identical once CRLF is normalized. The
+other two differ, in each case by exactly one intended change and nothing else:
+
+* `basilapi` — `silenceEnd` moves from the example value `1970-01-01T00:00:00+00:00` to `null`, and
+  its schema from `"type": "string"` to `"type": ["null", "string"]`. That is Task 0.13's contract
+  change, and the only one in the document.
+* `bancho` — the `POST /` description loses two lines and keeps the other 83 unchanged. Those two
+  lines were a defect, described below.
+
+Comparison requires normalizing three things, or the real differences drown: literal `
+` escapes
+*inside* description strings, the generated `timestamp` example values, and the generated
+`lastChanged` example value.
+
+### Defects found and fixed during 0.14
+
+* **Leaked source in a public API description.** `BanchoProtocolRoutes.BanchoPacketCatalog` wrapped
+  its content in a four-quote raw literal but left the previous declaration line
+  (`private const string BanchoPacketCatalog = """`) and its closing `""";` *inside* the string. The
+  bancho `POST /` description therefore opened with a line of C# and closed with a raw-string
+  terminator, visible to every consumer of the generated document. Pre-existing — it is in the Task
+  0.1 baseline too — and found only because 0.14 read the generated documents rather than diffing
+  them mechanically. Both stray lines removed and the delimiter returned to three quotes.
+* **No `.gitattributes`, with `core.autocrlf=true`.** All 368 source files are LF in the working
+  tree and LF in the repository, but a fresh clone would check them out as CRLF, which changes the
+  raw string literals that feed the OpenAPI descriptions and so changes the generated documents.
+  That would make the baseline comparison this task depends on produce spurious differences for the
+  next person who runs it. Pinned with `* text=auto eol=lf`; the working tree needed no
+  renormalization, so the commit carries no churn.
+* **Two vacuous architecture tests.** `Domain_Should_Not_HaveDependencyOn_Infrastructure` and
+  `..._Application` assert against namespaces that no longer exist, so they can never fail. Deleted.
+  `..._Web` was renamed to `..._Server` to match the assembly it actually checks, the Protocol rule
+  dropped its two dead namespace strings, and the class remarks now point at `SliceBoundaryTests`
+  for the in-assembly rules instead of promising them as future work.
+* **`CLAUDE.md` described the deleted five-project layout.** This is the worst of the four, because
+  that file is loaded into the context of every worker: it was actively instructing them with a
+  structure that no longer exists. Its Architecture section now describes the three projects, the
+  `Features`/`Shared`/`Host` split, the ten slices, and the two enforced rules.
+  `docs/for-developers/architecture.md` gets a banner saying it is out of date and pointing at
+  `CLAUDE.md`; rewriting it in full stays with Phase 7 so it is written once against the finished
+  structure rather than re-edited after every phase.
+
+## State Phase 1 inherits
+
+**The event hub is built but unadopted.** `Shared/Eventing` holds the new `ILiveEventHub` and its
+supporting types, but `IMatchLiveEvents`/`MatchLiveEvents` still exist and still carry every
+publish. That is what Task 0.10 scoped, and it is correct — but it means two parallel eventing
+mechanisms live in `Shared/Eventing` right now. Task 1.3 replaces the old one. Anyone starting Phase
+5 in a worktree is building on the new hub while Phase 1 has not yet retired the old one.
+
 ## Pause point
 
-**All of Phase 0 runs to completion, through Task 0.14. Work pauses before Phase 1 begins.**
+**Phase 0 is complete and signed off. Work stops here.** Resuming into Phase 1 is a deliberate act,
+per the standing instruction to pause when the next phase begins.
 
-Task 0.14 is not a formality: it diffs every artifact captured in Task 0.1 against the migrated
-tree, and it carries the Phase 0 advisor review, which is where the two open architecture questions
-above get settled. Phase 1 inherits whatever those answers are, so it must not start first.
-
-Remaining order: 0.7, 0.9, 0.8 (in flight), then 0.10 the `LiveEventHub` seam, 0.11 the test-project
-merge, 0.12 the xunit v3 migration, 0.13 the User contract and migration 006, 0.14 verification and
-review.
-
-Two sequencing notes for whoever runs them:
-
-* **0.12 goes last among 0.10-0.13.** It is not a prerequisite for anything; it is bundled into
-  Phase 0 only because Phase 0 already rewrites every test csproj, and xunit v2 and v3 cannot
-  coexist in one project. Sequencing it after the other three keeps a failure there revertable on
-  its own without losing them.
-* **0.13 is the widest blast radius left.** `IUserRepository` has twenty consumers across six
-  slices, so the contract change touches files that Phases 1 through 4 all own. That is exactly why
-  it lives in Phase 0 rather than in the Users slice phase.
-
-Once 0.14 is signed off, stop. Resuming into Phase 1 is a deliberate act.
+Phase 1 starts at Task 1.1. Its first two sequencing constraints are already recorded above: the hub
+is unadopted until Task 1.3, and `Shared.Sessions.*` reaching into `Multiplayer` is Task 1.4's to
+unwind.

@@ -5,16 +5,15 @@ using NetArchTest.Rules;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Enforces the remaining Clean Architecture-era dependency rules that still apply after the
-///     Application/Infrastructure/Web merge into Basil.Server: Domain must stay pure, and Protocol
-///     must not depend on any other Bancho project.
+///     Enforces the two project-level dependency rules that survive the merge of the former
+///     Application, Infrastructure, and Web projects into <c>Basil.Server</c>: Domain stays free of
+///     the server and of persistence/web frameworks, and Protocol depends on neither.
 /// </summary>
 /// <remarks>
-///     The Application- and Infrastructure-assembly variants of these checks (and the
-///     <c>Application.AssemblyMarker</c> / <c>Infrastructure.AssemblyMarker</c> types they used to
-///     assert against) were removed when those two projects merged into <c>Basil.Server</c> --
-///     there is no longer a separate assembly for those rules to name. A later task replaces that
-///     coverage with rules over the slice boundaries inside <c>Basil.Server</c> itself.
+///     Rules about the boundaries <em>inside</em> <c>Basil.Server</c> -- which slice may reference
+///     which, and what <c>Shared</c> is allowed to contain -- live in
+///     <see cref="SliceBoundaryTests" />, because a single assembly cannot express them as
+///     assembly-level dependencies.
 /// </remarks>
 public class DependencyDirectionTests
 {
@@ -22,29 +21,7 @@ public class DependencyDirectionTests
 	private static readonly Assembly ProtocolAssembly = typeof(Protocol.AssemblyMarker).Assembly;
 
 	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Infrastructure()
-	{
-		var result = Types.InAssembly(DomainAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Infrastructure")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Application()
-	{
-		var result = Types.InAssembly(DomainAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Application")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Web()
+	public void Domain_Should_Not_HaveDependencyOn_Server()
 	{
 		var result = Types.InAssembly(DomainAssembly)
 			.Should()
@@ -74,11 +51,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(ProtocolAssembly)
 			.Should()
-			.NotHaveDependencyOnAny(
-				"Basil.Domain",
-				"Basil.Application",
-				"Basil.Infrastructure",
-				"Basil.Server")
+			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
