@@ -5,18 +5,9 @@ namespace Basil.Application.Tests.Shared.Eventing;
 
 public class LiveEventHubTests
 {
-	// ReadOnlyMemory<byte>.Equals compares the underlying array reference, not its content
-	// (measured directly: two separately-allocated arrays with identical bytes are not "Equal").
-	// Interning by content here lets Assert.Equal on a ReadOnlyMemory<byte>? still mean something:
-	// two calls with the same literal always resolve to the same array, while two different
-	// literals never accidentally collide.
-	private static readonly Dictionary<string, byte[]> BytesCache = new();
-
 	private static ReadOnlyMemory<byte> Bytes(string s)
 	{
-		if (!BytesCache.TryGetValue(s, out var bytes))
-			BytesCache[s] = bytes = Encoding.UTF8.GetBytes(s);
-		return bytes;
+		return Encoding.UTF8.GetBytes(s);
 	}
 
 	private static async Task<List<LiveEvent>> TakeAsync(IAsyncEnumerable<LiveEvent> source, int count)
@@ -84,6 +75,8 @@ public class LiveEventHubTests
 		var seeded = sub.SeedIfNotSuperseded(Bytes("built-from-10"), fence);
 
 		Assert.False(seeded);
-		Assert.Equal(Bytes("published-11"), sub.Snapshot);
+		// ReadOnlyMemory<byte>.Equals compares the underlying array reference, not content
+		// (measured directly), so the assertion decodes both sides to compare what they say.
+		Assert.Equal("published-11", Encoding.UTF8.GetString(sub.Snapshot!.Value.Span));
 	}
 }

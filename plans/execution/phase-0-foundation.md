@@ -73,14 +73,16 @@ test projects), done in the same session -- see its own entry below.
   `ReadOnlyMemory<byte>.Equals` compares the underlying array reference, index and length -- not
   content -- confirmed with a throwaway console project
   (`a.Equals(b)` false, `a.Span.SequenceEqual(b.Span)` true, for two arrays holding identical UTF-8
-  bytes) and confirmed again by running the test with a non-interning `Bytes` helper: it failed with
-  "Values differ" despite my `LiveSubscription` already holding the byte-identical payload passed to
-  `hub.Publish`. Fixed by making the test's own `Bytes` helper intern by content (a
-  `Dictionary<string, byte[]>` cache), so two calls with the same literal return the same array and
-  the reference-based equality check becomes meaningful again -- this only touches the test's private
-  helper, not the interface or the hub's implementation, and two different literals still can't
-  accidentally collide. Watched all three tests fail before this fix existed (types didn't exist,
-  per the plan's Step 4) and pass after -- 3/3.
+  bytes) and confirmed again by running the test with a plain, non-interning `Bytes` helper: it
+  failed with "Values differ" despite `LiveSubscription` already holding the byte-identical payload
+  passed to `hub.Publish`. First fix attempt interned `Bytes` by content in a static
+  `Dictionary<string, byte[]>`; an advisor review after this task landed correctly flagged that as
+  unnecessary shared mutable test state that Task 0.11's move and Task 0.12's xunit-v3 migration
+  would both have to carry forward for no reason. Replaced with a direct content assertion instead
+  (`Assert.Equal("published-11", Encoding.UTF8.GetString(sub.Snapshot!.Value.Span))`), which
+  discriminates the same wrong behaviors with no helper and no shared state. Watched all three tests
+  fail before any implementation existed (types didn't exist, per the plan's Step 4) and pass
+  after -- 3/3, confirmed again after this test-only change.
 - **`SnapshotChannel<T>` renamed to `StateStream<T>`,** matching design 4.1's naming ("`StateStream<T>`
   (today's `SnapshotChannel<T>`)"). File `Shared/Eventing/SnapshotChannel.cs` -> `StateStream.cs`
   via `git mv`; every call site's type name updated (`MatchSession.cs`'s eight snapshot-channel
@@ -97,6 +99,24 @@ test projects), done in the same session -- see its own entry below.
 - **No slice adopts the hub in this task**, per the plan. `IMatchLiveEvents`, `MatchLiveEvents` and
   every `LiveSseRoutes`/`SseEndpoints` call site are untouched -- confirmed by the diff containing
   no changes to any of those files.
+- **Phase-1 hazard, advisor-flagged, not fixed here (nothing adopts the hub in this task):** in the
+  stale-open-then-publish-wins race, the incoming publish becomes the subscription's `Snapshot`
+  directly (see `LiveSubscription.OnPublish`'s `!_hasSnapshot` branch). That is only correct if the
+  publish's payload is a *full* state snapshot. In real multiplayer usage the payload handed to
+  `hub.Publish` will come from `StateStream.Publish`, which returns a **merge-patch delta** against
+  whatever it last diffed -- state a subscriber that opened stale never received. So "stale open,
+  publish lands before the subscriber calls `SeedIfNotSuperseded`" would hand that subscriber a
+  delta as its first item, violating the SSE contract's guarantee 1 (first item is a full snapshot).
+  Whoever does Task 1.3 (adopting the hub for Multiplayer) needs to either route full-snapshot
+  builds and delta publishes through the hub differently, or ensure `MarkStale`'s caller only ever
+  publishes a full rebuild the first time a subscriber reappears. Not reproduced or tested here --
+  Task 0.10 has no slice adopting the hub, so there is no real delta payload in play yet.
+- **Doc gap, advisor-flagged and fixed**: `LiveEvent.Version`'s XML doc originally stated only that
+  version gaps are normal and not loss, without saying how actual loss *is* signalled. Added one
+  sentence naming the `gap` event explicitly, per design 4.2's stated SSE contract ("actual loss is
+  signalled explicitly by a `gap` event, never inferred from a version jump") and the task's own
+  instruction to document this because it's part of the public SSE contract, not an implementation
+  detail.
 - Test placement: `tests/Basil.Application.Tests/Shared/Eventing/LiveEventHubTests.cs`, the same
   temporary-home pattern Task 0.8/0.9 used (`tests/Basil.Server.Tests` doesn't exist until Task
   0.11, done next in this same session). Namespace `Basil.Application.Tests.Shared.Eventing`,

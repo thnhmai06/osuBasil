@@ -6,7 +6,8 @@ namespace Basil.Server.Shared.Eventing;
 /// <param name="Version">
 ///     This event's version. Versions on one stream are monotonically increasing but not
 ///     contiguous — a stream only emits when its own content changed, so gaps in the sequence are
-///     normal and are not loss.
+///     normal and are not loss. Actual loss is signalled explicitly by a separate <c>gap</c> event,
+///     never inferred from a version jump.
 /// </param>
 /// <param name="Payload">The opaque bytes published for this version.</param>
 public readonly record struct LiveEvent(long Version, ReadOnlyMemory<byte> Payload);
