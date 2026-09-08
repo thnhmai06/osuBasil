@@ -1,6 +1,6 @@
 # Orchestration state
 
-Last updated: 2026-09-08T01:05:00Z (local 2026-09-08 08:05 UTC+7)
+Last updated: 2026-09-08T04:15:00Z (local 2026-09-08 11:15 UTC+7)
 
 ## How to resume
 
@@ -87,7 +87,8 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | 2026-09-07 22:44 UTC+7 | Tasks 0.1 + 0.2 | killed by the session limit partway through 0.2; 0.1 committed at `91d151f`, 0.2's moves left on disk uncommitted |
 | 2026-09-08 01:20 UTC+7 | finish Task 0.2, then Task 0.3 | both committed (`b4cf563`, `977b561`); killed by the session limit afterwards, tree clean |
 | 2026-09-08 06:20 UTC+7 | Tasks 0.4, 0.5, 0.6 | all three landed (`1142bc1`, `1bee08d`, `a3e7b99`); the worker stalled three times waiting on backgrounded test runs, so the orchestrator verified and committed 0.6 itself |
-| 2026-09-08 08:05 UTC+7 | Tasks 0.7, 0.8, 0.9 | running — **the last worker of this stretch; work pauses when it lands** |
+| 2026-09-08 08:05 UTC+7 | Tasks 0.7, 0.8, 0.9 | killed by the session limit before touching a file; nothing to clean up |
+| 2026-09-08 11:11 UTC+7 | Tasks 0.7, then 0.9, then 0.8 | running |
 
 ## Evidence captured so far
 
@@ -200,7 +201,8 @@ unfinished, resume from repository state and schedule the next one.
 | 2026-09-07 22:55 UTC+7 | 2026-09-08 00:13 UTC+7 | cancelled — reset time corrected |
 | 2026-09-07 23:00 UTC+7 | 2026-09-08 01:13 UTC+7 | fired — cycle resumed |
 | 2026-09-08 01:20 UTC+7 | 2026-09-08 06:17 UTC+7 | fired — cycle resumed |
-| 2026-09-08 06:20 UTC+7 | 2026-09-08 11:21 UTC+7 | pending |
+| 2026-09-08 06:20 UTC+7 | 2026-09-08 11:21 UTC+7 | cancelled — superseded once the pause point moved |
+| 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | pending |
 
 The usage limit resets at 01:10 UTC+7, so the first continuation fires just after that rather
 than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
@@ -208,15 +210,26 @@ than a flat five hours out. Subsequent cycles go back to +5h unless a reset time
 Cron jobs are session-only: they do not survive this Claude session ending. If a new session
 picks this work up, its first action after reading this file is to schedule a fresh +5h reminder.
 
-## Next action for the orchestrator
+## Pause point
 
-**Work pauses after Task 0.9, by request.** When the current worker lands, verify its three commits
-(metric-name diff empty, locale value set unchanged, configuration test proving environment
-resolution survives the source-list clear), update this file, and stop. Do not start Task 0.10.
+**All of Phase 0 runs to completion, through Task 0.14. Work pauses before Phase 1 begins.**
 
-The continuation cron is cancelled for the pause, so nothing auto-resumes. Resuming is a deliberate
-act: read this file, read the Phase 0 checkpoint, schedule a fresh reminder, and continue from Task
-0.10 (the `LiveEventHub` seam), which is also what unblocks Phase 5 to run in parallel with Phase 1.
+Task 0.14 is not a formality: it diffs every artifact captured in Task 0.1 against the migrated
+tree, and it carries the Phase 0 advisor review, which is where the two open architecture questions
+above get settled. Phase 1 inherits whatever those answers are, so it must not start first.
 
-Before Phase 1 starts, the Phase 0 advisor review should settle the two open architecture questions
-above.
+Remaining order: 0.7, 0.9, 0.8 (in flight), then 0.10 the `LiveEventHub` seam, 0.11 the test-project
+merge, 0.12 the xunit v3 migration, 0.13 the User contract and migration 006, 0.14 verification and
+review.
+
+Two sequencing notes for whoever runs them:
+
+* **0.12 goes last among 0.10-0.13.** It is not a prerequisite for anything; it is bundled into
+  Phase 0 only because Phase 0 already rewrites every test csproj, and xunit v2 and v3 cannot
+  coexist in one project. Sequencing it after the other three keeps a failure there revertable on
+  its own without losing them.
+* **0.13 is the widest blast radius left.** `IUserRepository` has twenty consumers across six
+  slices, so the contract change touches files that Phases 1 through 4 all own. That is exactly why
+  it lives in Phase 0 rather than in the Users slice phase.
+
+Once 0.14 is signed off, stop. Resuming into Phase 1 is a deliberate act.
