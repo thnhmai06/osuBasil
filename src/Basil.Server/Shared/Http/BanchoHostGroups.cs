@@ -50,6 +50,33 @@ public static class BanchoHostGroups
 {
 	private static readonly string[] BanchoSubdomains = ["c", "ce", "c4", "c5", "c6"];
 
+	private const string OsuWebSubdomain = "osu";
+	private const string BeatmapAssetSubdomain = "b";
+	private const string AvatarSubdomain = "a";
+	private const string ApiSubdomain = "api";
+	private const string AssetsSubdomain = "assets";
+
+	/// <summary>Every host name the server answers on for the given domain, including the domain itself.</summary>
+	/// <remarks>
+	///     Derived from the same subdomain names <see cref="Create" /> builds its route groups from, so
+	///     that anything advertising these names cannot drift from what the server actually serves.
+	/// </remarks>
+	/// <param name="domain">The configured domain.</param>
+	/// <returns>The domain and each subdomain the server serves on it.</returns>
+	internal static IReadOnlyList<string> HostNamesFor(string domain)
+	{
+		return
+		[
+			domain,
+			.. BanchoSubdomains.Select(subdomain => $"{subdomain}.{domain}"),
+			$"{OsuWebSubdomain}.{domain}",
+			$"{BeatmapAssetSubdomain}.{domain}",
+			$"{AvatarSubdomain}.{domain}",
+			$"{ApiSubdomain}.{domain}",
+			$"{AssetsSubdomain}.{domain}"
+		];
+	}
+
 	private static readonly FrozenSet<string> VideoExtensions =
 		new[] { ".avi", ".flv", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".m4v", ".webm", ".wmv" }.ToFrozenSet(
 			StringComparer.OrdinalIgnoreCase);
@@ -74,11 +101,11 @@ public static class BanchoHostGroups
 		var banchoHosts = domains
 			.SelectMany(domain => BanchoSubdomains.Select(subdomain => $"{subdomain}.{domain}"))
 			.ToArray();
-		var osuWebHosts = domains.Select(domain => $"osu.{domain}").ToArray();
-		var beatmapAssetHosts = domains.Select(domain => $"b.{domain}").ToArray();
-		var avatarHosts = domains.Select(domain => $"a.{domain}").ToArray();
-		var apiHosts = domains.Select(domain => $"api.{domain}").ToArray();
-		var assetsHosts = domains.Select(domain => $"assets.{domain}").ToArray();
+		var osuWebHosts = domains.Select(domain => $"{OsuWebSubdomain}.{domain}").ToArray();
+		var beatmapAssetHosts = domains.Select(domain => $"{BeatmapAssetSubdomain}.{domain}").ToArray();
+		var avatarHosts = domains.Select(domain => $"{AvatarSubdomain}.{domain}").ToArray();
+		var apiHosts = domains.Select(domain => $"{ApiSubdomain}.{domain}").ToArray();
+		var assetsHosts = domains.Select(domain => $"{AssetsSubdomain}.{domain}").ToArray();
 
 		return new BanchoHosts(
 			app.MapGroup("/").RequireHost(banchoHosts),

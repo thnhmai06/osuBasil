@@ -36,6 +36,9 @@ All settings below are under the `Basil` section.
 | `Server:Port`             | HTTPS port used by Basil. Defaults to `443`. **This is the port that osu! client will connect to, so don't change it unless you are sure you know what you are doing.**                                |
 | `Server:CertPath`         | Path to the HTTPS PFX certificate. Leave unset when TLS is handled by the ASP.NET Core development certificate or a reverse proxy. See [`https.md`](https.md).                                     |
 | `Server:CertPassword`     | Password for the PFX certificate specified by `Server:CertPath`.                                                                                                                                   |
+| `Server:AdvertiseDomain`  | Answer multicast DNS queries for `Server:Domain` and its subdomains, so clients on the same network resolve them without a hosts entry. Defaults to `true`. See [Name resolution on a LAN](#name-resolution-on-a-lan). |
+| `Update:CheckOnStartup`   | Look for a newer release when the server starts, and report the result in the log. Never installs anything. Defaults to `true`. See [Updates](#updates).                                            |
+| `Update:Source`           | Release feed the check reads. A GitHub repository URL or a plain feed URL. Defaults to Basil's own repository.                                                                                      |
 | `Bot:Name`                | Display name of BasilBot. Changing it after the first startup also renames the seeded `id=0` user.                                                                                                 |
 | `Bot:CommandPrefix`       | Prefix required for BasilBot commands, such as `!help`, `!roll`, and `!mp`.                                                                                                                        |
 | `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
@@ -59,6 +62,106 @@ No rebuild is required.
 For container deployments, prefer bind-mounting `Data/appsettings.json` (or an
 `appsettings.{Environment}.json` overlay) for deployment-specific values such as the domain, port, or
 certificate settings — environment variables do not override them. See [`docker.md`](docker.md).
+
+---
+
+## Name resolution on a LAN
+
+Every machine that connects to Basil must resolve `Server:Domain` and each subdomain the server
+serves to the server's address. There are two ways to arrange that, and they can be used together.
+
+### Multicast DNS (default)
+
+With `Server:AdvertiseDomain` set to `true`, the server answers multicast DNS queries for its own
+domain, so a client on the same network resolves it with no configuration at all.
+
+The server advertises exactly the names it serves:
+
+```text
+<domain>          c.<domain>   ce.<domain>  c4.<domain>  c5.<domain>  c6.<domain>
+osu.<domain>      b.<domain>   a.<domain>   api.<domain>  assets.<domain>
+```
+
+Two limits are worth knowing before relying on it:
+
+* **Most operating systems only consult multicast DNS for names ending in `.local`.** Basil's
+  default domain, `basil.local`, is inside that suffix. A domain outside it — `basil.lan`, or a
+  real registered domain — is still answered, but most clients will never ask, so those deployments
+  need the hosts file or real DNS.
+* **The `ppy.sh` hosts are never advertised.** Basil serves them so that a redirected client works,
+  but claiming them over multicast would answer for traffic that is not this server's.
+
+Set `Server:AdvertiseDomain` to `false` to turn the advertisement off entirely.
+
+### Hosts file
+
+The traditional method, and the one to use when multicast DNS does not apply — a domain outside
+`.local`, a network that blocks multicast, or a client that ignores it.
+
+Add one line per name to the hosts file on each client, and on the server itself:
+
+```text
+192.168.1.10  basil.local
+192.168.1.10  c.basil.local
+192.168.1.10  ce.basil.local
+192.168.1.10  c4.basil.local
+192.168.1.10  c5.basil.local
+192.168.1.10  c6.basil.local
+192.168.1.10  osu.basil.local
+192.168.1.10  b.basil.local
+192.168.1.10  a.basil.local
+192.168.1.10  api.basil.local
+192.168.1.10  assets.basil.local
+```
+
+The file lives at `C:\Windows\System32\drivers\etc\hosts` on Windows and `/etc/hosts` on Linux
+and macOS. See [`getting-started.md`](../for-client/bancho/getting-started.md) for the client-side
+steps that go with it.
+
+For a public deployment, create the equivalent DNS records instead.
+
+---
+
+## Updates
+
+Basil checks for a newer release when it starts, and reports what it found. **A startup check never
+downloads or installs anything** — a server that restarted itself in the middle of a tournament
+would be worse than an out-of-date one.
+
+What the log says:
+
+| Situation | Level | Line |
+|---|---|---|
+| Running the newest release | Information | `Basil <version> is up to date` |
+| A newer release exists | Warning | `Basil <version> is available; this server is running <version>` |
+| The feed could not be reached | Warning | `Stopped checking for updates: the release feed could not be reached` |
+| `Update:CheckOnStartup` is `false` | Warning | `Not checking for updates: the startup check is turned off in settings` |
+| This copy was not installed by the updater | Warning | `Not checking for updates: this copy of Basil was not installed by the updater` |
+
+The check runs in the background and gives up after 15 seconds, so an unreachable feed never delays
+the server from accepting connections.
+
+### Installing an update
+
+Installing is a separate, deliberate action:
+
+```bash
+Basil.Server --update
+```
+
+This checks the feed, downloads a newer release if there is one, installs it and restarts. It
+reports and changes nothing when the server is already up to date.
+
+### Command line
+
+| Command | Short | Does |
+|---|---|---|
+| `--update` | `-u` | Check for a newer release, install it, and restart. |
+| `--version` | `-v` | Print the version of this server. |
+| `--help` | `-h` | List these commands. |
+
+With no command, the server starts. Any other argument is left for configuration, so a setting can
+still be overridden on the command line — `--Basil:Server:Port=8443`, for example.
 
 ---
 

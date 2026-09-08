@@ -319,12 +319,20 @@ this migration uses to move things, and the `LiveEventHub` is what step 6 needs.
 
 ---
 
-## 10. Open items
+## 10. Answered
 
-* Host assignment for `a.` (avatars) and `assets.` — argued in §3.3, low consequence.
-* Whether `Basil.Domain` keeps its current name once it holds live state and services, or
-  becomes something that says so more plainly.
-* Whether `Basil.Protocol` counts as a transport framework under the layering rule. It is
-  the project's own wire format with no external dependencies, and packet handlers live in
-  a host, so the question is only whether `Basil.Domain` may reference it at all. Current
-  answer: it should not need to, and the migration should discover whether that holds.
+The three questions this document opened are settled.
+
+**`a.` (avatars) and `assets.` belong to `Basil.Hosts.Api`.** They are read by any client that shows
+a user or a beatmap, not only by the osu! stable client, so they sit with the API surface rather
+than with the client transports.
+
+**`Basil.Domain` keeps its name.** It is the business layer, and the name says so.
+
+**`Basil.Domain` may not reference `Basil.Protocol`.** The protocol defines how the server is
+spoken to; it is not a place for business logic, and the business logic it would be needed for
+already belongs to `Domain`. Packet handlers live in `Basil.Hosts.Bancho`, which references both, so
+`Domain` never needs it. This is an invariant, not a preference — add it to §5:
+
+> 9. **`Basil.Domain` references `Basil.Protocol` no more than it references a web framework.**
+>    A business rule expressed in terms of a packet layout is a business rule in the wrong place.

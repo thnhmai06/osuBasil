@@ -182,9 +182,16 @@ Every machine that connects to Basil must be able to resolve all required servic
 
 - For a public deployment, create the appropriate DNS records.
 
-- For a LAN deployment, add the required entries to the hosts file on each client and on the server itself.
+- For a LAN deployment, the server advertises its own domain over multicast DNS by default, so
+  clients on the same network resolve it with no configuration. This only applies to domains ending
+  in `.local`, which includes the default `basil.local`.
 
-See [`getting-started.md`](../for-client/bancho/getting-started.md) for the exact hostnames and client-side configuration.
+- Otherwise — a domain outside `.local`, a network that blocks multicast, or a client that ignores
+  it — add the required entries to the hosts file on each client and on the server itself.
+
+See [Name resolution on a LAN](configuration.md#name-resolution-on-a-lan) for both methods and the
+exact list of names, and [`getting-started.md`](../for-client/bancho/getting-started.md) for the
+client-side configuration.
 
 ---
 

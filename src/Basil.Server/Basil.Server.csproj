@@ -91,6 +91,8 @@
 		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
 		<PackageReference Include="SixLabors.ImageSharp"/>
+		<PackageReference Include="Velopack"/>
+		<PackageReference Include="Makaretu.Dns.Multicast.New"/>
 	</ItemGroup>
 
 	<!-- Reduce unnecessary osu! runtime dependencies in self-contained publish output (#5) -->

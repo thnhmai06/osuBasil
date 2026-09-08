@@ -26,4 +26,15 @@ public sealed class ServerOptions
 
 	/// <summary>Gets or sets the password that decrypts the HTTPS certificate.</summary>
 	public string? CertPassword { get; init; }
+
+	/// <summary>
+	///     Whether the server answers multicast DNS queries for <see cref="Domain" /> and its
+	///     subdomains, so that clients on the same network resolve them without a hosts entry.
+	/// </summary>
+	/// <remarks>
+	///     Only <see cref="Domain" /> is advertised. The server also serves the equivalent
+	///     <c>ppy.sh</c> hosts, but claiming those on a shared network would redirect traffic that is
+	///     not this server's to answer for, so they are never advertised.
+	/// </remarks>
+	public bool AdvertiseDomain { get; init; } = true;
 }

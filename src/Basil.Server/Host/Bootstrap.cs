@@ -1,7 +1,9 @@
 using Basil.Server.Shared.Configuration;
+using Microsoft.Extensions.Options;
 using Basil.Server.Shared.Http;
 using Basil.Server.Shared.Http.Middleware;
 using SixLabors.ImageSharp.Web.DependencyInjection;
+using Velopack;
 
 namespace Basil.Server.Host;
 
@@ -15,12 +17,23 @@ public sealed class Bootstrap
 	/// <param name="args">The command-line arguments passed to the host.</param>
 	public static async Task Main(string[] args)
 	{
+		// Must run before anything else: on a machine where Basil was installed by the updater, this
+		// is what carries out a pending install, uninstall or first-run step and then exits.
+		VelopackApp.Build().Run();
+
+		if (await CommandLine.TryRunAsync(args)) return;
+
 		var builder = WebApplication.CreateBuilder(args);
 		SerilogSetup.Configure(builder);
 
 		ConfigurationSetup.Configure(builder, args);
 		KestrelSetup.Configure(builder);
 		builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
+		builder.Services.Configure<UpdateCheckOptions>(builder.Configuration.GetSection(UpdateCheckOptions.SectionName));
+		builder.Services.AddSingleton<IUpdateProbe>(serviceProvider =>
+			new VelopackUpdateProbe(serviceProvider.GetRequiredService<IOptions<UpdateCheckOptions>>().Value));
+		builder.Services.AddHostedService<StartupUpdateCheck>();
+		builder.Services.AddHostedService<DomainAdvertiser>();
 		ConfigureRouting(builder);
 
 		SliceRegistration.AddAll(builder);
