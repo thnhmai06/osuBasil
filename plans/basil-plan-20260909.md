@@ -234,6 +234,24 @@ The biggest single move. 96 files by measurement: services, live state, contract
   A2 declared.
 - [ ] Verify after every feature: full suite green, route table and metric names unchanged.
 
+**What `Basil.Domain` will need, measured 2026-09-09.** Excluding routes, packet handlers,
+persistence and DI files, 143 files are business-layer candidates. Of those:
+
+| Uses | Files | Verdict |
+|---|---:|---|
+| `ILogger<T>` | 28 | **Allowed.** `Microsoft.Extensions.Logging.Abstractions` contains abstractions only, and the codebase already logs through it rather than through Serilog — zero feature files import Serilog. |
+| `IOptions<T>` | 12 | **Allowed**, same reasoning. |
+| `IMemoryCache` | 4 | **Not business.** `CachingBeatmapRepository`, `CachingBeatmapsetRepository`, `CachingSettingsRepository` and their sibling are caching decorators over repositories: they are infrastructure and go to `Basil.Infrastructure`, not `Domain`. |
+| `HttpClient` | 1 | **Not business.** `HttpMirrorSearchClient` is an external-service adapter and goes to `Basil.Infrastructure`. |
+| `IHostedService` | 0 | — |
+
+So `Basil.Domain`'s package list ends up as the two abstraction packages and nothing else. Verify
+that by reading its csproj after the move, not by intention: the constraint is a project that
+*cannot* reach a framework, and a stray package reference silently removes that guarantee.
+
+`AdminKeyAuthenticationHandler` also lands in this bucket by file classification but is an ASP.NET
+authentication handler; it belongs to `Basil.Hosts.Api`.
+
 ### Task C2: Split `GameSession`
 
 The god object dissolves along the boundaries rather than by decree. Every row below follows the
