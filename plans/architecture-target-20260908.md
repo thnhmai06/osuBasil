@@ -3,8 +3,8 @@
 **Date:** 2026-09-08
 **Evidence:** `plans/architecture-assessment-20260908.md` — read that first; this document does
 not repeat its measurements.
-**Status:** proposal. Three structural decisions are settled by the user (§1.2); everything
-else is derived and open to revision.
+**Status:** proposal. The structural decisions in §1.2 and §10 are settled by the user;
+everything else is derived and open to revision.
 
 ---
 
@@ -114,18 +114,13 @@ makes a four-project feature navigable rather than scattered.
 
 | Host project | Hosts served | Why |
 |---|---|---|
-| `Basil.Hosts.Bancho` | `bancho.` (packet exchange), `osu.` (`/web/*.php`, `/d/{set}`), `b.` (beatmap assets), `a.` (avatars) | every one of these is spoken only by the osu! stable client |
+| `Basil.Hosts.Bancho` | `bancho.` (packet exchange), `osu.` (`/web/*.php`, `/d/{set}`), `b.` (beatmap assets) | every one of these is spoken only by the osu! stable client |
 | `Basil.Hosts.Irc` | the TCP IRC listener | a different transport with a different lifecycle: long-lived sockets, not request/response |
-| `Basil.Hosts.Api` | `api.`, `assets.` | the Basil API and the assets its consumers use (`cover`, `card`, `list`, `slimcover` variants are UI sizes, not client assets) |
+| `Basil.Hosts.Api` | `api.`, `assets.`, `a.` (avatars) | the Basil API and the assets any consumer reads. Avatars and the `cover`/`card`/`list`/`slimcover` crop variants are read by anything that shows a user or a beatmap, not only by the stable client |
 
 **`Irc` stops being a feature.** All eleven of its files — TCP listener, connection,
 session, authentication, query service, replies — are transport. It has been a host wearing
 a feature's name.
-
-Open item, low consequence: `a.` (avatars) and `assets.` both straddle the line. Avatars are
-read by the osu! client and by any UI; the assets host serves osu-web-style crop variants.
-The assignment above is a judgement, easily revised, and is called out here rather than
-buried.
 
 ---
 
@@ -187,6 +182,10 @@ number attached.
 8. **An abstraction exists only where it carries a boundary**, a real implementation swap,
    a lifecycle, or an external integration. One implementation and no boundary means no
    interface.
+9. **`Basil.Domain` references `Basil.Protocol` no more than it references a web framework.**
+   The protocol defines how the server is spoken to. A business rule expressed in terms of a
+   packet layout is a business rule in the wrong place; packet handlers live in
+   `Basil.Hosts.Bancho`, which references both, so `Domain` never needs it.
 
 ### The enforcement gap must be closed first
 
@@ -330,9 +329,5 @@ than with the client transports.
 **`Basil.Domain` keeps its name.** It is the business layer, and the name says so.
 
 **`Basil.Domain` may not reference `Basil.Protocol`.** The protocol defines how the server is
-spoken to; it is not a place for business logic, and the business logic it would be needed for
-already belongs to `Domain`. Packet handlers live in `Basil.Hosts.Bancho`, which references both, so
-`Domain` never needs it. This is an invariant, not a preference — add it to §5:
-
-> 9. **`Basil.Domain` references `Basil.Protocol` no more than it references a web framework.**
->    A business rule expressed in terms of a packet layout is a business rule in the wrong place.
+spoken to; it is not a place for business logic, and the logic it would be needed for already
+belongs to `Domain`. Recorded as invariant 9 in §5.
