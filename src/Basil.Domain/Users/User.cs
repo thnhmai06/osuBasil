@@ -11,7 +11,10 @@ namespace Basil.Domain.Users;
 /// <param name="Name">The username of the user.</param>
 /// <param name="Country">The country of the user.</param>
 /// <param name="Privilege">The server-side privileges granted to the user.</param>
-/// <param name="SilenceEnd">The time the user's silence expires, in UTC.</param>
+/// <param name="SilenceEnd">
+///     The time the user's silence expires, in UTC, or <see langword="null" /> when the user has
+///     never been silenced.
+/// </param>
 /// <param name="DeletedAt">
 ///     The time the user was deleted, or <see langword="null" /> if the account is active. Deletion
 ///     is soft: the row, its score/social/anticheat history, and its name stay intact, and the
@@ -28,7 +31,7 @@ public sealed partial record User(
 	string Name,
 	Country Country,
 	UserPrivileges Privilege,
-	DateTimeOffset SilenceEnd,
+	DateTimeOffset? SilenceEnd,
 	DateTimeOffset? DeletedAt = null)
 {
 	private static readonly Regex AllowedUsernameCharacters = OsuUsernamePattern();

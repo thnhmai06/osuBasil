@@ -17,7 +17,7 @@ public sealed record UserView(
 	string Name,
 	Country Country,
 	UserPrivileges Privilege,
-	DateTimeOffset SilenceEnd,
+	DateTimeOffset? SilenceEnd,
 	DateTimeOffset? DeletedAt);
 
 /// <summary>

@@ -52,10 +52,10 @@ public abstract class UserSession(int id, string name, string token, UserPrivile
 	public bool IsBot { get; init; }
 
 	/// <summary>
-	///     Gets or sets the time at which the userSession's current silence expires, or Unix epoch when the userSession is not
-	///     silenced.
+	///     Gets or sets the time at which the userSession's current silence expires, or
+	///     <see langword="null" /> when the userSession is not silenced.
 	/// </summary>
-	public DateTimeOffset SilenceEnd { get; set; } = DateTimeOffset.UnixEpoch;
+	public DateTimeOffset? SilenceEnd { get; set; }
 
 	/// <summary>
 	///     Gets or sets the away message shown to other players while this userSession is idle or null when the userSession
@@ -110,10 +110,10 @@ public abstract class UserSession(int id, string name, string token, UserPrivile
 
 	/// <summary>Gets the time remaining in the userSession's current silence, or zero when the userSession is not silenced.</summary>
 	public TimeSpan RemainingSilence =>
-		SilenceEnd > DateTimeOffset.UtcNow ? SilenceEnd - DateTimeOffset.UtcNow : TimeSpan.Zero;
+		SilenceEnd is { } end && end > DateTimeOffset.UtcNow ? end - DateTimeOffset.UtcNow : TimeSpan.Zero;
 
 	/// <summary>Gets a value that indicates whether the userSession is currently silenced.</summary>
-	public bool Silenced => RemainingSilence != TimeSpan.Zero;
+	public bool Silenced => SilenceEnd > DateTimeOffset.UtcNow;
 
 	/// <summary>Gets the set of channel names this session has joined, as a snapshot collection.</summary>
 	public IReadOnlyCollection<string> Channels => (IReadOnlyCollection<string>)_channels.Keys;

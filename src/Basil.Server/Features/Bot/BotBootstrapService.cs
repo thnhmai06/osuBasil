@@ -52,7 +52,7 @@ public sealed class BotBootstrapService(
 
 		var configuredName = botOptions.Value.Name;
 		if (user.Name != configuredName)
-			await users.UpdateNameAsync(BotId, configuredName, User.MakeSafeName(configuredName), cancellationToken);
+			await users.UpdateNameAsync(BotId, configuredName, cancellationToken);
 
 		var configuredCountry = botOptions.Value.Country;
 		var country = Enum.TryParse<Country>(configuredCountry, true, out var parsedCountry)

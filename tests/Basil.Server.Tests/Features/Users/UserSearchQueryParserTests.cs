@@ -1,5 +1,6 @@
 using Basil.Server.Features.Users;
 using Basil.Domain.Login;
+using Basil.Domain.Users;
 
 namespace Basil.Server.Tests.Features.Users;
 
@@ -74,11 +75,11 @@ public class UserSearchQueryParserTests
 	}
 
 	[Fact]
-	public void Parse_Privilege_SetsPrivilegeMask()
+	public void Parse_Privilege_SetsPrivilege()
 	{
 		var result = UserSearchQueryParser.Parse("privilege=2");
 
-		Assert.Equal((ushort)2, result.PrivilegeMask);
+		Assert.Equal((UserPrivileges)2, result.Privilege);
 	}
 
 	[Fact]
@@ -86,7 +87,7 @@ public class UserSearchQueryParserTests
 	{
 		var result = UserSearchQueryParser.Parse("privilege>2");
 
-		Assert.Null(result.PrivilegeMask);
+		Assert.Null(result.Privilege);
 		Assert.Equal("privilege>2", result.Keywords);
 	}
 
@@ -97,6 +98,6 @@ public class UserSearchQueryParserTests
 
 		Assert.Equal("peppy", result.Keywords);
 		Assert.Equal([Country.Jp], result.Countries);
-		Assert.Equal((ushort)1, result.PrivilegeMask);
+		Assert.Equal((UserPrivileges)1, result.Privilege);
 	}
 }

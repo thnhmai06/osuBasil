@@ -60,13 +60,26 @@ public interface IUserRepository
 	Task UpdatePrivilegesAsync(int id, UserPrivileges privilege, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Updates a user's name and its safe form together.
+	///     Updates a user's name.
 	/// </summary>
 	/// <param name="id">The id of the user to update.</param>
 	/// <param name="name">The new display name.</param>
-	/// <param name="safeName">The new normalized name, produced by <see cref="User.MakeSafeName" />.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default);
+	/// <remarks>
+	///     The stored safe form is derived from <paramref name="name" /> by the database itself and
+	///     is never written directly.
+	/// </remarks>
+	Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Updates the time a user's silence expires.
+	/// </summary>
+	/// <param name="id">The id of the user to update.</param>
+	/// <param name="silenceEnd">
+	///     The time the silence expires, or <see langword="null" /> to lift the silence immediately.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Creates a new user and returns it as persisted.
@@ -116,7 +129,10 @@ public interface IUserRepository
 	/// <param name="amount">The maximum number of users to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The matching users, in ascending id order.</returns>
-	/// <remarks>A deleted user never matches, regardless of the given filters.</remarks>
+	/// <remarks>
+	///     A deleted user matches only when <see cref="UserSearchFilters.IncludeDeleted" /> is
+	///     <see langword="true" />.
+	/// </remarks>
 	Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
 		CancellationToken cancellationToken = default);
 

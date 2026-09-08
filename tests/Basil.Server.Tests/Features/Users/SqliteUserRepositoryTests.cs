@@ -106,7 +106,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 	{
 		var created = (await _repository.CreateAsync("rename me", "hash", Country.Xx))!;
 
-		await _repository.UpdateNameAsync(created.Id, "renamed", "renamed");
+		await _repository.UpdateNameAsync(created.Id, "renamed");
 
 		var updated = await _repository.FetchByIdAsync(created.Id);
 		Assert.Equal("renamed", updated!.Name);
@@ -199,7 +199,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 
 		var results = await _repository.SearchAsync(
 			new UserSearchFilters("priv mask",
-				PrivilegeMask: (ushort)(UserPrivileges.Unrestricted | UserPrivileges.Verified)),
+				Privilege: UserPrivileges.Unrestricted | UserPrivileges.Verified),
 			0, 50);
 
 		Assert.Contains(results, u => u.Id == withBoth.Id);

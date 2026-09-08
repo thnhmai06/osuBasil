@@ -1,4 +1,5 @@
 using Basil.Domain.Login;
+using Basil.Domain.Users;
 
 namespace Basil.Server.Features.Users;
 
@@ -16,15 +17,26 @@ namespace Basil.Server.Features.Users;
 ///     one by concatenating their two-letter codes, e.g. <c>country=vnusuk</c> for Vietnam, the US, or
 ///     the UK.
 /// </param>
-/// <param name="PrivilegeMask">
-///     The user's privilege flags must include every bit set in this mask (a bitwise AND-match, not
+/// <param name="Privilege">
+///     The user's privilege flags must include every flag set here (a bitwise AND-match, not
 ///     an exact-equality comparison against the stored value).
+/// </param>
+/// <param name="Silenced">
+///     When set, matches only currently-silenced users (<see langword="true" />) or only
+///     not-currently-silenced users (<see langword="false" />). <see langword="null" /> applies no
+///     filter.
+/// </param>
+/// <param name="IncludeDeleted">
+///     When <see langword="true" />, a soft-deleted user can match; otherwise a deleted user never
+///     matches, regardless of the other filters.
 /// </param>
 public sealed record UserSearchFilters(
 	string? Keywords = null,
 	IReadOnlyList<Country>? Countries = null,
-	ushort? PrivilegeMask = null)
+	UserPrivileges? Privilege = null,
+	bool? Silenced = null,
+	bool IncludeDeleted = false)
 {
-	/// <summary>An empty filter set: every user matches.</summary>
+	/// <summary>An empty filter set: every non-deleted user matches.</summary>
 	public static readonly UserSearchFilters Empty = new();
 }

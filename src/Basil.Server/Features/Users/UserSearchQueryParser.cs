@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Basil.Server.Features.Users;
 using Basil.Domain.Login;
+using Basil.Domain.Users;
 
 namespace Basil.Server.Features.Users;
 
@@ -71,7 +72,7 @@ public static partial class UserSearchQueryParser
 	private sealed class Builder
 	{
 		private IReadOnlyList<Country>? _countries;
-		private ushort? _privilegeMask;
+		private UserPrivileges? _privilege;
 
 		public bool TryApply(string key, string rawValue)
 		{
@@ -83,7 +84,7 @@ public static partial class UserSearchQueryParser
 					return true;
 				case "privilege":
 					if (!ushort.TryParse(rawValue, out var mask)) return false;
-					_privilegeMask = mask;
+					_privilege = (UserPrivileges)mask;
 					return true;
 				default:
 					return false;
@@ -114,7 +115,7 @@ public static partial class UserSearchQueryParser
 
 		public UserSearchFilters Build(string? keywords)
 		{
-			return new UserSearchFilters(keywords, _countries, _privilegeMask);
+			return new UserSearchFilters(keywords, _countries, _privilege);
 		}
 	}
 }

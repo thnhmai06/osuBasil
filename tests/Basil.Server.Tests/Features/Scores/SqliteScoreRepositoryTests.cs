@@ -7,7 +7,6 @@ using Basil.Server.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
-
 using Basil.Server.Tests.Shared.Persistence;
 
 namespace Basil.Server.Tests.Features.Scores;
@@ -23,8 +22,8 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 		await using var connection = new SqliteConnection(fixture.ConnectionString);
 		await connection.ExecuteAsync(
 			"""
-			INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country)
-			VALUES (@Id, @Name, @Name, 'unused', @Privilege, @Country)
+			INSERT INTO Users (Id, Name, PwBcrypt, Privilege, Country)
+			VALUES (@Id, @Name, 'unused', @Privilege, @Country)
 			""",
 			new { Id = id, Name = name, Privilege = privilege, Country = country });
 	}
@@ -168,8 +167,8 @@ public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<S
 			await using (var connection = new SqliteConnection(connectionString))
 			{
 				await connection.ExecuteAsync(
-					"INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country) " +
-					"VALUES (500, 'pager', 'pager', 'unused', 0, 'xx')");
+					"INSERT INTO Users (Id, Name, PwBcrypt, Privilege, Country) " +
+					"VALUES (500, 'pager', 'unused', 0, 'xx')");
 			}
 
 			var mapMd5 = new string('m', 32);

@@ -156,7 +156,7 @@ internal static class UserRoutes
 				if (!User.ValidateUsername(body.Name, out var usernameError))
 					return Results.BadRequest(new ErrorResponse(usernameError));
 
-				await users.UpdateNameAsync(userId, body.Name, User.MakeSafeName(body.Name), cancellationToken);
+				await users.UpdateNameAsync(userId, body.Name, cancellationToken);
 				await users.UpdateCountryAsync(userId, body.Country, cancellationToken);
 				await users.UpdatePrivilegesAsync(userId, body.Privilege, cancellationToken);
 				logger.LogInformation(
@@ -194,7 +194,7 @@ internal static class UserRoutes
 					if (!User.ValidateUsername(body.Name, out var usernameError))
 						return Results.BadRequest(new ErrorResponse(usernameError));
 
-					await users.UpdateNameAsync(userId, body.Name, User.MakeSafeName(body.Name), cancellationToken);
+					await users.UpdateNameAsync(userId, body.Name, cancellationToken);
 				}
 
 				if (body.Country is not null)
@@ -360,8 +360,7 @@ internal static class UserRoutes
 
 	private static User SampleUser()
 	{
-		return new User(7, "Alice", Country.Vn, UserPrivileges.Unrestricted | UserPrivileges.Verified,
-			DateTimeOffset.UnixEpoch);
+		return new User(7, "Alice", Country.Vn, UserPrivileges.Unrestricted | UserPrivileges.Verified, null);
 	}
 
 	private static async Task<IResult> HandleGetUser(int userId, IUserRepository users,
@@ -403,7 +402,8 @@ internal static class UserRoutes
 		if (userId == BotBootstrapService.BotId)
 			return SseEndpoints.SseError(StatusCodes.Status400BadRequest,
 				"BasilBot has no live stream to expose.");
-		return PlayerLiveRoutes.HandleInput(context, userId, inputEvents, statusEvents, gameRegistry, cancellationToken);
+		return PlayerLiveRoutes.HandleInput(context, userId, inputEvents, statusEvents, gameRegistry,
+			cancellationToken);
 	}
 }
 

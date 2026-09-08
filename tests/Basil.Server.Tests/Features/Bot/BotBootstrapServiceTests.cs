@@ -57,7 +57,7 @@ public class BotBootstrapServiceTests
 		Assert.True(result.IsBot);
 		Assert.Equal("BasilBot", result.Name);
 		_sessionRegistry.Received(1).TryAdd(result);
-		await _users.DidNotReceiveWithAnyArgs().UpdateNameAsync(0, null!, null!);
+		await _users.DidNotReceiveWithAnyArgs().UpdateNameAsync(0, null!);
 	}
 
 	[Fact]
@@ -74,7 +74,7 @@ public class BotBootstrapServiceTests
 		var result = await service.BootstrapAsync();
 
 		Assert.Equal("TourneyBot", result!.Name);
-		await _users.Received(1).UpdateNameAsync(0, "TourneyBot", "tourneybot", Arg.Any<CancellationToken>());
+		await _users.Received(1).UpdateNameAsync(0, "TourneyBot", Arg.Any<CancellationToken>());
 	}
 
 	[Fact]

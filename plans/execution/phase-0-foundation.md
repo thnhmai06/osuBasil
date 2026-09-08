@@ -27,12 +27,107 @@ Last updated: 2026-09-08 (local, UTC+7)
 - Task 0.10 -- `LiveEventHub` and `StateStream`, commit (this session, see below).
 - Task 0.11 -- merged `Basil.Application.Tests` and `Basil.Infrastructure.Tests` into
   `tests/Basil.Server.Tests`, commit (this session, see below).
+- Task 0.13 -- the User contract change and migration 006, commit (this session, see below).
 
 ## Current state
-Tasks 0.1-0.11 are done. Full suite: **1628/1628 passed, 0 failed, 0 skipped**, unchanged by Task
-0.11 as required (1625 prior baseline + 3 from Task 0.10's `LiveEventHubTests`; Task 0.11 only moved
-tests, adding none). Next up is Task 0.13 (the User contract and migration 006) -- Task 0.12 (xunit
-v3) and Task 0.14 are explicitly out of scope for this worker and left for later.
+Tasks 0.1-0.11 and 0.13 are done (0.12 and 0.14 are explicitly out of scope for this worker and left
+for a later session). Full suite: **1636/1636 passed, 0 failed, 0 skipped** (1628 prior + 8 from
+Task 0.13's `SafeNameGenerationTests`).
+
+### Task 0.13 details (this session)
+- **`SafeNameGenerationTests.GeneratedSafeNameMatchesMakeSafeName` written and watched fail first**,
+  per the plan's TDD step. It needed a new `UsersFixture` (not `SqliteFixture`) alongside it, because
+  `IClassFixture<SqliteFixture>` shares one database across every `[InlineData]` case in a theory,
+  and two of the plan's eight cases collide on the generated `SafeName` (`"pe ppy"` and `"PE_PPY"`
+  both -> `pe_ppy`) -- inserting both into the same database would trip the migration's own
+  `Users_SafeName_uindex` UNIQUE constraint, which is the *correct* behavior, not a test bug. This
+  was flagged by the advisor before writing any code, not discovered the hard way.
+  `UsersFixture.CreateAsync()` builds and migrates a fresh temp-file database per call (unlike
+  `SqliteFixture`, which is deliberately shared per test class), and `InsertUserAsync` omits
+  `SafeName` entirely from its `INSERT`. Watched red first: all 8 cases failed with
+  `NOT NULL constraint failed: Users.SafeName` (the column is still a real, non-generated, not-null
+  column before migration 006 exists) -- exactly the advisor-predicted discriminating failure, and
+  confirms the test could not have passed against unmodified code (unlike Task 0.9's first attempt).
+  After writing migration 006: 8/8 pass.
+- **A real defect in the plan's own Step 4 instruction was found by running it, not by reasoning
+  about it, and reverted.** The plan says "remove SafeName from the seed insert in 001_base.sql".
+  Doing that literally breaks every fresh migration: at the point in schema history where 001 runs,
+  `Users.SafeName` is still the *original* real `not null` column with no default (migration 006,
+  which turns it into a generated column, hasn't run yet) -- omitting it from 001's own INSERT trips
+  the same NOT NULL violation `SafeNameGenerationTests` uses as its red signal, except now on every
+  single test in the suite, since nothing can migrate a fresh database at all. Measured directly:
+  removed it, ran `SafeNameGenerationTests`, got `SQL migration failed` /
+  `NOT NULL constraint failed: Users.SafeName` from `SqlMigrationRunner` itself, for all 8 cases.
+  Reverted 001_base.sql to its original content (`git diff` against this commit's parent shows this
+  file completely unchanged). This has zero effect on the final schema or seeded data: migration
+  006's `insert into Users_new (Id, Name, Privilege, PwBcrypt, Country, SilenceEnd, DeletedAt)
+  select ... from Users` never selects the old `SafeName` column at all (the new table's `SafeName`
+  is generated, so it is recomputed fresh for every row, BasilBot included, discarding whatever the
+  original insert wrote) -- so 001's literal `SafeName` value was always going to be overwritten by
+  006's rebuild regardless. The plan's instruction appears to assume 001 and 006 could be edited
+  independently; they cannot, because 001 alone must still produce a schema DbUp can apply on a
+  bare database before 006 exists to fix it up.
+- **Schema diff, run twice**: once with a from-scratch throwaway script applying the `.sql` files
+  directly (matching the Task 0.1 baseline's own capture method), then again -- after noticing the
+  first method also can't see DbUp's `SchemaVersions` table, since it doesn't go through DbUp either
+  -- via a temporary `[Fact]` inside `Basil.Server.Tests` calling the real
+  `SqlMigrationRunner.RunMigrations` (the actual production code path), dumping to a temp file, then
+  deleted before committing (confirmed via `git status` showing nothing under
+  `Features/Users/ZZZSchemaDumpThrowaway.cs`). The second, real-path diff against
+  `plans/execution/baseline/schema.txt` (`diff -b`) shows exactly:
+  - `SchemaVersions` table added -- expected (DbUp's journal, absent from the baseline because the
+    baseline was captured by raw script application, per Task 0.3's own note about this).
+  - `Users.SafeName` gains `generated always as (replace(lower(Name), ' ', '_')) stored` -- expected.
+  - `Users.SilenceEnd` loses `not null` and its `'1970-01-01 00:00:00'` default, and `DeletedAt`
+    moves onto its own line -- expected (the single-line squish in the baseline is an artifact of
+    migration 003's `ALTER TABLE ADD COLUMN` appending inline; the rebuild's literal `CREATE TABLE`
+    text has each column on its own line, matching the plan's own SQL).
+  - `CREATE TABLE Users` becomes `CREATE TABLE "Users"` -- **the one difference beyond the plan's
+    named three, investigated rather than waved through.** This is SQLite's own well-known behavior
+    for `ALTER TABLE ... RENAME TO`: the stored `sqlite_master.sql` text gets the new name quoted,
+    regardless of what created the table underneath. It is inherent to the exact
+    `create Users_new / drop Users / rename to Users` technique the plan's own migration 006 SQL
+    (used verbatim) requires -- the design section itself explains this rebuild is unavoidable
+    because SQLite refuses `DROP COLUMN` on the indexed `SafeName` column. Purely a text-representation
+    artifact of `sqlite_master`; `"Users"` and `Users` name the identical table to SQLite, confirmed
+    functionally by every `Sqlite*RepositoryTests` class (13 of them) passing unchanged. Not a
+    defect -- flagged here because the task said to treat anything beyond the three named
+    differences as suspect until explained.
+- **Twenty consumers, verified by touching every one, not by trusting the plan's count.** Five
+  `IUserRepository` implementations needed both signature changes
+  (`UpdateNameAsync(id, name, ct)`, new `UpdateSilenceEndAsync`): `SqliteUserRepository`,
+  `CachingUserRepository` (production), plus three test/integration fakes discovered by grepping
+  `": IUserRepository"` across the whole tree rather than trusting any prior count --
+  `TcpIrcConnectionTests.FakeUserRepository`, `CachingUserRepositoryTests.CountingUserRepository`,
+  and three near-identical fakes in `Basil.IntegrationTests` (`MatchLiveChannelsEndpointTests`,
+  `MatchSubResourceEndpointTests`, `MatchSubResourceSseEndpointTests`). Every `new User(...)`
+  construction site across `src`+`tests` was grepped (28 call sites): all but three already passed
+  `default` for the `SilenceEnd` positional argument, which is `null` for the now-nullable type with
+  no source change needed -- confirms the design's framing that "never silenced" was always meant to
+  be a null-shaped absence, not a real epoch timestamp. The handful passing `DateTimeOffset.UnixEpoch`
+  explicitly still behave identically under the new model (a past timestamp is still "not currently
+  silenced" under `SilenceEnd > UtcNow`), so were left untouched -- surgical scope, not touching
+  behaviorally-equivalent test code.
+- **`UserRoutes.SampleUser()`'s OpenAPI example** changed from `DateTimeOffset.UnixEpoch` to `null`
+  for `SilenceEnd` -- this is user-facing API documentation (an OpenAPI response example), and the
+  whole point of nullable `SilenceEnd` is that "not silenced" is now `null`, not a sentinel
+  timestamp; leaving the old sentinel in the example would misrepresent the new contract to API
+  consumers reading the docs.
+- **`UserSearchQueryParser`'s `privilege=` token keeps today's numeric-only parsing**, now storing a
+  `UserPrivileges?` instead of `ushort?` (a one-line cast at the parse site). Per the task's explicit
+  instruction, flag-name parsing and the sensitive-filter strictness/authorization gate (design 7.3)
+  are Task 3.2's territory, not touched here.
+- **`BuildSearchWhereClause` returns an empty string (not `"WHERE "`) when every filter is absent**
+  (relevant once `IncludeDeleted: true` combines with `UserSearchFilters.Empty`, which is otherwise
+  unreachable from any caller in this task -- Task 3.2 wires the first caller that can actually set
+  it). Not exercised by a new test, since nothing constructs that combination yet; a one-line
+  defensive correctness fix directly required by making `DeletedAt IS NULL` conditional, not new
+  scope.
+- Verification: `dotnet build --configuration Release` -- 0 errors (16 warnings, same set as before
+  minus one line-number shift). Full suite: **1636/1636 passed, 0 failed, 0 skipped**, no flake this
+  run (both the documented `Basil.IntegrationTests` flake candidates passed clean). Arithmetic:
+  1628 (prior) + 8 (`SafeNameGenerationTests`) = 1636. `tests/Basil.Protocol.Tests` untouched by
+  `git status` and green at 158/158, confirmed both before and after this task's changes.
 
 ### Task 0.11 details (this session)
 - **Full inventory taken before moving anything**: 96 `.cs` files under `Basil.Application.Tests`
@@ -715,14 +810,16 @@ Also see "Known issues / blockers" above before treating any `Basil.IntegrationT
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
 
 ## Next exact step
-Tasks 0.10 and 0.11 are complete and committed this session. Full suite: 1628/1628, unmoved by 0.11.
-The next step is **Task 0.13** (the User contract and migration 006) -- read that task's section
-fresh in `plans/vsa-migration-plan-20260907.md` and design section 7.1-7.3. Task 0.12 (xunit v3) and
-Task 0.14 (verification/advisor checkpoint) are explicitly out of scope for this worker; the next
-worker after this one should pick up 0.12. Things worth carrying forward:
-- All test-project paths in any future task now belong under `tests/Basil.Server.Tests/`, mirroring
-  `Features/<Slice>/` and `Shared/<Concern>/`. `tests/Basil.Application.Tests` and
-  `tests/Basil.Infrastructure.Tests` no longer exist.
+Tasks 0.10, 0.11 and 0.13 are complete and committed this session. Full suite: 1636/1636. Task 0.12
+(xunit v3) and Task 0.14 (baseline verification and advisor checkpoint) are the only Phase 0 tasks
+left, both explicitly out of scope for this worker per the orchestrator's instruction to stop after
+0.13. The next worker should start **Task 0.12** -- read that task's section fresh in
+`plans/vsa-migration-plan-20260907.md`. Things worth carrying forward:
+- All test-project paths now belong under `tests/Basil.Server.Tests/`, mirroring `Features/<Slice>/`
+  and `Shared/<Concern>/`. `tests/Basil.Application.Tests` and `tests/Basil.Infrastructure.Tests` no
+  longer exist -- Task 0.12's xunit-v3 migration only has one test project (plus
+  `Basil.Domain.Tests`, `Basil.Protocol.Tests`, `Basil.IntegrationTests`, `Basil.ArchitectureTests`)
+  to touch, not two.
 - The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
   above) is real and will bite the first person who actually runs `docker compose up` on this
   branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
@@ -733,10 +830,11 @@ worker after this one should pick up 0.12. Things worth carrying forward:
 - Task 0.10's advisor review flagged a real Phase-1 hazard (a stale-subscriber publish race can
   hand a subscriber a delta instead of a full snapshot) -- see that task's own checkpoint entry.
   Not this worker's problem, but Task 1.3 needs to read it before adopting the hub.
-- The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
-  above) is real and will bite the first person who actually runs `docker compose up` on this
-  branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
-- `Shared_Should_Not_Reference_Features` (see Task 0.4's decision and Task 0.8's `LocaleTouch`
-  entry above) is a live tripwire, not just documentation -- any new `Shared/*` type that names a
-  `Features/*` type by type will fail it immediately. Check this test first if a build error is
-  confusing after adding something to `Shared/`.
+- Task 0.13's checkpoint entry above documents a defect found in the plan's own Step 4 instruction
+  (removing `SafeName` from `001_base.sql`'s seed insert breaks every fresh migration) and why it
+  was reverted rather than applied. If Task 0.12 or later touches migration ordering, re-read that
+  entry before assuming 001 and 006 can be edited independently.
+- Do not re-run the Task 0.1 Step 5 schema dump via a standalone console project referencing
+  `Basil.Server.csproj` directly -- it fails to build (`NETSDK1151`: a self-contained executable
+  cannot be referenced by a non-self-contained one). Use a temporary `[Fact]` inside
+  `Basil.Server.Tests` instead (delete it before committing), as Task 0.13 did.

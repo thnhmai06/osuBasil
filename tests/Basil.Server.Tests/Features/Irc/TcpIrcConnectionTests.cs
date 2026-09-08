@@ -476,7 +476,13 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
-		public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+		public Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default)
+		{
+			throw new NotSupportedException();
+		}
+
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}

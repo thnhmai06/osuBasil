@@ -501,7 +501,12 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+		public Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

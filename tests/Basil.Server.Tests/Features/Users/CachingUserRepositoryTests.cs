@@ -75,7 +75,7 @@ public class CachingUserRepositoryTests
 			NullLogger<CachingUserRepository>.Instance);
 
 		await repo.FetchByNameAsync("Alice");
-		await repo.UpdateNameAsync(7, "Alicia", "alicia");
+		await repo.UpdateNameAsync(7, "Alicia");
 		inner.UsersByName["alicia"] = MakeUser(7, "Alicia");
 		await repo.FetchByNameAsync("Alice");
 
@@ -154,7 +154,13 @@ public class CachingUserRepositoryTests
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+		public Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+			CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

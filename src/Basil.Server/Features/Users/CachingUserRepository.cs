@@ -93,14 +93,22 @@ public sealed class CachingUserRepository(
 	///     Invalidates the old-name entry as well as the new-name and id entries, so a lookup by the
 	///     previous name stops resolving to this user.
 	/// </remarks>
-	public async Task UpdateNameAsync(int id, string name, string safeName,
-		CancellationToken cancellationToken = default)
+	public async Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default)
 	{
 		var before = await inner.FetchByIdAsync(id, cancellationToken);
-		await inner.UpdateNameAsync(id, name, safeName, cancellationToken);
+		await inner.UpdateNameAsync(id, name, cancellationToken);
 		cache.Remove(IdKey(id));
 		if (before is not null) cache.Remove(NameKey(before.Name));
 		cache.Remove(NameKey(name));
+	}
+
+	/// <inheritdoc cref="IUserRepository.UpdateSilenceEndAsync" />
+	/// <remarks>Invalidates the id-keyed entry after updating.</remarks>
+	public async Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+		CancellationToken cancellationToken = default)
+	{
+		await inner.UpdateSilenceEndAsync(id, silenceEnd, cancellationToken);
+		cache.Remove(IdKey(id));
 	}
 
 	/// <inheritdoc cref="IUserRepository.SoftDeleteAsync" />
