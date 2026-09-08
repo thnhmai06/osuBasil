@@ -95,11 +95,11 @@ public sealed class AdminKeyAuthenticationHandler(
 public static class AdminKeyDefaults
 {
 	/// <summary>The authentication scheme name used by <see cref="AdminKeyAuthenticationHandler" />.</summary>
-	public const string Scheme = "AdminKey";
+	public static readonly string Scheme = "AdminKey";
 
 	/// <summary>The authorization policy name that requires the <see cref="Role" /> role.</summary>
-	public const string Policy = "Admin";
+	public static readonly string Policy = "Admin";
 
 	/// <summary>The role claimed on an authenticated admin principal and required by the <see cref="Policy" /> policy.</summary>
-	public const string Role = "Admin";
+	public static readonly string Role = "Admin";
 }

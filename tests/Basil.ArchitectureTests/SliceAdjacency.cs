@@ -21,6 +21,11 @@ internal static class SliceAdjacency
 	public static readonly (string From, string To)[] Allowed =
 	[
 		// LoginService seeds the account's channel membership at login.
+		// ClientIntegrityService and LoginService look up the bot's session by
+		// BotBootstrapService.BotId to send it a message. Constant-only until the const became a
+		// static readonly field, which is why the edge is only now declared.
+		("Auth", "Bot"),
+
 		("Auth", "Chat"),
 
 		// AdminKeyService reads/writes ISettingsRepository; LoginService touches
@@ -153,11 +158,32 @@ internal static class SliceAdjacency
 		("Spectating", "Multiplayer"),
 
 		// UserRoutes uses Auth.IPasswordHasher for account creation/password changes.
+		// AvatarRoutes and UserRoutes gate admin-only behaviour on AdminKeyDefaults.
 		("Users", "Auth"),
 
 		// The per-player live stream is addressed under the user resource
 		// (`/users/{id}/live`, UserRoutes) and spectating consumes user presence changes
 		// (Packets/ChangeActionHandler.cs).
-		("Users", "Spectating")
+		("Users", "Spectating"),
+
+		// BeatmapsetRoutes and BeatmapsetAssetRoutes gate admin-only behaviour and private-set
+		// visibility on AdminKeyDefaults.
+		("Beatmaps", "Auth"),
+
+		// Every Content route gates its write side on AdminKeyDefaults.
+		("Content", "Auth"),
+
+		// AnnounceRoutes excludes the bot from an announcement by BotBootstrapService.BotId.
+		("Content", "Bot"),
+
+		// MatchRoutes and MatchSubResourceRoutes gate referee-only operations on AdminKeyDefaults.
+		("Multiplayer", "Auth"),
+
+		// MatchControlService and MatchLiveSnapshotBuilder resolve the bot's session by
+		// BotBootstrapService.BotId; the bot is the match's default host.
+		("Multiplayer", "Bot"),
+
+		// AvatarRoutes and UserRoutes skip the bot account by BotBootstrapService.BotId.
+		("Users", "Bot")
 	];
 }

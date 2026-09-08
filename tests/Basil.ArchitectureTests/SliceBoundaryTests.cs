@@ -78,6 +78,7 @@ public class SliceBoundaryTests
 			"Basil.Server.Shared.Http.Bancho.PacketDispatcher",
 			"Basil.Server.Shared.Http.BanchoHostGroups",
 			"Basil.Server.Shared.Http.OpenApi.OpenApiExampleExtensions",
+			"Basil.Server.Shared.Http.OpenApi.SecuritySchemeTransformers",
 			"Basil.Server.Shared.Http.OsuWebRoutes",
 			"Basil.Server.Shared.Media.Assets.BeatmapsetBackgroundProvider",
 			"Basil.Server.Shared.Media.Assets.BeatmapThumbnailProvider",

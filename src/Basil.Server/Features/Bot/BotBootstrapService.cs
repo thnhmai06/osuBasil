@@ -29,7 +29,7 @@ public sealed class BotBootstrapService(
 	IOptions<BotOptions> botOptions,
 	ILogger<BotBootstrapService> logger)
 {
-	public const int BotId = SystemUserIds.BasilBot;
+	public static readonly int BotId = SystemUserIds.BasilBot;
 	private const string BotToken = "bancho-bot-session";
 
 	/// <summary>
