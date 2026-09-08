@@ -24,7 +24,7 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | Task | Status | Owner | Notes |
 | --- | --- | --- | --- |
 | 1.1 Mutation invariant audit | Done | orchestrator + worker | 40 class A, 7 class B all from one root cause; fixed at source instead of adding `Invalidate()` |
-| 1.2 `MatchMutationScope` | Ready | — | 1.1 settled it: build as designed, **no** `Invalidate()` and no suppression path |
+| 1.2 `MatchMutationScope` (plan B4) | **Half done** | orchestrator | scope + 6 tests green and committed (`9357b56`); the 47 call sites are not converted yet |
 | 1.3 Adopt the hub | Not started | — | read the Task 0.10 hazard first |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
 | 1.5 Decompose `MatchControlService` | Not started | — | 1303 lines, 43 members; **also owns audit Observation 1** — `SetHostAsync` and `PUT /matches/{id}/hosts` never check the target is seated |
@@ -93,6 +93,29 @@ Two candidate fixes, with their costs:
 
 Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide it while doing Task
 1.3, against the real call sites.
+
+
+## Task B4 — where it stands, and the trap in it
+
+The scope itself is built, correct and committed at `9357b56`. **The call-site conversion has not
+started**; `grep -rn "Lock.WaitAsync" src/Basil.Server --include=*.cs` still returns 51, of which 3
+are unrelated locks.
+
+The bug that cost three worker sessions is worth knowing before touching this code again.
+`BeginMutationAsync` was an `async` method that set an `AsyncLocal<bool>` after awaiting the lock.
+An `AsyncLocal` assignment made inside an async method belongs to that method's execution context
+and is discarded when it returns, so the caller never saw it, the nesting guard never fired, and the
+second `BeginMutationAsync` on the same flow waited on a lock its own caller held. Every test run
+hung instead of failing.
+
+Two consequences that generalise:
+
+* **Check and mark synchronously, before any await**, when a marker has to be visible to the caller.
+  Awaiting moves into a private method. The marker is a box, not a bool, so that clearing it from
+  inside an async method mutates the object the caller already holds.
+* **A test that pins "throws rather than waits" must carry a timeout.** Both such tests here were
+  written to hang on regression. A hung suite is much harder to diagnose than a failed assertion,
+  and it is exactly why this stayed invisible.
 
 ## Next exact step
 
