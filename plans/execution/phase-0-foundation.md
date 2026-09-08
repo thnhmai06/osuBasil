@@ -1,7 +1,7 @@
 # Phase 0: Foundation
 
 Status: Implementing
-Last updated: 2026-09-08T07:10:00Z (local 2026-09-08 14:10 UTC+7)
+Last updated: 2026-09-08 (local, UTC+7)
 
 ## Completed
 - Task 0.1 -- captured the pre-migration baseline, commit `91d151f`
@@ -10,19 +10,82 @@ Last updated: 2026-09-08T07:10:00Z (local 2026-09-08 14:10 UTC+7)
   commit `977b561`
 - Task 0.4 -- rewrote the architecture tests with real slice-boundary rules, commit `1142bc1`
 - Task 0.5 -- split `Program.cs` into `Host/`, commit `1bee08d`
+- Task 0.6 -- DI and routing seams (per-slice DI + routing surfaces), commit `a3e7b99`. This entry
+  was missing from this checkpoint until now -- the file was left saying "Next exact step: Task 0.6"
+  after 0.6 had already landed; backfilled by the worker doing 0.7/0.9/0.8 after noticing the
+  mismatch against `git log`.
+- Task 0.7 -- split `BasilMetrics` per slice into `Shared/Http/HttpMetrics`,
+  `Shared/Persistence/PersistenceMetrics`, `Shared/Eventing/EventingMetrics`,
+  `Features/Multiplayer/MultiplayerMetrics`, all on `Shared/BasilMeter`, commit `d1866c8`. Metric
+  name diff actually measured (not eyeballed):
+  `grep -rhoE '"basil\.[a-z_.]+"' src --include=*.cs | sort -u | diff plans/execution/baseline/metrics.txt -`
+  exit code 0, empty diff. Full suite 1621/1621 (one `Basil.IntegrationTests` failure on the combined
+  run was the documented Windows file-handle flake; isolated re-run of that project alone was
+  355/355).
+- Task 0.9 -- configuration source chain, commit (this session, see below).
 
 ## Current state
-Task 0.5 is complete: build succeeds with 0 errors, full suite is 1621/1621 passed, 0 failed, 0
-skipped -- a clean run this time, no flake. `src/Basil.Server/Host/Program.cs` no longer exists;
-`Host/Bootstrap.cs` (`public sealed class Bootstrap`) is the new entry point, and
-`tests/Basil.IntegrationTests` uses `WebApplicationFactory<Bootstrap>`. Verified by actually running
-the built server that the "Host" log category still applies (SourceContext
-`Basil.Server.Host.Bootstrap`, output still tagged `[Host]`). Task 0.6 (DI and routing seams) is
-next.
+Tasks 0.1-0.7 and 0.9 are done (0.9 done out of plan order, per the orchestrator's explicit
+instruction to sequence 0.7, 0.9, 0.8). Task 0.8 (localization) is next, in progress by this same
+worker/session.
+
+### Task 0.9 details (this session)
+- **The plan's Test 1 does not discriminate the fix, measured, not assumed.** Ran the plan's exact
+  `EnvironmentVariablesDoNotOverrideApplicationSettings` test against the *unmodified* production
+  code (before adding `Sources.Clear()`) and it already passed. Root cause, confirmed with a
+  throwaway diagnostic dump of `builder.Configuration.Sources` before/after `Configure`:
+  `WebApplication.CreateBuilder` inherits 12 sources, including three separate
+  `EnvironmentVariablesConfigurationSource` registrations, but the pre-existing (unfixed)
+  `ConfigurationSetup.Configure` appends `Data/appsettings.json` via `AddJsonFile` *after* returning
+  from `CreateBuilder` -- so the appended file already won every precedence race regardless of
+  whether the inherited sources were ever cleared. The design doc's claim that
+  "`Basil__Server__Port` silently outranked the file" does not reproduce against the current
+  (post-0.5/0.6) code; it was an ordering accident that already happened to resolve correctly, not
+  an active bug. Advisor-reviewed decision: keep the `Sources.Clear()` fix anyway (single source of
+  truth as a structural property of the source *list*, not of append order, is still the right
+  design), but replace the non-discriminating verification with one that actually goes red before
+  the fix: `Configure_ReplacesTheInheritedSourcesWithExactlyTheIntendedThree` asserts
+  `builder.Configuration.Sources` is exactly `[JsonConfigurationSource("Data/appsettings.json"),
+  JsonConfigurationSource("Data/appsettings.{Env}.json"), CommandLineConfigurationSource]` via
+  `Assert.Collection` -- this fails at 13 sources pre-fix, passes at 3 post-fix. Kept the original
+  `EnvironmentVariablesDoNotOverrideApplicationSettings` test too (it still pins the real
+  user-visible contract, just wasn't sufficient alone), plus the plan's staging-environment test.
+  Commit message states what was actually measured, not the plan's unverified claim.
+- **Env var inventory checked before trusting `Sources.Clear()` is safe**:
+  `grep -n "ASPNETCORE\|DOTNET_" docker-compose.yml Dockerfile .github/workflows/*.yml` returns only
+  `docker-compose.yml:14: ASPNETCORE_ENVIRONMENT: Production`. No other `ASPNETCORE_*`/`DOTNET_*`
+  variable is relied on anywhere in this repo's deployment surface, so clearing the inherited source
+  list has no other host-configuration blind spot to worry about.
+- **Test placement: `tests/Basil.Application.Tests/Host/ConfigurationSourceTests.cs`, not a new
+  `Basil.Server.Tests` project.** `tests/Basil.Server.Tests` does not exist yet -- Task 0.11 ("Merge
+  the test projects") creates it later, and creating it early would collide with that task's own
+  `Basil.slnx` edit, which this worker was told not to start. `Basil.Application.Tests` already
+  references `Basil.Server.csproj` and already owns a `Configurations/` folder of config-binding
+  tests, so this is a natural, temporary home; Task 0.11's file-move sweeps it into
+  `Basil.Server.Tests/Host/` for free. **Same placement decision applies to Task 0.8's coverage
+  test.**
+- **`ConfigurationSetup` is `internal`, so the test needs `InternalsVisibleTo`.** Added
+  `<InternalsVisibleTo Include="Basil.Application.Tests"/>` to `Basil.Server.csproj` rather than
+  making `ConfigurationSetup` public (rule 3/CLAUDE.md: don't widen production surface for test
+  convenience). **Whoever does Task 0.11 must rename this entry to `Basil.Server.Tests` when the
+  test project is renamed**, or the merged project loses access and the build breaks.
+- Verification: `dotnet build --configuration Release` -- 0 errors. Full suite: **1624/1624 passed,
+  0 failed, 0 skipped** (baseline 1621 + 3 new tests in `ConfigurationSourceTests`; no flake this
+  run).
+- `docs/for-technicians/configuration.md` updated in the same commit: "Configuration precedence"
+  section now states the three sources explicitly (`appsettings.json` ->
+  `appsettings.{Environment}.json` -> command-line args) and that environment variables configure
+  the host (`ASPNETCORE_ENVIRONMENT`) only, not an individual Basil setting. Also fixed a now-false
+  downstream claim in the same file ("prefer environment variables for deployment-specific values")
+  that the source-chain fix made incorrect -- changed to recommend bind-mounting
+  `appsettings.json`/an environment overlay instead, since env vars no longer reach Basil settings at
+  all. Left the pre-existing stale `src/Basil.Web/Data/appsettings.json` link in the "Configuration
+  file" section untouched -- unrelated staleness from Task 0.2's rename, out of this task's surgical
+  scope.
 
 ## Remaining
-- Task 0.6 -- DI and routing seams
-- Tasks 0.7 through 0.14 (owned by later workers/phases)
+- Task 0.8 -- localization loader and per-slice fragments (in progress this session)
+- Tasks 0.10 through 0.14 (owned by later workers/phases)
 
 ## Important decisions
 - Task 0.2's file moves (all 46 `.cs` files, `Basil.slnx`, `Dockerfile`, `docker-compose.yml`, the
@@ -321,7 +384,7 @@ next.
   `NU1510`/nullable/unused-event warnings). Full suite: **1621/1621 passed, 0 failed, 0 skipped** --
   a clean run, the documented flake did not reproduce this time.
 
-## Next exact step
+## Task 0.6 planning notes (historical -- 0.6 is done, commit `a3e7b99`)
 Task 0.6: DI and routing seams, per the plan. This worker (continuing in the same session) has
 already read both `Host/ApplicationDependencyInjection.cs` (namespace `Basil.Application`,
 `AddApplication`) and `Host/InfrastructureDependencyInjection.cs` (namespace `Basil.Infrastructure`,
@@ -368,3 +431,19 @@ resumes this if the session ends mid-task:
 
 Also see "Known issues / blockers" above before treating any `Basil.IntegrationTests` failure on
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
+
+## Next exact step
+Task 0.8: localization loader and per-slice fragments, per the plan (0.7 and 0.9 are both done; 0.8
+was deliberately ordered last of the three since it is much the largest). Write the failing coverage
+test first (`EveryReferencedKeyExistsAndEveryKeyIsReferenced`), watch it fail, then write
+`LocaleCatalog`/`LocaleFragment`/`LocaleKey`. Put the new test in
+`tests/Basil.Application.Tests/Shared/Localization/` for the same reason Task 0.9's test went in
+`Basil.Application.Tests` -- `Basil.Server.Tests` doesn't exist until Task 0.11. Remember: fragments
+must reach `Basil.IntegrationTests`, `Basil.Application.Tests` and `Basil.Infrastructure.Tests`
+output directories too (the `<Content Update>` + `Link` pattern already used for
+`Shared/Localization/*.json` in `Basil.Server.csproj` is the template -- see that file's existing
+comment on why `Include` collides with SDK auto-globbing as `NETSDK1022`). Diff the *value set*
+(not the key set) of the old two JSON files against `plans/execution/baseline/locale-keys.txt`
+before treating any wording change as acceptable -- key shape changes by design, no reply text may
+change. After 0.8: full suite should be 1624 (current) plus the new coverage test(s); state the exact
+arithmetic when done. Stop after 0.8 -- do not start Task 0.10.

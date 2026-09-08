@@ -15,12 +15,16 @@ The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core fra
 
 ### Configuration precedence
 
-Basil loads configuration from multiple sources. Later sources override earlier ones:
+Application settings come from exactly these sources. Later sources override earlier ones:
 
 1. `Data/appsettings.json`
 2. `Data/appsettings.{Environment}.json`, if present
+3. command-line arguments
 
-This is commonly used in container deployments to override values from a mounted `Data/appsettings.json`.
+Environment variables configure the host (`ASPNETCORE_ENVIRONMENT`, which selects the file in step 2)
+and are not a way to override an individual Basil setting — `Data/appsettings.json` is the only
+source of truth for application settings. To override a value per deployment, edit a mounted
+`Data/appsettings.json` or an `Data/appsettings.{Environment}.json` overlay instead.
 
 ### Available settings
 
@@ -52,8 +56,9 @@ For changes made to `Data/appsettings.json`:
 
 No rebuild is required.
 
-For container deployments, prefer environment variables for deployment-specific values such as the domain, port, or
-certificate settings. See [`docker.md`](docker.md).
+For container deployments, prefer bind-mounting `Data/appsettings.json` (or an
+`appsettings.{Environment}.json` overlay) for deployment-specific values such as the domain, port, or
+certificate settings — environment variables do not override them. See [`docker.md`](docker.md).
 
 ---
 

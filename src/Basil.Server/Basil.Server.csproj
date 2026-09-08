@@ -18,6 +18,12 @@
 		<ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj"/>
 	</ItemGroup>
 
+	<!-- Task 0.11 folds Basil.Application.Tests into Basil.Server.Tests: rename this entry
+	     alongside that move. -->
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Application.Tests"/>
+	</ItemGroup>
+
 	<ItemGroup>
 		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
 		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
