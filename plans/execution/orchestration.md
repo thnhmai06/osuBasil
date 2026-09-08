@@ -32,6 +32,23 @@ When a worker hits an ambiguity it escalates with evidence (the problem, what th
 actually shows, what the plan expected, where reality differs, options if known, the relevant
 diff). Opus decides direction; the worker implements it.
 
+### Delegation tiers
+
+The Agent tool in this build exposes `model` but no per-call reasoning effort — effort comes from an
+agent definition's frontmatter, and this repository has no `.claude/agents/`. What is actually
+controllable is the model tier and how much analysis the prompt demands, so those are tuned to the
+task shape rather than left at one default.
+
+| Task shape | Model | Prompt discipline |
+| --- | --- | --- |
+| Pure verification: run a build, a suite, a diff, and report numbers | Haiku | exact commands, exact output format, no latitude |
+| Mechanical high-volume: file moves, namespace sweeps, locale key relocation, doc prose | Sonnet | prescriptive; every known trap named up front; no design latitude |
+| Implementation with design content: the event hub, the mutation scope, the mute API, the diagnostic collectors | Sonnet | test-first steps written out; an explicit escalate-rather-than-guess list |
+| Architectural reasoning, ambiguity resolution, reviewing a diff for drift | Opus (the orchestrator, or the advisor) | — |
+
+Verification is the tier most often over-served: running a suite and reporting six numbers does not
+need a frontier model, and Phase 0 alone has a dozen such checkpoints.
+
 ## Branch layout
 
 | Branch | Purpose |
