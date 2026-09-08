@@ -6,16 +6,13 @@
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project
-			Path="tests/Basil.Application.Tests/Basil.Application.Tests.csproj"/>
-		<Project
 			Path="tests/Basil.ArchitectureTests/Basil.ArchitectureTests.csproj"/>
 		<Project Path="tests/Basil.Domain.Tests/Basil.Domain.Tests.csproj"/>
-		<Project
-			Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
 		<Project
 			Path="tests/Basil.IntegrationTests/Basil.IntegrationTests.csproj"/>
 		<Project
 			Path="tests/Basil.LoadTests/Basil.LoadTests.csproj"/>
 		<Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
+		<Project Path="tests/Basil.Server.Tests/Basil.Server.Tests.csproj"/>
 	</Folder>
 </Solution>

@@ -1,0 +1,283 @@
+using Basil.Server.Features.Scores;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Basil.Server.Shared.Persistence;
+using Dapper;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
+
+using Basil.Server.Tests.Shared.Persistence;
+
+namespace Basil.Server.Tests.Features.Scores;
+
+public class SqliteScoreRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
+{
+	private readonly SqliteScoreRepository _repository = new(fixture.ConnectionString,
+		NullLogger<SqliteScoreRepository>.Instance);
+
+	private async Task InsertUserAsync(int id, string name, string country = "xx", bool restricted = false)
+	{
+		var privilege = restricted ? 0 : (int)UserPrivileges.Unrestricted;
+		await using var connection = new SqliteConnection(fixture.ConnectionString);
+		await connection.ExecuteAsync(
+			"""
+			INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country)
+			VALUES (@Id, @Name, @Name, 'unused', @Privilege, @Country)
+			""",
+			new { Id = id, Name = name, Privilege = privilege, Country = country });
+	}
+
+	private async Task<long> InsertScoreAsync(
+		string mapMd5, int userId, long score, Mods mods = Mods.NoMod,
+		GameMode mode = GameMode.Standard, bool perfect = false, int? roundId = null, MatchTeam? team = null)
+	{
+		await using var connection = new SqliteConnection(fixture.ConnectionString);
+		return await connection.ExecuteScalarAsync<long>(
+			"""
+			INSERT INTO Scores (
+			    MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum,
+			    SubmittedAt, RoundId, Team
+			) VALUES (
+			    @MapMd5, @Score, 95.0, 500, @Mods, 300, 10, 5, 0, 0, 0,
+			    'S', @Mode, datetime('now'), 120000, 0, @UserId, @Perfect, @Checksum,
+			    datetime('now'), @RoundId, @Team
+			);
+			SELECT last_insert_rowid();
+			""",
+			new
+			{
+				MapMd5 = mapMd5,
+				Score = score,
+				Mods = (int)mods,
+				Mode = (int)mode,
+				UserId = userId,
+				Perfect = perfect,
+				Checksum = Guid.NewGuid().ToString("N"),
+				RoundId = roundId,
+				Team = (int?)team
+			});
+	}
+
+	private static ScoreInsertRow MakeInsertRow(string mapMd5, int userId, long score, string checksum)
+	{
+		return new ScoreInsertRow(
+			mapMd5, score, 98.5, 500, Mods.NoMod,
+			300, 10, 5, 0, 0, 0,
+			"S", GameMode.Standard,
+			DateTime.UtcNow, 120000, ClientFlags.Clean, userId,
+			false, checksum, DateTime.UtcNow);
+	}
+
+	[Fact]
+	public async Task Create_InsertsRowAndReturnsGeneratedId()
+	{
+		var mapMd5 = new string('b', 32);
+		await InsertUserAsync(316, "nina");
+
+		var id = await _repository.CreateAsync(MakeInsertRow(mapMd5, 316, 750_000, Guid.NewGuid().ToString("N")));
+
+		Assert.True(id > 0);
+		Assert.True(await _repository.CheckExistAsync((await FetchChecksumAsync(id))!));
+	}
+
+	private async Task<string?> FetchChecksumAsync(long scoreId)
+	{
+		await using var connection = new SqliteConnection(fixture.ConnectionString);
+		return await connection.ExecuteScalarAsync<string>("SELECT Checksum FROM Scores WHERE Id = @Id",
+			new { Id = scoreId });
+	}
+
+	[Fact]
+	public async Task ExistsByChecksum_NotFound_ReturnsFalse()
+	{
+		Assert.False(await _repository.CheckExistAsync(Guid.NewGuid().ToString("N")));
+	}
+
+	[Fact]
+	public async Task ExistsByChecksum_Found_ReturnsTrue()
+	{
+		var mapMd5 = new string('c', 32);
+		await InsertUserAsync(317, "olivia");
+		var checksum = Guid.NewGuid().ToString("N");
+		await InsertScoreAsync(mapMd5, 317, 500_000);
+		await _repository.CreateAsync(MakeInsertRow(mapMd5, 317, 500_000, checksum));
+
+		Assert.True(await _repository.CheckExistAsync(checksum));
+	}
+
+	[Fact]
+	public async Task FetchOwner_ReturnsUserIdAndMode()
+	{
+		var mapMd5 = new string('g', 32);
+		await InsertUserAsync(321, "sybil");
+		var scoreId = await InsertScoreAsync(mapMd5, 321, 500_000, mode: GameMode.Taiko);
+
+		var owner = await _repository.FetchOwnerAsync(scoreId);
+
+		Assert.NotNull(owner);
+		Assert.Equal(321, owner.UserId);
+		Assert.Equal(GameMode.Taiko, owner.Mode);
+	}
+
+	[Fact]
+	public async Task FetchOwner_NotFound_ReturnsNull()
+	{
+		Assert.Null(await _repository.FetchOwnerAsync(999_999));
+	}
+
+	[Fact]
+	public async Task FetchById_ReturnsFullRow()
+	{
+		var mapMd5 = new string('k', 32);
+		await InsertUserAsync(322, "tara");
+		var scoreId = await InsertScoreAsync(mapMd5, 322, 850_000, mode: GameMode.Mania);
+
+		var row = await _repository.FetchByIdAsync(scoreId);
+
+		Assert.NotNull(row);
+		Assert.Equal(scoreId, row.Id);
+		Assert.Equal(322, row.UserId);
+		Assert.Equal(mapMd5, row.MapMd5);
+		Assert.Equal(850_000, row.Score);
+		Assert.Equal(GameMode.Mania, row.Mode);
+	}
+
+	[Fact]
+	public async Task FetchById_NotFound_ReturnsNull()
+	{
+		Assert.Null(await _repository.FetchByIdAsync(999_999));
+	}
+
+	[Fact]
+	public async Task FetchPage_ReturnsNewestFirst_RespectingOffsetAndLimit()
+	{
+		// FetchPageAsync has no per-beatmapset/round scoping to filter by (it lists every score, matching
+		// GET /scores), so this uses its own dedicated database rather than the class-shared fixture
+		// — otherwise this test's absolute offset/limit assertions would race against every other
+		// test method's inserts into the same Scores table.
+		var dbPath = Path.Combine(Path.GetTempPath(), $"basil-scorepage-test-{Guid.NewGuid():N}.db");
+		var connectionString = $"Data Source={dbPath};Foreign Keys=True;Default Timeout=5";
+		try
+		{
+			SqlMigrationRunner.RunMigrations(connectionString);
+			var repository = new SqliteScoreRepository(connectionString, NullLogger<SqliteScoreRepository>.Instance);
+
+			await using (var connection = new SqliteConnection(connectionString))
+			{
+				await connection.ExecuteAsync(
+					"INSERT INTO Users (Id, Name, SafeName, PwBcrypt, Privilege, Country) " +
+					"VALUES (500, 'pager', 'pager', 'unused', 0, 'xx')");
+			}
+
+			var mapMd5 = new string('m', 32);
+			var first = await InsertScoreIntoAsync(connectionString, mapMd5, 100_000);
+			var second = await InsertScoreIntoAsync(connectionString, mapMd5, 200_000);
+			var third = await InsertScoreIntoAsync(connectionString, mapMd5, 300_000);
+
+			var page = await repository.FetchPageAsync(0, 2);
+
+			Assert.Equal(2, page.Count);
+			Assert.Equal(third, page[0].Id);
+			Assert.Equal(second, page[1].Id);
+
+			var nextPage = await repository.FetchPageAsync(2, 1);
+
+			Assert.Single(nextPage);
+			Assert.Equal(first, nextPage[0].Id);
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			File.Delete(dbPath);
+			File.Delete(dbPath + "-wal");
+			File.Delete(dbPath + "-shm");
+		}
+	}
+
+	private static async Task<long> InsertScoreIntoAsync(string connectionString, string mapMd5, long score)
+	{
+		await using var connection = new SqliteConnection(connectionString);
+		return await connection.ExecuteScalarAsync<long>(
+			"""
+			INSERT INTO Scores (
+			    MapMd5, Score, Accuracy, MaxCombo, Mods, N300, N100, N50, NMiss, NGeki, NKatu,
+			    Grade, Mode, PlayTime, TimeElapsed, ClientFlags, UserId, Perfect, Checksum,
+			    SubmittedAt
+			) VALUES (
+			    @MapMd5, @Score, 95.0, 500, 0, 300, 10, 5, 0, 0, 0,
+			    'S', 0, datetime('now'), 120000, 0, 500, 0, @Checksum,
+			    datetime('now')
+			);
+			SELECT last_insert_rowid();
+			""",
+			new { MapMd5 = mapMd5, Score = score, Checksum = Guid.NewGuid().ToString("N") });
+	}
+
+	[Fact]
+	public async Task FetchByRoundId_ReturnsScoresOrderedByScoreDescending_WithUserNameJoined()
+	{
+		await InsertUserAsync(401, "roundwinner");
+		await InsertUserAsync(402, "roundloser");
+		var roundId = await InsertRoundAsync();
+		var mapMd5 = new string('h', 32);
+		await InsertScoreAsync(mapMd5, 401, 900_000, roundId: roundId, team: MatchTeam.Blue);
+		await InsertScoreAsync(mapMd5, 402, 300_000, roundId: roundId, team: MatchTeam.Red);
+		// Not linked to the round — must not show up.
+		await InsertScoreAsync(mapMd5, 402, 999_999);
+
+		var rows = await _repository.FetchByRoundAsync(roundId);
+
+		Assert.Equal(2, rows.Count);
+		Assert.Equal("roundwinner", rows[0].UserName);
+		Assert.Equal(900_000, rows[0].Score);
+		Assert.Equal(MatchTeam.Blue, rows[0].Team);
+		Assert.Equal("roundloser", rows[1].UserName);
+	}
+
+	[Fact]
+	public async Task FetchCountAsync_ReflectsCountersTable_IncrementedByInsertTrigger()
+	{
+		var dbPath = Path.Combine(Path.GetTempPath(), $"basil-scorecount-test-{Guid.NewGuid():N}.db");
+		var connectionString = $"Data Source={dbPath};Foreign Keys=True;Default Timeout=5";
+		try
+		{
+			SqlMigrationRunner.RunMigrations(connectionString);
+			var repository = new SqliteScoreRepository(connectionString, NullLogger<SqliteScoreRepository>.Instance);
+
+			Assert.Equal(0, await repository.FetchCountAsync());
+
+			await InsertScoreIntoAsync(connectionString, new string('q', 32), 100_000);
+			await InsertScoreIntoAsync(connectionString, new string('q', 32), 200_000);
+
+			Assert.Equal(2, await repository.FetchCountAsync());
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			File.Delete(dbPath);
+			File.Delete(dbPath + "-wal");
+			File.Delete(dbPath + "-shm");
+		}
+	}
+
+	private async Task<int> InsertRoundAsync()
+	{
+		await using var connection = new SqliteConnection(fixture.ConnectionString);
+		var matchId = await connection.ExecuteScalarAsync<int>(
+			"""
+			INSERT INTO Matches (Name, CreatedAt)
+			VALUES ('test match', datetime('now'));
+			SELECT last_insert_rowid();
+			""");
+		return await connection.ExecuteScalarAsync<int>(
+			"""
+			INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
+			VALUES (@MatchId, 1, @MapMd5, 0, 0, 0, 0, datetime('now'));
+			SELECT last_insert_rowid();
+			""",
+			new { MatchId = matchId, MapMd5 = new string('a', 32) });
+	}
+}

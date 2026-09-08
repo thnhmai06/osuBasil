@@ -25,11 +25,110 @@ Last updated: 2026-09-08 (local, UTC+7)
 - Task 0.9 -- configuration source chain, commit `ff449ae`.
 - Task 0.8 -- localization loader and per-slice fragments, commit (this session, see below).
 - Task 0.10 -- `LiveEventHub` and `StateStream`, commit (this session, see below).
+- Task 0.11 -- merged `Basil.Application.Tests` and `Basil.Infrastructure.Tests` into
+  `tests/Basil.Server.Tests`, commit (this session, see below).
 
 ## Current state
-Tasks 0.1-0.10 are done. Full suite: **1628/1628 passed, 0 failed, 0 skipped**
-(1625 prior baseline + 3 from Task 0.10's `LiveEventHubTests`). Next up is Task 0.11 (merge the
-test projects), done in the same session -- see its own entry below.
+Tasks 0.1-0.11 are done. Full suite: **1628/1628 passed, 0 failed, 0 skipped**, unchanged by Task
+0.11 as required (1625 prior baseline + 3 from Task 0.10's `LiveEventHubTests`; Task 0.11 only moved
+tests, adding none). Next up is Task 0.13 (the User contract and migration 006) -- Task 0.12 (xunit
+v3) and Task 0.14 are explicitly out of scope for this worker and left for later.
+
+### Task 0.11 details (this session)
+- **Full inventory taken before moving anything**: 96 `.cs` files under `Basil.Application.Tests`
+  (excluding `obj/`) and 39 `.cs` + 2 `.osu` fixture files under `Basil.Infrastructure.Tests` -- 137
+  source files total. Every one of them was mapped to its destination by checking the actual current
+  location of the production type it tests (via `find`/`grep`, not by guessing from the old folder
+  name), following the plan's instruction to mirror `Features/<Slice>/` and `Shared/<Concern>/`.
+  Notable non-obvious placements, each confirmed against the real file location rather than assumed:
+  - `Packets/*HandlerTests.cs` (54 files) split across four slices by checking which
+    `Features/<Slice>/Packets/*.cs` file each test actually exercises (Chat, Multiplayer, Spectating,
+    Users) -- not "all packet tests go in one folder".
+  - `PacketDispatcherTests.cs` -> `Shared/Http/Bancho/` (tests `Shared/Http/Bancho/PacketDispatcher.cs`,
+    not a slice).
+  - `Services/Multiplayer/StateStreamTests.cs` -> `Shared/Eventing/` (the type it tests, `StateStream<T>`,
+    was itself relocated there in Task 0.10 -- this test follows its type, landing next to Task
+    0.10's own `LiveEventHubTests.cs`).
+  - `Services/BoundedSseChannelTests.cs`, `Services/SequenceGateTests.cs`, `Services/SseSubscriberRegistryTests.cs`
+    -> `Shared/Eventing/` (all three types live there).
+  - `Sessions/{UserSessionTests,PlayerSessionStatsTests,PlayerLogoutServiceTests}.cs`,
+    `Backgrounds/GhostDisconnectServiceTests.cs`, `Infrastructure.Tests/Sessions/GameSessionRegistryTests.cs`
+    -> `Shared/Sessions/` (all test `GameSession`/`UserSession`/`PlayerLogoutService`/
+    `GhostDisconnectService`/`GameSessionRegistry`, which live in `Shared/Sessions`, not a slice).
+  - `Infrastructure.Tests/DependencyInjection/CompositionRootTests.cs` -> `Host/` (tests the whole DI
+    composition root, not a slice).
+  - `Infrastructure.Tests/Persistence/SqliteFixture.cs` and `Application.Tests/Host/ConfigurationSourceTests.cs`
+    -> `Shared/Persistence/` and `Host/` respectively, matching where their subjects (`SqlMigrationRunner`,
+    `ConfigurationSetup`) live.
+  - The four `Caching*RepositoryTests.cs` files -> each repository's owning slice (Beatmaps x2,
+    Content, Users), not a shared `Caching/` folder -- matching the design's own statement that the
+    `Infrastructure/Cache/Caching*Repository` decorators move to their owning slice.
+  - `Packets/MultiplayerTestSupport.cs` (a cross-slice test helper building `MatchSession`/session
+    fixtures, consumed by Multiplayer, Chat, Bot, Spectating and Auth test files) -> kept at
+    `Features/Multiplayer/Packets/` since that's both its majority consumer and its closest
+    production analog; other slices' tests reference it with an explicit `using`, which is normal
+    and not governed by `Basil.ArchitectureTests` (that only scans the production `Basil.Server`
+    assembly, never a test project's internal layout).
+  - The two `.osu` fixture files -> `Features/Beatmaps/Fixtures/`, since every consumer is a
+    Beatmaps test. Their consuming code locates them at runtime via
+    `Path.Combine(AppContext.BaseDirectory, "Fixtures", "<name>.osu")` -- an output-relative path,
+    not a source-relative one -- so the merged csproj's `<None Include="Features\Beatmaps\Fixtures\**"
+    Link="Fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"/>` keeps the
+    output path identical while letting the source file live next to the tests that use it. Verified
+    by running the Beatmaps tests that reference these fixtures -- they passed, meaning the files
+    landed at the expected output path.
+- **The namespace-nesting trap (flagged in advance by the advisor, and by Task 0.3's own checkpoint
+  entry) reproduced exactly as predicted.** Every file's `namespace` declaration was mechanically
+  rewritten to `Basil.Server.Tests.<mirrored path>` first (a Perl one-liner keyed off each file's new
+  directory), then the build was run and every resulting `CS0246`/`CS0103` was fixed by adding an
+  explicit `using` for the type that used to be reachable for free because the old namespaces
+  happened to nest or coincide:
+  - 12 `Sqlite*RepositoryTests.cs` files (across Auth, Beatmaps, Chat, Content, Multiplayer, Scores,
+    Users) needed `using Basil.Server.Tests.Shared.Persistence;` for `SqliteFixture`, which used to
+    share their exact namespace (`Basil.Infrastructure.Tests.Persistence`) and now lives in a
+    completely different slice's test folder.
+  - 3 files (`Features/Users/Packets/ChangeActionHandlerTests.cs`,
+    `Features/Spectating/Packets/SpectateFramesHandlerTests.cs`, plus the 33 Multiplayer packet test
+    files that already had an explicit `using static ...MultiplayerTestSupport;` and needed only the
+    namespace segment corrected) needed `using Basil.Server.Tests.Features.Multiplayer.Packets;` for
+    `MultiplayerTestSupport`, previously free because it and every packet-handler test shared the
+    single old namespace `Basil.Application.Tests.Packets`.
+  - One stale `<see cref="Services.Multiplayer.StateStreamTests" />` relative doc-comment reference in
+    `MatchMembershipServiceTests.cs` (relative to the old `Basil.Application.Tests` namespace) was
+    corrected to the fully-qualified `Basil.Server.Tests.Shared.Eventing.StateStreamTests`, since the
+    file's new namespace no longer makes the short form resolve.
+  - Two `using Basil.Infrastructure.Tests.Persistence;`/`using Basil.Application.Tests.Packets;` (or
+    `using static ...MultiplayerTestSupport;`) lines that already existed explicitly in some files
+    were simply rewritten in place via `sed` to the new namespace, rather than needing a fresh
+    `using` added -- these files had already needed cross-namespace access under the old layout.
+  Iterated build -> fix -> rebuild three times; final build is 0 errors.
+- **Duplicate class names, measured, not found.** Checked both for identical top-level class names
+  anywhere in the merged tree and for any case where two files land in the same target
+  directory/namespace with the same filename -- both checks came back empty. Five private nested
+  helper class names repeat across different files (`RecordingIrcConnection` x5,
+  `RecordingReplySink` x2, `NoOpSubscription` x2, `FakeMatchRepository` x2, `FakeMatchRegistry` x2),
+  but every one is `private sealed class` scoped inside a different outer test class (or, for the two
+  `Fake*` types, `public sealed class` nested inside `MultiplayerTestSupport` specifically, so they're
+  addressed as `MultiplayerTestSupport.FakeMatchRegistry` and never collide with the unrelated
+  `MatchMembershipServiceTests`-local `FakeMatchRepository`). No test was renamed or deleted to avoid
+  a collision, because there was none.
+- **`InternalsVisibleTo` in `Basil.Server.csproj` repointed** from `Basil.Application.Tests` to
+  `Basil.Server.Tests` (the comment planted there by Task 0.9's worker named exactly this task).
+  Checked `Basil.Infrastructure.Tests` too, per an advisor prompt from Task 0.10's review -- it had
+  no `InternalsVisibleTo` entry of its own, so there was nothing else to repoint.
+- **`Basil.slnx`** updated: both old `<Project Path=...>` entries removed, one
+  `tests/Basil.Server.Tests/Basil.Server.Tests.csproj` entry added.
+- **Old project directories fully removed**, not just their `.csproj` files -- after every `.cs`
+  file was `git mv`'d out, only `bin/`/`obj/` (gitignored build output) remained under
+  `tests/Basil.Application.Tests/` and `tests/Basil.Infrastructure.Tests/`; deleted with `find -delete`
+  rather than `rm -rf` (blocked by this environment's guard hook) after confirming every remaining
+  file really was build output, not a tracked source file.
+- Verification: `dotnet build --configuration Release` -- 0 errors. Full suite:
+  **1628/1628 passed, 0 failed, 0 skipped** -- exactly the Task 0.10 count, unmoved, both runs of the
+  full suite this session came back clean with no flake. Per-project: Protocol.Tests 158,
+  Domain.Tests 114, ArchitectureTests 8 (re-run in isolation too: 8/8), Basil.Server.Tests 993
+  (= prior Application.Tests 730 + Infrastructure.Tests 263, exactly), IntegrationTests 355.
+  Arithmetic: 158+114+8+993+355 = 1628, matching pre-merge.
 
 ### Task 0.10 details (this session)
 - **`ILiveEventHub`/`LiveEventHub`/`LiveSubscription`/`StreamKey` created exactly per the plan's
@@ -616,9 +715,24 @@ Also see "Known issues / blockers" above before treating any `Basil.IntegrationT
 `BeatmapDifficultyEndpointTests` or `BeatmapsetManagementEndpointTests` as new.
 
 ## Next exact step
-Task 0.10 is complete and committed this session. Full suite: 1628/1628. The next step in this same
-session is **Task 0.11** (merge the test projects) -- see its own entry below once done; if resuming
-cold, read that task's section fresh. Two things worth carrying forward from before Task 0.10:
+Tasks 0.10 and 0.11 are complete and committed this session. Full suite: 1628/1628, unmoved by 0.11.
+The next step is **Task 0.13** (the User contract and migration 006) -- read that task's section
+fresh in `plans/vsa-migration-plan-20260907.md` and design section 7.1-7.3. Task 0.12 (xunit v3) and
+Task 0.14 (verification/advisor checkpoint) are explicitly out of scope for this worker; the next
+worker after this one should pick up 0.12. Things worth carrying forward:
+- All test-project paths in any future task now belong under `tests/Basil.Server.Tests/`, mirroring
+  `Features/<Slice>/` and `Shared/<Concern>/`. `tests/Basil.Application.Tests` and
+  `tests/Basil.Infrastructure.Tests` no longer exist.
+- The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
+  above) is real and will bite the first person who actually runs `docker compose up` on this
+  branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.
+- `Shared_Should_Not_Reference_Features` (see Task 0.4's decision and Task 0.8's `LocaleTouch`
+  entry above) is a live tripwire, not just documentation -- any new `Shared/*` type that names a
+  `Features/*` type by type will fail it immediately. Check this test first if a build error is
+  confusing after adding something to `Shared/`.
+- Task 0.10's advisor review flagged a real Phase-1 hazard (a stale-subscriber publish race can
+  hand a subscriber a delta instead of a full snapshot) -- see that task's own checkpoint entry.
+  Not this worker's problem, but Task 1.3 needs to read it before adopting the hub.
 - The **pre-existing, unfixed `docker-compose.yml:11` dead bind-mount path** (see Task 0.8 details
   above) is real and will bite the first person who actually runs `docker compose up` on this
   branch. Not this phase's blocker, but worth a one-line fix whenever Docker is next touched.

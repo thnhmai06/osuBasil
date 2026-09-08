@@ -1,0 +1,52 @@
+using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Domain.Multiplayer;
+using Basil.Protocol.Packets;
+using static Basil.Server.Tests.Features.Multiplayer.Packets.MultiplayerTestSupport;
+
+namespace Basil.Server.Tests.Features.Multiplayer.Packets;
+
+/// <summary>Verifies the `MatchLoadComplete` handler broadcasts all-players-loaded once every playing slot has loaded.</summary>
+public class MatchLoadCompleteHandlerTests
+{
+	[Fact]
+	public async Task Handle_NotAllPlayingSlotsLoaded_DoesNotBroadcastAllLoaded()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var match = fixture.CreateMatch(host);
+		await fixture.MatchMembership.JoinAsync(guest, match, "");
+		match.Slots[0].Status = SlotStatus.Playing;
+		match.Slots[1].Status = SlotStatus.Playing;
+		host.Dequeue();
+		guest.Dequeue();
+		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
+
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.True(match.Slots[0].Loaded);
+		Assert.Empty(host.Dequeue());
+	}
+
+	[Fact]
+	public async Task Handle_AllPlayingSlotsLoaded_BroadcastsAllPlayersLoaded()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var match = fixture.CreateMatch(host);
+		await fixture.MatchMembership.JoinAsync(guest, match, "");
+		match.Slots[0].Status = SlotStatus.Playing;
+		match.Slots[1].Status = SlotStatus.Playing;
+		match.Slots[1].Loaded = true;
+		host.Dequeue();
+		guest.Dequeue();
+		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
+
+		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
+
+		Assert.Contains(ServerPacketWriter.MatchAllPlayersLoaded(), Chunk(host.Dequeue()));
+	}
+}

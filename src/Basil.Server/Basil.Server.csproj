@@ -18,10 +18,8 @@
 		<ProjectReference Include="..\Basil.Protocol\Basil.Protocol.csproj"/>
 	</ItemGroup>
 
-	<!-- Task 0.11 folds Basil.Application.Tests into Basil.Server.Tests: rename this entry
-	     alongside that move. -->
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Application.Tests"/>
+		<InternalsVisibleTo Include="Basil.Server.Tests"/>
 	</ItemGroup>
 
 	<ItemGroup>
