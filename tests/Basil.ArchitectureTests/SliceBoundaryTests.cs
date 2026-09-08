@@ -123,7 +123,7 @@ public class SliceBoundaryTests
 		var offenders = Types.InAssembly(typeof(Basil.Server.Host.Bootstrap).Assembly).GetTypes()
 			.Select(t => t.Namespace)
 			// A type declared directly under the bare "Basil.Server.Shared" namespace (no
-			// segment at all, e.g. BasilMetrics.cs) is not a segment and needs no allowlist entry.
+			// segment at all, e.g. BasilMeter.cs) is not a segment and needs no allowlist entry.
 			.Where(n => n is not null && n != "Basil.Server.Shared" &&
 			            n.StartsWith(prefix, StringComparison.Ordinal))
 			.Select(n => n![prefix.Length..].Split('.')[0])

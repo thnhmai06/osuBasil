@@ -3,7 +3,6 @@ using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Users;
-using Basil.Server.Shared;
 using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
@@ -666,7 +665,7 @@ public sealed class MatchMembershipService(
 		}
 		else
 		{
-			BasilMetrics.StalePublishDropped.Add(1, PacketStreamTag);
+			EventingMetrics.StalePublishDropped.Add(1, PacketStreamTag);
 		}
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(

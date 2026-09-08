@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Basil.Server.Shared;
 using Basil.Server.Shared.Http;
 using Basil.Server.Features.Multiplayer;
 
@@ -52,7 +51,7 @@ public sealed class SnapshotChannel<T> where T : class
 	///     <paramref name="sequence" /> must come from <c>MatchSession.NextStateVersion()</c>,
 	///     allocated while the caller held the match's lock. A call whose sequence does not exceed
 	///     the last one this channel actually applied is dropped (returns <see langword="null" />,
-	///     also incrementing <see cref="BasilMetrics.StalePublishDropped" />) — this happens when an
+	///     also incrementing <see cref="EventingMetrics.StalePublishDropped" />) — this happens when an
 	///     older mutation's unlocked build-and-publish finishes after a newer one's, and is a normal,
 	///     benign race outcome rather than a bug.
 	/// </remarks>
@@ -68,7 +67,7 @@ public sealed class SnapshotChannel<T> where T : class
 		{
 			if (sequence <= _lastAppliedSequence)
 			{
-				BasilMetrics.StalePublishDropped.Add(1, _streamTag);
+				EventingMetrics.StalePublishDropped.Add(1, _streamTag);
 				return null;
 			}
 

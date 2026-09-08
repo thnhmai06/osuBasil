@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Basil.Server.Shared;
 
 namespace Basil.Server.Features.Multiplayer;
 
@@ -20,7 +19,7 @@ public sealed class InstrumentedMatchLock
 	{
 		var startedAt = Stopwatch.GetTimestamp();
 		await _inner.WaitAsync(cancellationToken);
-		BasilMetrics.MatchLockWaitMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+		MultiplayerMetrics.MatchLockWaitMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
 	}
 
 	/// <summary>Releases the lock. See <see cref="SemaphoreSlim.Release()" />.</summary>

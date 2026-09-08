@@ -1,11 +1,10 @@
 using System.Diagnostics;
-using Basil.Server.Shared;
 using Basil.Server.Shared.Eventing;
 
 namespace Basil.Server.Shared.Http.Middleware;
 
 /// <summary>
-///     Records total request duration to <see cref="BasilMetrics.RequestDurationMs" />, tagged by
+///     Records total request duration to <see cref="HttpMetrics.RequestDurationMs" />, tagged by
 ///     Basil host group (<c>bancho</c>/<c>osuweb</c>/<c>beatmapassets</c>/<c>avatar</c>/<c>basilapi</c>/
 ///     <c>assets</c> — the same <c>.WithGroupName(...)</c> value every route already carries). Placed
 ///     first in the pipeline so the measured duration includes every other middleware's cost, not just
@@ -39,7 +38,7 @@ public sealed class RequestMetricsMiddleware(RequestDelegate next)
 		{
 			var groupName = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointGroupNameMetadata>()
 				?.EndpointGroupName ?? "unmatched";
-			BasilMetrics.RequestDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
+			HttpMetrics.RequestDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
 				new KeyValuePair<string, object?>("host.group", groupName));
 		}
 	}

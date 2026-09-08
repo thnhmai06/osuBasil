@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Basil.Server.Shared;
 using Microsoft.Data.Sqlite;
 
 namespace Basil.Server.Shared.Persistence;
@@ -24,12 +23,12 @@ internal static class SqliteInstrumentation
 		}
 		catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
 		{
-			BasilMetrics.DbBusyCount.Add(1, new KeyValuePair<string, object?>("operation", operation));
+			PersistenceMetrics.DbBusyCount.Add(1, new KeyValuePair<string, object?>("operation", operation));
 			throw;
 		}
 		finally
 		{
-			BasilMetrics.DbCommandDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
+			PersistenceMetrics.DbCommandDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
 				new KeyValuePair<string, object?>("operation", operation));
 		}
 	}
@@ -44,12 +43,12 @@ internal static class SqliteInstrumentation
 		}
 		catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
 		{
-			BasilMetrics.DbBusyCount.Add(1, new KeyValuePair<string, object?>("operation", operation));
+			PersistenceMetrics.DbBusyCount.Add(1, new KeyValuePair<string, object?>("operation", operation));
 			throw;
 		}
 		finally
 		{
-			BasilMetrics.DbCommandDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
+			PersistenceMetrics.DbCommandDurationMs.Record(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds,
 				new KeyValuePair<string, object?>("operation", operation));
 		}
 	}

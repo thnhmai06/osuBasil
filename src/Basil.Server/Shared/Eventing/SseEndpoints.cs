@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 using System.Net.ServerSentEvents;
-using Basil.Server.Shared;
 using Basil.Server.Shared.Http;
 
 namespace Basil.Server.Shared.Eventing;
@@ -116,14 +115,14 @@ internal static class SseEndpoints
 				EventId = Interlocked.Increment(ref nextEventId).ToString(),
 				ReconnectionInterval = ReconnectionInterval
 			});
-			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
-		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{
 			teardown();
-			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+			EventingMetrics.SseActiveSubscribers.Add(-1, streamTag);
 		});
 
 		return channel.Reader.ReadAllAsync(cancellationToken);
@@ -151,14 +150,14 @@ internal static class SseEndpoints
 		{
 			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)
 				{ ReconnectionInterval = ReconnectionInterval });
-			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
-		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{
 			teardown();
-			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+			EventingMetrics.SseActiveSubscribers.Add(-1, streamTag);
 		});
 
 		while (channel.Reader.TryRead(out _))
@@ -207,14 +206,14 @@ internal static class SseEndpoints
 				: null;
 			BoundedSseChannel.WriteWithGapMarker(channel.Writer, channel.Reader, capacity, eventType,
 				Encoding.UTF8.GetString(payload), eventId, ReconnectionInterval);
-			BasilMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
+			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
 		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
-		BasilMetrics.SseActiveSubscribers.Add(1, streamTag);
+		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{
 			teardown();
-			BasilMetrics.SseActiveSubscribers.Add(-1, streamTag);
+			EventingMetrics.SseActiveSubscribers.Add(-1, streamTag);
 		});
 
 		while (channel.Reader.TryRead(out _))
