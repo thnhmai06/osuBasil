@@ -304,46 +304,49 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ## Architecture
 
-Basil is a five-project Clean Architecture monolith.
+Basil is a three-project monolith. `Basil.Server` is organized as vertical slices.
 
 ```text
-Basil.Domain
-    ↓
-Basil.Application
-    ↓
-Basil.Infrastructure
-    ↓
-Basil.Web
+Basil.Domain      no project references
+Basil.Protocol    no project references
+Basil.Server      -> Domain, Protocol
 ```
 
-`Basil.Protocol` is an independent protocol layer used by the application and web layers.
+`Basil.Domain` holds the domain model. `Basil.Protocol` is an independent bancho
+protocol layer. Everything else -- endpoints, handlers, persistence, DI, metrics,
+localization -- lives in `Basil.Server`, split by feature rather than by layer.
 
-The intended project dependencies are:
+Inside `Basil.Server`:
 
 ```text
-Basil.Domain
-    no project references
-
-Basil.Protocol
-    no project references
-
-Basil.Application
-    → Domain
-    → Protocol
-
-Basil.Infrastructure
-    → Application
-    → Domain
-
-Basil.Web
-    → Application
-    → Infrastructure
-    → Protocol
+Features/<Slice>   one slice per feature: endpoints, handlers, persistence,
+                   DI registration, metrics, locale fragment, help text
+Shared/            cross-slice infrastructure, one directory per segment
+Host/              composition root: builds the app and maps the slices
 ```
 
-`Basil.ArchitectureTests` enforces these boundaries.
+The slices are `Auth`, `Beatmaps`, `Bot`, `Chat`, `Content`, `Irc`, `Multiplayer`,
+`Scores`, `Spectating`, and `Users`.
 
-Read [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) before making a cross-layer change.
+Two rules govern the inside of `Basil.Server`, both enforced by
+`Basil.ArchitectureTests`:
+
+* A slice may reference another slice only via an edge declared in
+  `SliceAdjacency`. Every edge carries a one-line justification naming the type
+  that needs it. Adding an edge is a deliberate act, not a build fix.
+* `Shared` must not reference `Features`. A pinned list of pre-existing
+  violations is asserted for exact equality, so the list can only change by
+  editing it on purpose -- and it is meant to shrink.
+
+Project-level dependency direction (Domain stays free of the server and of
+persistence/web frameworks; Protocol depends on neither) is enforced by
+`DependencyDirectionTests`.
+
+> **Migration in progress.** The Clean Architecture layout (`Basil.Application`,
+> `Basil.Infrastructure`, `Basil.Web`) was merged into `Basil.Server` and is gone.
+> `docs/for-developers/architecture.md` still describes the old five-project
+> structure and is rewritten in the documentation phase of the migration; prefer
+> this section and the architecture tests over that document until then.
 
 ### Important invariants
 
@@ -449,6 +452,7 @@ Important developer documents:
 * [`database.md`](docs/for-developers/database.md) — persistence design
 * [`logging.md`](docs/for-developers/logging.md) — logging design
 * [`docs-guideline.md`](docs/for-developers/docs-guideline.md) — documentation rules
+* [`known-limitations.md`](docs/for-developers/known-limitations.md) — open RC items, unproven hypotheses, and the dependency inventory
 
 Technician documentation:
 

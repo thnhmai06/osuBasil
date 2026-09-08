@@ -1,17 +1,18 @@
+using Basil.Server.Shared.Eventing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Web;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,12 +21,12 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>Covers the two newest SSE channels: GET /matches/{matchId}/live and GET /matches/{matchId}/live/{slotIndex}.</summary>
-public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchLiveChannelsEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchLiveChannelsEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -53,16 +54,44 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var matchId = await CreateMatchAsync();
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
-		// discardFirst: true — POST /matches warms this match's main SnapshotChannel immediately
+		// discardFirst: true — POST /matches warms this match's main StateStream immediately
 		// (same reasoning as LiveSlotChannel_ReceivesSlotEventsForItsOwnSlotOnly below), so the first
 		// event off a fresh connect is that warm full snapshot (inProgress: false), not this test's
 		// manually published delta.
-		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
 			() => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })),
 			true);
 
 		Assert.Equal("main", eventType);
 		Assert.Contains("true", data);
+		// State-oriented (ADR-004): retry: is set like every stream, but no id: -- a fresh snapshot
+		// always supersedes anything resumption from an id could offer. Wire value is milliseconds.
+		Assert.Equal("5000", retry);
+		Assert.Null(eventId);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4, "CRITICAL: FULL MATCH SSE OMITS LIVE GAMEPLAY"): the main match
+	///     stream used to carry only room/slot state, with no way to see live scores without opening a
+	///     separate per-slot connection. It must also relay every player's live score updates as
+	///     `gameplay` events.
+	/// </summary>
+	[Fact]
+	public async Task LiveChannel_ReceivesGameplayEventsPublishedForThatMatch()
+	{
+		var matchId = await CreateMatchAsync();
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+
+		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
+			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			true);
+
+		Assert.Equal("gameplay", eventType);
+		Assert.Equal("score update", data);
+		// Event-oriented (ADR-004): gets both retry: and a monotonic id:, unlike the main-state event
+		// on this same multiplexed stream.
+		Assert.Equal("5000", retry);
+		Assert.Equal("1", eventId);
 	}
 
 	[Fact]
@@ -90,6 +119,32 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var createResponse = await client.SendAsync(createRequest);
 		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
 		return created.GetProperty("data").GetProperty("id").GetInt32();
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): the per-slot live stream used to emit the occupant's live score
+	///     updates as a `score` event; it must match the main stream's renamed `gameplay` event so both
+	///     streams carry the same live-score contract.
+	/// </summary>
+	[Fact]
+	public async Task LiveSlotChannel_ReceivesGameplayEventForItsOccupant()
+	{
+		var matchId = await CreateMatchAsync();
+		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
+		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
+		var match = matchRegistry.GetByDbId(matchId)!;
+		var occupant = new GameSession(9001, "alice", "t9001", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		sessionRegistry.TryAdd(occupant);
+		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
+
+		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1",
+			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			true);
+
+		Assert.Equal("gameplay", eventType);
+		Assert.Equal("score update", data);
 	}
 
 	[Fact]
@@ -120,10 +175,10 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 
 		// discardFirst: true — POST /matches now applies every CreateMatchRequest field unconditionally
-		// (SetPrivate/SetSize/... all call EnqueueState), so this slot's SnapshotChannel is already warm
+		// (SetPrivate/SetSize/... all call EnqueueState), so this slot's StateStream is already warm
 		// by the time the match is created; the first event off a fresh connect is that warm snapshot,
 		// not a published delta.
-		var (eventType, data) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
+		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
 		{
 			events.PublishSlot(matchId, 5, [.. "wrong slot"u8]);
 			events.PublishSlot(matchId, 0, [.. "right slot"u8]);
@@ -133,8 +188,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		Assert.Equal("right slot", data);
 	}
 
-	private async Task<(string? EventType, string Data)> ReceiveAfterPublishAsync(string path, Action publish,
-		bool discardFirst = false)
+	private async Task<(string? EventType, string Data, string? EventId, string? Retry)> ReceiveAfterPublishAsync(
+		string path, Action publish, bool discardFirst = false)
 	{
 		var client = _factory.CreateClient();
 		var request = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
@@ -152,8 +207,9 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		return await pipelineTask;
 	}
 
-	private static async Task<(string? EventType, string Data)> ConnectAndReadOneEventAsync(
-		HttpClient client, HttpRequestMessage request, bool discardFirst, CancellationToken cancellationToken)
+	private static async Task<(string? EventType, string Data, string? EventId, string? Retry)>
+		ConnectAndReadOneEventAsync(
+			HttpClient client, HttpRequestMessage request, bool discardFirst, CancellationToken cancellationToken)
 	{
 		using var response =
 			await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -165,19 +221,37 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		return await ReadNextEventAsync(reader, cancellationToken);
 	}
 
-	private static async Task<(string? EventType, string Data)> ReadNextEventAsync(StreamReader reader,
-		CancellationToken cancellationToken)
+	/// <summary>
+	///     Reads one complete SSE event (every field line up to the terminating blank line) --
+	///     .NET's <c>SseFormatter</c> writes <c>event:</c>/<c>data:</c> first and <c>id:</c>/<c>retry:</c>
+	///     after, so this cannot return as soon as <c>data:</c> is seen the way a data-only reader could.
+	/// </summary>
+	private static async Task<(string? EventType, string Data, string? EventId, string? Retry)> ReadNextEventAsync(
+		StreamReader reader, CancellationToken cancellationToken)
 	{
 		string? eventType = null;
+		string? data = null;
+		string? eventId = null;
+		string? retry = null;
 		while (true)
 		{
 			var line = await reader.ReadLineAsync(cancellationToken);
 			if (line is null) throw new IOException("Stream ended unexpectedly.");
 
+			if (line.Length == 0)
+			{
+				if (data is not null) return (eventType, data, eventId, retry);
+				continue;
+			}
+
 			if (line.StartsWith("event: ", StringComparison.Ordinal))
 				eventType = line["event: ".Length..];
+			else if (line.StartsWith("id: ", StringComparison.Ordinal))
+				eventId = line["id: ".Length..];
+			else if (line.StartsWith("retry: ", StringComparison.Ordinal))
+				retry = line["retry: ".Length..];
 			else if (line.StartsWith("data: ", StringComparison.Ordinal))
-				return (eventType, line["data: ".Length..]);
+				data = line["data: ".Length..];
 		}
 	}
 
@@ -287,7 +361,17 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateNameAsync(int id, string name, string safeName, CancellationToken cancellationToken = default)
+		public Task SoftDeleteAsync(int id, DateTimeOffset deletedAt, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task UpdateNameAsync(int id, string name, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
@@ -301,6 +385,17 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		public Task<IReadOnlyList<User>> FetchAllAsync(CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult<IReadOnlyList<User>>([]);
+		}
+
+		public Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<User>>([]);
+		}
+
+		public Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
 		}
 	}
 }

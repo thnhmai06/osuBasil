@@ -1,6 +1,6 @@
 using System.Net;
-using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,11 +12,11 @@ namespace Basil.IntegrationTests;
 ///     Covers the `/b`, `/m`, `/u`, `/s`, `/ss` shorthand redirects: bare prefix and prefix-plus-rest
 ///     both 302 to the canonical plural path, preserving whatever query string was attached.
 /// </summary>
-public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AbbreviationRedirectEndpointTests(WebApplicationFactory<Program> factory)
+	public AbbreviationRedirectEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

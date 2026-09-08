@@ -1,0 +1,48 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "osu! Client API: Bancho Protocol",
+    "description": "The osu! stable client's binary Bancho protocol, including login and the packet-based session that follows.",
+    "version": "v1"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Bancho Protocol"
+        ],
+        "summary": "Check server availability",
+        "description": "Returns the literal string `cho`. This endpoint exists solely as a liveness check and is not used during normal client communication.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bancho Protocol"
+        ],
+        "summary": "Authenticate or exchange bancho packets",
+        "description": "Handles both login and authenticated bancho communication.\r\n\r\nWithout an `osu-token` request header, the request body is interpreted as a login request. A successful login returns a `cho-token` response header, which must be included as the `osu-token` header on all subsequent requests.\r\nWith a valid `osu-token`, the request body contains one or more bancho packets. The response contains any queued packets waiting for the client, or an empty body if no packets are available.\r\nIf the supplied `osu-token` is no longer valid, the client is instructed to reconnect.\r\n\r\nRequest and response bodies use the native bancho binary packet format.\n\nprivate const string BanchoPacketCatalog = \"\"\"\r\nThe request body consists of one or more bancho packets encoded as:\r\n\r\n- `uint16` packet id\r\n- `uint8` reserved byte\r\n- `uint32` payload length\r\n- payload bytes\r\n\r\nMultiple packets may be concatenated into a single request.\r\n\r\nSupported packet categories include:\r\n\r\n### Core\r\n\r\n- Ping\r\n- ChangeAction\r\n- RequestStatusUpdate\r\n- UserStatsRequest\r\n- UserPresenceRequest\r\n- UserPresenceRequestAll\r\n- ReceiveUpdates\r\n- SetAwayMessage\r\n- Logout\r\n\r\n### Channels\r\n\r\n- ChannelJoin\r\n- ChannelPart\r\n- SendPublicMessage\r\n- SendPrivateMessage\r\n- ToggleBlockNonFriendDms\r\n\r\n### Spectating\r\n\r\n- StartSpectating\r\n- StopSpectating\r\n- SpectateFrames\r\n- CantSpectate\r\n\r\nLive replay frames are also published through the Basil API's\r\n`GET /users/{userId}/live` Server-Sent Events endpoint.\r\n\r\n### Multiplayer\r\n\r\n- CreateMatch\r\n- JoinMatch\r\n- PartMatch\r\n- MatchChangeSlot\r\n- MatchChangeSettings\r\n- MatchChangePassword\r\n- MatchChangeMods\r\n- MatchChangeTeam\r\n- MatchLock\r\n- MatchTransferHost\r\n- MatchReady\r\n- MatchNotReady\r\n- MatchStart\r\n- MatchLoadComplete\r\n- MatchSkipRequest\r\n- MatchNoBeatmap\r\n- MatchHasBeatmap\r\n- MatchFailed\r\n- MatchScoreUpdate\r\n- MatchComplete\r\n- MatchInvite\r\n- TournamentMatchInfoRequest\r\n- TournamentJoinMatchChannel\r\n- TournamentLeaveMatchChannel\r\n\r\nLive multiplayer score updates are also published as `gameplay` events through the Basil\r\nAPI's `GET /matches/{matchId}/live` and `GET /matches/{matchId}/live/{slotIndex}`\r\nServer-Sent Events endpoints.\r\n\r\nThe response body uses the same packet format and contains zero or more packets\r\nqueued for the client. An empty response body simply means no packets are\r\ncurrently pending.\r\n\"\"\";",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Bancho Protocol"
+    }
+  ]
+}

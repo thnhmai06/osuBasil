@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configurations;
+using Basil.Server.Features.Multiplayer;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Web;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,16 +19,16 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Covers the new `/matches` list/create/settings/action routes end to end — in particular, this is
-///     the first real endpoint <see cref="Basil.Web.Auth.AdminKeyAuthenticationHandler" />'s
+///     the first real endpoint <see cref="Basil.Server.Features.Auth.AdminKeyAuthenticationHandler" />'s
 ///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
 ///     is verified through the full middleware pipeline here, not just the handler in isolation.
 /// </summary>
-public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		// Minimal in-memory fake so CreateMatchAsync/FetchAllMatchesAsync/DeleteMatchAsync behave
 		// realistically without a real SQLite file.
@@ -88,6 +88,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(TestDoubles.NullUserRepository());
+				services.AddSingleton(TestDoubles.NullMapRepository());
 			});
 		});
 	}
@@ -131,6 +132,32 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		Assert.True(json.GetProperty("host").ValueKind is JsonValueKind.Null);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "INVALID MATCH DATA CAN STILL CREATE A MATCH" -- an invalid
+	///     mapId used to return the 400 error only after the match was already registered
+	///     (<c>CreateEmptyAsync</c> ran first), leaving an orphaned, half-initialized match behind with
+	///     nothing left to close it. The mapId is now validated before the match is created at all.
+	/// </summary>
+	[Fact]
+	public async Task PostMatch_InvalidMapId_ReturnsBadRequestAndCreatesNoMatch()
+	{
+		var client = _factory.CreateClient();
+		var before = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"));
+		var beforeCount = (await before.Content.ReadFromJsonAsync<JsonElement>())
+			.GetProperty("data").GetArrayLength();
+
+		var request = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
+		request.Content = JsonContent.Create(new { name = "Bad Map", mapId = 999999 });
+		var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+		var after = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"));
+		var afterCount = (await after.Content.ReadFromJsonAsync<JsonElement>())
+			.GetProperty("data").GetArrayLength();
+		Assert.Equal(beforeCount, afterCount);
+	}
+
 	[Fact]
 	public async Task GetMatch_ListsCreatedMatchByDefault_OnlineStatus()
 	{
@@ -150,6 +177,16 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		// (isOpen was dropped in the Phase 2 record redesign; MatchListItem.Live replaces it).
 		Assert.Contains(items, item => item.GetProperty("id").GetInt32() == id &&
 		                               item.GetProperty("live").ValueKind != JsonValueKind.Null);
+	}
+
+	[Fact]
+	public async Task GetMatch_InvalidStatus_ReturnsBadRequestInsteadOfSilentlyDefaulting()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=notarealstatus"));
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
 	[Fact]

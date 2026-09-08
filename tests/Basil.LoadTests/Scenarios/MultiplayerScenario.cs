@@ -183,7 +183,16 @@ public sealed class MultiplayerScenario : IBasilScenario
 						return Response.Fail(statusCode: ex.GetType().Name, message: ex.Message);
 					}
 				})
-				.WithLoadSimulations(Simulation.KeepConstant(totalPlayers, settings.Duration))
+				// KeepConstant respawns a fresh copy the instant one finishes, reusing the same
+				// instance number — but roomMatchIds below is created once for the scenario's
+				// whole life, so a respawned copy's host creates a new match while every
+				// respawned follower still resolves the *first* generation's now-stale
+				// TaskCompletionSource, sending its packets at an already-closed match/round.
+				// One full room lifecycle (~15-25s) is much shorter than settings.Duration
+				// (minutes), so this fired repeatedly. Inject with interval == during is a
+				// single one-shot batch: every copy is injected once, at the start, and runs to
+				// its own natural completion — no respawn, so no stale-generation aliasing.
+				.WithLoadSimulations(Simulation.Inject(totalPlayers, settings.Duration, settings.Duration))
 				.WithoutWarmUp()
 				.WithMaxFailCount(1_000_000)
 				.WithClean(_ =>
@@ -267,12 +276,12 @@ public sealed class MultiplayerScenario : IBasilScenario
 		var apiClient = new BasilApiClient(context.ClientFactory);
 		await apiClient.UploadBeatmapsetAsync(zipStream.ToArray(), "vivid.osz", "");
 
-		// ponytail: the mapset list read can briefly lag the reconcile write; a few short
+		// ponytail: the beatmapset list read can briefly lag the reconcile write; a few short
 		// retries beat hard-coding a fixed pre-delay for every profile.
 		for (var attempt = 0; attempt < 5; attempt++)
 		{
-			if (await apiClient.ResolveSampleBeatmapsetIdAsync() is { } mapsetId)
-				return await apiClient.ResolveFirstBeatmapAsync(mapsetId);
+			if (await apiClient.ResolveSampleBeatmapsetIdAsync() is { } beatmapsetId)
+				return await apiClient.ResolveFirstBeatmapAsync(beatmapsetId);
 			await Task.Delay(TimeSpan.FromMilliseconds(300));
 		}
 

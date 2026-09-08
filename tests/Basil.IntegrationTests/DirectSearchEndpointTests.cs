@@ -1,11 +1,12 @@
 using System.Net;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Content;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
-using Basil.Web;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,19 +20,19 @@ namespace Basil.IntegrationTests;
 ///     the right formatter. DirectSearchService/DirectSearchResponseFormatter have their own unit
 ///     tests.
 /// </summary>
-public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private IReadOnlyList<IReadOnlyList<Beatmap>> _searchResult = [];
 	private Beatmap? _setInfo;
 
-	public DirectSearchEndpointTests(WebApplicationFactory<Program> factory)
+	public DirectSearchEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_beatmaps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _setInfo);
-		_beatmaps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
-			Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
+		_beatmaps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(),
+			Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
 
 		var users = Substitute.For<IUserRepository>();
 		users.FetchPasswordHashAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -51,7 +52,9 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 			builder.ConfigureServices(services =>
 			{
 				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
+				// Real, stateful repository: mirror search mode is now read back from here (seeded once
+				// at startup from any MirrorOptions a derived factory registers), not from IOptions directly.
+				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(users);
 				services.AddSingleton(TestDoubles.FixedPasswordHasher());
@@ -62,9 +65,9 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
 	private static Beatmap MakeBeatmap(int id, int setId)
 	{
-		var mapset = new Beatmapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapset = new Beatmapset(setId, "Artist", "Title", "cmyui", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(
-			new string('0', 32), id, mapset, "Version", "file.osu",
+			new string('0', 32), id, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuBeatmapObjectCounts { MaxCombo = 500 });
 	}

@@ -1,12 +1,12 @@
+using Basil.Server.Features.Auth;
 using System.Text;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Channels;
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Abstractions.Users;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Chat;
+using Basil.Server.Features.Content;
+using Basil.Server.Features.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Security;
 using NSubstitute;
 
 namespace Basil.IntegrationTests;
@@ -50,7 +50,7 @@ internal static class TestDoubles
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmap?>(null));
 		repo.UpsertAsync(Arg.Any<Beatmap>(), Arg.Any<CancellationToken>())
 			.Returns(call => Task.FromResult(call.ArgAt<Beatmap>(0)));
-		repo.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		repo.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 		repo.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -59,7 +59,7 @@ internal static class TestDoubles
 	}
 
 	/// <summary>Every beatmapset unknown — used where routing doesn't care about beatmapsets.</summary>
-	public static IBeatmapsetRepository NullMapsetRepository()
+	public static IBeatmapsetRepository NullBeatmapsetRepository()
 	{
 		var repo = Substitute.For<IBeatmapsetRepository>();
 		repo.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(null));

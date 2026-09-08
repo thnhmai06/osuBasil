@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +17,12 @@ namespace Basil.IntegrationTests;
 ///     Authenticated routes only need "userSession not online" coverage here (no DB access happens before
 ///     that check — see AuthenticationService); their real logic is unit-tested separately.
 /// </summary>
-public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> factory)
-	: IClassFixture<WebApplicationFactory<Program>>
+public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> factory)
+	: IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory = Configure(factory);
+	private readonly WebApplicationFactory<Bootstrap> _factory = Configure(factory);
 
-	private static WebApplicationFactory<Program> Configure(WebApplicationFactory<Program> factory)
+	private static WebApplicationFactory<Bootstrap> Configure(WebApplicationFactory<Bootstrap> factory)
 	{
 		return factory.WithWebHostBuilder(builder =>
 		{
@@ -39,7 +39,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullMapRepository());
-				services.AddSingleton(TestDoubles.NullMapsetRepository());
+				services.AddSingleton(TestDoubles.NullBeatmapsetRepository());
 				services.AddSingleton(TestDoubles.NullUserRepository());
 			});
 		});
@@ -220,7 +220,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Program> facto
 	}
 
 	[Fact]
-	public async Task BeatmapAssetHost_UnknownMapset_ReturnsNotFound()
+	public async Task BeatmapAssetHost_UnknownBeatmapset_ReturnsNotFound()
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 

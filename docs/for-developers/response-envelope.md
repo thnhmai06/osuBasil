@@ -77,6 +77,34 @@ with an SSE-related `Accept` header as a stream.
 A route that produces JSON should not manually construct `Envelope<T>` unless it has a specific reason to bypass the
 normal middleware pipeline.
 
+### Error paths
+
+`EnvelopeMiddleware` only sees requests that already matched a `basilapi`-tagged endpoint. Two error paths never
+reach it that way, and are covered separately so the `api.` host's envelope contract still holds for them:
+
+* **A route that never matches at all** (a 404 with no route found, a 405 method mismatch, or a route-constraint
+  overflow such as an `{id:int}` too large for `Int32`) resolves no endpoint at all. `EnvelopeMiddleware` treats an
+  unmatched endpoint on the `api.` host as equivalent to a matched `basilapi` one for envelope purposes, so these
+  responses are still wrapped instead of falling through as a bare, empty body.
+* **An unhandled application exception** is caught by a separate middleware (`ExceptionLoggingMiddleware`, registered
+  before routing) that logs it and, on the `api.` host only, maps it to an enveloped `500` -- provided the response
+  hasn't already started writing. `BadHttpRequestException` (parameter-binding failures, e.g. that same route-id
+  overflow) is treated as its own already-correct client-error status rather than a `500`. Every other host group
+  keeps its previous bare-response behavior on an unhandled exception; only `api.` has an envelope contract to
+  uphold.
+
+### Internal invariant: `EnvelopeMiddleware` never re-parses untrusted bytes
+
+`EnvelopeMiddleware` calls `JsonNode.ParseAsync` on the buffered response body, and `EnvelopeBuilder.BuildMeta`
+calls `GetValue<int>()` on a paginated body's `page`/`pageSize`/`totalRecords` fields. Neither call is wrapped in a
+`try`/`catch`, but neither is reachable by any current `basilapi` route: every enveloped body is JSON the
+framework itself serialized from a typed C# object (`Results.Json`, `TypedResults`, etc.), never a re-parse of
+request input, so the bytes are guaranteed well-formed and `page`/`pageSize`/`totalRecords` are guaranteed
+numeric. A route that manually writes non-standard JSON bytes with a JSON content type would violate this and
+should not do so. Should either call ever throw regardless, `ExceptionLoggingMiddleware` (registered earlier in
+the pipeline, so it wraps `EnvelopeMiddleware`) still catches it and maps it to a correctly enveloped `500` --
+there is no path where either throw reaches the client unwrapped.
+
 ## OpenAPI schema transformation
 
 `EnvelopeSchemaTransformer` keeps the generated OpenAPI contract consistent with the runtime behavior.
@@ -152,7 +180,7 @@ The infrastructure repositories provide cached wrappers:
 ```text
 CachingUserRepository
 CachingMapRepository
-CachingMapsetRepository
+CachingBeatmapsetRepository
         │
         ▼
 IMemoryCache
@@ -177,7 +205,7 @@ boundary keeps the optimization independent of individual endpoints.
 
 This also prevents each response builder from implementing its own cache and invalidation rules.
 
-Developers adding a new consumer of users, maps, or mapsets should use the existing repository abstraction rather than
+Developers adding a new consumer of users, maps, or beatmapsets should use the existing repository abstraction rather than
 querying SQLite directly.
 
 ## Beatmap identity
@@ -233,7 +261,7 @@ When adding a normal JSON endpoint:
 2. Register the route in the appropriate API route group.
 3. Return the underlying model/result rather than manually wrapping it.
 4. Verify that the endpoint is included in the expected OpenAPI group.
-5. If the response embeds users, beatmaps, or mapsets, use the existing repository abstractions so caching and
+5. If the response embeds users, beatmaps, or beatmapsets, use the existing repository abstractions so caching and
    invalidation remain centralized.
 6. Add explicit handling only if the endpoint intentionally produces a file or SSE stream.
 
@@ -273,6 +301,7 @@ Use an enveloped `200` response with `data: null` instead.
 ## Related code
 
 * [`Basil.Web/Middleware/EnvelopeMiddleware.cs`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs): runtime response wrapping
+* [`Basil.Web/Middleware/ExceptionLoggingMiddleware.cs`](../../src/Basil.Web/Middleware/ExceptionLoggingMiddleware.cs): unhandled-exception logging and the `api.` host's 500-envelope mapping
 * [`Basil.Web/OpenApi/EnvelopeBuilder.cs`](../../src/Basil.Web/OpenApi/EnvelopeBuilder.cs): envelope schema construction
 * [`Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs`](../../src/Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs): OpenAPI response transformation
 * [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): `UserBrief` embedding

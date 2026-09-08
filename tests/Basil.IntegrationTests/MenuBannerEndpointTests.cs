@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Abstractions.Content;
-using Basil.Application.Configurations;
-using Basil.Web;
-using Basil.Web.OpenApi;
+using Basil.Server.Features.Content;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Host;
+using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,13 +17,13 @@ namespace Basil.IntegrationTests;
 ///     (the public manifest). Backed by a real, stateful <see cref="InMemoryMenuBannerRepository" />
 ///     since these tests need read-your-writes across write then read.
 /// </summary>
-public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private const string AdminKey = "correct-key";
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-menu-banner-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MenuBannerEndpointTests(WebApplicationFactory<Program> factory)
+	public MenuBannerEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -44,7 +44,7 @@ public class MenuBannerEndpointTests : IClassFixture<WebApplicationFactory<Progr
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					BeatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets"),
 					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
 					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),

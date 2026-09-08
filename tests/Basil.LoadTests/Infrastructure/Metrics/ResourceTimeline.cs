@@ -38,6 +38,9 @@ public sealed class ResourceTimeline
 		Add(result, "HandleCount", _samples.Select(s => (double?)s.HandleCount));
 		Add(result, "ThreadPoolThreads", _samples.Select(s => (double?)s.ThreadPoolThreads));
 		Add(result, "TcpConnections", _samples.Select(s => (double?)s.TcpConnections));
+		Add(result, "ThreadPoolQueueLength", _samples.Select(s => (double?)s.ThreadPoolQueueLength));
+		Add(result, "GcPausePercent", _samples.Select(s => s.GcPausePercent));
+		Add(result, "TotalMachineCpuPercent", _samples.Select(s => s.TotalMachineCpuPercent));
 		return result;
 	}
 
@@ -51,7 +54,8 @@ public sealed class ResourceTimeline
 		using var writer = new StreamWriter(path);
 		writer.WriteLine("TimestampUtc,CpuPercent,WorkingSetBytes,PrivateMemoryBytes,GcHeapBytes," +
 		                 "Gen0Collections,Gen1Collections,Gen2Collections,AllocRateBytesPerSecond," +
-		                 "ThreadCount,HandleCount,ThreadPoolThreads,TcpConnections");
+		                 "ThreadCount,HandleCount,ThreadPoolThreads,TcpConnections,ThreadPoolQueueLength," +
+		                 "GcPausePercent,TotalMachineCpuPercent");
 
 		foreach (var s in _samples)
 			writer.WriteLine(string.Join(',',
@@ -59,7 +63,8 @@ public sealed class ResourceTimeline
 				Cell(s.CpuPercent), Cell(s.WorkingSetBytes), Cell(s.PrivateMemoryBytes), Cell(s.GcHeapBytes),
 				Cell(s.Gen0Collections), Cell(s.Gen1Collections), Cell(s.Gen2Collections),
 				Cell(s.AllocRateBytesPerSecond), Cell(s.ThreadCount), Cell(s.HandleCount),
-				Cell(s.ThreadPoolThreads), Cell(s.TcpConnections)));
+				Cell(s.ThreadPoolThreads), Cell(s.TcpConnections), Cell(s.ThreadPoolQueueLength),
+				Cell(s.GcPausePercent), Cell(s.TotalMachineCpuPercent)));
 	}
 
 	private static void Add(Dictionary<string, FieldAggregate> result, string name, IEnumerable<double?> values)

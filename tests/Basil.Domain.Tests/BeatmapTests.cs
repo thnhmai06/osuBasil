@@ -10,12 +10,12 @@ public class BeatmapTests
 {
 	private static Beatmap MakeBeatmap()
 	{
-		var mapset = new Beatmapset(100, "Camellia", "Exit This Earth's Atomosphere", "cmyui",
+		var beatmapset = new Beatmapset(100, "Camellia", "Exit This Earth's Atomosphere", "cmyui",
 			new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 		return new Beatmap(
 			"d41d8cd98f00b204e9800998ecf8427e",
 			321,
-			mapset,
+			beatmapset,
 			"Hyper",
 			"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),

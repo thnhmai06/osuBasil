@@ -1,0 +1,236 @@
+using Basil.Server.Features.Beatmaps;
+using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Basil.Server.Tests.Features.Beatmaps;
+
+public class CachingBeatmapRepositoryTests
+{
+	private static Beatmap MakeBeatmap(int id, string md5)
+	{
+		var beatmapset = new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
+		return new Beatmap(md5, id, beatmapset, "Normal", "map.osu",
+			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+	}
+
+	[Fact]
+	public async Task FetchOneAsync_ById_SecondCall_DoesNotHitInner()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository
+		{
+			ById =
+			{
+				[1] = beatmap
+			}
+		};
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		await repo.FetchOneAsync(1);
+		await repo.FetchOneAsync(1);
+
+		Assert.Equal(1, inner.FetchOneCalls);
+	}
+
+	[Fact]
+	public async Task FetchOneAsync_ByMd5_SecondCall_DoesNotHitInner()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository
+		{
+			ByMd5 =
+			{
+				[beatmap.Md5] = beatmap
+			}
+		};
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		await repo.FetchOneAsync(md5: beatmap.Md5);
+		await repo.FetchOneAsync(md5: beatmap.Md5);
+
+		Assert.Equal(1, inner.FetchOneCalls);
+	}
+
+	[Fact]
+	public async Task FetchOneAsync_ByFilenameAndSetId_AlwaysPassesThrough()
+	{
+		var inner = new CountingBeatmapRepository();
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
+		await repo.FetchOneAsync(filename: "a.osu", setId: 1);
+
+		Assert.Equal(2, inner.FetchOneCalls);
+	}
+
+	[Fact]
+	public async Task UpsertAsync_InvalidatesBothIdAndMd5Entries()
+	{
+		var original = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository
+		{
+			ById =
+			{
+				[1] = original
+			},
+			ByMd5 =
+			{
+				[original.Md5] = original
+			}
+		};
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		await repo.FetchOneAsync(1);
+		await repo.FetchOneAsync(md5: original.Md5);
+		Assert.Equal(2, inner.FetchOneCalls);
+
+		var updated = original with { Version = "Changed" };
+		inner.UpsertResult = updated;
+		await repo.UpsertAsync(updated);
+		inner.ById[1] = updated;
+		inner.ByMd5[original.Md5] = updated;
+
+		await repo.FetchOneAsync(1);
+		await repo.FetchOneAsync(md5: original.Md5);
+
+		Assert.Equal(4, inner.FetchOneCalls);
+	}
+
+	/// <summary>
+	///     Regression test for a private-beatmap cache leak: the id-keyed cache entry used to be
+	///     shared across the includePrivate:true and includePrivate:false lookups, so a single
+	///     privileged fetch would poison the cache and hand the private beatmap back to a later
+	///     anonymous (includePrivate:false) caller instead of the null the underlying repository
+	///     would have returned for them directly.
+	/// </summary>
+	[Fact]
+	public async Task FetchOneAsync_ById_PrivateResultNeverLeaksToNonPrivateCaller()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository
+		{
+			ById = { [1] = beatmap },
+			PrivateIds = { 1 }
+		};
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		var privileged = await repo.FetchOneAsync(1, includePrivate: true);
+		var anonymous = await repo.FetchOneAsync(1, includePrivate: false);
+
+		Assert.NotNull(privileged);
+		Assert.Null(anonymous);
+	}
+
+	/// <summary>
+	///     Regression test: an <see cref="IMemoryCache" /> configured with a size limit throws on any
+	///     Set call whose entry doesn't declare a Size, so every cache write here must set one.
+	/// </summary>
+	[Fact]
+	public async Task FetchOneAsync_AgainstSizeLimitedCache_DoesNotThrow()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository { ById = { [1] = beatmap } };
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 }),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		var result = await repo.FetchOneAsync(1);
+
+		Assert.NotNull(result);
+	}
+
+	/// <summary>Same leak as above, through the md5-keyed lookup path.</summary>
+	[Fact]
+	public async Task FetchOneAsync_ByMd5_PrivateResultNeverLeaksToNonPrivateCaller()
+	{
+		var beatmap = MakeBeatmap(1, new string('a', 32));
+		var inner = new CountingBeatmapRepository
+		{
+			ByMd5 = { [beatmap.Md5] = beatmap },
+			PrivateMd5s = { beatmap.Md5 }
+		};
+		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
+			NullLogger<CachingBeatmapRepository>.Instance);
+
+		var privileged = await repo.FetchOneAsync(md5: beatmap.Md5, includePrivate: true);
+		var anonymous = await repo.FetchOneAsync(md5: beatmap.Md5, includePrivate: false);
+
+		Assert.NotNull(privileged);
+		Assert.Null(anonymous);
+	}
+
+	private sealed class CountingBeatmapRepository : IBeatmapRepository
+	{
+		public int FetchOneCalls { get; private set; }
+		public Dictionary<int, Beatmap> ById { get; } = new();
+		public Dictionary<string, Beatmap> ByMd5 { get; } = new();
+		public HashSet<int> PrivateIds { get; } = [];
+		public HashSet<string> PrivateMd5s { get; } = [];
+		public Beatmap? UpsertResult { get; set; }
+
+		public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
+			int? setId = null, bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			FetchOneCalls++;
+			if (id is not null)
+				return Task.FromResult(!includePrivate && PrivateIds.Contains(id.Value)
+					? null
+					: ById.GetValueOrDefault(id.Value));
+			if (md5 is not null)
+				return Task.FromResult(!includePrivate && PrivateMd5s.Contains(md5)
+					? null
+					: ByMd5.GetValueOrDefault(md5));
+			return Task.FromResult<Beatmap?>(null);
+		}
+
+		public Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(UpsertResult ?? beatmap);
+		}
+
+		public Task DeleteByMd5Async(string md5, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
+		}
+
+		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
+		}
+
+		public Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(0);
+		}
+
+		public Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+			CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<Beatmap>>([]);
+		}
+
+		public Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+			bool includePrivate = false, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyDictionary<int, int>>(new Dictionary<int, int>());
+		}
+	}
+}

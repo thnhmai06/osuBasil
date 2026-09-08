@@ -1,10 +1,9 @@
 using System.Net;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
+using Basil.Server.Features.Users;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Web;
-using Basil.Web.Routing.Api;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,23 +13,20 @@ using NSubstitute;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers <see cref="UserLookup" />: every public `GET /users/{idOrName}...`
-///     route accepts a username in place of the numeric id, resolving via
-///     <see cref="IUserRepository.FetchByNameAsync" /> and 302-redirecting to the canonical numeric
-///     path. A numeric segment is served directly (not redirected); an unknown username 404s.
+///     Covers `GET /users/{userId}...`: every route takes a numeric id only. A non-numeric segment
+///     never matches the route at all (a bare, unenveloped 404), and a numeric id that doesn't exist
+///     404s through the handler instead.
 /// </summary>
-public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly Dictionary<string, User> _byName = [];
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly Dictionary<int, User> _byId = [];
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public UserLookupEndpointTests(WebApplicationFactory<Program> factory)
+	public UserLookupEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var users = Substitute.For<IUserRepository>();
 		users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(call => _byName.Values.FirstOrDefault(u => u.Id == call.ArgAt<int>(0)));
-		users.FetchByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-			.Returns(call => _byName.GetValueOrDefault(call.ArgAt<string>(0)));
+			.Returns(call => _byId.GetValueOrDefault(call.ArgAt<int>(0)));
 		users.FetchAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<User>>([]));
 
 		_factory = factory.WithWebHostBuilder(builder =>
@@ -65,51 +61,31 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Progr
 	}
 
 	[Fact]
-	public async Task GetUser_ByUsername_RedirectsToCanonicalId()
+	public async Task GetUser_NumericId_ReturnsUser()
 	{
-		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+		_byId[7] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
 
-		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player", "correct-key"));
+		var response = await MakeClient().SendAsync(MakeRequest("/users/7", "correct-key"));
 
-		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-		Assert.Equal("/users/7", response.Headers.Location?.ToString());
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
 
 	[Fact]
-	public async Task GetUser_ByUnknownUsername_ReturnsNotFound()
+	public async Task GetUser_UnknownNumericId_ReturnsNotFound()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/users/nobody", "correct-key"));
+		var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	[Fact]
-	public async Task GetUserAvatar_ByUsername_RedirectsToCanonicalId()
+	[Theory]
+	[InlineData("/users/cool_player")]
+	[InlineData("/users/cool_player/avatar")]
+	[InlineData("/users/cool_player/live")]
+	public async Task GetUser_NonNumericSegment_NeverMatchesRoute(string path)
 	{
-		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+		var response = await MakeClient().SendAsync(MakeRequest(path, "correct-key"));
 
-		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/avatar", "correct-key"));
-
-		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-		Assert.Equal("/users/7/avatar", response.Headers.Location?.ToString());
-	}
-
-	[Fact]
-	public async Task GetUserLive_ByUsername_RedirectsToCanonicalId()
-	{
-		_byName["cool_player"] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
-
-		var response = await MakeClient().SendAsync(MakeRequest("/users/cool_player/live"));
-
-		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-		Assert.Equal("/users/7/live", response.Headers.Location?.ToString());
-	}
-
-	[Fact]
-	public async Task GetUser_NumericId_IsNotRedirected()
-	{
-		var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
-
-		Assert.NotEqual(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 }

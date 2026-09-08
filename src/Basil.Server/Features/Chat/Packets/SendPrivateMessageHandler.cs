@@ -1,0 +1,30 @@
+using Basil.Server.Shared.Http.Bancho;
+using Basil.Server.Features.Chat;
+using Basil.Server.Shared.Sessions;
+using Basil.Protocol.Packets;
+
+namespace Basil.Server.Features.Chat.Packets;
+
+/// <summary>
+///     Handles the <see cref="ClientPackets.SendPrivateMessage" /> packet, which carries a private
+///     message addressed to a single user. Reads the message and routes it through
+///     <see cref="ChatDispatchService.SendPrivmsgAsync" />.
+/// </summary>
+/// <remarks>
+///     All routing and delivery checks, including the bot command shortcut and the block, pm-private,
+///     and silence checks, live in <see cref="ChatDispatchService" />. The same service is shared with
+///     public messages and real IRC PRIVMSG.
+/// </remarks>
+public sealed class SendPrivateMessageHandler(ChatDispatchService chatDispatch) : IPacketHandler
+{
+	public ClientPackets PacketId => ClientPackets.SendPrivateMessage;
+
+	public bool AllowedWhenRestricted => true;
+
+	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
+		CancellationToken cancellationToken = default)
+	{
+		var message = reader.ReadMessage();
+		await chatDispatch.SendPrivmsgAsync(gameSession, message.Recipient, message.Text, cancellationToken);
+	}
+}

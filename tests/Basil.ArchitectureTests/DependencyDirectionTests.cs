@@ -5,45 +5,27 @@ using NetArchTest.Rules;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Enforces Clean Architecture dependency direction: Domain and Application must never
-///     depend on Infrastructure, Web, or framework/ORM/web assemblies (dep-inward-only,
-///     frame-domain-purity).
+///     Enforces the two project-level dependency rules that survive the merge of the former
+///     Application, Infrastructure, and Web projects into <c>Basil.Server</c>: Domain stays free of
+///     the server and of persistence/web frameworks, and Protocol depends on neither.
 /// </summary>
+/// <remarks>
+///     Rules about the boundaries <em>inside</em> <c>Basil.Server</c> -- which slice may reference
+///     which, and what <c>Shared</c> is allowed to contain -- live in
+///     <see cref="SliceBoundaryTests" />, because a single assembly cannot express them as
+///     assembly-level dependencies.
+/// </remarks>
 public class DependencyDirectionTests
 {
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
-	private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
-	private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolAssembly = typeof(Protocol.AssemblyMarker).Assembly;
 
 	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Infrastructure()
+	public void Domain_Should_Not_HaveDependencyOn_Server()
 	{
 		var result = Types.InAssembly(DomainAssembly)
 			.Should()
-			.NotHaveDependencyOn("Basil.Infrastructure")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Application()
-	{
-		var result = Types.InAssembly(DomainAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Application")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Domain_Should_Not_HaveDependencyOn_Web()
-	{
-		var result = Types.InAssembly(DomainAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Web")
+			.NotHaveDependencyOn("Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -65,69 +47,17 @@ public class DependencyDirectionTests
 	}
 
 	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Infrastructure()
-	{
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Infrastructure")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Web()
-	{
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Web")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
-	public void Application_Should_Not_HaveDependencyOn_Frameworks()
-	{
-		var result = Types.InAssembly(ApplicationAssembly)
-			.Should()
-			.NotHaveDependencyOnAny(
-				"Microsoft.EntityFrameworkCore",
-				"Microsoft.AspNetCore",
-				"Microsoft.Data.Sqlite",
-				"Dapper")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	[Fact]
 	public void Protocol_Should_Not_HaveDependencyOn_AnyOtherBanchoProject()
 	{
 		var result = Types.InAssembly(ProtocolAssembly)
 			.Should()
-			.NotHaveDependencyOnAny(
-				"Basil.Domain",
-				"Basil.Application",
-				"Basil.Infrastructure",
-				"Basil.Web")
+			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
-	[Fact]
-	public void Infrastructure_Should_Not_HaveDependencyOn_Web()
-	{
-		var result = Types.InAssembly(InfrastructureAssembly)
-			.Should()
-			.NotHaveDependencyOn("Basil.Web")
-			.GetResult();
-
-		Assert.True(result.IsSuccessful, FailureMessage(result));
-	}
-
-	private static string FailureMessage(TestResult result)
+	private static string FailureMessage(NetArchTest.Rules.TestResult result)
 	{
 		if (result.IsSuccessful) return string.Empty;
 

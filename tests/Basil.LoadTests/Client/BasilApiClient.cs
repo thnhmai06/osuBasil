@@ -74,7 +74,7 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 		var body = JsonSerializer.Serialize(new { key });
 		using var content = new StringContent(body, Encoding.UTF8, "application/json");
 		using var response =
-			await client.PutAsync(clientFactory.BuildUri("api", "/adminkey"), content, cancellationToken);
+			await client.PutAsync(clientFactory.BuildUri("api", "/settings/adminkey"), content, cancellationToken);
 		response.EnsureSuccessStatusCode();
 	}
 
@@ -87,8 +87,8 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 	}
 
 	/// <summary>
-	///     Uploads an <c>.osz</c> beatmapset fixture. The endpoint reconciles the whole mapset storage
-	///     folder and returns only <c>{ ingested }</c> (a count), not the new mapset's id — the caller
+	///     Uploads an <c>.osz</c> beatmapset fixture. The endpoint reconciles the whole beatmapset storage
+	///     folder and returns only <c>{ ingested }</c> (a count), not the new beatmapset's id — the caller
 	///     resolves the id afterward via <see cref="ResolveSampleBeatmapsetIdAsync" />.
 	/// </summary>
 	public async Task UploadBeatmapsetAsync(byte[] oszBytes, string fileName, string adminKey,
@@ -121,6 +121,33 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 			: null;
 	}
 
+	/// <summary>
+	///     Looks up a specific match's database id by its exact room name, for <c>SoakScenario</c>'s
+	///     <c>sse</c> action -- unlike <see cref="ResolveSampleMatchIdAsync" />, this needs the one match a
+	///     single virtual user just created, not an arbitrary existing one, since many instances create
+	///     rooms concurrently during a soak run.
+	/// </summary>
+	/// <param name="name">The exact room name to match, as passed to the match-create packet.</param>
+	/// <param name="cancellationToken">Cancellation token for the lookup request.</param>
+	/// <returns>The match's database id, or <see langword="null" /> if it isn't found within the most recent page.</returns>
+	public async Task<int?> ResolveMatchIdByNameAsync(string name, CancellationToken cancellationToken = default)
+	{
+		using var client = clientFactory.CreateClient();
+		using var response = await client.GetAsync(
+			clientFactory.BuildUri("api", "/matches?status=all&page=1&pageSize=20"), cancellationToken);
+		if (!response.IsSuccessStatusCode) return null;
+
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+		var items = envelope.GetProperty("data");
+		if (items.ValueKind != JsonValueKind.Array) return null;
+
+		foreach (var item in items.EnumerateArray())
+			if (item.GetProperty("name").GetString() == name)
+				return item.GetProperty("id").GetInt32();
+
+		return null;
+	}
+
 	/// <summary>Best-effort lookup of any existing beatmapset id, for <c>ApiScenario</c>'s <c>beatmapset</c> target.</summary>
 	/// <returns>The first beatmapset id found, or <see langword="null" /> if none exist.</returns>
 	public async Task<int?> ResolveSampleBeatmapsetIdAsync(CancellationToken cancellationToken = default)
@@ -137,24 +164,24 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 			: null;
 	}
 
-	/// <summary>Resolves a beatmap id belonging to the given mapset, for assigning to a multiplayer room.</summary>
-	public async Task<int?> ResolveFirstBeatmapIdAsync(int mapsetId, CancellationToken cancellationToken = default)
+	/// <summary>Resolves a beatmap id belonging to the given beatmapset, for assigning to a multiplayer room.</summary>
+	public async Task<int?> ResolveFirstBeatmapIdAsync(int beatmapsetId, CancellationToken cancellationToken = default)
 	{
-		var beatmap = await ResolveFirstBeatmapAsync(mapsetId, cancellationToken);
+		var beatmap = await ResolveFirstBeatmapAsync(beatmapsetId, cancellationToken);
 		return beatmap?.Id;
 	}
 
 	/// <summary>
-	///     Resolves the first beatmap under a mapset, including its md5 — <c>MatchChangeSettingsHandler</c>
+	///     Resolves the first beatmap under a beatmapset, including its md5 — <c>MatchChangeSettingsHandler</c>
 	///     re-resolves a room's beatmap by md5 against the local repository, not by id, so the id alone
 	///     is not enough to actually assign a map to a room.
 	/// </summary>
-	public async Task<(int Id, string Md5)?> ResolveFirstBeatmapAsync(int mapsetId,
+	public async Task<(int Id, string Md5)?> ResolveFirstBeatmapAsync(int beatmapsetId,
 		CancellationToken cancellationToken = default)
 	{
 		using var client = clientFactory.CreateClient();
 		using var response =
-			await client.GetAsync(clientFactory.BuildUri("api", $"/beatmapsets/{mapsetId}"), cancellationToken);
+			await client.GetAsync(clientFactory.BuildUri("api", $"/beatmapsets/{beatmapsetId}"), cancellationToken);
 		if (!response.IsSuccessStatusCode) return null;
 
 		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);

@@ -84,7 +84,7 @@ Use inline code for technical identifiers, including:
 For example:
 
 * [`ServerOptions`](../../src/Basil.Application/Configurations/ServerOptions.cs)
-* `PUT /adminkey`
+* `PUT /settings/adminkey`
 * `appsettings.json`
 
 ## Cross-references
@@ -170,8 +170,8 @@ Use the exact configuration keys and API routes from the current implementation.
 For example:
 
 ```text
-Basil:Mirror:DownloadEndpoint
-Basil:Mirror:SearchEndpoint
+Server:Domain
+Bot:CommandPrefix
 ```
 
 Do not replace implementation names with informal descriptions when readers need to locate the corresponding configuration or code.

@@ -36,13 +36,13 @@ server, or other external service.
 
 ## Development configuration
 
-Basil uses the same [`appsettings.json`](../../src/Basil.Web/appsettings.json) configuration model in development and production. There is no separate
+Basil uses the same [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json) configuration model in development and production. There is no separate
 development-only configuration file.
 
 The main configuration file is:
 
 ```text
-src/Basil.Web/appsettings.json
+src/Basil.Web/Data/appsettings.json
 ```
 
 For local osu! client testing, set:

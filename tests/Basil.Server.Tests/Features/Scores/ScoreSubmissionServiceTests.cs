@@ -1,0 +1,334 @@
+using System.Collections.Concurrent;
+using System.Reflection;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Features.Scores;
+using Basil.Server.Features.Users;
+using Basil.Server.Features.Auth;
+using Basil.Server.Shared.Sessions;
+using Basil.Server.Features.Multiplayer;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Login;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+
+namespace Basil.Server.Tests.Features.Scores;
+
+public class ScoreSubmissionServiceTests
+{
+	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
+	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+	private readonly IReplayStorage _replayStorage = Substitute.For<IReplayStorage>();
+	private readonly IScoreRepository _scores = Substitute.For<IScoreRepository>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
+	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+
+	private ScoreSubmissionService MakeUseCase()
+	{
+		return new ScoreSubmissionService(
+			_beatmaps, _scores, _userStatRepository,
+			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
+				NullLogger<AuthenticationService>.Instance),
+			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
+	}
+
+	private static Beatmap MakeBeatmap()
+	{
+		var beatmapset = new Beatmapset(1, "a", "b", "d", DateTime.UtcNow, DateTime.UtcNow);
+		return new Beatmap(
+			new string('a', 32), 42, beatmapset, "c",
+			"f.osu", new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
+			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+	}
+
+	private GameSession MakePlayer(int id = 7, string name = "cookiezi")
+	{
+		var session = new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		_sessionRegistry.GetByName(name).Returns(session);
+		_users.FetchPasswordHashAsync(id, Arg.Any<CancellationToken>()).Returns("hashed");
+		_passwordHasher.Verify(Arg.Any<byte[]>(), "hashed").Returns(true);
+		return session;
+	}
+
+	/// <summary>Puts the userSession in an active multiplayer round — the only state that satisfies the multiplayer-only gate.</summary>
+	private static void PutInActiveRound(GameSession userSession, int roundId = 10)
+	{
+		var match = new MatchSession(0, "Grand Finals", "", "map", 1, new string('a', 32), userSession.Id,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0")
+		{
+			CurrentRoundId = roundId
+		};
+		userSession.Match = match;
+	}
+
+	/// <summary>16 score fields (after client_checksum/username stripping) — matches the Rijndael/FromSubmission fixture.</summary>
+	private static string[] MakeScoreFields(
+		string checksum = "chk", long score = 500_000, string grade = "S", bool passed = true, string mods = "0")
+	{
+		return
+		[
+			checksum, "300", "10", "5", "0", "0", "0", score.ToString(), "500", "False", grade, mods,
+			passed ? "True" : "False", "0", "210520235959", "20210520 "
+		];
+	}
+
+	private static string[] MakeFullFields(string beatmapMd5, string username, string[] scoreFields)
+	{
+		return [beatmapMd5, username, .. scoreFields];
+	}
+
+	private static ScoreSubmissionRequest MakeRequest(
+		string beatmapMd5, string username, string[] scoreFields, byte[]? replayData = null,
+		string osuVersion = "20210520", string clientHash = "clienthash", string uniqueIds = "u1|u2")
+	{
+		return new ScoreSubmissionRequest(
+			MakeFullFields(beatmapMd5, username, scoreFields),
+			"pwmd5",
+			osuVersion,
+			clientHash,
+			uniqueIds,
+			null,
+			beatmapMd5,
+			60_000,
+			30_000,
+			replayData);
+	}
+
+	private void StubPersistence(long scoreId = 1L)
+	{
+		_scores.CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>()).Returns(scoreId);
+	}
+
+	[Fact]
+	public async Task BeatmapNotFound_ReturnsBeatmapNotFound()
+	{
+		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns((Beatmap?)null);
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "cookiezi ", MakeScoreFields()));
+
+		Assert.Equal(ScoreSubmissionResultCode.BeatmapNotFound, result.Code);
+	}
+
+	[Fact]
+	public async Task PlayerNotOnline_ReturnsPlayerNotFound()
+	{
+		_beatmaps.FetchOneAsync(null, Arg.Any<string>(), null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(MakeBeatmap());
+		_sessionRegistry.GetByName(Arg.Any<string>()).Returns((GameSession?)null);
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(new string('a', 32), "ghost ", MakeScoreFields()));
+
+		Assert.Equal(ScoreSubmissionResultCode.PlayerNotFound, result.Code);
+	}
+
+	[Fact]
+	public async Task NotInMatch_StillPersists_WithNullRoundIdAndTeam()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		MakePlayer(); // userSession.Match stays null — not in any room
+		StubPersistence(321L);
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
+
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		Assert.Equal(321L, result.Result!.ScoreId);
+		await _scores.Received(1).CreateAsync(
+			Arg.Is<ScoreInsertRow>(row => row!.RoundId == null && row.Team == null), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task InMatchButNoActiveRound_StillPersists_WithNullRoundId()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		player.Match = new MatchSession(0, "Lobby", "", "map", 1, new string('a', 32), player.Id,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0");
+		// CurrentRoundId left null — room exists but no round has started (e.g. before !mp start).
+		StubPersistence();
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
+
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		await _scores.Received(1)
+			.CreateAsync(Arg.Is<ScoreInsertRow>(row => row!.RoundId == null), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task SubmitAsync_SoloSubmission_BumpsTotalScoreAndPlaysOnly()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer(); // userSession.Match stays null — not in any room
+		StubPersistence();
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
+
+		await _userStatRepository.Received(1)
+			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 0, Arg.Any<CancellationToken>());
+		var updated = player.ModeStats[GameMode.Standard];
+		Assert.Equal(500_000, updated.TotalScore);
+		Assert.Equal(0, updated.RankedScore);
+		Assert.Equal(1, updated.Plays);
+	}
+
+	[Fact]
+	public async Task SubmitAsync_InRoundMultiplayerSubmission_BumpsBothTotalAndRankedScore()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		StubPersistence();
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
+
+		await _userStatRepository.Received(1)
+			.IncrementAsync(player.Id, GameMode.Standard, 500_000, 500_000, Arg.Any<CancellationToken>());
+		var updated = player.ModeStats[GameMode.Standard];
+		Assert.Equal(500_000, updated.TotalScore);
+		Assert.Equal(500_000, updated.RankedScore);
+		Assert.Equal(1, updated.Plays);
+	}
+
+	[Fact]
+	public async Task UsernameTrailingSupporterSpace_IsStrippedBeforeLookup()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer(name: "cookiezi");
+		PutInActiveRound(player);
+		StubPersistence();
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
+
+		_sessionRegistry.Received().GetByName("cookiezi");
+	}
+
+	[Fact]
+	public async Task DuplicateChecksum_ReturnsDuplicateSubmission()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(true);
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
+
+		Assert.Equal(ScoreSubmissionResultCode.DuplicateSubmission, result.Code);
+		await _scores.DidNotReceive().CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task PassedRankedScore_AlwaysBestWithTopRank_Persists()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		StubPersistence(999L);
+
+		var result = await MakeUseCase()
+			.SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000, grade: "S")));
+
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		Assert.Equal(999L, result.Result!.ScoreId);
+		Assert.Equal(1, result.Result.Rank);
+
+		await _scores.Received(1).CreateAsync(Arg.Any<ScoreInsertRow>(), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task FailedScore_SkipsStatusPlacementAndUsesFailTime()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		StubPersistence();
+
+		var result =
+			await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(passed: false)));
+
+		Assert.Null(result.Result!.Rank);
+		Assert.Equal(TimeSpan.FromMilliseconds(30_000), result.Result.Score.TimeElapsed);
+	}
+
+	[Fact]
+	public async Task InvalidReplay_DiscardsReplayButStillPersistsScore()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		StubPersistence();
+
+		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), [1, 2, 3]));
+
+		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
+		await _replayStorage.DidNotReceive()
+			.WriteAsync(Arg.Any<long>(), Arg.Any<Submission>(), Arg.Any<string>(),
+				Arg.Any<OsuVersion>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task ValidReplay_IsWrittenUnderNewScoreId()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		_scores.CheckExistAsync("chk", Arg.Any<CancellationToken>()).Returns(false);
+		StubPersistence(555L);
+		var replayBytes = new byte[30];
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), replayBytes));
+
+		await _replayStorage.Received(1)
+			.WriteAsync(555L, Arg.Any<Submission>(), "cookiezi", Arg.Any<OsuVersion>(),
+				replayBytes, Arg.Any<CancellationToken>());
+	}
+
+	/// <summary>
+	///     Regression test: every submission carries a distinct client checksum, so leaving its
+	///     per-checksum lock entry behind after use would grow the static lock dictionary without
+	///     bound for the server's whole lifetime. It must be removed once the submission completes.
+	/// </summary>
+	[Fact]
+	public async Task SubmitAsync_AfterCompletion_RemovesChecksumLockEntry()
+	{
+		var bmap = MakeBeatmap();
+		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+			.Returns(bmap);
+		var player = MakePlayer();
+		PutInActiveRound(player);
+		StubPersistence();
+		const string checksum = "eviction-test-checksum";
+
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(checksum: checksum)));
+
+		var field = typeof(ScoreSubmissionService)
+			.GetField("ChecksumLocks", BindingFlags.NonPublic | BindingFlags.Static)!;
+		var locks = (ConcurrentDictionary<string, SemaphoreSlim>)field.GetValue(null)!;
+		Assert.False(locks.ContainsKey(checksum));
+	}
+}

@@ -1,8 +1,8 @@
-using Basil.Application.Configurations;
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
-using Basil.Web;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +16,11 @@ namespace Basil.IntegrationTests;
 ///     dispatcher, no DB. The no-token (login) branch is fully covered by LoginService's own unit
 ///     tests and is not re-tested through HTTP here.
 /// </summary>
-public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public BanchoProtocolEndpointTests(WebApplicationFactory<Program> factory)
+	public BanchoProtocolEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{

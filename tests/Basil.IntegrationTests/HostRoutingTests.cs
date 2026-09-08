@@ -1,8 +1,8 @@
 using System.Net;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configurations;
+using Basil.Server.Features.Beatmaps;
+using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Web;
+using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +16,11 @@ namespace Basil.IntegrationTests;
 ///     osu.{domain} -> osu! web endpoints, b.{domain} -> beatmap assets, api.{domain} -> developer
 ///     API, with both the configured DOMAIN and the hardcoded ppy.sh registered for every group.
 /// </summary>
-public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
+public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public HostRoutingTests(WebApplicationFactory<Program> factory)
+	public HostRoutingTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -37,7 +37,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
-				services.AddSingleton(TestDoubles.NullMapsetRepository());
+				services.AddSingleton(TestDoubles.NullBeatmapsetRepository());
 			});
 		});
 	}
@@ -77,7 +77,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	[Theory]
 	[InlineData("b.test.local")]
 	[InlineData("b.ppy.sh")]
-	public async Task BeatmapAssetSubdomain_UnknownMapset_ReturnsNotFound(string host)
+	public async Task BeatmapAssetSubdomain_UnknownBeatmapset_ReturnsNotFound(string host)
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1l.jpg");
@@ -90,17 +90,17 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Program>>
 	[Theory]
 	[InlineData("b.test.local")]
 	[InlineData("b.ppy.sh")]
-	public async Task BeatmapAssetSubdomain_KnownMapsetNoBackgroundFile_ReturnsNotFound(string host)
+	public async Task BeatmapAssetSubdomain_KnownBeatmapsetNoBackgroundFile_ReturnsNotFound(string host)
 	{
 		// /thumb no longer redirects to the api. host's background route — it resizes and serves the
 		// beatmapset's background directly (see HandleThumbnailAsync). A beatmapset with no BackgroundFile on
 		// record has nothing to resize, so this is a 404 rather than a redirect now.
-		var mapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
-		var mapsets = Substitute.For<IBeatmapsetRepository>();
-		mapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(mapset));
+		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		beatmapsets.FetchByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Task.FromResult<Beatmapset?>(beatmapset));
 
 		var factory = _factory.WithWebHostBuilder(builder =>
-			builder.ConfigureServices(services => services.AddSingleton(mapsets)));
+			builder.ConfigureServices(services => services.AddSingleton(beatmapsets)));
 		var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1.jpg");
 		request.Headers.Host = host;

@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions;
+using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
-using Basil.Web;
-using Basil.Web.OpenApi;
+using Basil.Server.Host;
+using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +17,12 @@ namespace Basil.IntegrationTests;
 ///     Covers `POST /announce`: pushes a notification popup to online players, excluding BasilBot,
 ///     targeting either everyone online (`userIds` omitted) or an explicit id list.
 /// </summary>
-public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AnnounceEndpointTests(WebApplicationFactory<Program> factory)
+	public AnnounceEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -68,7 +68,7 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 		registry.TryAdd(bob);
 		registry.TryAdd(bot);
 
-		var response = await client.SendAsync(MakeRequest(new { message = "server restarting soon" }));
+		var response = await client.SendAsync(MakeRequest(new { text = "server restarting soon" }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -89,7 +89,7 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 		var alice = MakeSession(11, "alice2");
 		registry.TryAdd(alice);
 
-		var response = await client.SendAsync(MakeRequest(new { message = "hi", userIds = new[] { 11, 999, 0 } }));
+		var response = await client.SendAsync(MakeRequest(new { text = "hi", userIds = new[] { 11, 999, 0 } }));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -98,11 +98,11 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 	}
 
 	[Fact]
-	public async Task Announce_EmptyMessage_ReturnsBadRequest()
+	public async Task Announce_EmptyText_ReturnsBadRequest()
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(new { message = "" }));
+		var response = await client.SendAsync(MakeRequest(new { text = "" }));
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -110,10 +110,10 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Program
 	[Fact]
 	public async Task Announce_MissingAdminKey_ReturnsUnauthorized()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(new { message = "hi" }, null));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(new { text = "hi" }, null));
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
 
-	private sealed record AnnounceResultData(bool Success, int DeliveredCount);
+	private sealed record AnnounceResultData(int DeliveredCount);
 }
