@@ -24,7 +24,7 @@ namespace Basil.Server.Features.Chat;
 ///     This class also provides the low-level IRC JOIN, PART, and PRIVMSG broadcast primitives.
 ///     It intentionally does not depend on <c>ICommandDispatcher</c>; command dispatch belongs to
 ///     <c>ChatDispatchService</c>, and introducing that dependency here would create a cycle
-///     (CommandDispatcher → MpCommandService → MatchMembershipService → this class).
+///     (CommandDispatcher → MpCommandService → MatchMembership → this class).
 /// </summary>
 /// <remarks>
 ///     A single account may own both a <see cref="GameSession" /> and an

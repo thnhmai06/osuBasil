@@ -30,6 +30,23 @@ public class LogoutHandlerTests
 
 	private LogoutHandler MakeHandler()
 	{
+		var channelMembership = new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+			Substitute.For<ISessionRegistry<IrcSession>>(),
+			Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(),
+			Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership,
+			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+			Substitute.For<IUserRepository>());
+		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
+			channelMembership, Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<IMatchRepository>(),
+			Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
+			Substitute.For<IBeatmapRepository>(), matchBroadcast, Substitute.For<IServiceProvider>(),
+			NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
+			Substitute.For<ISessionRegistry<GameSession>>(), channelMembership, Substitute.For<IMatchRepository>(),
+			matchLifecycle, NullLogger<MatchMembership>.Instance);
+
 		return new LogoutHandler(new PlayerLogoutService(
 			_gameRegistry, _ircRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
@@ -40,17 +57,7 @@ public class LogoutHandlerTests
 					Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(),
 					Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
-			new MatchMembershipService(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-				Substitute.For<ISessionRegistry<GameSession>>(),
-				Substitute.For<ISessionRegistry<IrcSession>>(),
-				new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
-					Substitute.For<ISessionRegistry<IrcSession>>(),
-					Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(),
-					Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
-				Substitute.For<IMatchLiveEvents>(),
-				Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
-				NullLogger<MatchMembershipService>.Instance),
+			matchMembership,
 			Substitute.For<IPlayerStatusEvents>(),
 			NullLogger<PlayerLogoutService>.Instance));
 	}

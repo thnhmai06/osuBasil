@@ -51,11 +51,15 @@ public class GhostDisconnectServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), channelRegistry,
-			gameRegistry, ircRegistry,
-			channelMembership, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>(),
-			NullLogger<MatchMembershipService>.Instance);
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry,
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+			Substitute.For<IUserRepository>());
+		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership,
+			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
+			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
 			Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
 	}

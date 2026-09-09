@@ -7,13 +7,13 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 
 /// <summary>Handles the client's request to leave the match.</summary>
 /// <remarks>
-///     Delegates to <see cref="MatchMembershipService.LeaveAsync" />, which frees the userSession's slot,
+///     Delegates to <see cref="MatchMembership.LeaveAsync" />, which frees the userSession's slot,
 ///     removes them from the match channel, transfers the host when the leaving userSession was the host,
 ///     and tears the match down when no slots remain occupied, unless the room is a persistent one
 ///     created via <c>!mp make</c> or the HTTP API. The leave runs under the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class PartMatchHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class PartMatchHandler(MatchMembership matchMembership) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.PartMatch;
 

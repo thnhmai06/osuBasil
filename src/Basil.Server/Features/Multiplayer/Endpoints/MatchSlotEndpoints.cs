@@ -110,7 +110,7 @@ internal static class MatchSlotEndpoints
 		group.MapPost("/matches/{matchId:numericid}/slots", async (int matchId, InviteRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, MatchControlService matchControl,
-				MatchMembershipService matchMembership, CancellationToken cancellationToken) =>
+				MatchMembership matchMembership, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -123,7 +123,7 @@ internal static class MatchSlotEndpoints
 
 				// Force-leave any target's current match before touching this match's lock. Two match
 				// locks are never held at once: this match's lock is acquired only after every old-match
-				// leave below has already released its own lock (see MatchMembershipService.LeaveAsync's
+				// leave below has already released its own lock (see MatchMembership.LeaveAsync's
 				// lock-ownership contract).
 				if (body.Force)
 					foreach (var userId in userIds)
@@ -223,7 +223,7 @@ internal static class MatchSlotEndpoints
 		group.MapDelete("/matches/{matchId:numericid}/slots", async (int matchId, [FromBody] KickPlayerRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, MatchMembershipService matchMembership,
+				MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);

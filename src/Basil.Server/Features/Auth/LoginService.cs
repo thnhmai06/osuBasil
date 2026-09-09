@@ -130,7 +130,7 @@ public sealed class LoginService(
 			// evicted here could never be reaped — producing duplicate players after a taskkill
 			// reconnect, "match is locked" from a slot nobody can ever free, and !mp make appearing
 			// to kick its own creator (a stale Match reference tripping the AlreadyInMatch
-			// tolerance in MatchMembershipService.CreateAsync). See RC3 in the 2026 investigation.
+			// tolerance in MatchLifecycle.CreateAsync). See RC3 in the 2026 investigation.
 			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
 			await playerLogoutService.LogoutAsync(existingSession, cancellationToken);
 		}

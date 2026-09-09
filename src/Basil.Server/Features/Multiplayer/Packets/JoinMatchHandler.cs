@@ -11,10 +11,10 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     registry, a restricted userSession, and a silenced userSession all get a <c>MatchJoinFail</c> response,
 ///     with a notification added for the latter two, and no further processing happens. Otherwise, the
 ///     match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" /> is acquired and
-///     the join is delegated to <see cref="MatchMembershipService.JoinAsync" />, which validates the
+///     the join is delegated to <see cref="MatchMembership.JoinAsync" />, which validates the
 ///     password and assigns the slot, so slot allocation cannot race with other match packet handlers.
 /// </remarks>
-public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembershipService matchMembership)
+public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembership matchMembership)
 	: IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.JoinMatch;

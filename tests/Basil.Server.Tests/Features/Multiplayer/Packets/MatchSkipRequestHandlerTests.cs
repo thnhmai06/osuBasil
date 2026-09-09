@@ -21,7 +21,7 @@ public class MatchSkipRequestHandlerTests
 		match.Slots[1].Status = SlotStatus.Playing;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchSkipRequestHandler(fixture.MatchMembership);
+		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -44,7 +44,7 @@ public class MatchSkipRequestHandlerTests
 		match.Slots[1].Skipped = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchSkipRequestHandler(fixture.MatchMembership);
+		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

@@ -285,7 +285,7 @@ public sealed class MatchSession(
 	///     Gets or sets a value that indicates whether the room is private. Set by
 	///     <c>!mp private [0|1]</c>; when true, the room cannot be (re)joined by anyone but staff or
 	///     <see cref="InvitedIds" />, through any path (<c>!mp join</c>, the native client join
-	///     packet, or an <c>osump://</c> url), see <see cref="MatchMembershipService.JoinAsync" />.
+	///     packet, or an <c>osump://</c> url), see <see cref="MatchMembership.JoinAsync" />.
 	///     The host is not exempt: hosting only grants in-room settings control, not a standing
 	///     invite, so a host who leaves a private room needs a referee's <c>!mp invite</c> like
 	///     anyone else to get back in. Also hidden from <c>#lobby</c>. Distinct from
@@ -312,7 +312,7 @@ public sealed class MatchSession(
 	/// <summary>
 	///     Gets or sets a non-null source while a <c>!mp start &lt;seconds&gt;</c> or <c>!mp timer</c>
 	///     countdown is running for this match. <c>!mp aborttimer</c> cancels it, and it must also be
-	///     canceled whenever the match is torn down (see MatchMembershipService.TeardownMatch) so no
+	///     canceled whenever the match is torn down (see MatchLifecycle.TeardownMatch) so no
 	///     announcement fires into a dead channel.
 	/// </summary>
 	public CancellationTokenSource? PendingTimer { get; set; }
@@ -322,7 +322,7 @@ public sealed class MatchSession(
 	///     <c>!mp start &lt;seconds&gt;</c> countdown that will actually start the match when it
 	///     reaches zero, as opposed to a plain <c>!mp timer</c> that only announces. A
 	///     gameplay-affecting settings change (map, team type, win condition, size, a userSession's team)
-	///     cancels only this kind (see MatchMembershipService.CancelQueuedAutoStart).
+	///     cancels only this kind (see MatchLifecycle.CancelQueuedAutoStart).
 	/// </summary>
 	public bool PendingTimerIsAutoStart { get; set; }
 
@@ -343,14 +343,14 @@ public sealed class MatchSession(
 	///     Gets or sets the persistent database Matches.Id for this room, distinct from
 	///     <see cref="Id" /> (the 0 to 63 in-memory registry slot, which is what the bancho wire
 	///     protocol actually uses as a match id). Set once, right after the room is created, by
-	///     MatchMembershipService.CreateAsync.
+	///     MatchLifecycle.CreateAsync.
 	/// </summary>
 	public int DbId { get; set; }
 
 	/// <summary>
 	///     Gets or sets the id of the userSession who created this match, or null when the room was
 	///     created via the HTTP API with no session behind it. Set once, right after the room is
-	///     created, by MatchMembershipService.CreateAsync.
+	///     created, by MatchLifecycle.CreateAsync.
 	/// </summary>
 	public int? CreatorId { get; set; }
 

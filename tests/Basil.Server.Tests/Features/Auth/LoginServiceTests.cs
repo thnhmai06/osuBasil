@@ -57,11 +57,14 @@ public class LoginServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 		_spectatorService = new SpectatorService(_channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchMembership = new MatchMembershipService(Substitute.For<IMatchRegistry>(), _channelRegistry,
-			_sessionRegistry, ircRegistry, channelMembership, Substitute.For<IMatchRepository>(),
-			Substitute.For<IMatchRoundEndOutbox>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users,
-			NullLogger<MatchMembershipService>.Instance);
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _sessionRegistry, ircRegistry,
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _users);
+		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), _channelRegistry, channelMembership,
+			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(_channelRegistry, _sessionRegistry, channelMembership,
+			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
 		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
 			_spectatorService, matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);

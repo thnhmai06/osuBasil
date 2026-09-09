@@ -78,7 +78,7 @@ internal static class MatchBanEndpoints
 		group.MapPut("/matches/{matchId:numericid}/ban", async (int matchId, ReplaceBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, MatchMembershipService matchMembership,
+				MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -124,7 +124,7 @@ internal static class MatchBanEndpoints
 		group.MapPatch("/matches/{matchId:numericid}/ban", async (int matchId, UpdateBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 				ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-				MatchControlService matchControl, MatchMembershipService matchMembership,
+				MatchControlService matchControl,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);

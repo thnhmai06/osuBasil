@@ -32,7 +32,7 @@ public class PartMatchHandlerTests
 
 		Assert.Null(host.Match);
 		// The room no longer tears down the instant it's empty — it starts a 5-minute
-		// auto-close timer instead (see MatchMembershipService.SyncEmptyRoomTimer).
+		// auto-close timer instead (see MatchLifecycle.SyncEmptyRoomTimer).
 		Assert.NotNull(fixture.MatchRegistry.GetById(match.Id));
 		Assert.NotNull(match.EmptyRoomTimer);
 	}

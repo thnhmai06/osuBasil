@@ -36,7 +36,8 @@ public class MpCommandServiceTests
 
 	private MpCommandService MakeService()
 	{
-		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchRegistry, _fixture.MatchRepository,
+		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchBroadcast,
+			_fixture.MatchRegistry, _fixture.MatchRepository,
 			_fixture.RoundEndOutbox, _beatmaps,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
 			NullLogger<MpCommandService>.Instance,
@@ -112,7 +113,7 @@ public class MpCommandServiceTests
 
 		Assert.True(match.IsLocked);
 		Assert.Equal(MpReplies.LockedMatch, reply);
-		Assert.NotEqual(MatchMembershipService.JoinResult.Ok,
+		Assert.NotEqual(MatchMembership.JoinResult.Ok,
 			await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		Assert.Null(other.Match);
 	}
@@ -130,7 +131,7 @@ public class MpCommandServiceTests
 
 		Assert.False(match.IsLocked);
 		Assert.Equal(MpReplies.UnlockedMatch, reply);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 	}
 
 	[Fact]
@@ -887,7 +888,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 		await using (var mutation = await match.BeginMutationAsync())
-			await _fixture.MatchMembership.StartAsync(match, mutation);
+			await _fixture.MatchLifecycle.StartAsync(match, mutation);
 
 		var reply = await Run(MakeService(), host, match, "abort", []);
 
@@ -1240,7 +1241,7 @@ public class MpCommandServiceTests
 		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
-		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
+		Assert.NotEqual(MatchMembership.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]
@@ -1259,7 +1260,7 @@ public class MpCommandServiceTests
 		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
-		Assert.NotEqual(MatchMembershipService.JoinResult.Ok, rejoined);
+		Assert.NotEqual(MatchMembership.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]
@@ -1324,7 +1325,7 @@ public class MpCommandServiceTests
 		await Run(MakeService(), host, match, "unban", ["other"]);
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
 
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, rejoined);
+		Assert.Equal(MatchMembership.JoinResult.Ok, rejoined);
 	}
 
 	[Fact]

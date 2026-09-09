@@ -18,7 +18,7 @@ public class CreateMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchMembership);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(host, ReaderFor(999));
 
@@ -32,7 +32,7 @@ public class CreateMatchHandlerTests
 		var host = MakePlayer(1, "host");
 		host.Privilege = 0;
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchMembership);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(host, ReaderFor(1));
 
@@ -46,7 +46,7 @@ public class CreateMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchMembership);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(host, ReaderFor(1, "my room"));
 

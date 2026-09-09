@@ -17,7 +17,7 @@ using NSubstitute;
 namespace Basil.Server.Tests.Features.Multiplayer;
 
 /// <summary>
-///     Covers <see cref="MatchMembershipService" />'s empty-room auto-close timer (plan B.6b): a room
+///     Covers <see cref="MatchLifecycle" />'s empty-room auto-close timer (plan B.6b): a room
 ///     left with zero seated players for a grace period is closed automatically, with a warning
 ///     announcement before the deadline and a cancel-notice if a player rejoins after the warning
 ///     went out. Timings come from the service's fixed constants, so only the lifecycle of the
@@ -30,17 +30,25 @@ public class EmptyRoomAutoCloseTests
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly MultiplayerTestSupport.FakeMatchRepository _matchRepository = new();
+	private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
 	private MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = null!;
 
-	private MatchMembershipService MakeService()
+	private (MatchMembership Membership, MatchLifecycle Lifecycle) MakeService()
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
-		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry,
+			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+			Substitute.For<IUserRepository>());
+		var matchLifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
 			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
-			Substitute.For<IBeatmapRepository>(),
-			Substitute.For<IUserRepository>(), NullLogger<MatchMembershipService>.Instance);
+			Substitute.For<IBeatmapRepository>(), matchBroadcast, _serviceProvider,
+			NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
+			_matchRepository, matchLifecycle, NullLogger<MatchMembership>.Instance);
+		_serviceProvider.GetService(typeof(MatchMembership)).Returns(matchMembership);
+		return (matchMembership, matchLifecycle);
 	}
 
 	private static GameSession MakePlayer(int id, string name)
@@ -73,13 +81,13 @@ public class EmptyRoomAutoCloseTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		var host = MakePlayer(1, "host");
 		RegisterAll(bot, host);
-		var service = MakeService();
-		var match = (await service.CreateAsync(host, MakeMatchData(host.Id)))!;
+		var (membership, lifecycle) = MakeService();
+		var match = (await lifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
 		host.Dequeue();
-		await service.LeaveAsync(host, match);
+		await membership.LeaveAsync(host, match);
 		var pendingTimer = match.EmptyRoomTimer!;
 
-		await service.CloseAsync(match, null, null, pendingTimer.Token);
+		await lifecycle.CloseAsync(match, null, null, pendingTimer.Token);
 
 		Assert.Null(match.EmptyRoomTimer);
 		Assert.True(pendingTimer.IsCancellationRequested);
@@ -91,16 +99,16 @@ public class EmptyRoomAutoCloseTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		var host = MakePlayer(1, "host");
 		RegisterAll(bot, host);
-		var service = MakeService();
-		var match = (await service.CreateAsync(host, MakeMatchData(host.Id)))!;
+		var (membership, lifecycle) = MakeService();
+		var match = (await lifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
 		host.Dequeue();
 
-		await service.LeaveAsync(host, match);
+		await membership.LeaveAsync(host, match);
 		var firstTimer = match.EmptyRoomTimer;
-		await service.JoinAsync(host, match, "", firstTimer!.Token);
+		await membership.JoinAsync(host, match, "", firstTimer!.Token);
 		Assert.Null(match.EmptyRoomTimer);
 
-		await service.LeaveAsync(host, match, firstTimer.Token);
+		await membership.LeaveAsync(host, match, firstTimer.Token);
 		var secondTimer = match.EmptyRoomTimer;
 
 		Assert.NotNull(secondTimer);

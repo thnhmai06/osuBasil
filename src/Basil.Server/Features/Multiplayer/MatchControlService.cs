@@ -27,7 +27,9 @@ namespace Basil.Server.Features.Multiplayer;
 ///     own <c>RunLockedAsync</c> wrapper already do. This class never acquires the lock itself.
 /// </remarks>
 public sealed class MatchControlService(
-	MatchMembershipService matchMembership,
+	MatchMembership matchMembership,
+	MatchLifecycle matchLifecycle,
+	MatchBroadcast matchBroadcast,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
@@ -223,7 +225,7 @@ public sealed class MatchControlService(
 		ApplySize(match, size);
 		logger.LogDebug("Room settings changed: MatchId={MatchId} Size={Size}", match.DbId, size);
 		mutation.PublishState();
-		matchMembership.CancelQueuedAutoStart(match);
+		matchLifecycle.CancelQueuedAutoStart(match);
 		return Task.CompletedTask;
 	}
 
@@ -557,7 +559,7 @@ public sealed class MatchControlService(
 		logger.LogDebug("Room settings changed: MatchId={MatchId} UserId={UserId} Team={Team}",
 			match.DbId, target.Id, team);
 		mutation.PublishState(lobby: false);
-		matchMembership.CancelQueuedAutoStart(match);
+		matchLifecycle.CancelQueuedAutoStart(match);
 		return Task.FromResult(TeamResult.Ok);
 	}
 
@@ -613,7 +615,7 @@ public sealed class MatchControlService(
 			match.DbId, teamType, winCondition, size);
 
 		mutation.PublishState();
-		matchMembership.CancelQueuedAutoStart(match);
+		matchLifecycle.CancelQueuedAutoStart(match);
 		return Task.CompletedTask;
 	}
 
@@ -648,7 +650,7 @@ public sealed class MatchControlService(
 			: beatmap.Difficulty.Mode;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, beatmap.Id);
 		mutation.PublishState();
-		matchMembership.CancelQueuedAutoStart(match);
+		matchLifecycle.CancelQueuedAutoStart(match);
 		return (SetMapResult.Ok, beatmap);
 	}
 
@@ -821,11 +823,11 @@ public sealed class MatchControlService(
 		if (CancelPendingTimer(match, announce: false))
 			mutation.PublishTimer();
 
-		var outcome = await matchMembership.StartAsync(match, mutation, cancellationToken);
+		var outcome = await matchLifecycle.StartAsync(match, mutation, cancellationToken);
 		return outcome switch
 		{
-			MatchMembershipService.StartOutcome.Started => StartResult.Started,
-			MatchMembershipService.StartOutcome.NoOccupiedSlots => StartResult.NoOccupiedSlots,
+			MatchLifecycle.StartOutcome.Started => StartResult.Started,
+			MatchLifecycle.StartOutcome.NoOccupiedSlots => StartResult.NoOccupiedSlots,
 			_ => StartResult.BeatmapMissing
 		};
 	}
@@ -1003,8 +1005,8 @@ public sealed class MatchControlService(
 			if (autoStart)
 			{
 				var started = match.InProgress ||
-				              await matchMembership.StartAsync(match, mutation, token) ==
-				              MatchMembershipService.StartOutcome.Started;
+				              await matchLifecycle.StartAsync(match, mutation, token) ==
+				              MatchLifecycle.StartOutcome.Started;
 				if (started) Announce(match, "Good luck, have fun!");
 			}
 			else
@@ -1050,7 +1052,7 @@ public sealed class MatchControlService(
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
-		matchMembership.EnqueueChat(match, bot.Name, bot.Id, text);
+		matchBroadcast.EnqueueChat(match, bot.Name, bot.Id, text);
 	}
 
 	/// <summary>Cancels a pending countdown and republishes the timer state.</summary>
@@ -1112,8 +1114,8 @@ public sealed class MatchControlService(
 		}
 
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-		matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
-		matchMembership.AnnounceToRoomAndReferees(match, "Match aborted.");
+		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
+		matchBroadcast.AnnounceToRoomAndReferees(match, "Match aborted.");
 		mutation.PublishState();
 		return Task.FromResult(AbortResult.Ok);
 	}
@@ -1178,7 +1180,7 @@ public sealed class MatchControlService(
 	/// </summary>
 	/// <remarks>
 	///     Unlike <see cref="KickAsync" />, this always adds the ban — the target does not need to be
-	///     present, online, or ever have joined. <see cref="MatchMembershipService.JoinAsync" />'s
+	///     present, online, or ever have joined. <see cref="MatchMembership.JoinAsync" />'s
 	///     existing ban gate blocks any later join attempt (game or otherwise) by this UserId, so
 	///     banning an IRC-only or fully offline participant still blocks a future real-client login.
 	///     A referee and BasilBot can never be banned.
@@ -1329,8 +1331,8 @@ public sealed class MatchControlService(
 		var joined = await matchMembership.ForceJoinAsync(target, match, cancellationToken);
 		return joined switch
 		{
-			MatchMembershipService.JoinResult.Ok => ForceInviteResult.Ok,
-			MatchMembershipService.JoinResult.BotCannotSeat => ForceInviteResult.TargetIsBot,
+			MatchMembership.JoinResult.Ok => ForceInviteResult.Ok,
+			MatchMembership.JoinResult.BotCannotSeat => ForceInviteResult.TargetIsBot,
 			_ => ForceInviteResult.NoFreeSlot
 		};
 	}
@@ -1450,7 +1452,7 @@ public sealed class MatchControlService(
 	public async Task CloseAsync(int? actorId, string? actorName, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
-		await matchMembership.CloseAsync(match, actorId, actorName, cancellationToken);
+		await matchLifecycle.CloseAsync(match, actorId, actorName, cancellationToken);
 	}
 
 	/// <summary>

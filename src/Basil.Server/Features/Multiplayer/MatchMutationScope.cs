@@ -5,7 +5,7 @@ namespace Basil.Server.Features.Multiplayer;
 ///     during disposal, once the match's lock has already been released.
 /// </summary>
 /// <remarks>
-///     The one production implementation is <see cref="MatchMembershipService" />, which already owns
+///     The one production implementation is <see cref="MatchBroadcast" />, which already owns
 ///     every repository and registry a snapshot build touches. This interface exists so
 ///     <see cref="MatchMutationScope" />'s own tests can exercise the scope's lock, version, and
 ///     exception semantics against a lightweight fake instead of that whole dependency graph.

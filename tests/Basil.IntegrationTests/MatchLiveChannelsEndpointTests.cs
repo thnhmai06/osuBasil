@@ -132,11 +132,11 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var matchId = await CreateMatchAsync();
 		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
+		var matchMembership = _factory.Services.GetRequiredService<MatchMembership>();
 		var match = matchRegistry.GetByDbId(matchId)!;
 		var occupant = new GameSession(9001, "alice", "t9001", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.TryAdd(occupant);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
 
 		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1",

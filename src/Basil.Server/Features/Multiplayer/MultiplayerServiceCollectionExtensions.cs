@@ -16,7 +16,9 @@ public static class MultiplayerServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddMultiplayer(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.AddSingleton<MatchMembershipService>();
+		services.AddSingleton<MatchBroadcast>();
+		services.AddSingleton<MatchMembership>();
+		services.AddSingleton<MatchLifecycle>();
 		services.AddSingleton<MatchControlService>();
 		services.AddSingleton<MatchReportService>();
 		services.AddSingleton<MatchRecoveryService>();

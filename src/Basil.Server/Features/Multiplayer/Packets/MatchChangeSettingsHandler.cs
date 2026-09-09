@@ -29,7 +29,9 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 public sealed class MatchChangeSettingsHandler(
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> sessionRegistry,
-	MatchMembershipService matchMembership) : IPacketHandler
+	MatchMembership matchMembership,
+	MatchLifecycle matchLifecycle,
+	MatchBroadcast matchBroadcast) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangeSettings;
 
@@ -41,7 +43,7 @@ public sealed class MatchChangeSettingsHandler(
 		var matchData = reader.ReadMatch();
 
 		var match = gameSession.Match;
-		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
+		if (!MatchLifecycle.ValidateMatchData(matchData, gameSession.Id) || match is null ||
 		    gameSession.Id != match.HostId) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
@@ -82,7 +84,7 @@ public sealed class MatchChangeSettingsHandler(
 			match.MapMd5 = "";
 			match.MapName = MatchControlService.NoBeatmapSelectedName;
 			match.UnresolvedMapMd5 = null;
-			matchMembership.CancelQueuedAutoStart(match);
+			matchLifecycle.CancelQueuedAutoStart(match);
 		}
 		else if (match.MapId is null)
 		{
@@ -100,7 +102,7 @@ public sealed class MatchChangeSettingsHandler(
 
 				var host = sessionRegistry.GetByUserId(match.HostId);
 				if (host is not null) match.Mode = host.Status.Mode;
-				matchMembership.CancelQueuedAutoStart(match);
+				matchLifecycle.CancelQueuedAutoStart(match);
 			}
 			else if (matchData.MapMd5 != match.UnresolvedMapMd5)
 			{
@@ -113,7 +115,7 @@ public sealed class MatchChangeSettingsHandler(
 				match.UnresolvedMapMd5 = matchData.MapMd5;
 				var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 				if (bot is not null)
-					matchMembership.EnqueueChat(match, bot.Name, bot.Id,
+					matchBroadcast.EnqueueChat(match, bot.Name, bot.Id,
 						"Beatmap not found on the server — map selection ignored.");
 			}
 		}
@@ -130,14 +132,14 @@ public sealed class MatchChangeSettingsHandler(
 					slot.Team = newTeam;
 
 			match.TeamType = newTeamType;
-			matchMembership.CancelQueuedAutoStart(match);
+			matchLifecycle.CancelQueuedAutoStart(match);
 		}
 
 		var newWinCondition = (MatchWinCondition)matchData.WinCondition;
 		if (match.WinCondition != newWinCondition)
 		{
 			match.WinCondition = newWinCondition;
-			matchMembership.CancelQueuedAutoStart(match);
+			matchLifecycle.CancelQueuedAutoStart(match);
 		}
 
 		match.Name = matchData.Name;

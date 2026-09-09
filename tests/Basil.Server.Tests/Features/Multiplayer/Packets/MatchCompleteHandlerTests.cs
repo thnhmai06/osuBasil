@@ -26,7 +26,7 @@ public class MatchCompleteHandlerTests
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -55,7 +55,7 @@ public class MatchCompleteHandlerTests
 		host.Dequeue();
 		guest.Dequeue();
 		spectatorish.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -85,7 +85,7 @@ public class MatchCompleteHandlerTests
 		match.CurrentRoundId = 1;
 		fixture.RoundEndOutbox.ThrowFull = true;
 		host.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -111,7 +111,7 @@ public class MatchCompleteHandlerTests
 		match.Slots[0].Status = SlotStatus.Complete;
 		match.InProgress = false;
 		match.CurrentRoundId = 1;
-		var handler = new MatchCompleteHandler(fixture.MatchMembership, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));

@@ -8,12 +8,12 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 /// <summary>Handles the host's request to start the match.</summary>
 /// <remarks>
 ///     Only the host may start the match. The start logic itself lives in
-///     <see cref="MatchMembershipService.StartAsync" />, which marks every non-NoMap slot as Playing,
+///     <see cref="MatchLifecycle.StartAsync" />, which marks every non-NoMap slot as Playing,
 ///     creates the round record, and broadcasts the start packets; that method is shared with
 ///     <c>!mp start</c> and <c>!mp force</c>. The call runs under the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchStartHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchStartHandler(MatchLifecycle matchLifecycle) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchStart;
 
@@ -31,6 +31,6 @@ public sealed class MatchStartHandler(MatchMembershipService matchMembership) : 
 		// sender who lost host while waiting for it must not still act with host authority.
 		if (gameSession.Id != match.HostId) return;
 
-		await matchMembership.StartAsync(match, mutation, cancellationToken);
+		await matchLifecycle.StartAsync(match, mutation, cancellationToken);
 	}
 }

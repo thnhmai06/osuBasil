@@ -24,7 +24,7 @@ public sealed class MatchChangePasswordHandler : IPacketHandler
 		var matchData = reader.ReadMatch();
 
 		var match = gameSession.Match;
-		if (!MatchMembershipService.ValidateMatchData(matchData, gameSession.Id) || match is null ||
+		if (!MatchLifecycle.ValidateMatchData(matchData, gameSession.Id) || match is null ||
 		    gameSession.Id != match.HostId) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);

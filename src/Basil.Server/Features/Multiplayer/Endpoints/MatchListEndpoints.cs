@@ -123,7 +123,7 @@ internal static class MatchListEndpoints
 		return Results.Json(Pagination.Trim(overqueried, p, ps, items.Count));
 	}
 
-	private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchMembershipService matchMembership,
+	private static async Task<IResult> HandleCreate(CreateMatchRequest body, MatchLifecycle matchLifecycle,
 		MatchControlService matchControl, ISessionRegistry<GameSession> gameRegistry,
 		ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
 		IBeatmapRepository beatmaps, CancellationToken cancellationToken)
@@ -144,7 +144,7 @@ internal static class MatchListEndpoints
 			[], [], [], 0, 0,
 			0, 0, false, [], 0);
 
-		var match = await matchMembership.CreateEmptyAsync(data, cancellationToken);
+		var match = await matchLifecycle.CreateEmptyAsync(data, cancellationToken);
 		if (match is null) return Results.Problem("Couldn't create the match: server is full.", statusCode: 503);
 
 		await using (var mutation = await match.BeginMutationAsync(cancellationToken))

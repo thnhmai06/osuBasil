@@ -32,7 +32,7 @@ public enum ClientIntegrityResult : byte
 public sealed class ClientIntegrityService(
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
-	MatchMembershipService matchMembership,
+	MatchBroadcast matchBroadcast,
 	ILogger<ClientIntegrityService> logger)
 {
 	/// <summary>
@@ -92,7 +92,7 @@ public sealed class ClientIntegrityService(
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is null) return;
 
-		matchMembership.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
+		matchBroadcast.EnqueueChat(match, bot.Name, bot.Id, $"Anti-cheat flag for {userSession.Name}: {reason}");
 
 		var dm = $"Anti-cheat flag in match #{match.DbId} {match.Name}: {userSession.Name} — {reason}";
 		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",

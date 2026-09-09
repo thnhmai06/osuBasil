@@ -356,12 +356,16 @@ public class TcpIrcConnectionTests
 	{
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchMembership = new MatchMembershipService(
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry,
+			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(), new FakeUserRepository());
+		var matchLifecycle = new MatchLifecycle(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
-			gameRegistry, ircRegistry, channelMembership, new NotSupportedMatchRepository(),
-			new NoOpMatchRoundEndOutbox(),
-			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(),
-			new FakeUserRepository(), NullLogger<MatchMembershipService>.Instance);
+			channelMembership, gameRegistry, new NotSupportedMatchRepository(), new NoOpMatchRoundEndOutbox(),
+			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(), matchBroadcast,
+			null!, // only resolves MatchMembership from CreateAsync, which this logout-only test path never calls
+			NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
+			new NotSupportedMatchRepository(), matchLifecycle, NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
 			new NoOpPlayerStatusEvents(), NullLogger<PlayerLogoutService>.Instance);
 	}

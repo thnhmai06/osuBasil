@@ -76,7 +76,7 @@ public class SpectateFramesHandlerTests
 		var host = MakePlayer(1, "host");
 		var fixture = new MultiplayerTestSupport.Fixture();
 		fixture.RegisterAll(host);
-		await fixture.MatchMembership.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id));
+		await fixture.MatchLifecycle.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id));
 		var playerInputEvents = new MultiplayerTestSupport.FakePlayerInputEvents();
 
 		await new SpectateFramesHandler(playerInputEvents).HandleAsync(host, new PacketReader(ValidBundleBytes));

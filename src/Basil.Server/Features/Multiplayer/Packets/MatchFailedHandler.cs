@@ -12,7 +12,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     not changed. The relay runs under the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchFailedHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchFailedHandler(MatchBroadcast matchBroadcast) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchFailed;
 
@@ -29,6 +29,6 @@ public sealed class MatchFailedHandler(MatchMembershipService matchMembership) :
 		var slotId = match.GetSlotId(gameSession.Id);
 		if (slotId is null) return;
 
-		matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
+		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
 	}
 }

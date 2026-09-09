@@ -18,7 +18,6 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 /// </remarks>
 public sealed class MatchTransferHostHandler(
 	ISessionRegistry<GameSession> sessionRegistry,
-	MatchMembershipService matchMembership,
 	IMatchRepository matchRepository,
 	ILogger<MatchTransferHostHandler> logger) : IPacketHandler
 {

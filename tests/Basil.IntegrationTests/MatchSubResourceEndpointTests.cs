@@ -23,7 +23,7 @@ namespace Basil.IntegrationTests;
 ///     Covers the `/matches/{matchId}/{hosts,refs,ban,kick,invite,slots,timer,abort,close}` routes.
 ///     Matches are created through the real `POST /matches` route (no chat "sender", host id 0), then
 ///     seated with real <see cref="UserSession" />s registered directly against the app's actual
-///     DI-resolved <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembershipService" /> —
+///     DI-resolved <see cref="ISessionRegistry{GameSession}" />/<see cref="MatchMembership" /> —
 ///     the same production singletons the routes themselves use.
 /// </summary>
 public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
@@ -74,13 +74,13 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 	{
 		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
+		var matchMembership = _factory.Services.GetRequiredService<MatchMembership>();
 
 		var session = new GameSession(id, name, $"token-{id}", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.TryAdd(session);
 
 		var match = matchRegistry.GetByDbId(matchId)!;
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await matchMembership.JoinAsync(session, match, ""));
 		return session;
 	}
 
@@ -405,7 +405,7 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 		var matchId = await CreateMatchAsync(client);
 		var player = await SeatNewPlayer(2005, "elsewhere", matchId);
 		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
-		var matchMembership = _factory.Services.GetRequiredService<MatchMembershipService>();
+		var matchMembership = _factory.Services.GetRequiredService<MatchMembership>();
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		await matchMembership.LeaveAsync(player, matchRegistry.GetByDbId(matchId)!);
 

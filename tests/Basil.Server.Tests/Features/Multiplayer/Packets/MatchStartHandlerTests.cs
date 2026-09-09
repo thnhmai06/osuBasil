@@ -20,7 +20,7 @@ public class MatchStartHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchStartHandler(fixture.MatchMembership);
+		var handler = new MatchStartHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(guest, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -37,7 +37,7 @@ public class MatchStartHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		match.Slots[1].Status = SlotStatus.NoMap;
-		var handler = new MatchStartHandler(fixture.MatchMembership);
+		var handler = new MatchStartHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -61,7 +61,7 @@ public class MatchStartHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchStartHandler(fixture.MatchMembership);
+		var handler = new MatchStartHandler(fixture.MatchLifecycle);
 
 		await match.Lock.WaitAsync();
 		var handleTask = handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));

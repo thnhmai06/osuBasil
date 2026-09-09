@@ -30,7 +30,7 @@ public sealed class PlayerLogoutService(
 	ISessionRegistry<IrcSession> ircRegistry,
 	ChannelMembershipService channelMembership,
 	SpectatorService spectatorService,
-	MatchMembershipService matchMembership,
+	MatchMembership matchMembership,
 	IPlayerStatusEvents statusEvents,
 	ILogger<PlayerLogoutService> logger)
 {

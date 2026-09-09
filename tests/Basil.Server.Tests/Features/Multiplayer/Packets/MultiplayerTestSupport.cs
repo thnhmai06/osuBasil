@@ -460,7 +460,12 @@ internal static class MultiplayerTestSupport
 		}
 	}
 
-	/// <summary>Bundles the fakes a handler test needs, wired the same way DI wires the real MatchMembershipService.</summary>
+	/// <summary>
+	///     Bundles the fakes a handler test needs, wired the same way DI wires the real
+	///     <see cref="Basil.Server.Features.Multiplayer.MatchMembership" />,
+	///     <see cref="Basil.Server.Features.Multiplayer.MatchLifecycle" />, and
+	///     <see cref="Basil.Server.Features.Multiplayer.MatchBroadcast" />.
+	/// </summary>
 	public sealed class Fixture
 	{
 		public Fixture()
@@ -473,9 +478,17 @@ internal static class MultiplayerTestSupport
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
 
-			MatchMembership = new MatchMembershipService(MatchRegistry, ChannelRegistry, SessionRegistry,
-				IrcSessionRegistry, ChannelMembership, MatchRepository, RoundEndOutbox, EventBus,
-				BeatmapRepository, UserRepository, NullLogger<MatchMembershipService>.Instance);
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, SessionRegistry,
+				IrcSessionRegistry, EventBus, BeatmapRepository, UserRepository);
+
+			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, SessionRegistry,
+				MatchRepository, RoundEndOutbox, EventBus, BeatmapRepository, MatchBroadcast, ServiceProvider,
+				NullLogger<MatchLifecycle>.Instance);
+
+			MatchMembership = new MatchMembership(ChannelRegistry, SessionRegistry, ChannelMembership,
+				MatchRepository, MatchLifecycle, NullLogger<MatchMembership>.Instance);
+
+			ServiceProvider.GetService(typeof(MatchMembership)).Returns(_ => MatchMembership);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -493,8 +506,17 @@ internal static class MultiplayerTestSupport
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
 		public IBeatmapRepository BeatmapRepository { get; } = Substitute.For<IBeatmapRepository>();
 
+		/// <summary>
+		///     Resolves <see cref="Basil.Server.Features.Multiplayer.MatchMembership" /> the same way the real
+		///     <see cref="Basil.Server.Features.Multiplayer.MatchLifecycle" /> does, to break the constructor cycle
+		///     between the two.
+		/// </summary>
+		public IServiceProvider ServiceProvider { get; } = Substitute.For<IServiceProvider>();
+
 		public ChannelMembershipService ChannelMembership { get; }
-		public MatchMembershipService MatchMembership { get; }
+		public MatchMembership MatchMembership { get; }
+		public MatchLifecycle MatchLifecycle { get; }
+		public MatchBroadcast MatchBroadcast { get; }
 
 		public void RegisterAll(params GameSession[] sessions)
 		{
@@ -517,7 +539,7 @@ internal static class MultiplayerTestSupport
 		public MatchSession CreateMatch(UserSession host, MatchTeamType teamType = MatchTeamType.HeadToHead,
 			bool hostIsReferee = true)
 		{
-			var match = MatchMembership.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
+			var match = MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
 				.GetAwaiter().GetResult()!;
 			if (hostIsReferee) match.AddReferee(host.Id);
 			return match;

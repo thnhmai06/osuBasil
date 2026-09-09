@@ -23,7 +23,7 @@ public class MatchChangeSlotHandlerTests
 		var match = fixture.CreateMatch(host);
 		match.Slots[2].Status = SlotStatus.NotReady;
 		match.Slots[2].PlayerId = 99;
-		var handler = new MatchChangeSlotHandler(fixture.MatchMembership);
+		var handler = new MatchChangeSlotHandler();
 
 		await handler.HandleAsync(host, ReaderFor(2));
 
@@ -37,7 +37,7 @@ public class MatchChangeSlotHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangeSlotHandler(fixture.MatchMembership);
+		var handler = new MatchChangeSlotHandler();
 
 		await handler.HandleAsync(host, ReaderFor(5));
 

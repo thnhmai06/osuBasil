@@ -17,7 +17,7 @@ namespace Basil.Server.Features.Bot;
 ///     is a <see cref="GameSession" /> — lets it hold <see cref="GameSession.Spectating" />
 ///     relationships so its watch of every online userSession can be exposed over SSE. It is not a
 ///     login: no client connection sits behind this session, and it never occupies a multiplayer
-///     slot (see the <c>IsBot</c> guards in <c>MatchMembershipService</c>). The normal handshake is
+///     slot (see the <c>IsBot</c> guards in <c>MatchMembership</c>). The normal handshake is
 ///     skipped entirely and the session is registered directly with
 ///     <see cref="ISessionRegistry{TSession}" />.
 /// </remarks>

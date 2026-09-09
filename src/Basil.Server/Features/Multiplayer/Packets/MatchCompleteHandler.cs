@@ -26,7 +26,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
 public sealed class MatchCompleteHandler(
-	MatchMembershipService matchMembership,
+	MatchBroadcast matchBroadcast,
 	IMatchRoundEndOutbox roundEndOutbox,
 	ILogger<MatchCompleteHandler> logger) : IPacketHandler
 {
@@ -93,7 +93,7 @@ public sealed class MatchCompleteHandler(
 			}
 
 		logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-		matchMembership.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
+		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
 		mutation.PublishState();
 	}
 }

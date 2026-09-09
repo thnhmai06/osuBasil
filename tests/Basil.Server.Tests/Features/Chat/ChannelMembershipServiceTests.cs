@@ -297,7 +297,7 @@ public class ChannelMembershipServiceTests
 	[Fact]
 	public void Join_MatchChannel_BypassMatchGate_SeatsBeforeParticipantOrRefereeIsTrue()
 	{
-		// Mirrors MatchMembershipService.OccupySlot: the channel join happens before the slot is
+		// Mirrors MatchMembership.OccupySlot: the channel join happens before the slot is
 		// actually assigned, so without the bypass this legitimate seat would be rejected.
 		var incoming = MakeGame(4, "carol");
 		var room = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);

@@ -43,7 +43,9 @@ namespace Basil.Server.Features.Bot;
 ///     referee gate, and sending a reply for the result.
 /// </remarks>
 public sealed class MpCommandService(
-	MatchMembershipService matchMembership,
+	MatchMembership matchMembership,
+	MatchLifecycle matchLifecycle,
+	MatchBroadcast matchBroadcast,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
@@ -114,8 +116,8 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchRepository, roundEndOutbox, beatmapRepository, gameRegistry, ircRegistry,
-			matchControlLogger);
+		new(matchMembership, matchLifecycle, matchBroadcast, matchRepository, roundEndOutbox, beatmapRepository,
+			gameRegistry, ircRegistry, matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
@@ -217,7 +219,7 @@ public sealed class MpCommandService(
 	/// <remarks>
 	///     Unlike every other subcommand this runs with no <see cref="MatchSession" /> yet, since there
 	///     is nothing to be a referee of; it bypasses <see cref="TryHandleAsync" /> entirely and reuses
-	///     <see cref="MatchMembershipService.CreateAsync" /> verbatim, exactly like a client-created
+	///     <see cref="MatchLifecycle.CreateAsync" /> verbatim, exactly like a client-created
 	///     match, except the creator is also auto-added as a referee so the room passes the
 	///     <see cref="MatchSession.IsReferee" /> gate. An empty room (whether created this way or by a
 	///     client that later left) auto-closes after 5 minutes of inactivity rather than tearing down
@@ -245,7 +247,7 @@ public sealed class MpCommandService(
 			[], [], [], sender.Id, 0,
 			0, 0, false, [], 0);
 
-		var match = await matchMembership.CreateAsync(sender, data, cancellationToken);
+		var match = await matchLifecycle.CreateAsync(sender, data, cancellationToken);
 		if (match is null)
 		{
 			sink.Reply(MpReplies.CreateFailed);
@@ -318,15 +320,15 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		MatchMembershipService.JoinResult joined;
+		MatchMembership.JoinResult joined;
 		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
 			var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
 			joined = await matchMembership.JoinAsync(gameSender, match, password, cancellationToken);
-			if (joined == MatchMembershipService.JoinResult.Ok) mutation.PublishState();
+			if (joined == MatchMembership.JoinResult.Ok) mutation.PublishState();
 		}
 
-		if (joined == MatchMembershipService.JoinResult.Ok)
+		if (joined == MatchMembership.JoinResult.Ok)
 		{
 			sink.Reply(string.Format(MpReplies.JoinedMatch, matchId, match.Name));
 			return true;
@@ -334,10 +336,10 @@ public sealed class MpCommandService(
 
 		sink.Reply(joined switch
 		{
-			MatchMembershipService.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
-			MatchMembershipService.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
-			MatchMembershipService.JoinResult.Locked => MpReplies.MatchIsLocked,
-			MatchMembershipService.JoinResult.Banned => MpReplies.BannedFromMatch,
+			MatchMembership.JoinResult.WrongPassword => MpReplies.IncorrectPassword,
+			MatchMembership.JoinResult.NoFreeSlot => MpReplies.MatchIsFull,
+			MatchMembership.JoinResult.Locked => MpReplies.MatchIsLocked,
+			MatchMembership.JoinResult.Banned => MpReplies.BannedFromMatch,
 			_ => MpReplies.FailedToJoinMatch
 		});
 		return false;
@@ -1214,7 +1216,7 @@ public sealed class MpCommandService(
 			case MatchControlService.StartResult.BeatmapMissing:
 			case MatchControlService.StartResult.NoOccupiedSlots:
 			default:
-				// BeatmapMissing/NoOccupiedSlots — MatchMembershipService.StartAsync already announced
+				// BeatmapMissing/NoOccupiedSlots — MatchLifecycle.StartAsync already announced
 				// this into the match channel itself (the single choke point all 3 start paths share);
 				// no second reply here, or the room sees the same message twice.
 				return false;

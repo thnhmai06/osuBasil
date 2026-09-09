@@ -58,7 +58,7 @@ public class JoinMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
 
 		var guest = MakePlayer(2, "guest");
 		fixture.RegisterAll(host, guest);
@@ -79,7 +79,7 @@ public class JoinMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
 		var beforeJoin = match.MainSnapshot.Latest;
 
 		var guest = MakePlayer(2, "guest");
@@ -98,7 +98,7 @@ public class JoinMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
 		match.IsPrivate = true;
 
 		var guest = MakePlayer(2, "guest");
@@ -117,7 +117,7 @@ public class JoinMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var match = (await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
 		match.IsPrivate = true;
 
 		var guest = MakePlayer(2, "guest");
@@ -137,7 +137,7 @@ public class JoinMatchHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match =
-			(await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id)))!;
+			(await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
 		match.IsPrivate = true;
 		await fixture.MatchMembership.LeaveAsync(host, match);
 		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
@@ -150,17 +150,17 @@ public class JoinMatchHandlerTests
 
 	/// <summary>
 	///     Regression test (Issue #4: "CRITICAL: MATCHES CREATED THROUGH THE API CANNOT BE JOINED").
-	///     Mirrors <c>POST /matches</c>' own creation call (<see cref="MatchMembershipService.CreateEmptyAsync" />,
+	///     Mirrors <c>POST /matches</c>' own creation call (<see cref="MatchLifecycle.CreateEmptyAsync" />,
 	///     no host, empty slot-state arrays) rather than the bancho <c>!mp make</c> path every other test
 	///     in this file uses, then joins through the real packet handler -- the same path a real client
-	///     takes -- instead of calling <see cref="MatchMembershipService.JoinAsync" /> directly.
+	///     takes -- instead of calling <see cref="MatchMembership.JoinAsync" /> directly.
 	/// </summary>
 	[Fact]
 	public async Task Handle_ApiCreatedMatch_GuestCanJoin()
 	{
 		var fixture = new Fixture();
 		var data = new MatchState(0, false, 0, 0, "API match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [], 0);
-		var match = await fixture.MatchMembership.CreateEmptyAsync(data);
+		var match = await fixture.MatchLifecycle.CreateEmptyAsync(data);
 
 		var guest = MakePlayer(1, "guest");
 		fixture.RegisterAll(guest);
@@ -178,7 +178,7 @@ public class JoinMatchHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match =
-			(await fixture.MatchMembership.CreateAsync(host, MakeMatchData(host.Id)))!;
+			(await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
 		match.IsPrivate = true;
 		await fixture.MatchMembership.LeaveAsync(host, match);
 		match.AddInvite(host.Id);

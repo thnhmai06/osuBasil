@@ -21,7 +21,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     the relay. Both reads happen while holding the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembership, IMatchLiveEvents eventBus)
+public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, IMatchLiveEvents eventBus)
 	: IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;
@@ -46,7 +46,7 @@ public sealed class MatchScoreUpdateHandler(MatchMembershipService matchMembersh
 		var packet = PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, playData);
 		packet[11] = (byte)slotId.Value;
 
-		matchMembership.Enqueue(match, packet, false);
+		matchBroadcast.Enqueue(match, packet, false);
 
 		if (eventBus.HasPlayerScoreSubscribers(match.DbId))
 			try

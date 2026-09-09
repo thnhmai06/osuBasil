@@ -21,7 +21,7 @@ public class MatchLoadCompleteHandlerTests
 		match.Slots[1].Status = SlotStatus.Playing;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
+		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
@@ -43,7 +43,7 @@ public class MatchLoadCompleteHandlerTests
 		match.Slots[1].Loaded = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchLoadCompleteHandler(fixture.MatchMembership);
+		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

@@ -15,7 +15,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     read-mutate-broadcast sequence runs under the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchSkipRequestHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchSkipRequestHandler(MatchBroadcast matchBroadcast) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchSkipRequest;
 
@@ -33,9 +33,9 @@ public sealed class MatchSkipRequestHandler(MatchMembershipService matchMembersh
 		if (slot is null) return;
 
 		slot.Skipped = true;
-		matchMembership.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
+		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
 
 		var everyoneSkipped = match.Slots.All(s => s.Status != SlotStatus.Playing || s.Skipped);
-		if (everyoneSkipped) matchMembership.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
+		if (everyoneSkipped) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
 	}
 }

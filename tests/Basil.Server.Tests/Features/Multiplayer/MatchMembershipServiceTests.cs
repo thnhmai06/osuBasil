@@ -22,7 +22,11 @@ using NSubstitute;
 
 namespace Basil.Server.Tests.Features.Multiplayer;
 
-/// <summary>Verifies `MatchMembershipService`'s match join/leave handling and the match-state broadcasts that follow.</summary>
+/// <summary>
+///     Verifies <see cref="MatchMembership" />'s join/leave slot handling, <see cref="MatchLifecycle" />'s
+///     create/close/start lifecycle, and the state broadcasts <see cref="MatchBroadcast" /> sends as a
+///     result.
+/// </summary>
 public class MatchMembershipServiceTests
 {
 	/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
@@ -47,23 +51,34 @@ public class MatchMembershipServiceTests
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
 	}
 
-	private MatchMembershipService MakeService()
+	/// <summary>
+	///     Builds the three collaborators the same way DI wires them, sharing the fixture's fakes so a
+	///     mutation made through one is visible through the others.
+	/// </summary>
+	private (MatchMembership Membership, MatchLifecycle Lifecycle, MatchBroadcast Broadcast) MakeService(
+		IMatchLiveEvents? eventBus = null)
 	{
-		return new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			_matchRepository, _roundEndOutbox,
-			_eventBus, _beatmapRepository, _userRepository,
-			NullLogger<MatchMembershipService>.Instance);
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry,
+			eventBus ?? _eventBus, _beatmapRepository, _userRepository);
+		var serviceProvider = Substitute.For<IServiceProvider>();
+		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
+			_matchRepository, _roundEndOutbox, eventBus ?? _eventBus, _beatmapRepository, broadcast, serviceProvider,
+			NullLogger<MatchLifecycle>.Instance);
+		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, _matchRepository,
+			lifecycle, NullLogger<MatchMembership>.Instance);
+		serviceProvider.GetService(typeof(MatchMembership)).Returns(membership);
+		return (membership, lifecycle, broadcast);
 	}
 
 	/// <summary>
 	///     The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous
 	///     shape.
 	/// </summary>
-	private static MatchSession? Create(MatchMembershipService service, UserSession host, MatchState data)
+	private static MatchSession? Create(MatchLifecycle lifecycle, UserSession host, MatchState data)
 	{
-		return service.CreateAsync(host, data).GetAwaiter().GetResult();
+		return lifecycle.CreateAsync(host, data).GetAwaiter().GetResult();
 	}
 
 	private static GameSession MakePlayer(int id, string name)
@@ -99,7 +114,8 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
 
-		var match = Create(MakeService(), host, MakeMatchData(host.Id));
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id));
 
 		Assert.NotNull(match);
 		Assert.Same(match, host.Match);
@@ -116,7 +132,8 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
 
-		var match = Create(MakeService(), host, MakeMatchData(host.Id, password: "secret"));
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id, password: "secret"));
 
 		Assert.Equal("secret", match!.Password);
 	}
@@ -124,9 +141,9 @@ public class MatchMembershipServiceTests
 	[Fact]
 	public async Task CreateEmptyAsync_CreatesMatchWithNoHostAndNoOccupants()
 	{
-		var service = MakeService();
+		var (_, lifecycle, _) = MakeService();
 
-		var match = await service.CreateEmptyAsync(MakeMatchData(0));
+		var match = await lifecycle.CreateEmptyAsync(MakeMatchData(0));
 
 		Assert.NotNull(match);
 		Assert.Equal(0, match.HostId);
@@ -141,13 +158,13 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id, password: "pw"))!;
 		host.Dequeue();
 
-		var joined = await service.JoinAsync(guest, match, "pw");
+		var joined = await membership.JoinAsync(guest, match, "pw");
 
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, joined);
+		Assert.Equal(MatchMembership.JoinResult.Ok, joined);
 		Assert.Same(match, guest.Match);
 		Assert.Equal(1, match.GetSlotId(guest.Id));
 		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()),
@@ -160,12 +177,12 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id, password: "pw"))!;
 
-		var joined = await service.JoinAsync(guest, match, "wrong");
+		var joined = await membership.JoinAsync(guest, match, "wrong");
 
-		Assert.Equal(MatchMembershipService.JoinResult.WrongPassword, joined);
+		Assert.Equal(MatchMembership.JoinResult.WrongPassword, joined);
 		Assert.Null(guest.Match);
 		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
 	}
@@ -177,10 +194,10 @@ public class MatchMembershipServiceTests
 		var staff = MakePlayer(2, "mod");
 		staff.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Moderator;
 		RegisterAll(host, staff);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id, password: "pw"))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id, password: "pw"))!;
 
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await service.JoinAsync(staff, match, "wrong"));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await membership.JoinAsync(staff, match, "wrong"));
 	}
 
 	[Fact]
@@ -189,14 +206,14 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var matchA = Create(service, host, MakeMatchData(host.Id))!;
+		var (membership, lifecycle, _) = MakeService();
+		var matchA = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var otherHost = MakePlayer(3, "other");
 		RegisterAll(host, guest, otherHost);
-		var matchB = Create(service, otherHost, MakeMatchData(otherHost.Id))!;
-		await service.JoinAsync(guest, matchA, "");
+		var matchB = Create(lifecycle, otherHost, MakeMatchData(otherHost.Id))!;
+		await membership.JoinAsync(guest, matchA, "");
 
-		Assert.Equal(MatchMembershipService.JoinResult.AlreadyInMatch, await service.JoinAsync(guest, matchB, ""));
+		Assert.Equal(MatchMembership.JoinResult.AlreadyInMatch, await membership.JoinAsync(guest, matchB, ""));
 	}
 
 	[Fact]
@@ -204,8 +221,8 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		for (var i = 1; i < 16; i++)
 		{
 			match.Slots[i].Status = SlotStatus.NotReady;
@@ -215,7 +232,7 @@ public class MatchMembershipServiceTests
 		var overflow = MakePlayer(2, "overflow");
 		RegisterAll(host, overflow);
 
-		Assert.Equal(MatchMembershipService.JoinResult.NoFreeSlot, await service.JoinAsync(overflow, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.NoFreeSlot, await membership.JoinAsync(overflow, match, ""));
 		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(overflow.Dequeue()));
 	}
 
@@ -225,11 +242,11 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		match.TeamType = MatchTeamType.TeamVs;
 
-		await service.JoinAsync(guest, match, "");
+		await membership.JoinAsync(guest, match, "");
 
 		Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
 	}
@@ -241,25 +258,25 @@ public class MatchMembershipServiceTests
 		var lobbyMember = MakePlayer(2, "lobbyguy");
 		RegisterAll(host, lobbyMember);
 		_channelRegistry.Add(new ChannelSession(1, "#lobby", 0, 0, true));
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+		var lobbyMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
-		membership.Join(lobbyMember, lobby);
+		lobbyMembership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
-		await service.LeaveAsync(host, match);
+		await membership.LeaveAsync(host, match);
 
 		// The room no longer tears down the instant it's empty — it starts a 5-minute auto-close
-		// timer instead (see MatchMembershipService.SyncEmptyRoomTimer), so nothing is disposed yet.
+		// timer instead (see MatchLifecycle.SyncEmptyRoomTimer), so nothing is disposed yet.
 		Assert.NotNull(_matchRegistry.GetById(match.Id));
 		Assert.NotNull(_channelRegistry.GetByName(match.ChatChannelName));
 		Assert.Null(host.Match);
 		Assert.NotNull(match.EmptyRoomTimer);
 		lobbyMember.Dequeue(); // drain the lobby's UpdateMatch broadcast from the slot becoming empty
 
-		await service.CloseAsync(match);
+		await lifecycle.CloseAsync(match);
 
 		Assert.Null(_matchRegistry.GetById(match.Id));
 		Assert.Null(_channelRegistry.GetByName(match.ChatChannelName));
@@ -288,9 +305,9 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
-		await service.JoinAsync(guest, match, "");
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
+		await membership.JoinAsync(guest, match, "");
 
 		var connection = Substitute.For<IIrcConnection>();
 		connection.When(c => c.Send(Arg.Any<IrcMessage>()))
@@ -301,7 +318,7 @@ public class MatchMembershipServiceTests
 			IrcConnection = connection
 		});
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() => service.LeaveAsync(host, match));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => membership.LeaveAsync(host, match));
 
 		Assert.True(
 			match.HostId == MatchSession.NoHostId
@@ -318,14 +335,14 @@ public class MatchMembershipServiceTests
 	[Fact]
 	public async Task CloseAsync_CompletesEverySseSubscriberRegisteredOnTheMatch()
 	{
-		var service = MakeService();
+		var (_, lifecycle, _) = MakeService();
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var completed = false;
 		match.SseSubscribers.Subscribe(() => completed = true);
 
-		await service.CloseAsync(match);
+		await lifecycle.CloseAsync(match);
 
 		Assert.True(completed);
 	}
@@ -336,12 +353,12 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
-		await service.JoinAsync(guest, match, "");
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
+		await membership.JoinAsync(guest, match, "");
 		guest.Dequeue();
 
-		await service.LeaveAsync(host, match);
+		await membership.LeaveAsync(host, match);
 
 		Assert.Equal(guest.Id, match.HostId);
 		Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
@@ -353,12 +370,12 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var guest = MakePlayer(2, "guest");
 		RegisterAll(host, guest);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
-		await service.JoinAsync(guest, match, "");
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
+		await membership.JoinAsync(guest, match, "");
 		match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
 
-		await service.LeaveAsync(guest, match);
+		await membership.LeaveAsync(guest, match);
 
 		Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
 		Assert.True(match.Slots[1].Empty);
@@ -371,11 +388,11 @@ public class MatchMembershipServiceTests
 		var lobbyMember = MakePlayer(2, "lobbyguy");
 		RegisterAll(host, lobbyMember);
 		_channelRegistry.Add(new ChannelSession(1, "#lobby", 0, 0, true));
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, broadcast) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		host.Dequeue();
 
-		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
@@ -383,13 +400,13 @@ public class MatchMembershipServiceTests
 			Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
-		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.NotEmpty(lobbyMember.Dequeue());
 	}
 
 	/// <summary>
-	///     <see cref="MatchMembershipService.CreateAsync" /> already calls <see cref="MatchMembershipService.JoinAsync" />
-	///     (which itself calls <see cref="MatchMembershipService.EnqueueStateAsync" />) for the host, so
+	///     <see cref="MatchLifecycle.CreateAsync" /> already calls <see cref="MatchMembership.JoinAsync" />
+	///     (which itself calls <see cref="MatchBroadcast.EnqueueStateAsync" />) for the host, so
 	///     <see cref="MatchSession.MainSnapshot" /> already holds a full snapshot by the time
 	///     <c>Create</c> returns — <see cref="Basil.Server.Tests.Shared.Eventing.StateStreamTests" /> covers that
 	///     "first publish is full" behavior standalone. This test covers what happens after that: a
@@ -402,12 +419,8 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
 		var events = Substitute.For<IMatchLiveEvents>();
-		var service = new MatchMembershipService(_matchRegistry, _channelRegistry, _gameRegistry, _ircRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
-			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), events,
-			_beatmapRepository, _userRepository, NullLogger<MatchMembershipService>.Instance);
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, broadcast) = MakeService(events);
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 
 		var payloads = new List<byte[]>();
 		events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
@@ -417,11 +430,11 @@ public class MatchMembershipServiceTests
 		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
 		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
 		// StateStreamTests; this test covers the same behavior at EnqueueStateAsync's call site).
-		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.Empty(payloads);
 
 		match.Name = "Renamed";
-		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
 
 		var delta = Assert.Single(payloads);
 		var json = Encoding.UTF8.GetString(delta);
@@ -438,12 +451,12 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, broadcast) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		_gameRegistry.GetByUserId(host.Id).Returns(host);
 		host.Dequeue();
 
-		service.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
+		broadcast.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
 
 		Assert.Equal(
 			ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", "#multiplayer",
@@ -457,14 +470,14 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		RegisterAll(host, bot);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var cts = new CancellationTokenSource();
 		match.PendingTimer = cts;
 		match.PendingTimerIsAutoStart = true;
 		host.Dequeue();
 
-		service.CancelQueuedAutoStart(match);
+		lifecycle.CancelQueuedAutoStart(match);
 
 		Assert.Null(match.PendingTimer);
 		Assert.False(match.PendingTimerIsAutoStart);
@@ -480,13 +493,13 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var cts = new CancellationTokenSource();
 		match.PendingTimer = cts;
 		match.PendingTimerIsAutoStart = false;
 
-		service.CancelQueuedAutoStart(match);
+		lifecycle.CancelQueuedAutoStart(match);
 
 		Assert.Same(cts, match.PendingTimer);
 		Assert.False(cts.IsCancellationRequested);
@@ -497,10 +510,10 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 
-		service.CancelQueuedAutoStart(match);
+		lifecycle.CancelQueuedAutoStart(match);
 
 		Assert.Null(match.PendingTimer);
 	}
@@ -510,13 +523,13 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 
 		await using var mutation = await match.BeginMutationAsync();
-		var started = await service.StartAsync(match, mutation);
+		var started = await lifecycle.StartAsync(match, mutation);
 
-		Assert.Equal(MatchMembershipService.StartOutcome.Started, started);
+		Assert.Equal(MatchLifecycle.StartOutcome.Started, started);
 		Assert.True(match.InProgress);
 		Assert.NotNull(match.CurrentRoundId);
 	}
@@ -531,17 +544,17 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		RegisterAll(host, bot);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (membership, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		host.Dequeue();
 
-		await service.LeaveAsync(host, match);
+		await membership.LeaveAsync(host, match);
 		host.Dequeue();
 
 		await using var mutation = await match.BeginMutationAsync();
-		var started = await service.StartAsync(match, mutation);
+		var started = await lifecycle.StartAsync(match, mutation);
 
-		Assert.Equal(MatchMembershipService.StartOutcome.NoOccupiedSlots, started);
+		Assert.Equal(MatchLifecycle.StartOutcome.NoOccupiedSlots, started);
 		Assert.Null(match.CurrentRoundId);
 		Assert.True(!match.InProgress || match.Slots.Any(s => !s.Empty));
 	}
@@ -556,14 +569,14 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		RegisterAll(host, bot);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id) with { MapId = 0 })!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id) with { MapId = 0 })!;
 		host.Dequeue();
 
 		await using var mutation = await match.BeginMutationAsync();
-		var started = await service.StartAsync(match, mutation);
+		var started = await lifecycle.StartAsync(match, mutation);
 
-		Assert.Equal(MatchMembershipService.StartOutcome.BeatmapMissing, started);
+		Assert.Equal(MatchLifecycle.StartOutcome.BeatmapMissing, started);
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(
@@ -579,16 +592,16 @@ public class MatchMembershipServiceTests
 		var host = MakePlayer(1, "host");
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		RegisterAll(host, bot);
-		var service = MakeService();
-		var match = Create(service, host, MakeMatchData(host.Id))!;
+		var (_, lifecycle, _) = MakeService();
+		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		_beatmapRepository.FetchOneAsync(100, cancellationToken: Arg.Any<CancellationToken>())
 			.Returns((Beatmap?)null);
 		host.Dequeue();
 
 		await using var mutation = await match.BeginMutationAsync();
-		var started = await service.StartAsync(match, mutation);
+		var started = await lifecycle.StartAsync(match, mutation);
 
-		Assert.Equal(MatchMembershipService.StartOutcome.BeatmapMissing, started);
+		Assert.Equal(MatchLifecycle.StartOutcome.BeatmapMissing, started);
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(

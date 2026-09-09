@@ -14,7 +14,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     map in sync. The read-mutate-broadcast sequence runs under the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchLoadCompleteHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchLoadCompleteHandler(MatchBroadcast matchBroadcast) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchLoadComplete;
 
@@ -34,6 +34,6 @@ public sealed class MatchLoadCompleteHandler(MatchMembershipService matchMembers
 		slot.Loaded = true;
 
 		var stillWaiting = match.Slots.Any(s => s is { Status: SlotStatus.Playing, Loaded: false });
-		if (!stillWaiting) matchMembership.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
+		if (!stillWaiting) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
 	}
 }

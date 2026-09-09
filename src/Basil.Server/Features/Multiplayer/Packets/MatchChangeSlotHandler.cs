@@ -15,7 +15,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     to open, then the updated state is broadcast. The read-mutate-broadcast sequence runs under the
 ///     match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchChangeSlotHandler(MatchMembershipService matchMembership) : IPacketHandler
+public sealed class MatchChangeSlotHandler() : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangeSlot;
 

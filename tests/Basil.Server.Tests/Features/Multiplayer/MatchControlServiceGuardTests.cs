@@ -17,8 +17,8 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchRepository, _fixture.RoundEndOutbox,
-			_fixture.BeatmapRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchBroadcast,
+			_fixture.MatchRepository, _fixture.RoundEndOutbox, _fixture.BeatmapRepository,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, NullLogger<MatchControlService>.Instance);
 	}
 
@@ -259,7 +259,7 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		match.AddReferee(referee.Id);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok,
+		Assert.Equal(MatchMembership.JoinResult.Ok,
 			await _fixture.MatchMembership.JoinAsync(referee, match, ""));
 		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
 		Assert.Contains(channel.Name, referee.Channels);
@@ -311,7 +311,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
@@ -328,7 +328,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
@@ -363,7 +363,7 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, otherHost, target);
 		var match = _fixture.CreateMatch(host);
 		var otherMatch = _fixture.CreateMatch(otherHost);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok,
+		Assert.Equal(MatchMembership.JoinResult.Ok,
 			await _fixture.MatchMembership.JoinAsync(target, otherMatch, ""));
 		var control = MakeService();
 
@@ -471,7 +471,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		// Only re-teams host's slot — doesn't mention `other`, who is also currently seated.
@@ -494,7 +494,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
@@ -537,7 +537,7 @@ public class MatchControlServiceGuardTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
