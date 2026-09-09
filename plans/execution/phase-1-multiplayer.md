@@ -95,6 +95,28 @@ Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide i
 1.3, against the real call sites.
 
 
+## Stage B progress
+
+| Task | State |
+| --- | --- |
+| B1 split `MatchSubResourceRoutes` | **Done.** 1,335 lines to 31; eight endpoint files plus five more the split surfaced. |
+| B2 split `MatchRoutes` | **Done.** 611 lines to 27. |
+| B3 database boundary | Closed — the finding behind it was a measurement error. |
+| B4 `MatchMutationScope` | **Done.** Every lock site and every publish site; `NextStateVersion` deleted. |
+| B5 adopt the event hub | Not started. Carries a design decision recorded below. |
+| B6 decompose the two services | In progress with a worker; owns two invariant bugs from the audit. |
+
+**The route table was verified byte-identical after B1 and B2**, 138 entries against
+`plans/execution/baseline/routes.txt`. The baseline is derived from source, so it can be re-derived
+without running the server:
+
+```bash
+grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src/Basil.Server --include=*.cs | sort -u
+```
+
+Note the `-u`. The baseline is deduplicated, and several hosts each map `/` and `/health`, so a
+plain `sort` reports seven phantom additions.
+
 ## Task B4 — where it stands
 
 **Done:** the scope is built and correct, and all forty-eight match-lock acquisitions go through

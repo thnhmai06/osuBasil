@@ -44,6 +44,24 @@ neither touched the other's files — but the working tree itself does not suppo
   restored before dropping the entry — but that is one careless step away from destroying an hour
   of another worker's work.
 
+## A flaky integration test, measured rather than assumed
+
+`Basil.IntegrationTests.MatchSubResourceSseEndpointTests.Chat_Sse_BuffersLinesFromOneRequestIntoOneFlush`
+failed once during a full-solution run on 2026-09-09, then passed twice in isolation and again on a
+full integration re-run: **355 passed, 0 failed**.
+
+It was worth ruling out as a regression rather than shrugging at, because the branch it failed on had
+just added metric collection, and observability that changes the timing of what it observes would be
+a real defect. It is not that: `RuntimeMeterListener` never calls `RecordObservableInstruments`, so
+no gauge callback runs at all yet, and the failing assertion is about when SSE lines flush.
+
+What is left is a genuinely timing-dependent test, which the project's own test policy says a test
+must not be. Not fixed here; recorded so the next person to see it red does not spend the afternoon
+hunting a regression that is not there.
+
+Note also that the failing run reported 354 tests rather than 355 — a failure there aborts a
+sibling, so a short count is a symptom of the same flake rather than a second problem.
+
 ## Never `git add -A` while a worker owns files in this tree
 
 This has now happened twice, both times to the orchestrator, both times immediately after it had
