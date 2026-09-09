@@ -76,24 +76,26 @@ internal sealed class DurationAggregate
 }
 
 /// <summary>
-///     Accumulates the runtime and ASP.NET Core counters that only exist while a listener has been
-///     attached, so the diagnostic snapshots can read them back as plain fields.
+///     Accumulates the runtime, ASP.NET Core and Basil-published counters that only exist while a
+///     listener has been attached, so the diagnostic snapshots can read them back as plain fields.
 /// </summary>
 /// <remarks>
-///     The exception count and the ASP.NET Core hosting and Kestrel counters are push-based: nothing
-///     anywhere exposes a property to read them from cold, and the hosting/Kestrel counters do not
-///     exist at all until the web host constructs them. A listener created on demand would therefore
-///     have no baseline and could report nothing for the interval an operator cares about, so exactly
-///     one listener runs for the process's whole lifetime, owned by the host rather than by whoever
-///     happens to be reading it, and every consumer reads its accumulated fields instead of standing
-///     up a listener of its own.
+///     The exception count, the ASP.NET Core hosting and Kestrel counters, and Basil's own SSE
+///     counters are all push-based: nothing anywhere exposes a property to read them from cold, and
+///     the hosting/Kestrel counters do not exist at all until the web host constructs them. A
+///     listener created on demand would therefore have no baseline and could report nothing for the
+///     interval an operator cares about, so exactly one listener runs for the process's whole
+///     lifetime, owned by the host rather than by whoever happens to be reading it, and every
+///     consumer reads its accumulated fields instead of standing up a listener of its own.
 ///
 ///     Every field this type exposes is a fixed scalar or a fixed-size histogram. Nothing is keyed by
 ///     a tag value: a tag such as a thrown exception's type name can take arbitrarily many distinct
 ///     values over a server's lifetime, and keying an accumulator by it would make this component's
 ///     own memory grow with the traffic it exists to watch. The number of independent series this
 ///     type tracks is therefore fixed at compile time and never grows, no matter how many distinct
-///     tag values pass through it.
+///     tag values pass through it -- <see cref="ActiveSseSubscribers" /> and
+///     <see cref="SsePublishesDropped" /> fold every <c>stream</c> tag value into the same two
+///     totals rather than breaking the count out per stream, for the same reason.
 /// </remarks>
 public sealed class RuntimeMeterListener : IHostedService, IDisposable
 {
@@ -106,10 +108,13 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	private long _requestsFailed;
 	private long _activeConnections;
 	private long _connectionsCompleted;
+	private long _activeSseSubscribers;
+	private long _ssePublishesDropped;
 
 	public RuntimeMeterListener()
 	{
 		_listener.InstrumentPublished = OnInstrumentPublished;
+		_listener.SetMeasurementEventCallback<int>(OnIntMeasurement);
 		_listener.SetMeasurementEventCallback<long>(OnLongMeasurement);
 		_listener.SetMeasurementEventCallback<double>(OnDoubleMeasurement);
 	}
@@ -131,6 +136,16 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 
 	/// <summary>The cumulative count of Kestrel connections closed since the listener started.</summary>
 	public long ConnectionsCompleted => Interlocked.Read(ref _connectionsCompleted);
+
+	/// <summary>The number of Server-Sent Events connections currently open, across every stream Basil publishes.</summary>
+	public long ActiveSseSubscribers => Interlocked.Read(ref _activeSseSubscribers);
+
+	/// <summary>
+	///     The cumulative count of stream publishes dropped since the listener started for arriving
+	///     out of order relative to a newer one already applied to the same stream -- a benign,
+	///     by-design race outcome under concurrent load, not an error count.
+	/// </summary>
+	public long SsePublishesDropped => Interlocked.Read(ref _ssePublishesDropped);
 
 	/// <summary>Whether the listener has been stopped and its underlying resources released.</summary>
 	internal bool Disposed { get; private set; }
@@ -160,6 +175,17 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 		_listener.Dispose();
 	}
 
+	/// <summary>
+	///     Feeds one int-valued measurement through the same routing the live listener uses, for
+	///     tests. Named distinctly from the other <c>RecordForTest</c> overloads rather than
+	///     overloaded on <see langword="int" />: an int literal at an existing <c>long</c>-typed call
+	///     site would silently rebind to this overload instead of raising an ambiguity, changing
+	///     which accumulator the call updates without a compile error.
+	/// </summary>
+	internal void RecordIntForTest(string instrumentName, int measurement,
+		ReadOnlySpan<KeyValuePair<string, object?>> tags) =>
+		RecordInt(instrumentName, measurement, tags);
+
 	/// <summary>Feeds one long-valued measurement through the same routing the live listener uses, for tests.</summary>
 	internal void RecordForTest(string instrumentName, long measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags) =>
@@ -177,6 +203,7 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 			"http.server.active_requests" or "http.server.request.duration",
 		"Microsoft.AspNetCore.Server.Kestrel" => instrument.Name is
 			"kestrel.active_connections" or "kestrel.connection.duration",
+		"Basil" => instrument.Name is "basil.sse.subscribers" or "basil.match.publish.stale_dropped",
 		_ => false
 	};
 
@@ -185,6 +212,10 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 		if (IsTracked(instrument)) listener.EnableMeasurementEvents(instrument);
 	}
 
+	private void OnIntMeasurement(Instrument instrument, int measurement,
+		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
+		RecordInt(instrument.Name, measurement, tags);
+
 	private void OnLongMeasurement(Instrument instrument, long measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
 		RecordLong(instrument.Name, measurement, tags);
@@ -192,6 +223,12 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	private void OnDoubleMeasurement(Instrument instrument, double measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
 		RecordDouble(instrument.Name, measurement, tags);
+
+	private void RecordInt(string instrumentName, int measurement,
+		ReadOnlySpan<KeyValuePair<string, object?>> tags)
+	{
+		if (instrumentName == "basil.sse.subscribers") Interlocked.Add(ref _activeSseSubscribers, measurement);
+	}
 
 	private void RecordLong(string instrumentName, long measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags)
@@ -206,6 +243,9 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 				break;
 			case "kestrel.active_connections":
 				Interlocked.Add(ref _activeConnections, measurement);
+				break;
+			case "basil.match.publish.stale_dropped":
+				Interlocked.Add(ref _ssePublishesDropped, measurement);
 				break;
 		}
 	}

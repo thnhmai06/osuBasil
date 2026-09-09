@@ -14,6 +14,7 @@ public static class DiagnosticsServiceCollectionExtensions
 
 		services.AddSingleton<ProcessSampler>();
 		services.AddSingleton<GcSampler>();
+		services.AddSingleton<ApplicationSampler>();
 
 		return services;
 	}

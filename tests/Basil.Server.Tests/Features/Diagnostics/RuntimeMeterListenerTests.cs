@@ -105,4 +105,25 @@ public class RuntimeMeterListenerTests
 		var afterReset = listener.SnapshotRequestDuration();
 		Assert.Equal(0, afterReset.Count);
 	}
+
+	/// <summary>
+	///     Basil's own SSE counters fold into the same two fixed totals regardless of which stream
+	///     published them, for the same boundedness reason as the runtime and ASP.NET Core counters.
+	/// </summary>
+	[Fact]
+	public void SseCountersTrackTheSumOfRecordedValuesIgnoringTheStreamTag()
+	{
+		var listener = new RuntimeMeterListener();
+
+		listener.RecordIntForTest("basil.sse.subscribers", 2, [new KeyValuePair<string, object?>("stream", "main")]);
+		listener.RecordIntForTest("basil.sse.subscribers", 1, [new KeyValuePair<string, object?>("stream", "chat")]);
+		listener.RecordIntForTest("basil.sse.subscribers", -1, [new KeyValuePair<string, object?>("stream", "main")]);
+		listener.RecordForTest("basil.match.publish.stale_dropped", 1,
+			[new KeyValuePair<string, object?>("stream", "main")]);
+		listener.RecordForTest("basil.match.publish.stale_dropped", 1,
+			[new KeyValuePair<string, object?>("stream", "chat")]);
+
+		Assert.Equal(2, listener.ActiveSseSubscribers);
+		Assert.Equal(2, listener.SsePublishesDropped);
+	}
 }
