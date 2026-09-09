@@ -3,6 +3,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Content;
+using Basil.Server.Features.Diagnostics;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Scores;
@@ -13,6 +14,7 @@ using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Shared.Sessions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Basil.Server.Tests.Host;
 
@@ -50,6 +52,7 @@ public class CompositionRootTests
 		services.AddScores(configuration);
 		services.AddSpectating(configuration);
 		services.AddContent(configuration);
+		services.AddDiagnostics(configuration);
 		_provider = services.BuildServiceProvider();
 	}
 
@@ -95,6 +98,13 @@ public class CompositionRootTests
 	public void ResolvesScoreDecryptor()
 	{
 		Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
+	}
+
+	[Fact]
+	public void ResolvesRuntimeMeterListenerAsTheSameHostedServiceInstance()
+	{
+		var listener = _provider.GetRequiredService<RuntimeMeterListener>();
+		Assert.Contains(_provider.GetServices<IHostedService>(), service => ReferenceEquals(service, listener));
 	}
 
 	[Fact]

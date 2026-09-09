@@ -3,6 +3,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Content;
+using Basil.Server.Features.Diagnostics;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Scores;
@@ -35,6 +36,7 @@ internal static class SliceRegistration
 		builder.Services.AddScores(builder.Configuration);
 		builder.Services.AddSpectating(builder.Configuration);
 		builder.Services.AddContent(builder.Configuration);
+		builder.Services.AddDiagnostics(builder.Configuration);
 	}
 
 	/// <summary>Maps every slice's routes onto the host's Bancho host groups.</summary>
