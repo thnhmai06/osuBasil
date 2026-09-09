@@ -228,17 +228,12 @@ internal static class MatchSubResourceRoutes
 					return Results.BadRequest(
 						new ErrorResponse("userId is required and must be online with the osu! client."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					await matchControl.SetHostAsync(match, target, cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -265,17 +260,12 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					await matchControl.ClearHostAsync(match, cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -364,8 +354,7 @@ internal static class MatchSubResourceRoutes
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var result = await matchControl.SetRefereesAsync(match, targets, cancellationToken);
 					return result switch
@@ -379,10 +368,6 @@ internal static class MatchSubResourceRoutes
 							users,
 							cancellationToken))
 					};
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -417,8 +402,7 @@ internal static class MatchSubResourceRoutes
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<RefereeAdditionResult>();
 					foreach (var target in targets)
@@ -434,10 +418,6 @@ internal static class MatchSubResourceRoutes
 					}
 
 					return Results.Json(results);
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -470,8 +450,7 @@ internal static class MatchSubResourceRoutes
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<RefereeRemovalResult>();
 					foreach (var userId in body.UserIds)
@@ -499,10 +478,6 @@ internal static class MatchSubResourceRoutes
 					}
 
 					return Results.Json(results);
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -603,19 +578,13 @@ internal static class MatchSubResourceRoutes
 						new ErrorResponse(
 							$"userId {refId} is a referee and cannot be banned. Remove referee status first."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					await matchControl.SetBansAsync(match, body.UserIds, cancellationToken);
-					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-						cancellationToken: cancellationToken);
+					mutation.PublishState();
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -655,19 +624,13 @@ internal static class MatchSubResourceRoutes
 						new ErrorResponse(
 							$"userId {refId} is a referee and cannot be banned. Remove referee status first."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					await matchControl.AddBansAsync(match, body.UserIds, cancellationToken);
-					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-						cancellationToken: cancellationToken);
+					mutation.PublishState();
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -697,8 +660,7 @@ internal static class MatchSubResourceRoutes
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<BanRemovalResult>();
 					foreach (var userId in body.UserIds)
@@ -710,10 +672,6 @@ internal static class MatchSubResourceRoutes
 					}
 
 					return Results.Json(results);
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -848,22 +806,13 @@ internal static class MatchSubResourceRoutes
 						var target = gameRegistry.GetByUserId(userId);
 						if (target?.Match is not { } oldMatch || oldMatch == match) continue;
 
-						await oldMatch.Lock.WaitAsync(cancellationToken);
-						try
-						{
-							await matchMembership.LeaveAsync(target, oldMatch, cancellationToken);
-						}
-						finally
-						{
-							oldMatch.Lock.Release();
-						}
+						await using var oldMutation = await oldMatch.BeginMutationAsync(cancellationToken);
 
-						await matchMembership.EnqueueStateAsync(oldMatch, oldMatch.NextStateVersion(),
-							cancellationToken: cancellationToken);
+						await matchMembership.LeaveAsync(target, oldMatch, cancellationToken);
+						oldMutation.PublishState();
 					}
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var sender = (UserSession?)gameRegistry.GetByUserId(match.HostId) ??
 					             ircRegistry.GetByUserId(match.HostId) ??
@@ -914,15 +863,9 @@ internal static class MatchSubResourceRoutes
 							_ => new InviteResult(userId, true, null)
 						});
 					}
-				}
-				finally
-				{
-					match.Lock.Release();
-				}
 
-				if (anySeated)
-					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-						cancellationToken: cancellationToken);
+					if (anySeated) mutation.PublishState();
+				}
 
 				return Results.Json(results);
 			})
@@ -966,15 +909,11 @@ internal static class MatchSubResourceRoutes
 					return Results.BadRequest(new ErrorResponse("userId is not registered."));
 
 				MatchControlService.KickResult result;
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					result = await matchControl.KickAsync(null, null, match, targetUser.Id, targetUser.Name,
 						cancellationToken);
-				}
-				finally
-				{
-					match.Lock.Release();
+					if (result is MatchControlService.KickResult.Ok) mutation.PublishState();
 				}
 
 				return result switch
@@ -990,8 +929,6 @@ internal static class MatchSubResourceRoutes
 
 				async Task<IResult> KickedResponseAsync()
 				{
-					await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(),
-						cancellationToken: cancellationToken);
 					return Results.Json(await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry,
 						users, cancellationToken));
 				}
@@ -1045,8 +982,7 @@ internal static class MatchSubResourceRoutes
 
 		var entries = ToPatchEntries(slots);
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (await match.BeginMutationAsync(cancellationToken))
 		{
 			var result = await matchControl.SetSlotsAsync(match, entries, isFullReplace, cancellationToken);
 			return result switch
@@ -1065,10 +1001,6 @@ internal static class MatchSubResourceRoutes
 					await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, users,
 						cancellationToken))
 			};
-		}
-		finally
-		{
-			match.Lock.Release();
 		}
 	}
 
@@ -1136,8 +1068,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					if (body.AutoStart)
 					{
@@ -1155,10 +1086,6 @@ internal static class MatchSubResourceRoutes
 
 					matchControl.Timer(match, body.Seconds > 0 ? body.Seconds : 30);
 					return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -1187,8 +1114,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var result = matchControl.AbortTimer(match);
 					if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
@@ -1196,10 +1122,6 @@ internal static class MatchSubResourceRoutes
 
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Countdown aborted.";
 					return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -1229,8 +1151,7 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var abortedAt = DateTimeOffset.UtcNow;
 					var result = await matchControl.AbortAsync(match, cancellationToken);
@@ -1239,10 +1160,6 @@ internal static class MatchSubResourceRoutes
 
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match aborted.";
 					return Results.Json(new MatchAbortedView(matchId, abortedAt));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -1275,17 +1192,12 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await match.Lock.WaitAsync(cancellationToken);
-				try
+				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var endedAt = DateTimeOffset.UtcNow;
 					await matchControl.CloseAsync(null, null, match, cancellationToken);
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match closed.";
 					return Results.Json(new MatchClosedView(matchId, endedAt));
-				}
-				finally
-				{
-					match.Lock.Release();
 				}
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)

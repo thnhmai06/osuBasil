@@ -305,8 +305,7 @@ internal static class MatchRoutes
 		var match = await matchMembership.CreateEmptyAsync(data, cancellationToken);
 		if (match is null) return Results.Problem("Couldn't create the match: server is full.", statusCode: 503);
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (await match.BeginMutationAsync(cancellationToken))
 		{
 			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
 			await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, cancellationToken);
@@ -317,10 +316,6 @@ internal static class MatchRoutes
 			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
 				cancellationToken);
-		}
-		finally
-		{
-			match.Lock.Release();
 		}
 
 		var settings =
@@ -393,8 +388,7 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (await match.BeginMutationAsync(cancellationToken))
 		{
 			await matchControl.SetNameAsync(match, body.Name, cancellationToken);
 			await matchControl.SetPasswordAsync(match, body.Password ?? "", cancellationToken);
@@ -408,10 +402,6 @@ internal static class MatchRoutes
 			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
 				cancellationToken);
-		}
-		finally
-		{
-			match.Lock.Release();
 		}
 
 		return Results.Json(
@@ -427,15 +417,10 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-		await match.Lock.WaitAsync(cancellationToken);
-		try
+		await using (await match.BeginMutationAsync(cancellationToken))
 		{
 			var applyResult = await ApplySettingsAsync(match, body, matchControl, cancellationToken);
 			if (applyResult is not null) return applyResult;
-		}
-		finally
-		{
-			match.Lock.Release();
 		}
 
 		return Results.Json(
