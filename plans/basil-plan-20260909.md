@@ -35,6 +35,30 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
   code lines, or one that mutates domain state directly, means logic has leaked out of `Domain`.
 * **An abstraction exists only where it carries a boundary**, a real implementation swap, a
   lifecycle, or an external integration. One implementation and no boundary means no interface.
+* **Refactor with the IDE, not with a text editor.** Rider MCP is connected to the solution in
+  `V:\Code\cs\osuBasil` and its refactorings update every reference the IDE indexes. Use them for
+  anything that changes an identifier or the shape of a call:
+
+  | Change | Tool |
+  | --- | --- |
+  | rename a type, member or parameter | `mcp__rider__rename_refactoring` |
+  | move a type to another namespace | `mcp__rider__move_type_to_namespace` |
+  | add, remove or reorder parameters | `mcp__rider__change_api_signature` |
+  | delete a type or member | `mcp__rider__safe_delete` |
+  | find every usage before deciding | `mcp__rider__find_references` |
+  | pull a block out into a method | `mcp__rider__extract_method` |
+
+  A search-and-replace finds text. These find *references*, which is not the same set: `nameof(...)`,
+  XML `<see cref>` and other language-aware usages are updated too, and a conflict refuses the
+  refactoring instead of leaving a broken build to discover later. Pass `preview: true` first on
+  anything with a wide blast radius and read `affects` before applying.
+
+  **Caveat:** Rider MCP is bound to the open solution, which is the main tree only. In
+  `V:\Code\cs\osuBasil-diagnostics` there is no Rider instance, so text editing plus the compiler
+  is the fallback there — and worth saying out loud in a report when it was used.
+
+  This matters most in Stages C and D, which move roughly ninety-six files between projects and
+  namespaces. That is `move_type_to_namespace` work, not `sed` work.
 * **Never run tests in the background.** Foreground, and wait. Backgrounded `dotnet test` has
   stalled three workers on this project.
 * **Commit the moment a task is green.** Session limits end workers mid-task; a committed task is

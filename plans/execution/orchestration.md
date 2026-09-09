@@ -62,6 +62,20 @@ hunting a regression that is not there.
 Note also that the failing run reported 354 tests rather than 355 — a failure there aborts a
 sibling, so a short count is a symptom of the same flake rather than a second problem.
 
+## Every worker prompt names the Rider refactorings
+
+Observed on 2026-09-09: a worker was renaming identifiers by hand while
+`mcp__rider__rename_refactoring` sat unused. The tools are not merely faster — they operate on the
+reference index rather than on text, so they also update `nameof(...)` and XML `<see cref>`, and
+they refuse on conflict rather than producing a build that fails later.
+
+Name them in the prompt. A worker that is not told a tool exists will reach for `sed`, and on this
+project the largest remaining work — Stage C and D moving about ninety-six files between projects
+and namespaces — is exactly what `move_type_to_namespace` is for.
+
+Rider MCP is bound to the open solution, so it is available in the main tree only. Workers in the
+diagnostics worktree have no Rider instance and should say so when they fall back to text editing.
+
 ## Never `git add -A` while a worker owns files in this tree
 
 This has now happened twice, both times to the orchestrator, both times immediately after it had
