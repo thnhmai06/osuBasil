@@ -97,9 +97,6 @@ internal sealed class DurationAggregate
 /// </remarks>
 public sealed class RuntimeMeterListener : IHostedService, IDisposable
 {
-	/// <summary>The number of independent counters this type tracks, regardless of traffic shape.</summary>
-	internal const int FixedFieldCount = 7;
-
 	private readonly MeterListener _listener = new();
 	private readonly DurationAggregate _requestDuration = new();
 
@@ -137,9 +134,6 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 
 	/// <summary>Whether the listener has been stopped and its underlying resources released.</summary>
 	internal bool Disposed { get; private set; }
-
-	/// <summary>The number of independent series this instance tracks, fixed regardless of the tag values observed.</summary>
-	internal int TrackedSeriesCount => FixedFieldCount;
 
 	/// <summary>Returns the request-duration distribution accumulated since the last call, then clears it.</summary>
 	public DurationAggregateSnapshot SnapshotRequestDuration() => _requestDuration.SnapshotAndReset();

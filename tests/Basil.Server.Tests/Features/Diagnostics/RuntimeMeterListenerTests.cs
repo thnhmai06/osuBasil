@@ -33,6 +33,12 @@ public class RuntimeMeterListenerTests
 	///     unbounded cardinality; the totals are aggregated instead.
 	/// </summary>
 	/// <remarks>
+	///     Boundedness is asserted by measuring allocation rather than by inspecting a count, because a
+	///     count can only report what the implementation chose to report. Ten thousand measurements with
+	///     ten thousand distinct tag values allocate nothing at all, which is reachable only if no
+	///     per-tag storage exists; storing tag values in any collection would allocate on the first
+	///     sight of each new key.
+	///
 	///     Feeds measurements through <see cref="RuntimeMeterListener.RecordForTest(string, long, ReadOnlySpan{KeyValuePair{string, object}})" />
 	///     directly rather than starting the real listener: a started listener attaches to the process-wide
 	///     <c>System.Runtime</c> meter, and any exception thrown anywhere else in the test process while
@@ -46,8 +52,17 @@ public class RuntimeMeterListenerTests
 		for (var i = 0; i < 10_000; i++)
 			listener.RecordForTest("dotnet.exceptions", 1, [new KeyValuePair<string, object?>("error.type", $"Type{i}")]);
 
-		Assert.Equal(RuntimeMeterListener.FixedFieldCount, listener.TrackedSeriesCount);
 		Assert.Equal(10_000, listener.ExceptionsThrown);
+
+		var tags = new KeyValuePair<string, object?>[10_000];
+		for (var i = 0; i < tags.Length; i++) tags[i] = new KeyValuePair<string, object?>("error.type", $"Probe{i}");
+		listener.RecordForTest("dotnet.exceptions", 1, [tags[0]]);
+
+		var before = GC.GetAllocatedBytesForCurrentThread();
+		foreach (var tag in tags) listener.RecordForTest("dotnet.exceptions", 1, [tag]);
+		var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+		Assert.Equal(0, allocated);
 	}
 
 	[Fact]
