@@ -25,11 +25,11 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | --- | --- | --- | --- |
 | 1.1 Mutation invariant audit | Done | orchestrator + worker | 40 class A, 7 class B all from one root cause; fixed at source instead of adding `Invalidate()` |
 | 1.2 `MatchMutationScope` (plan B4) | **Done** | orchestrator + worker | 48 lock sites (`02dab44f`) and all 25 publish sites converted; `NextStateVersion` deleted; verified green at 1654 |
-| 1.3 Adopt the hub | Not started | — | read the Task 0.10 hazard first |
+| 1.3 Adopt the hub (plan B5) | Not started | — | design decided in `plans/execution/hub-adoption-decision.md`: deltas only, and the seed handshake is deleted because `SeedIfNotSuperseded` has no callers |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
-| 1.5 Decompose `MatchControlService` | Not started | — | 1303 lines, 43 members; **also owns audit Observation 1** — `SetHostAsync` and `PUT /matches/{id}/hosts` never check the target is seated |
-| 1.6 Decompose `MatchMembershipService` | Not started | — | 902 lines, 27 members; **also owns audit Observation 5** — `StartAsync` can set `InProgress` with zero occupied slots |
-| 1.7 Decompose `MatchSubResourceRoutes` | Not started | — | 1423 lines, 33 members |
+| 1.5 Decompose `MatchControlService` (plan B6) | In progress | worker | invariant bug fixed at `b4a95cc4`; slot and countdown handlers committed; lifecycle handlers in flight |
+| 1.6 Decompose `MatchMembershipService` (plan B6) | **Done** | worker | split three ways at `0204b503`; invariant bug fixed at `b4a95cc4` |
+| 1.7 Decompose `MatchSubResourceRoutes` (plan B1) | **Done** | worker | 1,335 lines to 31 across thirteen endpoint files |
 | 1.8 Localize the slice, own `!mp` help | Not started | — | |
 | 1.9 Logging pass and test triage | Not started | — | |
 | 1.10 Advisor checkpoint | Not started | — | |
@@ -104,7 +104,7 @@ Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide i
 | B3 database boundary | Closed — the finding behind it was a measurement error. |
 | B4 `MatchMutationScope` | **Done.** Every lock site and every publish site; `NextStateVersion` deleted. |
 | B5 adopt the event hub | Not started. Carries a design decision recorded below. |
-| B6 decompose the two services | In progress with a worker; owns two invariant bugs from the audit. |
+| B6 decompose the two services | In progress. `MatchMembershipService` is done (`0204b503`). `MatchControlService` is down from 1,483 lines to 921, with the slot group (`52b49d0f`) and countdown group (`4d669be8`) committed and the lifecycle group in flight. Both invariant bugs fixed at `b4a95cc4`. |
 
 **The route table was verified byte-identical after B1 and B2**, 138 entries against
 `plans/execution/baseline/routes.txt`. The baseline is derived from source, so it can be re-derived
@@ -137,9 +137,11 @@ say so.
 
 ## The trap in it
 
-The scope itself is built, correct and committed at `9357b56`. **The call-site conversion has not
-started**; `grep -rn "Lock.WaitAsync" src/Basil.Server --include=*.cs` still returns 51, of which 3
-are unrelated locks.
+Re-verified 2026-09-10: `grep -rn "Lock.WaitAsync" src/Basil.Server --include=*.cs` returns **4**,
+of which three are unrelated locks (`extractLock`, `checksumLock`, `previewLock`) and the fourth is
+inside `MatchSession` itself, where the scope acquires it. `NextStateVersion` has zero occurrences
+in `src/`. B4 is finished; an earlier revision of this file said the conversion had not started,
+which was true when written and stopped being true two commits later.
 
 The bug that cost three worker sessions is worth knowing before touching this code again.
 `BeginMutationAsync` was an `async` method that set an `AsyncLocal<bool>` after awaiting the lock.
@@ -157,17 +159,32 @@ Two consequences that generalise:
   written to hang on regression. A hung suite is much harder to diagnose than a failed assertion,
   and it is exactly why this stayed invisible.
 
+## How this phase died, twice
+
+Both interruptions are worth reading before resuming, because they were the same mistake at
+different scales.
+
+A worker finished B4's call-site conversion and died on a session limit before committing. The
+orchestrator swept its eight files into a documentation commit with `git add -A`, so the code is
+correct and verified but the history does not say what it contains.
+
+A worker was killed at 02:40 on 2026-09-10 having removed `StartAsync`, `AbortAsync` and their
+result enums from `MatchControlService` without repointing a single caller. The tree did not
+compile. Its `git status` was indistinguishable from the diagnostics tree's, which was green; only a
+build told them apart.
+
+Both are the same rule unlearned: **commit the moment a task is green, and treat "a member is
+removed but not yet rewired" as a broken tree rather than a work in progress.** A three-handler
+group is three tasks, not one.
+
 ## Next exact step
 
-Task 1.1's enumeration is delegated; its classification and the design decision that follows are the
-orchestrator's. When the enumeration lands, verify every class-B claim by reading that site directly
-(and spot-check the class-A claims) before accepting it — a worker reported a total as "verified and
-unchanged" in Task 0.6 when it was not.
+B6's lifecycle group — `AbortHandler`, `CloseHandler`, `StartHandler` — is with a worker in the main
+tree. When it lands, `MatchControlService` should be well under 921 lines and the suite back at
+1657.
 
-Then decide:
-
-* **Class B empty** — the design stands; record the finding with evidence and go to Task 1.2 unchanged.
-* **Class B non-empty** — `MatchMutationScope` gains an explicit `Invalidate()` that those specific
-  sequences call to suppress the publish and mark the stream stale instead. Suppression must not
-  become the default: that reintroduces the silently-stale-subscriber problem for the far more
-  common class A.
+Then **B5, adopt the event hub.** The design question this file records under "Task 1.3's design
+question" is already decided, and decided differently than either option sketched here: see
+`plans/execution/hub-adoption-decision.md`. The hub carries deltas only, and the seed handshake is
+deleted rather than fixed, because `SeedIfNotSuperseded` turned out to have no callers. Do not
+re-derive that; the analysis below is kept for its reasoning, not as an open question.
