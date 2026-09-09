@@ -21,7 +21,7 @@ first time are worth repeating:
 |---|---:|---:|---:|
 | Live cross-slice edges | 44 (unchanged at stage C entry) | ~17 predicted | as few as the domain really needs |
 | Strongly connected components | 1 of 10 | 5 free + a knot of 5 | no cycle that is not declared |
-| Mutual (two-cycle) slice pairs | 15 (13 at stage C entry) | — | 3, each declared with a reason |
+| Mutual (two-cycle) slice pairs | 15, or 13 by the script's definition | — | 3, each declared with a reason |
 | Declared allowlist edges | 38, of which 9 were invisible | 45, all visible | shrinking |
 | `Shared -> Features` pinned offenders | 12, of which 1 was invisible | 13 | 0 |
 | Dead / documentation-only imports | 5 / 7 | 0 / 0 | 0 |
@@ -32,7 +32,7 @@ first time are worth repeating:
 |---|---|---|---:|---|
 | 2026-09-08 | `e7a1bf7` | assessment measured the baseline | 44 | 1 of 10 |
 | 2026-09-09 | `ed48716` | stage A made constant-mediated coupling visible; 7 edges declared, 1 `Shared` offender pinned | 44 | 1 of 10 |
-| 2026-09-10 | `4d669be8` | **stage C entry baseline**, re-measured with `measure-slice-graph.py` | 44 | 1 of 10 |
+| 2026-09-10 | `4d669be8` | **stage C entry baseline**, re-measured with `measure-slice-graph.py` | 44 features-only, 52 solution-wide | 1 of 10 |
 
 Stage A changed no coupling. It changed what the rule can see, which is why the edge count is
 unchanged while the declared count rose from 38 to 45.
@@ -45,31 +45,62 @@ countdown handlers out of `MatchControlService`, the `const` to `static readonly
 re-measured on `4d669be8`, from source, by `plans/execution/measure-slice-graph.py`:
 
 ```text
-slices: 10 (Auth, Beatmaps, Bot, Chat, Content, Irc, Multiplayer, Scores, Spectating, Users)
+== features-only, comparable to the assessment (src\Basil.Server\Features)
 live edges: 44
 mutual pairs: 13
-documentation-only edges: 1
-slices with no outgoing edge: 0
+cycle of 10: Auth, Beatmaps, Bot, Chat, Content, Irc, Multiplayer, Scores, Spectating, Users
+
+== solution-wide, the number C5 gates on (src)
+live edges: 52
+mutual pairs: 17
 cycle of 10: Auth, Beatmaps, Bot, Chat, Content, Irc, Multiplayer, Scores, Spectating, Users
 ```
 
-Three things this says, none of which were safe to assume:
+Four things this says, none of which were safe to assume:
 
-* **Still 44 edges, still one component of ten.** The prediction C5 tests is unchanged, and the
-  measurement it will be compared against is now a script rather than a transcript, so C5 re-runs
-  the same definition of an edge instead of a similar one.
-* **Stage B moved almost nothing, and was never meant to.** Splitting a 1,483-line service into
-  handlers inside the same slice cannot change a cross-slice edge. Recording that explicitly is
-  what keeps a green Stage B from reading, later, as evidence the coupling problem is shrinking.
-* **Mutual pairs fell from 15 to 13.** `Users -> Beatmaps` survives only inside an XML comment,
-  and `Scores -> Multiplayer` lost one of its three files. Both are side effects of the splits
-  rather than deliberate work, which is exactly why they need to be on the record before Stage C
-  starts claiming credit for movement.
+* **Still 44 edges by the assessment's definition, still one component of ten.** Nothing the
+  migration has landed so far has moved a cross-slice edge, and the measurement is now a script
+  rather than a transcript, so C5 re-runs the same definition instead of a similar one.
+* **The honest number is 52, not 44.** The assessment matched references written
+  `Basil.Server.Features.<Slice>`, so it never counted the eight edges that run through
+  `Basil.Domain.<Slice>` namespaces. Those are real dependencies between slices; they were simply
+  outside the frame.
+* **Stage B moved nothing, and was never meant to.** Splitting a 1,483-line service into handlers
+  inside the same slice cannot change a cross-slice edge. Recording that explicitly is what keeps a
+  green Stage B from reading, later, as evidence the coupling problem is shrinking on its own.
+* **The mutual-pair count is 13, and it is not comparable to the assessment's 15.** The two numbers
+  come from different definitions, not from movement in the code: the script's first run, before it
+  stripped comments, also reported 13. Nothing in Stage B changed a mutual pair. Thirteen is the
+  entry baseline because it is what the script measures, not because two pairs were removed.
 
-The script's documentation-only count is 1 where the assessment reported 7. The definitions differ:
-the assessment counted a `using` whose only consumer was a doc comment, and the script counts a
-slice named nowhere but a comment. The live-edge number, which is the one C5 gates on, is derived
-the same way in both.
+### Why C5 must gate on the solution-wide number
+
+The assessment's predicted payoff — 44 edges down to roughly 17, four slices leaving the knot --
+came from a *simulated platform extraction*: it took shared types out of `Features/` and re-counted.
+A measurement scoped to `Features/` therefore falls when files leave that directory, whether or not
+any dependency was actually broken. Stage C moves roughly ninety-six files out of `Features/`. Gate
+C5 on that number alone and it passes for free, on the very step it exists to check.
+
+So C5 reads both:
+
+* **features-only** must fall to roughly 17. That is the prediction, in the frame it was made in.
+* **solution-wide** must fall with it. It starts at 52.
+
+If features-only drops to 17 while solution-wide stays near 52, the coupling did not go anywhere --
+it moved into `Basil.Domain` and out of the old measurement's view. That is the precise failure this
+gate exists to catch, and it is invisible to either number on its own.
+
+`Basil.Protocol` is excluded from the solution-wide pattern. `Basil.Protocol.Irc` and
+`Basil.Protocol.Multiplayer` are wire-format libraries that share a name with a slice, reference no
+feature, and are something every transport is entitled to depend on. Counting them reported eight
+edges that do not exist.
+
+The same caution applies to the documentation-only count, which is 1 here where the assessment
+reported 7: the assessment counted a `using` whose only consumer was a doc comment, and the script
+counts a slice named nowhere but in a comment. Only the features-only live-edge number is derived the
+same way in both, which is why it is the only figure in this file that may be compared with the
+assessment's directly. Every other row that pairs an assessment figure with a script figure is a
+comparison between two definitions until proven otherwise.
 
 ## The rule for stage C
 

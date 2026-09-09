@@ -73,7 +73,7 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
 | Tree | Branch | Count | As of |
 |---|---|---|---|
 | `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1657 | `4d669be8` |
-| `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | 1679 | `b6b15cb3` |
+| `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | 1699 | `b1904ac3` |
 
 The two counts differ because the diagnostics tree carries Stage F tests the main tree has not
 merged yet. A task that changes its tree's count says why, and updates the row.
@@ -341,13 +341,19 @@ derives an edge from a using directive or a fully qualified reference crossing a
 boundary, and reports edges, mutual pairs, strongly connected components, and which slices have no
 outgoing edge left.
 
-- [ ] Re-run it. The comparison is against the **Stage C entry baseline**, re-measured on
-  `4d669be8` and recorded in `plans/execution/architecture-progress.md`: **44 edges, 13 mutual
-  pairs, one component of ten, no slice free.** Stage B's handler splits are intra-slice, so the
-  edge count is unchanged from the assessment, which is what the re-measurement confirms.
-- [ ] Expected after Stage C: roughly 17 edges, with Auth, Beatmaps, Content, Users and Spectating
-  standing free — the five slices whose only inbound traffic is the session and the reply plumbing
-  that Stage C moves out.
+It reports two counts, and **both** have to fall. The `features-only` count reproduces the
+assessment's definition and is the frame the prediction was made in; it drops when files merely
+leave `Features/`, which Stage C does ninety-six times. The `solution-wide` count follows a slice
+wherever its files live, so it falls only when a dependency actually goes away.
+
+- [ ] Re-run it. The **Stage C entry baseline**, measured on `4d669be8` and recorded in
+  `plans/execution/architecture-progress.md`, is **44 features-only / 52 solution-wide edges, one
+  component of ten, no slice free.** Stage B's handler splits are intra-slice, so nothing moved,
+  which is what the re-measurement confirms.
+- [ ] Expected after Stage C: features-only falls to roughly 17, with Auth, Beatmaps, Content,
+  Users and Spectating standing free. **Solution-wide must fall with it.** If features-only reaches
+  17 while solution-wide sits near 52, the coupling was relocated into `Basil.Domain` rather than
+  removed, and Stage D's project split would be made against a graph that is still one component.
 - [ ] Record the actual numbers in `plans/execution/architecture-progress.md`. **If the graph did
   not move as predicted, stop and report before Stage D** — Stage D's project split assumes it did.
 
