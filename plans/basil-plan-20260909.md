@@ -59,15 +59,24 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
 
   This matters most in Stages C and D, which move roughly ninety-six files between projects and
   namespaces. That is `move_type_to_namespace` work, not `sed` work.
-* **Never run tests in the background.** Foreground, and wait. Backgrounded `dotnet test` has
-  stalled three workers on this project.
+* **Never run tests in the background.** Foreground, and wait, with `timeout: 600000` on the tool
+  call, a single `dotnet build` first and `--no-build` afterwards. Backgrounded `dotnet test` has
+  stalled more than five workers on this project; it is the single most common way a worker dies
+  with uncommitted work.
 * **Commit the moment a task is green.** Session limits end workers mid-task; a committed task is
   never redone.
 * Commit messages, code comments and documentation are written in normal English prose. Comments
   are self-contained: they explain the reason, never cite a document or ADR number as the reason.
 
-**Test oracle.** The suite was 1648 passed / 0 failed / 0 skipped at commit `c5f06e9`. A task that
-changes the count says why.
+**Test oracle.** Per tree, 0 failed / 0 skipped, and the passing count is:
+
+| Tree | Branch | Count | As of |
+|---|---|---|---|
+| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1657 | `4d669be8` |
+| `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | 1679 | `b6b15cb3` |
+
+The two counts differ because the diagnostics tree carries Stage F tests the main tree has not
+merged yet. A task that changes its tree's count says why, and updates the row.
 
 ---
 
@@ -327,9 +336,18 @@ contract.
 
 ### Task C5: Measure the graph
 
-- [ ] Re-run the assessment's edge and component measurement. Expected: from 44 edges and one
-  component of ten, down to roughly 17 edges with Auth, Beatmaps, Content, Users and Spectating
-  standing free.
+The measurement is `plans/execution/measure-slice-graph.py`, run from the repository root. It
+derives an edge from a using directive or a fully qualified reference crossing a `Features/<Slice>`
+boundary, and reports edges, mutual pairs, strongly connected components, and which slices have no
+outgoing edge left.
+
+- [ ] Re-run it. The comparison is against the **Stage C entry baseline**, re-measured on
+  `4d669be8` and recorded in `plans/execution/architecture-progress.md`: **44 edges, 13 mutual
+  pairs, one component of ten, no slice free.** Stage B's handler splits are intra-slice, so the
+  edge count is unchanged from the assessment, which is what the re-measurement confirms.
+- [ ] Expected after Stage C: roughly 17 edges, with Auth, Beatmaps, Content, Users and Spectating
+  standing free — the five slices whose only inbound traffic is the session and the reply plumbing
+  that Stage C moves out.
 - [ ] Record the actual numbers in `plans/execution/architecture-progress.md`. **If the graph did
   not move as predicted, stop and report before Stage D** — Stage D's project split assumes it did.
 
