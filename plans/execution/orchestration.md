@@ -200,8 +200,26 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | 2026-09-08 11:11 UTC+7 | Tasks 0.7, then 0.9, then 0.8 | all three committed |
 | — | Tasks 0.10-0.13 | committed |
 | — | Task 0.14 | run by the orchestrator; Phase 0 closed |
+| 2026-09-10 02:40 UTC+7 | Task B6 lifecycle handlers (main tree) and Task 5.6 endpoints (diagnostics tree) | both killed by the session limit with uncommitted work; the diagnostics tree was green and was committed as `b1904ac3`, the main tree **did not compile** |
+| 2026-09-10 05:20 UTC+7 | finish Task B6 (main tree) | running |
+| 2026-09-10 05:25 UTC+7 | Tasks 5.7 and 5.8 (diagnostics tree) | running |
 
-No workers are running. Phase 0 is done.
+### What the 02:40 kill taught
+
+The two trees failed differently, and the difference is the lesson. The diagnostics worker had
+finished a coherent unit before it died, so its work was recoverable by inspection and a test run.
+The main-tree worker died having already removed `StartAsync`, `AbortAsync` and their result enums
+from `MatchControlService` but before repointing a single caller, so the tree did not compile at
+all.
+
+The rule "commit the moment a task is green" is what would have saved it, and it was not followed
+because the worker treated the whole three-handler group as one task. A member removed from a
+service and not yet rewired is a broken tree, not a work in progress, and the window in which it is
+broken should be measured in minutes.
+
+**Verify a resumed tree before trusting it.** On resuming, both trees were assessed as "uncommitted
+work from a killed worker" and both looked equally plausible from `git status`. Only a build told
+them apart. A `git status` that lists modified files says nothing about whether they compile.
 
 ## Evidence captured so far
 
