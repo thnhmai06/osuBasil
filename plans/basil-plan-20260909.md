@@ -59,10 +59,22 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
 
   This matters most in Stages C and D, which move roughly ninety-six files between projects and
   namespaces. That is `move_type_to_namespace` work, not `sed` work.
-* **Never run tests in the background.** Foreground, and wait, with `timeout: 600000` on the tool
-  call, a single `dotnet build` first and `--no-build` afterwards. Backgrounded `dotnet test` has
-  stalled more than five workers on this project; it is the single most common way a worker dies
-  with uncommitted work.
+* **Never run tests in the background, and never run the whole suite in one call.** Measured
+  2026-09-10: `dotnet test` over the solution exceeds the 600-second tool ceiling, because
+  `Basil.IntegrationTests` alone takes five and a half minutes. A single foreground call cannot
+  finish, so the tool backgrounds it — which is the failure this rule exists to prevent, reached by
+  obeying the rule. Instead: `dotnet build` once, then one foreground `dotnet test --no-build` call
+  per test project, integration tests last.
+
+  ```bash
+  dotnet build --configuration Debug
+  for p in Basil.ArchitectureTests Basil.Domain.Tests Basil.Protocol.Tests Basil.Server.Tests Basil.IntegrationTests; do
+      dotnet test "tests/$p" --no-build --configuration Debug
+  done
+  ```
+
+  Backgrounded `dotnet test` has stalled more than five workers here; it is the most common way a
+  worker dies with uncommitted work.
 * **Commit the moment a task is green.** Session limits end workers mid-task; a committed task is
   never redone.
 * Commit messages, code comments and documentation are written in normal English prose. Comments
