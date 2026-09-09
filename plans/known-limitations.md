@@ -286,10 +286,3 @@ decision.
 | `Microsoft.Extensions.Options` / `.ConfigurationExtensions` / `Configuration.Binder`           | The `IOptions<T>` configuration-binding pattern used throughout (`StorageOptions`, `MirrorOptions`, etc.).                                  |
 | `Microsoft.Extensions.Hosting.Abstractions`                                                    | `BackgroundService` base class for `GhostDisconnectService`, `BeatmapWatcherService`, `BeatmapsetMigrationService`, `MatchRoundEndOutbox`.  |
 | `Microsoft.Extensions.DependencyInjection.Abstractions` / `Logging.Abstractions`               | DI container and logger abstractions referenced from the Domain/Application layers, which cannot depend on the concrete Infrastructure/Web implementations. |
-
-## See also
-
-* [`database.md`](database.md): SQLite write model and configuration
-* [`multiplayer.md`](multiplayer.md): match lifecycle and its invariants
-* [`response-envelope.md`](response-envelope.md): the envelope middleware's internal invariant
-* [`beatmap-ingestion.md`](beatmap-ingestion.md): the canonical `.osz` storage model
